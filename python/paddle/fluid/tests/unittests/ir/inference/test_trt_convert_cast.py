@@ -41,16 +41,16 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
 
         def generate_input(type):
             if type == 0:
-                return np.ones([1, 3, 4, 4]).astype(np.bool)
+                return np.ones([1, 3, 64, 64]).astype(np.bool)
             elif type == 2:
-                return np.ones([1, 3, 4, 4]).astype(np.int32)
+                return np.ones([1, 3, 64, 64]).astype(np.int32)
             elif type == 4:
-                return np.ones([1, 3, 4, 4]).astype(np.float16)
+                return np.ones([1, 3, 64, 64]).astype(np.float16)
             else:
-                return np.ones([1, 3, 4, 4]).astype(np.float32)
+                return np.ones([1, 3, 64, 64]).astype(np.float32)
 
-        for in_dtype in [2]:
-            for out_dtype in [5]:
+        for in_dtype in [0, 2, 5]:
+            for out_dtype in [0, 2, 5]:
                 dics = [{"in_dtype": in_dtype, "out_dtype": out_dtype}]
 
                 ops_config = [{
@@ -80,9 +80,9 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
             self, program_config) -> (paddle_infer.Config, List[int], float):
 
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 4, 4]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 4, 4]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 4, 4]}
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 64, 64]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}

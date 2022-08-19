@@ -28,29 +28,62 @@ namespace plugin {
 
 class CastPlugin : public PluginTensorRTV2Ext {
  public:
-  explicit CastPlugin(int intype, int outtype) { intype_ = intype; outtype_ = outtype; }
+  CastPlugin(int intype, int outtype, bool fp16)
+      : intype_(intype), outtype_(outtype), fp16_(fp16) {}
 
-  // It was used for tensorrt deserialization.
-  // It should not be called by users.
   CastPlugin(void const* serial_data, size_t serial_length) {
     deserializeBase(serial_data, serial_length);
+    DeserializeValue(&serial_data, &serial_length, &intype_);
+    DeserializeValue(&serial_data, &serial_length, &outtype_);
+    DeserializeValue(&serial_data, &serial_length, &fp16_);
   }
 
-  ~CastPlugin() {}
-  CastPlugin* clone() const TRT_NOEXCEPT override {
-    return new CastPlugin(intype_, outtype_);
+  nvinfer1::IPluginV2Ext* clone() const TRT_NOEXCEPT override {
+    CastPlugin* ptr = new CastPlugin(intype_, outtype_, fp16_);
+    ptr->setPluginNamespace(this->getPluginNamespace());
+    ptr->data_format_ = data_format_;
+    ptr->data_type_ = data_type_;
+    ptr->input_dims_ = input_dims_;
+    return ptr;
+  }
+
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* input_types,
+                                       int nb_inputs) const
+      TRT_NOEXCEPT override {
+    if (outtype_ == 0) {
+      return nvinfer1::DataType::kBOOL;
+    } else if (outtype_ == 2) {
+      return nvinfer1::DataType::kINT32;
+    } else {
+      return nvinfer1::DataType::kFLOAT;
+    }
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
-    return "cast_plugin";
+    return "cast_plugin_v2ext";
   }
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
-  int initialize() TRT_NOEXCEPT override { return 0; }
-  bool supportsFormat(nvinfer1::DataType type, nvinfer1::PluginFormat format)
-      const TRT_NOEXCEPT override;
   nvinfer1::Dims getOutputDimensions(int index,
-                                     const nvinfer1::Dims* inputs,
-                                     int nb_input_dims) TRT_NOEXCEPT override;
+                                     const nvinfer1::Dims* input_dims,
+                                     int num_inputs) TRT_NOEXCEPT override;
+
+  bool supportsFormat(nvinfer1::DataType type, nvinfer1::PluginFormat format)
+      const TRT_NOEXCEPT override {
+    if (fp16_) {
+      return type == nvinfer1::DataType::kFLOAT ||
+             type == nvinfer1::DataType::kINT32 ||
+             type == nvinfer1::DataType::kBOOL;
+
+    } else {
+      return type == nvinfer1::DataType::kFLOAT ||
+             type == nvinfer1::DataType::kINT32 ||
+             type == nvinfer1::DataType::kBOOL;
+    }
+  }
+
+  int initialize() TRT_NOEXCEPT override;
+  void terminate() TRT_NOEXCEPT override;
 #if IS_TRT_VERSION_LT(8000)
   int enqueue(int batch_size,
               const void* const* inputs,
@@ -63,56 +96,88 @@ class CastPlugin : public PluginTensorRTV2Ext {
               void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
 
+  void destroy() TRT_NOEXCEPT override { delete this; }
 
-    nvinfer1::DataType getOutputDataType(int index,
-                                       const nvinfer1::DataType* input_types,
-                                       int nb_inputs) const
-      TRT_NOEXCEPT override;
-
-
+ protected:
   size_t getSerializationSize() const TRT_NOEXCEPT override {
-    return getBaseSerializationSize();
+    return SerializedSize(intype_) + SerializedSize(outtype_) +
+           SerializedSize(fp16_) + getBaseSerializationSize();
   }
 
-  // TRT will call this func  to serialize the configuration of TRT
-  // It should not be called by users.
   void serialize(void* buffer) const TRT_NOEXCEPT override {
     serializeBase(buffer);
+    SerializeValue(&buffer, intype_);
+    SerializeValue(&buffer, outtype_);
+    SerializeValue(&buffer, fp16_);
   }
 
-  private :
+ private:
   int intype_;
   int outtype_;
+  bool fp16_;
 };
 
-class CastPluginCreator : public TensorRTPluginCreator {
+class CastPluginCreator : public nvinfer1::IPluginCreator {
  public:
+  CastPluginCreator() {}
   const char* getPluginName() const TRT_NOEXCEPT override {
-    return "cast_plugin";
+    return "cast_plugin_v2ext";
   }
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
+
+  const nvinfer1::PluginFieldCollection* getFieldNames() TRT_NOEXCEPT override {
+    return &field_collection_;
+  }
+
+  nvinfer1::IPluginV2* createPlugin(const char* name,
+                                    const nvinfer1::PluginFieldCollection* fc)
+      TRT_NOEXCEPT override {
+    // not implemented
+    return nullptr;
+  }
 
   nvinfer1::IPluginV2* deserializePlugin(const char* name,
                                          const void* serial_data,
                                          size_t serial_length)
       TRT_NOEXCEPT override {
-    return new CastPlugin(serial_data, serial_length);
+    auto plugin = new CastPlugin(serial_data, serial_length);
+    return plugin;
   }
+
+  void setPluginNamespace(const char* lib_namespace) TRT_NOEXCEPT override {
+    plugin_namespace_ = lib_namespace;
+  }
+
+  const char* getPluginNamespace() const TRT_NOEXCEPT override {
+    return plugin_namespace_.c_str();
+  }
+
+ private:
+  std::string plugin_namespace_;
+  std::string plugin_name_;
+  nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
+  std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
+
 REGISTER_TRT_PLUGIN_V2(CastPluginCreator);
 
 #if IS_TRT_VERSION_GE(6000)
 class CastPluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit CastPluginDynamic(int intype, int outtype) { intype_ = intype; outtype_ = outtype; }
+  explicit CastPluginDynamic(int intype, int outtype, bool fp16) {
+    intype_ = intype;
+    outtype_ = outtype;
+    fp16_ = fp16;
+  }
   CastPluginDynamic(void const* serial_data, size_t serial_length) {
-    DeserializeValue(&serial_data, &serial_length, &with_fp16_);
+    DeserializeValue(&serial_data, &serial_length, &intype_);
+    DeserializeValue(&serial_data, &serial_length, &outtype_);
   }
 
   ~CastPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new CastPluginDynamic(intype_, outtype_);
+    return new CastPluginDynamic(intype_, outtype_, fp16_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
@@ -122,17 +187,20 @@ class CastPluginDynamic : public DynamicPluginTensorRT {
   int initialize() TRT_NOEXCEPT override { return 0; }
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
-    return SerializedSize(intype_) + SerializedSize(outtype_);
+    return SerializedSize(intype_) + SerializedSize(outtype_) +
+           SerializedSize(fp16_);
   }
   void serialize(void* buffer) const TRT_NOEXCEPT override {
     SerializeValue(&buffer, intype_);
     SerializeValue(&buffer, outtype_);
+    SerializeValue(&buffer, fp16_);
   }
 
-  nvinfer1::DimsExprs getOutputDimensions(int output_index,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nb_inputs,
-                                          nvinfer1::IExprBuilder& expr_builder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int output_index,
+      const nvinfer1::DimsExprs* inputs,
+      int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder)  // NOLINT
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
@@ -158,14 +226,16 @@ class CastPluginDynamic : public DynamicPluginTensorRT {
               void* const* outputs,
               void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
+  void destroy() TRT_NOEXCEPT override { delete this; }
   nvinfer1::DataType getOutputDataType(int index,
                                        const nvinfer1::DataType* input_types,
                                        int nb_inputs) const
       TRT_NOEXCEPT override;
 
-  private:
+ private:
   int intype_;
   int outtype_;
+  bool fp16_;
 };
 
 class CastPluginDynamicCreator : public TensorRTPluginCreator {

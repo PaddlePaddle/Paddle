@@ -42,15 +42,16 @@ class CastOpConverter : public OpConverter {
     auto out_dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("out_dtype"));
 
     nvinfer1::ILayer* layer = nullptr;
-      if (engine_->with_dynamic_shape()) {
-        plugin::CastPluginDynamic* plugin =
-            new plugin::CastPluginDynamic(in_dtype, out_dtype);
-        layer = engine_->AddDynamicPlugin(&input, 1, plugin);
-      } else {
-        plugin::CastPlugin* plugin =
-            new plugin::CastPlugin(in_dtype, out_dtype);
-        layer = engine_->AddPlugin(&input, 1, plugin);
-      }
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+    if (engine_->with_dynamic_shape()) {
+      plugin::CastPluginDynamic* plugin =
+          new plugin::CastPluginDynamic(in_dtype, out_dtype, with_fp16);
+      layer = engine_->AddDynamicPlugin(&input, 1, plugin);
+    } else {
+      plugin::CastPlugin* plugin =
+          new plugin::CastPlugin(in_dtype, out_dtype, with_fp16);
+      layer = engine_->AddPluginV2Ext(&input, 1, plugin);
+    }
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "cast", {output_name}, test_mode);

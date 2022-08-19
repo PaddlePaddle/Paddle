@@ -17,47 +17,56 @@
 #include <vector>
 
 #include "paddle/fluid/inference/tensorrt/plugin/cast_op_plugin.h"
-#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-bool CastPlugin::supportsFormat(
-    nvinfer1::DataType type, nvinfer1::PluginFormat format) const TRT_NOEXCEPT {
-  return type == nvinfer1::DataType::kFLOAT;
-}
-
-nvinfer1::Dims CastPlugin::getOutputDimensions(int index,
-                                               const nvinfer1::Dims* in_dims,
-                                               int nb_inputs) TRT_NOEXCEPT {
-  assert(nb_inputs == 1);
-  assert(index < this->getNbOutputs());
-  nvinfer1::Dims const& input_dims = in_dims[0];
-  nvinfer1::Dims output_dims = input_dims;
-  return output_dims;
-}
-
 template <typename Tin, typename Tout>
 __global__ void cast_kernel(const Tin* input, Tout* output, int num) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < num) {
     output[idx] = static_cast<Tout>(input[idx]);
-    printf("%d\n", ((float*)input)[0]);
-    printf("%f 输出\n", ((int*)output)[0]);
   }
 }
+
+nvinfer1::Dims CastPlugin::getOutputDimensions(int index,
+                                               const nvinfer1::Dims* input_dims,
+                                               int num_inputs) TRT_NOEXCEPT {
+  PADDLE_ENFORCE_EQ(num_inputs,
+                    1,
+                    platform::errors::InvalidArgument(
+                        "Invalid number of inputs of split TRT plugin. "
+                        "Expected 1, received %d.",
+                        num_inputs));
+  PADDLE_ENFORCE_LT(
+      index,
+      this->getNbOutputs(),
+      platform::errors::InvalidArgument(
+          "Index of output should be less than the total number of outputs in "
+          "split TensorRT plugin. Received index = %d >= total outputs = %d",
+          index,
+          this->getNbOutputs()));
+
+  nvinfer1::Dims output_dims = input_dims[0];
+  return output_dims;
+}
+
+int CastPlugin::initialize() TRT_NOEXCEPT { return 0; }
+
+// nothing to release according to initialize
+void CastPlugin::terminate() TRT_NOEXCEPT {}
 
 int CastPlugin::enqueue(int batch_size,
                         const void* const* inputs,
 #if IS_TRT_VERSION_LT(8000)
                         void** outputs,
-                        void*,
+                        void* workspace,
                         cudaStream_t stream) {
 #else
                         void* const* outputs,
-                        void*,
+                        void* workspace,
                         cudaStream_t stream) TRT_NOEXCEPT {
 #endif
   const auto& input_dims = this->getInputDims(0);
@@ -65,11 +74,14 @@ int CastPlugin::enqueue(int batch_size,
   for (int i = 0; i < input_dims.nbDims; i++) {
     num *= input_dims.d[i];
   }
+
   const int block_size = 256;
   const int grid_size = (num + block_size - 1) / block_size;
   // 0 : bool
   // 2 : int
+  // 4 : half
   // 5 : float
+
   if (intype_ == 2 && outtype_ == 5) {  // int -> float
     const int* input = static_cast<const int*>(inputs[0]);
     float* output = static_cast<float*>(outputs[0]);
@@ -79,6 +91,26 @@ int CastPlugin::enqueue(int batch_size,
     const float* input = static_cast<const float*>(inputs[0]);
     int* output = static_cast<int*>(outputs[0]);
     cast_kernel<float, int>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 0 && outtype_ == 2) {  // bool -> int
+    const bool* input = static_cast<const bool*>(inputs[0]);
+    int* output = static_cast<int*>(outputs[0]);
+    cast_kernel<bool, int>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 2 && outtype_ == 0) {  // int -> bool
+    const int* input = static_cast<const int*>(inputs[0]);
+    bool* output = static_cast<bool*>(outputs[0]);
+    cast_kernel<int, bool>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 0 && outtype_ == 5) {  // bool -> float
+    const bool* input = static_cast<const bool*>(inputs[0]);
+    float* output = static_cast<float*>(outputs[0]);
+    cast_kernel<bool, float>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 5 && outtype_ == 0) {  // float -> bool
+    const float* input = static_cast<const float*>(inputs[0]);
+    bool* output = static_cast<bool*>(outputs[0]);
+    cast_kernel<float, bool>
         <<<grid_size, block_size, 0, stream>>>(input, output, num);
   } else if (intype_ == 5 && outtype_ == 5) {  // float -> float
     const float* input = static_cast<const float*>(inputs[0]);
@@ -90,8 +122,32 @@ int CastPlugin::enqueue(int batch_size,
     int* output = static_cast<int*>(outputs[0]);
     cast_kernel<int, int>
         <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 0 && outtype_ == 0) {  // bool -> bool
+    const bool* input = static_cast<const bool*>(inputs[0]);
+    bool* output = static_cast<bool*>(outputs[0]);
+    cast_kernel<bool, bool>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 4 && outtype_ == 0) {  // half -> bool
+    const half* input = static_cast<const half*>(inputs[0]);
+    bool* output = static_cast<bool*>(outputs[0]);
+    cast_kernel<half, bool>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 4 && outtype_ == 2) {  // half -> int
+    const half* input = static_cast<const half*>(inputs[0]);
+    int* output = static_cast<int*>(outputs[0]);
+    cast_kernel<half, int>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 4 && outtype_ == 5) {  // half -> float
+    const half* input = static_cast<const half*>(inputs[0]);
+    float* output = static_cast<float*>(outputs[0]);
+    cast_kernel<half, float>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 4 && outtype_ == 4) {  // half -> half
+    const half* input = static_cast<const half*>(inputs[0]);
+    half* output = static_cast<half*>(outputs[0]);
+    cast_kernel<half, half>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
   }
-
   return cudaGetLastError() != cudaSuccess;
 }
 
@@ -125,9 +181,16 @@ bool CastPluginDynamic::supportsFormatCombination(
                                         nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
-  return in.type == nvinfer1::DataType::kFLOAT ||
-         in.type == nvinfer1::DataType::kINT32 ||
-         in.type == nvinfer1::DataType::kBOOL;
+  if (fp16_) {
+    return in.type == nvinfer1::DataType::kFLOAT ||
+           in.type == nvinfer1::DataType::kINT32 ||
+           in.type == nvinfer1::DataType::kBOOL;
+
+  } else {
+    return in.type == nvinfer1::DataType::kFLOAT ||
+           in.type == nvinfer1::DataType::kINT32 ||
+           in.type == nvinfer1::DataType::kBOOL;
+  }
 }
 
 nvinfer1::DataType CastPluginDynamic::getOutputDataType(
@@ -162,6 +225,7 @@ int CastPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   const int grid_size = (num + block_size - 1) / block_size;
   // 0 : bool
   // 2 : int
+  // 4 : half
   // 5 : float
 
   if (intype_ == 2 && outtype_ == 5) {  // int -> float
@@ -174,6 +238,26 @@ int CastPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     int* output = static_cast<int*>(outputs[0]);
     cast_kernel<float, int>
         <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 0 && outtype_ == 2) {  // bool -> int
+    const bool* input = static_cast<const bool*>(inputs[0]);
+    int* output = static_cast<int*>(outputs[0]);
+    cast_kernel<bool, int>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 2 && outtype_ == 0) {  // int -> bool
+    const int* input = static_cast<const int*>(inputs[0]);
+    bool* output = static_cast<bool*>(outputs[0]);
+    cast_kernel<int, bool>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 0 && outtype_ == 5) {  // bool -> float
+    const bool* input = static_cast<const bool*>(inputs[0]);
+    float* output = static_cast<float*>(outputs[0]);
+    cast_kernel<bool, float>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 5 && outtype_ == 0) {  // float -> bool
+    const float* input = static_cast<const float*>(inputs[0]);
+    bool* output = static_cast<bool*>(outputs[0]);
+    cast_kernel<float, bool>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
   } else if (intype_ == 5 && outtype_ == 5) {  // float -> float
     const float* input = static_cast<const float*>(inputs[0]);
     float* output = static_cast<float*>(outputs[0]);
@@ -183,6 +267,31 @@ int CastPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     const int* input = static_cast<const int*>(inputs[0]);
     int* output = static_cast<int*>(outputs[0]);
     cast_kernel<int, int>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 0 && outtype_ == 0) {  // bool -> bool
+    const bool* input = static_cast<const bool*>(inputs[0]);
+    bool* output = static_cast<bool*>(outputs[0]);
+    cast_kernel<bool, bool>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 4 && outtype_ == 0) {  // half -> bool
+    const half* input = static_cast<const half*>(inputs[0]);
+    bool* output = static_cast<bool*>(outputs[0]);
+    cast_kernel<half, bool>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 4 && outtype_ == 2) {  // half -> int
+    const half* input = static_cast<const half*>(inputs[0]);
+    int* output = static_cast<int*>(outputs[0]);
+    cast_kernel<half, int>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 4 && outtype_ == 5) {  // half -> float
+    const half* input = static_cast<const half*>(inputs[0]);
+    float* output = static_cast<float*>(outputs[0]);
+    cast_kernel<half, float>
+        <<<grid_size, block_size, 0, stream>>>(input, output, num);
+  } else if (intype_ == 4 && outtype_ == 4) {  // half -> half
+    const half* input = static_cast<const half*>(inputs[0]);
+    half* output = static_cast<half*>(outputs[0]);
+    cast_kernel<half, half>
         <<<grid_size, block_size, 0, stream>>>(input, output, num);
   }
   return cudaGetLastError() != cudaSuccess;
