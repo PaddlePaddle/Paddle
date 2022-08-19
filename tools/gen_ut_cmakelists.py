@@ -211,6 +211,8 @@ def parse_line(line, curdir):
 
     for c in conditions:
         cmd += f"if ({c})\n"
+
+    time_out_str = f'TIMEOUT "{timeout}"' if len(timeout.strip()) > 0 else ''
     if launcher[-3:] == ".sh":
         cmd += f'''if({archs} AND {os_})
     bash_test_modules(
@@ -221,7 +223,7 @@ def parse_line(line, curdir):
     "RUN_TYPE={run_type}"
     ENVS
     "PADDLE_DIST_UT_PORT={dist_ut_port};{envs}")
-    set_tests_properties({name} PROPERTIES  TIMEOUT "{timeout}" RUN_SERIAL {run_serial})
+    set_tests_properties({name} PROPERTIES  {time_out_str} RUN_SERIAL {run_serial})
 endif()
 '''
     else:
@@ -232,7 +234,7 @@ endif()
     {name}
     ENVS
     "PADDLE_DIST_UT_PORT={dist_ut_port};{envs}")
-    set_tests_properties({name} PROPERTIES  TIMEOUT "{timeout}" RUN_SERIAL {run_serial})
+    set_tests_properties({name} PROPERTIES {time_out_str} RUN_SERIAL {run_serial})
 endif()
 '''
     for _ in conditions:
