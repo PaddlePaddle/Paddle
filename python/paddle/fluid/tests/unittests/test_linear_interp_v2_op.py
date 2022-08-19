@@ -34,8 +34,8 @@ def linear_interp_test(x,
                        out_w=-1,
                        scale=[],
                        interp_method='linear',
-                       align_corners=False,
-                       align_mode=1):
+                       align_corners=True,
+                       align_mode=0):
     if isinstance(scale, float) or isinstance(scale, int):
         scale_list = []
         for _ in range(len(x.shape) - 2):
