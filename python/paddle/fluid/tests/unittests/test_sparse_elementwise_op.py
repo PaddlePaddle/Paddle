@@ -136,22 +136,22 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                 self.func_test_coo(op)
 
     def test_values_add(self):
-        indices = [[0, 1], [0, 3]]
-        values1 = [[1.0], [2.0]]
-        values2 = [[1.0], [2.0]]
+        indices_data = [[0, 1], [0, 3]]
+        values1_data = [[1.0], [2.0]]
+        values2_data = [[1.0], [2.0]]
         shape = [2, 4, 2]
 
-        sp_a = sparse.sparse_coo_tensor(indices,
-                                        values1,
+        sp_a = sparse.sparse_coo_tensor(indices_data,
+                                        values1_data,
                                         shape,
                                         stop_gradient=False)
-        sp_b = sparse.sparse_coo_tensor(indices,
-                                        values2,
+        sp_b = sparse.sparse_coo_tensor(indices_data,
+                                        values2_data,
                                         shape,
                                         stop_gradient=False)
 
-        values1 = paddle.to_tensor(values1, stop_gradient=False)
-        values2 = paddle.to_tensor(values2, stop_gradient=False)
+        values1 = paddle.to_tensor(values1_data, stop_gradient=False)
+        values2 = paddle.to_tensor(values2_data, stop_gradient=False)
 
         #1. c.values() = a.values() + b.values()
         sp_c = sparse.values_add(sp_a, sp_b)
@@ -165,10 +165,18 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                                    values2.grad.numpy())
 
         #2. c.values() = a.values() + b
-        bias = paddle.randn((sp_a.values().shape[-1], ))
-        bias.stop_gradient = False
-        sp_c = sparse.values_add(sp_a, bias)
-        ref_c = values1 + bias
+        bias = np.random.random((sp_a.values().shape[-1], )).astype('float32')
+        bias1 = paddle.to_tensor(bias, stop_gradient=False)
+        bias2 = paddle.to_tensor(bias, stop_gradient=False)
+        sp_a2 = sparse.sparse_coo_tensor(indices_data,
+                                         values1_data,
+                                         shape,
+                                         stop_gradient=False)
+        sp_c = sparse.values_add(sp_a2, bias1)
+        sp_c.backward()
+        values3 = paddle.to_tensor(values1_data, stop_gradient=False)
+        ref_c = values3 + bias2
+        ref_c.backward()
         np.testing.assert_allclose(sp_c.values().numpy(), ref_c.numpy())
         np.testing.assert_allclose(sp_a.grad.values().numpy(),
                                    values1.grad.numpy())
