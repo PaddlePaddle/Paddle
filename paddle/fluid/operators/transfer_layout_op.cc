@@ -127,7 +127,8 @@ REGISTER_OPERATOR(
     ops::TransferLayoutOpProtoMaker,
     ops::TransferLayoutInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    TransferLayoutInferShapeFunctor);
 
 REGISTER_OP_VERSION(transfer_layout)
     .AddCheckpoint(R"ROC(refine transfer_layout, add src_layout attribute)ROC",

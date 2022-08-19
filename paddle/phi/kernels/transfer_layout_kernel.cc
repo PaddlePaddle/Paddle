@@ -48,17 +48,20 @@ void CastDataLayout(const Context& dev_ctx,
 template <typename Context>
 void TransferLayoutKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          DataLayout dst_layout,
+                          int src_layout,
+                          int dst_layout,
                           DenseTensor* out) {
   auto src_dim = x.dims();
 
-  auto axis = GetAxis(x.layout(), dst_layout);
+  auto axis = GetAxis(x.layout(), static_cast<DataLayout>(dst_layout));
 
   std::vector<int64_t> dst_dim;
   dst_dim.resize(axis.size());
   for (size_t i = 0; i < axis.size(); i++) {
     dst_dim[i] = src_dim[axis[i]];
   }
+
+  dev_ctx.Alloc(out, x.dtype());
 
   out->ResizeAndAllocate(phi::make_ddim(dst_dim));
 

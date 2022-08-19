@@ -3626,11 +3626,12 @@ void TraceInferMeta(
 }
 
 void TransferLayoutInferMeta(const MetaTensor& x,
-                             DataLayout layout,
+                             int src_layout,
+                             int dst_layout,
                              MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
-  out->set_layout(layout);
+  out->set_layout(static_cast<DataLayout>(dst_layout));
 }
 
 void TransposeInferMeta(const MetaTensor& x,
