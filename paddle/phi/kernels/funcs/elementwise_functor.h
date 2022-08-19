@@ -583,15 +583,14 @@ struct ElementwisePowFunctor {
     // when cast to int by default and it is wrong.
     // Use llrint to cast it to the nearest integer, which is 3.
     if (std::is_integral<T>::value) {
-      return static_cast<T>(std::llrint(
-          std::pow(static_cast<double>(a), static_cast<double>(b))));
+      return std::llrint(
+          std::pow(static_cast<double>(a), static_cast<double>(b)));
     }
 #endif
 #ifdef PADDLE_WITH_XPU_KP
-    return static_cast<T>(pow(a, b));
+    return pow(a, b);
 #endif
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-    return static_cast<T>(std::pow(static_cast<MPType>(a), static_cast<MPType>(b)));
+    return std::pow(a, b);
   }
 };
 }  // namespace funcs
