@@ -30,14 +30,14 @@ def trilinear_interp_test(x,
                           OutSize=None,
                           SizeTensor=None,
                           Scale=None,
-                          data_layout='NCHW',
+                          data_layout='NCDHW',
                           out_d=-1,
                           out_h=-1,
                           out_w=-1,
                           scale=[],
-                          interp_method='linear',
-                          align_corners=False,
-                          align_mode=1):
+                          interp_method='trilinear',
+                          align_corners=True,
+                          align_mode=0):
     if isinstance(scale, float) or isinstance(scale, int):
         scale_list = []
         for _ in range(len(x.shape) - 2):
