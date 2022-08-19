@@ -421,7 +421,15 @@ def conv1d(x,
     squeeze_aixs = -3 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_aixs])
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        l_type = "final_state_" + l_type
+        out = getattr(_C_ops,
+                      l_type)(x, weight, stride, padding, padding_algorithm,
+                              groups, dilation, conv2d_data_format, False, -1,
+                              False, False, use_cudnn)
+        if bias is not None:
+            out = nn.elementwise_add(out, bias, axis=channel_dim)
+    elif _in_legacy_dygraph():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
                  'fuse_relu_before_depthwise_conv', False, "padding_algorithm",
@@ -892,7 +900,15 @@ def conv1d_transpose(x,
     x = unsqueeze(x, axis=[squeeze_axis])
     weight = unsqueeze(weight, axis=[-1])
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        op_type = "final_state_" + op_type
+        out = getattr(_C_ops,
+                      op_type)(x, weight, stride, padding, output_padding,
+                               output_size, padding_algorithm, groups, dilation,
+                               conv2d_data_format)
+        if bias is not None:
+            out = nn.elementwise_add(out, bias, axis=channel_dim)
+    elif _in_legacy_dygraph():
         attrs = ('output_padding', output_padding, 'output_size', output_size,
                  'strides', stride, 'paddings', padding, 'padding_algorithm',
                  padding_algorithm, 'dilations', dilation, 'groups', groups,

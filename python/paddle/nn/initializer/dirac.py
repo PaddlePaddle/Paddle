@@ -243,11 +243,8 @@ class Dirac(Initializer):
                     out_var, origin_shape)
                 tmp_reshape_out._share_underline_tensor_to(out_var)
                 if var.dtype != VarDesc.VarType.FP32:
-                    tmp_cast_out = _C_ops.cast(out_var, 'in_dtype',
-                                               out_var.dtype, 'out_dtype',
-                                               var.dtype)
+                    tmp_cast_out = _C_ops.final_state_cast(out_var, var.dtype)
                     tmp_cast_out._share_underline_tensor_to(var)
-
         else:
             op = block.append_op(type="scatter",
                                  inputs={

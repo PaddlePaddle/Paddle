@@ -638,8 +638,8 @@ def binary_cross_entropy(input,
             out = _C_ops.final_state_multiply(out, weight, 'axis', -1)
 
         if reduction == 'sum':
-            return _C_ops.reduce_sum(out, 'dim', [0], 'keep_dim', False,
-                                     "reduce_all", True)
+            return _C_ops.final_state_sum(out, [], None, False)
+
         elif reduction == 'mean':
             return _C_ops.final_state_mean_all(out)
         else:
@@ -1274,8 +1274,7 @@ def l1_loss(input, label, reduction='mean', name=None):
         if reduction == 'mean':
             return _C_ops.final_state_mean_all(unreduced)
         elif reduction == 'sum':
-            return _C_ops.reduce_sum(unreduced, 'dim', [0], 'keep_dim', False,
-                                     'reduce_all', True)
+            return _C_ops.final_state_sum(unreduced, [], None, False)
         else:
             return unreduced
     elif _in_legacy_dygraph():
@@ -2777,7 +2776,7 @@ def sigmoid_focal_loss(logit,
         loss = _C_ops.final_state_multiply(alpha_t, loss)
 
         gamma = fluid.dygraph.base.to_variable([gamma], dtype=loss.dtype)
-        gamma_t = _C_ops.final_state_pow(_C_ops.elementwise_sub(one, p_t),
+        gamma_t = _C_ops.final_state_pow(_C_ops.final_state_subtract(one, p_t),
                                          gamma)
         loss = _C_ops.final_state_multiply(gamma_t, loss)
 
