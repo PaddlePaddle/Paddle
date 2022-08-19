@@ -19,18 +19,18 @@ limitations under the License. */
 #include <hiprand_kernel.h>
 #endif
 
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/poisson_kernel.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 
 namespace phi {
 
 template <typename T>
 __global__ void GetPoisson(
     const T* in, T* out, const int N, unsigned int seed, unsigned int offset) {
-    CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t){
+  CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
 #ifdef __NVCC__
     curandStatePhilox4_32_10_t state;
     curand_init(seed, idx, offset, &state);
