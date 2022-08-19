@@ -654,9 +654,22 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_parallel_dygraph_qat PROPERTIES TIMEOUT "120"
                                                             RUN_SERIAL 0)
 endif()
-if(LOCAL_ALL_ARCH
+if((WITH_GPU)
    AND LOCAL_ALL_PLAT
-   AND ((${NCCL_VERSION} VERSION_GREATER_EQUAL 2212) AND WITH_NCCL))
+   AND (WITH_NCCL AND (${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)))
+  bash_test_modules(
+    test_parallel_dygraph_sparse_embedding
+    START_BASH
+    ../../dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20171;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_parallel_dygraph_sparse_embedding
+                       PROPERTIES TIMEOUT "200" RUN_SERIAL 0)
+endif()
+if((WITH_ROCM) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_parallel_dygraph_sparse_embedding
     START_BASH
@@ -685,9 +698,9 @@ if((WITH_GPU
   set_tests_properties(test_fleet_amp_meta_optimizer PROPERTIES TIMEOUT ""
                                                                 RUN_SERIAL 0)
 endif()
-if(LOCAL_ALL_ARCH
+if((WITH_GPU)
    AND LOCAL_ALL_PLAT
-   AND ((${NCCL_VERSION} VERSION_GREATER_EQUAL 2212) AND WITH_NCCL))
+   AND (WITH_NCCL AND (${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)))
   bash_test_modules(
     test_parallel_dygraph_sparse_embedding_over_height
     START_BASH
@@ -699,6 +712,19 @@ if(LOCAL_ALL_ARCH
   )
   set_tests_properties(test_parallel_dygraph_sparse_embedding_over_height
                        PROPERTIES TIMEOUT "150" RUN_SERIAL 0)
+endif()
+if((WITH_ROCM) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_parallel_dygraph_sparse_embedding_over_height
+    START_BASH
+    ../../dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=20175;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_parallel_dygraph_sparse_embedding_over_height
+                       PROPERTIES TIMEOUT "350" RUN_SERIAL 0)
 endif()
 if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
   py_test_modules(
