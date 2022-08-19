@@ -69,16 +69,6 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_allgather
-    MODULES
-    test_allgather
-    ENVS
-    "PADDLE_DIST_UT_PORT=20069;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_allgather PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
-endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX))
-  py_test_modules(
     test_collective_allgather_api
     MODULES
     test_collective_allgather_api
@@ -348,27 +338,6 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   )
   set_tests_properties(test_collective_wait PROPERTIES TIMEOUT "300" RUN_SERIAL
                                                        1)
-endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX))
-  py_test_modules(
-    test_reducescatter
-    MODULES
-    test_reducescatter
-    ENVS
-    "PADDLE_DIST_UT_PORT=20131;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_reducescatter PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
-endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX))
-  py_test_modules(
-    test_reducescatter_api
-    MODULES
-    test_reducescatter_api
-    ENVS
-    "PADDLE_DIST_UT_PORT=20133;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_reducescatter_api PROPERTIES TIMEOUT "120"
-                                                         RUN_SERIAL 1)
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
