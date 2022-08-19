@@ -182,6 +182,7 @@ from .math import mm  # noqa: F401
 from .math import divide  # noqa: F401
 from .math import floor_divide  # noqa: F401
 from .math import remainder  # noqa: F401
+from .math import remainder_  # noqa: F401
 from .math import mod  # noqa: F401
 from .math import floor_mod  # noqa: F401
 from .math import multiply  # noqa: F401
@@ -364,6 +365,7 @@ tensor_method_func = [  #noqa
     'divide',
     'floor_divide',
     'remainder',
+    'remainder_',
     'mod',
     'floor_mod',
     'multiply',

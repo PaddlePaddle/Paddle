@@ -133,5 +133,43 @@ class TestRemainderOp(unittest.TestCase):
             np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
 
 
+class TestRemainderInplaceOp(unittest.TestCase):
+
+    def test_name(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data(name="x", shape=[2, 3], dtype="int64")
+            y = fluid.data(name='y', shape=[2, 3], dtype='int64')
+
+            y_1 = paddle.remainder_(x, y, name='div_res')
+            self.assertEqual(('div_res' in y_1.name), True)
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([2, 3, 8, 7]).astype('int64')
+            np_y = np.array([1, 5, 3, 3]).astype('int64')
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+            z = paddle.remainder_(x, y)
+            np_z = z.numpy()
+            z_expected = np.array([0, 3, 2, 1])
+            self.assertEqual((np_z == z_expected).all(), True)
+
+            np_x = np.array([-3.3, 11.5, -2, 3.5])
+            np_y = np.array([-1.2, 2., 3.3, -2.3])
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+            z = x % y
+            z_expected = np.array([-0.9, 1.5, 1.3, -1.1])
+            np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
+
+            np_x = np.array([-3, 11, -2, 3])
+            np_y = np.array([-1, 2, 3, -2])
+            x = paddle.to_tensor(np_x, dtype="int64")
+            y = paddle.to_tensor(np_y, dtype="int64")
+            z = x % y
+            z_expected = np.array([0, 1, 1, -1])
+            np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
+
+
 if __name__ == '__main__':
     unittest.main()
