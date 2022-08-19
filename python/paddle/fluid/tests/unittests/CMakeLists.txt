@@ -339,6 +339,8 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
   list(REMOVE_ITEM TEST_OPS test_boxps)
   list(REMOVE_ITEM TEST_OPS test_allgather)
+  list(REMOVE_ITEM TEST_OPS test_reducescatter)
+  list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op
 )# FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
@@ -1580,6 +1582,8 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_pipeline_parallel PROPERTIES LABELS
                                                            "RUN_TYPE=DIST")
+    set_tests_properties(test_reducescatter_api PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_reducescatter PROPERTIES TIMEOUT 120)
   endif()
   set_tests_properties(test_paddle_multiprocessing PROPERTIES TIMEOUT 120)
   set_tests_properties(test_pipeline_parallel PROPERTIES TIMEOUT 120)
