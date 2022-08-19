@@ -138,7 +138,12 @@ class QuantizationPass(PassBase):
                     input_name = quant_op.desc.input('X')[0]
                     if "quantize" in input_name:
                         input_name = input_name[:input_name.index(".quantized")]
-                    consume_op = main_program.blocks[ib].vars[input_name].op
+
+                    if quant_op.type == "moving_average_abs_max_scale":
+                        consume_op = main_program.blocks[ib].vars[input_name].op
+                    else:
+                        consume_op = main_program.blocks[ib].ops[ip -
+                                                                 qat_offset]
                     consume_op_dist_attr = dist_context.get_dist_op_for_program(
                         consume_op).dist_attr
                     ref_process_mesh = consume_op_dist_attr.process_mesh
@@ -186,6 +191,7 @@ class QuantizationPass(PassBase):
                             quant_op_dist_attr.set_output_dist_attr(
                                 output_name, tensor_dist_attr)
 
+                    quant_op._set_attr("op_device", "")
                     qat_offset += 1
 
                 else:

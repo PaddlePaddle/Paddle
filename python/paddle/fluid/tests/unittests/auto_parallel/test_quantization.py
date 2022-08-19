@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 import sys
 import numpy as np
 import paddle
@@ -82,16 +83,10 @@ def create_data_holder(batch_size, sequence_len):
     return [tokens, position_ids, attention_mask], [labels, loss_mask]
 
 
-def get_gpt_model(strategy):
+def get_gpt_model():
     modeling.init_global()
-    if strategy == "dp":
-        modeling._global_parallel_strategy = "dp"
-        modeling._global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
-    elif strategy == "mp":
-        modeling._global_parallel_strategy = "mp"
-        modeling._global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
-    else:
-        raise ValueError("'get_gpt_model' only support dp and mp.")
+    modeling._global_parallel_strategy = "serial"
+    modeling._global_process_mesh = auto.ProcessMesh(mesh=[0])
 
     gpt = GPTModel(vocab_size=1000,
                    hidden_size=64,
@@ -116,70 +111,70 @@ def get_gpt_model(strategy):
     return model, criterion
 
 
-def check_program(program):
+class TestQuantizationPass(unittest.TestCase):
 
-    quantizable_op_and_inputs = {'matmul_v2': ['X', 'Y']}
-    quantizable_grad_op_inputs = {'matmul_v2_grad': ['X', 'Y']}
+    def test_qat_pass(self):
 
-    quantized_ops = set()
-    for block in program.blocks:
-        for op in block.ops:
-            is_quntized = False
-            if op.type in quantizable_op_and_inputs:
-                for arg_name in op.input_arg_names:
-                    if ".quantized" in arg_name:
-                        is_quntized = True
+        batch_size = 8
+        batch_num = 10
+        sequence_len = 512
+        vocab_size = 1000
 
-            if not is_quntized:
-                continue
+        strategy = apply_pass()
+        model, loss = get_gpt_model()
+        opt = paddle.optimizer.AdamW(learning_rate=0.00001)
+        inputs_spec, labels_spec = create_data_holder(batch_size=batch_size,
+                                                      sequence_len=sequence_len)
 
-            # check forward
-            if op.type in quantizable_op_and_inputs:
-                for arg_name in op.input_arg_names:
-                    assert arg_name.endswith('.quantized.dequantized')
-                    quantized_ops.add(arg_name)
+        engine = Engine(model, inputs_spec, labels_spec, strategy=strategy)
+        engine.prepare(optimizer=opt, loss=loss)
 
-        for op in block.ops:
-            is_quntized = False
-            if op.type in quantizable_grad_op_inputs:
-                for pname in quantizable_grad_op_inputs[op.type]:
-                    arg_name = op.input(pname)[0]
-                    if ".quantized" in arg_name:
-                        is_quntized = True
+        dataset = FakeDataset(batch_size * batch_num, sequence_len, vocab_size)
+        engine.fit(train_data=dataset, batch_size=batch_size)
 
-            if not is_quntized:
-                continue
+        self.check_program(engine.main_program)
 
-            # check backward
-            if op.type in quantizable_grad_op_inputs:
-                for pname in quantizable_grad_op_inputs[op.type]:
-                    arg_name = op.input(pname)[0]
-                    assert arg_name.endswith('.quantized.dequantized')
-                    assert arg_name in quantized_ops
+    def check_program(self, program):
 
+        quantizable_op_and_inputs = {'matmul_v2': ['X', 'Y']}
+        quantizable_grad_op_inputs = {'matmul_v2_grad': ['X', 'Y']}
 
-def train():
-    fleet.init(is_collective=True)
+        quantized_ops = set()
+        for block in program.blocks:
+            for op in block.ops:
+                is_quntized = False
+                if op.type in quantizable_op_and_inputs:
+                    for arg_name in op.input_arg_names:
+                        if ".quantized" in arg_name:
+                            is_quntized = True
 
-    batch_size = 8
-    batch_num = 10
-    sequence_len = 512
-    vocab_size = 1000
+                if not is_quntized:
+                    continue
 
-    strategy = apply_pass()
-    model, loss = get_gpt_model("dp")
-    opt = paddle.optimizer.AdamW(learning_rate=0.00001)
-    inputs_spec, labels_spec = create_data_holder(batch_size=batch_size,
-                                                  sequence_len=sequence_len)
+                # check forward
+                if op.type in quantizable_op_and_inputs:
+                    for arg_name in op.input_arg_names:
+                        assert arg_name.endswith('.quantized.dequantized')
+                        quantized_ops.add(arg_name)
 
-    engine = Engine(model, inputs_spec, labels_spec, strategy=strategy)
-    engine.prepare(optimizer=opt, loss=loss)
+            for op in block.ops:
+                is_quntized = False
+                if op.type in quantizable_grad_op_inputs:
+                    for pname in quantizable_grad_op_inputs[op.type]:
+                        arg_name = op.input(pname)[0]
+                        if ".quantized" in arg_name:
+                            is_quntized = True
 
-    dataset = FakeDataset(batch_size * batch_num, sequence_len, vocab_size)
-    engine.fit(train_data=dataset, batch_size=batch_size)
+                if not is_quntized:
+                    continue
 
-    check_program(engine.main_program)
+                # check backward
+                if op.type in quantizable_grad_op_inputs:
+                    for pname in quantizable_grad_op_inputs[op.type]:
+                        arg_name = op.input(pname)[0]
+                        assert arg_name.endswith('.quantized.dequantized')
+                        assert arg_name in quantized_ops
 
 
 if __name__ == "__main__":
-    train()
+    unittest.main()

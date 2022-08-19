@@ -64,14 +64,6 @@ class Parallelizer:
             params_grads = self._generate_backward(serial_main_program,
                                                    serial_startup_program,
                                                    serial_loss)
-            # Generate optimizer
-            time0 = time.time()
-            self._generate_optimizer(serial_main_program,
-                                     serial_startup_program, serial_optimizer,
-                                     params_grads)
-            self._logger.info(
-                "within parallel optimizer time: {}, mode {}".format(
-                    time.time() - time0, self._mode))
             # Apply pre optimization passes
             time0 = time.time()
             serial_main_program, serial_startup_program, params_grads = self._apply_pre_optimization(
@@ -80,6 +72,14 @@ class Parallelizer:
             self._logger.info(
                 "within parallel apply_pre_optimization time: {}, mode {}".
                 format(time.time() - time0, self._mode))
+            # Generate optimizer
+            time0 = time.time()
+            self._generate_optimizer(serial_main_program,
+                                     serial_startup_program, serial_optimizer,
+                                     params_grads)
+            self._logger.info(
+                "within parallel optimizer time: {}, mode {}".format(
+                    time.time() - time0, self._mode))
             # Do logical partition
             time0 = time.time()
             partitioner = Partitioner(self._dist_context, rank)
@@ -179,8 +179,6 @@ class Parallelizer:
             main_program = self._pass_context.get_attr("main_program")
             startup_program = self._pass_context.get_attr("startup_program")
             params_grads = self._pass_context.get_attr("params_grads")
-
-        # TODO(zhaoyingli): amp and recompute have bug when main_program is complete now.
 
         # apply amp pass
         # FIXME we disenable amp for eval since it has a little bug with

@@ -37,10 +37,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   ${dist_ENVS})
   set_tests_properties(test_high_order_grad
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  py_test_modules(test_auto_parallel_quantization MODULES
-                  test_auto_parallel_quantization ENVS ${dist_ENVS})
-  set_tests_properties(test_auto_parallel_quantization
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
 
   py_test_modules(test_while_op_completion MODULES test_while_op_completion
                   ENVS ${dist_ENVS})
@@ -69,4 +65,5 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_process_mesh_v2 MODULES test_process_mesh_v2)
   py_test_modules(test_dist_attr_v2 MODULES test_dist_attr_v2)
   py_test_modules(test_lr_grad_clip MODULES test_lr_grad_clip)
+  py_test_modules(test_quantization MODULES test_quantization)
 endif()
