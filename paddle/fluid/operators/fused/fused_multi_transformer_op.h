@@ -49,6 +49,7 @@ using Tensor = framework::Tensor;
 template <typename T>
 static void AllReduce(framework::Tensor &tensor,  // NOLINT
                       const int ring_id,
+                      const int count,
                       const phi::GPUContext &ctx) {
   if (ring_id == -1) return;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -74,7 +75,7 @@ static void AllReduce(framework::Tensor &tensor,  // NOLINT
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
     auto stream = ctx.stream();
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
+        sendbuff, recvbuff, count, dtype, ncclSum, comm->comm(), stream));
   }
 #else
   PADDLE_THROW(platform::errors::Unimplemented(

@@ -107,6 +107,198 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
   }
 }
 
+template <typename T,
+          typename MaskType,
+          int VecSize,
+          bool ComputeLayerNorm,
+          bool Activation,
+          typename Functor>
+__forceinline__ __device__ void FusedResidualDropoutBiasOneThreadDQ(
+    const int row_id,
+    const int col_id,
+    const int cols,
+    curandStatePhilox4_32_10_t *state,
+    const float dropout_prob,
+    const T factor,
+    const int32_t *__restrict__ src,
+    const T *__restrict__ residual,
+    const T *__restrict__ bias,
+    T *dst,
+    MaskType *mask,
+    const bool is_test,
+    typename details::MPTypeTrait<T>::Type *mean_val,
+    typename details::MPTypeTrait<T>::Type *var_val,
+    Functor act_func,
+    const float *__restrict__ quant_out_scale_data,
+    const int quant_layer_offset) {
+  using LoadQ = phi::AlignedVector<int32_t, VecSize>;
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadFloat = phi::AlignedVector<float, VecSize>;
+  using StoreT = phi::AlignedVector<T, VecSize>;
+
+  using MaskStoreT = phi::AlignedVector<MaskType, VecSize>;
+  using U = typename details::MPTypeTrait<T>::Type;
+
+  LoadQ src_vec;
+  LoadT residual_vec;
+  LoadT bias_vec;
+  LoadFloat quant_out_scale_vec;
+#pragma unroll
+  for (int ii = 0; ii < VecSize; ii++) {
+    bias_vec[ii] = static_cast<T>(0);
+    residual_vec[ii] = static_cast<T>(0);
+  }
+  // vectorize load data from global
+  phi::Load<int32_t, VecSize>(&src[row_id * cols + col_id], &src_vec);
+  phi::Load<float, VecSize>(&quant_out_scale_data[quant_layer_offset + col_id],
+                            &quant_out_scale_vec);
+  if (residual) {
+    phi::Load<T, VecSize>(&residual[row_id * cols + col_id], &residual_vec);
+  }
+
+  if (bias) {
+    phi::Load<T, VecSize>(&bias[col_id], &bias_vec);
+  }
+
+  MaskStoreT mask_vec;
+  if (!is_test) {
+    float rand[VecSize];
+    RandVec<VecSize>(state, rand);
+#pragma unroll
+    for (int ii = 0; ii < VecSize; ii++) {
+      mask_vec[ii] = static_cast<MaskType>(rand[ii] >= dropout_prob);
+    }
+  } else {
+#pragma unroll
+    for (int ii = 0; ii < VecSize; ii++) {
+      mask_vec[ii] = static_cast<MaskType>(1);
+    }
+  }
+
+  StoreT dest_vec;
+
+#pragma unroll
+  for (int ii = 0; ii < VecSize; ii++) {
+    T tmp0 = static_cast<T>(static_cast<float>(src_vec[ii]) *
+                            quant_out_scale_vec[ii]);
+    T tmp = tmp0 + bias_vec[ii];
+    if (Activation) {
+      tmp = act_func(tmp);
+    }
+    dest_vec[ii] =
+        tmp * static_cast<T>(mask_vec[ii]) * factor + residual_vec[ii];
+    if (ComputeLayerNorm) {
+      U tmp = static_cast<U>(dest_vec[ii]);
+      *mean_val += tmp;
+      *var_val += (tmp * tmp);
+    }
+  }
+
+  // store result to global
+  phi::Store<T, VecSize>(dest_vec, &dst[row_id * cols + col_id]);
+  if (!is_test) {
+    phi::Store<MaskType, VecSize>(mask_vec, &mask[row_id * cols + col_id]);
+  }
+}
+
+template <typename T,
+          typename MaskType,
+          int VecSize,
+          bool ComputeLayerNorm,
+          bool Activation,
+          typename Functor>
+__forceinline__ __device__ void FusedResidualDropoutBiasOneThreadQDQ(
+    const int row_id,
+    const int col_id,
+    const int cols,
+    curandStatePhilox4_32_10_t *state,
+    const float dropout_prob,
+    const T factor,
+    const int32_t *__restrict__ src,
+    const T *__restrict__ residual,
+    const T *__restrict__ bias,
+    int8_t *dst,
+    MaskType *mask,
+    const bool is_test,
+    typename details::MPTypeTrait<T>::Type *mean_val,
+    typename details::MPTypeTrait<T>::Type *var_val,
+    Functor act_func,
+    const float *__restrict__ quant_out_scale_data,
+    const int quant_layer_offset,
+    const float quant_in_scale_data) {
+  using LoadQ = phi::AlignedVector<int32_t, VecSize>;
+  using LoadFloat = phi::AlignedVector<float, VecSize>;
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using StoreT = phi::AlignedVector<T, VecSize>;
+  using StoreQ = phi::AlignedVector<int8_t, VecSize>;
+  using MaskStoreT = phi::AlignedVector<MaskType, VecSize>;
+  using U = typename details::MPTypeTrait<T>::Type;
+
+  LoadQ src_vec;
+  LoadT residual_vec;
+  LoadT bias_vec;
+  LoadFloat quant_out_scale_vec;
+#pragma unroll
+  for (int ii = 0; ii < VecSize; ii++) {
+    bias_vec[ii] = static_cast<T>(0);
+    residual_vec[ii] = static_cast<T>(0);
+  }
+  // vectorize load data from global
+  phi::Load<int32_t, VecSize>(&src[row_id * cols + col_id], &src_vec);
+  phi::Load<float, VecSize>(&quant_out_scale_data[quant_layer_offset + col_id],
+                            &quant_out_scale_vec);
+  if (residual) {
+    phi::Load<T, VecSize>(&residual[row_id * cols + col_id], &residual_vec);
+  }
+
+  if (bias) {
+    phi::Load<T, VecSize>(&bias[col_id], &bias_vec);
+  }
+
+  MaskStoreT mask_vec;
+  if (!is_test) {
+    float rand[VecSize];
+    RandVec<VecSize>(state, rand);
+#pragma unroll
+    for (int ii = 0; ii < VecSize; ii++) {
+      mask_vec[ii] = static_cast<MaskType>(rand[ii] >= dropout_prob);
+    }
+  } else {
+#pragma unroll
+    for (int ii = 0; ii < VecSize; ii++) {
+      mask_vec[ii] = static_cast<MaskType>(1);
+    }
+  }
+
+  StoreT dest_vec;
+  StoreQ dest_vec_int8;
+
+#pragma unroll
+  for (int ii = 0; ii < VecSize; ii++) {
+    T tmp0 = static_cast<T>(static_cast<float>(src_vec[ii]) *
+                            quant_out_scale_vec[ii]);
+    T tmp = tmp0 + bias_vec[ii];
+    if (Activation) {
+      tmp = act_func(tmp);
+    }
+    dest_vec[ii] =
+        tmp * static_cast<T>(mask_vec[ii]) * factor + residual_vec[ii];
+    if (ComputeLayerNorm) {
+      U tmp = static_cast<U>(dest_vec[ii]);
+      *mean_val += tmp;
+      *var_val += (tmp * tmp);
+    }
+    dest_vec_int8[ii] =
+        __float2int_rn(static_cast<float>(dest_vec[ii]) * quant_in_scale_data);
+  }
+
+  // store result to global
+  phi::Store<int8_t, VecSize>(dest_vec_int8, &dst[row_id * cols + col_id]);
+  if (!is_test) {
+    phi::Store<MaskType, VecSize>(mask_vec, &mask[row_id * cols + col_id]);
+  }
+}
+
 /**
  * @brief dst = residual + dropout(src + bias);
  * the src, residual, mask and dst shape is (rows, cols)
@@ -158,6 +350,59 @@ __global__ void FusedResidualDropoutBias(const size_t rows,
           nullptr,
           nullptr,
           relu);
+    }
+  }
+}
+
+template <typename T, typename MaskType, int VecSize>
+__global__ void FusedResidualDropoutBiasDQ(
+    const size_t rows,
+    const size_t cols,
+    uint64_t seed,
+    const float dropout_prob,
+    const bool is_upscale_in_train,
+    const int32_t *__restrict__ src,
+    const T *__restrict__ residual,
+    const T *__restrict__ bias,
+    MaskType *mask,
+    T *dst,
+    uint64_t increment,
+    const bool is_test,
+    const float *__restrict__ quant_out_scale_data,
+    const int quant_layer_offset) {
+  int col_id = blockDim.x * blockIdx.x + threadIdx.x;
+  int row_id = blockIdx.y;
+  int idx = row_id * cols + col_id;
+  curandStatePhilox4_32_10_t state;
+  curand_init(seed, idx, increment, &state);
+  const T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
+  phi::funcs::ReluFunctor<T> relu;
+  for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
+    for (int i = col_id * VecSize; i < cols;
+         i += blockDim.x * gridDim.x * VecSize) {
+      FusedResidualDropoutBiasOneThreadDQ<T,
+                                          MaskType,
+                                          VecSize,
+                                          false,
+                                          false,
+                                          phi::funcs::ReluFunctor<T>>(
+          r,
+          i,
+          cols,
+          &state,
+          dropout_prob,
+          factor,
+          src,
+          residual,
+          bias,
+          dst,
+          mask,
+          is_test,
+          nullptr,
+          nullptr,
+          relu,
+          quant_out_scale_data,
+          quant_layer_offset);
     }
   }
 }
@@ -231,6 +476,81 @@ void LaunchResidualDropoutBias(const uint32_t rows,
             dst,
             increment,
             is_test);
+  }
+}
+
+template <typename T, typename MaskType>
+void LaunchResidualDropoutBiasDQ(const uint32_t rows,
+                                 const uint32_t cols,
+                                 const int increment,
+                                 uint64_t seed,
+                                 const float dropout_prob,
+                                 const bool is_test,
+                                 bool is_upscale_in_train,
+                                 const int32_t *src,
+                                 const T *residual,
+                                 const T *bias,
+                                 MaskType *mask_data,
+                                 T *dst,
+                                 const phi::GPUContext &ctx,
+                                 const float *quant_out_scale_data,
+                                 const int quant_layer_offset) {
+  // dropout_prob == 1.0f
+  if (std::abs(dropout_prob - 1.0f) < 1e-5) {
+    if (residual == dst) return;
+    if (residual) {
+      memory::Copy(ctx.GetPlace(),
+                   dst,
+                   ctx.GetPlace(),
+                   residual,
+                   rows * cols * sizeof(T),
+                   ctx.stream());
+    } else {
+      SetZero<T>(ctx, dst, rows * cols);
+    }
+    if (!is_test) {
+      SetZero<MaskType>(ctx, mask_data, rows * cols);
+    }
+    return;
+  }
+
+  const int VecSize = MAX_CACHE_BYTES / sizeof(T);
+  const int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
+  auto config = Get1DBlocksAnd2DGrids(ctx, rows, cols, real_vec_size);
+  if (cols % VecSize == 0) {
+    FusedResidualDropoutBiasDQ<T, uint8_t, VecSize>
+        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+            rows,
+            cols,
+            seed,
+            dropout_prob,
+            is_upscale_in_train,
+            src,
+            residual,
+            bias,
+            mask_data,
+            dst,
+            increment,
+            is_test,
+            quant_out_scale_data,
+            quant_layer_offset);
+  } else {
+    FusedResidualDropoutBiasDQ<T, uint8_t, 1>
+        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+            rows,
+            cols,
+            seed,
+            dropout_prob,
+            is_upscale_in_train,
+            src,
+            residual,
+            bias,
+            mask_data,
+            dst,
+            increment,
+            is_test,
+            quant_out_scale_data,
+            quant_layer_offset);
   }
 }
 
