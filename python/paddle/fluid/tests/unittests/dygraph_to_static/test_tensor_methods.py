@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import numpy
+import numpy as np
 import paddle
 import unittest
 
@@ -37,7 +37,7 @@ class TestTensorClone(unittest.TestCase):
     def test_tensor_clone(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
-        self.assertTrue(numpy.allclose(dygraph_res, static_res),
+        self.assertTrue(np.allclose(dygraph_res, static_res),
                         msg='dygraph res is {}\nstatic_res is {}'.format(
                             dygraph_res, static_res))
 
@@ -84,7 +84,7 @@ class TestTensorItem(unittest.TestCase):
     def test_tensor_clone(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
-        self.assertTrue(numpy.allclose(dygraph_res, static_res),
+        self.assertTrue(np.allclose(dygraph_res, static_res),
                         msg='dygraph res is {}\nstatic_res is {}'.format(
                             dygraph_res, static_res))
 
