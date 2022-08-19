@@ -57,10 +57,11 @@ class LayerNormOpConverter : public OpConverter {
     nvinfer1::ILayer* layernorm_layer = nullptr;
     if (engine_->with_dynamic_shape()) {
       int statis_num = 1;
+      // For dynamic shape,
+      // the batch num will be taken into account in plugin runtime.
       for (int i = 1; i < begin_norm_axis; i++) {
         statis_num *= X->getDimensions().d[i];
       }
-
       std::vector<int64_t> mean_shape{statis_num};
       std::vector<int64_t> variance_shape{statis_num};
       plugin::LayerNormPluginDynamic* plugin =

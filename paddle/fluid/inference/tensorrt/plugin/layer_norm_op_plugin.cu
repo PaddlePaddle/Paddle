@@ -175,9 +175,11 @@ int LayerNormPluginDynamic::enqueue(
   for (int i = 0; i < input_dims.nbDims; i++) {
     input_shape.push_back(input_dims.d[i]);
   }
-  mean_shape_[0] *= input_dims.d[0];  // times batch in dynamic shape runtime
-  variance_shape_[0] *=
-      input_dims.d[0];  // times batch in dynamic shape runtime
+  // in dynamic shape
+  // the batch num should be involved in mean/variance shape
+  mean_shape_[0] *= input_dims.d[0];
+  variance_shape_[0] *= input_dims.d[0];
+
   const auto input_ddim = phi::make_ddim(input_shape);
   auto matrix_dim = phi::flatten_to_2d(input_ddim, begin_norm_axis);
   int feature_size = static_cast<int>(matrix_dim[1]);
