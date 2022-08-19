@@ -32,7 +32,7 @@ struct GammaCPUFunctor {
                   BaseSampler<T, NormalSamplerT> normal)
       : alpha_(alpha), gamma_(gamma), uniform_(uniform), normal_(normal) {}
 
-  HOST void operator()(int64_t index) {
+  CUS_HOST void operator()(int64_t index) {
     auto sample = sample_gamma<T, T, UniformSamplerT, NormalSamplerT>(
         alpha_[index], uniform_, normal_);
     gamma_[index] = std::max(std::numeric_limits<T>::min(), sample);

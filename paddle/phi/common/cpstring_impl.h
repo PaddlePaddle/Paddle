@@ -27,11 +27,11 @@ limitations under the License. */
 #if (defined(__NVCC__) || defined(__HIPCC__))
 #define HOSTDEVICE __host__ __device__
 #define DEVICE __device__
-#define HOST __host__
+#define CUS_HOST __host__
 #else
 #define HOSTDEVICE
 #define DEVICE
-#define HOST
+#define CUS_HOST
 #endif
 
 #if (defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \

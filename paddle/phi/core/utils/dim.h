@@ -48,7 +48,7 @@ class Dim : public Array<int64_t, D> {
 
   HOSTDEVICE Dim() = default;
 
-  HOST std::string to_string() const;
+  CUS_HOST std::string to_string() const;
 };
 
 // Product of a Dim
@@ -84,7 +84,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dim<0>& d) {
 }
 
 template <int D>
-HOST std::string Dim<D>::to_string() const {
+CUS_HOST std::string Dim<D>::to_string() const {
   std::stringstream stream;
   stream << *this;
   return stream.str();

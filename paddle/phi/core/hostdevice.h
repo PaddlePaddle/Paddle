@@ -29,9 +29,9 @@
 #if (defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu__))
 #define HOSTDEVICE __host__ __device__
 #define DEVICE __device__
-#define HOST __host__
+#define CUS_HOST __host__
 #else
 #define HOSTDEVICE
 #define DEVICE
-#define HOST
+#define CUS_HOST
 #endif
