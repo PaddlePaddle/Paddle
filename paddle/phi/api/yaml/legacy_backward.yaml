@@ -834,7 +834,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
-  invoke : zeros_like(out_grad, paddle::experimental::DataType::UNDEFINED, {})
+  invoke : zeros_like(out_grad)
 
 - backward_api : fill_diagonal_grad
   forward : fill_diagonal (Tensor x, float value, int offset, bool wrap) -> Tensor(out)
