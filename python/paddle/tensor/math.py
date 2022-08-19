@@ -779,6 +779,7 @@ def remainder(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+@inplace_apis_in_dygraph_only
 def remainder_(x, y, name=None):
     r"""
     Inplace version of ``remainder`` API, the output Tensor will be inplaced with input ``x``.
