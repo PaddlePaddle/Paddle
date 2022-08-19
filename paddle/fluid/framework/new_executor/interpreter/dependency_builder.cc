@@ -283,9 +283,9 @@ void DependencyBuilder::AddDependencyForRandomOp() {
       "randint",
       "randperm",
       "exponential",
-      "sampling_id"
+      "sampling_id",
       "dropout",
-      "class_center_sample",
+      "class_center_sample"
   };
 
   int dependence_op_idx = -1;
