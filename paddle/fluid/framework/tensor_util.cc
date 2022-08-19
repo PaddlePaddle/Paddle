@@ -26,7 +26,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/isfinite_kernel.h"
+#include "paddle/phi/kernels/reduce_all_kernel.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "dnnl_debug.h"  // NOLINT
@@ -34,6 +35,73 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+#define FiniteVisitor(type)                                                  \
+  struct type##Visitor {                                                     \
+    type##Visitor(const phi::DenseTensor& in, phi::DenseTensor* out)         \
+        : in_(in), out_(out) {}                                              \
+    template <typename T>                                                    \
+    void apply() const {                                                     \
+      auto place = in_.place();                                              \
+      auto* ctx = platform::DeviceContextPool::Instance().Get(place);        \
+      Tensor tmp;                                                            \
+      tmp.Resize(in_.dims());                                                \
+      out_->Resize({1});                                                     \
+      std::vector<int64_t> dims(tmp.dims().size());                          \
+      std::iota(dims.begin(), dims.end(), 0);                                \
+      if (platform::is_cpu_place(place)) {                                   \
+        phi::type##Kernel<T, phi::CPUContext>(                               \
+            *static_cast<phi::CPUContext*>(ctx), in_, &tmp);                 \
+        phi::AllKernel<bool, phi::CPUContext>(                               \
+            *static_cast<phi::CPUContext*>(ctx), tmp, dims, false, out_);    \
+      } else if (platform::is_gpu_place(place)) {                            \
+        phi::type##Kernel<T, phi::GPUContext>(                               \
+            *static_cast<phi::GPUContext*>(ctx), in_, &tmp);                 \
+        phi::AllKernel<bool, phi::GPUContext>(                               \
+            *static_cast<phi::GPUContext*>(ctx), tmp, dims, false, out_);    \
+      } else {                                                               \
+        PADDLE_THROW(                                                        \
+            platform::errors::Unimplemented("Not supported on %s.", place)); \
+      }                                                                      \
+    }                                                                        \
+    const phi::DenseTensor& in_;                                             \
+    phi::DenseTensor* out_;                                                  \
+  };
+
+FiniteVisitor(Isnan);
+FiniteVisitor(Isinf);
+FiniteVisitor(Isfinite);
+
+// store the result bool in gpu tensor, async operation. Faster than above ones.
+void TensorContainsNAN(const framework::Tensor& tensor,
+                       framework::Tensor* out) {
+  VisitDataType(TransToProtoVarType(tensor.dtype()), IsnanVisitor(tensor, out));
+}
+void TensorContainsInf(const framework::Tensor& tensor,
+                       framework::Tensor* out) {
+  VisitDataType(TransToProtoVarType(tensor.dtype()), IsinfVisitor(tensor, out));
+}
+void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out) {
+  VisitDataType(TransToProtoVarType(tensor.dtype()),
+                IsfiniteVisitor(tensor, out));
+}
+
+// copy the result bool to cpu
+bool TensorContainsNAN(const framework::Tensor& tensor) {
+  Tensor out;
+  TensorContainsNAN(tensor, &out);
+  return GetValue<bool>(&out);
+}
+bool TensorContainsInf(const framework::Tensor& tensor) {
+  Tensor out;
+  TensorContainsInf(tensor, &out);
+  return GetValue<bool>(&out);
+}
+bool TensorIsfinite(const framework::Tensor& tensor) {
+  Tensor out;
+  TensorIsfinite(tensor, &out);
+  return GetValue<bool>(&out);
+}
 
 template <typename TENSOR>
 void TensorCopyImpl(const TENSOR& src,
@@ -650,322 +718,6 @@ void TensorCopySync(const Tensor& src,
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
-}
-
-template <typename Predicate, typename DevCtx>
-struct AnyDTypeVisitor {
-  Predicate predicate_;
-  const Tensor& tensor_;
-  const DevCtx& ctx_;
-  Tensor* out_;
-
-  AnyDTypeVisitor(Predicate predicate,
-                  const Tensor& tensor,
-                  const DevCtx& ctx,
-                  Tensor* out)
-      : predicate_(predicate), tensor_(tensor), ctx_(ctx), out_(out) {}
-
-  template <typename T>
-  void apply() const {
-    auto t = EigenVector<T>::Flatten(tensor_);
-    auto o = EigenScalar<bool>::From(*out_);
-    // return any of predicate_(t) is true.
-    o.device(*ctx_.eigen_device()) = predicate_(t).any();
-  }
-};
-
-template <typename Predicate, typename DevCtx>
-inline void AnyImpl(Predicate predicate,
-                    const framework::Tensor& tensor,
-                    const DevCtx& ctx,
-                    framework::Tensor* out) {
-  VisitDataType(
-      framework::TransToProtoVarType(tensor.dtype()),
-      AnyDTypeVisitor<Predicate, DevCtx>(predicate, tensor, ctx, out));
-}
-
-template <typename Predicate>
-class AnyVisitor : public std::unary_function<const Place&, bool> {
- private:
-  const framework::Tensor& tensor_;
-  Predicate predicate_;
-
-  bool GetResultHelper(const framework::Tensor& out,
-                       const platform::Place& place) const {
-    platform::CPUPlace cpu;
-    framework::Tensor tmp;
-    tmp.Resize({1});
-    tmp.mutable_data<bool>(cpu);
-    auto ctx = platform::DeviceContextPool::Instance().Get(place);
-    ctx->Wait();
-    TensorCopy(out, cpu, *ctx, &tmp);
-    ctx->Wait();
-    return GetResult(tmp, cpu);
-  }
-
- public:
-  AnyVisitor(const framework::Tensor& tensor, Predicate predicate)
-      : tensor_(tensor), predicate_(std::move(predicate)) {}
-
-  template <typename Place>
-  bool operator()(const Place& place) const {
-    framework::Tensor out;
-    out.Resize({1});
-    out.mutable_data<bool>(place);
-    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
-    AnyImpl(predicate_, tensor_, *ctx, &out);
-    return this->GetResult(out, place);
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::XPUPlace& xpu) const {
-    return GetResultHelper(out, xpu);
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::MLUPlace& mlu) const {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("Not supported on place (%s) ", mlu));
-    return true;
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::CUDAPlace& gpu) const {
-    return GetResultHelper(out, gpu);
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::NPUPlace& npu) const {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("Not supported on place (%s) ", npu));
-    // return GetResultHelper(out, npu);
-  }
-  bool GetResult(const framework::Tensor& out,
-                 const platform::IPUPlace& ipu) const {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("Not supported on place (%s) ", ipu));
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::NPUPinnedPlace& cpu) const {
-    return *out.data<bool>();
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::CPUPlace& cpu) const {
-    return *out.data<bool>();
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::CUDAPinnedPlace& cpu) const {
-    return *out.data<bool>();
-  }
-
-  bool GetResult(const framework::Tensor& out,
-                 const platform::CustomPlace& custom_dev) const {
-    PADDLE_THROW(platform::errors::Unimplemented("Not supported on place (%s) ",
-                                                 custom_dev));
-    return false;
-  }
-};
-
-template <typename Predicate>
-class AnyOutVisitor : public std::unary_function<const Place&, void> {
- private:
-  const framework::Tensor& tensor_;
-  mutable framework::Tensor* out_;
-  Predicate predicate_;
-
- public:
-  AnyOutVisitor(const framework::Tensor& tensor,
-                Predicate predicate,
-                framework::Tensor* out)
-      : tensor_(tensor), out_(out), predicate_(std::move(predicate)) {}
-
-  template <typename Place>
-  void operator()(const Place& place) const {
-    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
-    out_->Resize({1});
-    out_->mutable_data<bool>(place);
-    AnyImpl(predicate_, tensor_, *ctx, out_);
-  }
-};
-
-template <typename Predicate>
-inline bool Any(const framework::Tensor& tensor, Predicate predicate) {
-  AnyVisitor<Predicate> visitor(tensor, predicate);
-  auto place = tensor.place();
-  return platform::VisitPlace(place, visitor);
-}
-
-template <typename Predicate>
-inline void Any(const framework::Tensor& tensor,
-                Predicate predicate,
-                framework::Tensor* out) {
-  AnyOutVisitor<Predicate> visitor(tensor, predicate, out);
-  auto place = tensor.place();
-  platform::VisitPlace(place, visitor);
-}
-
-template <typename Predicate, typename DevCtx>
-struct AllDTypeVisitor {
-  Predicate predicate_;
-  const Tensor& tensor_;
-  const DevCtx& ctx_;
-  Tensor* out_;
-
-  AllDTypeVisitor(Predicate predicate,
-                  const Tensor& tensor,
-                  const DevCtx& ctx,
-                  Tensor* out)
-      : predicate_(predicate), tensor_(tensor), ctx_(ctx), out_(out) {}
-
-  template <typename T>
-  void apply() const {
-    auto t = EigenVector<T>::Flatten(tensor_);
-    auto o = EigenVector<bool>::Flatten(*out_);
-    o.device(*ctx_.eigen_device()) = predicate_(t);
-  }
-};
-
-template <typename Predicate, typename DevCtx>
-inline void AllImpl(Predicate predicate,
-                    const framework::Tensor& tensor,
-                    const DevCtx& ctx,
-                    framework::Tensor* out) {
-  VisitDataType(
-      framework::TransToProtoVarType(tensor.dtype()),
-      AllDTypeVisitor<Predicate, DevCtx>(predicate, tensor, ctx, out));
-}
-
-template <typename Predicate>
-class AllOutVisitor : public std::unary_function<const Place&, void> {
- private:
-  const framework::Tensor& tensor_;
-  mutable framework::Tensor* out_;
-  Predicate predicate_;
-
- public:
-  AllOutVisitor(const framework::Tensor& tensor,
-                Predicate predicate,
-                framework::Tensor* out)
-      : tensor_(tensor), out_(out), predicate_(predicate) {}
-
-  template <typename Place>
-  void operator()(const Place& place) const {
-    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
-    out_->Resize(tensor_.dims());
-    out_->mutable_data<bool>(place);
-    AllImpl(predicate_, tensor_, *ctx, out_);
-  }
-};
-
-template <typename Predicate>
-inline void All(const framework::Tensor& tensor,
-                Predicate predicate,
-                framework::Tensor* out) {
-  AllOutVisitor<Predicate> visitor(tensor, predicate, out);
-  auto place = tensor.place();
-  platform::VisitPlace(place, visitor);
-}
-
-struct ContainsNANPredicate {
-  template <typename T>
-  auto operator()(const T& eigen_vec) const
-      -> decltype(std::declval<T>().isnan()) {
-    // Cast eigen_vector to vector of bool. true if is inf.
-    return eigen_vec.isnan();
-  }
-};
-
-bool TensorContainsNAN(const framework::Tensor& tensor) {
-  ContainsNANPredicate predicate;
-  return Any(tensor, predicate);
-}
-
-void TensorContainsNAN(const framework::Tensor& tensor,
-                       framework::Tensor* out) {
-  ContainsNANPredicate predicate;
-  Any(tensor, predicate, out);
-}
-
-void TensorContainsNANV2(const framework::Tensor& tensor,
-                         framework::Tensor* out) {
-  ContainsNANPredicate predicate;
-  All(tensor, predicate, out);
-}
-
-struct ContainsInfPredicate {
-  template <typename T>
-  auto operator()(const T& eigen_vec) const
-      -> decltype(std::declval<T>().isinf()) {
-    // Cast eigen_vector to vector of bool. true if is inf.
-    return eigen_vec.isinf();
-  }
-};
-
-bool TensorContainsInf(const framework::Tensor& tensor) {
-  ContainsInfPredicate predicate;
-  return Any(tensor, predicate);
-}
-
-void TensorContainsInf(const framework::Tensor& tensor,
-                       framework::Tensor* out) {
-  ContainsInfPredicate predicate;
-  Any(tensor, predicate, out);
-}
-
-void TensorContainsInfV2(const framework::Tensor& tensor,
-                         framework::Tensor* out) {
-  ContainsInfPredicate predicate;
-  All(tensor, predicate, out);
-}
-
-// NOTE(dzhwinter):
-// Isfinite need a AllVisitor to loop through all the elements.
-// We choose two cuda call instead of one allvisitor. The AllVisitor
-// should be implemented if the performance hurts.
-bool TensorIsfinite(const framework::Tensor& tensor) {
-  ContainsInfPredicate pred_inf;
-  ContainsNANPredicate pred_nan;
-  return !Any(tensor, pred_inf) && !Any(tensor, pred_nan);
-}
-
-#define BOTH_FALSE(CONTEXT)                                         \
-  phi::CONTEXT* ctx = static_cast<phi::CONTEXT*>(                   \
-      platform::DeviceContextPool::Instance().Get(tensor.place())); \
-  phi::funcs::BothFalse<phi::CONTEXT>()(ctx, tmp, out);
-
-void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out) {
-  framework::Tensor tmp;
-  TensorContainsInf(tensor, &tmp);
-  TensorContainsNAN(tensor, out);
-  auto place = tensor.place();
-  if (platform::is_cpu_place(place)) {
-    BOTH_FALSE(CPUContext);
-  } else if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    BOTH_FALSE(GPUContext);
-#endif
-  } else {
-    PADDLE_THROW(platform::errors::Unimplemented("Not supported on %s", place));
-  }
-}
-
-void TensorIsfiniteV2(const framework::Tensor& tensor, framework::Tensor* out) {
-  framework::Tensor tmp;
-  TensorContainsInfV2(tensor, &tmp);
-  TensorContainsNANV2(tensor, out);
-  auto place = tensor.place();
-  if (platform::is_cpu_place(place)) {
-    BOTH_FALSE(CPUContext);
-  } else if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    BOTH_FALSE(GPUContext);
-#endif
-  } else {
-    PADDLE_THROW(platform::errors::Unimplemented("Not supported on %s", place));
-  }
 }
 
 void TensorToStream(std::ostream& os,

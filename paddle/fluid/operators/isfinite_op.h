@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/kernels/reduce_all_kernel.h"
 
 namespace phi {
 class DenseTensor;

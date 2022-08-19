@@ -84,8 +84,6 @@ cc_library(
   SRCS tensor_util.cc
   DEPS place memory data_type device_context dense_tensor)
 
-target_link_libraries(tensor math_function)
-
 cc_test(
   tensor_test
   SRCS tensor_test.cc

@@ -299,27 +299,5 @@ struct RowwiseAdd<phi::CPUContext, T> {
 template struct RowwiseAdd<phi::CPUContext, float>;
 template struct RowwiseAdd<phi::CPUContext, double>;
 
-template <>
-struct BothFalse<phi::CPUContext> {
-  void operator()(phi::CPUContext* ctx,
-                  const phi::DenseTensor& src,
-                  phi::DenseTensor* dst);
-};
-
-void BothFalse<phi::CPUContext>::operator()(phi::CPUContext* ctx,
-                                            const phi::DenseTensor& src,
-                                            phi::DenseTensor* dst) {
-  int num = src.numel();
-  const bool* in_ptr = src.data<bool>();
-  bool* out_ptr = dst->data<bool>();
-  for (int i = 0; i < num; ++i) {
-    bool lhs = !in_ptr[i];
-    bool rhs = !out_ptr[i];
-    out_ptr[i] = lhs && rhs;
-  }
-}
-
-template struct BothFalse<phi::CPUContext>;
-
 }  // namespace funcs
 }  // namespace phi

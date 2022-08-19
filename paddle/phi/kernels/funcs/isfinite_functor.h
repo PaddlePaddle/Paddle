@@ -14,30 +14,28 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/infermeta/unary.h"
-
 namespace phi {
 namespace funcs {
 
-struct InfinityV2Functor {
-  void operator()(const DenseTensor& tensor, DenseTensor* out) {
-    paddle::framework::TensorContainsInfV2(tensor, out);
-  }
+template <typename T>
+struct IsNanFunctor {
+  HOSTDEVICE bool operator()(const T a) const { return std::isnan(a); }
 };
 
-struct NANV2Functor {
-  void operator()(const DenseTensor& tensor, DenseTensor* out) {
-    paddle::framework::TensorContainsNANV2(tensor, out);
-  }
+template <typename T>
+struct IsInfFunctor {
+  HOSTDEVICE bool operator()(const T a) const { return std::isinf(a); }
 };
 
-struct IsfiniteV2Functor {
-  void operator()(const DenseTensor& tensor, DenseTensor* out) {
-    paddle::framework::TensorIsfiniteV2(tensor, out);
+template <typename T>
+struct IsFiniteFunctor {
+  HOSTDEVICE bool operator()(const T a) const { return std::isfinite(a); }
+};
+
+template <>
+struct IsFiniteFunctor<phi::dtype::float16> {
+  HOSTDEVICE bool operator()(const phi::dtype::float16 a) const {
+    return isfinite(a);
   }
 };
 
