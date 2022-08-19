@@ -70,9 +70,8 @@ def process_conditions(conditions):
     """
     if len(conditions.strip()) == 0:
         conditions = ""
-        return []
     else:
-        conditions = conditions.upper().split("AND")
+        conditions = f" AND ({conditions})"
     return conditions
 
 
@@ -210,10 +209,8 @@ def parse_line(line, curdir):
 
     cmd = ""
 
-    for cond in conditions:
-        cmd += f"if ({cond})\n"
     if launcher[-3:] == ".sh":
-        cmd += f'''if({archs} AND {os_})
+        cmd += f'''if({archs} AND {os_} {conditions})
     bash_test_modules(
     {name}
     START_BASH
@@ -226,7 +223,7 @@ def parse_line(line, curdir):
 endif()
 '''
     else:
-        cmd += f'''if({archs} AND {os_})
+        cmd += f'''if({archs} AND {os_} {conditions})
     py_test_modules(
     {name}
     MODULES
@@ -236,9 +233,6 @@ endif()
     set_tests_properties({name} PROPERTIES  TIMEOUT "{timeout}" RUN_SERIAL {run_serial})
 endif()
 '''
-    for _ in conditions:
-        cmd += f"endif()\n"
-
     return cmd
 
 

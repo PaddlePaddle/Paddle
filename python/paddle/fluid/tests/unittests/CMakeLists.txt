@@ -783,22 +783,22 @@ if(WITH_DISTRIBUTE)
                   ${dist_ENVS})
   py_test_modules(test_communicator_geo MODULES test_communicator_geo ENVS
                   ${dist_ENVS})
-  py_test_modules(
-    test_communicator_half_async
-    MODULES
-    test_communicator_half_async
-    ENVS
-    ${dist_ENVS}
-    FLAGS_communicator_send_queue_size=1
-    FLAGS_communicator_max_merge_var_num=1)
-  py_test_modules(
-    test_communicator_sync
-    MODULES
-    test_communicator_sync
-    ENVS
-    ${dist_ENVS}
-    FLAGS_communicator_send_queue_size=1
-    FLAGS_communicator_max_merge_var_num=1)
+  # py_test_modules(
+  #   test_communicator_half_async
+  #   MODULES
+  #   test_communicator_half_async
+  #   ENVS
+  #   ${dist_ENVS}
+  #   FLAGS_communicator_send_queue_size=1
+  #   FLAGS_communicator_max_merge_var_num=1)
+  # py_test_modules(
+  #   test_communicator_sync
+  #   MODULES
+  #   test_communicator_sync
+  #   ENVS
+  #   ${dist_ENVS}
+  #   FLAGS_communicator_send_queue_size=1
+  #   FLAGS_communicator_max_merge_var_num=1)
   if(NOT APPLE)
     py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS})
     py_test_modules(test_fleet_base_2 MODULES test_fleet_base_2 ENVS
