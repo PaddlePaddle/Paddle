@@ -2433,10 +2433,10 @@ def unsqueeze_(x, axis, name=None):
             item.numpy().item(0) if isinstance(item, Variable) else item
             for item in axes
         ]
-    if _in_legacy_dygraph():
-        out, _ = _C_ops.unsqueeze2_(input, 'axes', axes)
-        return out
-    return _C_ops.final_state_unsqueeze_(input, axes)
+    if in_dygraph_mode():
+        return _C_ops.final_state_unsqueeze_(input, axes)
+    out, _ = _C_ops.unsqueeze2_(input, 'axes', axes)
+    return out
 
 
 def gather(x, index, axis=None, name=None):
