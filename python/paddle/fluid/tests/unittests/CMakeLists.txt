@@ -747,7 +747,6 @@ if(WITH_DISTRIBUTE)
   add_subdirectory(ps)
   add_subdirectory(auto_parallel)
   add_subdirectory(collective)
-  add_subdirectory(collective/fleet)
 
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
