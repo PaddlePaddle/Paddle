@@ -63,7 +63,7 @@ void DropoutRawKernel(const Context& dev_ctx,
 
   auto& dropout_implementation = mode;
   bool upscale_in_train = (dropout_implementation == "upscale_in_train");
-  if (!is_test) {
+  if (!is_test && mask) {
     auto* mask_data = dev_ctx.template Alloc<uint8_t>(mask);
     size_t size = phi::product(mask->dims());
 
@@ -124,7 +124,7 @@ void DropoutNdKernel(const Context& dev_ctx,
 
   auto& dropout_implementation = mode;
   bool upscale_in_train = (dropout_implementation == "upscale_in_train");
-  if (!is_test) {
+  if (!is_test && mask) {
     DenseTensor t_mask;
     t_mask.Resize(mask->dims());
     T* t_mask_data = dev_ctx.template Alloc<T>(&t_mask);

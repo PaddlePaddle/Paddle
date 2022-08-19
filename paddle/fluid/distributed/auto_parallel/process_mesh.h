@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <pybind11/pybind11.h>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>

@@ -42,8 +42,7 @@ class TestBernoulliOp(OpTest):
 
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestBernoulliApi(unittest.TestCase):
@@ -54,8 +53,7 @@ class TestBernoulliApi(unittest.TestCase):
         out = paddle.bernoulli(x)
         paddle.enable_static()
         hist, prob = output_hist(out.numpy())
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
     def test_static(self):
         x = paddle.rand([1024, 1024])
@@ -64,8 +62,7 @@ class TestBernoulliApi(unittest.TestCase):
         out = exe.run(paddle.static.default_main_program(),
                       fetch_list=[out.name])
         hist, prob = output_hist(out[0])
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestRandomValue(unittest.TestCase):

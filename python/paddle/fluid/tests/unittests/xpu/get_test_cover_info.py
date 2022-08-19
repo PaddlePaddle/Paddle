@@ -245,13 +245,13 @@ def create_test_class(func_globals,
                       test_class,
                       test_type,
                       test_grad=True,
-                      ignore_deivce_version=[],
-                      test_deivce_version=[]):
+                      ignore_device_version=[],
+                      test_device_version=[]):
     xpu_version = core.get_xpu_device_version(0)
-    if xpu_version in ignore_deivce_version:
+    if xpu_version in ignore_device_version:
         return
 
-    if len(test_deivce_version) != 0 and xpu_version not in test_deivce_version:
+    if len(test_device_version) != 0 and xpu_version not in test_device_version:
         return
 
     test_class_obj = test_class()
