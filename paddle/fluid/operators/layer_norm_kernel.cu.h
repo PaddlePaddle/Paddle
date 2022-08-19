@@ -468,36 +468,37 @@ __global__ void LayerNormForwardQ(
     if (bias != nullptr) {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = __float2int_rn(
-            quant_in_scale_data *
-            static_cast<float>(static_cast<U>(scale[j]) *
+        y[i] =
+            __float2int_rn(quant_in_scale_data *
+                           static_cast<float>(static_cast<T>(
+                               static_cast<U>(scale[j]) *
                                    (static_cast<U>(x[i]) - mean_val) * invvar +
-                               static_cast<U>(bias[j])));
+                               static_cast<U>(bias[j]))));
       }
     } else {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = __float2int_rn(
-            quant_in_scale_data *
-            static_cast<float>(static_cast<U>(scale[j]) *
-                               (static_cast<U>(x[i]) - mean_val) * invvar));
+        y[i] = __float2int_rn(quant_in_scale_data *
+                              static_cast<float>(static_cast<T>(
+                                  static_cast<U>(scale[j]) *
+                                  (static_cast<U>(x[i]) - mean_val) * invvar)));
       }
     }
   } else {  // scale == nullptr
     if (bias != nullptr) {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = __float2int_rn(
-            quant_in_scale_data *
-            static_cast<float>((static_cast<U>(x[i]) - mean_val) * invvar +
-                               static_cast<U>(bias[j])));
+        y[i] = __float2int_rn(quant_in_scale_data *
+                              static_cast<float>(static_cast<T>(
+                                  (static_cast<U>(x[i]) - mean_val) * invvar +
+                                  static_cast<U>(bias[j]))));
       }
     } else {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = __float2int_rn(
-            quant_in_scale_data *
-            static_cast<float>((static_cast<U>(x[i]) - mean_val) * invvar));
+        y[i] = __float2int_rn(quant_in_scale_data *
+                              static_cast<float>(static_cast<T>(
+                                  (static_cast<U>(x[i]) - mean_val) * invvar)));
       }
     }
   }

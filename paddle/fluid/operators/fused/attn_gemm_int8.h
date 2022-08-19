@@ -177,8 +177,7 @@ class AttnMatmulINT8 {
                       output_tmp->data<int32_t>(),
                       dev_ctx_.stream());
     // PrintMatrix(output_tmp->data<int32_t>(), m_ * n_, name + " output
-    // [int]");
-    // dequant C
+    // [int]"); dequant C
     VLOG(1) << "[DEBUG] col32_to_row_major_dequantize_kernelLauncher";
     // dequant kernel
     dequantize_kernelLauncher<T>(output_tmp->data<int32_t>(),
@@ -208,8 +207,11 @@ class AttnMatmulINT8 {
       framework::Tensor* input,  // [int8]  workspace
       const framework::Tensor* bias,  // [fp16/32]
       framework::Tensor* output,      // [int32]  workspace
-      framework::Tensor* bias_out) {
+      framework::Tensor* bias_out,
+      std::string name) {
     int m = m_, k = k_, n = n_;
+
+    // PrintMatrix(input->data<int8_t>(), m_ * k_, name + " input [int]");
 
     VLOG(1) << "[DEBUG] GEMM";
     VLOG(1) << "input " << input->numel() << " dtype " << input->dtype();
@@ -219,6 +221,7 @@ class AttnMatmulINT8 {
                       weight->data<int8_t>(),
                       output->data<int32_t>(),
                       dev_ctx_.stream());
+    // PrintMatrix(output->data<int32_t>(), m_ * n_, name + " output [int]");
   }
 
   void ComputeForwardWoQ(
@@ -231,8 +234,10 @@ class AttnMatmulINT8 {
       framework::Tensor* output_tmp,  // [int32]  workspace
       framework::Tensor* bias_out,
       const framework::Tensor* quant_out_scale,
-      const int layer_offset) {
+      const int layer_offset,
+      std::string name) {
     int m = m_, k = k_, n = n_;
+    // PrintMatrix(input->data<int8_t>(), m_ * k_, name + " input [int]");
 
     VLOG(1) << "[DEBUG] GEMM";
     VLOG(1) << "input_tmp " << input->numel() << " dtype " << input->dtype();
@@ -244,6 +249,8 @@ class AttnMatmulINT8 {
                       weight->data<int8_t>(),
                       output_tmp->data<int32_t>(),
                       dev_ctx_.stream());
+    // PrintMatrix(output_tmp->data<int32_t>(), m_ * n_, name + " output
+    // [int]");
 
     // dequant C
     VLOG(1) << "[DEBUG] dequantize_kernelLauncher";
@@ -254,6 +261,7 @@ class AttnMatmulINT8 {
                                  dev_ctx_.stream(),
                                  quant_out_scale->data<float>(),
                                  layer_offset);
+    // PrintMatrix(output->data<T>(),  m_ * n_, name + " output [float]");
 
     if (compute_bias_) {
       // bias_out = output + bias
@@ -275,7 +283,8 @@ class AttnMatmulINT8 {
       framework::Tensor* input_tmp,     // [int8]  workspace
       const framework::Tensor* bias,    // [fp16/32]
       framework::Tensor* output,        // [int32]
-      framework::Tensor* bias_out) {
+      framework::Tensor* bias_out,
+      std::string name) {
     int m = m_, k = k_, n = n_;
     VLOG(1) << "[DEBUG] quantize_kernelLauncher";
     quantize_kernelLauncher<T>(input->data<T>(),
@@ -285,6 +294,8 @@ class AttnMatmulINT8 {
                                k_,
                                dev_ctx_.stream());
 
+    // PrintMatrix(input->data<T>(), m_ * k_, name + " input [float]");
+    // PrintMatrix(input_tmp->data<int8_t>(), m_ * k_, name + " input [int]");
     VLOG(1) << "[DEBUG] GEMM";
     VLOG(1) << "input_tmp " << input_tmp->numel() << " dtype "
             << input_tmp->dtype();
@@ -295,6 +306,7 @@ class AttnMatmulINT8 {
                       weight->data<int8_t>(),
                       output->data<int32_t>(),
                       dev_ctx_.stream());
+    // PrintMatrix(output->data<int32_t>(), m_ * n_, name + " output [int]");
   }
 
  private:

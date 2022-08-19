@@ -244,6 +244,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         auto *ln_scale_data = ln_scales[i]->data<U>();
         auto *ln_bias_data = ln_biases[i]->data<U>();
         // TODO(wangxi): can remove mean var in inference
+
         ln_compute.ComputeForwardQ(x_data,
                                    ln_scale_data,
                                    ln_bias_data,
@@ -272,6 +273,18 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                    qkv_out_scale,
                                    i * qkv_out_scale_n,
                                    "qkv_" + std::to_string(i));
+      } else if (!pre_layer_norm) {
+        qkv_compute.ComputeForward(qkv_weights[i],
+                                   buf1,
+                                   &input_workspace,
+                                   bias,
+                                   &qkv_out,
+                                   &output_workspace,
+                                   &qkv_out,
+                                   qkv_in_scale[i],
+                                   qkv_out_scale,
+                                   i * qkv_out_scale_n,
+                                   "qkv_" + std::to_string(i));
       } else {
         qkv_compute.ComputeForwardWoQ(qkv_weights[i],
                                       &input_workspace,
@@ -280,7 +293,8 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                       &output_workspace,
                                       &qkv_out,
                                       qkv_out_scale,
-                                      i * qkv_out_scale_n);
+                                      i * qkv_out_scale_n,
+                                      "qkv_" + std::to_string(i));
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step2";
@@ -365,13 +379,15 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 #endif
 
       if (pre_layer_norm) {
-        out_linear_compute.ComputeForwardWoDQ(out_linear_weights[i],
-                                              out_linear_in_scale[i],
-                                              &fmha_out,
-                                              &input_workspace,
-                                              nullptr,
-                                              &output_workspace,
-                                              nullptr);
+        out_linear_compute.ComputeForwardWoDQ(
+            out_linear_weights[i],
+            out_linear_in_scale[i],
+            &fmha_out,
+            &input_workspace,
+            nullptr,
+            &output_workspace,
+            nullptr,
+            "out linear_" + std::to_string(i));
         AllReduce<int32_t>(output_workspace,
                            ring_id,
                            bsz * seq_len * num_head * dim_head,
@@ -446,7 +462,8 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                                 &input_workspace,
                                                 nullptr,
                                                 &output_workspace,
-                                                nullptr);
+                                                nullptr,
+                                                "ffn1_" + std::to_string(i));
       } else {
         ffn1_linear_compute.ComputeForward(ffn1_weights[i],
                                            buf1,
@@ -495,7 +512,8 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                                 &input_workspace,
                                                 nullptr,
                                                 &output_workspace,
-                                                nullptr);
+                                                nullptr,
+                                                "ffn2_" + std::to_string(i));
       } else {
         ffn2_linear_compute.ComputeForward(ffn2_weights[i],
                                            &ffn1_dropout_out,
