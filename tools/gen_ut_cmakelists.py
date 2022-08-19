@@ -92,8 +92,8 @@ def proccess_archs(arch):
     arch = arch.upper().strip()
     if len(arch) > 0:
         for a in arch.split(";"):
-            assert a in ["GPU", "ROCM", "ASCEND", "ASCEND_CL"], \
-                f"""Supported arhc options are "GPU", "ROCM", "ASCEND" and "ASCEND_CL", but the options is {a}"""
+            assert a in ["GPU", "ROCM", "ASCEND", "ASCEND_CL", "XPU"], \
+                f"""Supported arhc options are "GPU", "ROCM", "ASCEND" and "ASCEND_CL", "XPU", but the options is {a}"""
             archs += "WITH_" + a.upper() + " OR "
         arch = "(" + archs[:-4] + ")"
     else:
