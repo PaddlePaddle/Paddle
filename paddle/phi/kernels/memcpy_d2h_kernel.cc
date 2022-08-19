@@ -16,8 +16,6 @@
 
 #include <vector>
 
-#include "glog/logging.h"
-
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
