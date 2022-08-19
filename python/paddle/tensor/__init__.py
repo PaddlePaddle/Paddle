@@ -429,6 +429,7 @@ tensor_method_func = [  # noqa
     'shard_index',
     'slice',
     'split',
+    'vsplit',
     'chunk',
     'tensordot',
     'squeeze',
