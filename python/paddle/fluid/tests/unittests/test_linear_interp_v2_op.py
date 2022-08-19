@@ -122,7 +122,6 @@ class TestLinearInterpOpFlaot16(OpTest):
         self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "linear_interp_v2"
-        self.dtype = np.float16
         input_np = np.random.random(self.input_shape).astype("float16")
 
         scale_w = 0
@@ -172,6 +171,7 @@ class TestLinearInterpOpFlaot16(OpTest):
         pass
 
     def init_test_case(self):
+        self.dtype = np.float16
         self.interp_method = 'linear'
         self.input_shape = [1, 3, 100]
         self.out_w = 50
@@ -449,7 +449,9 @@ class TestResizeLinearAPI(unittest.TestCase):
             np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
 
-class TestLinearInterpAPI(unittest.TestCase):
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestLinearInterpFloat16API(unittest.TestCase):
 
     def test_case(self):
         import paddle

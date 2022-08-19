@@ -186,7 +186,6 @@ class TestTrilinearInterpOpFloat16(OpTest):
         self.data_layout = 'NCDHW'
         self.init_test_case()
         self.op_type = "trilinear_interp_v2"
-        self.dtype = np.float16
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
         # Skip check_eager while found them in Inputs.
         self.check_eager = True
@@ -263,6 +262,7 @@ class TestTrilinearInterpOpFloat16(OpTest):
         pass
 
     def init_test_case(self):
+        self.dtype = np.float16
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 4, 4, 4]
         self.out_d = 2
@@ -284,6 +284,7 @@ data type is float32, the correctness of the implementation is verified!")
 class TestTrilinearInterpDatalayoutFloat16(TestTrilinearInterpOpFloat16):
 
     def init_test_case(self):
+        self.dtype = np.float16
         self.interp_method = 'trilinear'
         self.input_shape = [2, 4, 4, 4, 3]
         self.out_d = 2

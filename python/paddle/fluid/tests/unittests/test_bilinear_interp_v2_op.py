@@ -149,7 +149,6 @@ class TestBilinearInterpOpFloat16(OpTest):
         self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "bilinear_interp_v2"
-        self.dtype = np.float16
         input_np = np.random.random(self.input_shape).astype("float16")
 
         if self.data_layout == "NCHW":
@@ -209,6 +208,7 @@ class TestBilinearInterpOpFloat16(OpTest):
         pass
 
     def init_test_case(self):
+        self.dtype = np.float16
         self.interp_method = 'bilinear'
         self.input_shape = [2, 3, 5, 5]
         self.out_h = 2
@@ -853,6 +853,8 @@ class TestBilinearInterpOpAPI_dy4(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
 
 
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestBilinearInterpOpFloat16API(unittest.TestCase):
 
     def test_case(self):

@@ -177,7 +177,6 @@ class TestBicubicInterpOpFloat16(OpTest):
         self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "bicubic_interp_v2"
-        self.dtype = np.float16
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
         # Skip check_eager while found them in Inputs.
         self.check_eager = True
@@ -240,6 +239,7 @@ class TestBicubicInterpOpFloat16(OpTest):
         pass
 
     def init_test_case(self):
+        self.dtype = np.float16
         self.interp_method = 'bicubic'
         self.input_shape = [2, 3, 5, 5]
         self.out_h = 2
