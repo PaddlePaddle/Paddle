@@ -136,20 +136,42 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                 self.func_test_coo(op)
 
     def test_values_add(self):
-        a = paddle.randn((2, 3))
-        sp_a = a.to_sparse_coo(2)
-        b = paddle.randn((2, 3))
-        sp_b = b.to_sparse_coo(2)
+        indices = [[0, 1], [0, 3]]
+        values1 = [[1.0], [2.0]]
+        values2 = [[1.0], [2.0]]
+        shape = [2, 4, 2]
+
+        sp_a = sparse.sparse_coo_tensor(indices,
+                                        values1,
+                                        shape,
+                                        stop_gradient=False)
+        sp_b = sparse.sparse_coo_tensor(indices,
+                                        values2,
+                                        shape,
+                                        stop_gradient=False)
+
+        values1 = paddle.to_tensor(values1, stop_gradient=False)
+        values2 = paddle.to_tensor(values2, stop_gradient=False)
+
         #1. c.values() = a.values() + b.values()
         sp_c = sparse.values_add(sp_a, sp_b)
-        ref_c = sp_a.values() + sp_b.values()
-        self.assertTrue(np.allclose(sp_c.values().numpy(), ref_c.numpy()))
+        sp_c.backward()
+        ref_c = values1 + values2
+        ref_c.backward()
+        np.testing.assert_allclose(sp_c.values().numpy(), ref_c.numpy())
+        np.testing.assert_allclose(sp_a.grad.values().numpy(),
+                                   values1.grad.numpy())
+        np.testing.assert_allclose(sp_b.grad.values().numpy(),
+                                   values2.grad.numpy())
 
         #2. c.values() = a.values() + b
         bias = paddle.randn((sp_a.values().shape[-1], ))
+        bias.stop_gradient = False
         sp_c = sparse.values_add(sp_a, bias)
-        ref_c = sp_a.values() + bias
-        self.assertTrue(np.allclose(sp_c.values().numpy(), ref_c.numpy()))
+        ref_c = values1 + bias
+        np.testing.assert_allclose(sp_c.values().numpy(), ref_c.numpy())
+        np.testing.assert_allclose(sp_a.grad.values().numpy(),
+                                   values1.grad.numpy())
 
 
 if __name__ == "__main__":
