@@ -80,6 +80,7 @@ import paddle.reader  # noqa: F401
 import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
 import paddle.geometric  # noqa: F401
+import paddle.audio
 
 from .tensor.attribute import is_complex  # noqa: F401
 from .tensor.attribute import is_integer  # noqa: F401
@@ -366,6 +367,7 @@ from . import signal  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
+import paddle.audio
 
 from .tensor.random import check_shape  # noqa: F401
 
