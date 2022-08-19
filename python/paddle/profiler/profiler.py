@@ -46,7 +46,8 @@ class SummaryView(Enum):
     KernelView = 4
     OperatorView = 5
     MemoryView = 6
-    UDFView = 7
+    MemoryManipulationView = 7
+    UDFView = 8
 
 
 class ProfilerState(Enum):
@@ -749,8 +750,8 @@ class Profiler:
                 sorted_by=SortedKeys.CPUTotal,
                 op_detail=True,
                 thread_sep=False,
-                views=None,
-                time_unit='ms'):
+                time_unit='ms',
+                views=None):
         r"""
         Print the Summary table. Currently support overview, model, distributed, operator, memory manipulation and userdefined summary.
 
@@ -758,8 +759,8 @@ class Profiler:
             sorted_by( :ref:`SortedKeys <api_paddle_profiler_SortedKeys>` , optional): how to rank the op table items, default value is SortedKeys.CPUTotal.
             op_detail(bool, optional): expand each operator detail information, default value is True.
             thread_sep(bool, optional): print op table each thread, default value is False.
-            views(list[SummaryView], optional): summary tables to print, default to None means all views to be printed.
             time_unit(str, optional): time unit for display, can be chosen form ['s', 'ms', 'us', 'ns'], default value is 'ms'.
+            views(list[SummaryView], optional): summary tables to print, default to None means all views to be printed.
 
         Examples:
             .. code-block:: python
@@ -787,8 +788,8 @@ class Profiler:
                              sorted_by=sorted_by,
                              op_detail=op_detail,
                              thread_sep=thread_sep,
-                             views=views,
-                             time_unit=time_unit))
+                             time_unit=time_unit,
+                             views=views))
 
 
 def get_profiler(config_path):

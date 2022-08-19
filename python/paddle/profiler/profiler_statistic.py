@@ -698,10 +698,10 @@ def _build_table(statistic_data,
                  sorted_by=SortedKeys.CPUTotal,
                  op_detail=True,
                  thread_sep=False,
-                 views=None,
                  time_unit='ms',
                  row_limit=100,
-                 max_src_column_width=75):
+                 max_src_column_width=75,
+                 views=None):
 
     from .profiler import SummaryView
     """Prints a summary of events."""
@@ -1415,7 +1415,7 @@ def _build_table(statistic_data,
             append('')
             append('')
 
-    if views is None or SummaryView.MemoryView in views:
+    if views is None or SummaryView.MemoryManipulationView in views:
 
         ###### Print Memory Manipulation Summary Report ######
         if statistic_data.event_summary.memory_manipulation_items:
