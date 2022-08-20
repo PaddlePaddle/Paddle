@@ -611,17 +611,11 @@ PYBIND11_MODULE(core_noavx, m) {
             "Note that a DLPack tensor can be consumed only once."));
 
     PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
+
     DLTensor dl = dmt->dl_tensor;
     framework::Tensor tensor;
+    paddle::framework::TensorFromDLPack(dl, &tensor);
 
-    if (dl.device.device_type == kDLCPU) {
-      paddle::framework::TensorFromDLPack(dl, &tensor);
-    }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (dl.device.device_type == kDLGPU) {
-      paddle::framework::TensorFromDLPack(dl, &tensor);
-    }
-#endif
     return tensor;
   });
 
