@@ -23,5 +23,6 @@ if [ ${#cmd} -eq 0 ]
 then
     echo "Warning! mpirun command not found!"
 else
-    ${cmd} -np 2 --allow-run-as-root python3 process_group_mpi.py
+    python -m pip install numpy
+    ${cmd} -np 2 --allow-run-as-root python process_group_mpi.py
 fi
