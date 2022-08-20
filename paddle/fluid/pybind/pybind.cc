@@ -495,11 +495,9 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
 
   for (auto &pair : framework::OpInfoMap::Instance().map()) {
     has_static_grad_maker = (pair.second.grad_op_maker_ != nullptr);
-    has_dygraph_grad_maker =
-        (pair.second.dygraph_grad_op_maker_ != nullptr);
+    has_dygraph_grad_maker = (pair.second.dygraph_grad_op_maker_ != nullptr);
     if (has_static_grad_maker ^ has_dygraph_grad_maker) {
-      has_kernel =
-          (framework::OperatorWithKernel::AllOpKernels().count(pair.first) > 0);
+      has_kernel = (framework::OperatorWithKernel::AllOpKernels().count(pair.first) > 0);
       if (has_kernel) {
         ops.insert(pair.first);
       } else {
