@@ -120,7 +120,7 @@ class VariableWrapper {
   }
 
   // TODO(zhouwei): fix Tensor.clear_gradient() bug, function SetIsEmpty() isn't
-  // need
+  // needed
   void SetIsEmpty(bool is_empty) { is_empty_ = is_empty; }
 
   const std::string& Name() const { return name_; }
