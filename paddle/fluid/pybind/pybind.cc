@@ -491,12 +491,14 @@ static void inline CreateVariableIfNotExist(
 
 static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
   std::set<std::string> ops;
+  bool has_static_grad_maker, has_dygraph_grad_maker, has_kernel; 
+
   for (auto &pair : framework::OpInfoMap::Instance().map()) {
-    bool has_static_grad_maker = (pair.second.grad_op_maker_ != nullptr);
-    bool has_dygraph_grad_maker =
+    has_static_grad_maker = (pair.second.grad_op_maker_ != nullptr);
+    has_dygraph_grad_maker =
         (pair.second.dygraph_grad_op_maker_ != nullptr);
     if (has_static_grad_maker ^ has_dygraph_grad_maker) {
-      bool has_kernel =
+      has_kernel =
           (framework::OperatorWithKernel::AllOpKernels().count(pair.first) > 0);
       if (has_kernel) {
         ops.insert(pair.first);
