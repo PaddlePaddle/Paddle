@@ -116,7 +116,7 @@ static void ThrowErrorIfNotSupportCUDAGraph() {
 class CUDAGraph {
   DISABLE_COPY_AND_ASSIGN(CUDAGraph);
 
-  // Since the constructor would throw error is CUDA_VERSION < 10010.
+  // Since the constructor would throw error if CUDA_VERSION < 10010.
   // The non-static method of CUDAGraph need not check CUDA_VERSION
   // again.
   CUDAGraph() {
