@@ -408,7 +408,8 @@ class PartialProgramLayer:
 
         return main_program
 
-    def prepare_gradient_aggregation(self, main_program, target_program):
+    def prepare_gradient_aggregation(self, start_idx, main_program,
+                                     target_program):
         """
         Why we need add gradient aggregation operation ?
         In some cases, if non leaf nodes are used as output, gradient overwriting will occur, such as
@@ -444,7 +445,7 @@ class PartialProgramLayer:
             new_grad_name = var.name + suffix + "@GRAD"
             finded_ops = list(
                 filter(
-                    lambda x: any([
+                    lambda x: x[0] >= start_idx and any([
                         out_arg == var_grad_name
                         for out_arg in x[1].output_arg_names
                     ]), enumerate(target_program.block(0).ops)))
@@ -488,7 +489,10 @@ class PartialProgramLayer:
         if targets and self._params:
             backward.gradients(targets=targets, inputs=[])
 
-        self.prepare_gradient_aggregation(main_program, program)
+        start_idx = len(
+            main_program.block(0).ops) + 2 * len(self._outputs.tolist())
+
+        self.prepare_gradient_aggregation(start_idx, main_program, program)
 
         return program
 
@@ -762,6 +766,7 @@ class PartialProgramLayer:
                 var_base = core.eager.Tensor(var_desc.dtype(), var_desc.shape(),
                                              var_desc.name(), var_desc.type(),
                                              False)
+            var_base.stop_gradient = var.stop_gradient
             out_varbase_map[var_desc.name()] = var_base
             return var_base
 

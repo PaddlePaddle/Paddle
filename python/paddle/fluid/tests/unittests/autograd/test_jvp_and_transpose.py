@@ -982,5 +982,36 @@ class TestPowPJVPAndTranspose(TestAddPJVPAndTranspose):
         ]
 
 
+class TestMaxPJVPAndTranspose(TestAddPJVPAndTranspose):
+
+    def init_data(self):
+        # Set prim op
+        self.op_type = 'max_p'
+        X = paddle.static.data(name='X', shape=[5, 6], dtype='float32')
+        Y = paddle.static.data(name='Y', shape=[5, 6], dtype='float32')
+        self.prim_input = {'X': X, 'Y': Y}
+        self.prim_output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.prim_attrs = {}
+
+        # Set JVP
+        X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='float32')
+        Y_DOT = paddle.static.data(name='Y_DOT', shape=[5, 6], dtype='float32')
+        self.jvp_args = (X_DOT, Y_DOT)
+        self.jvp_out_shape_map = {0: self.prim_output['Z']}
+
+        self.all_ops = [
+            # prim op:
+            'max_p',
+            # jvp op:
+            'fill_constant_p',
+            'eq_p',
+            'select_p',
+            # transpose op:
+        ]
+
+
 if __name__ == '__main__':
     unittest.main()

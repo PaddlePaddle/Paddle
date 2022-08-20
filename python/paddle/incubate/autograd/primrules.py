@@ -19,7 +19,7 @@ from . import primops
 from .primops import (add, broadcast, concat, cos, div, exp, fill_const, gather,
                       matmul, mul, neg, reduce, reshape, scatter_add, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose, log, select, eq)
+                      transpose, log, select, eq, max)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -317,6 +317,14 @@ def elementwise_pow_orig2prim(op, x, y):
     return z
 
 
+@REGISTER_ORIG2PRIM('elementwise_max')
+def elementwise_max_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+
+    return primops.max(x, y)
+
+
 ## Register prim2orig lower rules
 
 
@@ -464,6 +472,11 @@ def eq_prim2orig(op, x, y):
 @REGISTER_PRIM2ORIG('pow_p')
 def pow_prim2orig(op, x, y):
     return paddle.pow(x, y)
+
+
+@REGISTER_PRIM2ORIG('max_p')
+def max_prim2orig(op, x, y):
+    return paddle.maximum(x, y)
 
 
 ## Register linearize rules
@@ -735,6 +748,26 @@ def pow_jvp(op, x_dot, y_dot):
         t1, t2 = _compute_t1(x, y), mul(y_dot, mul(log(x), z))
         z_dot = add(t1, t2)
         return z_dot
+
+
+@REGISTER_JVP('max_p')
+def max_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
+
+    x, y = op_position_inputs(op)
+    z = op_position_output(op)
+    z_zeros = fill_const(value=0.0, shape=z.shape, dtype=z.dtype)
+
+    # To make the grad of max_p consistent with paddle.maximum when x==y,
+    # we just let z_dot = y_dot when compute z_dot to y and x==y,
+    # instead of using balance_eq like Jax.
+    if y_dot is None:
+        return select(eq(y, z), z_zeros, x_dot)
+    elif x_dot is None:
+        return select(eq(y, z), y_dot, z_zeros)
+    else:
+        return select(eq(y, z), y_dot, x_dot)
 
 
 ## Register transpose rules
