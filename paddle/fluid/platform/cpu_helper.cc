@@ -43,7 +43,7 @@ void SetNumThreads(int num_threads) {
   platform::dynload::MKL_Set_Num_Threads(real_num_threads);
   omp_set_num_threads(real_num_threads);
 #elif defined(PADDLE_USE_REFERENCE_CBLAS)
-  // cblas not support multi-thread
+  // cblas does not support multi-thread
   return;
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
