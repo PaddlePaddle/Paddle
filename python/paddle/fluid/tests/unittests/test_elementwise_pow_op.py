@@ -216,5 +216,12 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestElementwisePowFp16(TestElementwisePowOp):
+    def init_dtype(self):
+        self.dtype = "float16"
+
+
 if __name__ == '__main__':
     unittest.main()
