@@ -84,7 +84,7 @@ class OpInfo {
 
   const GradOpMakerFN& GradOpMaker() const {
     // Normally, proto_ should not be null, except some special operators, such
-    // as LeaklyReluDoubleGrad op.
+    // as LeakyReluDoubleGrad op.
     std::string type = proto_ ? proto_->type() : "unknown";
     PADDLE_ENFORCE_NOT_NULL(
         grad_op_maker_,
@@ -107,7 +107,7 @@ class OpInfo {
 
   const DygraphGradOpMakerFN& DygraphGradOpMaker() const {
     // Normally, proto_ should not be null, except some special operators, such
-    // as LeaklyReluDoubleGrad op.
+    // as LeakyReluDoubleGrad op.
     std::string type = proto_ ? proto_->type() : "unknown";
     PADDLE_ENFORCE_NOT_NULL(
         dygraph_grad_op_maker_,
