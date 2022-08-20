@@ -22,7 +22,7 @@ enum class AllocatorStrategy { kNaiveBestFit, kAutoGrowth, kThreadLocal };
 
 extern AllocatorStrategy GetAllocatorStrategy();
 
-// Do nothing, just make sure linker do not prune this file.
+// Do nothing, just make sure linker does not prune this file.
 extern void UseAllocatorStrategyGFlag();
 
 }  // namespace allocation
