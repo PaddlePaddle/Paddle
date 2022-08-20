@@ -17,7 +17,6 @@ limitations under the License. */
 #include <queue>
 #include <stack>
 
-#include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -521,18 +520,6 @@ void UpdateControlOpSkipEagerDeletionVars(const Node &node,
           node.Op()->SetAttr("skip_eager_deletion_vars",
                              op->GetAttr("skip_eager_deletion_vars"));
         }
-      }
-    }
-  } else {
-    if (node.IsWrappedBy<details::OpHandleBase>()) {
-      details::OpHandleBase &op_hander =
-          const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
-      auto *compute_op =
-          dynamic_cast<details::ComputationOpHandle *>(&op_hander);
-      auto *op_base = compute_op->GetOp();
-      if (op_base->Attrs().count("skip_eager_deletion_vars")) {
-        node.Op()->SetAttr("skip_eager_deletion_vars",
-                           op_base->Attrs().at("skip_eager_deletion_vars"));
       }
     }
   }
