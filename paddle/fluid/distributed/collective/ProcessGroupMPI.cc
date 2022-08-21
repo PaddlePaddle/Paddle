@@ -164,10 +164,12 @@ std::shared_ptr<ProcessGroupMPI> ProcessGroupMPI::CreateProcessGroupMPI(
     }
   }
 
-  PADDLE_ENFORCE_EQ(
-      groupComm == MPI_COMM_NULL,
-      false,
-      platform::errors::InvalidArgument("MPI comm group create failed!"));
+  if (groupComm == MPI_COMM_NULL) {
+    return std::shared_ptr<ProcessGroupMPI>();
+  }
+
+  VLOG(3) << "MPI Group Create Success! rank = " << rank << " size = " << size
+          << " group_id = " << gid;
 
   return std::make_shared<ProcessGroupMPI>(rank, size, groupComm, gid);
 }
