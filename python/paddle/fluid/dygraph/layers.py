@@ -1488,7 +1488,7 @@ class Layer(object):
             state = state_dict.get(key, None)
             if state is None:
                 raise ValueError(
-                    "{} is not found in the provided dict.".format(key))
+                    "{} is not found in the provided state dict.".format(key))
             if (isinstance(state, dict) or isinstance(state, list)):
                 if (len(state) != len(param)):
                     raise ValueError("{} receieves the length of {}, "
