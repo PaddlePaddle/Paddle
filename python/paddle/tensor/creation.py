@@ -1938,7 +1938,8 @@ def triu_indices(row, col, offset=0, dtype='int64'):
             - If offset = 0, all elements on and below the main diagonal are retained.
             - If offset > 0, include just as few diagonals above the main diagonal.
             - If offset < 0, excludes just as few diagonals below the main diagonal.
-        dtype (int, optional): the data type of the output tensor, can be int32, int64.
+        dtype (str, optional): the data type of the output tensor, can be int32, int64, 
+            default value is int64.
     Returns:
         Tensor: Results of the indices of upper triangular part of a row * col matrix,
         where the first row contains row coordinates of and the second row contains column coordinates.
@@ -1965,11 +1966,8 @@ def triu_indices(row, col, offset=0, dtype='int64'):
     if not isinstance(row, int) or row < 0:
         raise TypeError("row should be a non-negative int")
 
-    if col is not None:
-        if not isinstance(col, int) or col < 0:
-            raise TypeError("col should be a non-negative int")
-    else:
-        col = row
+    if not isinstance(col, int) or col < 0:
+        raise TypeError("col should be a non-negative int")
 
     if not isinstance(offset, int):
         raise TypeError("offset should be a int")
