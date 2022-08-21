@@ -387,8 +387,11 @@ def new_group(ranks=None, backend=None):
                 "equal to that of the default global group.")
         size = len(ranks)
         ranks = sorted(ranks)
-        if backend == 'heter' or (size > 1 and global_rank in ranks):
-            rank = 0 if backend == 'heter' else ranks.index(global_rank)
+        if backend in ['heter', 'mpi'] or (size > 1 and global_rank in ranks):
+            if backend == 'heter':
+                rank = 0
+            else:
+                rank = ranks.index(global_rank) if global_rank in ranks else -1
             src_rank = ranks[0] if backend == 'heter' else None
             dst_rank = ranks[1] if backend == 'heter' else None
             pg = _new_process_group_impl(backend,

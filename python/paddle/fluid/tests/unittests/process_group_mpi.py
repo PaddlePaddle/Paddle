@@ -54,7 +54,10 @@ class TestProcessGroup(unittest.TestCase):
     def test_create_process_group_mpi(self):
         with _test_eager_guard():
             pg = init_process_group()
-            print("rank:", pg.rank(), "size:", pg.size(), "name:", pg.name())
+            #print("rank:", pg.rank(), "size:", pg.size(), "name:", pg.name())
+
+            # test new_group
+            sub_group = paddle.distributed.new_group([0, 1], backend="mpi")
             print("test new group api ok")
 
             # test allreduce sum
@@ -434,10 +437,16 @@ class TestProcessGroup(unittest.TestCase):
             tensor_y = paddle.to_tensor(y)
 
             if pg.rank() == 0:
-                task = dist.send(tensor_x, 1, use_calc_stream=False)
+                task = dist.send(tensor_x,
+                                 1,
+                                 group=sub_group,
+                                 use_calc_stream=False)
                 task.wait()
-            else:
-                task = dist.recv(tensor_y, 0, use_calc_stream=False)
+            elif pg.rank() == 1:
+                task = dist.recv(tensor_y,
+                                 0,
+                                 group=sub_group,
+                                 use_calc_stream=False)
                 task.wait()
                 assert np.array_equal(tensor_y, tensor_x)
 
@@ -452,9 +461,15 @@ class TestProcessGroup(unittest.TestCase):
             tensor_y = paddle.to_tensor(y)
 
             if pg.rank() == 0:
-                task = dist.send(tensor_x, 1, use_calc_stream=True)
-            else:
-                task = dist.recv(tensor_y, 0, use_calc_stream=True)
+                task = dist.send(tensor_x,
+                                 1,
+                                 group=sub_group,
+                                 use_calc_stream=True)
+            elif pg.rank() == 1:
+                task = dist.recv(tensor_y,
+                                 0,
+                                 group=sub_group,
+                                 use_calc_stream=True)
                 assert np.array_equal(tensor_y, tensor_x)
 
             print("test send api ok")
