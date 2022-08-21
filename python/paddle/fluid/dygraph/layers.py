@@ -1491,8 +1491,8 @@ class Layer(object):
                     "{} is not found in the provided state dict.".format(key))
             if (isinstance(state, dict) or isinstance(state, list)):
                 if (len(state) != len(param)):
-                    raise ValueError("{} receieves the length of {}, "
-                                     "but the expected shape is {}".format(
+                    raise ValueError("{} receives the length of {}, "
+                                     "but the expected length is {}".format(
                                          key, len(state), len(param)))
                 else:
                     return param, state
