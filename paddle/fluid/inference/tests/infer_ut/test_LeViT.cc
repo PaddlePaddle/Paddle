@@ -157,7 +157,7 @@ TEST(tensorrt_tester_LeViT, multi_thread4_trt_fp32_bz2) {
   for (int i = 0; i < thread_num; ++i) {
     threads.emplace_back(paddle::test::SingleThreadPrediction,
                          pred_pool.Retrive(i), &my_input_data_map,
-                         &infer_output_data, 2);
+                         &infer_output_data, 10);
   }
 
   // thread join & check outputs

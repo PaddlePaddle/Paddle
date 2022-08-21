@@ -52,7 +52,9 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
     auto& desired_dev_ctx =
         static_cast<const platform::CUDADeviceContext&>(dev_ctx);
     if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
-      return Alloc(place, size);
+      return paddle::memory::Alloc(desired_dev_ctx.GetPlace(), size,
+                                   phi::Stream(reinterpret_cast<phi::StreamId>(
+                                       desired_dev_ctx.stream())));
     } else {
       return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
           desired_dev_ctx, size);

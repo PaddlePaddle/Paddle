@@ -648,7 +648,7 @@ void Copy<platform::CUDAPlace, platform::CPUPlace>(
 
   platform::SetDeviceId(dst_place.device);
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
-          << dst_place << " by thream(" << stream << ")";
+          << dst_place << " by stream(" << stream << ")";
   if (stream) {
     platform::RecordEvent record_event(
         "GpuMemcpyAsync:CPU->GPU", platform::TracerEventType::UserDefined, 1);
