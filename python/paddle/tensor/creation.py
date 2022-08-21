@@ -1945,7 +1945,7 @@ def triu_indices(row, col, offset=0, dtype='int64'):
         where the first row contains row coordinates of and the second row contains column coordinates.
     Examples:
         .. code-block:: python
-            :name: triu_indices-example
+        
             import paddle
             # example 1, default offset value
             data1 = paddle.triu_indices(4,4,0)
