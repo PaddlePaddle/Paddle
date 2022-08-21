@@ -24,6 +24,9 @@ import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 import paddle.inference as paddle_infer
 
+if paddle.fluid.is_compiled_with_cuda():
+    paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+
 
 class ApiMinTest(unittest.TestCase):
 
@@ -112,7 +115,7 @@ class TestMinWithTensorAxis1(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def init_data(self):
-        self.x = paddle.randn([2, 3, 4, 5, 5], dtype='float32')
+        self.x = paddle.randn([10, 5, 9, 9], dtype='float32')
         self.axis = paddle.to_tensor([1, 2], dtype='int64')
 
     def test_dygraph(self):
@@ -138,9 +141,9 @@ class TestMinWithTensorAxis1(unittest.TestCase):
             axis = paddle.static.data(shape=self.axis.shape,
                                       name='axis',
                                       dtype=self.axis.dtype)
-            fc = paddle.nn.Linear(self.x.shape[-1], 6)
-            fc_out = fc(x)
-            out = paddle.min(fc_out, axis)
+            conv = paddle.nn.Conv2D(self.x.shape[1], 5, 3)
+            conv_out = conv(x)
+            out = paddle.max(conv_out, axis)
             exe = paddle.static.Executor(self.place)
             exe.run(starup_prog)
             static_out = exe.run(feed={
@@ -176,7 +179,7 @@ class TestMinWithTensorAxis1(unittest.TestCase):
 class TestMinWithTensorAxis2(TestMinWithTensorAxis1):
 
     def init_data(self):
-        self.x = paddle.randn([3, 4, 7], dtype='float32')
+        self.x = paddle.randn([10, 5, 9, 9], dtype='float32')
         self.axis = paddle.to_tensor([0, 1, 2], dtype='int64')
 
 
