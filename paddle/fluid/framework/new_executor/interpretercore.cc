@@ -92,7 +92,8 @@ InterpreterCore::~InterpreterCore() {
   // cancle gc's thread
   gc_.reset(nullptr);
   async_work_queue_.reset();
-  VLOG(4) << "~InterpreterCore(): " << this << " on " << place_;
+  // VLOG(1) << "Interpretercore place type is: " << place_;
+  // VLOG(4) << "~InterpreterCore(): " << this << " on " << place_;
 
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
