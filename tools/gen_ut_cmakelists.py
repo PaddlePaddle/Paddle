@@ -16,6 +16,8 @@ import re
 import os
 import argparse
 
+# port range (20000, 23000) is reserved for dist-ops
+
 
 # function to process pythonpath env
 # append "${PADDLE_BINARY_DIR}/python" to PYTHONPATH
