@@ -452,7 +452,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     # call assign for static graph
     else:
-        re_exp = re.compile(r'[(](.*+)[)]', re.S)
+        re_exp = re.compile(r'[(](.+?)[)]', re.S)
         place_str = re.findall(re_exp, str(place))[0]
 
         with paddle.static.device_guard(place_str):
