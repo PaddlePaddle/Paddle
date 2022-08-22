@@ -225,7 +225,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
+
             import paddle
 
             x =  paddle.to_tensor([[5,8,9,5],
@@ -447,7 +447,6 @@ def sort(x, axis=-1, descending=False, name=None):
     Examples:
 
         .. code-block:: python
-           :name: code-example1
 
             import paddle
 
@@ -849,7 +848,7 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     Examples:
 
         .. code-block:: python
-          :name: code-example1
+
             import paddle
 
             data_1 = paddle.to_tensor([1, 4, 5, 7])

@@ -256,16 +256,20 @@ class APITestMultiDot(unittest.TestCase):
             exe = paddle.static.Executor(paddle.CPUPlace())
             data1 = np.random.rand(3, 2).astype("float64")
             data2 = np.random.rand(2, 3).astype("float64")
-            np_res = exe.run(feed={
+            np_res, = exe.run(feed={
                 'x0': data1,
                 'x1': data2
             },
-                             fetch_list=[result])
+                              fetch_list=[result])
             expected_result = np.linalg.multi_dot([data1, data2])
 
-        self.assertTrue(
-            np.allclose(np_res, expected_result, atol=1e-5), "two value is\
-            {}\n{}, check diff!".format(np_res, expected_result))
+        np.testing.assert_allclose(
+            np_res,
+            expected_result,
+            rtol=1e-05,
+            atol=1e-05,
+            err_msg='two value is            {}\n{}, check diff!'.format(
+                np_res, expected_result))
 
     def test_dygraph_without_out(self):
         paddle.disable_static()
@@ -276,7 +280,7 @@ class APITestMultiDot(unittest.TestCase):
         data2 = paddle.to_tensor(input_array2)
         out = paddle.linalg.multi_dot([data1, data2])
         expected_result = np.linalg.multi_dot([input_array1, input_array2])
-        self.assertTrue(np.allclose(expected_result, out.numpy()))
+        np.testing.assert_allclose(expected_result, out.numpy(), rtol=1e-05)
 
     def test_dygraph_final_state_api(self):
         with _test_eager_guard():

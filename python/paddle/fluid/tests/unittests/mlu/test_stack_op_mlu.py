@@ -148,7 +148,7 @@ class API_test(unittest.TestCase):
             },
                               fetch_list=[result_stack])
             expected_result = np.stack([input1, input2, input3], axis=0)
-            self.assertTrue(np.allclose(expected_result, result))
+            np.testing.assert_allclose(expected_result, result)
 
     def test_single_tensor_error(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -169,14 +169,14 @@ class API_DygraphTest(unittest.TestCase):
             result = paddle.stack([x1, x2, x3])
             result_np = result.numpy()
         expected_result = np.stack([data1, data2, data3])
-        self.assertTrue(np.allclose(expected_result, result_np))
+        np.testing.assert_allclose(expected_result, result_np)
 
         with fluid.dygraph.guard(place=paddle.MLUPlace(0)):
             y1 = fluid.dygraph.to_variable(data1)
             result = paddle.stack([y1], axis=0)
             result_np_2 = result.numpy()
         expected_result_2 = np.stack([data1], axis=0)
-        self.assertTrue(np.allclose(expected_result_2, result_np_2))
+        np.testing.assert_allclose(expected_result_2, result_np_2)
 
     def test_single_tensor_error(self):
         with fluid.dygraph.guard(place=paddle.MLUPlace(0)):

@@ -21,6 +21,8 @@ namespace operators {
 
 template <typename DeviceContext, typename T>
 class MomentumOpXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
@@ -33,15 +35,13 @@ class MomentumOpXPUKernel : public framework::OpKernel<T> {
     auto velocity_out = ctx.Output<framework::Tensor>("VelocityOut");
     param_out->mutable_data<T>(ctx.GetPlace());
     velocity_out->mutable_data<T>(ctx.GetPlace());
-    auto* lr = learning_rate->data<T>();
-
+    auto* lr = learning_rate->data<float>();
     auto regularization_method = ctx.Attr<std::string>("regularization_method");
     auto regularization_coeff = ctx.Attr<float>("regularization_coeff");
     if (regularization_method != "l2_decay") {
       // only support l2_decay
       regularization_coeff = 0.0f;
     }
-
     auto* grad_var = ctx.InputVar("Grad");
     PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(),
                       true,
@@ -50,20 +50,18 @@ class MomentumOpXPUKernel : public framework::OpKernel<T> {
                           "MomentumOp-XPU. Excepted "
                           "LodTensor, But received [%s] and [%s]",
                           paddle::framework::ToTypeName(grad_var->Type())));
-
     auto grad = ctx.Input<framework::Tensor>("Grad");
-
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     // int momentum(Context* ctx, const T* param, const T* velocity, const T*
     // grad, T* param_out, T* velocity_out, int len, const float* lr, int
     // use_nesterov, float mu, float l2_weight_decay);
     int r = xpu::momentum(dev_ctx.x_context(),
-                          param->data<float>(),
-                          velocity->data<float>(),
-                          grad->data<float>(),
-                          param_out->data<float>(),
-                          velocity_out->data<float>(),
+                          reinterpret_cast<const XPUType*>(param->data<T>()),
+                          reinterpret_cast<const XPUType*>(velocity->data<T>()),
+                          reinterpret_cast<const XPUType*>(grad->data<T>()),
+                          reinterpret_cast<XPUType*>(param_out->data<T>()),
+                          reinterpret_cast<XPUType*>(velocity_out->data<T>()),
                           param_out->numel(),
                           lr,
                           use_nesterov,
@@ -78,5 +76,7 @@ class MomentumOpXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     momentum,
-    ops::MomentumOpXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    ops::MomentumOpXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::MomentumOpXPUKernel<paddle::platform::XPUDeviceContext,
+                             paddle::platform::float16>);
 #endif

@@ -141,7 +141,7 @@ class TestSaveLoadBF16(unittest.TestCase):
                     new_t = np.array(fluid.global_scope().find_var(
                         var.name).get_tensor())
                     base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    np.testing.assert_array_equal(new_t, base_t)
 
 
 if __name__ == '__main__':

@@ -163,7 +163,7 @@ class TestLSTMCell(unittest.TestCase):
         },
                       fetch_list=[lstm_hidden_new, lstm_hidden])
 
-        self.assertTrue(np.allclose(out[0], out[1], rtol=1e-4, atol=0))
+        np.testing.assert_allclose(out[0], out[1], rtol=0.0001, atol=0)
 
 
 class TestGRUCellError(unittest.TestCase):
@@ -277,7 +277,7 @@ class TestGRUCell(unittest.TestCase):
         },
                       fetch_list=[gru_hidden_new, gru_hidden])
 
-        self.assertTrue(np.allclose(out[0], out[1], rtol=1e-4, atol=0))
+        np.testing.assert_allclose(out[0], out[1], rtol=0.0001, atol=0)
 
 
 class TestRnnError(unittest.TestCase):
@@ -437,7 +437,7 @@ class TestRnn(unittest.TestCase):
         },
                       fetch_list=[output_new, rnn_out])
 
-        self.assertTrue(np.allclose(out[0], out[1], rtol=1e-4))
+        np.testing.assert_allclose(out[0], out[1], rtol=0.0001)
 
 
 class TestRnnUtil(unittest.TestCase):

@@ -110,7 +110,6 @@ class PixelUnshuffle(Layer):
 
     Examples:
         .. code-block:: python
-            :name: PixelUnshuffle-example
 
             import paddle
             import paddle.nn as nn
@@ -173,7 +172,6 @@ class ChannelShuffle(Layer):
 
     Examples:
         .. code-block:: python
-            :name: ChannelShuffle-example
 
             import paddle
             import paddle.nn as nn
