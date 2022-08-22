@@ -158,7 +158,7 @@ void CalculateXGrad(const Context& ctx,
         DenseTensor x_grad_out = phi::Sum<T, Context>(
             ctx,
             x_grad_v2,
-            reduce_idx,
+            phi::IntArray(reduce_idx),
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
 #ifdef PADDLE_WITH_HIP
@@ -235,7 +235,7 @@ void CalculateXGrad(const Context& ctx,
         DenseTensor x_grad_out = phi::Sum<T, Context>(
             ctx,
             x_grad_v2,
-            reduce_idx,
+            phi::IntArray(reduce_idx),
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
 #ifdef PADDLE_WITH_HIP
@@ -281,7 +281,7 @@ void CalculateXGrad(const Context& ctx,
         DenseTensor x_grad_out = phi::Sum<T, Context>(
             ctx,
             x_grad_v2,
-            reduce_idx,
+            phi::IntArray(reduce_idx),
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
 #ifdef PADDLE_WITH_HIP
@@ -349,7 +349,7 @@ void CalculateXGrad(const Context& ctx,
         DenseTensor x_grad_out = phi::Sum<T, Context>(
             ctx,
             x_grad_v2,
-            reduce_idx,
+            phi::IntArray(reduce_idx),
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
         // TODO(daisiming): Whether use x_grad instead.

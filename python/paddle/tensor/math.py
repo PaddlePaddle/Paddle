@@ -1160,11 +1160,22 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             out8 = paddle.sum(x, axis=0)  # [1, 1, 1, 1]
             out9 = paddle.sum(x, axis=1)  # [4, 0]
     """
-    if axis is not None and not isinstance(axis, (list, tuple)):
-        axis = [axis]
+    if isinstance(axis, Variable):
+        reduce_all_flag = True if axis.shape[0] == len(x.shape) else False
+    else:
+        if axis is not None and not isinstance(axis, (list, tuple)):
+            axis = [axis]
 
-    if not axis:
-        axis = []
+        if not axis:
+            axis = []
+
+        if len(axis) == 0:
+            reduce_all_flag = True
+        else:
+            if len(axis) == len(x.shape):
+                reduce_all_flag = True
+            else:
+                reduce_all_flag = False
 
     dtype_flag = False
     if dtype is not None:
@@ -1174,16 +1185,12 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     if in_dygraph_mode():
         return _C_ops.final_state_sum(x, axis, dtype, keepdim)
 
-    if len(axis) == 0:
-        reduce_all_flag = True
-    else:
-        if len(axis) == len(x.shape):
-            reduce_all_flag = True
-        else:
-            reduce_all_flag = False
+    if not isinstance(axis, Variable):
+        axis = axis if axis != None and axis != [] and axis != () else [0]
+        if utils._contain_var(axis):
+            axis = utils._convert_to_tensor_list(axis)
 
     if _in_legacy_dygraph():
-        axis = axis if axis != None and axis != [] else [0]
         if dtype_flag:
             return _C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
                                        'reduce_all', reduce_all_flag, 'in_dtype',
@@ -1193,7 +1200,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                                        'reduce_all', reduce_all_flag)
 
     attrs = {
-        'dim': axis if axis != None and axis != [] and axis != () else [0],
+        'dim': axis,
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag
     }
@@ -1210,7 +1217,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                 u'bool', u'float16', u'float32', u'float64',
                 u'int32', u'int64', u'complex64', u'complex128'], 'sum')
 
-    check_type(axis, 'axis', (int, list, tuple, type(None)), 'sum')
+    check_type(axis, 'axis', (int, list, tuple, type(None), Variable), 'sum')
 
     helper = LayerHelper('sum', **locals())
     if dtype_flag:

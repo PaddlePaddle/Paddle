@@ -82,7 +82,7 @@ def mean(x, axis=None, keepdim=False, name=None):
     """
 
     if isinstance(axis, Variable):
-        reduce_all = False
+        reduce_all = True if axis.shape[0] == len(x.shape) else False
     else:
         if isinstance(axis, int):
             axis = [axis]

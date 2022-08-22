@@ -2562,7 +2562,7 @@
   backward : subtract_grad
 
 - api : sum
-  args : (Tensor x, int64_t[] dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false)
+  args : (Tensor x, IntArray dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false)
   output : Tensor(out)
   infer_meta :
     func : SumInferMeta

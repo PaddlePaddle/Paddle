@@ -478,17 +478,19 @@ void StridedSliceInferMeta(const MetaTensor& x,
                            MetaConfig config = MetaConfig());
 
 void SumInferMeta(const MetaTensor& x,
-                  const std::vector<int64_t>& axis,
+                  const IntArray& axis,
                   DataType dtype,
                   bool keep_dim,
-                  MetaTensor* out);
+                  MetaTensor* out,
+                  MetaConfig config = MetaConfig());
 
 void SumRawInferMeta(const MetaTensor& x,
-                     const std::vector<int64_t>& axis,
+                     const IntArray& axis,
                      bool keep_dim,
                      bool reduce_all,
                      DataType dtype,
-                     MetaTensor* out);
+                     MetaTensor* out,
+                     MetaConfig config = MetaConfig());
 
 void SvdInferMeta(const MetaTensor& x,
                   bool full_matrices,
