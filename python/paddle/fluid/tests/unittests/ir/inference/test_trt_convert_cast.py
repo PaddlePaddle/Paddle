@@ -49,8 +49,8 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
             else:
                 return np.ones([1, 3, 64, 64]).astype(np.float32)
 
-        for in_dtype in [0, 2, 5]:
-            for out_dtype in [0, 2, 5]:
+        for in_dtype in [0, 2, 4, 5, 6]:
+            for out_dtype in [0, 2, 4, 5, 6]:
                 dics = [{"in_dtype": in_dtype, "out_dtype": out_dtype}]
 
                 ops_config = [{
