@@ -206,6 +206,7 @@ class DeviceManager {
                         size_t num,
                         ccl::CCLDataType data_type,
                         ccl::CCLReduceOp reduce_op,
+                        size_t root_id,
                         const ccl::CCLComm& ccl_comm,
                         const stream::Stream& stream);
   static void CCLAllGather(const std::string& device_type,

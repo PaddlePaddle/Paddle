@@ -18,7 +18,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -69,14 +68,6 @@ struct RowwiseAdd {
                   const paddle::framework::Tensor& input,
                   const paddle::framework::Tensor& vec,
                   paddle::framework::Tensor* output);
-};
-
-template <typename DeviceContext, typename T>
-struct ElementwiseAddTo {
-  // dst = dst + src
-  void operator()(DeviceContext* ctx,
-                  const paddle::framework::Tensor& src,
-                  paddle::framework::Tensor* dst);
 };
 
 template <typename DeviceContext, typename T>

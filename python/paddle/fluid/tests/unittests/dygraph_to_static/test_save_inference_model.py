@@ -115,7 +115,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
         # Check the correctness of the inference
         infer_out = self.load_and_run_inference(infer_model_dir, model_filename,
                                                 params_filename, inputs)
-        self.assertTrue(np.allclose(gt_out, infer_out))
+        np.testing.assert_allclose(gt_out, infer_out, rtol=1e-05)
 
     def load_and_run_inference(self, model_path, model_filename,
                                params_filename, inputs):
