@@ -2551,7 +2551,7 @@ def cross_entropy(input,
                 out = paddle.squeeze(out, axis=axis)
             return out
 
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
                              'softmax_cross_entropy')
     check_variable_and_dtype(
         label, 'label',

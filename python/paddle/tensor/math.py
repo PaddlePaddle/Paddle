@@ -176,8 +176,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_scale(x, scale, float(bias), bias_after_scale)
-        return dygraph_utils._append_activation_in_dygraph(out)
+        return _C_ops.final_state_scale(x, scale, float(bias), bias_after_scale)
     if _non_static_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = _C_ops.scale(x, 'scale',
@@ -386,8 +385,7 @@ def pow(x, y, name=None):
         if isinstance(y, (int, float)):
             return _C_ops.final_state_pow(x, y)
         elif isinstance(y, (paddle.Tensor, Variable)):
-            return _elementwise_op_in_dygraph(
-                x, y, axis=-1, act=None, op_name='elementwise_pow')
+            return _C_ops.final_state_elementwise_pow(x, y)
         else:
             raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
     if _in_legacy_dygraph():
@@ -568,9 +566,12 @@ def add_(x, y, name=None):
     if out_shape != x.shape:
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
 
-    out = _elementwise_op_in_dygraph(
-        x, y, axis=axis, op_name=op_type)
-    return out
+    if in_dygraph_mode():
+        return _C_ops.final_state_add_(x, y)
+    else:
+        out = _elementwise_op_in_dygraph(
+            x, y, axis=axis, op_name=op_type)
+        return out
 
 
 def subtract(x, y, name=None):
@@ -653,9 +654,12 @@ def subtract_(x, y, name=None):
     if out_shape != x.shape:
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
 
-    out = _elementwise_op_in_dygraph(
-        x, y, axis=axis, act=act, op_name='elementwise_sub_')
-    return out
+    if in_dygraph_mode():
+        return _C_ops.final_state_subtract_(x, y)
+    else:
+        out = _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_sub_')
+        return out
 
 
 def divide(x, y, name=None):
@@ -3502,6 +3506,8 @@ def tanh_(x, name=None):
     Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_tanh`.
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_tanh_( x )
     return _C_ops.tanh_(x)
 
 
@@ -4079,6 +4085,8 @@ def lerp_(x, y, weight, name=None):
         out_shape = broadcast_shape(out_shape, weight.shape)
     if out_shape != x.shape:
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
+    if in_dygraph_mode():
+        return _C_ops.final_state_lerp_( x, y, weight)
     return _C_ops.lerp_(x, y, weight)
 
 def erfinv(x, name=None):
@@ -4127,6 +4135,8 @@ def erfinv_(x, name=None):
     Please refer to :ref:`api_tensor_erfinv`.
     """
     check_type(x, 'x', (paddle.Tensor, Variable), 'erfinv')
+    if in_dygraph_mode():
+        return _C_ops.final_state_erfinv_( x )
     return _C_ops.erfinv_(x)
 
 def rad2deg(x, name=None):
