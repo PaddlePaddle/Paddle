@@ -36,7 +36,8 @@ class TrtConvertConv3dTransposeTest(TrtLayerAutoScanTest):
             return np.ones([batch, num_channels, 4, 20, 30]).astype(np.float32)
 
         def generate_weight1(num_channels, attrs: List[Dict[str, Any]]):
-            return np.random.random([num_channels, 64, 3, 3, 3]).astype(np.float32)
+            return np.random.random([num_channels, 64, 3, 3,
+                                     3]).astype(np.float32)
 
         num_channels = 128
         batch = 1

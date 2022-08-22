@@ -309,6 +309,7 @@ void DeviceInterface::CCLReduce(void* in_data,
                                 size_t num,
                                 ccl::CCLDataType data_type,
                                 ccl::CCLReduceOp reduce_op,
+                                size_t root_id,
                                 const ccl::CCLComm& ccl_comm,
                                 const stream::Stream& stream) {
   INTERFACE_UNIMPLEMENT;

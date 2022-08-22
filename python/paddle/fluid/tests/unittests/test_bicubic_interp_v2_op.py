@@ -23,21 +23,20 @@ import paddle
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 from paddle.nn.functional import interpolate
-from paddle._C_ops import final_state_bicubic_interp
 
 
 def bicubic_interp_test(x,
                         OutSize=None,
                         SizeTensor=None,
                         Scale=None,
-                        data_layout='NCHW',
+                        data_layout='kNCHW',
                         out_d=-1,
                         out_h=-1,
                         out_w=-1,
                         scale=[],
-                        interp_method='linear',
-                        align_corners=False,
-                        align_mode=1):
+                        interp_method='bicubic',
+                        align_corners=True,
+                        align_mode=0):
     if isinstance(scale, float) or isinstance(scale, int):
         scale_list = []
         for _ in range(len(x.shape) - 2):
@@ -49,9 +48,11 @@ def bicubic_interp_test(x,
         if not isinstance(SizeTensor, list) and not isinstance(
                 SizeTensor, tuple):
             SizeTensor = [SizeTensor]
-    return final_state_bicubic_interp(x, OutSize, SizeTensor, Scale,
-                                      data_layout, out_d, out_h, out_w, scale,
-                                      interp_method, align_corners, align_mode)
+    return paddle._C_ops.final_state_bicubic_interp(x, OutSize, SizeTensor,
+                                                    Scale, data_layout, out_d,
+                                                    out_h, out_w, scale,
+                                                    interp_method,
+                                                    align_corners, align_mode)
 
 
 def cubic_1(x, a):
@@ -430,7 +431,7 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
                                            out_w=12,
                                            align_corners=False)
             for res in results:
-                self.assertTrue(np.allclose(res, expect_res))
+                np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(x_data)
@@ -443,7 +444,7 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
                                        out_h=12,
                                        out_w=12,
                                        align_corners=False)
-            self.assertTrue(np.allclose(dy_result, expect))
+            np.testing.assert_allclose(dy_result, expect, rtol=1e-05)
 
 
 class TestBicubicOpError(unittest.TestCase):

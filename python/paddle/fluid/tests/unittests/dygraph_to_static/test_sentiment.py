@@ -353,9 +353,11 @@ class TestSentiment(unittest.TestCase):
         self.args.model_type = model_type
         st_out = train(self.args, True)
         dy_out = train(self.args, False)
-        self.assertTrue(np.allclose(dy_out, st_out),
-                        msg="dy_out:\n {}\n st_out:\n {}".format(
-                            dy_out, st_out))
+        np.testing.assert_allclose(dy_out,
+                                   st_out,
+                                   rtol=1e-05,
+                                   err_msg='dy_out:\n {}\n st_out:\n {}'.format(
+                                       dy_out, st_out))
 
     def test_train(self):
         model_types = ['cnn_net', 'bow_net', 'gru_net', 'bigru_net']

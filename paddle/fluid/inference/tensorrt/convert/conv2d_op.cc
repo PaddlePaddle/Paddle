@@ -77,10 +77,18 @@ void ConvertConv2d(TensorRTEngine* engine,
       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
   std::vector<int> paddings =
       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+<<<<<<< HEAD
   // for conv2d_transpose 
   std::vector<int> output_padding;
   if (op_desc.HasAttr("output_padding")) {
     output_padding = PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_padding"));
+=======
+  // for conv2d_transpose
+  std::vector<int> output_padding;
+  if (op_desc.HasAttr("output_padding")) {
+    output_padding =
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_padding"));
+>>>>>>> develop
   }
   std::string padding_algorithm = "EXPLICIT";
   if (op_desc.HasAttr("padding_algorithm"))
@@ -142,11 +150,22 @@ void ConvertConv2d(TensorRTEngine* engine,
       platform::errors::Fatal("TensorRT create conv2d/conv2d_transpose"
                               " layer failed."));
   layer->setStride(nv_strides);
+<<<<<<< HEAD
 
   layer->setPrePadding(nv_pre_paddings);
   if(output_padding.size() > 0) {
     nv_post_paddings.d[0] -= output_padding[0];
     nv_post_paddings.d[1] -= output_padding[1];
+=======
+  layer->setPrePadding(nv_pre_paddings);
+  if (output_padding.size() > 0) {
+    nv_post_paddings.d[0] -= output_padding[0];
+    nv_post_paddings.d[1] -= output_padding[1];
+  }
+  if (nv_post_paddings.d[0] < 0 || nv_post_paddings.d[1] < 0) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "The value in conv2d_transpose's PostPadding should be >= 0."));
+>>>>>>> develop
   }
   layer->setPostPadding(nv_post_paddings);
 
