@@ -387,7 +387,8 @@ struct iinfo {
 
 struct finfo {
     int bits;
-    long double eps, max, min, smallest_normal, tiny, resolution;
+    long double eps, max, min, smallest_normal, tiny;
+    double resolution;
     // std::string dtype;
 
     finfo(const framework::proto::VarType::Type& type) { 
@@ -397,9 +398,19 @@ struct finfo {
           eps = std::numeric_limits<float>::epsilon();
           max = std::numeric_limits<float>::max();
           min = std::numeric_limits<float>::lowest();
-          // smallest_normal = std::numeric_limits<float>::
-          // tiny = 
+          smallest_normal = std::numeric_limits<float>::min();
+          tiny = smallest_normal;
           resolution = std::pow(10, -std::numeric_limits<float>::digits10);
+          // dtype = "float32";
+          break;
+        case framework::proto::VarType::FP64:
+          bits = 64;
+          eps = std::numeric_limits<double>::epsilon();
+          max = std::numeric_limits<double>::max();
+          min = std::numeric_limits<double>::lowest();
+          smallest_normal = std::numeric_limits<double>::min();
+          tiny = smallest_normal;
+          resolution = std::pow(10, -std::numeric_limits<double>::digits10);
           // dtype = "float32";
           break;
 
@@ -632,8 +643,8 @@ PYBIND11_MODULE(core_noavx, m) {
       .def_readonly("eps", &finfo::eps)
       .def_readonly("max", &finfo::max)
       .def_readonly("min", &finfo::min)
-      // .def_readonly("smallest_normal", &finfo::smallest_normal)
-      // .def_readonly("tiny", &finfo::tiny)
+      .def_readonly("smallest_normal", &finfo::smallest_normal)
+      .def_readonly("tiny", &finfo::tiny)
       .def_readonly("resolution", &finfo::resolution);
       // .def_readonly("dtype", &finfo::dtype);
       

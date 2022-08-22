@@ -41,7 +41,7 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
     def test_finfo(self):
         initial_default_type = paddle.get_default_dtype()
         # for dtype in [paddle.float16, paddle.float32, paddle.float64, paddle.complex64, paddle.complex128]:
-        for dtype in [paddle.float32]:
+        for dtype in [paddle.float32, paddle.float64]:
             x = paddle.zeros((2, 2), dtype=dtype)
             xinfo = paddle.finfo(x.dtype)
             xn = x.cpu().numpy()
@@ -50,7 +50,8 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
             self.assertEqual(xinfo.max, xninfo.max)
             self.assertEqual(xinfo.min, xninfo.min)
             self.assertEqual(xinfo.eps, xninfo.eps)
-            # self.assertEqual(xinfo.tiny, xninfo.tiny)
+            self.assertEqual(xinfo.tiny, xninfo.tiny)
+            self.assertEqual(xinfo.tiny, xinfo.smallest_normal)
             self.assertEqual(xinfo.resolution, xninfo.resolution)
             # self.assertEqual(xinfo.dtype, xninfo.dtype)
             # if not dtype.is_complex:
