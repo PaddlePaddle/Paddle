@@ -286,9 +286,9 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
     framework::Scope *scope) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 4u /* max_cached_size*/) {
-    interpretercore_info_cache.Finalize();
-  }
+  // if (interpretercore_info_cache.Size() > 4u /* max_cached_size*/) {
+  //   interpretercore_info_cache.Finalize();
+  // }
   auto core = std::make_shared<InterpreterCore>(
       place,
       program_desc.Block(0),
