@@ -441,15 +441,6 @@ def ExtractForwardApiNameFormInvoke(invoke_config):
     api_name = invoke_config.split('(')[0]
     if api_name[-1] == '_':
         api_name = api_name[:-1]
-        print(api_name)
-        print(
-            re.search(
-                r"(?P<api_name>[a-zA-Z0-9_]+)(?P<intermediate>_intermediate)?",
-                api_name).group())
-        print(
-            re.search(
-                r"(?P<api_name>[a-zA-Z0-9_]+)(?P<intermediate>_intermediate)?",
-                api_name).group('api_name'))
     return re.search(
         r"(?P<api_name>[a-zA-Z0-9_]+)(?P<intermediate>_intermediate)?",
         api_name).group('api_name')
