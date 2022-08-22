@@ -364,17 +364,6 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
 
         target_dtype = convert_dtype(target_dtype)
 
-        if not isinstance(data, np.ndarray):
-            if np.isscalar(data) and not isinstance(data, str):
-                data = np.array([data])
-            elif isinstance(data, (list, tuple)):
-                to_stack_list = [None] * len(data)
-                for idx, d in enumerate(data):
-                    to_stack_list[idx] = _to_tensor_static(
-                        d, dtype, stop_gradient)
-                data = paddle.stack(to_stack_list)
-                data = paddle.squeeze(data, -1)
-
         output = assign(data)
         if convert_dtype(output.dtype) != target_dtype:
             output = paddle.cast(output, target_dtype)
