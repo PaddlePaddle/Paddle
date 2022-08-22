@@ -119,10 +119,9 @@ class Tracer(core.Tracer):
                               inplace_map=None):
         function_ptr = _legacy_C_ops.__dict__[type]
 
-        core_ops_args_info = _legacy_C_ops.legacy_get_core_ops_args_info()
-        core_ops_args_type_info = _legacy_C_ops.legacy_get_core_ops_args_type_info(
-        )
-        core_ops_returns_info = _legacy_C_ops.legacy_get_core_ops_returns_info()
+        core_ops_args_info = _legacy_C_ops.get_core_ops_args_info()
+        core_ops_args_type_info = _legacy_C_ops.get_core_ops_args_type_info()
+        core_ops_returns_info = _legacy_C_ops.get_core_ops_returns_info()
 
         op_args = core_ops_args_info[type]
         op_args_type = core_ops_args_type_info[type]
