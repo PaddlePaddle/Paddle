@@ -429,7 +429,7 @@ GenerateOpFunctions() {
         !phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type)) {
       continue;
     }
-    std::string func_name = "eager_api_legacy_" + op_type;
+    std::string func_name = "eager_legacy_api_" + op_type;
     std::string op_function_str =
         GenerateOpFunctionsBody(op_proto, func_name, {});
 
