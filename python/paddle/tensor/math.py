@@ -176,8 +176,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_scale(x, scale, float(bias), bias_after_scale)
-        return dygraph_utils._append_activation_in_dygraph(out)
+        return _C_ops.final_state_scale(x, scale, float(bias), bias_after_scale)
     if _non_static_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = _C_ops.scale(x, 'scale',
@@ -386,8 +385,7 @@ def pow(x, y, name=None):
         if isinstance(y, (int, float)):
             return _C_ops.final_state_pow(x, y)
         elif isinstance(y, (paddle.Tensor, Variable)):
-            return _elementwise_op_in_dygraph(
-                x, y, axis=-1, act=None, op_name='elementwise_pow')
+            return _C_ops.final_state_elementwise_pow(x, y)
         else:
             raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
     if _in_legacy_dygraph():
@@ -500,16 +498,19 @@ def add(x, y, name=None):
 
         Out=X+Y
 
-        X : a tensor of any dimension.
-        Y: a tensor whose dimensions must be less than or equal to the dimensions of X.
+    $X$ the tensor of any dimension.
+    $Y$ the tensor whose dimensions must be less than or equal to the dimensions of $X$.
 
     There are two cases for this operator:
-    1. The shape of Y is the same with X.
-    2. The shape of Y is a continuous subsequence of X.
+
+    1. The shape of $Y$ is the same with $X$.
+    2. The shape of $Y$ is a continuous subsequence of $X$.
+
     For case 2:
-    1. Broadcast Y to match the shape of X, where axis is the start dimension index for broadcasting Y onto X.
-    2. If axis is -1 (default), axis=rank(X)−rank(Y).
-    3. The trailing dimensions of size 1 for Y will be ignored for the consideration of subsequence, such as shape(Y) = (2, 1) => (2).
+
+    1. Broadcast $Y$ to match the shape of $X$, where axis is the start dimension index for broadcasting $Y$ onto $X$.
+    2. If $axis$ is -1 (default), $axis$=rank($X$)−rank($Y$).
+    3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of subsequence, such as shape($Y$) = (2, 1) => (2).
 
         For example:
 
@@ -523,13 +524,12 @@ def add(x, y, name=None):
             shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
     Args:
-        x (Tensor) – (Variable), Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
-        y (Tensor) – (Variable), Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
-        with_quant_attr (BOOLEAN) – Whether the operator has attributes used by quantization.
-        name (string, optional) – Name of the output. Default is None. It’s used to print debug info for developers. Details: :ref:`api_guide_Name`
+        x (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
+        y (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
+        name (string, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        N-dimension tensor. A location into which the result is stored. It’s dimension equals with x
+        N-D Tensor. A location into which the result is stored. It’s dimension equals with x.
 
     Examples:
 
@@ -565,9 +565,12 @@ def add_(x, y, name=None):
     if out_shape != x.shape:
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
 
-    out = _elementwise_op_in_dygraph(
-        x, y, axis=axis, op_name=op_type)
-    return out
+    if in_dygraph_mode():
+        return _C_ops.final_state_add_(x, y)
+    else:
+        out = _elementwise_op_in_dygraph(
+            x, y, axis=axis, op_name=op_type)
+        return out
 
 
 def subtract(x, y, name=None):
@@ -650,9 +653,12 @@ def subtract_(x, y, name=None):
     if out_shape != x.shape:
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
 
-    out = _elementwise_op_in_dygraph(
-        x, y, axis=axis, act=act, op_name='elementwise_sub_')
-    return out
+    if in_dygraph_mode():
+        return _C_ops.final_state_subtract_(x, y)
+    else:
+        out = _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_sub_')
+        return out
 
 
 def divide(x, y, name=None):
@@ -1079,10 +1085,9 @@ def fmin(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 for func in [
-        add,
         multiply
 ]:
-    proto_dict = {'add': 'elementwise_add', 'multiply': 'elementwise_mul'}
+    proto_dict = {'multiply': 'elementwise_mul'}
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
 
     additional_args_lines = [
@@ -3500,6 +3505,8 @@ def tanh_(x, name=None):
     Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_tanh`.
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_tanh_( x )
     return _C_ops.tanh_(x)
 
 
@@ -4077,6 +4084,8 @@ def lerp_(x, y, weight, name=None):
         out_shape = broadcast_shape(out_shape, weight.shape)
     if out_shape != x.shape:
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
+    if in_dygraph_mode():
+        return _C_ops.final_state_lerp_( x, y, weight)
     return _C_ops.lerp_(x, y, weight)
 
 def erfinv(x, name=None):
@@ -4125,6 +4134,8 @@ def erfinv_(x, name=None):
     Please refer to :ref:`api_tensor_erfinv`.
     """
     check_type(x, 'x', (paddle.Tensor, Variable), 'erfinv')
+    if in_dygraph_mode():
+        return _C_ops.final_state_erfinv_( x )
     return _C_ops.erfinv_(x)
 
 def rad2deg(x, name=None):

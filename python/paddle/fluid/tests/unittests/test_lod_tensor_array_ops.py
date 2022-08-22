@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import paddle
 import paddle.fluid.core as core
-import numpy
+import numpy as np
 import paddle.fluid.layers as layers
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.executor import Executor
@@ -36,11 +36,10 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
     def test_lod_tensor_to_array_level_0(self):
         tensor = core.LoDTensor()
-        tensor.set(
-            numpy.arange(10).reshape(10, 1).astype('int32'), self.place())
+        tensor.set(np.arange(10).reshape(10, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths([[3, 6, 1]])
         expect = [
-            numpy.array(x).astype('int32')
+            np.array(x).astype('int32')
             for x in [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]]
         ]
         self.main(tensor=tensor,
@@ -50,11 +49,10 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
     def test_lod_tensor_to_array_level_0_empty_seq(self):
         tensor = core.LoDTensor()
-        tensor.set(
-            numpy.arange(10).reshape(10, 1).astype('int32'), self.place())
+        tensor.set(np.arange(10).reshape(10, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths([[3, 6, 0, 1]])
         expect = [
-            numpy.array(x).astype('int32')
+            np.array(x).astype('int32')
             for x in [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]]
         ]
         self.main(tensor=tensor,
@@ -64,15 +62,13 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
     def test_lod_tensor_to_array_level_1(self):
         tensor = core.LoDTensor()
-        tensor.set(
-            numpy.arange(20).reshape(20, 1).astype('int32'), self.place())
+        tensor.set(np.arange(20).reshape(20, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths([[2, 3], [3, 6, 2, 6, 3]])
 
         expect = [
-            numpy.array([9, 10, 0, 1, 2], dtype='int32'),
-            numpy.array([11, 12, 13, 14, 15, 16, 3, 4, 5, 6, 7, 8],
-                        dtype='int32'),
-            numpy.array([17, 18, 19], dtype='int32')
+            np.array([9, 10, 0, 1, 2], dtype='int32'),
+            np.array([11, 12, 13, 14, 15, 16, 3, 4, 5, 6, 7, 8], dtype='int32'),
+            np.array([17, 18, 19], dtype='int32')
         ]
 
         lod = [[[2, 3]], [[6, 6]], [[3]]]
@@ -83,14 +79,13 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
     def test_lod_tensor_to_array_level_1_empty_seq(self):
         tensor = core.LoDTensor()
-        tensor.set(
-            numpy.arange(31).reshape(31, 1).astype('int32'), self.place())
+        tensor.set(np.arange(31).reshape(31, 1).astype('int32'), self.place())
 
         tensor.set_recursive_sequence_lengths(
             [[3, 2, 4, 2], [3, 4, 4, 0, 1, 5, 2, 2, 2, 7, 1]])
 
         expect = [
-            numpy.array(item, dtype='int32') for item in [[
+            np.array(item, dtype='int32') for item in [[
                 12, 13, 14, 15, 16, 0, 1, 2, 23, 24, 25, 26, 27, 28, 29
             ], [17, 18, 3, 4, 5, 6, 11, 30], [19, 20, 7, 8, 9, 10], [21, 22]]
         ]
@@ -103,14 +98,13 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
     def test_lod_tensor_to_array_level_2(self):
         tensor = core.LoDTensor()
-        tensor.set(
-            numpy.arange(50).reshape(50, 1).astype('int32'), self.place())
+        tensor.set(np.arange(50).reshape(50, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths(
             [[2, 3, 1], [2, 3, 1, 4, 2, 1],
              [3, 4, 4, 6, 4, 1, 1, 4, 4, 8, 6, 1, 4]])
 
         expect = [
-            numpy.array(item, dtype='int32')
+            np.array(item, dtype='int32')
             for item in [[21, 0, 1, 2, 3, 4, 5, 6, 46, 47, 48, 49],
                          list(range(22, 39)) + list(range(7, 21)),
                          list(range(39, 46))]
@@ -124,8 +118,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
     def test_lod_tensor_to_array_level_2_skip_level(self):
         tensor = core.LoDTensor()
-        tensor.set(
-            numpy.arange(50).reshape(50, 1).astype('int32'), self.place())
+        tensor.set(np.arange(50).reshape(50, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths(
             [[2, 3, 1], [2, 3, 1, 4, 2, 1],
              [3, 4, 4, 6, 4, 1, 1, 4, 4, 8, 6, 1, 4]])
@@ -159,20 +152,23 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         self.check_tensor_same(scope.find_var(result.name).get_tensor(), tensor)
 
         self.assertEqual(
-            numpy.array(scope.find_var(max_len.name).get_tensor())[0],
+            np.array(scope.find_var(max_len.name).get_tensor())[0],
             expect_max_len)
 
     def check_array_same(self, array, expect_tensor, expect_lod):
         self.assertEqual(len(expect_tensor), len(array))
         for i, exp in enumerate(zip(expect_tensor, expect_lod)):
             exp_tensor, exp_lod = exp
-            exp_tensor = numpy.expand_dims(exp_tensor, axis=1)
-            self.assertTrue(numpy.allclose(exp_tensor, numpy.array(array[i])))
+            exp_tensor = np.expand_dims(exp_tensor, axis=1)
+            np.testing.assert_allclose(exp_tensor,
+                                       np.array(array[i]),
+                                       rtol=1e-05)
             self.assertEqual(exp_lod, array[i].recursive_sequence_lengths())
 
     def check_tensor_same(self, actual, expect):
-        self.assertTrue(numpy.allclose(numpy.array(actual),
-                                       numpy.array(expect)))
+        np.testing.assert_allclose(np.array(actual),
+                                   np.array(expect),
+                                   rtol=1e-05)
         self.assertEqual(actual.recursive_sequence_lengths(),
                          expect.recursive_sequence_lengths())
 
@@ -197,19 +193,19 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
             append_backward(mean)
 
         tensor = core.LoDTensor()
-        tensor.set(numpy.arange(10).reshape(10, 1).astype('float32'), place)
+        tensor.set(np.arange(10).reshape(10, 1).astype('float32'), place)
         tensor.set_recursive_sequence_lengths([[3, 6, 1]])
 
         g_vars = program.global_block().var(x.name + "@GRAD")
 
         exe = Executor(place)
         g_out = [
-            numpy.array(item).sum() for item in exe.run(program,
-                                                        feed={'x': tensor},
-                                                        fetch_list=[g_vars],
-                                                        return_numpy=False)
+            np.array(item).sum() for item in exe.run(program,
+                                                     feed={'x': tensor},
+                                                     fetch_list=[g_vars],
+                                                     return_numpy=False)
         ]
-        g_out_sum = numpy.array(g_out).sum()
+        g_out_sum = np.array(g_out).sum()
 
         self.assertAlmostEqual(1.0, g_out_sum, delta=0.1)
 
@@ -218,7 +214,7 @@ class TestLoDTensorArrayError(unittest.TestCase):
 
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x = numpy.random.random((10)).astype("float32")
+            x = np.random.random((10)).astype("float32")
             x2 = layers.data(name='x', shape=[10])
             table = lod_rank_table(x2, level=0)
 
@@ -227,7 +223,7 @@ class TestLoDTensorArrayError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_x_Variable)
 
-            table2 = numpy.random.random((2)).astype("int64")
+            table2 = np.random.random((2)).astype("int64")
 
             def test_table_Variable():
                 rank_table = lod_tensor_to_array(x=x2, table=table2)
@@ -251,7 +247,7 @@ class TestArrayLoDTensorError(unittest.TestCase):
 
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x = numpy.random.random((10)).astype("float32")
+            x = np.random.random((10)).astype("float32")
             x2 = layers.data(name='x', shape=[10])
             table = lod_rank_table(x2, level=0)
             array = lod_tensor_to_array(x2, table)
@@ -261,7 +257,7 @@ class TestArrayLoDTensorError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_x_Variable)
 
-            table2 = numpy.random.random((2)).astype("int64")
+            table2 = np.random.random((2)).astype("int64")
 
             def test_table_Variable():
                 rank_table = array_to_lod_tensor(x=array, table=table2)

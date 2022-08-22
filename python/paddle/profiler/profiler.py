@@ -34,6 +34,22 @@ from paddle.profiler import utils
 from .timer import benchmark
 
 
+class SummaryView(Enum):
+    r"""
+    SummaryView define the summary view of different contents.
+
+    """
+    DeviceView = 0
+    OverView = 1
+    ModelView = 2
+    DistributedView = 3
+    KernelView = 4
+    OperatorView = 5
+    MemoryView = 6
+    MemoryManipulationView = 7
+    UDFView = 8
+
+
 class ProfilerState(Enum):
     r"""
     ProfilerState is used to present the state of :ref:`Profiler <api_paddle_profiler_Profiler>` .
@@ -403,7 +419,8 @@ class Profiler:
                  on_trace_ready: Optional[Callable[..., Any]] = None,
                  record_shapes: Optional[bool] = False,
                  profile_memory=False,
-                 timer_only: Optional[bool] = False):
+                 timer_only: Optional[bool] = False,
+                 emit_nvtx: Optional[bool] = False):
         supported_targets = _get_supported_targets()
         if targets:
             self.targets = set(targets)
@@ -456,6 +473,7 @@ class Profiler:
         self.timer_only = timer_only
         self.record_shapes = record_shapes
         self.profile_memory = profile_memory
+        self.emit_nvtx = emit_nvtx
 
     def __enter__(self):
         self.start()
@@ -488,6 +506,8 @@ class Profiler:
         '''
         # Timing only without profiling
         benchmark().begin()
+        if not self.timer_only or self.emit_nvtx:
+            utils._is_profiler_used = True
         if self.timer_only:
             return
         if self.record_shapes:
@@ -495,7 +515,6 @@ class Profiler:
         if self.profile_memory:
             enable_memory_recorder()
         # CLOSED -> self.current_state
-        utils._is_profiler_used = True
         if self.current_state == ProfilerState.READY:
             self.profiler.prepare()
         elif self.current_state == ProfilerState.RECORD:
@@ -731,7 +750,8 @@ class Profiler:
                 sorted_by=SortedKeys.CPUTotal,
                 op_detail=True,
                 thread_sep=False,
-                time_unit='ms'):
+                time_unit='ms',
+                views=None):
         r"""
         Print the Summary table. Currently support overview, model, distributed, operator, memory manipulation and userdefined summary.
 
@@ -740,6 +760,7 @@ class Profiler:
             op_detail(bool, optional): expand each operator detail information, default value is True.
             thread_sep(bool, optional): print op table each thread, default value is False.
             time_unit(str, optional): time unit for display, can be chosen form ['s', 'ms', 'us', 'ns'], default value is 'ms'.
+            views(list[SummaryView], optional): summary tables to print, default to None means all views to be printed.
 
         Examples:
             .. code-block:: python
@@ -767,7 +788,8 @@ class Profiler:
                              sorted_by=sorted_by,
                              op_detail=op_detail,
                              thread_sep=thread_sep,
-                             time_unit=time_unit))
+                             time_unit=time_unit,
+                             views=views))
 
 
 def get_profiler(config_path):
