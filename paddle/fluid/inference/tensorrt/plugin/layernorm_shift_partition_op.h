@@ -40,20 +40,7 @@ class LayernormShiftPartitionPluginDynamic : public DynamicPluginTensorRT {
       float eps,
       bool with_fp16,
       std::shared_ptr<void> gamma_dev = nullptr,
-      std::shared_ptr<void> beta_dev = nullptr)
-      : with_fp16_(with_fp16),
-        window_size_(window_size),
-        shift_size_(shift_size),
-        input_resolution_(input_resolution),
-        eps_(eps),
-        param_num_(param_num),
-        gamma_dev_(gamma_dev),
-        beta_dev_(beta_dev) {
-    beta_.resize(param_num);
-    gamma_.resize(param_num);
-    std::copy(gamma, gamma + param_num, gamma_.data());
-    std::copy(beta, beta + param_num, beta_.data());
-  }
+      std::shared_ptr<void> beta_dev = nullptr);
 
   LayernormShiftPartitionPluginDynamic(void const* serialData,
                                        size_t serialLength) {

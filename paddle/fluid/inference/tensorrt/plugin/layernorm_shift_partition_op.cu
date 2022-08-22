@@ -91,7 +91,8 @@ __global__ void layernorm_shift_partition(T *out,
   float mean = 0.0f;
   float variance = 0.0f;
 
-  float local_out = (tid < n) ? static_cast<float>(__ldg(input + bid * n + tid)) : 0.0f;
+  float local_out =
+      (tid < n) ? static_cast<float>(__ldg(input + bid * n + tid)) : 0.0f;
 
   mean = blockReduceSum<float>(local_out);
   if (threadIdx.x == 0) {
@@ -109,8 +110,8 @@ __global__ void layernorm_shift_partition(T *out,
   if (tid < n) {
     out[output_bid * n + tid] =
         (T)(((local_out - s_mean) * rsqrtf(s_variance)) *
-        static_cast<float>(__ldg(&gamma[tid])) +
-        static_cast<float>(__ldg(&beta[tid])));
+                static_cast<float>(__ldg(&gamma[tid])) +
+            static_cast<float>(__ldg(&beta[tid])));
   }
 }
 
@@ -199,7 +200,7 @@ __global__ void layernorm_shift_partition_v2(T *out,
                                              int shift_size,
                                              int window_size,
                                              const float eps) {
-  //constexpr int kITE = 4;
+  // constexpr int kITE = 4;
   const int tid = threadIdx.x;
   const int batch_offset = blockIdx.z * gridDim.y * gridDim.x;
   const int bid = batch_offset + blockIdx.y * gridDim.x + blockIdx.x;
@@ -264,8 +265,9 @@ __global__ void layernorm_shift_partition_v2(T *out,
     int col_id = i * blockDim.x + tid;
     if (col_id < n) {
       out[output_offset + col_id] =
-          (T)(local_out[i] * s_variance * static_cast<float>(__ldg(&gamma[col_id])) +
-          static_cast<float>(__ldg(&beta[col_id])));
+          (T)(local_out[i] * s_variance *
+                  static_cast<float>(__ldg(&gamma[col_id])) +
+              static_cast<float>(__ldg(&beta[col_id])));
     }
   }
 }
@@ -283,7 +285,7 @@ __global__ void layernorm_shift_partition_v2(half2 *out_ptr,
                                              int shift_size,
                                              int window_size,
                                              const float eps) {
-  //constexpr int ite = 4;
+  // constexpr int ite = 4;
   const int tid = threadIdx.x;
   const int batch_offset = blockIdx.z * gridDim.y * gridDim.x;
   const int bid = batch_offset + blockIdx.y * gridDim.x + blockIdx.x;
@@ -447,36 +449,46 @@ void LayernormShiftPartitionPluginDynamic::configurePlugin(
     const nvinfer1::DynamicPluginTensorDesc *in,
     int nbInputs,
     const nvinfer1::DynamicPluginTensorDesc *out,
-    int nbOutputs) TRT_NOEXCEPT {
-  int type_size = 0;
-  switch (in->desc.type) {
-    case nvinfer1::DataType::kHALF:
-      type_size = sizeof(half);
-      break;
-    case nvinfer1::DataType::kFLOAT:
-      type_size = sizeof(float);
-      break;
-    default:
-      PADDLE_THROW(
-          platform::errors::Fatal("The LayernormShiftPartition TRT Plugin's "
-                                  "input type should be float or half."));
-  }
+    int nbOutputs) TRT_NOEXCEPT {}
 
+LayernormShiftPartitionPluginDynamic::LayernormShiftPartitionPluginDynamic(
+    const float *gamma,
+    const float *beta,
+    const int param_num,
+    int shift_size,
+    int window_size,
+    int input_resolution,
+    float eps,
+    bool with_fp16,
+    std::shared_ptr<void> gamma_dev,
+    std::shared_ptr<void> beta_dev)
+    : with_fp16_(with_fp16),
+      window_size_(window_size),
+      shift_size_(shift_size),
+      input_resolution_(input_resolution),
+      eps_(eps),
+      param_num_(param_num),
+      gamma_dev_(gamma_dev),
+      beta_dev_(beta_dev) {
+  beta_.resize(param_num);
+  gamma_.resize(param_num);
+  std::copy(gamma, gamma + param_num, gamma_.data());
+  std::copy(beta, beta + param_num, beta_.data());
+  int type_size = with_fp16 ? sizeof(half) : sizeof(float);
   if (gamma_dev_ == nullptr) {
     void *p;
     cudaMalloc(reinterpret_cast<void **>(&p), param_num_ * type_size);
     gamma_dev_.reset(p, [](void *ptr) { cudaFree(ptr); });
-    if (in->desc.type == nvinfer1::DataType::kHALF)
+    if (with_fp16)
       convertAndCopy(gamma_, reinterpret_cast<half *>(p));
     else
       convertAndCopy(gamma_, reinterpret_cast<float *>(p));
   }
-
   if (beta_dev_ == nullptr) {
     void *p;
     cudaMalloc(reinterpret_cast<void **>(&p), param_num_ * type_size);
     beta_dev_.reset(p, [](void *ptr) { cudaFree(ptr); });
-    if (in->desc.type == nvinfer1::DataType::kHALF)
+    if (with_fp16)
       convertAndCopy(beta_, reinterpret_cast<half *>(p));
     else
       convertAndCopy(beta_, reinterpret_cast<float *>(p));
@@ -502,12 +514,11 @@ bool LayernormShiftPartitionPluginDynamic::supportsFormatCombination(
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
-      bool res = (in.type == nvinfer1::DataType::kFLOAT ||
-                  in.type == nvinfer1::DataType::kHALF);
-      res = res && (in.format == nvinfer1::TensorFormat::kLINEAR);
-      return res;
+      return in.type == nvinfer1::DataType::kHALF &&
+             in.format == nvinfer1::TensorFormat::kLINEAR;
     } else {
-      return in.type == nvinfer1::DataType::kFLOAT;
+      return in.type == nvinfer1::DataType::kFLOAT &&
+             in.format == nvinfer1::TensorFormat::kLINEAR;
     }
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
