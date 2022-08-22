@@ -1522,9 +1522,10 @@ class Executor(object):
                         # print(f"Program before convert:\n {inner_program}", flush=True)
                         compiled_program._compile(scope, self.place)
                         ir_graph = framework.IrGraph(compiled_program._graph)
-                        inner_program = ir_graph.to_program()
-                        if hasattr(program._program, 'lr_sheduler'):
-                            inner_program.lr_sheduler = program._program.lr_sheduler
+                        converted_program = ir_graph.to_program()
+                        if hasattr(inner_program, 'lr_sheduler'):
+                            converted_program.lr_sheduler = inner_program.lr_sheduler
+                        inner_program = converted_program
                         # print(f"Program after convert:\n {inner_program}", flush=True)
                         logging.warning(
                             "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
