@@ -379,16 +379,14 @@ def _set_custom_gid(gid):
     _custom_gid = gid
 
 
-def _store_barrier(group_name, store, timeout):
+def _barrier_by_tcp_store(group_name, store, timeout):
     global_rank = paddle.distributed.get_rank()
     global_world_size = paddle.distributed.get_world_size()
 
     if global_world_size < 2:
         return
 
-    start_barrier_prefix = "StartBarrier/" + group_name + "/"
-    exit_barrier_key = "CanExitBarrier/" + group_name
-    end_barrier_prefix = "EndBarrier/" + group_name + "/"
+    barrier_prefix = "Barrier/" + group_name + "/"
     is_master = (global_rank == 0)
 
     def _check_keys_ready(wait_keys):
@@ -406,28 +404,15 @@ def _store_barrier(group_name, store, timeout):
             wait_keys = list(
                 filter(lambda key: int(store.get(key)) != 1, wait_keys))
 
-    # Step 1: all worker processes send and wait for barrier key from master.
+    # all the workers set their exiting key and exit
+    # the master will wait for all workers' exiting key, ensure to exit in the end
     if is_master:
         wait_keys = [
-            start_barrier_prefix + str(rank)
-            for rank in range(1, global_world_size)
-        ]
-        _check_keys_ready(wait_keys)
-        store.add(exit_barrier_key, 1)
-    else:
-        store.add(start_barrier_prefix + str(global_rank), 1)
-        wait_keys = [exit_barrier_key]
-        _check_keys_ready(wait_keys)
-
-    # Step 2: workers need to send ack to master, ensure master exit at last
-    if is_master:
-        wait_keys = [
-            end_barrier_prefix + str(rank)
-            for rank in range(1, global_world_size)
+            barrier_prefix + str(rank) for rank in range(1, global_world_size)
         ]
         _check_keys_ready(wait_keys)
     else:
-        store.add(end_barrier_prefix + str(global_rank), 1)
+        store.add(barrier_prefix + str(global_rank), 1)
 
 
 def new_group(ranks=None, backend=None, timeout=_default_timeout):
@@ -498,7 +483,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         paddle.distributed.barrier(group=group)
         # NOTE(liyurui): All processors should hang and wait using tcp store, in case master exit before sub-group is created.
         if backend != 'heter':
-            _store_barrier(group_name, _default_store, timeout)
+            _barrier_by_tcp_store(group_name, _default_store, timeout)
         else:
             print("Warning: store barrier is not supported for heter backend.")
         return group
