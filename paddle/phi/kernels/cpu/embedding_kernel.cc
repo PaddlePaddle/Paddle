@@ -49,7 +49,7 @@ struct EmbeddingCPUFunctor {
     auto* output = out_->data<T>();
 
 #if defined _OPENMP
-#ifndef PADDLE_WITH_GPU
+#ifndef PADDLE_WITH_CUDA
 #pragma omp parallel for
 #endif
 #endif
