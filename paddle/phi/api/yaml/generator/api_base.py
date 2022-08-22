@@ -58,9 +58,14 @@ class BaseAPI(object):
     def get_input_tensor_args(self, inplace_flag=False):
         input_args = []
         inplace_type_map = {
-            "const Tensor&": "Tensor&",
-            "const paddle::optional<Tensor>&": "paddle::optional<Tensor>&",
-            "const std::vector<Tensor>&": "std::vector<Tensor>&"
+            "const Tensor&":
+            "Tensor&",
+            "const paddle::optional<Tensor>&":
+            "paddle::optional<Tensor>&",
+            "const std::vector<Tensor>&":
+            "std::vector<Tensor>&",
+            "const paddle::optional<std::vector<Tensor>>&":
+            "paddle::optional<std::vector<Tensor>>&"
         }
         for name in self.inputs['names']:
             name = name.split('@')[0]
