@@ -4354,7 +4354,7 @@ def _index_add_params_check(x, index, add_value, input_axis):
         raise TypeError("The index should be a Tensor.")
 
     if not isinstance(add_value, (Variable)):
-        raise TypeError("The index should be a Tensor.")
+        raise TypeError("The add_value should be a Tensor.")
 
     if isinstance(index, Variable):
         if index.dtype not in [paddle.int64, paddle.int32]:
@@ -4363,13 +4363,13 @@ def _index_add_params_check(x, index, add_value, input_axis):
             raise ValueError("The index should be a 1-D Tensor.")
 
     if dims != add_value_dims:
-        raise TypeError(
+        raise ValueError(
             "The add_value does not support broadcast now. It must have the same dimension as x."
         )
 
     for i in range(dims):
         if i != axis and x.shape[i] != add_value.shape[i]:
-            raise TypeError(
+            raise ValueError(
                 "The add_value.shape[i] should be equal to x.shape[i] when i != axis."
             )
 
@@ -4409,7 +4409,7 @@ def index_add(x, index, add_value, axis=0, name=None):
         # if in_dygraph_mode():
         #     return _C_ops.final_state_index_add(x, index, add_value, axis)
         # if _in_legacy_dygraph():
-        #     return _C_ops.index_select(x, index, add_value, "axis", axis)
+        #     return _C_ops.index_add(x, index, add_value, "axis", axis)
         return _C_ops.index_add(x, index, add_value, "axis", axis)
 
     helper = LayerHelper("index_add", **locals())
