@@ -62,6 +62,19 @@ def case3(x):
     return a
 
 
+def case4(x):
+    paddle.set_default_dtype("float64")
+    if core.is_compiled_with_cuda():
+        place = paddle.CUDAPlace(0)
+    else:
+        place = paddle.CPUPlace()
+    a = paddle.to_tensor([1.0], place=place, dtype="float64")
+    b = paddle.to_tensor([2], place=place, stop_gradient=False, dtype="int64")
+    c = paddle.to_tensor([a, b, [1]], dtype="float32")
+
+    return c
+
+
 class TestToTensorReturnVal(unittest.TestCase):
 
     def test_to_tensor_badreturn(self):
@@ -92,6 +105,12 @@ class TestToTensorReturnVal(unittest.TestCase):
         self.assertTrue(a.stop_gradient == b.stop_gradient)
         self.assertTrue(a.place._equals(b.place))
 
+        a = paddle.jit.to_static(case4)(x)
+        b = case4(x)
+        self.assertTrue(a.dtype == b.dtype)
+        self.assertTrue(a.stop_gradient == b.stop_gradient)
+        self.assertTrue(a.place._equals(b.place))
+
 
 class TestStatic(unittest.TestCase):
 
@@ -106,32 +125,6 @@ class TestStatic(unittest.TestCase):
                 place = paddle.CPUPlace()
 
             x = paddle.to_tensor(paddle.randn([5, 2]),
-                                 dtype='float64',
-                                 stop_gradient=False,
-                                 place=place)
-
-            out = paddle.static.nn.fc(x, 1)
-
-            sgd = paddle.optimizer.SGD()
-            sgd.minimize(paddle.mean(out))
-
-            exe = paddle.static.Executor()
-            exe.run(starup_prog)
-            res = exe.run(fetch_list=[x, out])
-
-    def test_complex_var(self):
-        paddle.enable_static()
-        main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-            else:
-                place = paddle.CPUPlace()
-
-            v1 = paddle.to_tensor([1], dtype='int32', stop_gradient=True)
-            v2 = paddle.to_tensor([7.0], dtype='float32', stop_gradient=True)
-            x = paddle.to_tensor([[v1, 1], [2, v2]],
                                  dtype='float64',
                                  stop_gradient=False,
                                  place=place)

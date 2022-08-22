@@ -352,6 +352,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
 
 def _to_tensor_static(data, dtype=None, stop_gradient=None):
 
+    
     if isinstance(data, Variable) and (dtype is None or dtype == data.dtype):
         output = data
     else:
@@ -364,7 +365,33 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
 
         target_dtype = convert_dtype(target_dtype)
 
-        output = assign(data)
+        if not isinstance(data, np.ndarray):
+            if np.isscalar(data) and not isinstance(data, str):
+                data = np.array([data])
+            elif isinstance(data, (list, tuple)):
+                data = np.array(data)
+
+        for x in data:
+            if isinstance(x,Variable):
+                pass
+
+        if isinstance(data, np.ndarray) and len(data.shape) > 0 and any(isinstance(x, Variable) for x in data):
+            if not all(
+                [x.shape == (1, ) for x in data if isinstance(x, Variable)]):
+                raise TypeError(
+                    "Unsupport paddle.to_tensor([Variable, Variable...]) with non-scalar variable."
+                )
+            to_stack_list = [None] * data.shape[0]
+            for idx, d in enumerate(data):
+                to_stack_list[idx] = _to_tensor_static(
+                    d, dtype, stop_gradient)
+            data = paddle.stack(to_stack_list)
+            data = paddle.squeeze(data, -1)
+
+        if not isinstance(data, Variable):
+            output = assign(data)
+        else:
+            output = data
         if convert_dtype(output.dtype) != target_dtype:
             output = paddle.cast(output, target_dtype)
 
