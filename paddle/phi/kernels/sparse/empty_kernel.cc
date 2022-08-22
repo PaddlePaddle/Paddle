@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/infermeta/sparse/unary.h"
 
 namespace phi {
 namespace sparse {
@@ -26,7 +27,9 @@ template <typename T, typename Context>
 void EmptyLikeCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         SparseCooTensor* out) {
-  out->set_dims(x.dims());
+  // out->set_dims(x.dims());
+  MetaTensor meta_out(out);
+  phi::sparse::UnchangedInferMeta(x, &meta_out);
   *(out->mutable_non_zero_indices()) = x.non_zero_indices();
 
   const DenseTensor& x_values = x.non_zero_elements();
@@ -39,7 +42,9 @@ template <typename T, typename Context>
 void EmptyLikeCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
                         SparseCsrTensor* out) {
-  out->set_dims(x.dims());
+  // out->set_dims(x.dims());
+  MetaTensor meta_out(out);
+  phi::sparse::UnchangedInferMeta(x, &meta_out);
   *(out->mutable_non_zero_crows()) = x.non_zero_crows();
   *(out->mutable_non_zero_cols()) = x.non_zero_cols();
 

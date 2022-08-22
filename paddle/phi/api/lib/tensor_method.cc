@@ -179,7 +179,11 @@ void Tensor::copy_(const Tensor &src,
               static_cast<phi::SparseCooTensor *>(impl_.get()));
   } else if (kernel_type == KernelType::SPARSE_CSR_KERNEL) {
     SetSparseKernelOutput(this, TensorType::SPARSE_CSR);
-    // TODO(zhangkaihuo) add sparse infer_meta
+    phi::MetaTensor meta_out(impl_.get());
+    phi::sparse::UnchangedInferMeta(
+        MakeMetaTensor(
+            *(std::static_pointer_cast<phi::SparseCsrTensor>(src.impl_))),
+        &meta_out);
     phi::Copy(*dev_ctx,
               (*(std::static_pointer_cast<phi::SparseCsrTensor>(src.impl_))),
               target_place,

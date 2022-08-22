@@ -87,8 +87,9 @@ void DenseToSparseCsrKernel(const Context& dev_ctx,
   const int64_t sparse_dim = x_dims.size() == 2 ? 2 : 3;
   DenseTensor indices;
   DenseTensor values;
-  // SparseCooTensor coo(indices, values, x.dims());
   SparseCooTensor coo(indices, values, x.dims());
+  MetaTensor meta_out_coo(&coo);
+  phi::sparse::UnchangedInferMeta(x, &meta_out_coo);
   MetaTensor meta_out(out);
   phi::sparse::UnchangedInferMeta(x, &meta_out);
   DenseToSparseCooKernel<T, Context>(dev_ctx, x, sparse_dim, &coo);
@@ -126,7 +127,11 @@ void SparseCsrToDenseKernel(const Context& dev_ctx,
   DenseTensor indices;
   DenseTensor values;
   SparseCooTensor coo(indices, values, x.dims());
+  MetaTensor meta_out_coo(&coo);
+  phi::sparse::UnchangedInferMeta(x, &meta_out_coo);
   SparseCsrToCooKernel<T, Context>(dev_ctx, x, &coo);
+  MetaTensor meta_out(out);
+  phi::sparse::UnchangedInferMeta(x, &meta_out);
   SparseCooToDenseKernel<T, Context>(dev_ctx, coo, out);
 }
 
