@@ -737,7 +737,9 @@ def floor_divide(x, y, name=None):
     """
     op_type = 'elementwise_floordiv'
     axis = -1
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_floor_divide(x, y)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
 
@@ -777,7 +779,9 @@ def remainder(x, y, name=None):
     """
     op_type = 'elementwise_mod'
     axis = -1
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_modulo(x, y)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
 
@@ -895,7 +899,9 @@ def maximum(x, y, name=None):
     op_type = 'elementwise_max'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_maximum(x, y)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -954,7 +960,9 @@ def minimum(x, y, name=None):
     op_type = 'elementwise_min'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_minimum(x, y)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))

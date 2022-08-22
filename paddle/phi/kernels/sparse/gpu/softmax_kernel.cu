@@ -109,8 +109,8 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
       x.non_zero_crows().dtype(), "CsrSoftmaxKernel", ([&] {
         SoftmaxGpuKernel<T, data_t><<<grid, block, 0, dev_ctx.stream()>>>(
             x.non_zero_crows().data<data_t>(),
-            x.non_zero_elements().data<T>(),
-            out->mutable_non_zero_elements()->data<T>(),
+            x.values().data<T>(),
+            out->mutable_values()->data<T>(),
             row_number,
             total_row_number);
       }));

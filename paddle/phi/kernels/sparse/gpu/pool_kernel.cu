@@ -95,8 +95,8 @@ void MaxPoolCooGPUKernel(const GPUContext& dev_ctx,
 
   const IntT* rulebook_ptr = rulebook->data<IntT>();
 
-  T* out_features_ptr = out->mutable_non_zero_elements()->data<T>();
-  const T* in_features_ptr = x.non_zero_elements().data<T>();
+  T* out_features_ptr = out->mutable_values()->data<T>();
+  const T* in_features_ptr = x.values().data<T>();
   counter->Resize({kernel_size});
   int* counter_ptr = dev_ctx.template HostAlloc<int>(counter);
   memcpy(counter_ptr, h_counter.data(), h_counter.size() * sizeof(int));
@@ -107,7 +107,7 @@ void MaxPoolCooGPUKernel(const GPUContext& dev_ctx,
   thrust::fill(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
                out_features_ptr,
-               out_features_ptr + out->non_zero_elements().numel(),
+               out_features_ptr + out->values().numel(),
                static_cast<T>(0));
   // TODO(zhangkaihuo) Replacing multiple calls with one kernel may be faster
   for (int i = 0; i < kernel_size; i++) {

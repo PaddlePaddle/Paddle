@@ -38,6 +38,23 @@ class SummaryView(Enum):
     r"""
     SummaryView define the summary view of different contents.
 
+    - **SummaryView.DeviceView** : The device summary view.
+
+    - **SummaryView.OverView** : The overview summary view.
+
+    - **SummaryView.ModelView** : The model summary view.
+
+    - **SummaryView.DistributedView** : The distributed summary view.
+
+    - **SummaryView.KernelView** : The kernel summary view.
+
+    - **SummaryView.OperatorView** : The operator summary view.
+
+    - **SummaryView.MemoryView** : The memory summary view.
+
+    - **SummaryView.MemoryManipulationView** : The meomory manipulation summary view.
+
+    - **SummaryView.UDFView** : The user defined summary view.
     """
     DeviceView = 0
     OverView = 1
@@ -760,7 +777,7 @@ class Profiler:
             op_detail(bool, optional): expand each operator detail information, default value is True.
             thread_sep(bool, optional): print op table each thread, default value is False.
             time_unit(str, optional): time unit for display, can be chosen form ['s', 'ms', 'us', 'ns'], default value is 'ms'.
-            views(list[SummaryView], optional): summary tables to print, default to None means all views to be printed.
+            views(SummaryView|list[SummaryView], optional): summary tables to print, default to None means all views to be printed.
 
         Examples:
             .. code-block:: python
@@ -779,6 +796,9 @@ class Profiler:
                 prof.stop()
                 prof.summary(sorted_by=profiler.SortedKeys.CPUTotal, op_detail=True, thread_sep=False, time_unit='ms')
         """
+        if isinstance(views, SummaryView):
+            views = [views]
+
         if self.profiler_result:
             statistic_data = StatisticData(
                 self.profiler_result.get_data(),

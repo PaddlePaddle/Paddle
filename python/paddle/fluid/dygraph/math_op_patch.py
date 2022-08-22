@@ -380,7 +380,8 @@ def monkey_patch_math_varbase():
         ('__rtruediv__',
          _binary_creator_('rtruediv__', 'elementwise_div', True, None)),
         ('__pow__',
-         _binary_creator_('__pow__', 'elementwise_pow', False, None, True))
+         _binary_creator_('__pow__', 'elementwise_pow', False,
+                          _C_ops.final_state_pow, True))
         if framework._in_eager_mode_ else
         ('__pow__',
          _binary_creator_('__pow__', 'elementwise_pow', False, None)),

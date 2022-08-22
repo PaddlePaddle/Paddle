@@ -294,7 +294,7 @@ if(WITH_PYTHON)
   set(tmp_impl_file8 ${impl_file8}.tmp)
   set(CODE_GEN_SPLIT_FILE_COUNT "8")
   set(eager_impl_file
-      ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/eager_op_function.cc)
+      ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/eager_legacy_op_function.cc)
   set(tmp_eager_impl_file ${eager_impl_file}.tmp)
 
   execute_process(
