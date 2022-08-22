@@ -29,7 +29,8 @@ class TestIInfoAPI(unittest.TestCase):
 
     #@unittest.skipIf(not TEST_NUMPY, "Numpy not found")
     def test_iinfo(self):
-        for dtype in [paddle.int64, paddle.int32, paddle.int16, paddle.int8, paddle.uint8]:
+        for dtype in [paddle.int64, paddle.int32, paddle.int16, paddle.uint8]:
+            # paddle.int8,   paddle.zeros((2, 3), dtype=paddle.int8) will raise RuntimeError
             x = paddle.zeros((2, 3), dtype=dtype)
             xinfo = paddle.iinfo(x.dtype)
             xn = x.cpu().numpy()
