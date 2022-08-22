@@ -32,6 +32,12 @@ PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
     false,
     "Enable serial execution for standalone executor, used for debug.");
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_print_log,
+    false,
+    "According to name of optimizer op, print out the log of whether new "
+    "executor is used, which is controlled by FLAGS_CONVERT_GRAPH_TO_PROGRAM. "
+    "This flag is used for debug and will be removed later.");
 
 DECLARE_bool(use_mkldnn);
 DECLARE_bool(check_nan_inf);
@@ -408,6 +414,30 @@ void build_op_func_list(const platform::Place& place,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* var_scope,
                         bool use_local_scope) {
+  bool flag_log_is_printed = false;
+  std::unordered_set<std::string> optimizer_ops_set = {
+      // paddle.optimizer
+      "adadelta",
+      "adagrad",
+      "adam",
+      "merged_adam",
+      "adamax",
+      "adamw",
+      "lamb",
+      "momentum",
+      "merged_momentum",
+      "rmsprop",
+      "sgd",
+      "distributed_fused_lamb_init",
+      "distributed_fused_lamb",
+      // paddle.fluid.optimizer
+      "dgc_momentum",
+      "lars_momentum",
+      "dpsgd",
+      "decayed_adagrad",
+      "ftrl",
+      "sparse_momentum",
+  };
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
   std::vector<std::unique_ptr<OperatorBase>>
@@ -437,6 +467,13 @@ void build_op_func_list(const platform::Place& place,
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
     VLOG(6) << "Build OpFuncNode from : " << op->Type();
+
+    // used for test and will be removed later
+    if (FLAGS_new_executor_print_log && !flag_log_is_printed &&
+        optimizer_ops_set.count(op->Type())) {
+      VLOG(0) << "Standalone Executor is Used.";
+      flag_log_is_printed = true;
+    }
 
     auto inputs_names = op->Inputs();
     auto outputs_names = op->Outputs();

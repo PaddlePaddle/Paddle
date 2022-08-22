@@ -24,7 +24,7 @@ from .wrapped_decorator import signature_safe_contextmanager
 import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator
-from .framework import convert_np_dtype_to_dtype_, _apply_pass
+from .framework import convert_np_dtype_to_dtype_, _apply_pass, set_flags
 
 from . import core
 from . import unique_name
@@ -1403,6 +1403,9 @@ class Executor(object):
             use_standalone_executor_for_compiled_program = os.environ.get(
                 'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
                 None) in [1, '1', True, 'True', 'true']
+
+            if use_standalone_executor_for_compiled_program:
+                set_flags({'FLAGS_new_executor_print_log': True})
 
             # Only support fleet when 'FLAGS_CONVERT_GRAPH_TO_PROGRAM' is set to true
             from paddle.distributed.fleet import fleet
