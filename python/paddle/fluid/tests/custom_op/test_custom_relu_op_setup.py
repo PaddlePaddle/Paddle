@@ -224,10 +224,11 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     out = custom_relu_static(custom_op, device, dtype, x)
                     pd_out = custom_relu_static(custom_op, device, dtype, x,
                                                 False)
-                    self.assertTrue(
-                        np.array_equal(out, pd_out),
-                        "custom op out: {},\n paddle api out: {}".format(
-                            out, pd_out))
+                    np.testing.assert_array_equal(
+                        out,
+                        pd_out,
+                        err_msg='custom op out: {},\n paddle api out: {}'.
+                        format(out, pd_out))
 
     def test_static_pe(self):
         for device in self.devices:
@@ -239,10 +240,11 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     out = custom_relu_static_pe(custom_op, device, dtype, x)
                     pd_out = custom_relu_static_pe(custom_op, device, dtype, x,
                                                    False)
-                    self.assertTrue(
-                        np.array_equal(out, pd_out),
-                        "custom op out: {},\n paddle api out: {}".format(
-                            out, pd_out))
+                    np.testing.assert_array_equal(
+                        out,
+                        pd_out,
+                        err_msg='custom op out: {},\n paddle api out: {}'.
+                        format(out, pd_out))
 
     def func_dynamic(self):
         for device in self.devices:
@@ -255,14 +257,16 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                                                       x)
                     pd_out, pd_x_grad = custom_relu_dynamic(
                         custom_op, device, dtype, x, False)
-                    self.assertTrue(
-                        np.array_equal(out, pd_out),
-                        "custom op out: {},\n paddle api out: {}".format(
-                            out, pd_out))
-                    self.assertTrue(
-                        np.array_equal(x_grad, pd_x_grad),
-                        "custom op x grad: {},\n paddle api x grad: {}".format(
-                            x_grad, pd_x_grad))
+                    np.testing.assert_array_equal(
+                        out,
+                        pd_out,
+                        err_msg='custom op out: {},\n paddle api out: {}'.
+                        format(out, pd_out))
+                    np.testing.assert_array_equal(
+                        x_grad,
+                        pd_x_grad,
+                        err_msg='custom op x grad: {},\n paddle api x grad: {}'.
+                        format(x_grad, pd_x_grad))
 
     def test_dynamic(self):
         with _test_eager_guard():
@@ -286,10 +290,11 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                 predict_infer = exe.run(inference_program,
                                         feed={feed_target_names[0]: np_data},
                                         fetch_list=fetch_targets)
-                self.assertTrue(
-                    np.array_equal(predict, predict_infer),
-                    "custom op predict: {},\n custom op infer predict: {}".
-                    format(predict, predict_infer))
+                np.testing.assert_array_equal(
+                    predict,
+                    predict_infer,
+                    err_msg='custom op predict: {},\n custom op infer predict: {}'
+                    .format(predict, predict_infer))
         paddle.disable_static()
 
     def test_static_save_and_run_inference_predictor(self):
@@ -331,14 +336,16 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     self.custom_ops[0], device, dtype, x)
                 pd_out, pd_dx_grad = custom_relu_double_grad_dynamic(
                     self.custom_ops[0], device, dtype, x, False)
-                self.assertTrue(
-                    np.array_equal(out, pd_out),
-                    "custom op out: {},\n paddle api out: {}".format(
+                np.testing.assert_array_equal(
+                    out,
+                    pd_out,
+                    err_msg='custom op out: {},\n paddle api out: {}'.format(
                         out, pd_out))
-                self.assertTrue(
-                    np.array_equal(dx_grad, pd_dx_grad),
-                    "custom op dx grad: {},\n paddle api dx grad: {}".format(
-                        dx_grad, pd_dx_grad))
+                np.testing.assert_array_equal(
+                    dx_grad,
+                    pd_dx_grad,
+                    err_msg='custom op dx grad: {},\n paddle api dx grad: {}'.
+                    format(dx_grad, pd_dx_grad))
 
     def test_with_dataloader(self):
         for device in self.devices:
@@ -357,9 +364,10 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             for batch_id, (image, _) in enumerate(train_loader()):
                 out = self.custom_ops[0](image)
                 pd_out = paddle.nn.functional.relu(image)
-                self.assertTrue(
-                    np.array_equal(out, pd_out),
-                    "custom op out: {},\n paddle api out: {}".format(
+                np.testing.assert_array_equal(
+                    out,
+                    pd_out,
+                    err_msg='custom op out: {},\n paddle api out: {}'.format(
                         out, pd_out))
 
                 if batch_id == 5:

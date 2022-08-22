@@ -59,7 +59,7 @@ void SparseMaskGPUKernel(const GPUContext& dev_ctx,
       mask.dims(),
       phi::errors::InvalidArgument("the input x and mask must have the shape"));
   const DenseTensor& indices = mask.non_zero_indices();
-  const DenseTensor& values = mask.non_zero_elements();
+  const DenseTensor& values = mask.values();
   const int sparse_dim = mask.sparse_dim();
   DenseTensor sparse_offsets = phi::Empty<GPUContext>(
       dev_ctx,
@@ -111,7 +111,7 @@ void SparseMaskKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const SparseCooTensor& mask,
                       SparseCooTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_VISIT_BASE_INTEGRAL_TYPES(
       mask.non_zero_indices().dtype(), "SparseMaskGPUKernel", ([&] {
         SparseMaskGPUKernel<T, data_t>(dev_ctx, x, mask, out);
       }));
@@ -224,8 +224,8 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
   phi::backends::gpu::GpuMemsetAsync(
       table.data<int>(), 0, table_size * sizeof(int), dev_ctx.stream());
   const int64_t stride =
-      x.dims().size() == sparse_dim ? 1 : x.non_zero_elements().dims()[1];
-  *out = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+      x.dims().size() == sparse_dim ? 1 : x.values().dims()[1];
+  *out = phi::EmptyLike<T>(dev_ctx, x.values());
   phi::funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, out, static_cast<T>(0));
   T* out_ptr = out->data<T>();
@@ -242,16 +242,15 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
   const int VecBytes = 16;
   const int VecSize = VecBytes / sizeof(T);
   if (stride % VecSize == 0) {
-    MaskCopy<T, IntT, VecSize>
-        <<<config.block_per_grid,
-           config.thread_per_block,
-           0,
-           dev_ctx.stream()>>>(mask_indexs_ptr,
-                               table.data<int>(),
-                               mask_indexs.numel(),
-                               stride,
-                               x.non_zero_elements().data<T>(),
-                               out_ptr);
+    MaskCopy<T, IntT, VecSize><<<config.block_per_grid,
+                                 config.thread_per_block,
+                                 0,
+                                 dev_ctx.stream()>>>(mask_indexs_ptr,
+                                                     table.data<int>(),
+                                                     mask_indexs.numel(),
+                                                     stride,
+                                                     x.values().data<T>(),
+                                                     out_ptr);
   } else {
     MaskCopy<T, IntT, 1><<<config.block_per_grid,
                            config.thread_per_block,
@@ -260,7 +259,7 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
                                                table.data<int>(),
                                                mask_indexs.numel(),
                                                stride,
-                                               x.non_zero_elements().data<T>(),
+                                               x.values().data<T>(),
                                                out_ptr);
   }
 }
@@ -270,7 +269,7 @@ void SparseMaskHelperKernel(const Context& dev_ctx,
                             const SparseCooTensor& x,
                             const DenseTensor& mask_indices,
                             DenseTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_VISIT_BASE_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "SparseMaskHelperGPUKernel", ([&] {
         SparseMaskHelperGPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
       }));

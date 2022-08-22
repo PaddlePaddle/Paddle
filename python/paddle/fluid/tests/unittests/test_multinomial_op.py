@@ -67,9 +67,12 @@ class TestMultinomialOp(OpTest):
         # normalize the input to get the probability
         prob = self.input_np / self.input_np.sum(axis=-1, keepdims=True)
         sample_prob = self.sample_output(np.array(outs[0]))
-        self.assertTrue(
-            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob,
+                                   prob,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg='sample_prob: ' + str(sample_prob) +
+                                   '\nprob: ' + str(prob))
 
 
 class TestMultinomialOp2(TestMultinomialOp):
@@ -112,9 +115,12 @@ class TestMultinomialApi(unittest.TestCase):
 
         sample_prob = sample_output_one_dimension(out.numpy(), 4)
         prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
-        self.assertTrue(
-            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob,
+                                   prob,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg='sample_prob: ' + str(sample_prob) +
+                                   '\nprob: ' + str(prob))
 
     def test_dygraph2(self):
         # input probability is a matrix, and replacement is True
@@ -125,9 +131,12 @@ class TestMultinomialApi(unittest.TestCase):
 
         sample_prob = sample_output_two_dimension(out.numpy(), [3, 4])
         prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
-        self.assertTrue(
-            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob,
+                                   prob,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg='sample_prob: ' + str(sample_prob) +
+                                   '\nprob: ' + str(prob))
         paddle.enable_static()
 
     def test_dygraph3(self):
@@ -170,9 +179,12 @@ class TestMultinomialApi(unittest.TestCase):
 
         sample_prob = sample_output_one_dimension(out, 4)
         prob = x_np / x_np.sum(axis=-1, keepdims=True)
-        self.assertTrue(
-            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob,
+                                   prob,
+                                   rtol=0,
+                                   atol=0.01,
+                                   err_msg='sample_prob: ' + str(sample_prob) +
+                                   '\nprob: ' + str(prob))
 
 
 class TestMultinomialAlias(unittest.TestCase):
@@ -251,33 +263,33 @@ class TestRandomValue(unittest.TestCase):
         self.assertEqual(np.sum(y), 5187793)
         self.assertEqual(np.mean(y), 5066.2041015625)
         expect = [9982, 1655, 4741, 1323, 9319, 3298, 6473, 7477, 2507, 2628]
-        self.assertTrue(np.array_equal(y[100:110, :].flatten(), expect))
+        np.testing.assert_array_equal(y[100:110, :].flatten(), expect)
 
         y = paddle.multinomial(x, 5000, replacement=False).numpy()
         self.assertEqual(np.sum(y), 25603962316)
         self.assertEqual(np.mean(y), 5000.77388984375)
         expect = [7300, 6055, 8714, 5401, 7360, 161, 5035, 7002, 6788, 2916]
-        self.assertTrue(np.array_equal(y[100, 1000:1010], expect))
+        np.testing.assert_array_equal(y[100, 1000:1010], expect)
 
         y = paddle.multinomial(x, 5000, replacement=False).numpy()
         self.assertEqual(np.sum(y), 25592855710)
         self.assertEqual(np.mean(y), 4998.604630859375)
         expect = [5700, 6567, 4399, 5688, 7472, 545, 6894, 526, 2124, 385]
-        self.assertTrue(np.array_equal(y[300, 3000:3010], expect))
+        np.testing.assert_array_equal(y[300, 3000:3010], expect)
 
         y = paddle.multinomial(x, 20000, replacement=True).numpy()
         self.assertEqual(np.sum(y), 102371362581)
         self.assertEqual(np.mean(y), 4998.60168852539)
         self.assertEqual(np.std(y), 2886.316308500771)
         expect = [7630, 8235, 8445, 3275, 5580, 4591, 1331, 342, 1662, 7156]
-        self.assertTrue(np.array_equal(y[100, 0:10], expect))
+        np.testing.assert_array_equal(y[100, 0:10], expect)
 
         y = paddle.multinomial(x, 20000, replacement=True).numpy()
         self.assertEqual(np.sum(y), 102400672117)
         self.assertEqual(np.mean(y), 5000.032818212891)
         self.assertEqual(np.std(y), 2886.913426124017)
         expect = [4159, 7849, 9305, 5759, 4422, 122, 345, 2897, 5200, 5911]
-        self.assertTrue(np.array_equal(y[100, 0:10], expect))
+        np.testing.assert_array_equal(y[100, 0:10], expect)
 
         paddle.enable_static()
 

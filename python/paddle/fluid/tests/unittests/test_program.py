@@ -202,5 +202,103 @@ class TestProgram(unittest.TestCase):
                 self.assertFalse(var.has_stop_gradient())
 
 
+def build_program():
+    main_program = paddle.static.Program()
+    startuo_program = paddle.static.Program()
+    with paddle.utils.unique_name.guard():
+        with paddle.static.program_guard(main_program, startuo_program):
+            x = paddle.static.data(name='x', shape=[3, 2, 1])
+            out = paddle.static.nn.fc(x=x, size=1, num_flatten_dims=2)
+    return main_program
+
+
+class TestProgramProto(unittest.TestCase):
+
+    def test_update_op(self):
+        program = build_program()
+        a = program.desc.serialize_to_string()
+        program.current_block().ops[0]._set_attr('use_mkldnn', True)
+        self.assertTrue(program.desc.need_update())
+        b = program.desc.serialize_to_string()
+        self.assertFalse(a == b)
+
+    def test_update_var(self):
+        program = build_program()
+        a = program.desc.serialize_to_string()
+        program.current_block().var("x").desc.set_stop_gradient(False)
+        self.assertTrue(program.desc.need_update())
+        b = program.desc.serialize_to_string()
+        self.assertFalse(a == b)
+
+    # it seems the attrs of framework::VarDesc is not write to proto,
+    # except for persistable/need_check_feed/is_parameter/stop_gradient
+    def test_update_var_attr(self):
+        program = build_program()
+        a = program.desc.serialize_to_string()
+        program.current_block().var("x").desc._set_attr("a", 1)
+        self.assertFalse(program.desc.need_update())
+        b = program.desc.serialize_to_string()
+        self.assertTrue(a == b)  # not affected
+
+
+class TestProgramHash(unittest.TestCase):
+
+    def build_program(self):
+        main_program = paddle.static.Program()
+        startuo_program = paddle.static.Program()
+        with paddle.utils.unique_name.guard():
+            with paddle.static.program_guard(main_program, startuo_program):
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+                out = paddle.static.nn.fc(x=x, size=1, num_flatten_dims=2)
+        return main_program
+
+    def test_program_need_update(self):
+        program = self.build_program()
+        self.assertTrue(program.desc.need_update())
+        program.desc.flush()
+        self.assertFalse(program.desc.need_update())
+
+    def test_program_hash_equal(self):
+        programs = []
+        for i in range(2):
+            programs.append(self.build_program())
+        program1, program2 = programs[0], programs[1]
+        # why not write as below?
+        # since the callstack attribute are not equal
+        #program1 = self.build_program()
+        #program2 = self.build_program()
+
+        self.assertTrue(program1.desc.need_update())
+        self.assertTrue(program2.desc.need_update())
+        # two program with same content
+        self.assertFalse(id(program1) == id(program2))
+        # print(program1, program2)
+        self.assertTrue(
+            program1.desc.cached_hash_str() == program2.desc.cached_hash_str())
+
+        self.assertFalse(program1.desc.need_update())
+        self.assertFalse(program2.desc.need_update())
+
+    def test_program_clone(self):
+        program = self.build_program()
+        program_clone = program.clone()
+
+        self.assertFalse(id(program) == id(program_clone))
+        self.assertTrue(program.desc.cached_hash_str() ==
+                        program_clone.desc.cached_hash_str())
+
+    def test_program_update(self):
+        program = self.build_program()
+        hash1 = program.desc.cached_hash_str()
+        id1 = id(program)
+        # change mul's attr
+        program.current_block().ops[0]._set_attr('use_mkldnn', True)
+        program.current_block().ops[0]._set_attr('scale_x', 2.0)
+        hash2 = program.desc.cached_hash_str()
+        id2 = id(program)
+        self.assertTrue(id1 == id2)
+        self.assertFalse(hash1 == hash2)
+
+
 if __name__ == '__main__':
     unittest.main()

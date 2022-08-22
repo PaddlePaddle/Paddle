@@ -31,7 +31,7 @@ void CoalesceGPUKernel(const GPUContext& dev_ctx,
                        const SparseCooTensor& x,
                        SparseCooTensor* out) {
   const DenseTensor& x_indices = x.non_zero_indices();
-  const DenseTensor& x_values = x.non_zero_elements();
+  const DenseTensor& x_values = x.values();
   DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x_indices);
   DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x_values);
 
@@ -73,7 +73,7 @@ void CoalesceGPUKernel(const GPUContext& dev_ctx,
   // 2. get the address of each non-zero values
   const T* x_values_ptr = x_values.data<T>();
   const int64_t stride =
-      x.dims().size() == sparse_dim ? 1 : x.non_zero_elements().dims()[1];
+      x.dims().size() == sparse_dim ? 1 : x.values().dims()[1];
   DenseTensor values_indexs = phi::Empty(
       dev_ctx, DenseTensorMeta(DataType::INT32, {nnz}, DataLayout::NCHW));
   int* values_indexs_ptr = values_indexs.data<int>();
@@ -175,7 +175,7 @@ template <typename T, typename Context>
 void CoalesceKernel(const Context& dev_ctx,
                     const SparseCooTensor& x,
                     SparseCooTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_VISIT_BASE_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "CoalesceGPUKernel", ([&] {
         CoalesceGPUKernel<T, data_t>(dev_ctx, x, out);
       }));

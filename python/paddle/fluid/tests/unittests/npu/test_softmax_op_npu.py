@@ -118,8 +118,8 @@ class TestSoftmaxNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred, rtol=1e-2))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-2))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-2)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-2)
 
 
 if __name__ == '__main__':
