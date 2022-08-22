@@ -30,7 +30,7 @@ void SumRawKernel(const Context& dev_ctx,
     out_dtype = out->dtype();
   }
   phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
-      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 }
 
 }  // namespace phi
