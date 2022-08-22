@@ -31,7 +31,7 @@ namespace phi {
 template <typename T>
 struct ZeroOrderFunctor {
  public:
-  __device__ explicit T operator()(const T& x, const T& y) const {
+  __device__ T operator()(const T& x, const T& y) const {
     return abs(static_cast<T>(static_cast<double>(x - y) != 0));
   }
 };
@@ -39,7 +39,7 @@ struct ZeroOrderFunctor {
 template <typename T>
 struct OtherOrderFunctor {
   explicit OtherOrderFunctor(const T& p_order) : p_order_(p_order) {}
-  __device__ explicit T operator()(const T& x, const T& y) const {
+  __device__ T operator()(const T& x, const T& y) const {
     return static_cast<T>(pow(abs(x - y), p_order_));
   }
 
