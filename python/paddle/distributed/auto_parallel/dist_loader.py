@@ -13,6 +13,7 @@
 # limitations under the License
 
 import abc
+import warnings
 import numpy as np
 import paddle
 from .utils import to_list
@@ -153,10 +154,14 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                 partial_data = []
                 batch = self.dataset_fetcher.fetch(indices)
                 for data in batch:
-                    assert data.shape[0] % self.dp_world_size == 0, \
-                        "Please padding dataset's batch_size to be divisible by data parallel size"
-                    partial_data.append(
-                        np.split(data, self.dp_world_size)[self.dp_rank])
+                    if data.shape[0] % self.dp_world_size != 0:
+                        warnings.warn(
+                            "Please padding dataset's batch_size to be divisible by data parallel size"
+                        )
+                        partial_data.append(data)
+                    else:
+                        partial_data.append(
+                            np.split(data, self.dp_world_size)[self.dp_rank])
                 yield partial_data[:len(self.feed_list)]
 
         dataloader = paddle.fluid.io.DataLoader.from_generator(

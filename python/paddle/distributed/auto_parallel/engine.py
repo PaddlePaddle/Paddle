@@ -560,12 +560,11 @@ class Engine:
         # NOTE: Get feed_list from dist_program, then insert dataloader op
         # with sharded var shape. Because predict_program does not contain
         # labels var, so we will filter dataset's value with length of feed_list.
-        inputs_var = self._feed_vars[self.mode]["inputs"]
-        labels_var = self._feed_vars[self.mode]["labels"]
-        feed_list = []
-        for var in inputs_var + labels_var:
-            if var.name in dist_main_block.vars:
-                feed_list.append(dist_main_block.vars[var.name])
+        feed_list = self._feed_vars[self.mode]["inputs"] + self._feed_vars[
+            self.mode]["labels"]
+        for var in feed_list:
+            if var.name not in dist_main_block.vars:
+                dist_main_block._clone_variable(var, var.persistable)
 
         # remove the first three ops if multi run fit/evaluate/predict
         op_size = len(dist_main_block.ops)
