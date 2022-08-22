@@ -3386,6 +3386,116 @@ def triplet_margin_loss(input,
         return loss
 
 
+def multi_margin_loss(input,
+                      label,
+                      p: int = 1,
+                      margin: float = 1.0,
+                      weight=None,
+                      reduction='mean',
+                      name=None):
+    r"""
+        Measures a multi-class classification hinge loss (margin-based loss) between input :math:`x` (a 2D mini-batch `Tensor`)
+        and output :math:`y` (which is a 1D tensor of target class indices,:math:`0 \leq y \leq \text{x.size}(1)-1`):
+
+        For each mini-batch sample, the loss in terms of the 1D input :math:`x` and scalar
+        output :math:`y` is:
+
+        .. math::
+            \text{loss}(x, y) = \frac{\sum_i \max(0, \text{margin} - x[y] + x[i])^p}{\text{x.size}(0)}
+
+        where :math:`x \in \left\{0, \; \cdots , \; \text{x.size}(0) - 1\right\}`
+        and :math:`i \neq y`.
+
+        Optionally, you can give non-equal weighting on the classes by passing
+        a 1D :attr:`weight` tensor into the constructor.
+
+        The loss function then becomes:
+
+        .. math::
+            \text{loss}(x, y) = \frac{\sum_i \max(0, w[y] * (\text{margin} - x[y] + x[i]))^p}{\text{x.size}(0)}
+
+
+    Parameters:
+        input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes.
+
+        label (Tensor): Label tensor, the data type is float32 or float64. The shape of label is (N,)
+
+        p (int, Optional): The norm degree for pairwise distance. Default: :math:`1`.
+
+        margin (float, Optional): Default: :math:`1`.
+
+        weight (Tensor,optional): a manual rescaling weight given to each class.
+                If given, has to be a Tensor of size C and the data type is float32, float64.
+                Default is ``'None'`` .
+
+
+        reduction (str, Optional):Indicate how to average the loss by batch_size.
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default: ``'mean'``
+
+        name (str, Optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Output: Tensor. The tensor variable storing the triplet_margin_loss of input and positive and negative.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            input = paddle.to_tensor([[1, 5, 3], [0, 3, 2], [1, 4, 1]], dtype=paddle.float32)
+            positive= paddle.to_tensor([1, 2, 1], dtype=paddle.float32)
+            loss = F.multi_margin_loss(input, label, margin=1.0, reduction='none')
+            print(loss)
+
+
+            loss = F.multi_margin_loss(input, label, margin=1.0, reduction='mean')
+            print(loss)
+
+    """
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "'reduction' in 'multi_margin_loss' should be 'sum', 'mean' or 'none', "
+            "but received {}.".format(reduction))
+
+    if not _non_static_mode():
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'multi_margin_loss')
+        check_variable_and_dtype(label, 'positive', ['float32', 'float64'],
+                                 'multi_margin_loss')
+    if not (input.shape[0] == label.shape[0]):
+        raise ValueError("The label's shape is wrong")
+    label = label.reshape((-1, 1))
+    index_sample = paddle.index_sample(input, label)
+    if weight is not None:
+        if not _non_static_mode():
+            check_variable_and_dtype(weight, 'weight', ['float32', 'float64'],
+                                     'multi_margin_loss')
+        if not (input.shape[0] == weight.shape[0]):
+            raise ValueError("The weight's shape is wrong ")
+
+        weight = weight.reshape((-1, 1))
+        loss = paddle.mean(paddle.pow(
+            paddle.clip(weight * (margin + index_sample - input), min=0.0), p),
+                           axis=1) - margin**p / input.shape[1]
+    else:
+        loss = paddle.mean(paddle.pow(
+            paddle.clip(margin + index_sample - input, min=0.0), p),
+                           axis=1) - margin**p / input.shape[1]
+
+    if reduction == 'mean':
+        return paddle.mean(loss, name=name)
+    elif reduction == 'sum':
+        return paddle.sum(loss, name=name)
+    elif reduction == 'none':
+        return loss
+
+
 def soft_margin_loss(input, label, reduction='mean', name=None):
     """
     The API measures the soft margin loss between input predictions ``input``
