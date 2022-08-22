@@ -343,6 +343,34 @@ bool IsCompiledWithDIST() {
 #endif
 }
 
+struct iinfo {
+    iinfo(const framework::proto::VarType::Type& type) { 
+        switch (type) {
+        case framework::proto::VarType::INT16:
+          min = std::numeric_limits<int16_t>::min();
+          break;
+        case framework::proto::VarType::INT32:
+          min = std::numeric_limits<int32_t>::min();
+          break;
+        case framework::proto::VarType::INT64:
+          min = std::numeric_limits<int64_t>::min();
+          break;
+        case framework::proto::VarType::INT8:
+          min = std::numeric_limits<int8_t>::min();
+          break;
+        case framework::proto::VarType::UINT8:
+          min = std::numeric_limits<uint8_t>::min();
+          break;
+        default:
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "the argument of paddle.iinfo can only be paddle.int8 ...");
+          break;
+        }
+    }
+
+    int64_t min;
+};
+
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
   // NOTE(zjl): PyObject_GetAttrString would return nullptr when attr_name
   // is not inside obj, but it would also set the error flag of Python.
@@ -551,6 +579,10 @@ PYBIND11_MODULE(core_noavx, m) {
   using namespace paddle::framework;  // NOLINT
 
   BindException(&m);
+
+  py::class_<iinfo>(m, "iinfo")
+      .def(py::init<const framework::proto::VarType::Type &>())
+      .def_readonly("min", &iinfo::min);
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
