@@ -2347,14 +2347,14 @@
     func : squared_l2_norm_grad
 
 - backward_api : squeeze_double_grad
-  forward : squeeze_grad(Tensor xshape, Tensor grad_out, int[] axes) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, int[] axes)
+  forward : squeeze_grad(Tensor xshape, Tensor grad_out, IntArray axes) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray axes)
   output : Tensor(grad_out_grad)
   invoke: squeeze(grad_x_grad, axes)
 
 - backward_api : squeeze_grad
-  forward : squeeze(Tensor x, int[] axes) -> Tensor(out), Tensor(xshape)
-  args : (Tensor xshape, Tensor out_grad, int[] axes)
+  forward : squeeze(Tensor x, IntArray axes) -> Tensor(out), Tensor(xshape)
+  args : (Tensor xshape, Tensor out_grad, IntArray axes)
   output : Tensor(x_grad)
   infer_meta :
     func : KernelWithXShapeInferMeta
@@ -2627,6 +2627,18 @@
     param : [out_grad]
   kernel :
     func : tril_triu_grad
+
+- backward_api : trilinear_interp_grad
+  forward : trilinear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : trilinear_interp_grad
+    data_type : output_grad
 
 - backward_api : unbind_grad
   forward : unbind (Tensor input, int axis) -> Tensor[](out)
