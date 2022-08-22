@@ -84,14 +84,14 @@ static void getDataPointer(const phi::DenseTensor& tensorData,
 }
 
 template <typename T>
-static void getOutDataPointer(const phi::DenseTensor& tensorData,
+static void getOutDataPointer(phi::DenseTensor* tensorData,
                               Tensor* out,
                               T** result,
                               const framework::ExecutionContext& ctx) {
-  if (tensorData.dtype() == paddle::experimental::DataType::FLOAT16) {
+  if (tensorData->dtype() == paddle::experimental::DataType::FLOAT16) {
     *result = out->template mutable_data<T>(ctx.GetPlace());
   } else {
-    *result = tensorData.template mutable_data<T>(ctx.GetPlace());
+    *result = tensorData->template mutable_data<T>(ctx.GetPlace());
   }
 }
 
@@ -267,7 +267,7 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
     const phi::DenseTensorMeta meta_param(
         paddle::experimental::DataType::FLOAT32, param_out.dims());
     xpu_param_out.set_meta(meta_param);
-    getOutDataPointer(param_out, &xpu_param_out, &param_out_ptr, ctx);
+    getOutDataPointer(&param_out, &xpu_param_out, &param_out_ptr, ctx);
 
     auto& mom1_out = GET_DATA_SAFELY(
         ctx.Output<LoDTensor>("Moment1Out"), "Output", "Moment1Out", "Adam");
@@ -276,7 +276,7 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
     const phi::DenseTensorMeta meta_mom1(
         paddle::experimental::DataType::FLOAT32, mom1_out.dims());
     xpu_mom1_out.set_meta(meta_mom1);
-    getOutDataPointer(mom1_out, &xpu_mom1_out, &mom1_out_ptr, ctx);
+    getOutDataPointer(&mom1_out, &xpu_mom1_out, &mom1_out_ptr, ctx);
 
     auto& mom2_out = GET_DATA_SAFELY(
         ctx.Output<LoDTensor>("Moment2Out"), "Output", "Moment2Out", "Adam");
@@ -285,7 +285,7 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
     const phi::DenseTensorMeta meta_mom2(
         paddle::experimental::DataType::FLOAT32, mom2_out.dims());
     xpu_mom2_out.set_meta(meta_mom2);
-    getOutDataPointer(mom2_out, &xpu_mom2_out, &mom2_out_ptr, ctx);
+    getOutDataPointer(&mom2_out, &xpu_mom2_out, &mom2_out_ptr, ctx);
 
     auto* beta1_pow_out = ctx.Output<LoDTensor>("Beta1PowOut");
     auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
