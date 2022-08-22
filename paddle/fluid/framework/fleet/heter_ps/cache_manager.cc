@@ -38,6 +38,7 @@ void CacheManager::init(int thread_num, int batch_sz, int worker_num) {
   worker_num_ = worker_num;
   clear_sign2fids();
   dev_feasign_cnts_.resize(worker_num, nullptr);
+  //prepare_merge_grad_thread_pools_.resize(worker_num, nullptr);
   for (int i = 0; i < worker_num; i++) {
     dev_feasign_cnts_[i] = std::make_shared<std::atomic<int>>(0);
   }
@@ -53,6 +54,10 @@ void CacheManager::init(int thread_num, int batch_sz, int worker_num) {
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&stream));
   }
   prepare_merge_grad_threads_.resize(worker_num);
+  //prepare_merge_grad_thread_pools_.resize(worker_num, nullptr);
+  //for (int i = 0; i < worker_num; i++) {
+  //  prepare_merge_grad_thread_pools_[i] = std::make_shared<ParallelThreadPool>(2);
+  //}
 #endif
 
   if (FLAGS_dump_cache_manager) {
@@ -525,110 +530,105 @@ void CacheManager::prepare_merge_grad(int dev_id) {
         current_batch_fidseq_->d_cache_bfids[worker_id]->ptr(),
         cache_bfid_size * sizeof(int));
     xpu_wait(0);
- 
-    std::mutex bfid_buckets_mtx;
-    std::vector<int> cache_bfid_resort_indexes(cache_bfid_size);
-    std::vector<int> cache_bfid_lod(current_batch_fidseq_->h_fidseq_bucket.size() + 1, 0);
-    std::vector<int> bfid_bucket_sizes(current_batch_fidseq_->h_fidseq_bucket.size(), 0);
-    std::vector<std::vector<int>> bfid_buckets(current_batch_fidseq_->h_fidseq_bucket.size());
+    
+    //timeline.Pause();
+    //total_time += timeline.ElapsedSec();
+    //time_ss << ",copy_to_cpu:" << timeline.ElapsedSec();
+    //timeline.Start();
 
-    int thread_num = 24;
-    std::vector<int> bfid_counts(thread_num, 0);
-    std::vector<std::thread> resort_threads(thread_num);
-    ThreadBarrier resort_barrier(thread_num);
-    for (int i = 0; i < thread_num; i++) {
-      resort_threads[i] = std::thread([&, this] (int tid) {
-        int mean_thread_data_size = (cache_bfid_size / thread_num) + 
-                        ((cache_bfid_size % thread_num) > 0 ? 1 : 0);
-        int begin_offset = mean_thread_data_size * tid;
-        int end_offset = mean_thread_data_size * (tid + 1);
-        end_offset = end_offset <= cache_bfid_size ? end_offset : cache_bfid_size;
+    std::vector<int> bfid_uniq_count(current_batch_fidseq_->h_fidseq_bucket.size(), 0);
+    for (int i = 0; i < cache_bfid_size; i++) {
+      PADDLE_ENFORCE_LT(h_cache_bfids[i], (int)bfid_uniq_count.size(),
+                            platform::errors::External("error bfid"));
+      bfid_uniq_count[h_cache_bfids[i]]++;
+    } 
 
-        std::unordered_map<int, std::vector<int>> thread_bfid_buckets;
-        for (int j = begin_offset; j < end_offset; j++) {
-          if (h_cache_bfids[j] < 0) {
-            continue;
-          }
-          if (thread_bfid_buckets.find(h_cache_bfids[j]) == thread_bfid_buckets.end()) {
-            thread_bfid_buckets[h_cache_bfids[j]] = std::vector<int>();
-          }
-          thread_bfid_buckets[h_cache_bfids[j]].push_back(j);
-        }
-        bfid_buckets_mtx.lock();
-        for (auto iter = thread_bfid_buckets.begin(); iter != thread_bfid_buckets.end(); iter++) {
-          bfid_buckets[iter->first].insert(
-                    bfid_buckets[iter->first].end(), iter->second.begin(), iter->second.end());
-        }
-        bfid_buckets_mtx.unlock();
-        resort_barrier.wait();
+    //timeline.Pause();
+    //total_time += timeline.ElapsedSec();
+    //time_ss << ",bfid_uniq_count:" << timeline.ElapsedSec();
+    //timeline.Start();
 
-        mean_thread_data_size = (bfid_buckets.size() / thread_num) +
-                    ((bfid_buckets.size() % thread_num) > 0 ? 1 : 0);
-        begin_offset = mean_thread_data_size * tid;
-        end_offset = mean_thread_data_size * (tid + 1);
-        end_offset = end_offset <= (int)bfid_buckets.size() ? end_offset : (int)bfid_buckets.size();
-        bfid_counts[tid] = 0;
-        for (int j = begin_offset; j < end_offset; j++) {
-          bfid_counts[tid] += bfid_buckets[j].size();
-          bfid_bucket_sizes[j] = bfid_buckets[j].size();
-        }
-        resort_barrier.wait();
-
-        int copy_begin_pos = 0;
-        for (int j = 0; j < tid; j++) {
-          copy_begin_pos += bfid_counts[j];
-        }
-        
-        for (int j = begin_offset; j < end_offset; j++) {
-          if (j == begin_offset) {
-            cache_bfid_lod[j+1] = copy_begin_pos + bfid_buckets[j].size();
-          } else {
-            cache_bfid_lod[j+1] = cache_bfid_lod[j] + bfid_buckets[j].size();
-          }
-        }
-
-        int total_copy_size = 0;
-        for (int j = begin_offset; j < end_offset; j++) {
-          int copy_size = bfid_buckets[j].size();
-          PADDLE_ENFORCE_LE(copy_begin_pos + total_copy_size + copy_size, cache_bfid_resort_indexes.size(),
-                                                         platform::errors::External("may error hadppened"));
-          memcpy(&(cache_bfid_resort_indexes[0]) + copy_begin_pos + total_copy_size, 
-                                     &(bfid_buckets[j][0]), copy_size * sizeof(int));
-          total_copy_size += copy_size;
-        }
-        //VLOG(0) << "prepare_merge_grad, dev:" << dev_id
-        //        << ", thread:" << tid
-        //        << ", offset:[" << begin_offset << "," << end_offset << ")" 
-        //        << ", len:" << (end_offset - begin_offset) << "/" << bfid_buckets.size()
-        //        << ", buffer_size:" << cache_bfid_resort_indexes.size()
-        //        << ", total_copy:" << total_copy_size;
-      }, i);
+    std::vector<int> bfid_uniq_lod(bfid_uniq_count.size() + 1, 0);
+    for (int i = 0; i < (int)bfid_uniq_count.size(); i++) {
+      bfid_uniq_lod[i + 1] = bfid_uniq_lod[i] + bfid_uniq_count[i];
     }
-    for (auto & thrd : resort_threads) {
-      thrd.join();
+
+    //timeline.Pause();
+    //total_time += timeline.ElapsedSec();
+    //time_ss << ",sum-lod:" << timeline.ElapsedSec();
+    //timeline.Start();
+
+    // multi-thread impl
+    //int thread_num = prepare_merge_grad_thread_pools_[worker_id]->get_thread_num();
+    //std::vector<float> thread_time_cost(thread_num);
+    //std::vector<int> bfid_out_buffer(cache_bfid_size);
+    //std::atomic<int> bfid_uniq_offset[current_batch_fidseq_->h_fidseq_bucket.size()] = {};
+    //auto work_func = [&, this] (int tid) {
+    //    platform::Timer sub_timeline;
+    //    sub_timeline.Start();
+
+    //    int mean_data_len = cache_bfid_size / thread_num;
+    //    mean_data_len = cache_bfid_size % thread_num == 0 ? mean_data_len : mean_data_len + 1;
+    //    int begin = mean_data_len * tid;
+    //    int end = mean_data_len * (tid + 1);
+    //    end = end <= cache_bfid_size ? end : cache_bfid_size;
+
+    //    int bfid = 0;
+    //    int pos = 0;
+    //    for (int j = begin; j < end; j++) {
+    //      bfid = h_cache_bfids[j];
+    //      pos = bfid_uniq_offset[bfid].fetch_add(1);
+    //      pos += bfid_uniq_lod[bfid];
+    //      bfid_out_buffer[pos] = j;
+    //    }
+
+    //    sub_timeline.Pause();
+    //    thread_time_cost[tid] = sub_timeline.ElapsedSec();
+    //};
+    //prepare_merge_grad_thread_pools_[worker_id]->set_task(work_func);
+    //prepare_merge_grad_thread_pools_[worker_id]->wait_task();
+    //for (int i = 0; i < thread_num; i++) {
+    //  time_ss << "|tid:" << i << ":" << thread_time_cost[i] << ";";
+    //}
+
+    std::vector<int> bfid_out_buffer(cache_bfid_size);
+    std::vector<int> bfid_uniq_offset(current_batch_fidseq_->h_fidseq_bucket.size(), 0);
+    int tmp_bfid = 0, tmp_pos = 0;
+    for (int i = 0; i < cache_bfid_size; i++) {
+      tmp_bfid = h_cache_bfids[i];
+      tmp_pos = bfid_uniq_offset[tmp_bfid]++;
+      tmp_pos += bfid_uniq_lod[tmp_bfid];
+      bfid_out_buffer[tmp_pos] = i;
     }
-  
+
+    //timeline.Pause();
+    //total_time += timeline.ElapsedSec();
+    //time_ss << ",sort-bfid-pairs-2:" << timeline.ElapsedSec();
+    //timeline.Start();
+
     current_batch_fidseq_->d_cache_bfid_resort_indexes[worker_id] = memory::Alloc(place, 
-                                          cache_bfid_resort_indexes.size() * sizeof(int));
+                                                              cache_bfid_size * sizeof(int));
     memory::Copy(place,
         current_batch_fidseq_->d_cache_bfid_resort_indexes[worker_id]->ptr(),
         cpu_place,
-        &(cache_bfid_resort_indexes[0]),
-        cache_bfid_resort_indexes.size() * sizeof(int));
+        &(bfid_out_buffer[0]),
+        cache_bfid_size * sizeof(int));
+
     current_batch_fidseq_->d_cache_bfid_lods[worker_id] = memory::Alloc(place,
-                                                 cache_bfid_lod.size() * sizeof(int));
+                                                 bfid_uniq_lod.size() * sizeof(int));
     memory::Copy(place,
         current_batch_fidseq_->d_cache_bfid_lods[worker_id]->ptr(),
         cpu_place,
-        &(cache_bfid_lod[0]),
-        cache_bfid_lod.size() * sizeof(int));
-    current_batch_fidseq_->h_cache_bfid_resort_indexes[worker_id] = std::move(cache_bfid_resort_indexes);
-    current_batch_fidseq_->h_cache_bfid_lods[worker_id] = std::move(cache_bfid_lod);
+        &(bfid_uniq_lod[0]),
+        bfid_uniq_lod.size() * sizeof(int));
+
+    current_batch_fidseq_->h_cache_bfid_resort_indexes[worker_id] = std::move(bfid_out_buffer);
+    current_batch_fidseq_->h_cache_bfid_lods[worker_id] = std::move(bfid_uniq_lod);
     xpu_wait(0);
 
     //timeline.Pause();
     //total_time += timeline.ElapsedSec();
-    //time_ss << ",prepare_merge_grad:" << timeline.ElapsedSec();
+    //time_ss << ",copy_to_xpu:" << timeline.ElapsedSec();
     //VLOG(0) << "prepare_merge_grad time cost:" << total_time
     //      << " sec, detail:" << time_ss.str();
 

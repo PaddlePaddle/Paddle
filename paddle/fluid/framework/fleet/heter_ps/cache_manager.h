@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/thread_barrier.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cache_manager_kernel.h"
+#include "paddle/fluid/framework/fleet/heter_ps/parallel_thread_pool.h"
 
 namespace paddle {
 namespace framework {
@@ -125,6 +126,7 @@ class CacheManager {
       batch_fidseq_proc_thread_.join();
     }
 
+    //prepare_merge_grad_thread_pools_.clear();
     for (auto & thrd : prepare_merge_grad_threads_) {
       if (thrd.joinable()) {
         thrd.join();
@@ -209,6 +211,7 @@ class CacheManager {
   std::shared_ptr<paddle::framework::ChannelObject<std::string>> debug_data_chan_ = nullptr;
 
   std::vector<std::thread> prepare_merge_grad_threads_;
+  //std::vector<std::shared_ptr<ParallelThreadPool>> prepare_merge_grad_thread_pools_;
 #endif
 };
 

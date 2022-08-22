@@ -695,15 +695,18 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   if (resource_->total_device() > 1) {
     //timeline.Start();
+
     //sync_stream(stream);
     int bucket_mean_len = cache_mgr_->get_device_bucket_mean_len();
     auto comm = platform::BKCLCommContext::Instance().Get(0, place);
+
     //timeline.Pause();
     //total_time += timeline.ElapsedSec();
     //time_ss << ",wait-before-allgather:" << timeline.ElapsedSec();
-
     //timeline.Start();
+
     bkcl_all_gather(comm->comm(), d_fidseq_bucket_vals_ptr, bucket_mean_len * sizeof(ValType) / sizeof(float), d_all_fidseq_bucket_vals_ptr, BKCL_FLOAT, stream);
+
     //timeline.Pause();
     //total_time += timeline.ElapsedSec();
     //time_ss << ",allgather:" << timeline.ElapsedSec();
@@ -715,17 +718,20 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   // fill to d_val
   //timeline.Start();
+
   BfidType* d_bfids_ptr = nullptr;
   int bfid_len = 0;
   cache_mgr_->get_bfidseq(dev_id, &d_bfids_ptr, &bfid_len);
   PADDLE_ENFORCE_EQ(bfid_len, len);
+
   //timeline.Pause();
   //total_time += timeline.ElapsedSec();
   //time_ss << ",get_bfidseq:" << timeline.ElapsedSec();
-
   //timeline.Start();
+
   heter_comm_kernel_->fill_dvals_with_bfid(d_all_fidseq_bucket_vals_ptr, d_vals, d_bfids_ptr, len, stream);
   sync_stream(stream);
+
   //timeline.Pause();
   //total_time += timeline.ElapsedSec();
   //time_ss << ",fill_dvals_with_bfid:" << timeline.ElapsedSec();
@@ -984,20 +990,15 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   AnyDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(dev_num, 0);
 
-  // platform::Timer timeline;
-  // std::stringstream time_ss;
-  // time_ss << "dev:" << dev_num << ",key_len:" << len;
-  // double total_time = 0.0;
-  // timeline.Start();
+  //platform::Timer timeline;
+  //std::stringstream time_ss;
+  //time_ss << "dev:" << dev_num << ",key_len:" << len;
+  //double total_time = 0.0;
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
 
   typedef int BfidType;
   typedef uint32_t FidType;
-
-  //timeline.Pause();
-  //total_time += timeline.ElapsedSec();
-  //time_ss << ",init:" << timeline.ElapsedSec();
 
   // merge grad
   //timeline.Start();
@@ -1014,7 +1015,11 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   cache_mgr_->get_bfidseq(dev_id, &d_bfids_ptr, &bfid_len);
   PADDLE_ENFORCE_EQ(bfid_len, len);
 
+  //timeline.Pause();
+  //total_time += timeline.ElapsedSec();
+  //time_ss << ",alloc_merge_grad:" << timeline.ElapsedSec();
   //timeline.Start();
+
   // for new merge-grad impl
   int * fidseq_grad_idxs = nullptr;
   int fidseq_grad_idx_len = 0;
@@ -1025,6 +1030,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   PADDLE_ENFORCE_EQ(fidseq_grad_idx_len, len);
   PADDLE_ENFORCE_EQ(fidseq_lod_len, all_fidseq_bucket_len + 1);
   // for new merge-grad impl end
+
   //timeline.Pause();
   //total_time += timeline.ElapsedSec();
   //time_ss << ",get_merge_grad_params:" << timeline.ElapsedSec();
@@ -1044,21 +1050,17 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   //timeline.Pause();
   //total_time += timeline.ElapsedSec();
   //time_ss << ",merge_grad:" << timeline.ElapsedSec();
+  //timeline.Start();
 
   // all_gather
-  //timeline.Start();
   auto d_all_grads = memory::Alloc(place, all_fidseq_bucket_len * sizeof(GradType));
   GradType* d_all_grads_ptr = reinterpret_cast<GradType*>(d_all_grads->ptr());
-
-  // sync_stream(stream);
-  // timeline.Start();
-
   auto d_all_grads_after_gather = memory::Alloc(place,
       all_fidseq_bucket_len * resource_->total_device() * sizeof(GradType));
   GradType* d_all_grads_after_gather_ptr =
       reinterpret_cast<GradType*>(d_all_grads_after_gather->ptr());
-
   if (resource_->total_device() > 1) {
+    //sync_stream(stream);
     auto comm = platform::BKCLCommContext::Instance().Get(0, place);
     VLOG(3) << "heter comm inl push sparse all gather start";
     bkcl_all_gather(comm->comm(), d_all_fidseq_bucket_grads_ptr,
@@ -1076,6 +1078,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 
   // update
   //timeline.Start();
+
   int bucket_mean_len = cache_mgr_->get_device_bucket_mean_len();
   int bucket_size = cache_mgr_->get_host_all_fidseq_bucket_sizes()[dev_num];
   tables_[dev_num]->update(place, d_all_fidseq_bucket_ptr + dev_num * bucket_mean_len,
@@ -1083,11 +1086,12 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 
   VLOG(3) << "heter comm inl push sparse update finish";
   sync_stream(stream);
+
   // timeline.Pause();
   // total_time += timeline.ElapsedSec();
   // time_ss << ",update:" << timeline.ElapsedSec();
 
-  // VLOG(0) << "push_sparse time cost:" << total_time
+  //VLOG(0) << "push_sparse time cost:" << total_time
   //        << " sec, detail:" << time_ss.str();
 #else
   int total_device = resource_->total_device();
