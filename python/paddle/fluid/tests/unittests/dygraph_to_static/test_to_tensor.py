@@ -119,6 +119,32 @@ class TestStatic(unittest.TestCase):
             exe.run(starup_prog)
             res = exe.run(fetch_list=[x, out])
 
+    def test_complex_var(self):
+        paddle.enable_static()
+        main_prog = Program()
+        starup_prog = Program()
+        with program_guard(main_prog, starup_prog):
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            else:
+                place = paddle.CPUPlace()
+
+            v1 = paddle.to_tensor([1], dtype='int32', stop_gradient=True)
+            v2 = paddle.to_tensor([7.0], dtype='float32', stop_gradient=True)
+            x = paddle.to_tensor([[v1, 1], [2, v2]],
+                                 dtype='float64',
+                                 stop_gradient=False,
+                                 place=place)
+
+            out = paddle.static.nn.fc(x, 1)
+
+            sgd = paddle.optimizer.SGD()
+            sgd.minimize(paddle.mean(out))
+
+            exe = paddle.static.Executor()
+            exe.run(starup_prog)
+            res = exe.run(fetch_list=[x, out])
+
 
 if __name__ == '__main__':
     unittest.main()
