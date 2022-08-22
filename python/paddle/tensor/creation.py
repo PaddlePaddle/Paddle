@@ -272,16 +272,6 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
 
 
 def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
-    place = _get_paddle_place(place)
-    if place is None:
-        place = _current_expected_place()
-    elif not isinstance(
-            place,
-        (core.Place, core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace,
-         core.NPUPlace, core.XPUPlace, core.MLUPlace, core.CustomPlace)):
-        raise ValueError(
-            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace, paddle.MLUPlace, paddle.CustomPlace"
-        )
 
     if not isinstance(data, np.ndarray):
 
@@ -360,7 +350,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
                              stop_gradient=stop_gradient)
 
 
-def _to_tensor_static(data, dtype=None, stop_grandient=None):
+def _to_tensor_static(data, dtype=None, stop_gradient=None):
 
     if isinstance(data, Variable) and (dtype is None or dtype == data.dtype):
         output = data
@@ -387,8 +377,7 @@ def _to_tensor_static(data, dtype=None, stop_grandient=None):
                     data = paddle.squeeze(data, -1)
 
         output = assign(data)
-        if target_dtype is not None and convert_dtype(
-                output.dtype) != target_dtype:
+        if convert_dtype(output.dtype) != target_dtype:
             output = paddle.cast(output, target_dtype)
 
     output.stop_gradient = stop_gradient
@@ -454,15 +443,15 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         #        [[(1+1j), (2+0j)],
         #         [(3+2j), (4+0j)]])
     """
+    place = _get_paddle_place(place)
+    if place is None:
+        place = _current_expected_place()
+
     if _non_static_mode():
         return _to_tensor_non_static(data, dtype, place, stop_gradient)
 
     # call assign for static graph
     else:
-        place = _get_paddle_place(place)
-        if place is None:
-            place = _current_expected_place()
-
         re_exp = re.compile(r'[(](.*+)[)]', re.S)
         place_str = re.findall(re_exp, str(place))[0]
 
