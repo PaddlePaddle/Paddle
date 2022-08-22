@@ -396,7 +396,7 @@ struct finfo {
           bits = 32;
           eps = std::numeric_limits<float>::epsilon();
           max = std::numeric_limits<float>::max();
-          min = std::numeric_limits<float>::min();
+          min = std::numeric_limits<float>::lowest();
           // smallest_normal = 
           // tiny = 
           resolution = std::pow(10, -std::numeric_limits<float>::digits10);
