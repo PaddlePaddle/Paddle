@@ -14,11 +14,14 @@
 
 #include "paddle/phi/kernels/dist_kernel.h"
 
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/p_norm_kernel.h"
 
 namespace phi {
@@ -26,39 +29,56 @@ namespace phi {
 #define FULL_MASK 0xffffffff
 
 template <typename T>
-__global__ void DeviceReduceSumZeroWithSubtract(const T* x,
-                                                const T* y,
-                                                T* out,
-                                                int64_t N) {
+struct ZeroOrderFunctor {
+ public:
+  __device__ explicit T operator()(const T& x, const T& y) const {
+    return abs(static_cast<T>(static_cast<double>(x - y) != 0));
+  }
+};
+
+template <typename T>
+struct OtherOrderFunctor {
+  explicit OtherOrderFunctor(const T& p_order) : p_order_(p_order) {}
+  __device__ explicit T operator()(const T& x, const T& y) const {
+    return static_cast<T>(pow(abs(x - y), p_order_));
+  }
+
+ private:
+  T p_order_;
+};
+
+template <typename T>
+struct UnsignedPowFunctor {
+  HOSTDEVICE explicit inline UnsignedPowFunctor(float porder) {
+    this->porder = porder;
+  }
+  HOSTDEVICE inline T operator()(const T x) const {
+    return static_cast<T>(pow(abs(x), porder));
+  }
+  T porder;
+};
+
+template <typename T, typename Functor>
+__global__ void ReduceSumWithSubtract(
+    const T* x, const T* y, T* out, int64_t N, Functor func) {
   T sum_val = 0;
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    sum_val += abs(static_cast<T>(static_cast<double>(x[i] - y[i]) != 0));
+    sum_val += func(x[i], y[i]);
   }
 
   __syncthreads();
   sum_val = phi::funcs::blockReduceSum<T>(sum_val, FULL_MASK);
-  if (threadIdx.x == 0) out[blockIdx.x] = sum_val;
-}
-
-template <typename T>
-__global__ void DeviceReduceSumZeroFinal(const T* x, T* out, int64_t N) {
-  T sum_val = 0;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
-    sum_val += x[i];
+  if (threadIdx.x == 0) {
+    out[blockIdx.x] = sum_val;
   }
-
-  __syncthreads();
-  sum_val = phi::funcs::blockReduceSum<T>(sum_val, FULL_MASK);
-  if (threadIdx.x == 0) out[blockIdx.x] = sum_val;
 }
 
 template <typename T>
-__global__ void DeviceReduceMaxWithSubtract(const T* x,
-                                            const T* y,
-                                            T* out,
-                                            int64_t N) {
+__global__ void ReduceMaxWithSubtract(const T* x,
+                                      const T* y,
+                                      T* out,
+                                      int64_t N) {
   T max_val = -1e10f;
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
@@ -67,26 +87,16 @@ __global__ void DeviceReduceMaxWithSubtract(const T* x,
 
   __syncthreads();
   max_val = phi::funcs::blockReduceMax<T>(max_val, FULL_MASK);
-  if (threadIdx.x == 0) out[blockIdx.x] = max_val;
-}
-
-template <typename T>
-__global__ void DeviceReduceMaxFinal(const T* x, T* out, int64_t N) {
-  T max_val = -1e10f;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
-    max_val = max(max_val, abs(x[i]));
+  if (threadIdx.x == 0) {
+    out[blockIdx.x] = max_val;
   }
-  __syncthreads();
-  max_val = phi::funcs::blockReduceMax<T>(max_val, FULL_MASK);
-  if (threadIdx.x == 0) out[blockIdx.x] = max_val;
 }
 
 template <typename T>
-__global__ void DeviceReduceMinWithSubtract(const T* x,
-                                            const T* y,
-                                            T* out,
-                                            int64_t N) {
+__global__ void ReduceMinWithSubtract(const T* x,
+                                      const T* y,
+                                      T* out,
+                                      int64_t N) {
   T min_val = 1e10f;
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
@@ -95,49 +105,9 @@ __global__ void DeviceReduceMinWithSubtract(const T* x,
 
   __syncthreads();
   min_val = phi::funcs::blockReduceMin(min_val, FULL_MASK);
-  if (threadIdx.x == 0) out[blockIdx.x] = min_val;
-}
-
-template <typename T>
-__global__ void DeviceReduceMinFinal(const T* x, T* out, int64_t N) {
-  T min_val = 1e10f;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
-    min_val = min(min_val, abs(x[i]));
+  if (threadIdx.x == 0) {
+    out[blockIdx.x] = min_val;
   }
-  __syncthreads();
-  min_val = phi::funcs::blockReduceMin(min_val, FULL_MASK);
-  if (threadIdx.x == 0) out[blockIdx.x] = min_val;
-}
-
-template <typename T>
-__global__ void DeviceReduceSumPOrderWithSubtract(
-    const T* x, const T* y, T* out, T p_order, int64_t N) {
-  T sum_val = 0;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
-    sum_val += static_cast<T>(pow(abs(x[i] - y[i]), p_order));
-  }
-
-  __syncthreads();
-  sum_val = phi::funcs::blockReduceSum<T>(sum_val, FULL_MASK);
-  if (threadIdx.x == 0) out[blockIdx.x] = sum_val;
-}
-
-template <typename T>
-__global__ void DeviceReduceSumPOrderFinal(const T* x,
-                                           T* out,
-                                           T p_order,
-                                           int64_t N) {
-  T sum_val = 0;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
-    sum_val += x[i];
-  }
-
-  __syncthreads();
-  sum_val = phi::funcs::blockReduceSum<T>(sum_val, FULL_MASK);
-  if (threadIdx.x == 0) out[blockIdx.x] = pow(sum_val, (1 / p_order));
 }
 
 template <typename T, typename Context>
@@ -152,41 +122,52 @@ void DistKernel(const Context& dev_ctx,
   T* o_ptr = dev_ctx.template Alloc<T>(out);
   auto stream = dev_ctx.stream();
 
-  if (x.dims() == y.dims()) {  // same shape
+  auto xdim = x.dims();
+  if (xdim == y.dims()) {  // same shape
     auto n = x.numel();
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n);
     intermediate.Resize(phi::make_ddim({config.block_per_grid.x}));
     T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
 
+    std::vector<int64_t> axis_dims = {static_cast<int64_t>(-1)};
+    std::vector<int> reduce_axis =
+        funcs::details::GetReduceDim(axis_dims, xdim.size(), true);
+
     if (p == 0) {
-      DeviceReduceSumZeroWithSubtract<T>
+      ReduceSumWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-              x_ptr, y_ptr, i_ptr, n);
-      DeviceReduceSumZeroFinal<T><<<1, config.thread_per_block.x, 0, stream>>>(
-          i_ptr, o_ptr, config.block_per_grid.x);
+              x_ptr, y_ptr, i_ptr, n, ZeroOrderFunctor<T>());
+      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
 
     } else if (p == INFINITY) {
-      DeviceReduceMaxWithSubtract<T>
+      ReduceMaxWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n);
-      DeviceReduceMaxFinal<T><<<1, config.thread_per_block.x, 0, stream>>>(
-          i_ptr, o_ptr, config.block_per_grid.x);
+      phi::funcs::ReduceKernel<T, T, kps::MaxFunctor, kps::IdentityFunctor<T>>(
+          dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
 
     } else if (p == -INFINITY) {
-      DeviceReduceMinWithSubtract<T>
+      ReduceMinWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n);
-      DeviceReduceMinFinal<T><<<1, config.thread_per_block.x, 0, stream>>>(
-          i_ptr, o_ptr, config.block_per_grid.x);
+
+      phi::funcs::ReduceKernel<T, T, kps::MinFunctor, kps::IdentityFunctor<T>>(
+          dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
 
     } else {
       T p_order = static_cast<T>(p);
-      DeviceReduceSumPOrderWithSubtract<T>
+      ReduceSumWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-              x_ptr, y_ptr, i_ptr, p_order, n);
-      DeviceReduceSumPOrderFinal<T>
-          <<<1, config.thread_per_block.x, 0, stream>>>(
-              i_ptr, o_ptr, p_order, config.block_per_grid.x);
+              x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T>(p_order));
+      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
+
+      const DenseTensor* tmp_norm = out;
+      std::vector<const DenseTensor*> ins = {tmp_norm};
+      std::vector<DenseTensor*> outs = {out};
+      phi::funcs::ElementwiseKernel<T>(
+          dev_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / p_order));
     }
 
   } else {
