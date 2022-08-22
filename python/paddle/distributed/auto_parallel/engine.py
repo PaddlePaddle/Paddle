@@ -442,13 +442,6 @@ class Engine:
             train_logs = {"epoch: {:d} ": epoch}
             for step, _ in enumerate(train_dataloader):
 
-                if len(profile_dir) and step == 30:
-                    from paddle.fluid import core
-                    core.nvprof_start()
-                    core.nvprof_enable_record_event()
-                if len(profile_dir) and step >= 30 and step < 40:
-                    core.nvprof_nvtx_push(str(step))
-
                 outs = self._executor.run(self.main_program,
                                           fetch_list=fetch_list,
                                           use_program_cache=use_cache,
@@ -468,8 +461,6 @@ class Engine:
                 # logger
                 string = '[train] ' + ''.join(list(train_logs.keys()))
                 self._logger.info(string.format(*list(train_logs.values())))
-
-                start_time = time.time()
 
     def evaluate(self,
                  eval_data,
