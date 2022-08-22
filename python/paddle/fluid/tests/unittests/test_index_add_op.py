@@ -368,12 +368,6 @@ class TestIndexAddAPI(unittest.TestCase):
 
             self.assertRaises(ValueError, test_add_value_shape)
 
-    def config(self):
-        self.axis = 0
-        self.x_shape = (10, 10)
-        self.index_size = 4
-        self.add_value_shape = (10, 4)
-
 
 if __name__ == '__main__':
     unittest.main()
