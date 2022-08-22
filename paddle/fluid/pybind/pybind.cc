@@ -348,6 +348,7 @@ bool IsCompiledWithDIST() {
 struct iinfo {
     int64_t min, max;
     int bits;
+    std::string dtype;
 
     iinfo(const framework::proto::VarType::Type& type) { 
         switch (type) {
@@ -355,35 +356,36 @@ struct iinfo {
           min = std::numeric_limits<int16_t>::min();
           max = std::numeric_limits<int16_t>::max();
           bits = 16;
+          dtype = "int16";
           break;
         case framework::proto::VarType::INT32:
           min = std::numeric_limits<int32_t>::min();
           max = std::numeric_limits<int32_t>::max();
           bits = 32;
+          dtype = "int32";
           break;
         case framework::proto::VarType::INT64:
           min = std::numeric_limits<int64_t>::min();
           max = std::numeric_limits<int64_t>::max();
           bits = 64;
+          dtype = "int64";
           break;
         case framework::proto::VarType::INT8:
           min = std::numeric_limits<int8_t>::min();
           max = std::numeric_limits<int8_t>::max();
           bits = 8;
+          dtype = "int8";
           break;
         case framework::proto::VarType::UINT8:
           min = std::numeric_limits<uint8_t>::min();
           max = std::numeric_limits<uint8_t>::max();
           bits = 8;
+          dtype = "uint8";
           break;
         default:
           PADDLE_THROW(platform::errors::InvalidArgument(
              "the argument of paddle.iinfo can only be "
              "paddle.int8, paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"));
-          // PADDLE_THROW(platform::errors::InvalidArgument(
-          //            "Invalid IpuStrategy option value type: %s, please check "
-          //            "input value for option: %s",
-          //            ));
           break;
         }
     }
@@ -394,7 +396,7 @@ struct finfo {
     int bits;
     long double eps, max, min, smallest_normal, tiny;
     double resolution;
-    // std::string dtype;
+    std::string dtype;
 
     finfo(const framework::proto::VarType::Type& type) { 
         switch (type) {
@@ -406,7 +408,7 @@ struct finfo {
           smallest_normal = std::numeric_limits<float>::min();
           tiny = smallest_normal;
           resolution = std::pow(10, -std::numeric_limits<float>::digits10);
-          // dtype = "float32";
+          dtype = "float32";
           break;
         case framework::proto::VarType::FP64:
           bits = 64;
@@ -416,12 +418,12 @@ struct finfo {
           smallest_normal = std::numeric_limits<double>::min();
           tiny = smallest_normal;
           resolution = std::pow(10, -std::numeric_limits<double>::digits10);
-          // dtype = "float32";
+          dtype = "float64";
           break;
-
         default:
-          //PADDLE_THROW(platform::errors::InvalidArgument(
-          //    "the argument of paddle.iinfo can only be paddle.int8 ..."));
+          PADDLE_THROW(platform::errors::InvalidArgument(
+             "the argument of paddle.finfo can only be "
+             "paddle.float32, paddle.float64"));
           break;
         }
     }
