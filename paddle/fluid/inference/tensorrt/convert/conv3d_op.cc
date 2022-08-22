@@ -114,6 +114,13 @@ void ConvertConv3d(TensorRTEngine* engine,
     nv_post_paddings.d[0] -= output_padding[0];
     nv_post_paddings.d[1] -= output_padding[1];
     nv_post_paddings.d[2] -= output_padding[2];
+
+    if (nv_post_paddings.d[0] < 0 || nv_post_paddings.d[1] < 0 ||
+        nv_post_paddings.d[2] < 0) {
+      PADDLE_THROW(platform::errors::Fatal(
+          "The value in conv3d_transpose's PostPadding should be >= 0."));
+    }
+
 #endif
   }
   layer->setPostPadding(nv_post_paddings);

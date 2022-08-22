@@ -148,6 +148,10 @@ void ConvertConv2d(TensorRTEngine* engine,
     nv_post_paddings.d[0] -= output_padding[0];
     nv_post_paddings.d[1] -= output_padding[1];
   }
+  if (nv_post_paddings.d[0] < 0 || nv_post_paddings.d[1] < 0) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "The value in conv2d_transpose's PostPadding should be >= 0."));
+  }
   layer->setPostPadding(nv_post_paddings);
 
   layer->setNbGroups(groups);
