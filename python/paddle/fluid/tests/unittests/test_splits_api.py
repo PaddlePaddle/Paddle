@@ -38,6 +38,11 @@ test_list = [
 class TestSplitsAPI(unittest.TestCase):
 
     def setUp(self):
+        self.rtol = 1e-5
+        self.atol = 1e-8
+        self.set_input()
+
+    def set_input(self):
         self.shape = [4, 5, 2]
         self.num_or_sections = 2
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('float64')
@@ -54,7 +59,7 @@ class TestSplitsAPI(unittest.TestCase):
                 res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
             out_ref = func_ref(func_type, self.x_np, self.num_or_sections)
             for n, p in zip(out_ref, res):
-                self.assertTrue(np.allclose(n, p))
+                np.testing.assert_allclose(n, p, rtol=self.rtol, atol=self.atol)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -63,7 +68,10 @@ class TestSplitsAPI(unittest.TestCase):
             out = func(x, self.num_or_sections)
             out_ref = func_ref(func_type, self.x_np, self.num_or_sections)
             for n, p in zip(out_ref, out):
-                self.assertTrue(np.allclose(n, p.numpy()))
+                np.testing.assert_allclose(n,
+                                           p.numpy(),
+                                           rtol=self.rtol,
+                                           atol=self.atol)
         paddle.enable_static()
 
 
@@ -72,7 +80,7 @@ class TestSplitsSections(TestSplitsAPI):
         Test num_or_sections which is a list and date type is float64.
     """
 
-    def setUp(self):
+    def set_input(self):
         self.shape = [6, 2, 4]
         self.num_or_sections = [2, 1, 3]
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('float64')
@@ -85,7 +93,7 @@ class TestSplitsFloat32(TestSplitsAPI):
         Test num_or_sections which is an integer and data type is float32.
     """
 
-    def setUp(self):
+    def set_input(self):
         self.shape = [2, 3, 4]
         self.num_or_sections = 2
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('float32')
@@ -98,7 +106,7 @@ class TestSplitsInt32(TestSplitsAPI):
         Test data type int32.
     """
 
-    def setUp(self):
+    def set_input(self):
         self.shape = [5, 1, 2]
         self.num_or_sections = 5
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('int32')
@@ -111,7 +119,7 @@ class TestSplitsInt64(TestSplitsAPI):
         Test data type int64.
     """
 
-    def setUp(self):
+    def set_input(self):
         self.shape = [4, 3, 2]
         self.num_or_sections = 2
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('int64')
@@ -124,7 +132,7 @@ class TestSplitsCPU(TestSplitsAPI):
         Test cpu place and num_or_sections which is a tuple.
     """
 
-    def setUp(self):
+    def set_input(self):
         self.shape = [8, 2, 3, 5]
         self.num_or_sections = (2, 3, 3)
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('float64')

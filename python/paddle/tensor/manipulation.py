@@ -1931,7 +1931,7 @@ def vsplit(x, num_or_sections, name=None):
     Split the input tensor into multiple sub-Tensors along the vertical axis, which is equivalent to ``paddle.split`` with ``axis=0``.
     
     Args:
-        x (Tensor): A Tensor whose dimension must be greater than 2. The data type is bool, float16, float32, float64, int32 or int64.
+        x (Tensor): A Tensor whose dimension must be greater than 1. The data type is bool, float16, float32, float64, uint8, int8, int32 or int64.
         num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections`` 
             indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
             If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
@@ -1940,7 +1940,7 @@ def vsplit(x, num_or_sections, name=None):
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
-        list(Tensor): The list of segmented Tensors.
+        list[Tensor], The list of segmented Tensors.
     
     Example:
         .. code-block:: python

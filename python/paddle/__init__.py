@@ -456,7 +456,7 @@ __all__ = [  # noqa
     'searchsorted',
     'bucketize',
     'split',
-    'vsplit'
+    'vsplit',
     'logical_and',
     'full_like',
     'less_than',
