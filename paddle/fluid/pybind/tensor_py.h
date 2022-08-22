@@ -367,10 +367,18 @@ void SetTensorFromPyArrayT(
     bool zero_copy) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
+  //VLOG(0) << "array.ndim()   " << array.ndim();
+  //VLOG(0) << "dims.size:   " << dims.size();
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int64_t>(array.shape()[i]));
   }
+  //VLOG(0) << "dims.size():   " << self->dims().size() << "\n";
+  //VLOG(0) << "dims[0]:   " << self->dims()[0] << "\n";
+  //VLOG(0) << "dims[1]:   " << self->dims()[1] << "\n";
   self->Resize(phi::make_ddim(dims));
+  //VLOG(0) << "dims.size():   " << self->dims().size() << "\n";
+  //VLOG(0) << "dims[0]:   " << self->dims()[0] << "\n";
+  //VLOG(0) << "dims[1]:   " << self->dims()[1] << "\n";
 
   if (paddle::platform::is_cpu_place(place)) {
     if (zero_copy) {

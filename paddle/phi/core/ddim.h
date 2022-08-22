@@ -62,7 +62,8 @@ class DDim {
  public:
   constexpr static int kMaxRank = 9;
 
-  DDim() : rank_(1) { dim_[0] = 0; }
+  // default shape is {}
+  DDim() : rank_(0) {}
 
   DDim(const DDim& ddim) : dim_() { CopyFrom(ddim); }
 

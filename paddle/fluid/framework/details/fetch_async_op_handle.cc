@@ -164,22 +164,28 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
     }
   }
 
-  bool find_first_dims = false;
-  for (auto *t : src_lodtensors) {
-    if (t->numel() && t->IsInitialized()) {
-      if (!find_first_dims) {
-        new_dim = t->dims();
-        find_first_dims = true;
-      } else {
-        new_dim[0] += t->dims()[0];
-      }
-    }
-  }
-
   // check src type,layout,dim,lod consistence
   for (size_t i = 1; i < src_lodtensors.size(); ++i) {
     CheckTensorAttrs(
         src_lodtensors[i], new_type, new_layout, check_dim, new_lod, offset_);
+  }
+
+  auto rank = src_lodtensors[0]->dims().size();
+  // for 0D tensor, can't concat eath tensor, stack them. for 1+D tensor, concat them
+  if (rank==0) {
+    new_dim = phi::make_ddim(std::vector<int>(src_lodtensors.size(), 1));
+  } else {
+    bool find_first_dims = false;
+    for (auto *t : src_lodtensors) {
+      if (t->numel() && t->IsInitialized()) {
+        if (!find_first_dims) {
+          new_dim = t->dims();
+          find_first_dims = true;
+        } else {
+          new_dim[0] += t->dims()[0];
+        }
+      }
+    }
   }
 
   // set dst tensor
@@ -194,10 +200,22 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
                                 src_lodtensors[0]->dtype());
   }
 
+  //framework::DDim temp_dim;
+  //VLOG(0) << "temp_dim.size():  " << temp_dim.size() << "\n";
+  //VLOG(0) << "temp_dim[0]:  " << temp_dim[0] << "\n";
+  //VLOG(0) << "temp_dim[1]:  " << temp_dim[1] << "\n";
+  //VLOG(0) << "temp_dim[2]:  " << temp_dim[2] << "\n";
+
   // slice and memcpy
+  // for 0D tensor, can't concat eath tensor, stack them. for 1+D tensor, concat them
   int begin = 0;
+  int end = 0;
   for (auto *src : src_lodtensors) {
-    int end = begin + src->dims()[0];
+    if(rank==0) {
+      end = begin + src->dims()[0];
+    } else {
+      end = begin + 1;
+    }
     if (end == begin) {
       continue;
     }

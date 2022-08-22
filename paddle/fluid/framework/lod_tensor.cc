@@ -339,11 +339,14 @@ std::vector<LoDTensor> SplitLoDTensor(
                     platform::errors::InvalidArgument(
                         "Place number cannot be empty when splitting."));
   src.check_memory_size();
+  PADDLE_ENFORCE_GE(src.dims().size(), 1, platform::errors::InvalidArgument("0D Tensor can not be splited, due to it has not batch_size"));
   size_t batch_size = src.lod().empty() ? static_cast<size_t>(src.dims()[0])
                                         : src.lod()[0].size() - 1;
 
   // if batch_size is 0, just return #places.size() copys of empty
   // tensors.
+  //VLOG(0) << "places_size: " << places.size() << "\n";
+  //VLOG(0) << "batch_size: " << batch_size << "\n";
   if (batch_size == 0) {
     std::vector<LoDTensor> empty_results;
     empty_results.reserve(places.size());
@@ -426,6 +429,7 @@ void MergeLoDTensor(LoDTensor *target,
   }
 
   LoD new_lod = lod_tensors[0]->lod();
+  auto rank = lod_tensors[0]->dims().size();
 
   for (size_t i = 1; i < lod_tensors.size(); ++i) {
     auto *t = lod_tensors[i];
@@ -446,16 +450,25 @@ void MergeLoDTensor(LoDTensor *target,
               "actual layout is %s.",
               DataLayoutToString(new_layout),
               DataLayoutToString(t->layout())));
-      PADDLE_ENFORCE_EQ(
-          phi::product(new_dim) / new_dim[0],
-          phi::product(t->dims()) / t->dims()[0],
-          platform::errors::InvalidArgument(
-              "LoDTensor dimension does not match, all dimensions except the "
-              "first dimension need to be equal,"
-              "but expected dimension is %s, actual dimension is %s.",
-              new_dim,
-              t->dims()));
-      new_dim[0] += t->dims()[0];
+      auto tensor_dims = t->dims();
+      PADDLE_ENFORCE_EQ(tensor_dims.size(), new_dim.size(),
+                        platform::errors::InvalidArgument("dimensions of LoDTensor does not match"));
+      for (int j = 1; j < t->dims().size(); j++) {
+        PADDLE_ENFORCE_EQ(tensor_dims[j],
+                          new_dim[j],
+                          platform::errors::InvalidArgument(
+                              "LoDTensor.ddim[%d] should eaqual to %d, but is %d", j, new_dim[j], tensor_dims[j]));
+      }
+    }
+
+    // for 0D tensor, can't concat eath tensor, stack them. for 1+D tensor, concat them
+    if (rank ==0) {
+      new_dim = phi::make_ddim(std::vector<int>(lod_tensors.size(), 1));
+    } else {
+      for (size_t i = 1; i < lod_tensors.size(); ++i) {
+        auto *t = lod_tensors[i];
+        new_dim[0] += t->dims()[0];
+      }
     }
 
     auto &lod = t->lod();
@@ -480,9 +493,15 @@ void MergeLoDTensor(LoDTensor *target,
   target->mutable_data(dst_place,
                        paddle::framework::TransToPhiDataType(new_type));
 
+  // for 0D tensor, can't concat eath tensor, stack them. for 1+D tensor, concat them
   int begin = 0;
+  int end = 0;
   for (auto *src : lod_tensors) {
-    int end = begin + src->dims()[0];
+    if(rank==0) {
+      end = begin + src->dims()[0];
+    } else {
+      end = begin + 1;
+    }
     if (end == begin) {
       continue;
     }
