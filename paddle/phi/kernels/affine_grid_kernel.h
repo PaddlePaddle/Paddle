@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/phi/common/int_array.h"
-#include "paddle/phi/kernels/affine_grid_impl.h"
 
 namespace phi {
 

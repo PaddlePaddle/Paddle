@@ -722,6 +722,33 @@ static PyObject* tensor_method_get_underline_selected_rows(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method__get_tensor_from_selected_rows(
+    TensorObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE(self->tensor.is_selected_rows(),
+                 paddle::platform::errors::Fatal(
+                     "this method is only effective for SelectedRows."));
+
+  auto* selected_rows =
+      static_cast<phi::SelectedRows*>(self->tensor.impl().get());
+
+  PADDLE_ENFORCE(
+      selected_rows->initialized(),
+      paddle::platform::errors::Fatal("SelectedRows must be initialized."));
+
+  auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
+      selected_rows->mutable_value());
+  VLOG(1) << "dense_tensor: " << dense_tensor->IsInitialized();
+
+  auto t = paddle::experimental::Tensor(
+      egr::Controller::Instance().GenerateUniqueName());
+  t.set_impl(std::make_shared<phi::DenseTensor>(*dense_tensor));
+
+  return ToPyObject(t);
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                                                   PyObject* args,
                                                   PyObject* kwargs) {
@@ -1850,6 +1877,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"get_selected_rows",
      (PyCFunction)(void (*)(void))tensor_method_get_underline_selected_rows,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"_get_tensor_from_selected_rows",
+     (PyCFunction)(void (*)(void))tensor_method__get_tensor_from_selected_rows,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_getitem_index_not_tensor",

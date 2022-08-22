@@ -337,7 +337,8 @@ add_custom_command(
     ${api_yaml_file} ${legacy_api_yaml_file} --wrapped_infermeta_header_path
     ${wrapped_infermeta_header_file} --wrapped_infermeta_source_path
     ${wrapped_infermeta_source_file}
-  DEPENDS ${api_yaml_file} ${wrapped_infermeta_gen_file} ${api_gen_base}
+  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${wrapped_infermeta_gen_file}
+          ${api_gen_base}
   VERBATIM)
 
 cc_library(

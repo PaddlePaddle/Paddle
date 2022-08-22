@@ -151,7 +151,8 @@ class DataParallelOptimizationPass(PassBase):
 
     def _could_be_prune(self):
 
-        return self._support_rescale_grad or self._all_dp_groups_same_degree()
+        return self.dist_context._gradient_scale and (
+            self._support_rescale_grad or self._all_dp_groups_same_degree())
 
     def _all_dp_groups_same_degree(self):
         return len(

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_util.h"
 
 #include <gtest/gtest.h>
 
