@@ -19,10 +19,9 @@ set -e
 # use default values
 export PADDLE_DISTRI_BACKEND="mpi"
 cmd=`which mpirun`
-cmd="${cmd} -x PADDLE_DISTRI_BACKEND"
 if [ ${#cmd} -eq 0 ]
 then
     echo "Warning! mpirun command not found!"
 else
-    ${cmd} -np 2 --allow-run-as-root python3.8 process_group_mpi.py
+    ${cmd} -x PADDLE_DISTRI_BACKEND -np 2 --allow-run-as-root python3 process_group_mpi.py
 fi
