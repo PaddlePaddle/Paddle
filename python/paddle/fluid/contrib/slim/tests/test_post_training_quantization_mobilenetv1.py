@@ -292,13 +292,13 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         print("Start FP32 inference for {0} on {1} images ...".format(
             model, infer_iterations * batch_size))
-        (fp32_throughput, fp32_latency,
-         fp32_acc1) = self.run_program(model_cache_folder + "/model",
-                                       batch_size, infer_iterations)
+        (fp32_throughput, fp32_latency, fp32_acc1) = self.run_program(
+            os.path.join(model_cache_folder, "model"), batch_size,
+            infer_iterations)
 
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(model, sample_iterations * batch_size))
-        self.generate_quantized_model(model_cache_folder + "/model",
+        self.generate_quantized_model(os.path.join(model_cache_folder, "model"),
                                       quantizable_op_type, algo, round_type,
                                       is_full_quantize, is_use_cache_file,
                                       is_optimize_model, onnx_format)

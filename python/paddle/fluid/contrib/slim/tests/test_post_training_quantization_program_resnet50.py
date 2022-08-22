@@ -221,8 +221,9 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
         print("Start FP32 inference for {0} on {1} images ...".format(
             model, infer_iterations * batch_size))
         (fp32_throughput, fp32_latency, fp32_acc1, infer_program, feed_dict,
-         fetch_targets) = self.run_program(model_cache_folder + "/model",
-                                           batch_size, infer_iterations)
+         fetch_targets) = self.run_program(
+             os.path.join(model_cache_folder, "model"), batch_size,
+             infer_iterations)
 
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(model, sample_iterations * batch_size))
