@@ -15,39 +15,40 @@
 
 #include <iostream>
 
+#include "paddle/fluid/eager/to_static/run_program_op_func.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace pybind {
 
-static PyObject *eager_api_linear(PyObject *self,
-                                  PyObject *args,
-                                  PyObject *kwargs) {
+static PyObject *eager_api_run_program(PyObject *self,
+                                       PyObject *args,
+                                       PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
   try {
-    auto x = GetTensorFromArgs("linear", "X", args, 0, false);
-    auto weight = GetTensorFromArgs("linear", "weight", args, 1, false);
-    auto bias = GetTensorFromArgs("linear", "Bias", args, 2, true);
+    auto X = GetTensorListFromArgs("run_program", "X", args, 0, false);
+    auto Params = GetTensorListFromArgs("run_program", "Params", args, 1, true);
+    auto Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, false);
+    auto OutScope =
+        GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
+    auto DOut = GetTensorPtrListFromArgs("run_program", "DOut", args, 4, true);
+    framework::AttributeMap attrs;
+    // TODO(zengjinle): support CUDA Graph on eager mode
+    ConstructAttrMapFromPyArgs(
+        "run_program", args, 6, PyTuple_GET_SIZE(args), attrs);
+
     tstate = PyEval_SaveThread();
-    if (bias.initialized()) {
-      auto mm_out = matmul_dygraph_function(x, weight, false, false);
-      auto out = add_dygraph_function(mm_out, bias);
-      PyEval_RestoreThread(tstate);
-      tstate = nullptr;
-      return ToPyObject(out);
-    } else {
-      auto mm_out = matmul_dygraph_function(x, weight, false, false);
-      PyEval_RestoreThread(tstate);
-      tstate = nullptr;
-      return ToPyObject(mm_out);
-    }
+    run_program_dygraph_function(X, Params, Out, OutScope, DOut, attrs);
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
+    Py_RETURN_NONE;
   } catch (paddle::platform::EnforceNotMet &exception) {
     if (tstate) {
       PyEval_RestoreThread(tstate);
     }
     std::ostringstream sout;
     sout << exception.what();
-    sout << "  [operator < linear > error]";
+    sout << "  [operator < run_program > error]";
     exception.set_error_str(sout.str());
     ThrowExceptionToPython(std::current_exception());
     return nullptr;
@@ -60,9 +61,9 @@ static PyObject *eager_api_linear(PyObject *self,
   }
 }
 
-static PyMethodDef CustomEagerFinalStateMethods[] = {
-    {"linear",
-     (PyCFunction)(void (*)(void))eager_api_linear,
+static PyMethodDef CustomEagerMethods[] = {
+    {"run_program",
+     (PyCFunction)(void (*)(void))eager_api_run_program,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_program in dygraph."},
     {nullptr, nullptr, 0, nullptr}};
