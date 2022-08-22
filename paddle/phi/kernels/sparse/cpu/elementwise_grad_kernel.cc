@@ -451,6 +451,8 @@ PD_REGISTER_KERNEL(divide_coo_coo_grad,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(3).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
 PD_REGISTER_KERNEL(values_add_coo_coo_grad,
