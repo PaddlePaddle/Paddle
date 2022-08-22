@@ -16,7 +16,7 @@ import re
 import os
 import argparse
 
-# port range (20000, 23000) is reserved for dist-ops
+# port range (21200, 23000) is reserved for dist-ops
 
 
 # function to process pythonpath env
@@ -175,6 +175,17 @@ def process_run_type(run_type):
     return rt
 
 
+DIST_UT_PORT = 21200
+
+
+def process_dist_ut_port(port_num):
+    global DIST_UT_PORT
+    port = DIST_UT_PORT
+    assert port < 23000, "dist port is exahausted"
+    DIST_UT_PORT += int(port_num)
+    return port
+
+
 def parse_line(line, curdir):
     """
     Desc:
@@ -216,6 +227,7 @@ def parse_line(line, curdir):
 
     time_out_str = f'TIMEOUT "{timeout}"' if len(timeout.strip()) > 0 else ''
     if launcher[-3:] == ".sh":
+        dist_ut_port = process_dist_ut_port(2)
         cmd += f'''if({archs} AND {os_})
     bash_test_modules(
     {name}
@@ -235,7 +247,7 @@ endif()
     MODULES
     {name}
     ENVS
-    "PADDLE_DIST_UT_PORT={dist_ut_port};{envs}")
+    "{envs}")
     set_tests_properties({name} PROPERTIES {time_out_str} RUN_SERIAL {run_serial})
 endif()
 '''

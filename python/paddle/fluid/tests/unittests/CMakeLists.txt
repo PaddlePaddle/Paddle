@@ -18,9 +18,6 @@ file(
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_dist_*.py")
 list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
-if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
-endif()
 
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
@@ -33,18 +30,9 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
-list(APPEND DIST_TEST_OPS test_parallel_dygraph_mnist)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_feedforward)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_attention)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_multi_transformer)
-list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
-if(WITH_GPU
-   OR WITH_XPU
-   OR WITH_ASCEND
-   OR WITH_ASCEND_CL)
-  list(APPEND DIST_TEST_OPS test_gen_nccl_id_op)
-endif()
-list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
 list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
 list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
@@ -188,8 +176,8 @@ endif()
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
 
-list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer_gloo
-)# NOTE: @xiongkun03, cpu is too slow, fix it in next PR
+list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer_gloo)
+# NOTE: @xiongkun03, cpu is too slow, fix it in next PR
 
 if(NOT WITH_GLOO)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel_cpuonly)
@@ -204,21 +192,12 @@ endif()
 
 if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
-  list(REMOVE_ITEM TEST_OPS test_rank_attention_op
-  )# TODO(shenliang03): rank_attention_op support CPU device in future
-  list(REMOVE_ITEM TEST_OPS test_batch_fc_op
-  )# TODO(shenliang03): batch_fc_op support CPU device in future
-  list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mnist
-  )# TODO(Yancey1989): parallel dygraph support CPU device in future
-  list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_se_resnext)
-  list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sync_batch_norm)
-  list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
-  list(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision)
-  list(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision_for_eager)
-  list(REMOVE_ITEM TEST_OPS test_mixed_precision)
+  list(REMOVE_ITEM TEST_OPS test_rank_attention_op)
+  # TODO(shenliang03): rank_attention_op support CPU device in future
+  list(REMOVE_ITEM TEST_OPS test_batch_fc_op)
+  # TODO(shenliang03): batch_fc_op support CPU device in future
+  # TODO(Yancey1989): parallel dygraph support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
-  list(REMOVE_ITEM TEST_OPS test_dygraph_recompute)
-  list(REMOVE_ITEM TEST_OPS test_dygraph_recompute_for_eager)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_gpt)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_searcher)
@@ -249,17 +228,17 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_reducescatter)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
-list(REMOVE_ITEM TEST_OPS test_seq_concat_op
-)# FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
-list(REMOVE_ITEM TEST_OPS test_lstm_unit_op
-)# # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
+list(REMOVE_ITEM TEST_OPS test_seq_concat_op)
+# FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
+list(REMOVE_ITEM TEST_OPS test_lstm_unit_op)
+# # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
 list(REMOVE_ITEM TEST_OPS test_cond_op)
 
 # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
 
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
-list(REMOVE_ITEM TEST_OPS decorator_helper
-)# decorator_helper is a helper python file, not a test
+list(REMOVE_ITEM TEST_OPS decorator_helper)
+# decorator_helper is a helper python file, not a test
 
 if(APPLE)
   if(NOT WITH_DISTRIBUTE)
@@ -569,7 +548,6 @@ if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
    AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
   list(REMOVE_ITEM TEST_OPS "test_fleet_graph_execution_meta_optimizer")
-  list(REMOVE_ITEM TEST_OPS "test_gen_nccl_id_op")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_grad_clip")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_heter_ctr")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_ps_gpu_ctr")
@@ -768,7 +746,7 @@ if(WITH_DISTRIBUTE)
 
     endif()
 
-    # port range (20000, 23000) is reserved for dist-ops
+    # port range (20000, 21200) is reserved for dist-ops
     foreach(TEST_OP ${DIST_TEST_OPS})
       bash_test_modules(
         ${TEST_OP}
@@ -779,7 +757,7 @@ if(WITH_DISTRIBUTE)
         ENVS
         "PADDLE_DIST_UT_PORT=${dist_ut_port}")
       math(EXPR dist_ut_port "${dist_ut_port}+20")
-      if(dist_ut_port GREATER_EQUAL 22998)
+      if(dist_ut_port GREATER_EQUAL 21198)
         message(
           FATAL_ERROR "available ports have been exhausted:${dist_ut_port}")
       endif()
@@ -1316,10 +1294,6 @@ set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)
-  set_tests_properties(test_parallel_dygraph_dataparallel PROPERTIES TIMEOUT
-                                                                     120)
-  set_tests_properties(test_parallel_dygraph_mnist PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_parallel_dygraph_se_resnext PROPERTIES TIMEOUT 200)
   set_tests_properties(test_auto_parallel_data_unshard PROPERTIES TIMEOUT 120)
   set_tests_properties(test_auto_parallel_save_load PROPERTIES TIMEOUT 120)
   set_tests_properties(test_auto_parallel_autoconvert PROPERTIES TIMEOUT 120)
@@ -1352,12 +1326,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   set_tests_properties(test_pipeline_parallel PROPERTIES TIMEOUT 120)
 endif()
 if(WITH_GPU OR WITH_ROCM)
-  set_tests_properties(test_imperative_auto_mixed_precision PROPERTIES TIMEOUT
-                                                                       300)
-  set_tests_properties(test_imperative_auto_mixed_precision_for_eager
-                       PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_parallel_dygraph_sync_batch_norm PROPERTIES TIMEOUT
-                                                                        120)
   set_tests_properties(test_rank_attention_op PROPERTIES TIMEOUT 120)
 endif()
 set_tests_properties(test_inplace_addto_strategy PROPERTIES TIMEOUT 120)
