@@ -346,6 +346,8 @@ bool IsCompiledWithDIST() {
 }
 
 struct iinfo {
+    int64_t min;
+
     iinfo(const framework::proto::VarType::Type& type) { 
         switch (type) {
         case framework::proto::VarType::INT16:
@@ -364,13 +366,11 @@ struct iinfo {
           min = std::numeric_limits<uint8_t>::min();
           break;
         default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "the argument of paddle.iinfo can only be paddle.int8 ...");
+          //PADDLE_THROW(platform::errors::InvalidArgument(
+          //    "the argument of paddle.iinfo can only be paddle.int8 ..."));
           break;
         }
     }
-
-    int64_t min;
 };
 
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
