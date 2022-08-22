@@ -1489,99 +1489,94 @@ class Executor(object):
         # use StandaloneExecutor to run the program.
         if return_merged and self._enable_interpreter_core and _can_use_interpreter_core(
                 program, self.place):
+
+            if feed is None:
+                feed = {}
+            elif isinstance(feed, (list, tuple)):
+                assert len(feed) == 1, "Not compiled with data parallel"
+                feed = feed[0]
+            if not isinstance(feed, dict):
+                raise TypeError(
+                    "feed requires dict as its Parameter. But you passed in %s"
+                    % (type(feed)))
+            feed = self._update_feed(program, feed)
+
             inner_program = program._program if isinstance(
                 program, compiler.CompiledProgram) else program
-            if not inner_program._is_start_up_program_:
-                if feed is None:
-                    feed = {}
-                elif isinstance(feed, (list, tuple)):
-                    assert len(feed) == 1, "Not compiled with data parallel"
-                    feed = feed[0]
-                if not isinstance(feed, dict):
-                    raise TypeError(
-                        "feed requires dict as its Parameter. But you passed in %s"
-                        % (type(feed)))
-                feed = self._update_feed(program, feed)
 
-                key = _get_strong_program_cache_key_for_new_exe(
-                    inner_program, feed, fetch_list)
+            key = _get_strong_program_cache_key_for_new_exe(
+                inner_program, feed, fetch_list)
 
-                # a little bit tricy here, use inner_program before _add_feed_fetch_ops to get key
-                # while use program to geet _StandaloneExecutor
-                if key not in self._executor_cache._cached_executors:
-                    # To apply IR pass, compile the Program to IrGraph and convert it back to Program
-                    if isinstance(program, compiler.CompiledProgram):
-                        build_strategy = program._build_strategy
-                        # print(f"Program before convert:\n {inner_program}", flush=True)
-                        program._compile(scope, self.place)
-                        ir_graph = framework.IrGraph(program._graph)
-                        inner_program = ir_graph.to_program()
-                        if hasattr(program._program, 'lr_sheduler'):
-                            inner_program.lr_sheduler = program._program.lr_sheduler
-                        # print(f"Program after convert:\n {inner_program}", flush=True)
-                        logging.warning(
-                            "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
-                        )
-                    else:
-                        build_strategy = None
-                        from paddle.incubate.autograd import prim_enabled, prim2orig
-                        if prim_enabled() and program == default_main_program():
-                            prim2orig()
+            # a little bit tricy here, use inner_program before _add_feed_fetch_ops to get key while use program to get _StandaloneExecutor
+            if key not in self._executor_cache._cached_executors:
+                # To apply IR pass, compile the Program to IrGraph and convert it back to Program
+                if isinstance(program, compiler.CompiledProgram):
+                    build_strategy = program._build_strategy
+                    # print(f"Program before convert:\n {inner_program}", flush=True)
+                    program._compile(scope, self.place)
+                    ir_graph = framework.IrGraph(program._graph)
+                    inner_program = ir_graph.to_program()
+                    if hasattr(program._program, 'lr_sheduler'):
+                        inner_program.lr_sheduler = program._program.lr_sheduler
+                    # print(f"Program after convert:\n {inner_program}", flush=True)
+                    logging.warning(
+                        "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
+                    )
+                else:
+                    build_strategy = None
+                    from paddle.incubate.autograd import prim_enabled, prim2orig
+                    if prim_enabled() and program == default_main_program():
+                        prim2orig()
 
-                    program = self._add_feed_fetch_ops(
-                        program=inner_program,
-                        feed=feed,
-                        fetch_list=fetch_list,
-                        feed_var_name=feed_var_name,
-                        fetch_var_name=fetch_var_name,
-                        use_fetch_v2=True)
+                program = self._add_feed_fetch_ops(
+                    program=inner_program,
+                    feed=feed,
+                    fetch_list=fetch_list,
+                    feed_var_name=feed_var_name,
+                    fetch_var_name=fetch_var_name,
+                    use_fetch_v2=True)
 
-                    # standalone executor will apply buffer_shared_inplace_pass and
-                    # inplace_addto_op_pass to program according to build_strategy
-                    enable_inplace = True if build_strategy is None or build_strategy.enable_inplace else False
-                    enable_addto = True if build_strategy is not None and build_strategy.enable_addto else False
-                    if enable_inplace or enable_addto:
-                        # inplace should skip feed and fetch var
-                        skip_var_names = eval(
-                            _get_program_cache_key(feed, fetch_list))
-                        _apply_inplace_addto_pass(program, enable_inplace,
-                                                  enable_addto, skip_var_names)
+                # standalone executor will apply buffer_shared_inplace_pass and inplace_addto_op_pass to program according to build_strategy
+                enable_inplace = True if build_strategy is None or build_strategy.enable_inplace else False
+                enable_addto = True if build_strategy is not None and build_strategy.enable_addto else False
+                if enable_inplace or enable_addto:
+                    # inplace should skip feed and fetch var
+                    skip_var_names = eval(
+                        _get_program_cache_key(feed, fetch_list))
+                    _apply_inplace_addto_pass(program, enable_inplace,
+                                              enable_addto, skip_var_names)
 
-                    new_program = program.clone()
-                    new_exe = _StandaloneExecutor(self.place, new_program,
-                                                  scope)
-                    self._executor_cache._cached_executors[key] = (new_program,
-                                                                   new_exe)
+                new_program = program.clone()
+                new_exe = _StandaloneExecutor(self.place, new_program, scope)
+                self._executor_cache._cached_executors[key] = (new_program,
+                                                               new_exe)
 
-                program, new_exe = self._executor_cache._cached_executors[key]
+            program, new_exe = self._executor_cache._cached_executors[key]
 
-                self._feed_data(program, feed, feed_var_name, scope)
-                if hasattr(program, 'lr_sheduler'):
-                    from paddle.optimizer.lr import LRScheduler
-                    assert isinstance(program.lr_sheduler,
-                                      LRScheduler), "must be LRScheduler"
-                    lr_sheduler = program.lr_sheduler
-                    lr_value = lr_sheduler()
-                    lr_var = program.global_block().vars[lr_sheduler._var_name]
-                    data = np.array([lr_value
-                                     ]).astype(convert_dtype(lr_var.dtype))
-                    tensor = core.get_variable_tensor(scope,
-                                                      lr_sheduler._var_name)
-                    # NOTE(dev): `set` always call TensorCopySync that is a
-                    # blocking behavior. So we use `_copy_from` to replace it.
-                    cpu_tensor = _as_lodtensor(data, core.CPUPlace())
-                    # for ipu, tensor is allocated on cpu
-                    if core.is_compiled_with_ipu():
-                        tensor._copy_from(cpu_tensor, tensor._place())
-                    else:
-                        tensor._copy_from(cpu_tensor, self.place)
+            self._feed_data(program, feed, feed_var_name, scope)
+            if hasattr(program, 'lr_sheduler'):
+                from paddle.optimizer.lr import LRScheduler
+                assert isinstance(program.lr_sheduler,
+                                  LRScheduler), "must be LRScheduler"
+                lr_sheduler = program.lr_sheduler
+                lr_value = lr_sheduler()
+                lr_var = program.global_block().vars[lr_sheduler._var_name]
+                data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+                tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+                # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
+                cpu_tensor = _as_lodtensor(data, core.CPUPlace())
+                # for ipu, tensor is allocated on cpu
+                if core.is_compiled_with_ipu():
+                    tensor._copy_from(cpu_tensor, tensor._place())
+                else:
+                    tensor._copy_from(cpu_tensor, self.place)
 
-                warnings.warn(
-                    "FLAGS_USE_STANDALONE_EXECUTOR is set to 1. New executor is used to execute Program."
-                )
+            warnings.warn(
+                "FLAGS_USE_STANDALONE_EXECUTOR is set to 1. New executor is used to execute Program."
+            )
 
-                return new_exe.run(scope, list(feed.keys()), fetch_list,
-                                   return_numpy)
+            return new_exe.run(scope, list(feed.keys()), fetch_list,
+                               return_numpy)
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
