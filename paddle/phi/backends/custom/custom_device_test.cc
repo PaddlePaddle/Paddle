@@ -203,6 +203,7 @@ void TestCustomCCL(const paddle::platform::Place& place) {
                                 0,
                                 phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
                                 phi::ccl::CCLReduceOp::SUM,
+                                0,
                                 comm,
                                 stream);
   phi::DeviceManager::CCLAllGather(dev_type,

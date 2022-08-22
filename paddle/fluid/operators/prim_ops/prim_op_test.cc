@@ -38,6 +38,7 @@ USE_OP_ITSELF(log_p);
 USE_OP_ITSELF(select_p);
 USE_OP_ITSELF(eq_p);
 USE_OP_ITSELF(pow_p);
+USE_OP_ITSELF(max_p);
 
 namespace paddle {
 namespace framework {
@@ -685,6 +686,28 @@ TEST(PrimOp, pow_p) {
   ASSERT_EQ(shapes[0], 3L);
   ASSERT_EQ(shapes[1], 4L);
   ASSERT_EQ(shapes[2], 5L);
+}
+
+TEST(PrimOp, max_p) {
+  ProgramDesc program;
+  auto *block = program.MutableBlock(0);
+  std::vector<int64_t> shape{2, 3, 4};
+
+  std::string x = "x";
+  std::string y = "y";
+  std::string z = "z";
+
+  NewVar(block, x, shape);
+  NewVar(block, y, shape);
+
+  AppendOp(block, "max_p", {{"X", {x}}, {"Y", {y}}}, {{"Z", {z}}}, {});
+  ASSERT_EQ(block->Var("z")->GetType(), proto::VarType::LOD_TENSOR);
+  ASSERT_EQ(block->Var("z")->GetDataType(), proto::VarType_Type_FP32);
+  auto shapes = block->Var("z")->GetShape();
+  ASSERT_EQ(shapes.size(), 3UL);
+  ASSERT_EQ(shapes[0], 2L);
+  ASSERT_EQ(shapes[1], 3L);
+  ASSERT_EQ(shapes[2], 4L);
 }
 
 }  // namespace framework
