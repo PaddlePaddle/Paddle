@@ -2042,7 +2042,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 #endif
 
     // conv3d_transpose
-    if (op_type.find("3d_transpose") != op_type.npos) {
+    if (op_type == "conv3d_transpose") {
       // trt doen't support output_padding when < 8406
       // output_padding is usually set when stride > 1
 #if !IS_TRT_VERSION_GE(8400)
