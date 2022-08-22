@@ -224,7 +224,6 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
          fetch_targets) = self.run_program(
              os.path.join(model_cache_folder, "model"), batch_size,
              infer_iterations)
-
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(model, sample_iterations * batch_size))
         self.generate_quantized_model(infer_program, quantizable_op_type,

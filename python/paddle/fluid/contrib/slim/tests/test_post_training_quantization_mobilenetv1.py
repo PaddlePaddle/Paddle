@@ -114,9 +114,9 @@ def val(data_dir=DATA_DIR):
 class TestPostTrainingQuantization(unittest.TestCase):
 
     def setUp(self):
-        self.int8_download = 'int8/download'
-        self.cache_folder = os.path.expanduser('~/.cache/paddle/dataset/' +
-                                               self.int8_download)
+        dataset_path = os.path.join('/root', '.cache', 'paddle', 'dataset')
+        self.int8_download = os.path.join('int8', 'download')
+        self.cache_folder = os.path.join(dataset_path, self.int8_download)
         self.data_cache_folder = ''
         data_urls = []
         data_md5s = []
