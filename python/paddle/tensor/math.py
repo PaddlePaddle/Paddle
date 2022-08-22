@@ -4701,15 +4701,22 @@ def frac(x, name=None):
                 type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": y})
             return _elementwise_op(LayerHelper(op_type, **locals()))
 
-def take(input, index, name=None):
+def take(x, index, mode='raise', name=None):
     """
-    Returns a new tensor with the elements of input at the given index.
-    The input tensor is treated as if it were viewed as a 1-D tensor. 
+    Returns a new tensor with the elements of tnput tensor x at the given index.
+    The input tensor is treated as if it were viewed as a 1-D tensor.
     The result takes the same shape as the index.
-    
+
     Args:
-        input (Tensor): An N-D Tensor, its data type should be int32, int64, float32, float64.
+        x (Tensor): An N-D Tensor, its data type should be int32, int64, float32, float64.
         index (Tensor): An N-D Tensor, its data type should be int32, int64.
+        mode (str, optional): Specifies how out-of-bounds index will behave.
+                the candicates are ``'raise'`` | ``'wrap'`` | ``'clip'``.
+                If :attr:`mode` is ``'raise'``, raise an error (default);
+                If :attr:`mode` is ``'wrap'``, wrap around;
+                If :attr:`mode` is ``'clip'``, clip to the range.
+                    ``'clip'`` mode means that all indices that are too large are replaced by the index that
+                    addresses the last element. Note that this disables indexing with negative numbers.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4746,6 +4753,9 @@ def take(input, index, name=None):
             #        [[4, 5, 6],
             #         [7, 8, 9]])
     """
+    if mode not in ['raise', 'wrap', 'clip']:
+        raise ValueError(
+            "'mode' in 'take' should be 'raise', 'wrap', 'clip', but received {}.".format(mode))
 
     if paddle.in_dynamic_mode():
         if not isinstance(index, (paddle.Tensor, Variable)):
@@ -4755,14 +4765,28 @@ def take(input, index, name=None):
             raise TypeError(
                 "The data type of 'index' must be one of ['int32', 'int64'], but got {}".format(
                     index.dtype))
+
     else:
         check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'take')
 
-    input_1d = input.flatten()
+    input_1d = x.flatten()
     index_1d = index.flatten()
+    max_index = input_1d.shape[-1]
 
-    # This processing enables 'take' to handle negative indexes within the correct range
-    index_1d = paddle.where(index_1d < 0, index_1d + input_1d.shape[0], index_1d)
+    if mode == 'raise':
+        # This processing enables 'take' to handle negative indexes within the correct range.
+        index_1d = paddle.where(index_1d < 0, index_1d % max_index, index_1d)
+        pass
+    elif mode == 'wrap':
+        # The out of range indices are constrained by taking the remainder.
+        index_1d = paddle.where(index_1d < 0,
+                                index_1d % max_index, index_1d)
+        index_1d = paddle.where(index_1d >= max_index,
+                                index_1d % max_index, index_1d)
+    elif mode == 'clip':
+        # 'clip' mode disables indexing with negative numbers.
+        index_1d = clip(index_1d, 0, max_index - 1)
+
     out = input_1d.index_select(index_1d).reshape(index.shape)
 
     return out
