@@ -92,7 +92,7 @@ def _reader_creator(file_list,
 
             for line in lines:
                 img_path, label = line.split()
-                img_path = os.path.join(data_dir, img_path)
+                img_path = data_dir + '/' + img_path
                 if not os.path.exists(img_path):
                     continue
                 yield img_path, int(label)
@@ -106,7 +106,7 @@ def _reader_creator(file_list,
 
 
 def val(data_dir=DATA_DIR):
-    file_list = os.path.join(data_dir, 'val_list.txt')
+    file_list = data_dir + '/val_list.txt'
     return _reader_creator(file_list, 'val', shuffle=False, data_dir=data_dir)
 
 
@@ -221,9 +221,8 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
         print("Start FP32 inference for {0} on {1} images ...".format(
             model, infer_iterations * batch_size))
         (fp32_throughput, fp32_latency, fp32_acc1, infer_program, feed_dict,
-         fetch_targets) = self.run_program(
-             os.path.join(model_cache_folder, "model"), batch_size,
-             infer_iterations)
+         fetch_targets) = self.run_program(model_cache_folder + "/model",
+                                           batch_size, infer_iterations)
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(model, sample_iterations * batch_size))
         self.generate_quantized_model(infer_program, quantizable_op_type,
