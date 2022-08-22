@@ -5012,13 +5012,11 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
     """
-    if in_dygraph_mode():
-        return _C_ops.final_state_all(input, dim, keep_dim)
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     check_variable_and_dtype(input, 'input', ('bool'), 'reduce_all')
     helper = LayerHelper('reduce_all', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
     helper.append_op(type='reduce_all',
                      inputs={'X': input},
                      outputs={'Out': out},
