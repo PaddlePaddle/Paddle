@@ -377,8 +377,13 @@ struct iinfo {
           bits = 8;
           break;
         default:
-          //PADDLE_THROW(platform::errors::InvalidArgument(
-          //    "the argument of paddle.iinfo can only be paddle.int8 ..."));
+          PADDLE_THROW(platform::errors::InvalidArgument(
+             "the argument of paddle.iinfo can only be "
+             "paddle.int8, paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"));
+          // PADDLE_THROW(platform::errors::InvalidArgument(
+          //            "Invalid IpuStrategy option value type: %s, please check "
+          //            "input value for option: %s",
+          //            ));
           break;
         }
     }

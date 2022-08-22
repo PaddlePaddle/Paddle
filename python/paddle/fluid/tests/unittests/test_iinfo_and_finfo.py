@@ -14,10 +14,10 @@ import numpy as np
 
 class TestIInfoAndFInfoAPI(unittest.TestCase):
 
-    #def test_invalid_input(self):
-    #    for dtype in [paddle.float16, paddle.float32, paddle.float64, paddle.bfloat16, paddle.complex64, paddle.complex128, paddle.bool]:
-    #        with self.assertRaises(TypeError):
-    #            _ = paddle.iinfo(dtype)
+    def test_invalid_input(self):
+       for dtype in [paddle.float16, paddle.float32, paddle.float64, paddle.bfloat16, paddle.complex64, paddle.complex128, paddle.bool]:
+           with self.assertRaises(TypeError):
+               _ = paddle.iinfo(dtype)
 
     #    for dtype in [paddle.int64, paddle.int32, paddle.int16, paddle.int8, paddle.uint8, paddle.bool]:
     #        with self.assertRaises(TypeError):
