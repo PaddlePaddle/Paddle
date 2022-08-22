@@ -1597,7 +1597,7 @@ def assign(x, output=None):
     # but _non_static_mode()==False under @to_static, which means
     # isinstance(VarBase, Variable) == False. It will cause return None
     # after this api.
-    if isinstance(input, (Variable, core.VarBase)):
+    if isinstance(input, (Variable, core.VarBase, core.eager.Tensor)):
         if in_dygraph_mode():
             if output is None:
                 output = _C_ops.final_state_assign(input)
@@ -1622,14 +1622,16 @@ def assign(x, output=None):
         # We now support the form of [var, VAR...] if the Var.shape=[1,]
         if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
-            if not all(
-                [x.shape == (1, ) for x in input if isinstance(x, Variable)]):
+            if not all([
+                    x.shape == (1, ) for x in input
+                    if isinstance(x, (Variable, core.eager.Tensor))
+            ]):
                 raise TypeError(
                     "Unsupport paddle.assign([Variable, Variable...]) with non-scalar variable."
                 )
 
             def convert_scalar(x):
-                if not isinstance(x, Variable):
+                if not isinstance(x, (Variable, core.eager.Tensor)):
                     return assign(x)
                 return x
 

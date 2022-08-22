@@ -205,6 +205,7 @@ OP_NAMEMAPPING = {
     'elementwise_sub': 'final_state_subtract',
     'elementwise_mul': 'final_state_multiply',
     'elementwise_div': 'final_state_divide',
+    'elementwise_mod': 'final_state_modulo',
 }
 
 
@@ -4679,7 +4680,9 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     """
     reduce_all, dim = _get_reduce_dim(dim, input)
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_sum(input, dim, None, keep_dim)
+    elif _in_legacy_dygraph():
         return _C_ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
                                  'reduce_all', reduce_all)
     attrs = {'dim': dim, 'keep_dim': keep_dim, 'reduce_all': reduce_all}
@@ -4867,6 +4870,7 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_min(y, dim=[0, 1]) # [1.0, 2.0]
     """
     reduce_all, dim = _get_reduce_dim(dim, input)
+    
     helper = LayerHelper('reduce_min', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
@@ -4996,12 +5000,10 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
 
     """
     reduce_all, dim = _get_reduce_dim(dim, input)
-
+    
     check_variable_and_dtype(input, 'input', ('bool'), 'reduce_all')
     helper = LayerHelper('reduce_all', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
     helper.append_op(type='reduce_all',
                      inputs={'X': input},
                      outputs={'Out': out},
@@ -6434,7 +6436,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         elif isinstance(shape, tmp_tensor_type):
             # TODO: Tensor shape in final_state_reshape has not been tested
             shape.stop_gradient = True
-            out, _ = _C_ops.reshape2(x, shape)
+            out = _C_ops.final_state_reshape(x, shape)
         else:
             raise ValueError(
                 "shape must be an instance of `list`, `tuple` or `Variable`,"
@@ -15730,7 +15732,12 @@ def uniform_random(shape,
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        return _C_ops.final_state_uniform_random(shape, dtype, float(min),
+                                                 float(max), seed,
+                                                 _current_expected_place())
+    elif _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.uniform_random('shape', shape, 'min', float(min), 'max',
                                      float(max), 'seed', seed, 'dtype', dtype)
