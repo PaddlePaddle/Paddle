@@ -79,7 +79,7 @@ void MvCooGradKernel(const Context &dev_ctx,
                  dev_ctx.stream()>>>(dout.data<T>(),
                                      vec.data<T>(),
                                      dx->non_zero_indices().data<data_t>(),
-                                     dx->mutable_non_zero_elements()->data<T>(),
+                                     dx->mutable_values()->data<T>(),
                                      dx->nnz());
         }));
   }
@@ -127,7 +127,7 @@ void MvCsrGradKernel(const Context &dev_ctx,
                                      vec.data<T>(),
                                      dx->non_zero_crows().data<data_t>(),
                                      dx->non_zero_cols().data<data_t>(),
-                                     dx->mutable_non_zero_elements()->data<T>(),
+                                     dx->mutable_values()->data<T>(),
                                      row_number);
         }));
   }

@@ -295,6 +295,18 @@
     func : bicubic_interp_grad
     data_type : output_grad
 
+- backward_api : bilinear_interp_grad
+  forward : bilinear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : bilinear_interp_grad
+    data_type : output_grad
+
 - backward_api : bilinear_tensor_product_grad
   forward : bilinear_tensor_product (Tensor x, Tensor y, Tensor weight, Tensor bias) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor weight, Tensor out_grad)
@@ -2335,14 +2347,14 @@
     func : squared_l2_norm_grad
 
 - backward_api : squeeze_double_grad
-  forward : squeeze_grad(Tensor xshape, Tensor grad_out, int[] axes) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, int[] axes)
+  forward : squeeze_grad(Tensor xshape, Tensor grad_out, IntArray axes) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray axes)
   output : Tensor(grad_out_grad)
   invoke: squeeze(grad_x_grad, axes)
 
 - backward_api : squeeze_grad
-  forward : squeeze(Tensor x, int[] axes) -> Tensor(out), Tensor(xshape)
-  args : (Tensor xshape, Tensor out_grad, int[] axes)
+  forward : squeeze(Tensor x, IntArray axes) -> Tensor(out), Tensor(xshape)
+  args : (Tensor xshape, Tensor out_grad, IntArray axes)
   output : Tensor(x_grad)
   infer_meta :
     func : KernelWithXShapeInferMeta
@@ -2449,7 +2461,7 @@
   inplace : (out_grad -> x_grad)
 
 - backward_api : sync_batch_norm_grad
-  forward : sync_batch_norm (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu) -> Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  forward : sync_batch_norm_ (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu) -> Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   args : (Tensor x, Tensor scale, Tensor bias, Tensor mean_out, Tensor variance_out, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor out_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :
@@ -2615,6 +2627,18 @@
     param : [out_grad]
   kernel :
     func : tril_triu_grad
+
+- backward_api : trilinear_interp_grad
+  forward : trilinear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  optional: out_size, size_tensor, scale_tensor
+  kernel :
+    func : trilinear_interp_grad
+    data_type : output_grad
 
 - backward_api : unbind_grad
   forward : unbind (Tensor input, int axis) -> Tensor[](out)

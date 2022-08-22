@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# to_tensor api will create 1 less op now, this test was changed
+
 from __future__ import print_function
 
 import numpy as np
@@ -298,7 +300,7 @@ class TestTensorShapeBasic2(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_tensor_shape_2
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 2
+        self.expected_op_num = 1
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
 
@@ -347,7 +349,7 @@ class TestTupleShape1(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_tuple_shape_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 5
+        self.expected_op_num = 4
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 2
 
@@ -362,7 +364,7 @@ class TestTupleShape2(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_tuple_shape_2
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 5
+        self.expected_op_num = 4
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 1
 
@@ -375,7 +377,7 @@ class TestTupleShape3(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_tuple_shape_3
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 5
+        self.expected_op_num = 4
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 2
 
@@ -388,7 +390,7 @@ class TestPaddleShapeApi(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_paddle_shape_api
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 6
+        self.expected_op_num = 5
         self.expected_shape_op_num = 2
         self.expected_slice_op_num = 2
 
@@ -490,7 +492,7 @@ class TestTensorShapeInWhile4(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_with_while_4
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 5
+        self.expected_op_num = 4
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
 
@@ -554,7 +556,7 @@ class TestOpNumWithTensorShapeTuple1(TestOpNumBasicWithTensorShape):
         self.dygraph_func = dyfunc_tuple_shape_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 5
+        self.expected_op_num = 4
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 1
 
@@ -602,7 +604,7 @@ class TestChangeShapeAfterAssign(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_change_shape_after_assign
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 6
+        self.expected_op_num = 5
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 1
 
