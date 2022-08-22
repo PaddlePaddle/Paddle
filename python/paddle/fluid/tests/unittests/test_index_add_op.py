@@ -271,7 +271,7 @@ class TestIndexAddAPICase5(TestIndexAddAPI):
         self.add_value_shape = (10, 4)
 
 
-class TestIndexAddAPI(unittest.TestCase):
+class TestIndexAddAPIError(unittest.TestCase):
 
     def test_errors(self):
         paddle.enable_static()
