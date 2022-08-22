@@ -3492,7 +3492,7 @@ def multi_margin_loss(input,
     Parameters:
         input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes.
 
-        label (Tensor): Label tensor, the data type is float32 or float64. The shape of label is (N,)
+        label (Tensor): Label tensor, the data type is int32 or int64. The shape of label is (N,)
 
         p (int, Optional): The norm degree for pairwise distance. Default: :math:`1`.
 
@@ -3523,12 +3523,8 @@ def multi_margin_loss(input,
             import paddle.nn.functional as F
 
             input = paddle.to_tensor([[1, 5, 3], [0, 3, 2], [1, 4, 1]], dtype=paddle.float32)
-            positive= paddle.to_tensor([1, 2, 1], dtype=paddle.float32)
+            label = paddle.to_tensor([1, 2, 1], dtype=paddle.int32)
             loss = F.multi_margin_loss(input, label, margin=1.0, reduction='none')
-            print(loss)
-
-
-            loss = F.multi_margin_loss(input, label, margin=1.0, reduction='mean')
             print(loss)
 
     """
@@ -3540,7 +3536,7 @@ def multi_margin_loss(input,
     if not _non_static_mode():
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                                  'multi_margin_loss')
-        check_variable_and_dtype(label, 'positive', ['float32', 'float64'],
+        check_variable_and_dtype(label, 'label', ['int32', 'int64'],
                                  'multi_margin_loss')
     if not (input.shape[0] == label.shape[0]):
         raise ValueError("The label's shape is wrong")
@@ -3555,11 +3551,11 @@ def multi_margin_loss(input,
 
         weight = weight.reshape((-1, 1))
         loss = paddle.mean(paddle.pow(
-            paddle.clip(weight * (margin + index_sample - input), min=0.0), p),
+            paddle.clip(weight * (margin - index_sample + input), min=0.0), p),
                            axis=1) - margin**p / input.shape[1]
     else:
         loss = paddle.mean(paddle.pow(
-            paddle.clip(margin + index_sample - input, min=0.0), p),
+            paddle.clip(margin - index_sample + input, min=0.0), p),
                            axis=1) - margin**p / input.shape[1]
 
     if reduction == 'mean':

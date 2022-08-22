@@ -59,7 +59,7 @@ def test_static(place,
                 label_np,
                 p=1,
                 margin=1.0,
-                weight=None,
+                weight_np=None,
                 reduction='mean',
                 functional=False):
     prog = paddle.static.Program()
@@ -67,15 +67,20 @@ def test_static(place,
     with paddle.static.program_guard(prog, startup_prog):
         input = paddle.static.data(name='input',
                                    shape=input_np.shape,
-                                   dtype='float64')
+                                   dtype=input_np.dtype)
         label = paddle.static.data(name='label',
                                    shape=label_np.shape,
-                                   dtype='float64')
+                                   dtype=label_np.dtype)
         feed_dict = {
             "input": input_np,
             "label": label_np,
         }
-
+        weight = None
+        if weight_np is not None:
+            weight = paddle.static.data(name='weight',
+                                        shape=weight_np.shape,
+                                        dtype=weight_np.dtype)
+            feed_dict['weight'] = weight_np
         if functional:
             res = call_MultiMarginLoss_functional(input=input,
                                                   label=label,
@@ -108,6 +113,8 @@ def test_dygraph(place,
     input = paddle.to_tensor(input)
     label = paddle.to_tensor(label)
 
+    if weight is not None:
+        weight = paddle.to_tensor(weight)
     if functional:
         dy_res = call_MultiMarginLoss_functional(input=input,
                                                  label=label,
@@ -164,7 +171,8 @@ class TestMultiMarginLoss(unittest.TestCase):
     def test_MultiMarginLoss(self):
         shape = (2, 2)
         input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
-        label = np.random.uniform(0, 2, size=(2, )).astype(np.float64)
+        label = np.random.uniform(0, input.shape[1],
+                                  size=(2, )).astype(np.int32)
 
         places = [paddle.CPUPlace()]
         if paddle.device.is_compiled_with_cuda():
@@ -209,10 +217,10 @@ class TestMultiMarginLoss(unittest.TestCase):
     def test_MultiMarginLoss_error(self):
         paddle.disable_static()
         self.assertRaises(ValueError,
-                          paddle.nn.loss.MultiMarginLoss,
+                          paddle.nn.MultiMarginLoss,
                           reduction="unsupport reduction")
         input = paddle.to_tensor([[0.1, 0.3]], dtype='float32')
-        label = paddle.to_tensor([0.0], dtype='float32')
+        label = paddle.to_tensor([0], dtype='int32')
         self.assertRaises(ValueError,
                           paddle.nn.functional.multi_margin_loss,
                           input=input,
@@ -224,7 +232,7 @@ class TestMultiMarginLoss(unittest.TestCase):
         paddle.disable_static()
 
         input = paddle.to_tensor([[0.1, 0.3], [1, 2]], dtype='float32')
-        label = paddle.to_tensor([0.0, 1.0, 2.0], dtype='float32')
+        label = paddle.to_tensor([0, 1], dtype='int32')
 
         self.assertRaises(
             ValueError,
@@ -247,7 +255,8 @@ class TestMultiMarginLoss(unittest.TestCase):
         reduction = 'mean'
         place = paddle.CPUPlace()
         input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
-        label = np.random.uniform(0, 2, size=(2, )).astype(np.float64)
+        label = np.random.uniform(0, input.shape[1],
+                                  size=(2, )).astype(np.int64)
         expected = calc_multi_margin_loss(input=input,
                                           p=p,
                                           label=label,
@@ -292,7 +301,8 @@ class TestMultiMarginLoss(unittest.TestCase):
         reduction = 'mean'
         place = paddle.CPUPlace()
         input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
-        label = np.random.uniform(0, 2, size=(2, )).astype(np.float64)
+        label = np.random.uniform(0, input.shape[1],
+                                  size=(2, )).astype(np.int64)
         weight = np.random.uniform(0, 2, size=(2, )).astype(np.float64)
         expected = calc_multi_margin_loss(input=input,
                                           label=label,
@@ -311,7 +321,7 @@ class TestMultiMarginLoss(unittest.TestCase):
             place=place,
             input_np=input,
             label_np=label,
-            weight=weight,
+            weight_np=weight,
             reduction=reduction,
         )
         self.assertTrue(np.allclose(static_result, expected))
@@ -320,7 +330,7 @@ class TestMultiMarginLoss(unittest.TestCase):
         static_functional = test_static(place=place,
                                         input_np=input,
                                         label_np=label,
-                                        weight=weight,
+                                        weight_np=weight,
                                         reduction=reduction,
                                         functional=True)
         dy_functional = test_dygraph(place=place,

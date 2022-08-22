@@ -1732,11 +1732,11 @@ class MultiMarginLoss(Layer):
                 For more information, please refer to :ref:`api_guide_Name`.
 
         Call parameters:
-            input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
-            label (Tensor): Label tensor containing 1 or -1, the data type is float32 or float64. The shape of label is the same as the shape of input.
+            input (Tensor): Input tensor, the data type is float32 or float64.
+            label (Tensor): Label tensor, 0<= label < input.shape[1], the data type is int32 or int64.
 
         Shape:
-            input: N-D Tensor, the shape is [N, C], N is batch size and `C` means number of classes, available dtype is float32, float64. The sum operationoperates over all the elements.
+            input: N-D Tensor, the shape is [N, C], N is batch size and `C` means number of classes.
             label: N-D Tensor, the shape is [N,].
             output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
 
@@ -1750,17 +1750,11 @@ class MultiMarginLoss(Layer):
                 import paddle.nn as nn
 
                 input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
-                label = paddle.to_tensor([[-1, 1, -1], [1, 1, 1], [1, -1, 1]], dtype=paddle.float32)
-
-                multi_margin_loss = nn.MultiLabelSoftMarginLoss(reduction='none')
-                loss = multi_margin_loss(input, label)
-                print(loss)
-                # Tensor([3.49625897, 0.71111226, 0.43989015])
+                label = paddle.to_tensor([0, 1, 2], dtype=paddle.int32)
 
                 multi_margin_loss = nn.MultiMarginLoss(reduction='mean')
                 loss = multi_margin_loss(input, label)
                 print(loss)
-                # Tensor([1.54908717])
         """
 
     def __init__(self,
@@ -1772,7 +1766,7 @@ class MultiMarginLoss(Layer):
         super(MultiMarginLoss, self).__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
-                "'reduction' in 'MultiLabelSoftMarginloss' should be 'sum', 'mean' or 'none', "
+                "'reduction' in 'MultiMarginLoss' should be 'sum', 'mean' or 'none', "
                 "but received {}.".format(reduction))
         self.p = p
         self.margin = margin
