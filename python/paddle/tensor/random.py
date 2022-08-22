@@ -20,7 +20,7 @@ from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, check_shape
 from ..fluid.layers import utils
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.static import Variable
 from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph, _current_expected_place
 
@@ -66,10 +66,10 @@ def bernoulli(x, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_bernoulli(x)
+        return _C_ops.bernoulli(x)
 
     if _in_legacy_dygraph():
-        return _C_ops.bernoulli(x)
+        return _legacy_C_ops.bernoulli(x)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "bernoulli")
 
@@ -116,7 +116,7 @@ def poisson(x, name=None):
     """
 
     if paddle.in_dynamic_mode():
-        return _C_ops.poisson(x)
+        return _legacy_C_ops.poisson(x)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "poisson")
 
@@ -181,11 +181,11 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
         "multinomial op is not supported on ROCM yet.")
 
     if in_dygraph_mode():
-        return _C_ops.final_state_multinomial(x, num_samples, replacement)
+        return _C_ops.multinomial(x, num_samples, replacement)
 
     if _in_legacy_dygraph():
-        return _C_ops.multinomial(x, 'num_samples', num_samples, 'replacement',
-                                  replacement)
+        return _legacy_C_ops.multinomial(x, 'num_samples', num_samples,
+                                         'replacement', replacement)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "multinomial")
 
@@ -243,15 +243,15 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
         place = _current_expected_place()
-        return _C_ops.final_state_gaussian_random(shape, float(mean),
-                                                  float(std), seed, dtype,
-                                                  place)
+        return _C_ops.gaussian_random(shape, float(mean), float(std), seed,
+                                      dtype, place)
 
     if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
-        return _C_ops.gaussian_random('shape',
-                                      shape, 'mean', float(mean), 'std',
-                                      float(std), 'seed', seed, 'dtype', dtype)
+        return _legacy_C_ops.gaussian_random('shape', shape,
+                                             'mean', float(mean), 'std',
+                                             float(std), 'seed', seed, 'dtype',
+                                             dtype)
 
     check_shape(shape, op_type_for_check)
     check_dtype(dtype, 'dtype', ['float32', 'float64'], op_type_for_check)
@@ -555,14 +555,15 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        return _C_ops.final_state_uniform_random(shape, dtype, float(min),
-                                                 float(max), seed,
-                                                 _current_expected_place())
+        return _C_ops.uniform_random(shape, dtype, float(min), float(max), seed,
+                                     _current_expected_place())
 
     if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
-        return _C_ops.uniform_random('shape', shape, 'min', float(min), 'max',
-                                     float(max), 'seed', seed, 'dtype', dtype)
+        return _legacy_C_ops.uniform_random('shape',
+                                            shape, 'min', float(min), 'max',
+                                            float(max), 'seed', seed, 'dtype',
+                                            dtype)
 
     check_type(shape, 'shape', (list, tuple, Variable), 'uniform/rand')
     check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform/rand')
@@ -620,11 +621,10 @@ def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
             #  [ 0.433519,    0.39483607, -0.8660099,   0.83664286]] # random
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_uniform_random_inplace_(
-            x, min, max, seed, 0, 0, 1.0)
+        return _C_ops.uniform_random_inplace_(x, min, max, seed, 0, 0, 1.0)
     else:
-        return _C_ops.uniform_random_inplace_(x, 'min', min, 'max', max, 'seed',
-                                              seed)
+        return _legacy_C_ops.uniform_random_inplace_(x, 'min', min, 'max', max,
+                                                     'seed', seed)
 
 
 def randint(low=0, high=None, shape=[1], dtype=None, name=None):
@@ -707,11 +707,11 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
         place = _current_expected_place()
-        return _C_ops.final_state_randint(low, high, shape, dtype, place)
+        return _C_ops.randint(low, high, shape, dtype, place)
     if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
-        return _C_ops.randint('shape', shape, 'low', low, 'high', high, 'seed',
-                              0, 'dtype', dtype)
+        return _legacy_C_ops.randint('shape', shape, 'low', low, 'high', high,
+                                     'seed', 0, 'dtype', dtype)
 
     check_shape(shape, 'randint')
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
@@ -881,8 +881,9 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
 
     if paddle.in_dynamic_mode():
         shape = utils.convert_shape_to_list(shape)
-        out = _C_ops.randint('shape', shape, 'low', low, 'high', high, 'seed',
-                             0, 'dtype', core.VarDesc.VarType.INT64)
+        out = _legacy_C_ops.randint('shape', shape, 'low', low, 'high', high,
+                                    'seed', 0, 'dtype',
+                                    core.VarDesc.VarType.INT64)
         out = paddle.cast(out, dtype)
         return out
 
@@ -945,9 +946,9 @@ def randperm(n, dtype="int64", name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        return _C_ops.final_state_randperm(n, dtype, _current_expected_place())
+        return _C_ops.randperm(n, dtype, _current_expected_place())
     if _in_legacy_dygraph():
-        return _C_ops.randperm('n', n, 'seed', 0, 'dtype', dtype)
+        return _legacy_C_ops.randperm('n', n, 'seed', 0, 'dtype', dtype)
 
     if n < 1:
         raise ValueError("The input n should be greater than 0 in randperm op.")
@@ -1052,9 +1053,9 @@ def exponential_(x, lam=1.0, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_exponential_(x, lam)
+        return _C_ops.exponential_(x, lam)
     elif paddle.in_dynamic_mode():
-        return _C_ops.exponential_(x, "lambda", lam)
+        return _legacy_C_ops.exponential_(x, "lambda", lam)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "exponential")
 

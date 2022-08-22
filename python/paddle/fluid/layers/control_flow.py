@@ -29,7 +29,7 @@ from functools import reduce, partial
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
@@ -1873,7 +1873,7 @@ def greater_than(x, y, cond=None, name=None):
     attrs = dict()
 
     if in_dygraph_mode():
-        return _C_ops.final_state_greater_than(x, y, -1)
+        return _C_ops.greater_than(x, y, -1)
     else:
         helper.append_op(type='greater_than',
                          inputs={
@@ -4028,9 +4028,9 @@ def is_empty(x, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_is_empty(x)
-    if _in_legacy_dygraph():
         return _C_ops.is_empty(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.is_empty(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'is_empty')

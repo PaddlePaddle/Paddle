@@ -20,9 +20,9 @@
 namespace paddle {
 namespace pybind {
 
-static PyObject *eager_api_final_state_linear(PyObject *self,
-                                              PyObject *args,
-                                              PyObject *kwargs) {
+static PyObject *eager_api_linear(PyObject *self,
+                                  PyObject *args,
+                                  PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
   try {
     auto x = GetTensorFromArgs("linear", "X", args, 0, false);
@@ -30,15 +30,13 @@ static PyObject *eager_api_final_state_linear(PyObject *self,
     auto bias = GetTensorFromArgs("linear", "Bias", args, 2, true);
     tstate = PyEval_SaveThread();
     if (bias.initialized()) {
-      auto mm_out =
-          matmul_final_state_dygraph_function(x, weight, false, false);
-      auto out = add_final_state_dygraph_function(mm_out, bias);
+      auto mm_out = matmul_dygraph_function(x, weight, false, false);
+      auto out = add_dygraph_function(mm_out, bias);
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
       return ToPyObject(out);
     } else {
-      auto mm_out =
-          matmul_final_state_dygraph_function(x, weight, false, false);
+      auto mm_out = matmul_dygraph_function(x, weight, false, false);
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
       return ToPyObject(mm_out);
@@ -63,8 +61,8 @@ static PyObject *eager_api_final_state_linear(PyObject *self,
 }
 
 static PyMethodDef CustomEagerFinalStateMethods[] = {
-    {"final_state_linear",
-     (PyCFunction)(void (*)(void))eager_api_final_state_linear,
+    {"linear",
+     (PyCFunction)(void (*)(void))eager_api_linear,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_program in dygraph."},
     {nullptr, nullptr, 0, nullptr}};

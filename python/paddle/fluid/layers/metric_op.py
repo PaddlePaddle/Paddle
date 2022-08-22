@@ -26,7 +26,7 @@ from ..param_attr import ParamAttr
 from . import nn
 from . import tensor
 from ..data_feeder import check_variable_and_dtype
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = ['accuracy', 'auc']
 
@@ -76,10 +76,10 @@ def accuracy(input, label, k=1, correct=None, total=None):
             total = _varbase_creator(dtype="int32")
 
         _k = k.numpy().item(0) if isinstance(k, Variable) else k
-        topk_out, topk_indices = _C_ops.top_k_v2(input, 'k', _k, 'sorted',
-                                                 False)
-        _acc, _, _ = _C_ops.accuracy(topk_out, topk_indices, label, correct,
-                                     total)
+        topk_out, topk_indices = _legacy_C_ops.top_k_v2(input, 'k', _k,
+                                                        'sorted', False)
+        _acc, _, _ = _legacy_C_ops.accuracy(topk_out, topk_indices, label,
+                                            correct, total)
         return _acc
 
     helper = LayerHelper("accuracy", **locals())

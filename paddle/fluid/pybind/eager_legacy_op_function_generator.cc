@@ -429,7 +429,7 @@ GenerateOpFunctions() {
         !phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type)) {
       continue;
     }
-    std::string func_name = "eager_api_" + op_type;
+    std::string func_name = "eager_api_legacy_" + op_type;
     std::string op_function_str =
         GenerateOpFunctionsBody(op_proto, func_name, {});
 
@@ -540,11 +540,12 @@ int main(int argc, char* argv[]) {
   out << "void BindEagerOpFunctions(pybind11::module *module) {\n"
       << "  InitOpsAttrTypeMap();\n"
       << "  auto m = module->def_submodule(\"ops\");\n"
-      << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
+      << "  auto legacy = m.def_submodule(\"legacy\");\n"
+      << "  if (PyModule_AddFunctions(legacy.ptr(), ExtestMethods) < 0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"
-      << "  if (PyModule_AddFunctions(m.ptr(), CustomEagerMethods) < "
+      << "  if (PyModule_AddFunctions(legacy.ptr(), CustomEagerMethods) < "
          "0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"

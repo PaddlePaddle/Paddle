@@ -25,7 +25,7 @@ import numpy as np
 from .core import VarDesc
 from . import unique_name
 from .data_feeder import check_variable_and_dtype, check_type, check_dtype
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 import paddle
 
 __all__ = [
@@ -167,14 +167,15 @@ class ConstantInitializer(Initializer):
             place = _current_expected_place()
             if self._force_cpu:
                 place = core.CPUPlace()
-            _C_ops.final_state_full_(var, var.shape, str(float(self._value)),
-                                     var.dtype, place)
+            _C_ops.full_(var, var.shape, str(float(self._value)), var.dtype,
+                         place)
             return None
         elif _in_legacy_dygraph():
-            _C_ops.fill_constant(var, 'value', float(self._value),
-                                 'force_cpu', self._force_cpu, 'dtype',
-                                 int(var.dtype), 'str_value',
-                                 str(float(self._value)), 'shape', var.shape)
+            _legacy_C_ops.fill_constant(var, 'value', float(self._value),
+                                        'force_cpu', self._force_cpu, 'dtype',
+                                        int(var.dtype), 'str_value',
+                                        str(float(self._value)), 'shape',
+                                        var.shape)
             return None
         else:
             op = block.append_op(type="fill_constant",
@@ -274,13 +275,13 @@ class UniformInitializer(Initializer):
             out_var = var
 
         if framework._non_static_mode():
-            out_var = _C_ops.uniform_random(
+            out_var = _legacy_C_ops.uniform_random(
                 'shape', var.shape, 'min', self._low, 'max', self._high, 'seed',
                 self._seed, 'dtype', out_dtype, 'diag_num', self._diag_num,
                 'diag_step', self._diag_step, 'diag_val', self._diag_val)
             if var.dtype == VarDesc.VarType.FP16:
-                var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                      'out_dtype', var.dtype)
+                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
+                                             'out_dtype', var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -378,26 +379,25 @@ class NormalInitializer(Initializer):
 
         if in_dygraph_mode():
             place = _current_expected_place()
-            out_var = _C_ops.final_state_gaussian_random(
-                var.shape, self._mean, self._std_dev, self._seed, out_dtype,
-                place)
+            out_var = _C_ops.gaussian_random(var.shape, self._mean,
+                                             self._std_dev, self._seed,
+                                             out_dtype, place)
 
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _C_ops.final_state_cast(out_var, var.dtype)
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
             return None
 
         if _in_legacy_dygraph():
-            out_var = _C_ops.gaussian_random('shape', var.shape, 'dtype',
-                                             out_dtype, 'mean', self._mean,
-                                             'std', self._std_dev, 'seed',
-                                             self._seed, 'use_mkldnn', False)
+            out_var = _legacy_C_ops.gaussian_random(
+                'shape', var.shape, 'dtype', out_dtype, 'mean', self._mean,
+                'std', self._std_dev, 'seed', self._seed, 'use_mkldnn', False)
 
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                      'out_dtype', var.dtype)
+                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
+                                             'out_dtype', var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -486,25 +486,23 @@ class TruncatedNormalInitializer(Initializer):
             out_var = var
 
         if in_dygraph_mode():
-            out_var = _C_ops.final_state_truncated_gaussian_random(
+            out_var = _C_ops.truncated_gaussian_random(
                 var.shape, self._mean, self._std_dev, self._seed, out_dtype,
                 _current_expected_place())
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _C_ops.final_state_cast(out_var, var.dtype)
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
             return None
 
         if _in_legacy_dygraph():
-            out_var = _C_ops.truncated_gaussian_random('shape', var.shape,
-                                                       'dtype', out_dtype,
-                                                       'mean', self._mean,
-                                                       'std', self._std_dev,
-                                                       'seed', self._seed)
+            out_var = _legacy_C_ops.truncated_gaussian_random(
+                'shape', var.shape, 'dtype', out_dtype, 'mean', self._mean,
+                'std', self._std_dev, 'seed', self._seed)
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                      'out_dtype', var.dtype)
+                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
+                                             'out_dtype', var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -632,34 +630,34 @@ class XavierInitializer(Initializer):
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
                 if in_dygraph_mode():
-                    out_var = _C_ops.final_state_uniform_random(
-                        out_var.shape, out_dtype, -limit, limit, self._seed,
-                        _current_expected_place())
+                    out_var = _C_ops.uniform_random(out_var.shape, out_dtype,
+                                                    -limit, limit, self._seed,
+                                                    _current_expected_place())
                 elif _in_legacy_dygraph():
-                    out_var = _C_ops.uniform_random('shape', out_var.shape,
-                                                    'min', -limit, 'max', limit,
-                                                    'seed', self._seed, 'dtype',
-                                                    out_dtype)
+                    out_var = _legacy_C_ops.uniform_random(
+                        'shape', out_var.shape, 'min', -limit, 'max', limit,
+                        'seed', self._seed, 'dtype', out_dtype)
             else:
                 std = math.sqrt(2.0 / float(fan_in + fan_out))
 
                 if in_dygraph_mode():
                     place = _current_expected_place()
-                    out_var = _C_ops.final_state_gaussian_random(
-                        out_var.shape, 0.0, std, self._seed, out_dtype, place)
+                    out_var = _C_ops.gaussian_random(out_var.shape, 0.0, std,
+                                                     self._seed, out_dtype,
+                                                     place)
                 else:
-                    out_var = _C_ops.gaussian_random('shape', out_var.shape,
-                                                     'dtype', out_dtype, 'mean',
-                                                     0.0, 'std', std, 'seed',
-                                                     self._seed)
+                    out_var = _legacy_C_ops.gaussian_random(
+                        'shape', out_var.shape, 'dtype', out_dtype, 'mean', 0.0,
+                        'std', std, 'seed', self._seed)
 
             if var.dtype == VarDesc.VarType.FP16 or (
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
                 if in_dygraph_mode():
-                    var_tmp = _C_ops.final_state_cast(out_var, var.dtype)
+                    var_tmp = _C_ops.cast(out_var, var.dtype)
                 elif _in_legacy_dygraph():
-                    var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                          'out_dtype', var.dtype)
+                    var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype',
+                                                 out_var.dtype, 'out_dtype',
+                                                 var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -807,28 +805,28 @@ class MSRAInitializer(Initializer):
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 limit = gain * math.sqrt(3.0 / float(fan_in))
 
-                out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
-                                                -limit, 'max', limit, 'seed',
-                                                self._seed, 'dtype',
-                                                int(out_dtype))
+                out_var = _legacy_C_ops.uniform_random('shape', out_var.shape,
+                                                       'min', -limit, 'max',
+                                                       limit, 'seed',
+                                                       self._seed, 'dtype',
+                                                       int(out_dtype))
             else:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 std = gain / math.sqrt(float(fan_in))
                 if in_dygraph_mode():
                     place = _current_expected_place()
-                    out_var = _C_ops.final_state_gaussian_random(
-                        out_var.shape, 0.0, std, self._seed, out_dtype, place)
+                    out_var = _C_ops.gaussian_random(out_var.shape, 0.0, std,
+                                                     self._seed, out_dtype,
+                                                     place)
                 else:
-                    out_var = _C_ops.gaussian_random('shape',
-                                                     out_var.shape, 'dtype',
-                                                     int(out_dtype), 'mean',
-                                                     0.0, 'std', std, 'seed',
-                                                     self._seed)
+                    out_var = _legacy_C_ops.gaussian_random(
+                        'shape', out_var.shape, 'dtype', int(out_dtype), 'mean',
+                        0.0, 'std', std, 'seed', self._seed)
 
             if var.dtype == VarDesc.VarType.FP16 or (
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
-                var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                      'out_dtype', var.dtype)
+                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
+                                             'out_dtype', var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -988,14 +986,14 @@ class BilinearInitializer(Initializer):
             raise ValueError("The size of input is too big. ")
 
         if framework._non_static_mode():
-            _C_ops.assign_value(out_var, 'shape', list(shape), 'dtype',
-                                out_dtype, value_name, values)
+            _legacy_C_ops.assign_value(out_var, 'shape', list(shape), 'dtype',
+                                       out_dtype, value_name, values)
             if var.dtype in [
                     VarDesc.VarType.FP16, VarDesc.VarType.BF16,
                     VarDesc.VarType.FP64
             ]:
-                var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                      'out_dtype', var.dtype)
+                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
+                                             'out_dtype', var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -1095,11 +1093,12 @@ class NumpyArrayInitializer(Initializer):
                              "saving it to file and 'load_op' to load it")
 
         if framework._non_static_mode():
-            _C_ops.assign_value(out_var, 'shape', list(self._value.shape),
-                                'dtype', out_dtype, value_name, values)
+            _legacy_C_ops.assign_value(out_var, 'shape',
+                                       list(self._value.shape), 'dtype',
+                                       out_dtype, value_name, values)
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                      'out_dtype', var.dtype)
+                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
+                                             'out_dtype', var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)

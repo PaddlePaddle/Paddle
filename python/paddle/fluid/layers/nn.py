@@ -41,7 +41,7 @@ from ...utils import deprecated
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
 from paddle.utils import deprecated
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'fc',
@@ -197,15 +197,15 @@ __all__ = [
 ]
 
 OP_NAMEMAPPING = {
-    'elementwise_max': 'final_state_maximum',
-    'elementwise_min': 'final_state_minimum',
-    'elementwise_pow': 'final_state_elementwise_pow',
-    'elementwise_floordiv': 'final_state_floor_divide',
-    'elementwise_add': 'final_state_add',
-    'elementwise_sub': 'final_state_subtract',
-    'elementwise_mul': 'final_state_multiply',
-    'elementwise_div': 'final_state_divide',
-    'elementwise_mod': 'final_state_modulo',
+    'elementwise_max': 'maximum',
+    'elementwise_min': 'minimum',
+    'elementwise_pow': 'elementwise_pow',
+    'elementwise_floordiv': 'floor_divide',
+    'elementwise_add': 'add',
+    'elementwise_sub': 'subtract',
+    'elementwise_mul': 'multiply',
+    'elementwise_div': 'divide',
+    'elementwise_mod': 'modulo',
 }
 
 
@@ -221,7 +221,7 @@ def _elementwise_op_in_dygraph(x,
         return op_name[-1] == "_"
 
     if op_name not in OP_NAMEMAPPING.keys() or axis != -1:
-        op = getattr(_C_ops, op_name)
+        op = getattr(_legacy_C_ops, op_name)
         out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
     else:
         if in_dygraph_mode():
@@ -231,7 +231,7 @@ def _elementwise_op_in_dygraph(x,
             out = op(x, y)
 
         if _in_legacy_dygraph():
-            op = getattr(_C_ops, op_name)
+            op = getattr(_legacy_C_ops, op_name)
             out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
     return dygraph_utils._append_activation_in_dygraph(out,
                                                        act,
@@ -1146,11 +1146,12 @@ def dropout(x,
             seed = default_main_program().random_seed
         if is_test is None:
             is_test = not _dygraph_tracer()._train_mode
-        out, mask = _C_ops.dropout(x, 'dropout_prob', dropout_prob, 'is_test',
-                                   is_test, 'fix_seed', seed is not None,
-                                   'seed', seed if seed is not None else 0,
-                                   'dropout_implementation',
-                                   dropout_implementation)
+        out, mask = _legacy_C_ops.dropout(x, 'dropout_prob', dropout_prob,
+                                          'is_test', is_test, 'fix_seed', seed
+                                          is not None, 'seed',
+                                          seed if seed is not None else 0,
+                                          'dropout_implementation',
+                                          dropout_implementation)
         return out
 
     def get_attrs(prog, dropout_prob, is_test, seed):
@@ -1455,7 +1456,8 @@ def softmax(input, use_cudnn=True, name=None, axis=-1):
     """
 
     if _non_static_mode():
-        return _C_ops.softmax(input, 'axis', axis, 'use_cudnn', use_cudnn)
+        return _legacy_C_ops.softmax(input, 'axis', axis, 'use_cudnn',
+                                     use_cudnn)
 
     inputs = {"X": [input]}
     attrs = {"axis": axis, "use_cudnn": use_cudnn}
@@ -2261,10 +2263,9 @@ def pool2d(input,
 
     pool_padding = update_padding(pool_padding, data_format)
     if in_dygraph_mode():
-        return _C_ops.final_state_pool2d(input, pool_size, pool_stride,
-                                         pool_padding, ceil_mode, exclusive,
-                                         data_format, pool_type, global_pooling,
-                                         False, padding_algorithm)
+        return _C_ops.pool2d(input, pool_size, pool_stride, pool_padding,
+                             ceil_mode, exclusive, data_format, pool_type,
+                             global_pooling, False, padding_algorithm)
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
@@ -3026,11 +3027,11 @@ def batch_norm(input,
                       data_layout, 'use_mkldnn', False, 'fuse_with_relu', False,
                       'use_global_stats', use_global_stats)
         if inputs_has_MomemtumTensor:
-            batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
+            batch_norm_out, _, _, _, _, _ = _legacy_C_ops.batch_norm(
                 input, scale, bias, mean, variance, momentum, mean_out,
                 variance_out, *attrs_)
         else:
-            batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
+            batch_norm_out, _, _, _, _, _ = _legacy_C_ops.batch_norm(
                 input, scale, bias, mean, variance, None, mean_out,
                 variance_out, *attrs_)
 
@@ -3260,12 +3261,12 @@ def inplace_abn(input,
                        False, 'use_global_stats', use_global_stats,
                        'activation', act, 'alpha', act_alpha)
         if inputs_has_MomemtumTensor:
-            batch_norm_out, _, _, _, _, _ = _C_ops.inplace_abn_(
+            batch_norm_out, _, _, _, _, _ = _legacy_C_ops.inplace_abn_(
                 input, scale, bias, mean, variance, momentum, mean_out,
                 variance_out, *attrs__)
             return batch_norm_out
         else:
-            batch_norm_out, _, _, _, _, _ = _C_ops.inplace_abn_(
+            batch_norm_out, _, _, _, _, _ = _legacy_C_ops.inplace_abn_(
                 input, scale, bias, mean, variance, None, mean_out,
                 variance_out, *attrs__)
             return batch_norm_out
@@ -4662,15 +4663,15 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             input.shape) else False
         dim = dim if dim != None and dim != [] else [0]
         if reduce_all:
-            return _C_ops.final_state_sum(input, [], None, keep_dim)
+            return _C_ops.sum(input, [], None, keep_dim)
         else:
-            return _C_ops.final_state_sum(input, dim, None, keep_dim)
+            return _C_ops.sum(input, dim, None, keep_dim)
     elif _in_legacy_dygraph():
         reduce_all = True if dim == None or dim == [] or len(dim) == len(
             input.shape) else False
         dim = dim if dim != None and dim != [] else [0]
-        return _C_ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
-                                 'reduce_all', reduce_all)
+        return _legacy_C_ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
+                                        'reduce_all', reduce_all)
     attrs = {
         'dim':
         dim if dim != None and dim != [] else [0],
@@ -4944,7 +4945,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
                 "The type of axis must be int, list or tuple, but received {}".
                 format(type(dim)))
     if in_dygraph_mode():
-        return _C_ops.final_state_reduce_prod(
+        return _C_ops.reduce_prod(
             input, dim if dim != None and dim != [] else [0], keep_dim, True if
             dim == None or dim == [] or len(dim) == len(input.shape) else False)
 
@@ -5176,10 +5177,10 @@ def split(input, num_or_sections, dim=-1, name=None):
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
         if in_dygraph_mode():
-            return _C_ops.final_state_split(input, [num], dim)
+            return _C_ops.split(input, [num], dim)
         elif _in_legacy_dygraph():
             out = [_varbase_creator() for n in range(num)]
-            _C_ops.split(input, out, *attrs)
+            _legacy_C_ops.split(input, out, *attrs)
             return out
 
     check_variable_and_dtype(
@@ -5303,8 +5304,8 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     if len(x.shape) == 1:
         axis = 0
     if _non_static_mode():
-        _, out = _C_ops.norm(x, 'axis', 1 if axis is None else axis, 'epsilon',
-                             epsilon)
+        _, out = _legacy_C_ops.norm(x, 'axis', 1 if axis is None else axis,
+                                    'epsilon', epsilon)
         return out
 
     check_variable_and_dtype(x, "X", ("float16", "float32", "float64"), "norm")
@@ -5402,8 +5403,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     """
     if _non_static_mode():
         out = _varbase_creator(dtype=x.dtype)
-        _C_ops.matmul(x, y, out, 'transpose_X', transpose_x, 'transpose_Y',
-                      transpose_y, 'alpha', float(alpha))
+        _legacy_C_ops.matmul(x, y, out, 'transpose_X', transpose_x,
+                             'transpose_Y', transpose_y, 'alpha', float(alpha))
         return out
 
     def __check_input(x, y):
@@ -5536,7 +5537,7 @@ def topk(input, k, name=None):
     """
     if _non_static_mode():
         _k = k.numpy().item(0) if isinstance(k, Variable) else k
-        out, indices = _C_ops.top_k(input, 'k', _k)
+        out, indices = _legacy_C_ops.top_k(input, 'k', _k)
         out.stop_gradient = True
         indices.stop_gradient = True
         return out, indices
@@ -5784,10 +5785,10 @@ def transpose(x, perm, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_transpose(x, perm)
+        return _C_ops.transpose(x, perm)
     else:
         if _in_legacy_dygraph():
-            out, _ = _C_ops.transpose2(x, 'axis', perm)
+            out, _ = _legacy_C_ops.transpose2(x, 'axis', perm)
             return out
 
     check_variable_and_dtype(x, 'x', [
@@ -6076,9 +6077,9 @@ def multiplex(inputs, index, name=None):
     """
 
     if _in_legacy_dygraph():
-        return _C_ops.multiplex(index, inputs)
+        return _legacy_C_ops.multiplex(index, inputs)
     if in_dygraph_mode():
-        return _C_ops.final_state_multiplex(inputs, index)
+        return _C_ops.multiplex(inputs, index)
     helper = LayerHelper('multiplex', **locals())
 
     check_type(inputs, 'inputs', (list), 'multiplex')
@@ -6269,8 +6270,8 @@ def one_hot(input, depth, allow_out_of_range=False):
             assert depth.shape == (
                 1, ), "depth of type Variable should have shape [1]"
             depth = depth.item(0)
-        out = _C_ops.one_hot(input, 'depth', depth, 'allow_out_of_range',
-                             allow_out_of_range)
+        out = _legacy_C_ops.one_hot(input, 'depth', depth, 'allow_out_of_range',
+                                    allow_out_of_range)
         out.stop_gradient = True
         return out
 
@@ -6451,11 +6452,11 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in shape
             ]
-            out = _C_ops.final_state_reshape(x, shape)
+            out = _C_ops.reshape(x, shape)
         elif isinstance(shape, tmp_tensor_type):
-            # TODO: Tensor shape in final_state_reshape has not been tested
+            # TODO: Tensor shape in reshape has not been tested
             shape.stop_gradient = True
-            out = _C_ops.final_state_reshape(x, shape)
+            out = _C_ops.reshape(x, shape)
         else:
             raise ValueError(
                 "shape must be an instance of `list`, `tuple` or `Variable`,"
@@ -6474,10 +6475,10 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                     item.numpy().item(0) if isinstance(item, Variable) else item
                     for item in shape
                 ]
-                out, _ = _C_ops.reshape2(x, None, 'shape', shape)
+                out, _ = _legacy_C_ops.reshape2(x, None, 'shape', shape)
             elif isinstance(shape, tmp_tensor_type):
                 shape.stop_gradient = True
-                out, _ = _C_ops.reshape2(x, shape)
+                out, _ = _legacy_C_ops.reshape2(x, shape)
             else:
                 raise ValueError(
                     "shape must be an instance of `list`, `tuple` or `Variable`,"
@@ -6611,9 +6612,9 @@ def squeeze(input, axes, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_squeeze(input, axes)
+        return _C_ops.squeeze(input, axes)
     if _in_legacy_dygraph():
-        out, _ = _C_ops.squeeze2(input, 'axes', axes)
+        out, _ = _legacy_C_ops.squeeze2(input, 'axes', axes)
         return out
 
     helper = LayerHelper("squeeze", **locals())
@@ -6685,9 +6686,9 @@ def unsqueeze(input, axes, name=None):
                 for item in axes
             ]
         if _in_legacy_dygraph():
-            out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
+            out, _ = _legacy_C_ops.unsqueeze2(input, 'axes', axes)
             return out
-        return _C_ops.final_state_unsqueeze(input, axes)
+        return _C_ops.unsqueeze(input, axes)
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
     check_variable_and_dtype(input, 'input', [
@@ -7230,14 +7231,14 @@ def label_smooth(label,
                 label=one_hot_label, epsilon=0.1, dtype="float32")
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_label_smooth(label, prior_dist,
-                                               float(epsilon))
+        return _C_ops.label_smooth(label, prior_dist, float(epsilon))
 
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
     if _non_static_mode():
-        return _C_ops.label_smooth(label, prior_dist, 'epsilon', float(epsilon))
+        return _legacy_C_ops.label_smooth(label, prior_dist, 'epsilon',
+                                          float(epsilon))
 
     check_variable_and_dtype(label, 'label', ['float32', 'float64'],
                              'label_smooth')
@@ -7329,10 +7330,9 @@ def roi_pool(input,
     """
     if _non_static_mode():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
-        pool_out, argmaxes = _C_ops.roi_pool(input, rois, rois_num,
-                                             "pooled_height", pooled_height,
-                                             "pooled_width", pooled_width,
-                                             "spatial_scale", spatial_scale)
+        pool_out, argmaxes = _legacy_C_ops.roi_pool(
+            input, rois, rois_num, "pooled_height", pooled_height,
+            "pooled_width", pooled_width, "spatial_scale", spatial_scale)
         return pool_out, argmaxes
 
     check_variable_and_dtype(input, 'input', ['float32'], 'roi_pool')
@@ -7419,17 +7419,16 @@ def roi_align(input,
     """
     if in_dygraph_mode():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
-        return _C_ops.final_state_roi_align(input, rois, rois_num,
-                                            pooled_height, pooled_width,
-                                            spatial_scale, sampling_ratio,
-                                            False)
+        return _C_ops.roi_align(input, rois, rois_num, pooled_height,
+                                pooled_width, spatial_scale, sampling_ratio,
+                                False)
     if _in_legacy_dygraph():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
-        align_out = _C_ops.roi_align(input, rois, rois_num, "pooled_height",
-                                     pooled_height, "pooled_width",
-                                     pooled_width, "spatial_scale",
-                                     spatial_scale, "sampling_ratio",
-                                     sampling_ratio)
+        align_out = _legacy_C_ops.roi_align(input, rois, rois_num,
+                                            "pooled_height", pooled_height,
+                                            "pooled_width", pooled_width,
+                                            "spatial_scale", spatial_scale,
+                                            "sampling_ratio", sampling_ratio)
         return align_out
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
@@ -7989,15 +7988,15 @@ def image_resize(input,
         dy_attr = tuple(attr_list)
 
         if resample_type == "linear":
-            out = _C_ops.linear_interp(input, actual_shape, *dy_attr)
+            out = _legacy_C_ops.linear_interp(input, actual_shape, *dy_attr)
         elif resample_type == "bilinear":
-            out = _C_ops.bilinear_interp(input, actual_shape, *dy_attr)
+            out = _legacy_C_ops.bilinear_interp(input, actual_shape, *dy_attr)
         elif resample_type == "trilinear":
-            out = _C_ops.trilinear_interp(input, actual_shape, *dy_attr)
+            out = _legacy_C_ops.trilinear_interp(input, actual_shape, *dy_attr)
         elif resample_type == "nearest":
-            out = _C_ops.nearest_interp(input, actual_shape, *dy_attr)
+            out = _legacy_C_ops.nearest_interp(input, actual_shape, *dy_attr)
         elif resample_type == "bicubic":
-            out = _C_ops.bicubic_interp(input, actual_shape, *dy_attr)
+            out = _legacy_C_ops.bicubic_interp(input, actual_shape, *dy_attr)
         return out
 
     out = helper.create_variable_for_type_inference(dtype)
@@ -8724,7 +8723,7 @@ def gather(input, index, overwrite=True):
             output = fluid.layers.gather(x, index)
     """
     if _non_static_mode():
-        return _C_ops.gather(input, index, None, 'overwrite', overwrite)
+        return _legacy_C_ops.gather(input, index, None, 'overwrite', overwrite)
 
     check_variable_and_dtype(
         input, 'x',
@@ -8819,10 +8818,10 @@ def gather_nd(input, index, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_gather_nd(input, index)
+        return _C_ops.gather_nd(input, index)
     else:
         if _in_legacy_dygraph():
-            return _C_ops.gather_nd(input, index)
+            return _legacy_C_ops.gather_nd(input, index)
     check_variable_and_dtype(
         input, 'input',
         ['bool', 'float32', 'float64', 'int16', 'int32', 'int64'], 'gather_np')
@@ -9000,10 +8999,10 @@ def scatter_nd_add(ref, index, updates, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_scatter_nd_add(ref, index, updates)
+        return _C_ops.scatter_nd_add(ref, index, updates)
     else:
         if _in_legacy_dygraph():
-            op = getattr(_C_ops, 'scatter_nd_add')
+            op = getattr(_legacy_C_ops, 'scatter_nd_add')
             return op(ref, index, updates)
         else:
             if ref.dtype != updates.dtype:
@@ -9153,9 +9152,9 @@ def log(x, name=None):
             # [[0.693147, 1.09861, 1.38629], [1.94591, 2.07944, 2.19722]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_log(x)
-    if _in_legacy_dygraph():
         return _C_ops.log(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.log(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
     inputs = {'X': [x]}
@@ -9196,9 +9195,9 @@ def relu(x, name=None):
 """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_relu(x)
-    if _in_legacy_dygraph():
         return _C_ops.relu(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.relu(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu')
 
@@ -9329,7 +9328,7 @@ def mean_iou(input, label, num_classes):
             mean_iou, out_wrong, out_correct = paddle.metric.mean_iou(predict, label, num_classes)
     """
     if _non_static_mode():
-        return _C_ops.mean_iou(input, label, 'num_classes', num_classes)
+        return _legacy_C_ops.mean_iou(input, label, 'num_classes', num_classes)
 
     helper = LayerHelper('mean_iou', **locals())
     check_variable_and_dtype(input, 'Predictions', ['int32', 'int64'],
@@ -9810,8 +9809,9 @@ def pad2d(input,
     if _non_static_mode():
         _paddings = paddings.numpy().tolist() if isinstance(
             paddings, Variable) else paddings
-        return _C_ops.pad2d(input, 'mode', mode, 'pad_value', pad_value,
-                            'data_format', data_format, 'paddings', _paddings)
+        return _legacy_C_ops.pad2d(input, 'mode', mode, 'pad_value', pad_value,
+                                   'data_format', data_format, 'paddings',
+                                   _paddings)
 
     check_variable_and_dtype(
         input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -10009,7 +10009,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
     """
 
     if _non_static_mode():
-        return _C_ops.stanh(x, 'scale_a', scale_a, 'scale_b', scale_b)
+        return _legacy_C_ops.stanh(x, 'scale_a', scale_a, 'scale_b', scale_b)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'stanh')
 
@@ -10052,7 +10052,7 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
             result = fluid.layers.hard_sigmoid(data) # [[0.6, 0.6], [0.6, 0.6], [0.6, 0.6]]
     """
     if _non_static_mode():
-        return _C_ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
+        return _legacy_C_ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hard_sigmoid')
@@ -10287,7 +10287,7 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
                 #[ 1. 10.]]
     """
     if _non_static_mode():
-        return _C_ops.brelu(x, 't_min', t_min, 't_max', t_max)
+        return _legacy_C_ops.brelu(x, 't_min', t_min, 't_max', t_max)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'brelu')
 
@@ -10446,7 +10446,7 @@ def flatten(x, axis=1, name=None):
         x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
         'flatten')
     if _non_static_mode():
-        return _C_ops.flatten2(x, 'axis', axis)[0]
+        return _legacy_C_ops.flatten2(x, 'axis', axis)[0]
 
     helper = LayerHelper('flatten', **locals())
 
@@ -10550,10 +10550,10 @@ def stack(x, axis=0, name=None):
     axis = 0 if axis is None else axis
 
     if in_dygraph_mode():
-        return _C_ops.final_state_stack(x, axis)
+        return _C_ops.stack(x, axis)
 
     if _in_legacy_dygraph():
-        return _C_ops.stack(x, 'axis', axis)
+        return _legacy_C_ops.stack(x, 'axis', axis)
 
     if not isinstance(x, list) and not isinstance(x, tuple):
         # NOTE:(zhiqiu) Only support Variable as input if the Variable is a LOD_TENSOR_ARRAY create by create_array, array_write, array_read, etc.
@@ -10716,7 +10716,7 @@ def unstack(x, axis=0, num=None):
             num = x.shape[axis]
         if num == 0:
             return []
-        return _C_ops.unstack(x, num, 'axis', int(axis), 'num', num)
+        return _legacy_C_ops.unstack(x, num, 'axis', int(axis), 'num', num)
 
     helper = LayerHelper('unstack', **locals())
     if num is None:
@@ -10813,7 +10813,7 @@ def expand(x, expand_times, name=None):
             expand_times_tensor = expand_times
             expand_times_tensor.stop_gradient = True
 
-        return _C_ops.expand(x, expand_times_tensor, *attrs)
+        return _legacy_C_ops.expand(x, expand_times_tensor, *attrs)
 
     inputs = {"X": [x]}
     attrs = {}
@@ -10925,7 +10925,7 @@ def expand_as(x, target_tensor, name=None):
 
     """
     if _non_static_mode():
-        return _C_ops.expand_as(x, target_tensor)
+        return _legacy_C_ops.expand_as(x, target_tensor)
 
     check_variable_and_dtype(x, 'x',
                              ['float32', 'float64', 'int32', 'int64', 'bool'],
@@ -11147,15 +11147,15 @@ def gaussian_random(shape,
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
         place = _current_expected_place()
-        return _C_ops.final_state_gaussian_random(shape, float(mean),
-                                                  float(std), seed, dtype,
-                                                  place)
+        return _C_ops.gaussian_random(shape, float(mean), float(std), seed,
+                                      dtype, place)
 
     if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
-        return _C_ops.gaussian_random('shape',
-                                      shape, 'mean', float(mean), 'std',
-                                      float(std), 'seed', seed, 'dtype', dtype)
+        return _legacy_C_ops.gaussian_random('shape', shape,
+                                             'mean', float(mean), 'std',
+                                             float(std), 'seed', seed, 'dtype',
+                                             dtype)
 
     check_type(shape, 'shape', (list, tuple, Variable), 'gaussian_random/randn')
     check_dtype(dtype, 'dtype', ['float32', 'float64'], 'gaussian_random/randn')
@@ -11477,8 +11477,7 @@ def slice(input, axes, starts, ends):
             tensor_t = ends.numpy()
             ends = [ele for ele in tensor_t]
 
-        return _C_ops.final_state_slice(input, axes, starts, ends, infer_flags,
-                                        [])
+        return _C_ops.slice(input, axes, starts, ends, infer_flags, [])
     else:
         if _in_legacy_dygraph():
             attrs = ()
@@ -11529,9 +11528,9 @@ def slice(input, axes, starts, ends):
                 ends_tensor.stop_gradient = True
                 infer_flags = list(-1 for i in range(len(axes)))
 
-            return _C_ops.slice(input, starts_tensor, ends_tensor, None, None,
-                                'axes', axes, 'infer_flags', infer_flags,
-                                *attrs)
+            return _legacy_C_ops.slice(input, starts_tensor, ends_tensor, None,
+                                       None, 'axes', axes, 'infer_flags',
+                                       infer_flags, *attrs)
 
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(
@@ -11696,8 +11695,7 @@ def strided_slice(input, axes, starts, ends, strides):
             # sliced_2 is input[:, 0:3:1, 0:2:1, 2:4:2].
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_strided_slice(input, axes, starts, ends,
-                                                strides)
+        return _C_ops.strided_slice(input, axes, starts, ends, strides)
 
     helper = LayerHelper('strided_slice', **locals())
 
@@ -11866,11 +11864,11 @@ def shape(input):
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
     if in_dygraph_mode():
-        out = _C_ops.final_state_shape(input)
+        out = _C_ops.shape(input)
         out.stop_gradient = True
         return out
     if _in_legacy_dygraph():
-        out = _C_ops.shape(input)
+        out = _legacy_C_ops.shape(input)
         out.stop_gradient = True
         return out
 
@@ -11945,10 +11943,10 @@ def size(input):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_size(input)
+        return _C_ops.size(input)
 
     if _in_legacy_dygraph():
-        return _C_ops.size(input)
+        return _legacy_C_ops.size(input)
 
     check_variable_and_dtype(
         input, 'input',
@@ -12040,12 +12038,13 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_scale(x, scale, float(bias), bias_after_scale)
+        out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out)
     if _non_static_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
-        out = _C_ops.scale(x, 'scale', float(_scale), 'bias', float(bias),
-                           'bias_after_scale', bias_after_scale)
+        out = _legacy_C_ops.scale(x, 'scale', float(_scale), 'bias',
+                                  float(bias), 'bias_after_scale',
+                                  bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out)
 
     check_variable_and_dtype(x, "x", [
@@ -12848,7 +12847,7 @@ def logical_and(x, y, out=None, name=None):
             print(res) # [True False True False]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_logical_and(x, y)
+        return _C_ops.logical_and(x, y)
 
     return _logical_op(op_name="logical_and",
                        x=x,
@@ -12894,7 +12893,7 @@ def logical_or(x, y, out=None, name=None):
             print(res) # [[ True  True] [ True False]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_logical_or(x, y)
+        return _C_ops.logical_or(x, y)
     return _logical_op(op_name="logical_or",
                        x=x,
                        y=y,
@@ -12939,7 +12938,7 @@ def logical_xor(x, y, out=None, name=None):
             print(res) # [[False,  True], [ True, False]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_logical_xor(x, y)
+        return _C_ops.logical_xor(x, y)
 
     return _logical_op(op_name="logical_xor",
                        x=x,
@@ -12978,7 +12977,7 @@ def logical_not(x, out=None, name=None):
             print(res) # [False  True False  True]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_logical_not(x)
+        return _C_ops.logical_not(x)
     return _logical_op(op_name="logical_not",
                        x=x,
                        y=None,
@@ -13070,9 +13069,9 @@ def clip_by_norm(x, max_norm, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_clip_by_norm(x, max_norm)
+        return _C_ops.clip_by_norm(x, max_norm)
     if _non_static_mode():
-        return _C_ops.clip_by_norm(x, 'max_norm', max_norm)
+        return _legacy_C_ops.clip_by_norm(x, 'max_norm', max_norm)
 
     helper = LayerHelper("clip_by_norm", **locals())
     check_variable_and_dtype(x, 'X', ['float32', 'float16'], 'clip_by_norm')
@@ -13121,9 +13120,9 @@ def mean(x, name=None):
     """
 
     if _in_legacy_dygraph():
-        return _C_ops.mean(x)
+        return _legacy_C_ops.mean(x)
     if in_dygraph_mode():
-        return _C_ops.final_state_mean_all(x)
+        return _C_ops.mean_all(x)
 
     helper = LayerHelper("mean", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mean')
@@ -13160,7 +13159,7 @@ def merge_selected_rows(x, name=None):
             y = fluid.layers.merge_selected_rows(var)
     """
     if _non_static_mode():
-        return _C_ops.merge_selected_rows(x)
+        return _legacy_C_ops.merge_selected_rows(x)
 
     helper = LayerHelper("merge_selected_rows", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -13207,8 +13206,8 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 
     """
     if _non_static_mode():
-        return _C_ops.mul(x, y, 'x_num_col_dims', x_num_col_dims,
-                          'y_num_col_dims', y_num_col_dims)
+        return _legacy_C_ops.mul(x, y, 'x_num_col_dims', x_num_col_dims,
+                                 'y_num_col_dims', y_num_col_dims)
 
     inputs = {"X": [x], "Y": [y]}
     attrs = {"x_num_col_dims": x_num_col_dims, "y_num_col_dims": y_num_col_dims}
@@ -13825,7 +13824,8 @@ def add_position_encoding(input, alpha, beta, name=None):
 
     """
     if _non_static_mode():
-        return _C_ops.add_position_encoding(input, "alpha", alpha, "beta", beta)
+        return _legacy_C_ops.add_position_encoding(input, "alpha", alpha,
+                                                   "beta", beta)
 
     helper = LayerHelper('add_position_encoding', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
@@ -14756,9 +14756,9 @@ def where(condition):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_where_index(condition)
-    if _in_legacy_dygraph():
         return _C_ops.where_index(condition)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.where_index(condition)
 
     helper = LayerHelper("where_index", **locals())
 
@@ -15429,8 +15429,8 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             # [[-1], [1]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_shard_index(input, index_num, nshards,
-                                              shard_id, ignore_value)
+        return _C_ops.shard_index(input, index_num, nshards, shard_id,
+                                  ignore_value)
 
     check_variable_and_dtype(input, 'input', ['int64', 'int32'], 'shard_index')
     op_type = 'shard_index'
@@ -15504,8 +15504,8 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
         print(out)  # [[0.66666667, 1.66666667,3., 4.]]
     """
     if _non_static_mode():
-        return _C_ops.hard_swish(x, 'threshold', threshold, 'scale', scale,
-                                 'offset', offset)
+        return _legacy_C_ops.hard_swish(x, 'threshold', threshold, 'scale',
+                                        scale, 'offset', offset)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hard_swish')
@@ -15584,9 +15584,9 @@ def mish(x, threshold=20, name=None):
         print(out)  # [[0.66666667, 1.66666667, 3., 4.]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_mish(x, threshold)
+        return _C_ops.mish(x, threshold)
     if _in_legacy_dygraph():
-        return _C_ops.mish(x, 'threshold', threshold)
+        return _legacy_C_ops.mish(x, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'mish')
     check_type(threshold, 'threshold', (float, int), 'mish')
@@ -15753,13 +15753,14 @@ def uniform_random(shape,
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        return _C_ops.final_state_uniform_random(shape, dtype, float(min),
-                                                 float(max), seed,
-                                                 _current_expected_place())
+        return _C_ops.uniform_random(shape, dtype, float(min), float(max), seed,
+                                     _current_expected_place())
     elif _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
-        return _C_ops.uniform_random('shape', shape, 'min', float(min), 'max',
-                                     float(max), 'seed', seed, 'dtype', dtype)
+        return _legacy_C_ops.uniform_random('shape',
+                                            shape, 'min', float(min), 'max',
+                                            float(max), 'seed', seed, 'dtype',
+                                            dtype)
 
     check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random/rand')
     check_dtype(dtype, 'dtype', ('float32', 'float64', 'uint16'),

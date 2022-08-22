@@ -17,7 +17,7 @@ import warnings
 from ...static import Variable
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
 from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
@@ -88,11 +88,11 @@ def one_hot(x, num_classes, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_one_hot(x, num_classes)
+        return _C_ops.one_hot(x, num_classes)
     else:
         if _in_legacy_dygraph():
-            return _C_ops.one_hot_v2(x, 'depth', num_classes,
-                                     'allow_out_of_range', False)
+            return _legacy_C_ops.one_hot_v2(x, 'depth', num_classes,
+                                            'allow_out_of_range', False)
         else:
             check_variable_and_dtype(x, 'input', ['int32', 'int64'],
                                      'one_hot_v2')
@@ -201,12 +201,12 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             weight.shape[0], weight.shape[0]))
 
     if in_dygraph_mode():
-        return _C_ops.final_state_embedding(x, weight, padding_idx, sparse)
+        return _C_ops.embedding(x, weight, padding_idx, sparse)
     elif _in_legacy_dygraph():
-        return _C_ops.lookup_table_v2(weight, x, 'is_sparse', sparse,
-                                      'is_distributed', False,
-                                      'remote_prefetch', False, 'padding_idx',
-                                      padding_idx)
+        return _legacy_C_ops.lookup_table_v2(weight, x, 'is_sparse', sparse,
+                                             'is_distributed', False,
+                                             'remote_prefetch', False,
+                                             'padding_idx', padding_idx)
     else:
         helper = LayerHelper('embedding', **locals())
         dtype = helper.input_dtype(input_param_name='weight')

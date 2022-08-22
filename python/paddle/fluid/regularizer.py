@@ -18,7 +18,7 @@ import logging
 from . import framework
 from .framework import _non_static_mode, _varbase_creator
 from . import core
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
 
@@ -135,11 +135,11 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 
         if framework._non_static_mode():
             if framework.in_dygraph_mode():
-                return _C_ops.final_state_scale(param,
-                                                self._regularization_coeff, 0.0,
-                                                True)
+                return _C_ops.scale(param, self._regularization_coeff, 0.0,
+                                    True)
             else:
-                return _C_ops.scale(param, "scale", self._regularization_coeff)
+                return _legacy_C_ops.scale(param, "scale",
+                                           self._regularization_coeff)
         else:
             decay = block.create_var(dtype=param.dtype,
                                      shape=param.shape,
