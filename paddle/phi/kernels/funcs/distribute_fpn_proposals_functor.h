@@ -22,10 +22,10 @@
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/distribute_fpn_proposals_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
+namespace funcs {
 
 const int kBoxDim = 4;
 
@@ -64,4 +64,5 @@ static inline T BBoxArea(const T* box, bool pixel_offset) {
   }
 }
 
+}  // namespace funcs
 }  // namespace phi

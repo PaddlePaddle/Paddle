@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/impl/distribute_fpn_proposals_kernel_impl.h"
+#include "paddle/phi/kernels/distribute_fpn_proposals_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/distribute_fpn_proposals_functor.h"
 
 namespace phi {
 
@@ -47,7 +48,7 @@ void DistributeFpnProposalsKernel(
   std::vector<size_t> fpn_rois_lod;
   int fpn_rois_num;
   if (rois_num.get_ptr()) {
-    fpn_rois_lod = GetLodFromRoisNum(dev_ctx, rois_num.get_ptr());
+    fpn_rois_lod = funcs::GetLodFromRoisNum(dev_ctx, rois_num.get_ptr());
   } else {
     fpn_rois_lod = fpn_rois.lod().back();
   }
@@ -62,7 +63,7 @@ void DistributeFpnProposalsKernel(
     const T* rois_data = fpn_rois_slice.data<T>();
     for (int j = 0; j < fpn_rois_slice.dims()[0]; ++j) {
       // get the target level of current rois
-      T roi_scale = std::sqrt(BBoxArea(rois_data, pixel_offset));
+      T roi_scale = std::sqrt(funcs::BBoxArea(rois_data, pixel_offset));
       int tgt_lvl = std::floor(std::log2(roi_scale / refer_scale + (T)1e-6) +
                                refer_level);
       tgt_lvl = std::min(max_level, std::max(tgt_lvl, min_level));

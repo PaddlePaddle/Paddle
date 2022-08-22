@@ -20,12 +20,13 @@
 namespace cub = hipcub;
 #endif
 
+#include "paddle/phi/kernels/distribute_fpn_proposals_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/impl/distribute_fpn_proposals_kernel_impl.h"
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -98,7 +99,7 @@ void DistributeFpnProposalsKernel(
 
   std::vector<size_t> fpn_rois_lod;
   if (rois_num.get_ptr()) {
-    fpn_rois_lod = GetLodFromRoisNum(dev_ctx, rois_num.get_ptr());
+    fpn_rois_lod = funcs::GetLodFromRoisNum(dev_ctx, rois_num.get_ptr());
   } else {
     fpn_rois_lod = fpn_rois.lod().back();
   }
