@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fc_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    fc,
-    ops::FCOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FCOpKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(fc,
+                        ops::FCOpKernel<phi::GPUContext, phi::dtype::float16>,
+                        ops::FCOpKernel<phi::GPUContext, float>,
+                        ops::FCOpKernel<phi::GPUContext, double>);

@@ -262,7 +262,7 @@ class PostTrainingQuantization(object):
         ]
         self._support_weight_quantize_type = ['abs_max', 'channel_wise_abs_max']
         self._support_algo_type = [
-            'KL', 'hist', 'avg', 'mse', 'emd', 'abs_max', 'min_max'
+            'KL', 'hist', 'avg', 'mse', 'emd', 'abs_max', 'min_max', 'ptf'
         ]
         assert round_type in ['adaround', 'round']
         self._round_type = round_type
@@ -284,7 +284,7 @@ class PostTrainingQuantization(object):
                 "data_loader only accepts `paddle.io.DataLoader` or Generator instance."
         assert batch_size > 0, "The batch_size should be greater than 0."
         assert algo in self._support_algo_type, \
-            "The algo should be KL, hist, mse, avg, abs_max or min_max."
+            "The algo should be KL, hist, mse, avg, abs_max, min_max or ptf."
         assert activation_quantize_type in self._support_activation_quantize_type, \
             "The activation_quantize_type ({}) should in ({}).".format(
             activation_quantize_type, self._support_activation_quantize_type)
@@ -418,8 +418,7 @@ class PostTrainingQuantization(object):
             self._update_program()
 
         # save out_threshold for quantized ops.
-        if not self._onnx_format:
-            self._save_output_threshold()
+        self._save_output_threshold()
 
         if any(op_type in self._quantizable_op_type
                for op_type in self._dynamic_quantize_op_type):
@@ -622,6 +621,8 @@ class PostTrainingQuantization(object):
             self._sample_mse()
         elif self._algo == "emd":
             self._sample_emd()
+        elif self._algo == "ptf":
+            self._sample_ptf()
         elif self._algo in ["KL", "hist"]:
             self._sample_histogram()
 
@@ -811,6 +812,58 @@ class PostTrainingQuantization(object):
             hist, _ = np.histogram(var_tensor_abs, bins=bins)
             self._sampling_act_histogram[var_name][0] += hist
 
+    def l2_loss(self, gt, pred):
+        return ((gt - pred)**2).mean()
+
+    def _sample_ptf(self):
+        """
+        The following code are modified from:
+        https://github.com/megvii-research/FQ-ViT/
+        """
+        if self._quantized_threshold == {}:
+            for var_name in self._quantized_weight_var_name:
+                var_tensor = utils.load_variable_data(self._scope, var_name)
+                if self._weight_quantize_type == "abs_max":
+                    abs_max_value = float(np.max(np.abs(var_tensor)))
+                elif self._weight_quantize_type == "channel_wise_abs_max":
+                    abs_max_value = []
+                    if self._weight_op_pairs[
+                            var_name] in utils._channelwise_quant_axis1_ops:
+                        for i in range(var_tensor.shape[1]):
+                            abs_max_value.append(
+                                float(np.max(np.abs(var_tensor[:, i]))))
+                    else:
+                        for i in range(var_tensor.shape[0]):
+                            abs_max_value.append(
+                                float(np.max(np.abs(var_tensor[i]))))
+                self._quantized_threshold[var_name] = abs_max_value
+
+        for var_name in self._quantized_act_var_name:
+            var_tensor = utils.load_variable_data(self._scope, var_name)
+            abs_max_value = float(np.max(np.abs(var_tensor)))
+            q_max = 2**(self._activation_bits - 1) - 1
+            scale8 = abs_max_value / q_max
+            scale4 = scale8 / 2
+            scale2 = scale4 / 2
+            scale1 = scale2 / 2
+            quant_dequant_var_scale1 = np.clip(np.round(var_tensor / scale1), 0,
+                                               q_max) * scale1
+            quant_dequant_var_scale2 = np.clip(np.round(var_tensor / scale2), 0,
+                                               q_max) * scale2
+            quant_dequant_var_scale4 = np.clip(np.round(var_tensor / scale4), 0,
+                                               q_max) * scale4
+            quant_dequant_var_scale8 = np.clip(np.round(var_tensor / scale8), 0,
+                                               q_max) * scale8
+            score1 = self.l2_loss(var_tensor, quant_dequant_var_scale1)
+            score2 = self.l2_loss(var_tensor, quant_dequant_var_scale2)
+            score4 = self.l2_loss(var_tensor, quant_dequant_var_scale4)
+            score8 = self.l2_loss(var_tensor, quant_dequant_var_scale8)
+            score = [score1, score2, score4, score8]
+            mask = 2**score.index(min(score))
+            scale = scale1 * mask
+            threshold = q_max * scale
+            self._quantized_threshold[var_name] = threshold
+
     def _save_input_threhold(self):
         '''
         Save input threshold to the quantized op.
@@ -996,16 +1049,23 @@ class PostTrainingQuantization(object):
         '''
         Save output threshold to the quantized op.
         '''
+        self._calibration_scales = {}
 
         def save_info(op_node, out_var_name, threshold_map, out_info_name,
                       quantized_type):
             assert out_var_name in threshold_map, \
                 "The output ({}) of {} node does not have threshold.".format(
                 out_var_name, op_node.type)
-            op_node._set_attr(out_info_name, threshold_map[var_name])
-            op_node._set_attr("with_quant_attr", True)
-            if op_node.type in self._quantizable_op_type:
-                op._set_attr("quantization_type", quantized_type)
+            if self._onnx_format:
+                # For easy extension, every var_node set a dict to save parameters of quant.
+                self._calibration_scales[var_name] = {}
+                self._calibration_scales[var_name]['scale'] = threshold_map[
+                    var_name]
+            else:
+                op_node._set_attr(out_info_name, threshold_map[var_name])
+                op_node._set_attr("with_quant_attr", True)
+                if op_node.type in self._quantizable_op_type:
+                    op._set_attr("quantization_type", quantized_type)
 
         def analysis_and_save_info(op_node, out_var_name):
             argname_index = utils._get_output_name_index(op_node, out_var_name)
@@ -1028,7 +1088,7 @@ class PostTrainingQuantization(object):
                     argname_index[0] + str(argname_index[1]) + "_threshold",
                     "post_hist")
 
-            elif self._algo in ["avg", "abs_max", "mse", "emd"]:
+            elif self._algo in ["avg", "abs_max", "mse", "emd", "ptf"]:
                 save_info(op_node, out_var_name, self._quantized_threshold,
                           "out_threshold", "post_" + str(self._algo))
                 save_info(

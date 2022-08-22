@@ -45,7 +45,7 @@ class PrelnResidualBiasFusePass : public FusePassBase {
         .IsTensor()
         .End()
         .AddAttr("axis")
-        .IsIntIn({0, -1})
+        .IsIntIn({0, -1, 2})
         .End();
 
     AddOpCompat(OpCompat("layer_norm"))

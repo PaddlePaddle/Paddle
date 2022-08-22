@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 namespace phi {
 namespace funcs {

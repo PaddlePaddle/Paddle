@@ -120,6 +120,10 @@ def monkey_patch_varbase():
         for attr in attr_keys:
             attr_kwargs[attr] = getattr(self, attr, None)
 
+        # If specify block, use it instead of self.block
+        if 'block' in kwargs:
+            attr_kwargs['block'] = kwargs['block']
+
         attr_kwargs.update(kwargs)
 
         if to_parameter or isinstance(self, (ParamBase, EagerParamBase)):
@@ -866,15 +870,20 @@ def monkey_patch_varbase():
             return res
 
     @framework.dygraph_only
-    def cuda(self, device_id=0, blocking=True):
+    def cuda(self, device_id=None, blocking=True):
         if device_id is None:
-            device_id = 0
-        if not isinstance(device_id, int):
-            raise ValueError("\'device_id\' must be a positive integer")
-        if self.place.is_gpu_place():
+            res_place = framework._current_expected_place()
+            if not isinstance(res_place, core.CUDAPlace):
+                res_place = core.CUDAPlace(0)
+        elif isinstance(device_id, int):
+            res_place = core.CUDAPlace(device_id)
+        else:
+            raise ValueError("device_id must be int|None")
+
+        if self.place._equals(res_place):
             return self
         else:
-            res = self._copy_to(core.CUDAPlace(device_id), True)
+            res = self._copy_to(res_place, True)
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res

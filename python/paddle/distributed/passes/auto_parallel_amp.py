@@ -142,7 +142,6 @@ class AMPState(object):
         modified from paddle.fluid.contrib.mixed_precision
         """
         num_cast_ops = 0
-
         var_name_dict = {}
         for in_name in op.input_names:
             if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(

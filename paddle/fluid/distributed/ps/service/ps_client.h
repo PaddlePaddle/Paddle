@@ -22,11 +22,11 @@
 #include <vector>
 
 #include "paddle/fluid/distributed/common/cost_timer.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 #include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
@@ -67,12 +67,12 @@ class PSClient {
   PSClient(PSClient &&) = delete;
   PSClient(const PSClient &) = delete;
 
-  virtual int32_t Configure(  // NOLINT
+  virtual int32_t Configure(
       const PSParameter &config,
       const std::map<uint64_t, std::vector<paddle::distributed::Region>>
           &regions,
-      PSEnvironment &_env,
-      size_t client_id) final;  // NOLINT
+      PSEnvironment &_env,  // NOLINT
+      size_t client_id) final;
 
   virtual int32_t CreateClient2ClientConnection(int pserver_timeout_ms,
                                                 int pserver_connect_timeout_ms,
@@ -293,8 +293,25 @@ class PSClient {
     return fut;
   }
 
-  virtual std::future<int32_t> GetCacheThreshold(uint32_t table_id,
-                                                 double &cache_threshold) {
+  virtual std::future<int32_t> GetCacheThreshold(
+      uint32_t table_id,
+      double &cache_threshold) {  // NOLINT
+    VLOG(0) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
+
+  virtual std::future<int32_t> Revert() {
+    VLOG(0) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
+
+  virtual std::future<int32_t> CheckSavePrePatchDone() {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -304,14 +321,16 @@ class PSClient {
 
  protected:
   virtual int32_t Initialize() = 0;
-  size_t _client_id;
   PSParameter _config;
   std::map<uint64_t, std::vector<paddle::distributed::Region>>
       _dense_pull_regions;
-  PSEnvironment *_env;
   std::unordered_map<uint32_t, std::shared_ptr<ValueAccessor>> _table_accessors;
   std::unordered_map<int32_t, MsgHandlerFunc>
       _msg_handler_map;  // 处理client2client消息
+
+ public:
+  size_t _client_id;
+  PSEnvironment *_env;
 };
 
 template <class T>

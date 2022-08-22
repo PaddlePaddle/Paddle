@@ -127,6 +127,18 @@ class TestSetValueItemSlice4(TestSetValueApi):
         self.data[0:, 1:2, :] = self.value
 
 
+class TestSetValueItemSlice5(TestSetValueApi):
+
+    def set_shape(self):
+        self.shape = [100, 426, 640]
+
+    def _call_setitem(self, x):
+        x[0:-1] = self.value
+
+    def _get_answer(self):
+        self.data[0:-1] = self.value
+
+
 #TODO: Fix this after MLU support while_loop
 #class TestSetValueItemSliceInWhile(TestSetValueApi):
 #     def _call_setitem(self, x):
@@ -517,6 +529,7 @@ create_test_value_int32(TestSetValueItemSlice)
 create_test_value_int32(TestSetValueItemSlice2)
 create_test_value_int32(TestSetValueItemSlice3)
 create_test_value_int32(TestSetValueItemSlice4)
+create_test_value_int32(TestSetValueItemSlice5)
 
 
 def create_test_value_tensor_fp32(parent):
@@ -543,6 +556,7 @@ create_test_value_tensor_fp32(TestSetValueItemSlice)
 create_test_value_tensor_fp32(TestSetValueItemSlice2)
 create_test_value_tensor_fp32(TestSetValueItemSlice3)
 create_test_value_tensor_fp32(TestSetValueItemSlice4)
+create_test_value_tensor_fp32(TestSetValueItemSlice5)
 
 
 # 3. Test different shape of value

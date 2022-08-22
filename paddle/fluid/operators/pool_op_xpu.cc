@@ -21,23 +21,6 @@ namespace operators {
 
 using framework::Tensor;
 
-xpu::Pooling_t XPUPoolingType(const std::string& pooltype,
-                              bool exclusive,
-                              bool is_test) {
-  if (pooltype == "max") {
-    return xpu::Pooling_t::MAX_WITHOUT_INDEX;
-  } else if (pooltype == "avg") {
-    if (exclusive) {
-      return xpu::Pooling_t::AVG_WITHOUT_PAD;
-    } else {
-      return xpu::Pooling_t::AVG_WITH_PAD;
-    }
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Pool op only supports 2D and 3D input."));
-  }
-}
-
 template <typename DeviceContext, typename T>
 class PoolXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -60,11 +43,16 @@ class PoolXPUKernel : public framework::OpKernel<T> {
         2,
         platform::errors::InvalidArgument(
             "The Pool2d XPU OP only support 2 dimension pooling!"));
-    PADDLE_ENFORCE_EQ(!adaptive || (ksize[0] * ksize[1] == 1),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The Pool2d XPU OP does not support (adaptive == "
-                          "true && output_size != 1)"));
+
+    std::string data_format = context.Attr<std::string>("data_format");
+    PADDLE_ENFORCE_EQ(
+        data_format,
+        "NCHW",
+        platform::errors::InvalidArgument("The Pool2d XPU OP only support"
+                                          "data_format is 'NCHW', but received "
+                                          "%s",
+                                          data_format));
+
     int* index_data = nullptr;
     bool global_pooling = context.Attr<bool>("global_pooling") ||
                           (adaptive && (ksize[0] * ksize[1] == 1));
@@ -80,6 +68,9 @@ class PoolXPUKernel : public framework::OpKernel<T> {
     const int in_h = in_x->dims()[2];
     const int in_w = in_x->dims()[3];
 
+    const int out_h = out->dims()[2];
+    const int out_w = out->dims()[3];
+
     framework::DDim data_dims;
 
     data_dims = phi::slice_ddim(in_x->dims(), 2, in_x->dims().size());
@@ -90,9 +81,13 @@ class PoolXPUKernel : public framework::OpKernel<T> {
                               data_dims,
                               strides,
                               ksize);
+
     if (ceil_mode) {
-      paddings[1] += (strides[0] - 1);
-      paddings[3] += (strides[1] - 1);
+      int in_h_ceil = (out_h - 1) * strides[0] + ksize[0] - 2 * paddings[0];
+      int in_w_ceil = (out_w - 1) * strides[1] + ksize[1] - 2 * paddings[2];
+
+      paddings[1] += (in_h_ceil - in_h);
+      paddings[3] += (in_w_ceil - in_w);
     }
 
     auto input = reinterpret_cast<const XPUType*>(in_x->data<T>());
@@ -100,35 +95,65 @@ class PoolXPUKernel : public framework::OpKernel<T> {
     auto output = reinterpret_cast<XPUType*>(out->data<T>());
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = xpu::Error_t::SUCCESS;
-    if (pooling_type == "max") {
-      r = xpu::max_pool2d<XPUType>(dev_ctx.x_context(),
-                                   input,
-                                   output,
-                                   index_data,
-                                   n,
-                                   c,
-                                   in_h,
-                                   in_w,
-                                   ksize,
-                                   strides,
-                                   paddings,
-                                   true);
-    } else if (pooling_type == "avg") {
-      r = xpu::avg_pool2d<XPUType>(dev_ctx.x_context(),
-                                   input,
-                                   output,
-                                   n,
-                                   c,
-                                   in_h,
-                                   in_w,
-                                   ksize,
-                                   strides,
-                                   paddings,
-                                   !exclusive,
-                                   true);
+    if (!adaptive) {
+      if (pooling_type == "max") {
+        r = xpu::max_pool2d<XPUType>(dev_ctx.x_context(),
+                                     input,
+                                     output,
+                                     index_data,
+                                     n,
+                                     c,
+                                     in_h,
+                                     in_w,
+                                     ksize,
+                                     strides,
+                                     paddings,
+                                     true);
+      } else if (pooling_type == "avg") {
+        r = xpu::avg_pool2d<XPUType>(dev_ctx.x_context(),
+                                     input,
+                                     output,
+                                     n,
+                                     c,
+                                     in_h,
+                                     in_w,
+                                     ksize,
+                                     strides,
+                                     paddings,
+                                     !exclusive,
+                                     true);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Unsupported pooling type for kunlun ", pooling_type));
+      }
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Unsupported pooling type for kunlun ", pooling_type));
+      if (pooling_type == "max") {
+        r = xpu::adaptive_max_pool2d<XPUType>(dev_ctx.x_context(),
+                                              input,
+                                              output,
+                                              index_data,
+                                              n,
+                                              c,
+                                              in_h,
+                                              in_w,
+                                              out_h,
+                                              out_w,
+                                              true);
+      } else if (pooling_type == "avg") {
+        r = xpu::adaptive_avg_pool2d<XPUType>(dev_ctx.x_context(),
+                                              input,
+                                              output,
+                                              n,
+                                              c,
+                                              in_h,
+                                              in_w,
+                                              out_h,
+                                              out_w,
+                                              true);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Unsupported pooling type for kunlun ", pooling_type));
+      }
     }
     PADDLE_ENFORCE_EQ(r,
                       xpu::Error_t::SUCCESS,
@@ -157,6 +182,16 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     bool exclusive = context.Attr<bool>("exclusive");
     bool adaptive = context.Attr<bool>("adaptive");
     bool ceil_mode = context.Attr<bool>("ceil_mode");
+
+    std::string data_format = context.Attr<std::string>("data_format");
+    PADDLE_ENFORCE_EQ(
+        data_format,
+        "NCHW",
+        platform::errors::InvalidArgument("The Pool2d_grad XPU OP only support"
+                                          "data_format is 'NCHW', but received "
+                                          "%s",
+                                          data_format));
+
     std::string padding_algorithm =
         context.Attr<std::string>("padding_algorithm");
     const int* index_data = nullptr;
@@ -167,11 +202,6 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
                                           "dimension pooling!, but received "
                                           "%d-dimension pool kernel size",
                                           ksize.size()));
-    PADDLE_ENFORCE_EQ(!adaptive || (ksize[0] * ksize[1] == 1),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The Pool2d XPU OP does not support (adaptive == "
-                          "true && output_size != 1)"));
     bool global_pooling = context.Attr<bool>("global_pooling") ||
                           (adaptive && (ksize[0] * ksize[1] == 1));
     if (global_pooling) {
@@ -188,6 +218,9 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     const int in_h = in_x->dims()[2];
     const int in_w = in_x->dims()[3];
 
+    const int out_h = out->dims()[2];
+    const int out_w = out->dims()[3];
+
     framework::DDim data_dims;
 
     data_dims = phi::slice_ddim(in_x->dims(), 2, in_x->dims().size());
@@ -199,8 +232,11 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
                               strides,
                               ksize);
     if (ceil_mode) {
-      paddings[1] += (strides[0] - 1);
-      paddings[3] += (strides[1] - 1);
+      int in_h_ceil = (out_h - 1) * strides[0] + ksize[0] - 2 * paddings[0];
+      int in_w_ceil = (out_w - 1) * strides[1] + ksize[1] - 2 * paddings[2];
+
+      paddings[1] += (in_h_ceil - in_h);
+      paddings[3] += (in_w_ceil - in_w);
     }
 
     auto input = reinterpret_cast<const XPUType*>(in_x->data<T>());
@@ -210,7 +246,17 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     auto input_grad = reinterpret_cast<XPUType*>(in_x_grad->data<T>());
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = xpu::Error_t::SUCCESS;
+    if (adaptive) {
+      // floor for stride
+      strides = {in_h / out_h, in_w / out_w};
+      int kh = in_h - (out_h - 1) * strides[0];
+      int kw = in_w - (out_w - 1) * strides[1];
+      ksize = {kh, kw};
+      paddings = {0, 0, 0, 0};
+    }
+
     if (pooling_type == "max") {
+      // TODO(zhanghuan05) to bind max_pool2d_grad_indices xpu api
       r = xpu::max_pool2d_grad<XPUType>(dev_ctx.x_context(),
                                         input,
                                         output,

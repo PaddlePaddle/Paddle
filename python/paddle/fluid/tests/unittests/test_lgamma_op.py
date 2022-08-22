@@ -17,6 +17,7 @@ import math
 import numpy as np
 import paddle
 from op_test import OpTest
+from scipy import special
 
 paddle.enable_static()
 
@@ -56,6 +57,20 @@ class TestLgammaOpFp32(TestLgammaOp):
                         'Out',
                         numeric_grad_delta=0.005,
                         check_eager=True)
+
+
+class TestLgammaOpApi(unittest.TestCase):
+
+    def test_lgamma(self):
+        paddle.disable_static()
+        self.dtype = "float32"
+        shape = (1, 4)
+        data = np.random.random(shape).astype(self.dtype) + 1
+        data_ = paddle.to_tensor(data)
+        out = paddle.fluid.layers.lgamma(data_)
+        result = special.gammaln(data)
+        np.testing.assert_allclose(result, out.numpy(), rtol=1e-05)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

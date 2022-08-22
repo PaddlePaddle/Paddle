@@ -530,7 +530,7 @@ class DistributedStrategy(object):
                                    'embed_sparse_initial_range', 'embed_sparse_initial_g2sum', 'embed_sparse_beta1_decay_rate', \
                                    'embed_sparse_beta2_decay_rate', 'embedx_sparse_optimizer', 'embedx_sparse_learning_rate', \
                                    'embedx_sparse_weight_bounds', 'embedx_sparse_initial_range', 'embedx_sparse_initial_g2sum', \
-                                   'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate']
+                                   'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate', 'feature_learning_rate', 'nodeid_slot']
         support_sparse_table_class = ['DownpourSparseTable']
         support_sparse_accessor_class = [
             'DownpourSparseValueAccessor', 'DownpourCtrAccessor',
@@ -539,6 +539,11 @@ class DistributedStrategy(object):
         ]
         from google.protobuf.descriptor import FieldDescriptor
         table_param = self.strategy.downpour_table_param
+
+        def add_graph_config(graph, strategy):
+            graph.feature_learning_rate = strategy.get('feature_learning_rate',
+                                                       0.05)
+            graph.nodeid_slot = strategy.get('nodeid_slot', 9008)
 
         def sparse_optimizer_config(sgd, strategy, prefix):
             optimizer_name = strategy.get(prefix + "sparse_optimizer",
@@ -581,6 +586,21 @@ class DistributedStrategy(object):
                 sgd.adagrad.weight_bounds.extend(bounds)
             elif optimizer_name == "adam":
                 sgd.name = 'SparseAdamSGDRule'
+                sgd.adam.learning_rate = strategy.get(
+                    prefix + 'sparse_learning_rate', 0.001)
+                sgd.adam.initial_range = strategy.get(
+                    prefix + 'sparse_initial_range', 1e-4)
+                sgd.adam.beta1_decay_rate = strategy.get(
+                    prefix + 'sparse_beta1_decay_rate', 0.9)
+                sgd.adam.beta2_decay_rate = strategy.get(
+                    prefix + 'sparse_beta2_decay_rate', 0.999)
+                sgd.adam.ada_epsilon = strategy.get(
+                    prefix + 'sparse_ada_epsilon', 1e-8)
+                bounds = strategy.get(prefix + 'sparse_weight_bounds',
+                                      [-10, 10])
+                sgd.adam.weight_bounds.extend(bounds)
+            elif optimizer_name == "shared_adam":
+                sgd.name = 'SparseSharedAdamSGDRule'
                 sgd.adam.learning_rate = strategy.get(
                     prefix + 'sparse_learning_rate', 0.001)
                 sgd.adam.initial_range = strategy.get(
@@ -676,6 +696,7 @@ class DistributedStrategy(object):
                                         config, 'embed_')
                 sparse_optimizer_config(table_data.accessor.embedx_sgd_param,
                                         config, 'embedx_')
+            add_graph_config(table_data.accessor.graph_sgd_param, config)
 
         if not configs:
             print("fleet desc config is empty")
@@ -1332,6 +1353,18 @@ class DistributedStrategy(object):
             self.strategy.is_fl_ps_mode = flag
         else:
             print("WARNING: is_fl_ps_mode should have value of bool type")
+
+    @property
+    def is_with_coordinator(self):
+        return self.strategy.with_coordinator
+
+    @is_with_coordinator.setter
+    @is_strict_auto
+    def is_with_coordinator(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.with_coordinator = flag
+        else:
+            print("WARNING: with_coordinator should have value of bool type")
 
     @pipeline.setter
     @is_strict_auto

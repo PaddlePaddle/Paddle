@@ -61,8 +61,7 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
 
     int device_id = context.GetPlace().GetDeviceId();
     auto gen_cuda = framework::DefaultCUDAGenerator(device_id);
-    auto& dev_cxt =
-        context.template device_context<platform::CUDADeviceContext>();
+    auto& dev_cxt = context.template device_context<phi::GPUContext>();
 
     if (seed == 0) {
       // use global Generator seed

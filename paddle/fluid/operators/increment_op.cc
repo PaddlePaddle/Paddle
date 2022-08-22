@@ -77,7 +77,7 @@ class IncrementGradOpMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetType("increment");
     grad_op->SetInput("X", this->Output("Out"));
     grad_op->SetOutput("Out", this->Input("X"));
-    grad_op->SetAttr("step", -BOOST_GET_CONST(float, this->GetAttr("step")));
+    grad_op->SetAttr("step", -PADDLE_GET_CONST(float, this->GetAttr("step")));
   }
 };
 

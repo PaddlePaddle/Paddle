@@ -68,7 +68,7 @@ TEST(EngineIOConverterTester, DefaultCPU) {
 
 TEST(EngineIOConverterTester, DefaultGPU) {
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
   IOConverterTester(ctx);
 }
 

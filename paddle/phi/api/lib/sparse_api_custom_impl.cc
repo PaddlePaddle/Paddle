@@ -40,8 +40,9 @@ Tensor to_sparse_coo_impl(const Tensor& x, const int64_t sparse_dim) {
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
 
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       kernel_name, kernel_key);
+  const auto& kernel = kernel_result.kernel;
 
   VLOG(6) << "add API kernel key: " << kernel_key;
   VLOG(6) << "to API kernel: " << kernel;
@@ -97,8 +98,9 @@ Tensor to_sparse_csr_impl(const Tensor& x) {
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
 
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       kernel_name, kernel_key);
+  const auto& kernel = kernel_result.kernel;
 
   VLOG(6) << "add API kernel key: " << kernel_key;
   VLOG(6) << "to API kernel: " << kernel;
@@ -144,8 +146,9 @@ Tensor to_dense_impl(const Tensor& x) {
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
 
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       kernel_name, kernel_key);
+  const auto& kernel = kernel_result.kernel;
 
   VLOG(6) << "add API kernel key: " << kernel_key;
   VLOG(6) << "to API kernel: " << kernel;

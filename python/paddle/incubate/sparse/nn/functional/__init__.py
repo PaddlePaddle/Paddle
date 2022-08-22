@@ -17,6 +17,8 @@ from .conv import subm_conv3d  # noqa: F401
 from .transformer import attention  # noqa: F401
 from .pooling import max_pool3d  # noqa: F401
 from .activation import relu  # noqa: F401
+from .activation import relu6  # noqa: F401
+from .activation import leaky_relu  # noqa: F401
 from .activation import softmax  # noqa: F401
 
 __all__ = [
@@ -24,6 +26,8 @@ __all__ = [
     'subm_conv3d',
     'max_pool3d',
     'relu',
+    'relu6',
+    'leaky_relu',
     'softmax',
     'attention',
 ]

@@ -72,8 +72,7 @@ class YoloBoxHeadKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Out");
     auto anchors = context.Attr<std::vector<int>>("anchors");
     auto class_num = context.Attr<int>("class_num");
-    auto& device_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    auto& device_ctx = context.template device_context<phi::GPUContext>();
     auto x_dims = x->dims();
     const int batch_size = x_dims[0];
     const int h = x_dims[2];

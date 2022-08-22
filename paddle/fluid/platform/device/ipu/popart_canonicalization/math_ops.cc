@@ -43,7 +43,7 @@ Node *pow_handler(Graph *graph, Node *node) {
         node->outputs);
   } else {
     // Op(pow) -> Op(Constant)->Var(const_out)->Op(Pow)
-    auto value_ = BOOST_GET_CONST(float, op->GetAttr("factor"));
+    auto value_ = PADDLE_GET_CONST(float, op->GetAttr("factor"));
     auto new_node_const = CreateConst(graph,
                                       node,
                                       std::vector<decltype(value_)>{value_},
@@ -61,8 +61,8 @@ Node *pow_handler(Graph *graph, Node *node) {
 
 Node *mul_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto x_num_col_dims = BOOST_GET_CONST(int, op->GetAttr("x_num_col_dims"));
-  auto y_num_col_dims = BOOST_GET_CONST(int, op->GetAttr("y_num_col_dims"));
+  auto x_num_col_dims = PADDLE_GET_CONST(int, op->GetAttr("x_num_col_dims"));
+  auto y_num_col_dims = PADDLE_GET_CONST(int, op->GetAttr("y_num_col_dims"));
   auto x_shape_ = GetInputVarNode("X", node)->Var()->GetShape();
   auto y_shape_ = GetInputVarNode("Y", node)->Var()->GetShape();
 
@@ -111,9 +111,9 @@ Node *mul_handler(Graph *graph, Node *node) {
 
 Node *matmul_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto transpose_x = BOOST_GET_CONST(bool, op->GetAttr("transpose_X"));
-  auto transpose_y = BOOST_GET_CONST(bool, op->GetAttr("transpose_Y"));
-  auto alpha = BOOST_GET_CONST(float, op->GetAttr("alpha"));
+  auto transpose_x = PADDLE_GET_CONST(bool, op->GetAttr("transpose_X"));
+  auto transpose_y = PADDLE_GET_CONST(bool, op->GetAttr("transpose_Y"));
+  auto alpha = PADDLE_GET_CONST(float, op->GetAttr("alpha"));
   Node *x_node = GetInputVarNode("X", node);
   Node *y_node = GetInputVarNode("Y", node);
   int x_rank = x_node->Var()->GetShape().size();
@@ -201,16 +201,16 @@ Node *softmax_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   int axis = -1;
   if (op->HasAttr("axis")) {
-    axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+    axis = PADDLE_GET_CONST(int, op->GetAttr("axis"));
   }
   return CreateSoftmaxOpset11(graph, node, node->inputs, node->outputs, axis);
 }
 
 Node *scale_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto bias_ = BOOST_GET_CONST(float, op->GetAttr("bias"));
+  auto bias_ = PADDLE_GET_CONST(float, op->GetAttr("bias"));
   auto bias_after_scale_ =
-      BOOST_GET_CONST(bool, op->GetAttr("bias_after_scale"));
+      PADDLE_GET_CONST(bool, op->GetAttr("bias_after_scale"));
   auto data_type_ = GetInputVarNode("X", node)->Var()->GetDataType();
 
   auto cast =
@@ -244,7 +244,7 @@ Node *scale_handler(Graph *graph, Node *node) {
       }
     }
   } else {
-    auto scale_ = BOOST_GET_CONST(float, op->GetAttr("scale"));
+    auto scale_ = PADDLE_GET_CONST(float, op->GetAttr("scale"));
     if (is_float_equal(bias_, 0.0) && is_float_equal(scale_, 1.0)) {
       return CreateBaseOp(graph,
                           node,
@@ -331,11 +331,11 @@ Node *scale_handler(Graph *graph, Node *node) {
 
 Node *cumsum_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto exclusive = BOOST_GET_CONST(bool, op->GetAttr("exclusive"));
+  auto exclusive = PADDLE_GET_CONST(bool, op->GetAttr("exclusive"));
   int64_t popart_exclusive = 1 ? exclusive : 0;
-  auto reverse = BOOST_GET_CONST(bool, op->GetAttr("reverse"));
+  auto reverse = PADDLE_GET_CONST(bool, op->GetAttr("reverse"));
   int64_t popart_reverse = 1 ? reverse : 0;
-  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  auto axis = PADDLE_GET_CONST(int, op->GetAttr("axis"));
   auto axis_node = CreateConst(graph,
                                node,
                                {},
@@ -374,8 +374,8 @@ Node *cumsum_handler(Graph *graph, Node *node) {
 
 Node *matmul_v2_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto transpose_x = BOOST_GET_CONST(bool, op->GetAttr("trans_x"));
-  auto transpose_y = BOOST_GET_CONST(bool, op->GetAttr("trans_y"));
+  auto transpose_x = PADDLE_GET_CONST(bool, op->GetAttr("trans_x"));
+  auto transpose_y = PADDLE_GET_CONST(bool, op->GetAttr("trans_y"));
   Node *x_node = GetInputVarNode("X", node);
   Node *y_node = GetInputVarNode("Y", node);
   int x_rank = x_node->Var()->GetShape().size();
@@ -433,7 +433,7 @@ Node *bmm_handler(Graph *graph, Node *node) {
 
 Node *arg_max_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto axis = BOOST_GET_CONST(int64_t, op->GetAttr("axis"));
+  auto axis = PADDLE_GET_CONST(int64_t, op->GetAttr("axis"));
   return CreateBaseOp(graph,
                       node,
                       "popart_argmax",
@@ -444,7 +444,7 @@ Node *arg_max_handler(Graph *graph, Node *node) {
 
 Node *arg_min_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto axis = BOOST_GET_CONST(int64_t, op->GetAttr("axis"));
+  auto axis = PADDLE_GET_CONST(int64_t, op->GetAttr("axis"));
   return CreateBaseOp(graph,
                       node,
                       "popart_argmin",

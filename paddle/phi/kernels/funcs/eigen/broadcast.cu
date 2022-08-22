@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
@@ -77,12 +78,16 @@ INSTANTIATION(EigenBroadcast, dtype::float16);
 INSTANTIATION(EigenBroadcast, dtype::bfloat16);
 INSTANTIATION(EigenBroadcast, float);
 INSTANTIATION(EigenBroadcast, double);
+INSTANTIATION(EigenBroadcast, dtype::complex<float>);
+INSTANTIATION(EigenBroadcast, dtype::complex<double>);
 INSTANTIATION(EigenBroadcast, int);
 INSTANTIATION(EigenBroadcast, int64_t);
 INSTANTIATION(EigenBroadcastGrad, bool);
 INSTANTIATION(EigenBroadcastGrad, float);
 INSTANTIATION(EigenBroadcastGrad, dtype::float16);
 INSTANTIATION(EigenBroadcastGrad, double);
+INSTANTIATION(EigenBroadcastGrad, dtype::complex<float>);
+INSTANTIATION(EigenBroadcastGrad, dtype::complex<double>);
 INSTANTIATION(EigenBroadcastGrad, int);
 INSTANTIATION(EigenBroadcastGrad, int64_t);
 template struct EigenBroadcastGrad<Eigen::GpuDevice, float, 0>;

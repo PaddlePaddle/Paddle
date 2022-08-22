@@ -27,8 +27,8 @@ __global__ void KeDequantize(
 }
 
 template <typename T>
-struct DequantizeFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& dev_ctx,
+struct DequantizeFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& dev_ctx,
                   const framework::Tensor* in,
                   const framework::Tensor* scale,
                   float max_range,
@@ -46,14 +46,14 @@ struct DequantizeFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct DequantizeFunctor<platform::CUDADeviceContext, int8_t>;
-template struct DequantizeFunctor<platform::CUDADeviceContext, int16_t>;
+template struct DequantizeFunctor<phi::GPUContext, int8_t>;
+template struct DequantizeFunctor<phi::GPUContext, int16_t>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CUDA = paddle::platform::CUDADeviceContext;
+using CUDA = phi::GPUContext;
 REGISTER_OP_CUDA_KERNEL(dequantize_abs_max,
                         ops::DequantizeMaxAbsKernel<CUDA, int8_t>,
                         ops::DequantizeMaxAbsKernel<CUDA, int16_t>);

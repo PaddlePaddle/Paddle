@@ -38,8 +38,8 @@ class GroupNormOpConverter : public OpConverter {
 
     auto* input_itensor = engine_->GetITensor(op_desc.Input("X").front());
 
-    int groups = BOOST_GET_CONST(int, op_desc.GetAttr("groups"));
-    float epsilon = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
+    int groups = PADDLE_GET_CONST(int, op_desc.GetAttr("groups"));
+    float epsilon = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
 
     std::string scale_name = op_desc.Input("Scale").front();
     std::string bias_name = op_desc.Input("Bias").front();

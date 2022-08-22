@@ -170,7 +170,7 @@ class ResNetUnit(Layer):
         self._is_test = is_test
 
         # check format
-        valid_format = {'NHWC'}
+        valid_format = {'NHWC', 'NCHW'}
         if data_format not in valid_format:
             raise ValueError(
                 "conv_format must be one of {}, but got conv_format='{}'".
@@ -181,11 +181,25 @@ class ResNetUnit(Layer):
             std = (2.0 / filter_elem_num)**0.5
             return I.Normal(0.0, std)
 
+        is_nchw = (data_format == 'NCHW')
         # initial filter
         bn_param_dtype = fluid.core.VarDesc.VarType.FP32
-        bn_param_shape = [1, 1, 1, num_filters]
-        filter_x_shape = [num_filters, filter_size, filter_size, num_channels_x]
-        filter_z_shape = [num_filters, filter_size, filter_size, num_channels_z]
+        if not is_nchw:
+            bn_param_shape = [1, 1, 1, num_filters]
+            filter_x_shape = [
+                num_filters, filter_size, filter_size, num_channels_x
+            ]
+            filter_z_shape = [
+                num_filters, filter_size, filter_size, num_channels_z
+            ]
+        else:
+            bn_param_shape = [1, num_filters, 1, 1]
+            filter_x_shape = [
+                num_filters, num_channels_x, filter_size, filter_size
+            ]
+            filter_z_shape = [
+                num_filters, num_channels_z, filter_size, filter_size
+            ]
 
         self.filter_x = self.create_parameter(
             shape=filter_x_shape,

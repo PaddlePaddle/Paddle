@@ -495,6 +495,20 @@ class MLUCnnlDCNDesc {
   cnnlDCNDescriptor_t dcn_desc_ = nullptr;
 };
 
+class MLUCnnlGridSampleDesc {
+ public:
+  MLUCnnlGridSampleDesc(const std::string& interp_mode_str,
+                        const std::string& padding_mode_str,
+                        bool align_corners);
+
+  const cnnlGridSampleDescriptor_t get() const;
+
+  ~MLUCnnlGridSampleDesc();
+
+ private:
+  cnnlGridSampleDescriptor_t grid_sample_desc_ = nullptr;
+};
+
 class MLUSeqDataDesc {
  public:
   MLUSeqDataDesc(const MLUSeqDataDesc& desc) = delete;
@@ -2039,6 +2053,15 @@ class MLUCnnl {
                                const void* boxes,
                                const cnnlTensorDescriptor_t grads_image_desc,
                                void* grads_image);
+
+  static void GridSample(const ExecutionContext& ctx,
+                         const cnnlGridSampleDescriptor_t grid_sample_desc,
+                         const cnnlTensorDescriptor_t input_desc,
+                         const void* input,
+                         const cnnlTensorDescriptor_t grid_desc,
+                         const void* grid,
+                         const cnnlTensorDescriptor_t output_desc,
+                         void* output);
 
   static void SyncBatchNormStats(const ExecutionContext& ctx,
                                  const cnnlTensorDescriptor_t x_desc,

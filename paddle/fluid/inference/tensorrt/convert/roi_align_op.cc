@@ -45,14 +45,14 @@ class RoiAlignOpConverter : public OpConverter {
     std::string output_name = op_desc.Output("Out").front();
 
     const auto pooled_height =
-        BOOST_GET_CONST(int, op_desc.GetAttr("pooled_height"));
+        PADDLE_GET_CONST(int, op_desc.GetAttr("pooled_height"));
     const auto pooled_width =
-        BOOST_GET_CONST(int, op_desc.GetAttr("pooled_width"));
+        PADDLE_GET_CONST(int, op_desc.GetAttr("pooled_width"));
     const auto spatial_scale =
-        BOOST_GET_CONST(float, op_desc.GetAttr("spatial_scale"));
+        PADDLE_GET_CONST(float, op_desc.GetAttr("spatial_scale"));
     const auto sampling_ratio =
-        BOOST_GET_CONST(int, op_desc.GetAttr("sampling_ratio"));
-    const auto aligned = BOOST_GET_CONST(bool, op_desc.GetAttr("aligned"));
+        PADDLE_GET_CONST(int, op_desc.GetAttr("sampling_ratio"));
+    const auto aligned = PADDLE_GET_CONST(bool, op_desc.GetAttr("aligned"));
 
     const auto input_tensor = engine_->GetITensor(input_name);
     const auto rois_tensor = engine_->GetITensor(rois_name);

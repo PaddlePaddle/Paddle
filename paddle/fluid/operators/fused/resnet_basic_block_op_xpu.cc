@@ -17,7 +17,6 @@
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
-#include "paddle/phi/api/all.h"
 
 namespace paddle {
 namespace operators {

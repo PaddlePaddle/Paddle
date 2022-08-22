@@ -39,7 +39,7 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
 
     auto place = ctx.GetPlace();
-    auto dev_ctx = static_cast<platform::CUDADeviceContext*>(
+    auto dev_ctx = static_cast<phi::GPUContext*>(
         platform::DeviceContextPool::Instance().Get(place));
 
     platform::GpuStreamSync(dev_ctx->stream());

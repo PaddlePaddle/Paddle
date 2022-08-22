@@ -225,6 +225,16 @@ class DeviceInterface {  // Driver / Runtime
                        const ccl::CCLComm& ccl_comm,
                        const stream::Stream& stream);
 
+  // blas
+  virtual void BlasAXPBY(size_t dev_id,
+                         const stream::Stream& stream,
+                         paddle::experimental::DataType dtype,
+                         size_t numel,
+                         float alpha,
+                         void* x,
+                         float beta,
+                         void* y);
+
  private:
   const std::string type_;
   const uint8_t priority_;

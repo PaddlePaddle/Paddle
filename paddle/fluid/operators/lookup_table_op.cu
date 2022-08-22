@@ -151,8 +151,7 @@ template <typename T>
 class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto &dev_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = context.template device_context<phi::GPUContext>();
     bool is_sparse = context.Attr<bool>("is_sparse");
 
     // Since paddings are not trainable and fixed in forward, the gradient of

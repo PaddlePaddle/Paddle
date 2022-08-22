@@ -61,6 +61,7 @@ DECLARE_ACTIVATION_KERNEL(Reciprocal)
 DECLARE_ACTIVATION_KERNEL(Square)
 DECLARE_ACTIVATION_KERNEL(Sqrt)
 DECLARE_ACTIVATION_KERNEL(Rsqrt)
+DECLARE_ACTIVATION_KERNEL(Softsign)
 DECLARE_ACTIVATION_KERNEL(Sigmoid)
 DECLARE_ACTIVATION_KERNEL(LogSigmoid)
 DECLARE_ACTIVATION_KERNEL(Log)
@@ -102,5 +103,16 @@ void PowKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const Scalar& factor,
                DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor Pow(const Context& dev_ctx,
+                const DenseTensor& x,
+                const Scalar& factor) {
+  DenseTensor out;
+  MetaTensor meta_out(out);
+  UnchangedInferMeta(x, &meta_out);
+  PowKernel<T, Context>(dev_ctx, x, factor, &out);
+  return out;
+}
 
 }  // namespace phi

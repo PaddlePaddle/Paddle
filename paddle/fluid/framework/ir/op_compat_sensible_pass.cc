@@ -37,7 +37,7 @@ std::unordered_set<std::string> global_extra_attrs = {
     "use_cudnn",
     "name",
     "with_quant_attr"};
-}
+}  // namespace
 
 namespace paddle {
 namespace framework {
@@ -45,14 +45,14 @@ namespace ir {
 
 AttrCompat& AttrCompat::IsStringEQ(const std::string& value) {
   conditions_.emplace_back([value](const Attribute& attr) -> bool {
-    return value == BOOST_GET_CONST(std::string, attr);
+    return value == PADDLE_GET_CONST(std::string, attr);
   });
   return *this;
 }
 
 AttrCompat& AttrCompat::IsStringIn(const std::set<std::string>& candidates) {
   conditions_.emplace_back([candidates](const Attribute& attr) -> bool {
-    std::string value = BOOST_GET_CONST(std::string, attr);
+    std::string value = PADDLE_GET_CONST(std::string, attr);
     for (auto& str : candidates) {
       if (str == value) {
         return true;
@@ -66,7 +66,7 @@ AttrCompat& AttrCompat::IsStringIn(const std::set<std::string>& candidates) {
 AttrCompat& AttrCompat::IsStringMatch(
     const std::function<bool(const std::string&)>& func) {
   conditions_.emplace_back([func](const Attribute& attr) -> bool {
-    std::string value = BOOST_GET_CONST(std::string, attr);
+    std::string value = PADDLE_GET_CONST(std::string, attr);
     return func(value);
   });
   return *this;
@@ -74,7 +74,7 @@ AttrCompat& AttrCompat::IsStringMatch(
 
 AttrCompat& AttrCompat::IsIntIn(const std::set<int>& candidates) {
   conditions_.emplace_back([candidates](const Attribute& attr) -> bool {
-    int value = BOOST_GET_CONST(int, attr);
+    int value = PADDLE_GET_CONST(int, attr);
     return candidates.find(value) != candidates.end();
   });
   return *this;
@@ -134,7 +134,7 @@ AttrCompat& AttrCompat::IsOptional() {
 
 AttrCompat& AttrCompat::IsBoolEQ(bool v) {
   conditions_.emplace_back([v](const Attribute& attr) -> bool {
-    bool value = BOOST_GET_CONST(bool, attr);
+    bool value = PADDLE_GET_CONST(bool, attr);
     return value == v;
   });
   return *this;

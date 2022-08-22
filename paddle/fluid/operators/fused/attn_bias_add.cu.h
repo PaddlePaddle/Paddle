@@ -95,7 +95,7 @@ __global__ void BroadcastKernelBinary(
 
 // bias add forward impl for "[m, n] + [n] = [m, n]"
 template <typename T>
-void LaunchBiasAddFwKernel(const platform::CUDADeviceContext& ctx,
+void LaunchBiasAddFwKernel(const phi::GPUContext& ctx,
                            int m,
                            int n,
                            const T* in0,
@@ -302,7 +302,7 @@ __global__ void BiasAddBw1DReduceKernel(const ReduceParamType<T>* temp_sum,
 }
 
 template <typename T>
-void Launch2DColumnReduce(const platform::CUDADeviceContext& dev_ctx,
+void Launch2DColumnReduce(const phi::GPUContext& dev_ctx,
                           const int max_threads,
                           const int reduce_num,
                           const int left_num,
@@ -345,11 +345,8 @@ void Launch2DColumnReduce(const platform::CUDADeviceContext& dev_ctx,
 // input
 // and d_bias[n] as output.
 template <typename T>
-void LaunchBiasAddBwKernel(const platform::CUDADeviceContext& dev_ctx,
-                           int m,
-                           int n,
-                           const T* d_out,
-                           T* d_bias) {
+void LaunchBiasAddBwKernel(
+    const phi::GPUContext& dev_ctx, int m, int n, const T* d_out, T* d_bias) {
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int reduce_num = m;
   int left_num = n;

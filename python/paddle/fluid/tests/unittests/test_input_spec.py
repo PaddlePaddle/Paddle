@@ -202,13 +202,13 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
         load_net.eval()
         pred_out = load_net(self.x)
 
-        self.assertTrue(np.allclose(dy_out, pred_out))
+        np.testing.assert_allclose(dy_out, pred_out, rtol=1e-05)
 
         # @to_static by InputSpec
         net = paddle.jit.to_static(net, input_spec=specs)
         st_out = net(self.x, *specs[1:])
 
-        self.assertTrue(np.allclose(dy_out, st_out))
+        np.testing.assert_allclose(dy_out, st_out, rtol=1e-05)
 
         # jit.save and jit.load
         paddle.jit.save(net, path)
@@ -216,7 +216,7 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
         load_net.eval()
         load_out = load_net(self.x)
 
-        self.assertTrue(np.allclose(st_out, load_out))
+        np.testing.assert_allclose(st_out, load_out, rtol=1e-05)
 
     def test_spec_compatible(self):
         net = NetWithNonTensorSpec(self.in_num, self.out_num)
@@ -239,7 +239,7 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
         load_net.eval()
         pred_out = load_net(self.x)
 
-        self.assertTrue(np.allclose(dy_out, pred_out))
+        np.testing.assert_allclose(dy_out, pred_out, rtol=1e-05)
 
 
 class NetWithNonTensorSpecPrune(paddle.nn.Layer):
@@ -292,13 +292,13 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
         load_net.eval()
         pred_out, _ = load_net(self.x, self.y)
 
-        self.assertTrue(np.allclose(dy_out, pred_out))
+        np.testing.assert_allclose(dy_out, pred_out, rtol=1e-05)
 
         # @to_static by InputSpec
         net = paddle.jit.to_static(net, input_spec=specs)
         st_out, _ = net(self.x, self.y, *specs[2:])
 
-        self.assertTrue(np.allclose(dy_out, st_out))
+        np.testing.assert_allclose(dy_out, st_out, rtol=1e-05)
 
         # jit.save and jit.load with prune y and loss
         prune_specs = [self.x_spec, True]
@@ -307,7 +307,7 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
         load_net.eval()
         load_out = load_net(self.x)  # no y and no loss
 
-        self.assertTrue(np.allclose(st_out, load_out))
+        np.testing.assert_allclose(st_out, load_out, rtol=1e-05)
 
 
 class UnHashableObject:

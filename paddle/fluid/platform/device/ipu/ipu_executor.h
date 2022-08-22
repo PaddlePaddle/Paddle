@@ -19,8 +19,8 @@ limitations under the License. */
 #include <popart/names.hpp>
 #include <popart/patterns/patterns.hpp>
 #include <popart/session.hpp>
+#include <popart/stepio.hpp>
 #include <popart/tensorinfo.hpp>
-#include <popdist/popdist_poplar.hpp>
 
 #include "paddle/fluid/platform/device/ipu/ipu_utils.h"
 

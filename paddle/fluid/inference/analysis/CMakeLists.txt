@@ -65,6 +65,7 @@ function(inference_analysis_test_run TARGET)
                           "${multiValueArgs}" ${ARGN})
     inference_base_test_run(${TARGET} COMMAND ${analysis_test_COMMAND} ARGS
                             ${analysis_test_ARGS})
+    set_tests_properties(${TARGET} PROPERTIES LABELS "RUN_TYPE=INFER")
   endif()
 endfunction()
 
@@ -86,6 +87,7 @@ function(inference_analysis_test TARGET)
       ${GLOB_PASS_LIB})
     inference_base_test_run(${TARGET} COMMAND ${TARGET} ARGS
                             ${analysis_test_ARGS})
+    set_tests_properties(${TARGET} PROPERTIES LABELS "RUN_TYPE=INFER")
   endif()
 endfunction()
 

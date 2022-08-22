@@ -66,6 +66,14 @@ struct XPUContext::Impl {
 
   const Place& GetPlace() const { return place_; }
 
+  void SetStream(XPUStream stream) { context_->xpu_stream = stream; }
+
+  XPUStream stream() const {
+    auto s = context_->xpu_stream;
+    PD_CHECK(s != nullptr, "the xpu stream is nullptr.");
+    return s;
+  }
+
   xpu::Context* GetXContext() const {
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
     return context_;
@@ -114,6 +122,10 @@ XPUContext::XPUContext(const XPUPlace& place)
 XPUContext::~XPUContext() = default;
 
 const Place& XPUContext::GetPlace() const { return impl_->GetPlace(); }
+
+void XPUContext::SetXPUStream(XPUStream stream) { impl_->SetStream(stream); }
+
+XPUStream XPUContext::stream() const { return impl_->stream(); }
 
 backends::xpu::XPUVersion XPUContext::xpu_version() const {
   return impl_->xpu_version_;

@@ -214,10 +214,7 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
                 expected_result = np.matmul(data1.reshape(1, 2),
                                             data2.reshape(2, 1))
 
-                self.assertTrue(
-                    np.allclose(np_res, expected_result, atol=1e-3),
-                    "two value is\
-                    {}\n{}, check diff!".format(np_res, expected_result))
+                np.testing.assert_allclose(np_res, expected_result, atol=1e-3)
 
         def test_dygraph_without_out(self):
             device = fluid.XPUPlace(0)
@@ -228,8 +225,9 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
                 data2 = fluid.dygraph.to_variable(input_array2)
                 out = paddle.mm(data1, data2)
                 expected_result = np.matmul(input_array1, input_array2)
-                self.assertTrue(
-                    np.allclose(expected_result, out.numpy(), atol=1e-3))
+                np.testing.assert_allclose(expected_result,
+                                           out.numpy(),
+                                           atol=1e-3)
 
     class Test_API_Matmul(unittest.TestCase):
 
@@ -244,8 +242,9 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
                     self.in_type)
                 out = paddle.matmul(data1, data2)
                 expected_result = np.matmul(input_array1, input_array2)
-                self.assertTrue(
-                    np.allclose(expected_result, out.numpy(), atol=1e-3))
+                np.testing.assert_allclose(expected_result,
+                                           out.numpy(),
+                                           atol=1e-3)
 
     class API_TestMmError(unittest.TestCase):
 
@@ -294,6 +293,10 @@ class TestMatmulBaseGenerator(XPUOpTest):
         self.op_type = "matmul"
         self.dtype = np.float32 if not hasattr(self,
                                                'in_type') else self.in_type
+
+        self.__class__.no_need_check_grad = False if not hasattr(
+            self, 'no_need_check_grad') else self.no_need_check_grad
+
         shape_X = [4, 5] if not hasattr(self, 'shape_X') else self.shape_X
         shape_Y = [5, 6] if not hasattr(self, 'shape_Y') else self.shape_Y
         transpose_X = False if not hasattr(self,
@@ -314,12 +317,20 @@ class TestMatmulBaseGenerator(XPUOpTest):
         self.check_output_with_place(place, atol=1e-3)
 
     def test_check_grad_normal(self):
+        if hasattr(self.__class__, "no_need_check_grad"
+                   ) and self.__class__.no_need_check_grad == True:
+            return
+
         place = paddle.XPUPlace(0)
         self.check_grad_with_place(place, ['X', 'Y'],
                                    'Out',
                                    max_relative_error=5e-2)
 
     def test_check_grad_ignore_x(self):
+        if hasattr(self.__class__, "no_need_check_grad"
+                   ) and self.__class__.no_need_check_grad == True:
+            return
+
         place = paddle.XPUPlace(0)
         self.check_grad_with_place(place, ['Y'],
                                    'Out',
@@ -327,6 +338,10 @@ class TestMatmulBaseGenerator(XPUOpTest):
                                    no_grad_set=set("X"))
 
     def test_check_grad_ignore_y(self):
+        if hasattr(self.__class__, "no_need_check_grad"
+                   ) and self.__class__.no_need_check_grad == True:
+            return
+
         place = paddle.XPUPlace(0)
         self.check_grad_with_place(place, ['X'],
                                    'Out',
@@ -351,6 +366,9 @@ class XPUTestMatmulOp1(XPUOpTestWrapper):
             for transose_x in [True, False]:
                 for transose_y in [True, False]:
                     for batch in batch_size:
+                        no_need_check_grad = False
+                        if batch >= 5:
+                            no_need_check_grad = True
                         class_name = (
                             'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}_batch_{}'
                             .format(dim_X, dim_Y, transose_x, transose_y,
@@ -362,6 +380,7 @@ class XPUTestMatmulOp1(XPUOpTestWrapper):
                             'shape_Y': shape_y,
                             'transpose_X': transose_x,
                             'transpose_Y': transose_y,
+                            'no_need_check_grad': no_need_check_grad,
                             'op_type': "matmul"
                         }
                         classes.append([class_name, attr_dict])

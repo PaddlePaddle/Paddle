@@ -23,7 +23,9 @@ limitations under the Licnse. */
 namespace paddle {
 namespace operators {
 
+#define NO_USE_CNCL 0
 #define GET_LAYOUT_OFFSET 2
+
 using Tensor = framework::Tensor;
 static std::vector<cnnlTensorLayout_t> supported_input_layout = {
     CNNL_LAYOUT_NC, CNNL_LAYOUT_NLC, CNNL_LAYOUT_NHWC, CNNL_LAYOUT_NDHWC};
@@ -165,6 +167,7 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
       Tensor mean_all(mean->dtype());
       Tensor invstd_all(variance->dtype());
 
+#ifdef PADDLE_WITH_CNCL
       auto &dev_ctx =
           ctx.template device_context<paddle::platform::MLUDeviceContext>();
       auto stream = dev_ctx.stream();
@@ -205,7 +208,9 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
                                                  cncl_dtype,
                                                  comm,
                                                  stream));
-
+#else
+      if (NO_USE_CNCL) {
+#endif
       } else {
         count_all = input_count;
         mean_all.ShareDataWith(local_mean);
@@ -404,6 +409,7 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
     FillMLUTensorWithHostValue<int32_t>(
         ctx, static_cast<int32_t>(x->numel() / C), &numel_count);
 
+#ifdef PADDLE_WITH_CNCL
     auto &dev_ctx =
         ctx.template device_context<paddle::platform::MLUDeviceContext>();
     auto stream = dev_ctx.stream();
@@ -440,6 +446,7 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
                                                comm,
                                                stream));
     }
+#endif
 
     if (d_x) {
       MLUCnnlTensorDesc desc_count(numel_count);

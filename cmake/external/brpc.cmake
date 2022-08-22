@@ -47,7 +47,6 @@ ExternalProject_Add(
   ${EXTERNAL_PROJECT_LOG_ARGS}
   # TODO(gongwb): change to de newst repo when they changed
   GIT_REPOSITORY "https://github.com/wangjiawei04/brpc"
-  #GIT_REPOSITORY  "https://github.com/ziyoujiyi/brpc" # ssl error in the previous repo（can be mannual fixed）
   GIT_TAG "e203afb794caf027da0f1e0776443e7d20c0c28e"
   PREFIX ${BRPC_PREFIX_DIR}
   UPDATE_COMMAND ""

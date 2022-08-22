@@ -22,43 +22,43 @@ namespace sparse {
 
 // TODO(zhouwei25): implement CPU backward kernel of " CSR @ DENSE -> DENSE"
 template <typename T, typename Context>
-void CsrDenseMatmulGradKernel(const Context& dev_ctx,
+void MatmulCsrDenseGradKernel(const Context& dev_ctx,
                               const SparseCsrTensor& x,
                               const DenseTensor& y,
                               const DenseTensor& dout,
                               SparseCsrTensor* dx,
                               DenseTensor* dy) {
   PADDLE_THROW(phi::errors::Unimplemented(
-      "Not support CPU backward kernel of Sparse Matmul now."));
+      "Not support CPU backward kernel of 'sparse.matmul' now."));
 }
 
 // TODO(zhouwei25): implement CPU kernel of " DENSE @ DENSE * CSR_MASK -> CSR"
 template <typename T, typename Context>
-void CsrMaskedMatmulGradKernel(const Context& dev_ctx,
+void MaskedMatmulCsrGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const SparseCsrTensor& dout,
                                DenseTensor* dx,
                                DenseTensor* dy) {
   PADDLE_THROW(phi::errors::Unimplemented(
-      "Not support CPU backward kernel of Matmul Mask As Sparse now."));
+      "Not support CPU backward kernel of 'sparse.masked_matmul' now."));
 }
 
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(csr_dense_matmul_grad,
+PD_REGISTER_KERNEL(matmul_csr_dense_grad,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::CsrDenseMatmulGradKernel,
+                   phi::sparse::MatmulCsrDenseGradKernel,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(csr_masked_matmul_grad,
+PD_REGISTER_KERNEL(masked_matmul_csr_grad,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::CsrMaskedMatmulGradKernel,
+                   phi::sparse::MaskedMatmulCsrGradKernel,
                    float,
                    double) {}

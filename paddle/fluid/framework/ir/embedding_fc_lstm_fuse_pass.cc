@@ -230,9 +230,9 @@ static int BuildFusion(Graph* graph,
 
     // TODO(jczaja): Add support for is_sparse / is_distributed
     auto is_sparse =
-        BOOST_GET_CONST(bool, lookup_table->Op()->GetAttr("is_sparse"));
+        PADDLE_GET_CONST(bool, lookup_table->Op()->GetAttr("is_sparse"));
     auto is_distributed =
-        BOOST_GET_CONST(bool, lookup_table->Op()->GetAttr("is_distributed"));
+        PADDLE_GET_CONST(bool, lookup_table->Op()->GetAttr("is_distributed"));
 
     if (is_sparse == true || is_distributed == true) {
       return;
