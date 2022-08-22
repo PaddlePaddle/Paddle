@@ -19,6 +19,7 @@ set -e
 # use default values
 export PADDLE_DISTRI_BACKEND="mpi"
 cmd=`which mpirun`
+cmd="${cmd} -x PADDLE_DISTRI_BACKEND"
 if [ ${#cmd} -eq 0 ]
 then
     echo "Warning! mpirun command not found!"
