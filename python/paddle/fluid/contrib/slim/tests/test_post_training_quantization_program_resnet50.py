@@ -19,6 +19,7 @@ import paddle
 import random
 import unittest
 import functools
+import contextlib
 import numpy as np
 import paddle.fluid as fluid
 from PIL import Image, ImageEnhance
@@ -185,6 +186,7 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
             executor=exe,
             program=program,
             sample_generator=val_reader,
+            batch_nums=10,
             algo=algo,
             quantizable_op_type=quantizable_op_type,
             round_type=round_type,
