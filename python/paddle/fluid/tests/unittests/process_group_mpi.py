@@ -35,6 +35,7 @@ ctypes.CDLL("libmpi.so", mode=ctypes.RTLD_GLOBAL)
 
 
 def init_process_group(strategy=None):
+    os.environ["PADDLE_DISTRI_BACKEND"] = 'mpi'
     pg_group = dist.init_parallel_env()
     return pg_group.process_group
 
