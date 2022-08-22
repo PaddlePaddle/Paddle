@@ -401,6 +401,7 @@ def divide(x, y, name=None):
         return _C_ops.final_state_sparse_divide(x, y)
 
 
+@dygraph_only
 def values_add(x, y, name=None):
     """
     The `values_add` is to perform the addition of two sparse tensors in COO format, or the addition of one spare tensor in COO format and 
@@ -445,7 +446,4 @@ def values_add(x, y, name=None):
         print(out)
         # [[4.0], [6.0]]
     """
-    assert x.is_sparse_coo(), 'the x must be a sparse tensor in COO format.'
-    assert y.is_sparse_coo() or y.is_dense(
-    ), 'the input y must be a sparse tensor in COO format or a dense tensor.'
     return _C_ops.final_state_sparse_values_add(x, y)

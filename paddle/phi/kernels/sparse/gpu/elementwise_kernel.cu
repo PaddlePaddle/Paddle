@@ -41,11 +41,11 @@ void ValuesAddCooCooKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void ValuesAddCooDenseKernel(const Context& dev_ctx,
                              const SparseCooTensor& x,
-                             const DenseTensor& values,
+                             const DenseTensor& y,
                              SparseCooTensor* out) {
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
   phi::AddKernel<T, Context>(
-      dev_ctx, x.non_zero_elements(), values, out->mutable_non_zero_elements());
+      dev_ctx, x.non_zero_elements(), y, out->mutable_non_zero_elements());
 }
 
 }  // namespace sparse

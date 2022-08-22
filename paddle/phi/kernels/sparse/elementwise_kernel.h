@@ -84,12 +84,12 @@ void ValuesAddCooCooKernel(const Context& dev_ctx,
                            SparseCooTensor* out);
 
 /*
- * out.values() = x.values() + values
+ * out.values() = x.values() + y
  */
 template <typename T, typename Context>
 void ValuesAddCooDenseKernel(const Context& dev_ctx,
                              const SparseCooTensor& x,
-                             const DenseTensor& values,
+                             const DenseTensor& y,
                              SparseCooTensor* out);
 
 }  // namespace sparse
