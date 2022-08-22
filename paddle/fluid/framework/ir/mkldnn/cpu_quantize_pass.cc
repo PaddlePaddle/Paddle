@@ -772,6 +772,12 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph, bool with_residual) const {
       return;
     }
 
+    if (!AreScalesPresentForNodes({matmul_in_x, matmul_in_y})) {
+      MarkAndLogCannotQuantizeOp(matmul_op,
+                                 "No scale available for the operator");
+      return;
+    }
+
     bool is_x_unsigned{false}, is_y_unsigned{false};
     auto input_x_scale = GetScaleValueForNode(matmul_in_x, &is_x_unsigned);
     auto input_y_scale = GetScaleValueForNode(matmul_in_y, &is_y_unsigned);
@@ -787,8 +793,7 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph, bool with_residual) const {
     if (with_residual) {
       GET_IR_NODE_FROM_SUBGRAPH(
           matmul_residual_data, matmul_residual_data, matmul_pattern);
-      if (!AreScalesPresentForNodes(
-              {matmul_in_x, matmul_in_y, matmul_residual_data})) {
+      if (!AreScalesPresentForNodes({matmul_residual_data})) {
         MarkAndLogCannotQuantizeOp(matmul_op,
                                    "No scale available for the operator");
         return;
@@ -804,13 +809,6 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph, bool with_residual) const {
                     residual_scale,
                     is_residual_unsigned,
                     "Scale_in_eltwise");
-
-    } else {
-      if (!AreScalesPresentForNodes({matmul_in_x, matmul_in_y})) {
-        MarkAndLogCannotQuantizeOp(matmul_op,
-                                   "No scale available for the operator");
-        return;
-      }
     }
 
     QuantizeInput(g,

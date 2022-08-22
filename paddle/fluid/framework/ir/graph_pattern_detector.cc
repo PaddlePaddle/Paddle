@@ -1900,10 +1900,8 @@ PDNode *patterns::MatmulWithInputOps::operator()(bool with_residual) {
 
   if (!with_residual) {
     matmul_op->assert_more([&](Node *x) {
-      if (!HasInput(x, "ResidualData") ||
-          x->Op()->Input("ResidualData").size() == 0)
-        return true;
-      return false;
+      return (!HasInput(x, "ResidualData") ||
+              x->Op()->Input("ResidualData").size() == 0);
     });
   }
 
