@@ -8,12 +8,6 @@ set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1
 set(dist_ENVS http_proxy="" https_proxy="")
 
 file(
-  GLOB MULTINODE_DIST_TEST_OPS
-  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-  "test_multinode_*.py")
-string(REPLACE ".py" "" MULTINODE_DIST_TEST_OPS "${MULTINODE_DIST_TEST_OPS}")
-
-file(
   GLOB DIST_TEST_OPS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_dist_*.py")
@@ -38,10 +32,6 @@ list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
 list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
-
-foreach(TEST_OP ${MULTINODE_DIST_TEST_OPS})
-  list(APPEND MIXED_DIST_TEST_OPS ${TEST_OP})
-endforeach()
 
 list(APPEND MIXED_DIST_TEST_OPS test_simple_dist_transpiler)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_async)
@@ -729,21 +719,6 @@ if(WITH_DISTRIBUTE)
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
       bash_test_modules(test_ascend_group START_BASH test_ascend_group.sh ENVS
                         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-    endif()
-
-    # add new dist test
-    if(WITH_DISTRIBUTE AND WITH_MULTINODE_TESTING)
-      foreach(TEST_OP ${MULTINODE_DIST_TEST_OPS})
-        bash_test_modules(
-          ${TEST_OP}
-          START_BASH
-          multinode_dist_test.sh
-          LABELS
-          "RUN_TYPE=EXCLUSIVE"
-          ENVS
-          "PADDLE_DIST_UT_PORT=${dist_ut_port}")
-      endforeach()
-
     endif()
 
     # port range (20000, 21200) is reserved for dist-ops
