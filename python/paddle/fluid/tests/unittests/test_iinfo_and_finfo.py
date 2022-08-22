@@ -10,7 +10,6 @@ import unittest
 import numpy as np
 #if TEST_NUMPY:
 #    import numpy as np
-
 #class TestDTypeInfo(TestCase):
 
 class TestIInfoAndFInfoAPI(unittest.TestCase):
