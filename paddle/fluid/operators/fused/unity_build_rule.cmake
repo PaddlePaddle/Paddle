@@ -14,6 +14,7 @@ register_unity_group(cc
     fusion_seqexpand_concat_fc_op.cc
     fusion_seqpool_concat_op.cc
     fusion_squared_mat_sub_op.cc
+    fusion_seqpool_cvm_concat_op_xpu.cc
     multi_gru_op.cc
     mkldnn/multi_gru_mkldnn_op.cc
     fusion_seqpool_cvm_concat_op.cc)

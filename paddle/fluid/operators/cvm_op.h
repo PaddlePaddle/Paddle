@@ -76,6 +76,7 @@ class CVMOpKernel : public framework::OpKernel<T> {
           for (int j = 2; j < item_size; j++) {
             y_data[cursor + j] = x_data[cursor + j];
           }
+	  std::cout << "cvm " << y_data[0] << y_data[1] << std::endl;
         }
       } else {
         for (int i = 0; i < batch_size; i++) {
@@ -115,6 +116,7 @@ class CVMGradOpKernel : public framework::OpKernel<T> {
 
     // for Input X do not have Lod Information.
     if (dx->NumLevels() == 0) {
+	   std::cout << "dx do not have lod information guojun" << std::endl;
       for (int x = 0; x < batch_size; ++x) {
         CvmGradComputeKernel(use_cvm, item_size, *cvm_data, &dout_data,
                              &dx_data);
@@ -122,6 +124,7 @@ class CVMGradOpKernel : public framework::OpKernel<T> {
       }
     } else {
       auto lod = dx->lod()[0];
+	   std::cout << "dx  have lod information guojun" << std::endl;
       int seq_num = static_cast<int>(lod.size()) - 1;
       for (int i = 0; i < seq_num; ++i) {
         for (size_t j = 0; j < lod[i + 1] - lod[i]; ++j) {

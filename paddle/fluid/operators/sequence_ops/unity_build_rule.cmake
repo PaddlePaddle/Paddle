@@ -7,6 +7,7 @@
 register_unity_group(cc
     sequence_concat_op.cc
     sequence_conv_op.cc
+    sequence_pool_op_xpu.cc
     sequence_enumerate_op.cc
     sequence_erase_op.cc
     sequence_expand_op.cc
