@@ -151,7 +151,7 @@ class TestWithoutProgramGuard(unittest.TestCase):
      (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64'),
     ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
 ))
-# paddle.where, paddle.pow has no double grad definition,
+# paddle.where, paddle.pow, paddle.maximum has no double grad definition,
 # can not compute forward grad use double trick
 class TestForwardGrad(unittest.TestCase):
 
@@ -273,6 +273,11 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
         # pow_p and pow has diff when compute z_dot of 0^0
         ('pow', paddle.pow,
          (np.array([1, 2, 3]), np.array([0, 2, 7])), None, 'float32'),
+        # To make max_p consistent with paddle.maximum, be sure x.grad = 0 and y.grad = 1 when x==y.
+        ('max', paddle.maximum, (
+            np.array([1, 2, 3]),
+            np.array([2, 2, 2]),
+        ), None, 'float32'),
     ))
 class TestGrad(unittest.TestCase):
 

@@ -181,12 +181,8 @@ class TestBert(unittest.TestCase):
                                                     self.data_reader)
         dygraph_loss, dygraph_ppl = self.train_dygraph(self.bert_config,
                                                        self.data_reader)
-        self.assertTrue(np.allclose(static_loss, dygraph_loss),
-                        msg="static_loss: {} \n dygraph_loss: {}".format(
-                            static_loss, dygraph_loss))
-        self.assertTrue(np.allclose(static_ppl, dygraph_ppl),
-                        msg="static_ppl: {} \n dygraph_ppl: {}".format(
-                            static_ppl, dygraph_ppl))
+        np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
+        np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
 
         self.verify_predict()
 
@@ -200,19 +196,25 @@ class TestBert(unittest.TestCase):
             for dy_res, st_res, dy_jit_res, predictor_res in zip(
                     dygraph_pred_res, static_pred_res, dygraph_jit_pred_res,
                     predictor_pred_res):
-                self.assertTrue(
-                    np.allclose(st_res, dy_res),
-                    "dygraph_res: {},\n static_res: {}".format(
+                np.testing.assert_allclose(
+                    st_res,
+                    dy_res,
+                    rtol=1e-05,
+                    err_msg='dygraph_res: {},\n static_res: {}'.format(
                         dy_res[~np.isclose(st_res, dy_res)],
                         st_res[~np.isclose(st_res, dy_res)]))
-                self.assertTrue(
-                    np.allclose(st_res, dy_jit_res),
-                    "dygraph_jit_res: {},\n static_res: {}".format(
+                np.testing.assert_allclose(
+                    st_res,
+                    dy_jit_res,
+                    rtol=1e-05,
+                    err_msg='dygraph_jit_res: {},\n static_res: {}'.format(
                         dy_jit_res[~np.isclose(st_res, dy_jit_res)],
                         st_res[~np.isclose(st_res, dy_jit_res)]))
-                self.assertTrue(
-                    np.allclose(st_res, predictor_res),
-                    "dygraph_jit_res: {},\n static_res: {}".format(
+                np.testing.assert_allclose(
+                    st_res,
+                    predictor_res,
+                    rtol=1e-05,
+                    err_msg='dygraph_jit_res: {},\n static_res: {}'.format(
                         predictor_res[~np.isclose(st_res, predictor_res)],
                         st_res[~np.isclose(st_res, predictor_res)]))
             break

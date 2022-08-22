@@ -199,8 +199,10 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 channel_first_x = paddle.transpose(x, [0, 2, 1])
                 y2 = net2(channel_first_x)
                 y2 = paddle.transpose(y2, [0, 2, 1])
-                self.assertEqual(
-                    np.allclose(y1.numpy(), y2.numpy(), atol=1e-07), True)
+                np.testing.assert_allclose(y1.numpy(),
+                                           y2.numpy(),
+                                           rtol=1e-05,
+                                           atol=1e-07)
 
     def test_2d(self):
         for p in self.places:
@@ -214,8 +216,10 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 channel_first_x = paddle.transpose(x, [0, 3, 1, 2])
                 y2 = net2(channel_first_x)
                 y2 = paddle.transpose(y2, [0, 2, 3, 1])
-                self.assertEqual(
-                    np.allclose(y1.numpy(), y2.numpy(), atol=1e-07), True)
+                np.testing.assert_allclose(y1.numpy(),
+                                           y2.numpy(),
+                                           rtol=1e-05,
+                                           atol=1e-07)
 
     def test_3d(self):
         for p in self.places:
@@ -229,8 +233,10 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 channel_first_x = paddle.transpose(x, [0, 4, 1, 2, 3])
                 y2 = net2(channel_first_x)
                 y2 = paddle.transpose(y2, [0, 2, 3, 4, 1])
-                self.assertEqual(
-                    np.allclose(y1.numpy(), y2.numpy(), atol=1e-07), True)
+                np.testing.assert_allclose(y1.numpy(),
+                                           y2.numpy(),
+                                           rtol=1e-05,
+                                           atol=1e-07)
                 # res = np.allclose(y1.numpy(), y2.numpy())
                 # if res == False:
                 #   np.savetxt("./y1.txt", y1.numpy().flatten(), fmt='%.10f', delimiter='\n')
@@ -270,7 +276,7 @@ class TestBatchNormUseGlobalStats(unittest.TestCase):
                     net2.training = False
                 y1 = net1(x)
                 y2 = net2(x)
-                self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
+                np.testing.assert_allclose(y1.numpy(), y2.numpy(), rtol=1e-05)
 
 
 class TestBatchNormUseGlobalStatsCase1(TestBatchNormUseGlobalStats):

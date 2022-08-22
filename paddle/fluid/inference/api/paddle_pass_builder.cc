@@ -101,6 +101,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "delete_c_identity_op_pass",                    //
       "trt_multihead_matmul_fuse_pass_v2",            //
       "trt_multihead_matmul_fuse_pass_v3",            //
+      "vit_attention_fuse_pass",                      //
       "trt_skip_layernorm_fuse_pass",                 //
       "preln_skip_layernorm_fuse_pass",               //
       "preln_residual_bias_fuse_pass",                //
@@ -166,7 +167,6 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "fc_fuse_pass",
     "fc_elementwise_layernorm_fuse_pass",
     "embedding_eltwise_layernorm_fuse_pass",
-    "trt_skip_layernorm_fuse_pass",
     "runtime_context_cache_pass",
 };
 
@@ -191,7 +191,6 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_bn_fuse_pass",                      //
         "conv_eltwiseadd_bn_fuse_pass",           //
         "embedding_eltwise_layernorm_fuse_pass",  //
-        "trt_skip_layernorm_fuse_pass",           //
         "multihead_matmul_fuse_pass_v2",          //
         "gpu_cpu_squeeze2_matmul_fuse_pass",      //
         "gpu_cpu_reshape2_matmul_fuse_pass",      //

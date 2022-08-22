@@ -91,7 +91,8 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The axis could also be negative numbers. Negative axis is "
                  "interpreted as counting from the end of the rank."
                  "i.e., axis + rank(X) th dimension.")
-        .SetDefault(0);
+        .SetDefault(0)
+        .SupportTensor();
     AddInput("AxisTensor",
              "(Tensor) The axis along which the input tensors will be "
              "concatenated.  "

@@ -52,23 +52,23 @@ class TestDiagFlatAPI(unittest.TestCase):
     def run_imperative(self):
         x = paddle.to_tensor(self.input_np)
         y = paddle.diagflat(x)
-        self.assertTrue(np.allclose(y.numpy(), self.expected0))
+        np.testing.assert_allclose(y.numpy(), self.expected0, rtol=1e-05)
 
         y = paddle.diagflat(x, offset=1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected1))
+        np.testing.assert_allclose(y.numpy(), self.expected1, rtol=1e-05)
 
         y = paddle.diagflat(x, offset=-1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected2))
+        np.testing.assert_allclose(y.numpy(), self.expected2, rtol=1e-05)
 
         x = paddle.to_tensor(self.input_np2)
         y = paddle.diagflat(x)
-        self.assertTrue(np.allclose(y.numpy(), self.expected3))
+        np.testing.assert_allclose(y.numpy(), self.expected3, rtol=1e-05)
 
         y = paddle.diagflat(x, offset=1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected4))
+        np.testing.assert_allclose(y.numpy(), self.expected4, rtol=1e-05)
 
         y = paddle.diagflat(x, offset=-1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected5))
+        np.testing.assert_allclose(y.numpy(), self.expected5, rtol=1e-05)
 
     def run_static(self, use_gpu=False):
         x = paddle.static.data(name='input', shape=[10, 10], dtype='float64')
@@ -85,8 +85,8 @@ class TestDiagFlatAPI(unittest.TestCase):
         },
                              fetch_list=[result0, result3])
 
-        self.assertTrue(np.allclose(res0, self.expected0))
-        self.assertTrue(np.allclose(res3, self.expected3))
+        np.testing.assert_allclose(res0, self.expected0, rtol=1e-05)
+        np.testing.assert_allclose(res3, self.expected3, rtol=1e-05)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.CPUPlace())
