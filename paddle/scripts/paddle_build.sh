@@ -1106,9 +1106,8 @@ function check_approvals_of_unittest() {
         curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
         oriBuildSize=`cat fluidInference_so_size`
         curBuildSize=$(du -m --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
-        apt-get install -y bc
-        diffSize=$(printf "%.2f" `echo "$curBuildSize - $oriBuildSize" | bc`)
-        AllDiffSize=$(printf "%.2f" `echo "$diffSize * 4" | bc`)
+        diffSize=$(awk "BEGIN{print $curBuildSize-$oriBuildSize}")
+        AllDiffSize=$(awk "BEGIN{print $diffSize * 4}")
         cat <<EOF
         ========================================
         Original libpaddle_inference.so Size is ${oriBuildSize}M.
@@ -1118,8 +1117,7 @@ function check_approvals_of_unittest() {
         It means the release version library size growth is about ${AllDiffSize}M.
         ========================================
 EOF
-        if [ `echo "20 < $AllDiffSize"|bc` -eq 1 ] ; then
-            
+        if [ $(awk "BEGIN{print 20<$AllDiffSize}") -eq 1 ] ; then
             approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 39303645 328693`
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
@@ -1228,7 +1226,7 @@ function bind_test() {
     NUM_PROC=6
 
     # calculate and set the memory usage for each process
-    MEM_USAGE=$(printf "%.2f" `echo "scale=5; 1.0 / $NUM_PROC" | bc`)
+    MEM_USAGE=$(awk "BEGIN{scale=5; print 1.0/$NUM_PROC}")
     export FLAGS_fraction_of_gpu_memory_to_use=$MEM_USAGE
 
     # get the CUDA device count

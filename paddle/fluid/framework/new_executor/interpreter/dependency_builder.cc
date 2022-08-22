@@ -273,20 +273,18 @@ void DependencyBuilder::AddDependencyForCommunicationOp() {
 
 // make sure that the random op is scheduled sequentially
 void DependencyBuilder::AddDependencyForRandomOp() {
-  const std::set<std::string> random_op_set = {
-      "bernoulli",
-      "poisson",
-      "multinomial",
-      "gaussian_random",
-      "truncated_gaussian_random",
-      "uniform_random",
-      "randint",
-      "randperm",
-      "exponential",
-      "sampling_id"
-      "dropout",
-      "class_center_sample",
-  };
+  const std::set<std::string> random_op_set = {"bernoulli",
+                                               "poisson",
+                                               "multinomial",
+                                               "gaussian_random",
+                                               "truncated_gaussian_random",
+                                               "uniform_random",
+                                               "randint",
+                                               "randperm",
+                                               "exponential",
+                                               "sampling_id",
+                                               "dropout",
+                                               "class_center_sample"};
 
   int dependence_op_idx = -1;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {

@@ -94,9 +94,9 @@ void FusedAttentionCsrGradKernel(const Context& dev_ctx,
 
   AttnSoftmaxGpuGradKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
       softmax.non_zero_crows().data<int64_t>(),
-      softmax.non_zero_elements().data<T>(),
-      dsoftmax.mutable_non_zero_elements()->data<T>(),
-      d_sdd_result.mutable_non_zero_elements()->data<T>(),
+      softmax.values().data<T>(),
+      dsoftmax.mutable_values()->data<T>(),
+      d_sdd_result.mutable_values()->data<T>(),
       M,
       total_row_num,
       std::sqrt(N),
