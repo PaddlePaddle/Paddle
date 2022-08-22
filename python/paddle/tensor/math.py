@@ -2192,7 +2192,7 @@ def max(x, axis=None, keepdim=False, name=None):
     helper = LayerHelper('max', **locals())
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max')
-    if utils._contain_var(axis):
+    if not isinstance(axis, Variable) and utils._contain_var(axis):
         axis = utils._convert_to_tensor_list(axis)
 
     out = helper.create_variable_for_type_inference(
@@ -2296,7 +2296,7 @@ def min(x, axis=None, keepdim=False, name=None):
     helper = LayerHelper('min', **locals())
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'min')
-    if utils._contain_var(axis):
+    if not isinstance(axis, Variable) and utils._contain_var(axis):
         axis = utils._convert_to_tensor_list(axis)
 
     out = helper.create_variable_for_type_inference(
@@ -3403,19 +3403,22 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             x = cast(x, dtype)
 
     dim = axis
-    if dim is not None and not isinstance(dim, list):
-        if isinstance(dim, tuple):
-            dim = list(dim)
-        elif isinstance(dim, int):
-            dim = [dim]
-        else:
-            raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".
-                format(type(dim)))
+    if isinstance(dim, Variable):
+        reduce_all = True if axis.shape[0] == len(x.shape) else False
+    else:
+        if dim is not None and not isinstance(dim, list):
+            if isinstance(dim, tuple):
+                dim = list(dim)
+            elif isinstance(dim, int):
+                dim = [dim]
+            else:
+                raise TypeError(
+                    "The type of axis must be int, list or tuple, but received {}".
+                    format(type(dim)))
 
-    reduce_all = True if dim is None or len(dim) == 0 or len(dim) == len(x.shape) else False
-    if dim is None or len(dim) == 0:
-        dim = [0]
+        reduce_all = True if dim is None or len(dim) == 0 or len(dim) == len(x.shape) else False
+        if dim is None or len(dim) == 0:
+            dim = [0]
 
     if in_dygraph_mode():
         return _C_ops.final_state_reduce_prod(x, dim, keepdim, reduce_all)
@@ -3427,6 +3430,8 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     check_variable_and_dtype(
         x, 'x/input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod')
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    if not isinstance(dim, Variable) and utils._contain_var(dim):
+        dim = utils._convert_to_tensor_list(dim)
     helper.append_op(
         type='reduce_prod',
         inputs={'X': x},

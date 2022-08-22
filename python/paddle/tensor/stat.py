@@ -112,7 +112,7 @@ def mean(x, axis=None, keepdim=False, name=None):
 
     helper = LayerHelper('mean', **locals())
 
-    if utils._contain_var(axis):
+    if not isinstance(axis, Variable) and utils._contain_var(axis):
         axis = utils._convert_to_tensor_list(axis)
     attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
     out = helper.create_variable_for_type_inference(x.dtype)

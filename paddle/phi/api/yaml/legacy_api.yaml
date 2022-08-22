@@ -2102,10 +2102,10 @@
 
 # reduce_prod
 - api : reduce_prod
-  args : (Tensor x, int64_t[] dims, bool keep_dim, bool reduce_all)
+  args : (Tensor x, IntArray dims, bool keep_dim, bool reduce_all)
   output : Tensor
   infer_meta :
-    func : ReduceInferMetaBase
+    func : ReduceIntArrayAxisInferMetaBase
   kernel :
     func : prod_raw
   backward : reduce_prod_grad
