@@ -52,14 +52,6 @@ namespace ops = paddle::operators;
   FIXED_MAXLENGTH_BASE(4, ##__VA_ARGS__); \
   FIXED_MAXLENGTH_BASE(5, ##__VA_ARGS__)
 
-inline static int getMaxLength(int k) {
-  if (k / 5 < 1) {
-    return 1;
-  } else if (k / 5 >= 1) {
-    return min(k / 5, 5);
-  }
-}
-
 template <typename T, typename Context>
 void TopkKernel(const Context& dev_ctx,
                 const DenseTensor& x,
@@ -196,7 +188,7 @@ void TopkKernel(const Context& dev_ctx,
                                                       input_height,
                                                       largest));
 #else
-      FIXED_BLOCK_DIM(switch (getMaxLength(k)) {
+      FIXED_BLOCK_DIM(switch (ops::getMaxLength(k)) {
         FIXED_MAXLENGTH(
             ops::KeMatrixTopK<T, maxLength, kBlockDim>
             <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
@@ -302,7 +294,7 @@ void TopkKernel(const Context& dev_ctx,
                                                       input_height,
                                                       largest));
 #else
-      FIXED_BLOCK_DIM(switch (getMaxLength(k)) {
+      FIXED_BLOCK_DIM(switch (ops::getMaxLength(k)) {
         FIXED_MAXLENGTH(ops::KeMatrixTopK<T, maxLength, kBlockDim>
                         <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
                             trans_out.data<T>(),

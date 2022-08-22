@@ -59,13 +59,6 @@ using Tensor = framework::Tensor;
   FIXED_MAXLENGTH_BASE(4, ##__VA_ARGS__); \
   FIXED_MAXLENGTH_BASE(5, ##__VA_ARGS__)
 
-inline static int getMaxLength(int k) {
-  if (k / 5 < 1) {
-    return 1;
-  } else if (k / 5 >= 1) {
-    return min(k / 5, 5);
-  }
-}
 template <typename DeviceContext, typename T>
 class TopkOpCUDAKernel : public framework::OpKernel<T> {
  public:

@@ -110,6 +110,14 @@ inline static int GetDesiredBlockDim(int dim) {
   }
 }
 
+inline static int getMaxLength(int k) {
+  if (k / 5 < 1) {
+    return 1;
+  } else if (k / 5 >= 1) {
+    return min(k / 5, 5);
+  }
+}
+
 template <typename T>
 __global__ void InitIndex(T* indices, T num_rows, T num_cols) {
   int col_id = threadIdx.x;
