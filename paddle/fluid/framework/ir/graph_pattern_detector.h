@@ -1191,12 +1191,13 @@ struct MatmulWithInputOps : public PatternBase {
   MatmulWithInputOps(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "matmul_with_input_ops") {}
 
-  PDNode* operator()();
+  PDNode* operator()(bool with_residual);
   PATTERN_DECL_NODE(prev_op_x);
   PATTERN_DECL_NODE(prev_op_y);
   PATTERN_DECL_NODE(matmul_in_x);
   PATTERN_DECL_NODE(matmul_in_y);
   PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_residual_data);
   PATTERN_DECL_NODE(matmul_out);
 };
 
