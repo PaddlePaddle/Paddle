@@ -4377,6 +4377,7 @@ def _index_add_params_check(x, index, add_value, input_axis):
 def index_add(x, index, add_value, axis=0, name=None):
     """
     Adds the elements of the input tensor with add_value by selecting the indices in the order given in index.
+
     Args:
         x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
         index (Tensor): The 1-D Tensor containing the indices to index.
@@ -4384,7 +4385,8 @@ def index_add(x, index, add_value, axis=0, name=None):
         add_value (Tensor): The tensor used to add the elements along the target axis.
         axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-    Returns :
+
+    Returns:
         Tensor: same dimention and dtype with x.
 
     Examples:
