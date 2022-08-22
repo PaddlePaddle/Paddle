@@ -36,8 +36,8 @@ class TestIInfoAPI(unittest.TestCase):
             xinfo = paddle.iinfo(x.dtype)
             xn = x.cpu().numpy()
             xninfo = np.iinfo(xn.dtype)
-            # self.assertEqual(xinfo.bits, xninfo.bits)
-            # self.assertEqual(xinfo.max, xninfo.max)
+            self.assertEqual(xinfo.bits, xninfo.bits)
+            self.assertEqual(xinfo.max, xninfo.max)
             self.assertEqual(xinfo.min, xninfo.min)
             # self.assertEqual(xinfo.dtype, xninfo.dtype)
 

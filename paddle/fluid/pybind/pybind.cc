@@ -346,24 +346,36 @@ bool IsCompiledWithDIST() {
 }
 
 struct iinfo {
-    int64_t min;
+    int64_t min, max;
+    int bits;
+
 
     iinfo(const framework::proto::VarType::Type& type) { 
         switch (type) {
         case framework::proto::VarType::INT16:
           min = std::numeric_limits<int16_t>::min();
+          max = std::numeric_limits<int16_t>::max();
+          bits = 16;
           break;
         case framework::proto::VarType::INT32:
           min = std::numeric_limits<int32_t>::min();
+          max = std::numeric_limits<int32_t>::max();
+          bits = 32;
           break;
         case framework::proto::VarType::INT64:
           min = std::numeric_limits<int64_t>::min();
+          max = std::numeric_limits<int64_t>::max();
+          bits = 64;
           break;
         case framework::proto::VarType::INT8:
           min = std::numeric_limits<int8_t>::min();
+          max = std::numeric_limits<int8_t>::max();
+          bits = 8;
           break;
         case framework::proto::VarType::UINT8:
           min = std::numeric_limits<uint8_t>::min();
+          max = std::numeric_limits<uint8_t>::max();
+          bits = 8;
           break;
         default:
           //PADDLE_THROW(platform::errors::InvalidArgument(
@@ -584,7 +596,9 @@ PYBIND11_MODULE(core_noavx, m) {
 
   py::class_<iinfo>(m, "iinfo")
       .def(py::init<const framework::proto::VarType::Type &>())
-      .def_readonly("min", &iinfo::min);
+      .def_readonly("min", &iinfo::min)
+      .def_readonly("max", &iinfo::max)
+      .def_readonly("bits", &iinfo::bits);
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
