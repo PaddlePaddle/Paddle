@@ -642,7 +642,8 @@ PYBIND11_MODULE(core_noavx, m) {
       .def(py::init<const framework::proto::VarType::Type &>())
       .def_readonly("min", &iinfo::min)
       .def_readonly("max", &iinfo::max)
-      .def_readonly("bits", &iinfo::bits);
+      .def_readonly("bits", &iinfo::bits)
+      .def_readonly("dtype", &iinfo::dtype);
 
   py::class_<finfo>(m, "finfo")
       .def(py::init<const framework::proto::VarType::Type &>())
@@ -652,8 +653,8 @@ PYBIND11_MODULE(core_noavx, m) {
       .def_readonly("min", &finfo::min)
       .def_readonly("smallest_normal", &finfo::smallest_normal)
       .def_readonly("tiny", &finfo::tiny)
-      .def_readonly("resolution", &finfo::resolution);
-      // .def_readonly("dtype", &finfo::dtype);
+      .def_readonly("resolution", &finfo::resolution)
+      .def_readonly("dtype", &finfo::dtype);
       
   m.def("set_num_threads", &platform::SetNumThreads);
 
