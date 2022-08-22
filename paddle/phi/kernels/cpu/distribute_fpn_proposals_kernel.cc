@@ -69,7 +69,7 @@ void DistributeFpnProposalsKernel(
       tgt_lvl = std::min(max_level, std::max(tgt_lvl, min_level));
       target_level.push_back(tgt_lvl);
       num_rois_level[tgt_lvl - min_level]++;
-      rois_data += kBoxDim;
+      rois_data += funcs::kBoxDim;
     }
   }
   // define the output rois
@@ -79,7 +79,7 @@ void DistributeFpnProposalsKernel(
   std::vector<std::vector<size_t>> multi_fpn_rois_lod0;
   for (int i = 0; i < num_level; ++i) {
     // allocate memory for each level rois
-    multi_fpn_rois[i]->Resize({num_rois_level[i], kBoxDim});
+    multi_fpn_rois[i]->Resize({num_rois_level[i], funcs::kBoxDim});
     multi_fpn_rois_data[i] = dev_ctx.template Alloc<T>(multi_fpn_rois[i]);
     std::vector<size_t> lod0(1, 0);
     multi_fpn_rois_lod0.push_back(lod0);
@@ -101,14 +101,15 @@ void DistributeFpnProposalsKernel(
     }
     for (int j = 0; j < fpn_rois_slice.dims()[0]; ++j) {
       int lvl = target_level[cur_offset + j];
-      memcpy(
-          multi_fpn_rois_data[lvl - min_level], rois_data, kBoxDim * sizeof(T));
-      multi_fpn_rois_data[lvl - min_level] += kBoxDim;
+      memcpy(multi_fpn_rois_data[lvl - min_level],
+             rois_data,
+             funcs::kBoxDim * sizeof(T));
+      multi_fpn_rois_data[lvl - min_level] += funcs::kBoxDim;
       int index_in_shuffle = num_rois_level_integral[lvl - min_level] +
                              multi_fpn_rois_lod0[lvl - min_level][i + 1];
       restore_index_inter[index_in_shuffle] = cur_offset + j;
       multi_fpn_rois_lod0[lvl - min_level][i + 1]++;
-      rois_data += kBoxDim;
+      rois_data += funcs::kBoxDim;
     }
   }
   for (int i = 0; i < fpn_rois_num; ++i) {

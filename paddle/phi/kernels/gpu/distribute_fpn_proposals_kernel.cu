@@ -24,6 +24,7 @@ namespace cub = hipcub;
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/distribute_fpn_proposals_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -230,11 +231,11 @@ void DistributeFpnProposalsKernel(
     if (end > start) {
       DenseTensor sub_idx = index_out_t.Slice(start, end);
       start = end;
-      multi_fpn_rois[i]->Resize({sub_rois_num, kBoxDim});
+      multi_fpn_rois[i]->Resize({sub_rois_num, funcs::kBoxDim});
       dev_ctx.template Alloc<T>(multi_fpn_rois[i]);
       phi::funcs::GPUGather<T>(dev_ctx, fpn_rois, sub_idx, multi_fpn_rois[i]);
     } else {
-      multi_fpn_rois[i]->Resize({sub_rois_num, kBoxDim});
+      multi_fpn_rois[i]->Resize({sub_rois_num, funcs::kBoxDim});
       dev_ctx.template Alloc<T>(multi_fpn_rois[i]);
     }
     if (multi_level_rois_num.size() > 0) {
