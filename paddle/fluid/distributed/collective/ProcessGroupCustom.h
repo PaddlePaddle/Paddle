@@ -73,6 +73,16 @@ class ProcessGroupCustom : public ProcessGroup {
     return "XCCL_" + device_type_;
   }
 
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      int offset,
+      int length) override;
+
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,

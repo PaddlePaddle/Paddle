@@ -705,6 +705,7 @@ class CustomDevice : public DeviceInterface {
                  size_t num,
                  ccl::CCLDataType data_type,
                  ccl::CCLReduceOp reduce_op,
+                 size_t root_id,
                  const ccl::CCLComm& comm,
                  const stream::Stream& stream) override {
     CHECK_PTR(pimpl_->xccl_reduce);
@@ -714,6 +715,7 @@ class CustomDevice : public DeviceInterface {
                             num,
                             ToXCCLDataType(data_type),
                             ToXCCLReduceOp(reduce_op),
+                            root_id,
                             reinterpret_cast<C_CCLComm>(comm),
                             reinterpret_cast<C_Stream>(stream.raw_stream())));
   }
