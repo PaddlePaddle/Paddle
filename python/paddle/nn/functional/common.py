@@ -603,13 +603,53 @@ def interpolate(x,
             else:
                 out = _C_ops.linear_interp_v2(x, *dy_attr)
         elif resample_type == "bilinear":
-            out = _C_ops.bilinear_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_bilinear_interp(
+                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                    inputs['Scale'] if 'Scale' in inputs else None,
+                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
+                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'], attrs['align_corners'],
+                    attrs['align_mode'])
+            else:
+                out = _C_ops.bilinear_interp_v2(x, *dy_attr)
         elif resample_type == "trilinear":
-            out = _C_ops.trilinear_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_trilinear_interp(
+                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                    inputs['Scale'] if 'Scale' in inputs else None,
+                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
+                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'], attrs['align_corners'],
+                    attrs['align_mode'])
+            else:
+                out = _C_ops.trilinear_interp_v2(x, *dy_attr)
         elif resample_type == "nearest":
-            out = _C_ops.nearest_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_nearest_interp(
+                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                    inputs['Scale'] if 'Scale' in inputs else None,
+                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
+                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'], attrs['align_corners'],
+                    attrs['align_mode'])
+            else:
+                out = _C_ops.nearest_interp_v2(x, *dy_attr)
         elif resample_type == "bicubic":
-            out = _C_ops.bicubic_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_bicubic_interp(
+                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                    inputs['Scale'] if 'Scale' in inputs else None,
+                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
+                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'], attrs['align_corners'],
+                    attrs['align_mode'])
+            else:
+                out = _C_ops.bicubic_interp_v2(x, *dy_attr)
         return out
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type='{}_interp_v2'.format(resample_type),
@@ -1443,6 +1483,11 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             pad, (list, tuple)) and len(pad) == x_dim * 2:
         paddings = pad
         pad_value = value
+
+        if in_dygraph_mode():
+            out = _C_ops.final_state_pad(x, paddings, float(pad_value))
+            return out
+
         check_variable_and_dtype(x, 'x', [
             'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
             'complex128'

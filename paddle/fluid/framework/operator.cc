@@ -447,7 +447,7 @@ OperatorBase::OperatorBase(const std::string& type,
     GenerateTemporaryNames();
     CheckAllInputOutputSet();
   }
-  // In OperatorBase level, all attribute with VarDesc type will be considered
+  // In OperatorBase level, all attributes with VarDesc type will be considered
   // as Input.
   for (auto& attr : FilterAttrVar(attrs)) {
     VLOG(3) << "found Attribute with Variable type: " << attr.first;
@@ -2751,6 +2751,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
             case proto::AttrType::STRING:
               phi_kernel_context->EmplaceBackAttr(std::move(phi::Scalar(
                   PADDLE_GET_CONST(std::string, attr_iter->second))));
+              break;
+            case proto::AttrType::BOOLEAN:
+              phi_kernel_context->EmplaceBackAttr(std::move(
+                  phi::Scalar(PADDLE_GET_CONST(bool, attr_iter->second))));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(

@@ -86,7 +86,7 @@ def test_static(place,
                                                       reduction=reduction)
 
         exe = paddle.static.Executor(place)
-        static_result = exe.run(prog, feed=feed_dict, fetch_list=[res])
+        static_result, = exe.run(prog, feed=feed_dict, fetch_list=[res])
     return static_result
 
 
@@ -164,9 +164,9 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
                                             input_np=input,
                                             label_np=label,
                                             reduction=reduction)
-                self.assertTrue(np.allclose(static_result, expected))
-                self.assertTrue(np.allclose(static_result, dy_result))
-                self.assertTrue(np.allclose(dy_result, expected))
+                np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+                np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+                np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
                 static_functional = test_static(place=place,
                                                 input_np=input,
                                                 label_np=label,
@@ -177,9 +177,13 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
                                              label_np=label,
                                              reduction=reduction,
                                              functional=True)
-                self.assertTrue(np.allclose(static_functional, expected))
-                self.assertTrue(np.allclose(static_functional, dy_functional))
-                self.assertTrue(np.allclose(dy_functional, expected))
+                np.testing.assert_allclose(static_functional,
+                                           expected,
+                                           rtol=1e-05)
+                np.testing.assert_allclose(static_functional,
+                                           dy_functional,
+                                           rtol=1e-05)
+                np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
 
     def test_MultiLabelSoftMarginLoss_error(self):
         paddle.disable_static()
@@ -217,9 +221,9 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
                                     label_np=label,
                                     weight_np=weight,
                                     reduction=reduction)
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
         static_functional = test_static(place=place,
                                         input_np=input,
                                         label_np=label,
@@ -232,9 +236,9 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
                                      weight=weight,
                                      reduction=reduction,
                                      functional=True)
-        self.assertTrue(np.allclose(static_functional, expected))
-        self.assertTrue(np.allclose(static_functional, dy_functional))
-        self.assertTrue(np.allclose(dy_functional, expected))
+        np.testing.assert_allclose(static_functional, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_functional, dy_functional, rtol=1e-05)
+        np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
 
     def test_MultiLabelSoftMarginLoss_dimension(self):
         paddle.disable_static()

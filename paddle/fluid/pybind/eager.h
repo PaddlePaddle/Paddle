@@ -29,7 +29,7 @@ typedef struct {
 typedef struct {
   PyObject_HEAD PyObject* container;
   PyObject* non_differentiable;
-  PyObject* dirty_tensors;
+  PyObject* not_inplace_tensors;
   bool materialize_grads;
   std::vector<bool> forward_input_tensor_is_duplicable;
   std::vector<bool> forward_output_tensor_is_duplicable;
