@@ -305,6 +305,10 @@ def generate_inplace_fn(inplace_op_type):
     origin_op_type = inplace_op_type[:-1]
 
     def func(x, name=None):
+        final_state_inplace_op_type = "final_state_%s" % inplace_op_type
+        if in_dygraph_mode() and hasattr(_C_ops, final_state_inplace_op_type):
+            op = getattr(_C_ops, final_state_inplace_op_type)
+            return op(x)
         if _non_static_mode():
             op = getattr(_C_ops, inplace_op_type)
             return op(x)
