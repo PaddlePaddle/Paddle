@@ -796,36 +796,6 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   set_tests_properties(test_parallel_dygraph_sync_batch_norm
                        PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
 endif()
-if(WITH_NCCL)
-  if((WITH_GPU) AND LOCAL_ALL_PLAT)
-    bash_test_modules(
-      test_parallel_dygraph_dataparallel
-      START_BASH
-      ../../dist_test.sh
-      LABELS
-      "RUN_TYPE=DIST"
-      ENVS
-      "PADDLE_DIST_UT_PORT=21278;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-    )
-    set_tests_properties(test_parallel_dygraph_dataparallel
-                         PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
-  endif()
-endif()
-if(NOT WITH_NCCL OR NOT WITH_GPU)
-  if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-    bash_test_modules(
-      test_parallel_dygraph_dataparallel
-      START_BASH
-      ../../dist_test.sh
-      LABELS
-      "RUN_TYPE=DIST"
-      ENVS
-      "PADDLE_DIST_UT_PORT=21280;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-    )
-    set_tests_properties(test_parallel_dygraph_dataparallel
-                         PROPERTIES RUN_SERIAL 1)
-  endif()
-endif()
 if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_imperative_auto_mixed_precision MODULES
@@ -871,7 +841,7 @@ if(WITH_NCCL OR WITH_RCCL)
         LABELS
         "RUN_TYPE=DIST"
         ENVS
-        "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+        "PADDLE_DIST_UT_PORT=21278;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
       )
       set_tests_properties(test_dist_mnist_dgc_nccl PROPERTIES RUN_SERIAL 1)
     endif()
@@ -887,7 +857,7 @@ if(WITH_NCCL OR WITH_RCCL)
         LABELS
         "RUN_TYPE=DIST"
         ENVS
-        "PADDLE_DIST_UT_PORT=21284;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+        "PADDLE_DIST_UT_PORT=21280;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
       )
       set_tests_properties(test_dist_se_resnext_dgc PROPERTIES RUN_SERIAL 1)
     endif()
