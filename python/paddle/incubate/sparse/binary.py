@@ -433,8 +433,8 @@ def values_add(x, y, name=None):
         indices_data = [[0, 1], [1, 2]]
         values1_data = [[1.0], [2.0]]
         values2_data = [[3.0], [4.0]]
-        x = sparse.sparse_coo_tensor(indices_data, values1_data, shape=[3,3])
-        y = sparse.sparse_coo_tensor(indices_data, values2_data, shape=[3,3])
+        x = sparse.sparse_coo_tensor(indices_data, values1_data, shape=[3,3,1])
+        y = sparse.sparse_coo_tensor(indices_data, values2_data, shape=[3,3,1])
         out = sparse.values_add(x, y)
         print(out.values())
         # [[4.0], [6.0]]
