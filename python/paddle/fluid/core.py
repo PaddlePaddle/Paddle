@@ -260,7 +260,7 @@ if avx_supported():
         from .core_avx import *
         from .core_avx import __doc__, __file__, __name__, __package__
         from .core_avx import __unittest_throw_exception__
-        from .core_avx import iinfo
+        from .core_avx import iinfo, finfo
         from .core_avx import _append_python_callable_object_and_return_id
         from .core_avx import _cleanup, _Scope
         from .core_avx import _get_use_default_grad_op_desc_maker_ops
@@ -318,7 +318,7 @@ if load_noavx:
         from .core_noavx import *
         from .core_noavx import __doc__, __file__, __name__, __package__
         from .core_noavx import __unittest_throw_exception__
-        from .core_noavx import iinfo
+        from .core_noavx import iinfo, finfo
         from .core_noavx import _append_python_callable_object_and_return_id
         from .core_noavx import _cleanup, _Scope
         from .core_noavx import _get_use_default_grad_op_desc_maker_ops

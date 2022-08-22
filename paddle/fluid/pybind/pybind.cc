@@ -349,7 +349,6 @@ struct iinfo {
     int64_t min, max;
     int bits;
 
-
     iinfo(const framework::proto::VarType::Type& type) { 
         switch (type) {
         case framework::proto::VarType::INT16:
@@ -377,6 +376,33 @@ struct iinfo {
           max = std::numeric_limits<uint8_t>::max();
           bits = 8;
           break;
+        default:
+          //PADDLE_THROW(platform::errors::InvalidArgument(
+          //    "the argument of paddle.iinfo can only be paddle.int8 ..."));
+          break;
+        }
+    }
+};
+
+
+struct finfo {
+    int bits;
+    long double eps, max, min, smallest_normal, tiny, resolution;
+    // std::string dtype;
+
+    finfo(const framework::proto::VarType::Type& type) { 
+        switch (type) {
+        case framework::proto::VarType::FP32:
+          bits = 32;
+          eps = std::numeric_limits<float>::epsilon();
+          max = std::numeric_limits<float>::max();
+          min = std::numeric_limits<float>::min();
+          // smallest_normal = 
+          // tiny = 
+          resolution = std::pow(10, -std::numeric_limits<float>::digits10);
+          // dtype = "float32";
+          break;
+
         default:
           //PADDLE_THROW(platform::errors::InvalidArgument(
           //    "the argument of paddle.iinfo can only be paddle.int8 ..."));
@@ -600,6 +626,17 @@ PYBIND11_MODULE(core_noavx, m) {
       .def_readonly("max", &iinfo::max)
       .def_readonly("bits", &iinfo::bits);
 
+  py::class_<finfo>(m, "finfo")
+      .def(py::init<const framework::proto::VarType::Type &>())
+      .def_readonly("bits", &finfo::bits)
+      .def_readonly("eps", &finfo::eps)
+      .def_readonly("max", &finfo::max)
+      .def_readonly("min", &finfo::min)
+      // .def_readonly("smallest_normal", &finfo::smallest_normal)
+      // .def_readonly("tiny", &finfo::tiny)
+      .def_readonly("resolution", &finfo::resolution);
+      // .def_readonly("dtype", &finfo::dtype);
+      
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);

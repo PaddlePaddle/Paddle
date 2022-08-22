@@ -39,6 +39,7 @@ from .fluid.dataset import *  # noqa: F401
 from .fluid.lazy_init import LazyInit  # noqa: F401
 
 from .fluid.core import iinfo # noqa: F401
+from .fluid.core import finfo # noqa: F401
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
 from .framework.dtype import int8  # noqa: F401
