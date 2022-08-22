@@ -1095,7 +1095,6 @@ def fmin(x, y, name=None):
 for func in [
         multiply
 ]:
-    proto_dict = {'multiply': 'elementwise_mul'}
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
 
     additional_args_lines = [
