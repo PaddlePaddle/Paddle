@@ -31,11 +31,34 @@ namespace ops = paddle::operators;
     __VA_ARGS__;                       \
   } break
 
-#define FIXED_BLOCK_DIM(...)                \
-  FIXED_BLOCK_DIM_BASE(256, ##__VA_ARGS__); \
-  FIXED_BLOCK_DIM_BASE(128, ##__VA_ARGS__); \
-  FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);  \
+#define FIXED_MAXLENGTH_BASE(MaxLength, ...) \
+  case (MaxLength): {                        \
+    constexpr auto maxLength = (MaxLength);  \
+    __VA_ARGS__;                             \
+  } break
+
+#define FIXED_BLOCK_DIM(...)                 \
+  FIXED_BLOCK_DIM_BASE(1024, ##__VA_ARGS__); \
+  FIXED_BLOCK_DIM_BASE(512, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_BASE(256, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_BASE(128, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);   \
   FIXED_BLOCK_DIM_BASE(32, ##__VA_ARGS__)
+
+#define FIXED_MAXLENGTH(...)              \
+  FIXED_MAXLENGTH_BASE(1, ##__VA_ARGS__); \
+  FIXED_MAXLENGTH_BASE(2, ##__VA_ARGS__); \
+  FIXED_MAXLENGTH_BASE(3, ##__VA_ARGS__); \
+  FIXED_MAXLENGTH_BASE(4, ##__VA_ARGS__); \
+  FIXED_MAXLENGTH_BASE(5, ##__VA_ARGS__)
+
+inline static int getMaxLength(int k) {
+  if (k / 5 < 1) {
+    return 1;
+  } else if (k / 5 >= 1) {
+    return min(k / 5, 5);
+  }
+}
 
 template <typename T, typename Context>
 void TopkKernel(const Context& dev_ctx,
@@ -173,18 +196,23 @@ void TopkKernel(const Context& dev_ctx,
                                                       input_height,
                                                       largest));
 #else
-      FIXED_BLOCK_DIM(
-          ops::KeMatrixTopK<T, 5, kBlockDim>
-          <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
-                                                      k,
-                                                      indices_data,
-                                                      input_data,
-                                                      input_width,
-                                                      input_width,
-                                                      static_cast<int>(k),
-                                                      gridx,
-                                                      input_height,
-                                                      largest));
+      FIXED_BLOCK_DIM(switch (getMaxLength(k)) {
+        FIXED_MAXLENGTH(
+            ops::KeMatrixTopK<T, maxLength, kBlockDim>
+            <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
+                                                        k,
+                                                        indices_data,
+                                                        input_data,
+                                                        input_width,
+                                                        input_width,
+                                                        static_cast<int>(k),
+                                                        gridx,
+                                                        input_height,
+                                                        largest));
+        default:
+          PADDLE_THROW(
+              errors::Fatal("the input k has error in the topk cuda kernel."));
+      });
 #endif
       default:
         PADDLE_THROW(errors::Fatal(
@@ -274,18 +302,23 @@ void TopkKernel(const Context& dev_ctx,
                                                       input_height,
                                                       largest));
 #else
-      FIXED_BLOCK_DIM(
-          ops::KeMatrixTopK<T, 5, kBlockDim>
-          <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(trans_out.data<T>(),
-                                                      k,
-                                                      trans_ind.data<int64_t>(),
-                                                      trans_input.data<T>(),
-                                                      input_width,
-                                                      input_width,
-                                                      static_cast<int>(k),
-                                                      gridx,
-                                                      input_height,
-                                                      largest));
+      FIXED_BLOCK_DIM(switch (getMaxLength(k)) {
+        FIXED_MAXLENGTH(ops::KeMatrixTopK<T, maxLength, kBlockDim>
+                        <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
+                            trans_out.data<T>(),
+                            k,
+                            trans_ind.data<int64_t>(),
+                            trans_input.data<T>(),
+                            input_width,
+                            input_width,
+                            static_cast<int>(k),
+                            gridx,
+                            input_height,
+                            largest));
+        default:
+          PADDLE_THROW(
+              errors::Fatal("the input k has error in the topk cuda kernel."));
+      });
 #endif
       default:
         PADDLE_THROW(errors::Fatal(
