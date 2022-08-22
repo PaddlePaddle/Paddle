@@ -111,21 +111,21 @@ class Tracer(core.Tracer):
         self._train_mode = True
 
     def eager_legacy_trace_op(self,
-                              type,
+                              op_type,
                               inputs,
                               outputs,
                               attrs,
                               stop_gradient=False,
                               inplace_map=None):
-        function_ptr = _legacy_C_ops.__dict__[type]
+        function_ptr = _legacy_C_ops.__dict__[op_type]
 
         core_ops_args_info = _legacy_C_ops.get_core_ops_args_info()
         core_ops_args_type_info = _legacy_C_ops.get_core_ops_args_type_info()
         core_ops_returns_info = _legacy_C_ops.get_core_ops_returns_info()
 
-        op_args = core_ops_args_info[type]
-        op_args_type = core_ops_args_type_info[type]
-        op_returns = core_ops_returns_info[type]
+        op_args = core_ops_args_info[op_type]
+        op_args_type = core_ops_args_type_info[op_type]
+        op_returns = core_ops_returns_info[op_type]
 
         arg_list = []
         for i in range(len(op_args)):
@@ -175,7 +175,7 @@ class Tracer(core.Tracer):
             attrs_list.append(v)
         returns = function_ptr(*arg_list, *attrs_list)
 
-        if type == 'load_combine':
+        if op_type == 'load_combine':
             assert len(outputs.keys()) == 1
             key = list(outputs.keys())[0]
             for j in range(len(returns)):
@@ -212,32 +212,32 @@ class Tracer(core.Tracer):
                 outputs[key].reconstruct_from_(returns, False)
 
     def eager_trace_op(self,
-                       type,
+                       op_type,
                        inputs,
                        outputs,
                        attrs,
                        stop_gradient=False,
                        inplace_map=None):
-        assert type in name_mapping.keys()
+        assert op_type in name_mapping.keys()
 
-        type = name_mapping[type]["final_op_name"]
-        function_ptr = _C_ops.__dict__[type]
+        op_type = name_mapping[op_type]["final_op_name"]
+        function_ptr = _C_ops.__dict__[op_type]
 
         core_ops_args_info = _C_ops.get_core_ops_args_info()
         core_ops_args_type_info = _C_ops.get_core_ops_args_type_info()
         core_ops_returns_info = _C_ops.get_core_ops_returns_info()
 
-        op_args = core_ops_args_info[type]
-        op_args_type = core_ops_args_type_info[type]
-        op_returns = core_ops_returns_info[type]
+        op_args = core_ops_args_info[op_type]
+        op_args_type = core_ops_args_type_info[op_type]
+        op_returns = core_ops_returns_info[op_type]
 
         arg_list = []
         for i in range(len(op_args)):
             eager_arg_name = op_args[i]
             arg_type = op_args_type[i]
 
-            assert eager_arg_name in name_mapping[type].keys()
-            arg_name = name_mapping[type][eager_arg_name]
+            assert eager_arg_name in name_mapping[op_type].keys()
+            arg_name = name_mapping[op_type][eager_arg_name]
 
             if arg_name in inputs.keys():
                 arg_to_append = inputs[arg_name]
@@ -270,8 +270,8 @@ class Tracer(core.Tracer):
             for i in range(len(op_returns)):
                 eager_retname = op_returns[i]
 
-                assert eager_retname in name_mapping[type].keys()
-                retname = name_mapping[type][eager_retname]
+                assert eager_retname in name_mapping[op_type].keys()
+                retname = name_mapping[op_type][eager_retname]
                 if retname in outputs.keys():
                     # Replaced outputs by function returns
                     if isinstance(returns[i], list):
@@ -294,7 +294,7 @@ class Tracer(core.Tracer):
                 outputs[key].reconstruct_from_(returns, False)
 
     def trace_op(self,
-                 type,
+                 op_type,
                  inputs,
                  outputs,
                  attrs,
@@ -303,17 +303,17 @@ class Tracer(core.Tracer):
         if not framework._in_legacy_dygraph():
             # inputs : {"sum": [tensor], ...}
             # outputs : {"sum": [tensor], ...}
-            if type in name_mapping.keys():
-                type = name_mapping[type]["final_op_name"]
+            if op_type in name_mapping.keys():
+                op_type = name_mapping[op_type]["final_op_name"]
 
-                assert type in _legacy_C_ops.__dict__
-                self.eager_trace_op(type, inputs, outputs, attrs, stop_gradient,
-                                    inplace_map)
+                assert op_type in _legacy_C_ops.__dict__
+                self.eager_trace_op(op_type, inputs, outputs, attrs,
+                                    stop_gradient, inplace_map)
             else:
-                self.eager_legacy_trace_op(type, inputs, outputs, attrs,
+                self.eager_legacy_trace_op(op_type, inputs, outputs, attrs,
                                            stop_gradient, inplace_map)
         else:
-            self.trace(type, inputs, outputs, attrs,
+            self.trace(op_type, inputs, outputs, attrs,
                        framework._current_expected_place(), self._has_grad
                        and not stop_gradient,
                        inplace_map if inplace_map else {})

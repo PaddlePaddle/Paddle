@@ -320,10 +320,12 @@ std::string GenerateOpFunctionsBody(
       std::string inplace_arg_name = inplace_pair.second;
       std::string inplace_return_name = inplace_pair.first;
       const char* RETURN_INPLACE_TENSOR_TEMPLATE =
-          "    ssize_t arg_id = GetIdxFromCoreOpsInfoMap(core_ops_args_info, "
+          "    ssize_t arg_id = "
+          "GetIdxFromCoreOpsInfoMap(core_ops_legacy_args_info, "
           "\"%s\", \"%s\");\n"
           "    ssize_t return_id = "
-          "GetIdxFromCoreOpsInfoMap(core_ops_returns_info, \"%s\", \"%s\");\n"
+          "GetIdxFromCoreOpsInfoMap(core_ops_legacy_returns_info, \"%s\", "
+          "\"%s\");\n"
           "    inplace_var_idx_map[return_id] = arg_id;";
       return_str += paddle::string::Sprintf(RETURN_INPLACE_TENSOR_TEMPLATE,
                                             op_type,
@@ -361,7 +363,7 @@ static std::string GenerateCoreOpsInfoMap() {
       "  PyThreadState *tstate = nullptr;\n"
       "  try\n"
       "  {\n"
-      "    return ToPyObject(core_ops_args_info);\n"
+      "    return ToPyObject(core_ops_legacy_args_info);\n"
       "  }\n"
       "  catch(...) {\n"
       "    if (tstate) {\n"
@@ -376,7 +378,7 @@ static std::string GenerateCoreOpsInfoMap() {
       "  PyThreadState *tstate = nullptr;\n"
       "  try\n"
       "  {\n"
-      "    return ToPyObject(core_ops_args_type_info);\n"
+      "    return ToPyObject(core_ops_legacy_args_type_info);\n"
       "  }\n"
       "  catch(...) {\n"
       "    if (tstate) {\n"
@@ -391,7 +393,7 @@ static std::string GenerateCoreOpsInfoMap() {
       "  PyThreadState *tstate = nullptr;\n"
       "  try\n"
       "  {\n"
-      "    return ToPyObject(core_ops_returns_info);\n"
+      "    return ToPyObject(core_ops_legacy_returns_info);\n"
       "  }\n"
       "  catch(...) {\n"
       "    if (tstate) {\n"

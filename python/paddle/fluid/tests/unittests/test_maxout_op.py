@@ -109,7 +109,7 @@ class TestMaxoutAPI(unittest.TestCase):
         for r in res:
             np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
-    def test_dygraph_api(self):
+    def func_test_dygraph_api(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
         out1 = F.maxout(x, self.groups, self.axis)
@@ -154,7 +154,8 @@ class TestMaxoutAPI(unittest.TestCase):
 
     def test_dygraph_api(self):
         with _test_eager_guard():
-            self.test_dygraph_api()
+            self.func_test_dygraph_api()
+        self.func_test_dygraph_api()
 
 
 if __name__ == '__main__':

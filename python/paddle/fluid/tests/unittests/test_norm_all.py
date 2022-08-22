@@ -77,7 +77,7 @@ def p_norm(x, axis, porder, keepdims=False, reduce_all=False):
     return r
 
 
-def frobenius_norm(x, axis=None, keepdims=False):
+def numpy_frobenius_norm(x, axis=None, keepdims=False):
     if isinstance(axis, list): axis = tuple(axis)
     if axis is None: x = x.reshape(1, x.size)
     r = np.linalg.norm(x, ord='fro', axis=axis,
@@ -96,7 +96,7 @@ class TestFrobeniusNormOp(OpTest):
         self.op_type = "frobenius_norm"
         self.init_test_case()
         x = (np.random.random(self.shape) + 1.0).astype(self.dtype)
-        norm = frobenius_norm(x, self.axis, self.keepdim)
+        norm = numpy_frobenius_norm(x, self.axis, self.keepdim)
         self.reduce_all = (len(self.axis) == len(self.shape))
         self.inputs = {'X': x}
         self.attrs = {
@@ -413,7 +413,9 @@ def run_fro(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
-        expected_result = frobenius_norm(np_input, axis=axis, keepdims=keep_dim)
+        expected_result = numpy_frobenius_norm(np_input,
+                                               axis=axis,
+                                               keepdims=keep_dim)
         result, = exe.run(feed={"X": np_input}, fetch_list=[out])
     self.assertEqual((np.abs(result - expected_result) < 1e-6).all(), True)
     if keep_dim and check_dim:
