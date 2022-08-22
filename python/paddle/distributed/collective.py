@@ -476,6 +476,10 @@ def new_group(ranks=None, backend=None):
                 place = core.MLUPlace(genv.device_id)
                 core.CNCLParallelContext(strategy,
                                          place).init_with_ring_id(ring_id)
+            elif core.is_compiled_with_xpu():
+                place = core.XPUPlace(genv.device_id)
+                core.BKCLParallelContext(strategy,
+                                         place).init_with_ring_id(ring_id)
             else:
                 assert False, ("no cuda device found")
         else:

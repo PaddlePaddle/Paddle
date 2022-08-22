@@ -68,9 +68,9 @@ class TestSimpleModel(unittest.TestCase):
         layer, value2 = self.run_base(func, True, "default")
         _, value3 = self.run_base(func, True, "new")
         _, value4 = self.run_base(func, True, layer)
-        self.assertTrue(np.array_equal(value1, value2))
-        self.assertTrue(np.array_equal(value1, value3))
-        self.assertTrue(np.array_equal(value1, value4))
+        np.testing.assert_array_equal(value1, value2)
+        np.testing.assert_array_equal(value1, value3)
+        np.testing.assert_array_equal(value1, value4)
 
     def test_layer(self):
         self.check(SimpleModel(10, 20))

@@ -593,6 +593,7 @@ struct C_DeviceInterface {
                           size_t count,
                           C_DataType data_type,
                           C_CCLReduceOp op,
+                          size_t root,
                           C_CCLComm comm,
                           C_Stream stream);
 

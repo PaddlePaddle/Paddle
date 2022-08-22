@@ -68,6 +68,7 @@ class AdamMLUKernel : public framework::OpKernel<T> {
       std::vector<bool> skip_update_vec;
       paddle::framework::TensorToVector(
           *skip_update_tensor, ctx.device_context(), &skip_update_vec);
+      ctx.device_context().Wait();
       skip_update = skip_update_vec[0];
     }
     // skip_update=true, just copy input to output, and TensorCopy will call
@@ -286,6 +287,7 @@ class AdamWMLUKernel : public AdamMLUKernel<T> {
       std::vector<bool> skip_update_vec;
       paddle::framework::TensorToVector(
           *skip_update_tensor, ctx.device_context(), &skip_update_vec);
+      ctx.device_context().Wait();
       skip_update = skip_update_vec[0];
     }
     bool with_decay = ctx.Attr<bool>("with_decay");

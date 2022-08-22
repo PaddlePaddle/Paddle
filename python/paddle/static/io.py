@@ -469,8 +469,11 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
         executor(Executor): The executor that saves the inference model. You can refer
                             to :ref:`api_guide_executor_en` for more details.
         kwargs: Supported keys including 'program' and "clip_extra". Attention please, kwargs is used for backward compatibility mainly.
-          - program(Program): specify a program if you don't want to use default main program.
-          - clip_extra(bool): set to True if you want to clip extra information for every operator.
+
+            - program(Program): specify a program if you don't want to use default main program.
+
+            - clip_extra(bool): set to True if you want to clip extra information for every operator.
+
     Returns:
         None
 
@@ -539,7 +542,9 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
     save_to_file(model_path, program_bytes)
     # serialize and save params
     params_bytes = _serialize_persistables(program, executor)
-    save_to_file(params_path, params_bytes)
+    # program may not contain any parameter and just compute operation
+    if params_bytes is not None:
+        save_to_file(params_path, params_bytes)
 
 
 @static_only
@@ -656,6 +661,12 @@ def deserialize_persistables(program, data, executor):
         var_copy = _clone_var_in_block(load_block, var)
         check_vars.append(var)
         load_var_map[var_copy.name] = var_copy
+
+    if data is None:
+        assert len(
+            origin_shape_map
+        ) == 0, "Required 'data' shall be not None if program contains parameter, but received 'data' is None."
+        return
 
     # append load_combine op to load parameters,
     load_var_list = []
@@ -846,7 +857,9 @@ def load_inference_model(path_prefix, executor, **kwargs):
         params_filename = os.path.basename(params_path)
         # load params data
         params_path = os.path.join(load_dirname, params_filename)
-        params_bytes = load_from_file(params_path)
+        params_bytes = None
+        if os.path.exists(params_path):
+            params_bytes = load_from_file(params_path)
 
     # deserialize bytes to program
     program = deserialize_program(program_bytes)

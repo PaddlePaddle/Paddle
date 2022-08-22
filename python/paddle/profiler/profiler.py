@@ -23,12 +23,48 @@ import json
 
 import paddle
 from paddle.fluid.core import (_Profiler, _ProfilerResult, ProfilerOptions,
-                               TracerEventType)
+                               TracerEventType, enable_memory_recorder,
+                               enable_input_shape_recorder,
+                               disable_memory_recorder,
+                               disable_input_shape_recorder)
 
 from .utils import RecordEvent, wrap_optimizers
 from .profiler_statistic import StatisticData, _build_table, SortedKeys
 from paddle.profiler import utils
 from .timer import benchmark
+
+
+class SummaryView(Enum):
+    r"""
+    SummaryView define the summary view of different contents.
+
+    - **SummaryView.DeviceView** : The device summary view.
+
+    - **SummaryView.OverView** : The overview summary view.
+
+    - **SummaryView.ModelView** : The model summary view.
+
+    - **SummaryView.DistributedView** : The distributed summary view.
+
+    - **SummaryView.KernelView** : The kernel summary view.
+
+    - **SummaryView.OperatorView** : The operator summary view.
+
+    - **SummaryView.MemoryView** : The memory summary view.
+
+    - **SummaryView.MemoryManipulationView** : The meomory manipulation summary view.
+
+    - **SummaryView.UDFView** : The user defined summary view.
+    """
+    DeviceView = 0
+    OverView = 1
+    ModelView = 2
+    DistributedView = 3
+    KernelView = 4
+    OperatorView = 5
+    MemoryView = 6
+    MemoryManipulationView = 7
+    UDFView = 8
 
 
 class ProfilerState(Enum):
@@ -279,6 +315,8 @@ class Profiler:
             This callable object will be called when ``scheduler`` returns ``ProfilerState.RECORD_AND_RETURN``. The default value is :ref:`export_chrome_tracing <api_paddle_profiler_export_chrome_tracing>` (./profiler_log/).
         timer_only (bool, optional): If it is True, the cost of Dataloader and every step of the model will be count without profiling. Otherwise, the model will
             be timed and profiled. Default: False.
+        record_shapes (bool, optional): If it is True, collect op's input shape information. Default: False.
+        profile_memory (bool, optional): If it is True, collect tensor memory allocation and release information. Default: False.
 
     Examples:
         1. profiling range [2, 5).
@@ -396,7 +434,10 @@ class Profiler:
                  scheduler: Union[Callable[[int], ProfilerState], tuple,
                                   None] = None,
                  on_trace_ready: Optional[Callable[..., Any]] = None,
-                 timer_only: Optional[bool] = False):
+                 record_shapes: Optional[bool] = False,
+                 profile_memory=False,
+                 timer_only: Optional[bool] = False,
+                 emit_nvtx: Optional[bool] = False):
         supported_targets = _get_supported_targets()
         if targets:
             self.targets = set(targets)
@@ -447,6 +488,9 @@ class Profiler:
         self.record_event = None
         self.profiler_result = None
         self.timer_only = timer_only
+        self.record_shapes = record_shapes
+        self.profile_memory = profile_memory
+        self.emit_nvtx = emit_nvtx
 
     def __enter__(self):
         self.start()
@@ -479,10 +523,15 @@ class Profiler:
         '''
         # Timing only without profiling
         benchmark().begin()
+        if not self.timer_only or self.emit_nvtx:
+            utils._is_profiler_used = True
         if self.timer_only:
             return
+        if self.record_shapes:
+            enable_input_shape_recorder()
+        if self.profile_memory:
+            enable_memory_recorder()
         # CLOSED -> self.current_state
-        utils._is_profiler_used = True
         if self.current_state == ProfilerState.READY:
             self.profiler.prepare()
         elif self.current_state == ProfilerState.RECORD:
@@ -520,6 +569,10 @@ class Profiler:
         benchmark().end()
         if self.timer_only:
             return
+        if self.record_shapes:
+            disable_input_shape_recorder()
+        if self.profile_memory:
+            disable_memory_recorder()
         # self.current_state -> CLOSED
         # In this situation, RECORD state is regarded as RECORD_AND_RETURN
         if self.record_event:
@@ -714,7 +767,8 @@ class Profiler:
                 sorted_by=SortedKeys.CPUTotal,
                 op_detail=True,
                 thread_sep=False,
-                time_unit='ms'):
+                time_unit='ms',
+                views=None):
         r"""
         Print the Summary table. Currently support overview, model, distributed, operator, memory manipulation and userdefined summary.
 
@@ -723,6 +777,7 @@ class Profiler:
             op_detail(bool, optional): expand each operator detail information, default value is True.
             thread_sep(bool, optional): print op table each thread, default value is False.
             time_unit(str, optional): time unit for display, can be chosen form ['s', 'ms', 'us', 'ns'], default value is 'ms'.
+            views(SummaryView|list[SummaryView], optional): summary tables to print, default to None means all views to be printed.
 
         Examples:
             .. code-block:: python
@@ -741,6 +796,9 @@ class Profiler:
                 prof.stop()
                 prof.summary(sorted_by=profiler.SortedKeys.CPUTotal, op_detail=True, thread_sep=False, time_unit='ms')
         """
+        if isinstance(views, SummaryView):
+            views = [views]
+
         if self.profiler_result:
             statistic_data = StatisticData(
                 self.profiler_result.get_data(),
@@ -750,7 +808,8 @@ class Profiler:
                              sorted_by=sorted_by,
                              op_detail=op_detail,
                              thread_sep=thread_sep,
-                             time_unit=time_unit))
+                             time_unit=time_unit,
+                             views=views))
 
 
 def get_profiler(config_path):

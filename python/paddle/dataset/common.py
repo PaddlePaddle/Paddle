@@ -24,12 +24,25 @@ import sys
 import importlib
 import paddle.dataset
 import six.moves.cPickle as pickle
+import tempfile
 import glob
 import paddle
 
 __all__ = []
 
 HOME = os.path.expanduser('~')
+
+# If the default HOME dir does not support writing, we
+# will create a temporary folder to store the cache files.
+if not os.access(HOME, os.W_OK):
+    """
+    gettempdir() return the name of the directory used for temporary files.
+    On Windows, the directories C:\TEMP, C:\TMP, \TEMP, and \TMP, in that order.
+    On all other platforms, the directories /tmp, /var/tmp, and /usr/tmp, in that order.
+    For more details, please refer to https://docs.python.org/3/library/tempfile.html
+    """
+    HOME = tempfile.gettempdir()
+
 DATA_HOME = os.path.join(HOME, '.cache', 'paddle', 'dataset')
 
 

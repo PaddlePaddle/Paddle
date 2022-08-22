@@ -61,8 +61,12 @@ class TestSplitMergeSelectedVarOps(unittest.TestCase):
                               },
                               fetch_list=[y.name, x.grad_name])
                 x_grad = np.asarray([0.5, 0.5]).astype(np.float32)
-                self.assertTrue(np.allclose(np.asarray(ret[0]), feed_x))
-                self.assertTrue(np.allclose(np.asarray(ret[1]), x_grad))
+                np.testing.assert_allclose(np.asarray(ret[0]),
+                                           feed_x,
+                                           rtol=1e-05)
+                np.testing.assert_allclose(np.asarray(ret[1]),
+                                           x_grad,
+                                           rtol=1e-05)
 
 
 class TestSelectInputOpError(unittest.TestCase):

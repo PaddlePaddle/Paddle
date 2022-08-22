@@ -82,7 +82,7 @@ class TestRollBackPlainFunction(unittest.TestCase):
         dy_out = st_foo(x)
 
         self.assertTrue(func_to_source_code(foo) == func_to_source_code(st_foo))
-        self.assertTrue(np.array_equal(st_out.numpy(), dy_out.numpy()))
+        np.testing.assert_array_equal(st_out.numpy(), dy_out.numpy())
 
 
 class TestRollBackNet(unittest.TestCase):
@@ -111,15 +111,15 @@ class TestRollBackNet(unittest.TestCase):
         self.assertFalse(isinstance(net.forward, StaticFunction))
         self.assertFalse("true_fn" in func_to_source_code(net.sub.forward))
         dy_fwd_out = net(x)
-        self.assertTrue(np.array_equal(st_fwd_out.numpy(), dy_fwd_out.numpy()))
+        np.testing.assert_array_equal(st_fwd_out.numpy(), dy_fwd_out.numpy())
 
         # rollback infer into original dygraph method
         net.infer.rollback()
         self.assertFalse(isinstance(net.infer, StaticFunction))
         self.assertFalse("true_fn" in func_to_source_code(net.sub.forward))
         dy_infer_out = net.infer(x)
-        self.assertTrue(
-            np.array_equal(st_infer_out.numpy(), dy_infer_out.numpy()))
+        np.testing.assert_array_equal(st_infer_out.numpy(),
+                                      dy_infer_out.numpy())
 
 
 if __name__ == "__main__":

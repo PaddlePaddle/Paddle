@@ -15,10 +15,11 @@ import typing
 
 import paddle
 
+from . import primops
 from .primops import (add, broadcast, concat, cos, div, exp, fill_const, gather,
                       matmul, mul, neg, reduce, reshape, scatter_add, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose)
+                      transpose, log, select, eq, max)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -66,6 +67,10 @@ index_select
 scale
 assign
 sqrt
+log
+select
+equal
+elementwise_pow
 
 These original ops are partially supported:
 
@@ -164,6 +169,11 @@ def cos_orig2prim(op, x):
 @REGISTER_ORIG2PRIM('exp')
 def exp_orig2prim(op, x):
     return exp(x)
+
+
+@REGISTER_ORIG2PRIM('log')
+def log_orig2prim(op, x):
+    return log(x)
 
 
 @REGISTER_ORIG2PRIM('fill_zeros_like')
@@ -285,6 +295,36 @@ def p_norm_orig2prim(op, x):
         raise RuntimeError('Only support lower l2/l1 norm currently')
 
 
+# TODO: support broadcast
+@REGISTER_ORIG2PRIM('where')
+def select_orig2prim(op, condition, x, y):
+    return select(condition, x, y)
+
+
+@REGISTER_ORIG2PRIM('equal')
+def equal_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    return eq(x, y)
+
+
+@REGISTER_ORIG2PRIM('elementwise_pow')
+def elementwise_pow_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+
+    z = primops.pow(x, y)
+    return z
+
+
+@REGISTER_ORIG2PRIM('elementwise_max')
+def elementwise_max_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+
+    return primops.max(x, y)
+
+
 ## Register prim2orig lower rules
 
 
@@ -331,6 +371,11 @@ def cos_prim2orig(op, x):
 @REGISTER_PRIM2ORIG('exp_p')
 def exp_prim2orig(op, x):
     return paddle.exp(x)
+
+
+@REGISTER_PRIM2ORIG('log_p')
+def log_prim2orig(op, x):
+    return paddle.log(x)
 
 
 @REGISTER_PRIM2ORIG('reshape_p')
@@ -412,6 +457,26 @@ def fill_constant_prim2orig(op):
     return paddle.full(shape=op.attr('shape'),
                        fill_value=op.attr('value'),
                        dtype=INT_DTYPE_2_STRING[op.attr('dtype')])
+
+
+@REGISTER_PRIM2ORIG('select_p')
+def select_prim2orig(op, condition, x, y):
+    return paddle.where(condition, x, y)
+
+
+@REGISTER_PRIM2ORIG('eq_p')
+def eq_prim2orig(op, x, y):
+    return paddle.equal(x, y)
+
+
+@REGISTER_PRIM2ORIG('pow_p')
+def pow_prim2orig(op, x, y):
+    return paddle.pow(x, y)
+
+
+@REGISTER_PRIM2ORIG('max_p')
+def max_prim2orig(op, x, y):
+    return paddle.maximum(x, y)
 
 
 ## Register linearize rules
@@ -507,6 +572,14 @@ def exp_jvp(op, x_dot):
         return None
     y = op_position_output(op)
     return mul(x_dot, y)
+
+
+@REGISTER_JVP('log_p')
+def log_jvp(op, x_dot):
+    if x_dot is None:
+        return None
+    x, = op_position_inputs(op)
+    return div(x_dot, x)
 
 
 @REGISTER_JVP('reshape_p')
@@ -626,6 +699,75 @@ def scatter_add_jvp(op, x_dot, y_dot):
     _, _, indextensor = op_position_inputs(op)
     axis = op.attr('axis')
     return linear_jvp(op, x_dot, y_dot, indextensor, axis=axis)
+
+
+@REGISTER_JVP('select_p')
+def select_jvp(op, cond_dot, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
+
+    cond, x, y = op_position_inputs(op)
+    if x_dot is None:
+        x_dot = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
+    if y_dot is None:
+        y_dot = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
+    return select(cond, x_dot, y_dot)
+
+
+@REGISTER_JVP('eq_p')
+def eq_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
+    x, _ = op_position_inputs(op)
+    z_dot = fill_const(value=0., shape=x.shape, dtype=x.dtype)
+    return z_dot
+
+
+@REGISTER_JVP('pow_p')
+def pow_jvp(op, x_dot, y_dot):
+
+    def _compute_t1(x, y):
+        zero_y = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
+        one_y = fill_const(value=1.0, shape=y.shape, dtype=y.dtype)
+
+        cond = eq(y, zero_y)
+        new_y = select(cond, one_y, sub(y, one_y))
+        t1 = mul(x_dot, mul(y, primops.pow(x, new_y)))
+        return t1
+
+    if x_dot is None and y_dot is None:
+        return None
+    x, y = op_position_inputs(op)
+    z = op_position_output(op)
+
+    if y_dot is None:
+        return _compute_t1(x, y)
+    elif x_dot is None:
+        return mul(y_dot, mul(log(x), z))
+    else:
+        t1, t2 = _compute_t1(x, y), mul(y_dot, mul(log(x), z))
+        z_dot = add(t1, t2)
+        return z_dot
+
+
+@REGISTER_JVP('max_p')
+def max_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
+
+    x, y = op_position_inputs(op)
+    z = op_position_output(op)
+    z_zeros = fill_const(value=0.0, shape=z.shape, dtype=z.dtype)
+
+    # To make the grad of max_p consistent with paddle.maximum when x==y,
+    # we just let z_dot = y_dot when compute z_dot to y and x==y,
+    # instead of using balance_eq like Jax.
+    if y_dot is None:
+        return select(eq(y, z), z_zeros, x_dot)
+    elif x_dot is None:
+        return select(eq(y, z), y_dot, z_zeros)
+    else:
+        return select(eq(y, z), y_dot, x_dot)
 
 
 ## Register transpose rules
@@ -813,3 +955,22 @@ def scatter_add_transpose(op, check_dot, z_bar):
     y_bar = gather(z_bar, indextensor, axis=axis)
     indextensor_bar = None
     return x_bar, y_bar, indextensor_bar
+
+
+@REGISTER_TRANSPOSE('select_p')
+def select_transpose(op, check_dot, z_bar):
+    cond, x, y = op_position_inputs(op)
+    assert check_dot(cond) or check_dot(x) or check_dot(y), (
+        f'check_dot(cond) ^ (check_dot(x) ^ check_dot(y)) must be True, '
+        f'but check_dot(cond)={check_dot(cond)}, check_dot(x)={check_dot(x)} and check_dot(y)={check_dot(y)}.'
+    )
+
+    zeros_x = fill_const(value=0.0, shape=x.shape, dtype=x.dtype)
+    zeros_y = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
+
+    cond_bar = fill_const(value=0.0, shape=y.shape,
+                          dtype=cond.dtype) if check_dot(cond) else None
+    x_bar = select(cond, z_bar, zeros_x) if check_dot(x) else None
+    y_bar = select(cond, zeros_y, z_bar) if check_dot(y) else None
+
+    return cond_bar, x_bar, y_bar

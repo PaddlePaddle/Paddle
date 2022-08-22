@@ -28,7 +28,7 @@ from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import Resharder
-from paddle.distributed.auto_parallel.process_group import _g_process_group_map
+from paddle.distributed.auto_parallel.process_group import _g_process_group_map, ProcessGroup
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
@@ -282,12 +282,15 @@ class TestMLPReshard(unittest.TestCase):
             if op.type == "gelu_grad":
                 op_need_check = op
                 break
-        # print_program_with_dist_attr(dist_main_prog, dist_context)
 
         # grad op should have dist attr
         self.assertTrue(
             check_backward_dist_attr(dist_context, dist_main_prog,
                                      op_need_check))
+
+        # clear _g_process_group_map
+        _g_process_group_map.clear()
+        _g_process_group_map[0] = ProcessGroup(0, [])
 
     def test_mlp_pp(self):
         global _global_parallel_strategy
@@ -305,34 +308,45 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 1
         dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
-        for key in list(_g_process_group_map.keys()):
-            del _g_process_group_map[key]
         resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
                               dist_context, dist_params_grads)
         resharder.reshard()
 
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
-
         # parameter initialization of every rank should be different in the pipeline scene
         self.assertTrue(check_initialization(dist_startup_prog, rank_id))
 
+        # clear _g_process_group_map
+        _g_process_group_map.clear()
+        _g_process_group_map[0] = ProcessGroup(0, [])
+
     def test_mlp_pp_diff_process_mesh(self):
+        global _global_parallel_strategy
+        _global_parallel_strategy = "pp"
+        global _global_process_mesh
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
+        global PP_MESH_0
+        PP_MESH_0 = auto.ProcessMesh(mesh=[0])
+        global PP_MESH_1
+        PP_MESH_1 = auto.ProcessMesh(mesh=[1])
+
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
         rank_id = 1
         dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id, True)
-        for key in list(_g_process_group_map.keys()):
-            del _g_process_group_map[key]
         resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
                               dist_context, dist_params_grads)
         resharder.reshard()
-
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
         self.assertTrue(check_initialization(dist_startup_prog, rank_id))
+
+        # clear _g_process_group_map
+        _g_process_group_map.clear()
+        _g_process_group_map[0] = ProcessGroup(0, [])
 
     def test_mlp_dp(self):
         global _global_parallel_strategy
@@ -349,11 +363,15 @@ class TestMLPReshard(unittest.TestCase):
         resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
                               dist_context, dist_params_grads)
         resharder.reshard()
+
         # send and recv should not exist in dp scene.
         self.assertFalse(check_send_recv_result(dist_main_prog, rank_id))
-
         # all parameters should be initialized in dp scene
         self.assertTrue(check_initialization_for_dp(dist_startup_prog))
+
+        # clear _g_process_group_map
+        _g_process_group_map.clear()
+        _g_process_group_map[0] = ProcessGroup(0, [])
 
 
 if __name__ == "__main__":

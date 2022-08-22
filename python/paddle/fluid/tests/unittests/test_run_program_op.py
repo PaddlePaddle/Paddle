@@ -114,7 +114,10 @@ class RunProgramOpTest(unittest.TestCase):
 
         # Step 2. compare output
         for expect_v, actual_v in six.moves.zip(self.expect_outs, actual_outs):
-            self.assertTrue(np.allclose(expect_v, actual_v.numpy(), atol=1e-5))
+            np.testing.assert_allclose(expect_v,
+                                       actual_v.numpy(),
+                                       rtol=1e-05,
+                                       atol=1e-05)
 
     def check_grad_with_place(self, place):
         # Step 1. calc grads
@@ -124,7 +127,10 @@ class RunProgramOpTest(unittest.TestCase):
         for expect_v, actual_v in six.moves.zip(self.expect_grads,
                                                 actual_grads):
             np.testing.assert_array_almost_equal(expect_v, actual_v)
-            self.assertTrue(np.allclose(expect_v, actual_v, atol=1e-5))
+            np.testing.assert_allclose(expect_v,
+                                       actual_v,
+                                       rtol=1e-05,
+                                       atol=1e-05)
 
     def prepare_dygraph_input(self, place, return_param_list=False):
 

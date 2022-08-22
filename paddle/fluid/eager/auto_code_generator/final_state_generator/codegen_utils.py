@@ -353,6 +353,9 @@ class FunctionGeneratorBase:
         self.forward_api_contents = forward_api_contents
         self.namespace = namespace
 
+        self.is_forward_only = False if 'backward' in forward_api_contents.keys(
+        ) else True
+
         self.forward_api_name = ""
 
         self.orig_forward_inputs_list = [
@@ -443,7 +446,13 @@ class FunctionGeneratorBase:
 
         for i in range(len(forward_returns_list)):
             forward_return = forward_returns_list[i]
-            return_name = forward_return[0]
+            if len(forward_return[0]) == 0:
+                if (len(forward_returns_list) == 1):
+                    return_name = "out"
+                else:
+                    return_name = "out_{}".format(i + 1)
+            else:
+                return_name = forward_return[0]
             return_type = forward_return[1]
             return_pos = forward_return[2]
 
