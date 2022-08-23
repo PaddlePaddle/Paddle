@@ -951,6 +951,57 @@ void DistInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void DistributeFpnProposalsInferMeta(
+    const MetaTensor& fpn_rois,
+    const MetaTensor& rois_num,
+    int min_level,
+    int max_level,
+    int refer_level,
+    int refer_scale,
+    bool pixel_offset,
+    std::vector<MetaTensor*> multi_fpn_rois,
+    std::vector<MetaTensor*> multi_level_rois_num,
+    MetaTensor* restore_index,
+    MetaConfig config) {
+  PADDLE_ENFORCE_GE(
+      multi_fpn_rois.size(),
+      1UL,
+      errors::InvalidArgument("Outputs(MultiFpnRois) of "
+                              "DistributeFpnProposalsOp should not be empty"));
+  PADDLE_ENFORCE_GE(
+      max_level,
+      min_level,
+      errors::InvalidArgument(
+          "max_level must not lower than "
+          "min_level. But received max_level = %d, min_level = %d",
+          max_level,
+          min_level));
+  // Set the output shape
+  for (size_t i = 0; i < multi_fpn_rois.size(); ++i) {
+    DDim out_dim = {-1, 4};
+    if (multi_fpn_rois[i] == nullptr) {
+      continue;
+    }
+    multi_fpn_rois[i]->set_dims(out_dim);
+    multi_fpn_rois[i]->set_dtype(fpn_rois.dtype());
+  }
+  restore_index->set_dims({-1, 1});
+  restore_index->set_dtype(DataType::INT32);
+  for (size_t i = 0; i < multi_level_rois_num.size(); ++i) {
+    if (multi_level_rois_num[i] == nullptr) {
+      continue;
+    }
+    multi_level_rois_num[i]->set_dims({-1});
+    multi_level_rois_num[i]->set_dtype(DataType::INT32);
+  }
+
+  if (!config.is_runtime) {
+    for (size_t i = 0; i < multi_fpn_rois.size(); ++i) {
+      multi_fpn_rois[i]->share_lod(fpn_rois);
+    }
+  }
+}
+
 void DropoutInferMeta(const MetaTensor& x,
                       const MetaTensor& seed_tensor,
                       const Scalar& p,
