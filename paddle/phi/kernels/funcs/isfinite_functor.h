@@ -19,7 +19,13 @@ namespace funcs {
 
 template <typename T, class Enable = void>
 struct IsNanFunctor {
-  HOSTDEVICE bool operator()(const T a) const { return std::isnan(a); }
+  HOSTDEVICE bool operator()(const T a) const {
+#if defined(__CUDACC__) || defined(__HIPCC__)
+    return ::isnan(a);
+#else
+    return std::isnan(a);
+#endif
+  }
 };
 
 template <typename T>
@@ -28,9 +34,22 @@ struct IsNanFunctor<T,
   HOSTDEVICE bool operator()(const T a) const { return false; }
 };
 
+template <>
+struct IsNanFunctor<phi::dtype::float16, void> {
+  HOSTDEVICE bool operator()(const phi::dtype::float16 a) const {
+    return isnan(a);
+  }
+};
+
 template <typename T, class Enable = void>
 struct IsInfFunctor {
-  HOSTDEVICE bool operator()(const T a) const { return std::isinf(a); }
+  HOSTDEVICE bool operator()(const T a) const {
+#if defined(__CUDACC__) || defined(__HIPCC__)
+    return ::isinf(a);
+#else
+    return std::isinf(a);
+#endif
+  }
 };
 
 template <typename T>
@@ -39,9 +58,22 @@ struct IsInfFunctor<T,
   HOSTDEVICE bool operator()(const T a) const { return false; }
 };
 
+template <>
+struct IsInfFunctor<phi::dtype::float16, void> {
+  HOSTDEVICE bool operator()(const phi::dtype::float16 a) const {
+    return isinf(a);
+  }
+};
+
 template <typename T, class Enable = void>
 struct IsFiniteFunctor {
-  HOSTDEVICE bool operator()(const T a) const { return std::isfinite(a); }
+  HOSTDEVICE bool operator()(const T a) const {
+#if defined(__CUDACC__) || defined(__HIPCC__)
+    return ::isfinite(a);
+#else
+    return std::isfinite(a);
+#endif
+  }
 };
 
 template <typename T>

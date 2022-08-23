@@ -93,7 +93,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
 
       std::vector<int64_t> dims(x->dims().size());
       std::iota(dims.begin(), dims.end(), 0);
-      phi::AllKernel<bool, Context>(dev_ctx, tmp, dims, false, found_infinite);
+      phi::AllKernel<bool, Context>(dev_ctx, tmp, dims, false, &is_finite);
       *found_inf_data = !(*is_finite_data);
     }
     auto eigen_out = EigenVector<T>::Flatten(*out);
