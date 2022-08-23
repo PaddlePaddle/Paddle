@@ -15,11 +15,14 @@
 from collections import OrderedDict
 from ..framework import Parameter
 from .layers import Layer
+from paddle.fluid import framework
 from .base import param_guard
+from paddle.fluid import core
 
 __all__ = [
     'Sequential',
     'ParameterList',
+    'BufferList',
     'LayerList',
 ]
 
@@ -183,6 +186,60 @@ class ParameterList(Layer):
         idx = len(self._parameters)
         self.add_parameter(str(idx), parameter)
         return self
+
+
+class BufferList(Layer):
+    """BufferList Container.
+        
+    The same as ParameterList.
+    """
+
+    def __init__(self, buffers=None, persistable=False):
+        super(BufferList, self).__init__()
+        self.persistable = persistable
+        if buffers is not None:
+            for idx, buf in enumerate(buffers):
+                assert isinstance(
+                    buf, (core.VarBase, core.eager.Tensor, framework.Variable))
+                setattr(self, str(idx), buf)
+
+    def __getitem__(self, idx):
+        with param_guard(self._buffers):
+            assert str(
+                idx
+            ) in self._buffers, f"{idx} is out of range or you forget to use self.buflist.assign([tensor]) to replace self.buflist=[tensor] "
+            return self._buffers[str(idx)]
+
+    def __setitem__(self, idx, buf):
+        assert isinstance(buf,
+                          (core.VarBase, core.eager.Tensor, framework.Variable))
+        setattr(self, str(idx), buf)
+
+    def __len__(self):
+        return len(self._buffers)
+
+    def __iter__(self):
+        with param_guard(self._buffers):
+            return iter(self._buffers.values())
+
+    def append(self, buf):
+        """Appends a given bufffer at the end of the list.
+
+        Parameters:
+            buffer (Buffer): buffer to append
+        """
+        assert isinstance(buf,
+                          (core.VarBase, core.eager.Tensor, framework.Variable))
+        idx = len(self._buffers)
+        setattr(self, str(idx), buf)
+        return self
+
+    def assign(self, values):
+        assert len(values) == len(self)
+        for idx, val in enumerate(values):
+            assert isinstance(
+                val, (core.VarBase, core.eager.Tensor, framework.Variable))
+            setattr(self, str(idx), val)
 
 
 class LayerList(Layer):
