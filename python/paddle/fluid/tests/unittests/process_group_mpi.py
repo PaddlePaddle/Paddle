@@ -29,9 +29,6 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.collective import _group_map_by_name
 from paddle.distributed.collective import _default_group_name
 import paddle.distributed as dist
-import ctypes
-
-ctypes.CDLL("libmpi.so", mode=ctypes.RTLD_GLOBAL)
 
 
 def init_process_group(strategy=None):

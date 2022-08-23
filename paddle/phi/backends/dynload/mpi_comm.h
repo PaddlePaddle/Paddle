@@ -22,11 +22,18 @@ limitations under the License. */
 namespace phi {
 namespace dynload {
 
+extern std::once_flag mpi_dso_flag;
+extern void* mpi_dso_handle;
+
 #define DECLARE_DYNAMIC_LOAD_MPI_WRAP(__name)                    \
   struct DynLoad__##__name {                                     \
     template <typename... Args>                                  \
     auto operator()(Args... args) -> decltype(__name(args...)) { \
       using mpi_func = decltype(&::__name);                      \
+      std::call_once(mpi_dso_flag, []() {                        \
+        mpi_dso_handle = phi::dynload::GetMPIDsoHandle();        \
+      });                                                        \
+      static void* p_##__name = dlsym(mpi_dso_handle, #__name);  \
       return reinterpret_cast<mpi_func>(p_##__name)(args...);    \
     }                                                            \
   };                                                             \
