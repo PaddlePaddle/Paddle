@@ -463,7 +463,7 @@ GenerateOpFunctions() {
       }
 
       std::string inplace_op_type = op_type + "_";
-      std::string inplace_func_name = "eager_api_" + inplace_op_type;
+      std::string inplace_func_name = "eager_legacy_api_" + inplace_op_type;
       std::string inplace_op_function_str =
           GenerateOpFunctionsBody(op_proto, inplace_func_name, inplace_map);
 
