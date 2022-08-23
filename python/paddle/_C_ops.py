@@ -17,7 +17,6 @@ from .fluid import framework
 
 __all__ = []
 
-if framework._in_eager_mode_:
-    for name in dir(core.eager.ops):
-        globals()[name] = getattr(core.eager.ops, name)
-        __all__.append(name)
+for name in dir(core.eager.ops):
+    globals()[name] = getattr(core.eager.ops, name)
+    __all__.append(name)
