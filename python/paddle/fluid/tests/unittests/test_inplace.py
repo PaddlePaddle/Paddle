@@ -485,15 +485,6 @@ class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
 
 class TestDygraphInplaceRemainder(unittest.TestCase):
 
-    def setUp(self):
-        self.init_data()
-        self.set_np_compare_func()
-
-    def init_data(self):
-        self.input_var_numpy = np.random.rand(2, 3, 4)
-        self.dtype = "float32"
-        self.input_var_numpy_2 = np.random.rand(2, 3, 4).astype(self.dtype)
-
     def non_inplace_api_processing(self, var):
         input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
         return var.remainder(input_var_2)
@@ -502,40 +493,17 @@ class TestDygraphInplaceRemainder(unittest.TestCase):
         input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
         return var.remainder_(input_var_2)
 
-    def set_np_compare_func(self):
-        self.np_compare = np.array_equal
+    def test_leaf_inplace_var_error(self):
+        pass
 
-    def func_test_inplace_api(self):
-        var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
-        inplace_var = self.inplace_api_processing(var)
-        self.assertTrue(id(var) == id(inplace_var))
+    def test_backward_error(self):
+        pass
 
-        inplace_var[0] = 2.
-        np.testing.assert_array_equal(var.numpy(), inplace_var.numpy())
+    def test_backward_success_1(self):
+        pass
 
-    def test_inplace_api(self):
-        with _test_eager_guard():
-            self.func_test_inplace_api()
-        self.func_test_inplace_api()
-
-    def func_test_forward_version(self):
-        with paddle.fluid.dygraph.guard():
-            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
-            self.assertEqual(var.inplace_version, 0)
-
-            inplace_var = self.inplace_api_processing(var)
-            self.assertEqual(var.inplace_version, 1)
-
-            inplace_var[0] = 2.
-            self.assertEqual(var.inplace_version, 2)
-
-            inplace_var = self.inplace_api_processing(inplace_var)
-            self.assertEqual(var.inplace_version, 3)
-
-    def test_forward_version(self):
-        with _test_eager_guard():
-            self.func_test_forward_version()
-        self.func_test_forward_version()
+    def test_backward_success_2(self):
+        pass
 
 
 class TestLossIsInplaceVar(unittest.TestCase):
