@@ -145,13 +145,6 @@ void eltwise_grad_use_out(const framework::ExecutionContext &ctx,
 }
 
 template <typename T, dnnl::algorithm algorithm>
-struct MKLDNNActivationFunc : public BaseActivationFunctor<T> {
-  void operator()(const framework::ExecutionContext &ctx) const {
-    eltwise_forward<T>(ctx, algorithm);
-  }
-};
-
-template <typename T, dnnl::algorithm algorithm>
 struct MKLDNNActivationGradFunc : public BaseActivationFunctor<T> {
   void operator()(const framework::ExecutionContext &ctx) const {
     eltwise_grad<T>(ctx, algorithm);
@@ -196,12 +189,6 @@ struct SoftplusMKLDNNFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-template <typename T>
-using Relu6MKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_bounded_relu>;
-
-template <typename T>
-using AbsMKLDNNFunctor = MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_abs>;
 
 template <typename T>
 using Relu6MKLDNNGradFunctor =
@@ -216,39 +203,25 @@ using AbsMKLDNNGradFunctor =
 
 namespace ops = paddle::operators;
 
-#define REGISTER_ACTIVATION_MKLDNN_KERNEL(act_type, functor, grad_functor)    \
-  REGISTER_OP_KERNEL(                                                         \
-      act_type,                                                               \
-      MKLDNN,                                                                 \
-      ::paddle::platform::CPUPlace,                                           \
-      ops::MKLDNNActivationKernel<ops::functor<float>>,                       \
-      ops::MKLDNNActivationKernel<ops::functor<paddle::platform::bfloat16>>); \
-  REGISTER_OP_KERNEL(                                                         \
-      act_type##_grad,                                                        \
-      MKLDNN,                                                                 \
-      ::paddle::platform::CPUPlace,                                           \
-      ops::MKLDNNActivationGradKernel<ops::grad_functor<float>>,              \
-      ops::MKLDNNActivationGradKernel<                                        \
+#define REGISTER_FWD_ACTIVATION_MKLDNN_KERNEL(act_type, functor) \
+  REGISTER_OP_KERNEL(                                            \
+      act_type,                                                  \
+      MKLDNN,                                                    \
+      ::paddle::platform::CPUPlace,                              \
+      ops::MKLDNNActivationKernel<ops::functor<float>>,          \
+      ops::MKLDNNActivationKernel<ops::functor<paddle::platform::bfloat16>>);
+
+#define REGISTER_GRAD_ACTIVATION_MKLDNN_KERNEL(act_type, grad_functor) \
+  REGISTER_OP_KERNEL(                                                  \
+      act_type##_grad,                                                 \
+      MKLDNN,                                                          \
+      ::paddle::platform::CPUPlace,                                    \
+      ops::MKLDNNActivationGradKernel<ops::grad_functor<float>>,       \
+      ops::MKLDNNActivationGradKernel<                                 \
           ops::grad_functor<paddle::platform::bfloat16>>);
 
-#define REGISTER_ACTIVATION_MKLDNN_KERNEL_FWD_ONLY(act_type, functor) \
-  REGISTER_OP_KERNEL(act_type,                                        \
-                     MKLDNN,                                          \
-                     ::paddle::platform::CPUPlace,                    \
-                     ops::MKLDNNActivationKernel<ops::functor<float>>);
-
-#define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)            \
-  __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);    \
-  __macro(gelu, GeluMKLDNNFunctor, GeluMKLDNNGradFunctor); \
-  __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);
-
-FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);
-
-namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(
-    softplus,
-    MKLDNN,
-    paddle::platform::CPUPlace,
-    ops::MKLDNNActivationKernel<ops::SoftplusMKLDNNFunctor<float>>,
-    ops::MKLDNNActivationKernel<
-        ops::SoftplusMKLDNNFunctor<paddle::platform::bfloat16>>);
+REGISTER_FWD_ACTIVATION_MKLDNN_KERNEL(softplus, SoftplusMKLDNNFunctor);
+REGISTER_FWD_ACTIVATION_MKLDNN_KERNEL(gelu, GeluMKLDNNFunctor);
+REGISTER_GRAD_ACTIVATION_MKLDNN_KERNEL(gelu, GeluMKLDNNGradFunctor);
+REGISTER_GRAD_ACTIVATION_MKLDNN_KERNEL(abs, AbsMKLDNNGradFunctor);
+REGISTER_GRAD_ACTIVATION_MKLDNN_KERNEL(relu6, Relu6MKLDNNGradFunctor);

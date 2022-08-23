@@ -89,8 +89,15 @@ struct MKLDNNActivationFunc : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T>
+using AbsMKLDNNFunctor = MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_abs>;
+
+template <typename T>
 using ReluMKLDNNFunctor =
     MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_relu>;
+
+template <typename T>
+using Relu6MKLDNNFunctor =
+    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_bounded_relu>;
 
 template <typename T>
 using SwishMKLDNNFunctor =
@@ -126,6 +133,7 @@ template <typename T>
 using RoundMKLDNNFunctor =
     MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_round>;
 
+DEFINE_ONEDNN_ACTIVATION_KERNEL(Abs, AbsMKLDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Relu, ReluMKLDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Tanh, TanhMKLDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Exp, ExpMKLDNNFunctor)
@@ -137,6 +145,7 @@ DEFINE_ONEDNN_ACTIVATION_KERNEL(Round, RoundMKLDNNFunctor)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, ReluMKLDNNFunctor, alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishMKLDNNFunctor, threshold)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Elu, EluMKLDNNFunctor, alpha)
+DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Relu6, Relu6MKLDNNFunctor, threshold)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Swish, SwishMKLDNNFunctor, beta)
 
 template <typename T, typename Context>
@@ -158,13 +167,15 @@ PD_REGISTER_KERNEL(round, OneDNN, ALL_LAYOUT, phi::RoundKernel, float) {}
   PD_REGISTER_KERNEL(                             \
       name, OneDNN, ALL_LAYOUT, phi::func, float, phi::dtype::bfloat16) {}
 
+PD_REGISTER_ACTIVATION_KERNEL(abs, AbsKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_swish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu, ReluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
-PD_REGISTER_ACTIVATION_KERNEL(relu, ReluKernel)
