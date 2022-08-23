@@ -245,6 +245,8 @@ def is_parameter_related(varname, block):
         varname = varname[:varname.index(".subprog_")]
     if ".cast_fp" in varname:
         varname = varname[:varname.index(".cast_fp")]
+    if ".quantized" in varname:
+        varname = varname[:varname.index(".quantized")]
     assert block.has_var(varname)
     var = block.var(varname)
     return var.is_parameter
