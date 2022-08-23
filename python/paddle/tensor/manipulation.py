@@ -4326,13 +4326,8 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
 
 
 def _index_add_params_check(x, index, add_value, input_axis):
-    if not isinstance(x, Variable):
-        raise TypeError("The input x should be a Tensor.")
     dims = len(x.shape)
     add_value_dims = len(add_value.shape)
-
-    if not isinstance(input_axis, (int)):
-        raise TypeError("The axis should be int ")
 
     if input_axis >= 0:
         axis = input_axis
@@ -4340,21 +4335,8 @@ def _index_add_params_check(x, index, add_value, input_axis):
         axis = input_axis + dims
 
     check_axis = axis
-    if isinstance(axis, Variable):
-        if axis.dtype not in [paddle.int64, paddle.int32]:
-            raise TypeError("The axis dtype should be int32 or int64.")
-        if axis.numel() != 1:
-            raise ValueError(
-                "The numel of axis must be one when it is a tensor.")
-        check_axis = axis.numpy().item(0)
     if check_axis >= dims or check_axis < -dims:
         raise ValueError("Axis should be in range [-rank(x), rank(x)).")
-
-    if not isinstance(index, (Variable)):
-        raise TypeError("The index should be a Tensor.")
-
-    if not isinstance(add_value, (Variable)):
-        raise TypeError("The add_value should be a Tensor.")
 
     if isinstance(index, Variable):
         if index.dtype not in [paddle.int64, paddle.int32]:
@@ -4366,7 +4348,6 @@ def _index_add_params_check(x, index, add_value, input_axis):
         raise ValueError(
             "The add_value does not support broadcast now. It must have the same dimension as x."
         )
-
     for i in range(dims):
         if i != axis and x.shape[i] != add_value.shape[i]:
             raise ValueError(

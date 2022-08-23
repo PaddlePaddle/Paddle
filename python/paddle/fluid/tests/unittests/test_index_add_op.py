@@ -278,95 +278,80 @@ class TestIndexAddAPIError(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
 
-            def test_index_dtype():
-                index_type = "float32"
-                x_shape = [10, 10]
-                x_type = "float64"
-                index_shape = [4]
-                add_value_shape = [4, 10]
+            def test_add_value_shape():
                 axis = 0
-                x = paddle.static.data(name='X', shape=x_shape, dtype=x_type)
+                x = paddle.static.data(name='X',
+                                       shape=[10, 10],
+                                       dtype="float64")
                 index = paddle.static.data(name='Index',
-                                           shape=index_shape,
-                                           dtype=index_type)
+                                           shape=[4],
+                                           dtype="int32")
                 add_value = paddle.static.data(name='AddValue',
-                                               shape=add_value_shape,
-                                               dtype=x_type)
+                                               shape=[4, 3],
+                                               dtype="float64")
+                out = paddle.index_add(x, index, add_value, axis)
+
+            self.assertRaises(ValueError, test_add_value_shape)
+
+            def test_index_dtype():
+                axis = 0
+                x = paddle.static.data(name='X',
+                                       shape=[10, 10],
+                                       dtype="float64")
+                index = paddle.static.data(name='Index1',
+                                           shape=[4],
+                                           dtype="float32")
+                add_value = paddle.static.data(name='AddValue1',
+                                               shape=[4, 10],
+                                               dtype="float64")
                 out = paddle.index_add(x, index, add_value, axis)
 
             self.assertRaises(TypeError, test_index_dtype)
 
             def test_index_shape():
-                index_type = "int32"
-                x_shape = [10, 10]
-                x_type = "float64"
-                index_shape = [4, 3]
-                add_value_shape = [4, 10]
                 axis = 0
-                x = paddle.static.data(name='X', shape=x_shape, dtype=x_type)
+                x = paddle.static.data(name='X',
+                                       shape=[10, 10],
+                                       dtype="float64")
                 index = paddle.static.data(name='Index',
-                                           shape=index_shape,
-                                           dtype=index_type)
+                                           shape=[4, 3],
+                                           dtype="int32")
                 add_value = paddle.static.data(name='AddValue',
-                                               shape=add_value_shape,
-                                               dtype=x_type)
+                                               shape=[4, 10],
+                                               dtype="float64")
                 out = paddle.index_add(x, index, add_value, axis)
 
             self.assertRaises(ValueError, test_index_shape)
 
             def test_axis_value():
-                index_type = "int32"
-                x_shape = [10, 10]
-                x_type = "float64"
-                index_shape = [4]
-                add_value_shape = [4, 10]
                 axis = 3
-                x = paddle.static.data(name='X', shape=x_shape, dtype=x_type)
+                x = paddle.static.data(name='X',
+                                       shape=[10, 10],
+                                       dtype="float64")
                 index = paddle.static.data(name='Index',
-                                           shape=index_shape,
-                                           dtype=index_type)
+                                           shape=[4],
+                                           dtype="int32")
                 add_value = paddle.static.data(name='AddValue',
-                                               shape=add_value_shape,
-                                               dtype=x_type)
+                                               shape=[4, 10],
+                                               dtype="float64")
                 out = paddle.index_add(x, index, add_value, axis)
 
             self.assertRaises(ValueError, test_axis_value)
 
-            def test_add_value_shape():
-                index_type = "int32"
-                x_shape = [10, 10]
-                x_type = "float64"
-                index_shape = [4]
-                add_value_shape = [4, 3]
-                axis = 0
-                x = paddle.static.data(name='X', shape=x_shape, dtype=x_type)
-                index = paddle.static.data(name='Index',
-                                           shape=index_shape,
-                                           dtype=index_type)
-                add_value = paddle.static.data(name='AddValue',
-                                               shape=add_value_shape,
-                                               dtype=x_type)
-                out = paddle.index_add(x, index, add_value, axis)
-
-            self.assertRaises(ValueError, test_add_value_shape)
-
             def test_add_value_broadcast():
-                index_type = "int32"
-                x_shape = [10, 10]
-                x_type = "float64"
-                index_shape = [4]
-                add_value_shape = [4]
                 axis = 0
-                x = paddle.static.data(name='X', shape=x_shape, dtype=x_type)
+                x = paddle.static.data(name='X',
+                                       shape=[10, 10],
+                                       dtype="float64")
                 index = paddle.static.data(name='Index',
-                                           shape=index_shape,
-                                           dtype=index_type)
+                                           shape=[4],
+                                           dtype="int32")
                 add_value = paddle.static.data(name='AddValue',
-                                               shape=add_value_shape,
-                                               dtype=x_type)
+                                               shape=[4],
+                                               dtype="float64")
                 out = paddle.index_add(x, index, add_value, axis)
 
-            self.assertRaises(ValueError, test_add_value_shape)
+            self.assertRaises(ValueError, test_add_value_broadcast)
 
 
 if __name__ == '__main__':
