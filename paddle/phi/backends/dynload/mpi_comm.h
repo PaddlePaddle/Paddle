@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#ifdef HOST
+#undef HOST
+#endif
 #include <mpi.h>
 
 #include <mutex>  // NOLINT
