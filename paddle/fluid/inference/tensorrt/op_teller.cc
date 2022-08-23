@@ -293,6 +293,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                     bool use_no_calib_int8,
                     bool with_dynamic_shape) {
   const std::string op_type = node->Op()->Type();
+  // VLOG(1)<<"@@@ in op teller, optype: "<<op_type;
   const framework::OpDesc desc = *node->Op();
   // do not support the op which is labeled the `skip_quant`
   if ((desc.HasAttr("namescope") &&
@@ -1816,19 +1817,23 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                    "the pass.";
         return false;
       }
+      // return true; //TODO !!! important, wangbojun test only, remove befaule pr
       auto* input_desc = block->FindVar(desc.Input("Input").front());
       const auto input_shape = input_desc->GetShape();
       const auto head_number =
           PADDLE_GET_CONST(int, desc.GetAttr("head_number"));
       auto inputs = desc.Inputs();
-      bool has_bias_qk = (inputs.find("BiasQK") == inputs.end()) ? false : true;
-      if (has_bias_qk) {
-        auto* biasqk_desc = block->FindVar(desc.Input("BiasQK").front());
-        const auto biasqk_shape = biasqk_desc->GetShape();
-        // The BiasQK's shape requires to be
-        // [batch, 1, 1, length] or [batch, head, length, length].
-        bool has_same_shape = head_number == biasqk_shape[1] &&
-                              input_shape[1] == biasqk_shape[2] &&
+      // VLOG(1)<<"@@@ desc.Input(Input).front()"<<desc.Input("Input").front();
+      // VLOG(1)<<"@@@ multihead input name :"<<input_desc->Name();
+      // VLOG(1)<<"@@@ biasQK name :"<<block->FindVar(desc.Input("BiasQK").front())->Name();
+      auto* biasqk_desc = block->FindVar(desc.Input("BiasQK").front());
+      const auto biasqk_shape = biasqk_desc->GetShape();
+      // The BiasQK's shape requires to be
+      // [batch, 1, 1, length] or [batch, head, length, length].
+      bool has_same_shape = head_number == biasqk_shape[1] &&
+                            input_shape[1] == biasqk_shape[2] &&
+                            input_shape[1] == biasqk_shape[3];
+      bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
                               input_shape[1] == biasqk_shape[3];
         bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
                                 input_shape[1] == biasqk_shape[3];

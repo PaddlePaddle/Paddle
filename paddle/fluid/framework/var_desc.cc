@@ -92,6 +92,7 @@ void VarDesc::SetShapes(
 }
 
 std::vector<int64_t> VarDesc::GetShape() const {
+  // VLOG(1)<<"@@@ VarDesc::GetShape()"<<tensor_desc().dims();
   return RepeatedToVector(tensor_desc().dims());
 }
 
@@ -218,14 +219,17 @@ std::vector<int32_t> VarDesc::GetLoDLevels() const {
 }
 
 const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
+  // VLOG(1)<<"@@@ tensor name: "<<this->Name();
   PADDLE_ENFORCE_EQ(
       desc_.has_type(),
       true,
       platform::errors::NotFound("The variable's type was not be set."));
+
   PADDLE_ENFORCE_EQ(
       desc_.type().has_type(),
       true,
       platform::errors::NotFound("The variable's type was not be set."));
+
   switch (desc_.type().type()) {
     case proto::VarType::SELECTED_ROWS:
       return desc_.type().selected_rows();
@@ -250,6 +254,7 @@ std::vector<proto::VarType::TensorDesc> VarDesc::tensor_descs() const {
       true,
       platform::errors::NotFound("The variable's type was not be set."));
   std::vector<proto::VarType::TensorDesc> res;
+
   res.reserve(GetTensorDescNum());
   switch (desc_.type().type()) {
     case proto::VarType::READER:
