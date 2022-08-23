@@ -2719,8 +2719,8 @@ def clip(x, min=None, max=None, name=None):
         min_ = np.iinfo(np.int64).min
         max_ = np.iinfo(np.int64).max 
     else:
-        min_ = float(np.finfo(np.float32).min)
-        max_ = float(np.finfo(np.float32).max)
+        min_ = np.finfo(np.float32).min
+        max_ = np.finfo(np.float32).max
 
     if in_dygraph_mode():
         if isinstance(min, Variable):
