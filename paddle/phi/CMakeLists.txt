@@ -47,9 +47,9 @@ get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
 set(PHI_DEPS ${PHI_DEPS} ${phi_kernels})
 
 if(WIN32)
-    create_dummy_static_lib(phi LIBS ${PHI_DEPS} LIMIT 100)
+  create_dummy_static_lib(phi LIBS ${PHI_DEPS} LIMIT 100)
 else()
-    cc_library(phi DEPS ${PHI_DEPS})
+  cc_library(phi DEPS ${PHI_DEPS})
 endif()
 
 set(phi_extension_header_file
