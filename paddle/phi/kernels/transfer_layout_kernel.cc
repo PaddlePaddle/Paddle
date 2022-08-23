@@ -22,8 +22,9 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#ifdef PADDLE_WITH_MKLDNN
 #include "paddle/phi/kernels/funcs/onednn/mkldnn_helper.h"
-
+#endif
 namespace phi {
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
