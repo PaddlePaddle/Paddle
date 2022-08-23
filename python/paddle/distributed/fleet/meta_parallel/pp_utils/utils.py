@@ -19,7 +19,7 @@ from paddle.fluid import core
 from paddle import _C_ops
 from paddle.autograd import PyLayer
 from paddle.fluid import framework
-from ...utils.recompute import check_recompute_necessary, detach_variable, swith_rng_state_tracker
+from ...recompute.recompute import check_recompute_necessary, detach_variable, swith_rng_state_tracker
 from ..parallel_layers.random import get_rng_state_tracker
 from paddle.fluid.framework import in_dygraph_mode
 

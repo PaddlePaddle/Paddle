@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .fs import LocalFS  # noqa: F401
-from .fs import HDFSClient  # noqa: F401
-from .ps_util import DistributedInfer  # noqa: F401
-from ..recompute import recompute, recompute_sequential  # noqa: F401
+from .recompute import recompute, recompute_sequential, swith_rng_state_tracker, check_recompute_necessary, detach_variable
 
-from . import log_util  # noqa: F401
-from . import hybrid_parallel_util  # noqa: F401
-
-__all__ = [  #noqa
-    "LocalFS", "recompute", "recompute_sequential", "DistributedInfer",
-    "HDFSClient"
+__all__ = [
+    "recompute", "recompute_sequential", "swith_rng_state_tracker",
+    "check_recompute_necessary", "detach_variable"
 ]
