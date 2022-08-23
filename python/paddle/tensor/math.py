@@ -342,8 +342,8 @@ def pow(x, y, name=None):
     .. math::
         out = x^{y} 
 
-    **Note**:
-    ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
 
     Args:
@@ -668,8 +668,8 @@ def divide(x, y, name=None):
     .. math::
         out = x / y
 
-    **Note**:
-    ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -711,8 +711,8 @@ def floor_divide(x, y, name=None):
     .. math::
         out = x // y
 
-    **Note**:
-    ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be int32, int64.
@@ -753,8 +753,8 @@ def remainder(x, y, name=None):
 
         out = x \% y
 
-    **Note**:
-    ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -798,8 +798,8 @@ def multiply(x, y, name=None):
     .. math::
         out = x * y
 
-    **Note**:
-    ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+    Note:
+        ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
         x (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
@@ -851,8 +851,8 @@ def maximum(x, y, name=None):
     .. math::
         out = max(x, y)
 
-    **Note**:
-    ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -912,8 +912,8 @@ def minimum(x, y, name=None):
     .. math::
         out = min(x, y)
 
-    **Note**:
-    ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -975,8 +975,8 @@ def fmax(x, y, name=None):
     .. math::
         out = fmax(x, y)
 
-    **Note**:
-    ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -1038,8 +1038,8 @@ def fmin(x, y, name=None):
     .. math::
         out = fmin(x, y)
 
-    **Note**:
-    ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -3026,8 +3026,8 @@ def cumsum(x, axis=None, dtype=None, name=None):
     """
     The cumulative sum of the elements along a given axis. 
     
-    **Note**:
-    The first element of the result is the same as the first element of the input. 
+    Note:
+        The first element of the result is the same as the first element of the input. 
 
     Args:
         x (Tensor): The input tensor needed to be cumsumed.
@@ -3165,8 +3165,8 @@ def cumprod(x, dim=None, dtype=None, name=None):
     """
     Compute the cumulative product of the input tensor x along a given dimension dim.
 
-    **Note**:
-    The first element of the result is the same as the first element of the input.
+    Note:
+        The first element of the result is the same as the first element of the input.
 
     Args:
         x (Tensor): the input tensor need to be cumproded.
@@ -3501,7 +3501,7 @@ def tanh_(x, name=None):
 
 def increment(x, value=1.0, name=None):
     """
-    The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
+    The API is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
     Notice that the number of elements in :attr:`x` must be equal to 1.
 
     Args:
@@ -4622,7 +4622,7 @@ def heaviside(x, y, name=None):
                 \end{array}
             \\right.
 
-    Notes:
+    Note:
         ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
