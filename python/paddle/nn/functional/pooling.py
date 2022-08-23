@@ -311,11 +311,6 @@ def avg_pool2d(x,
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
     
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
-    
     Examples:
         .. code-block:: python
           
