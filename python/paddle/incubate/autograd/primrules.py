@@ -327,13 +327,34 @@ def elementwise_pow_orig2prim(op, x, y):
 def elementwise_max_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
-
     return primops.max(x, y)
 
 
+@REGISTER_ORIG2PRIM('gelu')
+def gelu_orig2prim(op, x):
+    if op.attr('approximate'):
+        cdf = mul(
+            fill_const(0.5, x.shape, x.dtype),
+            add(
+                fill_const(1.0, x.shape, x.dtype),
+                tanh(
+                    mul(
+                        fill_const(math.sqrt(2 / math.pi), x.shape, x.dtype),
+                        add(
+                            x,
+                            mul(
+                                fill_const(0.044715, x.shape, x.dtype),
+                                primops.pow(x, fill_const(3., x.shape,
+                                                          x.dtype))))))))
+        return mul(x, cdf)
+    else:
+        return mul(
+            mul(fill_const(0.5, x.shape, x.dtype), x),
+            add(fill_const(1.0, x.shape, x.dtype),
+                erf(mul(x, fill_const(1 / math.sqrt(2.), x.shape, x.dtype)))))
+
+
 ## Register prim2orig lower rules
-
-
 @REGISTER_PRIM2ORIG('add_p')
 def add_prim2orig(op, x, y):
     return paddle.add(x, y)
