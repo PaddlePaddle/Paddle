@@ -41,57 +41,86 @@ bool TensorContainsNAN(const framework::Tensor& tensor);
 bool TensorContainsInf(const framework::Tensor& tensor);
 bool TensorIsfinite(const framework::Tensor& tensor);
 
-#define FiniteVisitor(type, reduce_type)                                     \
-  struct type##Visitor {                                                     \
-    type##Visitor(const phi::DenseTensor& in, phi::DenseTensor* out)         \
+#define FiniteVisitor(type, reduce_type, device)                             \
+  struct type##Visitor##device {                                             \
+    type##Visitor##device(const phi::DenseTensor& in, phi::DenseTensor* out) \
         : in_(in), out_(out) {}                                              \
     template <typename T>                                                    \
     void apply() const {                                                     \
       auto place = in_.place();                                              \
-      auto* ctx = platform::DeviceContextPool::Instance().Get(place);        \
+      auto* ctx = static_cast<phi::device##Context*>(                        \
+          platform::DeviceContextPool::Instance().Get(place));               \
       Tensor tmp;                                                            \
       tmp.Resize(in_.dims());                                                \
       out_->Resize({1});                                                     \
       std::vector<int64_t> dims(tmp.dims().size());                          \
       std::iota(dims.begin(), dims.end(), 0);                                \
-      if (platform::is_cpu_place(place)) {                                   \
-        phi::type##Kernel<T, phi::CPUContext>(                               \
-            *static_cast<phi::CPUContext*>(ctx), in_, &tmp);                 \
-        phi::reduce_type##Kernel<bool, phi::CPUContext>(                     \
-            *static_cast<phi::CPUContext*>(ctx), tmp, dims, false, out_);    \
-      } else if (platform::is_gpu_place(place)) {                            \
-        phi::type##Kernel<T, phi::GPUContext>(                               \
-            *static_cast<phi::GPUContext*>(ctx), in_, &tmp);                 \
-        phi::reduce_type##Kernel<bool, phi::GPUContext>(                     \
-            *static_cast<phi::GPUContext*>(ctx), tmp, dims, false, out_);    \
-      } else {                                                               \
-        PADDLE_THROW(                                                        \
-            platform::errors::Unimplemented("Not supported on %s.", place)); \
-      }                                                                      \
+      phi::type##Kernel<T, phi::device##Context>(*ctx, in_, &tmp);           \
+      phi::reduce_type##Kernel<bool, phi::device##Context>(                  \
+          *ctx, tmp, dims, false, out_);                                     \
     }                                                                        \
     const phi::DenseTensor& in_;                                             \
     phi::DenseTensor* out_;                                                  \
   };
 
-FiniteVisitor(Isnan, Any);
-FiniteVisitor(Isinf, Any);
-FiniteVisitor(Isfinite, All);
+FiniteVisitor(Isnan, Any, CPU);
+FiniteVisitor(Isinf, Any, CPU);
+FiniteVisitor(Isfinite, All, CPU);
+FiniteVisitor(Isnan, Any, GPU);
+FiniteVisitor(Isinf, Any, GPU);
+FiniteVisitor(Isfinite, All, GPU);
 
 // store the result bool in gpu tensor, async operation. Faster than above ones.
 inline void TensorContainsNAN(const framework::Tensor& tensor,
                               framework::Tensor* out) {
-  VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
-                      IsnanVisitor(tensor, out));
+  auto place = tensor.place();
+  if (platform::is_cpu_place(tensor.place())) {
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+                        IsnanVisitorCPU(tensor, out));
+    return;
+  }
+  if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+                        IsnanVisitorGPU(tensor, out));
+    return;
+  }
+#endif
+  PADDLE_THROW(platform::errors::Unimplemented("Not supported on %s.", place));
 }
 inline void TensorContainsInf(const framework::Tensor& tensor,
                               framework::Tensor* out) {
-  VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
-                      IsinfVisitor(tensor, out));
+  auto place = tensor.place();
+  if (platform::is_cpu_place(tensor.place())) {
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+                        IsinfVisitorCPU(tensor, out));
+    return;
+  }
+  if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+                        IsinfVisitorGPU(tensor, out));
+    return;
+  }
+#endif
+  PADDLE_THROW(platform::errors::Unimplemented("Not supported on %s.", place));
 }
 inline void TensorIsfinite(const framework::Tensor& tensor,
                            framework::Tensor* out) {
-  VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
-                      IsfiniteVisitor(tensor, out));
+  auto place = tensor.place();
+  if (platform::is_cpu_place(tensor.place())) {
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+                        IsfiniteVisitorCPU(tensor, out));
+    return;
+  }
+  if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+                        IsfiniteVisitorGPU(tensor, out));
+    return;
+  }
+#endif
+  PADDLE_THROW(platform::errors::Unimplemented("Not supported on %s.", place));
 }
 
 // copy the result bool to cpu
