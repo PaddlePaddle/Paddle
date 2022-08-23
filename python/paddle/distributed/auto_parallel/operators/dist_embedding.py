@@ -48,6 +48,8 @@ register_distributed_operator_impl_container(
     DistributedEmbedding("lookup_table_v2"))
 register_distributed_operator_impl_container(
     DistributedEmbedding("c_embedding"))
+register_distributed_operator_impl_container(
+    DistributedEmbedding("lookup_table"))
 
 
 # RowParallel
@@ -253,6 +255,52 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         Ids_var = main_block.var(kwargs['Ids'][0])
         Weight_var = main_block._var_recursive(kwargs['W'][0])
         Out_var = main_block.var(kwargs['Out'][0])
+
+        # support lookup_table_v1
+        if op.type == 'lookup_table':
+            assert len(
+                Ids_var.shape
+            ) == 3, "input Ids to lookup_table should have 3 dimensions but got [{}] with shape [{}]".format(
+                Ids_var.name, Ids_var.shape)
+            if Ids_var.stop_gradient:
+                raise NotImplementedError(
+                    'Requiring the gradient of Ids of lookup_table(v1）dist op is not currently supported. Please open an issue with details on your use case so that we can prioritize adding this (for instance, adversarial training for language model).'
+                )
+
+            target_shape = list(Ids_var.shape[:-1])
+            intermediate_var_0 = main_block.create_var(
+                name=unique_name.generate_with_ignorable_key(".".join(
+                    ["dist_reshape", 'tmp'])),
+                dtype=Ids_var.dtype,
+                shape=target_shape,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+                stop_gradient=True)
+
+            target_shape = [0] + list(Ids_var.shape[:-1])
+            xshape_var = main_block.create_var(
+                name=unique_name.generate_with_ignorable_key(".".join(
+                    ["dist_Xshape", 'tmp'])),
+                dtype=Ids_var.dtype,
+                shape=target_shape,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+                stop_gradient=True)
+
+            # TODO use inplace reshape for memory saving
+            reshape_op = main_block.append_op(type='reshape2',
+                                              inputs={'X': [Ids_var]},
+                                              outputs={
+                                                  'Out': [intermediate_var_0],
+                                                  'XShape': [xshape_var]
+                                              },
+                                              attrs={
+                                                  "shape": [0, -1],
+                                              })
+
+            # set dist attr
+            Ids_var_dims_mapping = op_dist_attr.get_input_dist_attr(
+                Ids_var.name)
 
         # got dist attribute info
         embedding_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
