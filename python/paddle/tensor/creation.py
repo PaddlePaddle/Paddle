@@ -1937,7 +1937,7 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
             default value for col is None, then it will be set equal to row, indicting a square matix.
         offset (int, optional): The offset to consider, default value is 0.
 
-            - If offset = 0, all elements on and below the main diagonal are retained.
+            - If offset = 0, all elements on and above the main diagonal are retained.
             - If offset > 0, include just as few diagonals above the main diagonal.
             - If offset < 0, excludes just as few diagonals below the main diagonal.
 
