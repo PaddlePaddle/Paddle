@@ -50,7 +50,7 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
     }
   }
 
-  const DenseTensor& x_crows = x.non_zero_crows();
+  const DenseTensor& x_crows = x.crows();
   const DenseTensor& x_values = x.non_zero_elements();
   DenseTensor* out_values = out->mutable_non_zero_elements();
 
@@ -61,7 +61,7 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
 
   // out = exp(x-x_max) / sum( exp(x-x_max ))
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.non_zero_crows().dtype(), "CsrSoftmaxKernel", ([&] {
+      x.crows().dtype(), "CsrSoftmaxKernel", ([&] {
         const data_t* x_crows_data = x_crows.data<data_t>();
         for (int i = 0; i < batch_size; ++i) {
           for (int j = 0; j < row_number; ++j) {

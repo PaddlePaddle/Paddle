@@ -162,7 +162,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   IntT nnz = 0;
   const auto x_values = x.non_zero_elements().data<T>();
   const auto y_values = y.non_zero_elements().data<T>();
-  const auto sparse_dim = x.non_zero_indices().dims()[0];
+  const auto sparse_dim = x.indices().dims()[0];
   const bool is_divide = std::is_same<Functor, funcs::DivideFunctor<T>>::value;
 
   int64_t max_len = 1;
@@ -176,7 +176,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
       x.dims(), sparse_dim, sparse_offsets.data());
 
-  phi::funcs::sparse::FlattenIndices(x.non_zero_indices().data<IntT>(),
+  phi::funcs::sparse::FlattenIndices(x.indices().data<IntT>(),
                                      sparse_offsets.data(),
                                      x.nnz(),
                                      sparse_dim,
@@ -184,7 +184,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                      1,
                                      x_indexs.data());
 
-  phi::funcs::sparse::FlattenIndices(y.non_zero_indices().data<IntT>(),
+  phi::funcs::sparse::FlattenIndices(y.indices().data<IntT>(),
                                      sparse_offsets.data(),
                                      y.nnz(),
                                      sparse_dim,
@@ -233,8 +233,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                          out_indices_vec.data());
 
   if (nnz == 0) {
-    phi::DenseTensor out_indices =
-        phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
+    phi::DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
     phi::DenseTensor out_values =
         phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
     out->SetMember(out_indices, out_values, x.dims());
@@ -283,16 +282,16 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
     *out = SparseCooToCsr<T>(dev_ctx, coo_out);                          \
   }
 
-#define DEFINE_CSR_ELEMENTWISE_KERNEL(name)                                   \
-  template <typename T, typename Context>                                     \
-  void ElementWise##name##CsrKernel(const Context& dev_ctx,                   \
-                                    const SparseCsrTensor& x,                 \
-                                    const SparseCsrTensor& y,                 \
-                                    SparseCsrTensor* out) {                   \
-    PD_VISIT_BASE_INTEGRAL_TYPES(                                             \
-        x.non_zero_crows().dtype(), "ElementWise##name##CsrCPUKernel", ([&] { \
-          ElementWise##name##CsrCPUKernel<T, data_t>(dev_ctx, x, y, out);     \
-        }));                                                                  \
+#define DEFINE_CSR_ELEMENTWISE_KERNEL(name)                               \
+  template <typename T, typename Context>                                 \
+  void ElementWise##name##CsrKernel(const Context& dev_ctx,               \
+                                    const SparseCsrTensor& x,             \
+                                    const SparseCsrTensor& y,             \
+                                    SparseCsrTensor* out) {               \
+    PD_VISIT_BASE_INTEGRAL_TYPES(                                         \
+        x.crows().dtype(), "ElementWise##name##CsrCPUKernel", ([&] {      \
+          ElementWise##name##CsrCPUKernel<T, data_t>(dev_ctx, x, y, out); \
+        }));                                                              \
   }
 
 #define DEFINE_COO_ELEMENTWISE_CPU_KERNEL(name)                          \
@@ -306,18 +305,16 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
         dev_ctx, x, y, out, functor);                                    \
   }
 
-#define DEFINE_COO_ELEMENTWISE_KERNEL(name)                                    \
-  template <typename T, typename Context>                                      \
-  void ElementWise##name##CooKernel(const Context& dev_ctx,                    \
-                                    const SparseCooTensor& x,                  \
-                                    const SparseCooTensor& y,                  \
-                                    SparseCooTensor* out) {                    \
-    PD_VISIT_BASE_INTEGRAL_TYPES(x.non_zero_indices().dtype(),                 \
-                                 "ElementWise##name##CooCPUKernel",            \
-                                 ([&] {                                        \
-                                   ElementWise##name##CooCPUKernel<T, data_t>( \
-                                       dev_ctx, x, y, out);                    \
-                                 }));                                          \
+#define DEFINE_COO_ELEMENTWISE_KERNEL(name)                               \
+  template <typename T, typename Context>                                 \
+  void ElementWise##name##CooKernel(const Context& dev_ctx,               \
+                                    const SparseCooTensor& x,             \
+                                    const SparseCooTensor& y,             \
+                                    SparseCooTensor* out) {               \
+    PD_VISIT_BASE_INTEGRAL_TYPES(                                         \
+        x.indices().dtype(), "ElementWise##name##CooCPUKernel", ([&] {    \
+          ElementWise##name##CooCPUKernel<T, data_t>(dev_ctx, x, y, out); \
+        }));                                                              \
   }
 
 DEFINE_CSR_ELEMENTWISE_CPU_KERNEL(Add)

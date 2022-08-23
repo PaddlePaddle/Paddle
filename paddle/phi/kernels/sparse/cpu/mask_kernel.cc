@@ -37,7 +37,7 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
       x.dims(),
       mask.dims(),
       phi::errors::InvalidArgument("the input x and mask must have the shape"));
-  const DenseTensor& indices = mask.non_zero_indices();
+  const DenseTensor& indices = mask.indices();
   const DenseTensor& values = mask.non_zero_elements();
   const int sparse_dim = mask.sparse_dim();
 
@@ -71,7 +71,7 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
 
 /**
  * @brief Filter the DenseTensor x by the
- * mask.non_zero_indices() and output a SparseCooTensor
+ * mask.indices() and output a SparseCooTensor
  * x and mask must have the same shape.
  **/
 template <typename T, typename Context>
@@ -80,7 +80,7 @@ void SparseMaskKernel(const Context& dev_ctx,
                       const SparseCooTensor& mask,
                       SparseCooTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      mask.non_zero_indices().dtype(), "SparseMaskCPUKernel", ([&] {
+      mask.indices().dtype(), "SparseMaskCPUKernel", ([&] {
         SparseMaskCPUKernel<T, data_t>(dev_ctx, x, mask, out);
       }));
 }
@@ -102,7 +102,7 @@ void SparseMaskHelperCPUKernel(const CPUContext& dev_ctx,
   phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
       x.dims(), sparse_dim, sparse_offsets.data());
 
-  phi::funcs::sparse::FlattenIndices(x.non_zero_indices().data<IntT>(),
+  phi::funcs::sparse::FlattenIndices(x.indices().data<IntT>(),
                                      sparse_offsets.data(),
                                      x.nnz(),
                                      sparse_dim,
@@ -147,7 +147,7 @@ void SparseMaskHelperKernel(const Context& dev_ctx,
                             const DenseTensor& mask_indices,
                             DenseTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "SparseMaskHelperCPUKernel", ([&] {
+      x.indices().dtype(), "SparseMaskHelperCPUKernel", ([&] {
         SparseMaskHelperCPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
       }));
 }

@@ -43,8 +43,8 @@ void ProductRuleBook(const Context& dev_ctx,
                      DenseTensor* rulebook,
                      int* counter_per_kernel) {
   const int64_t non_zero_num = x.nnz();
-  const auto& non_zero_indices = x.non_zero_indices();
-  const IntT* indices_ptr = non_zero_indices.data<IntT>();
+  const auto& indices = x.indices();
+  const IntT* indices_ptr = indices.data<IntT>();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
   memset(counter_per_kernel, 0, kernel_size * sizeof(int));
 
