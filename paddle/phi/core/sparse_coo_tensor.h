@@ -63,10 +63,16 @@ class SparseCooTensor : public TensorBase,
 
   /// \brief Returns the indices of non zero elemetns in original dense tensor.
   /// \return The indices of non zero elemetns in original dense tensor.
+  const DenseTensor& indices() const { return non_zero_indices_; }
+
+  /// Note: This function will removed soon. It is recommended to use indices()
   const DenseTensor& non_zero_indices() const { return non_zero_indices_; }
 
   /// \brief Returns the non zero elemetns in original dense tensor.
   /// \return The non zero elemetns in original dense tensor.
+  const DenseTensor& values() const { return non_zero_elements_; }
+
+  /// Note: This function will removed soon. It is recommended to use values()
   const DenseTensor& non_zero_elements() const { return non_zero_elements_; }
 
   /// \brief Returns whether the indices has coalesced
@@ -136,10 +142,18 @@ class SparseCooTensor : public TensorBase,
 
   /// \brief Get a mutable pointer of non_zero_indices_.
   /// return a mutable pointer of non_zero_indices_.
+  DenseTensor* mutable_indices() { return &non_zero_indices_; }
+
+  /// Note: This function will removed soon. It is recommended to use
+  /// mutable_indices()
   DenseTensor* mutable_non_zero_indices() { return &non_zero_indices_; }
 
   /// \brief Get a mutable pointer of non_zero_elements.
   /// return a mutable pointer of non_zero_elements.
+  DenseTensor* mutable_values() { return &non_zero_elements_; }
+
+  /// Note: This function will removed soon. It is recommended to use
+  /// mutable_values()
   DenseTensor* mutable_non_zero_elements() { return &non_zero_elements_; }
 
   /// \brief This function is not recommended

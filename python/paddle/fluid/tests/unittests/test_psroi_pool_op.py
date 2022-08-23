@@ -334,13 +334,13 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
             exe = paddle.static.Executor(place)
             boxes_lod_data = paddle.fluid.create_lod_tensor(
                 self.boxes, [[1, 2]], place)
-            out_res = exe.run(paddle.static.default_main_program(),
-                              feed={
-                                  'x': self.x,
-                                  'boxes': boxes_lod_data
-                              },
-                              fetch_list=[out.name])
-            self.assertTrue(np.allclose(out_res, expect_out))
+            out_res, = exe.run(paddle.static.default_main_program(),
+                               feed={
+                                   'x': self.x,
+                                   'boxes': boxes_lod_data
+                               },
+                               fetch_list=[out.name])
+            np.testing.assert_allclose(out_res, expect_out, rtol=1e-05)
 
 
 if __name__ == '__main__':

@@ -68,10 +68,10 @@ DECLARE_INPLACE_OP_INFERER(FillAnyGradInplaceInferer,
 namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(fill_any,
-                            FillInferShapeFunctor,
+                            FillAnyInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(fill_any_grad,
-                            FillAnyInferShapeFunctor,
+                            FillAnyGradInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
 REGISTER_OPERATOR(fill_any,
@@ -80,9 +80,9 @@ REGISTER_OPERATOR(fill_any,
                   ops::FillAnyGradOpMaker<paddle::framework::OpDesc>,
                   ops::FillAnyGradOpMaker<paddle::imperative::OpBase>,
                   ops::FillAnyOpInplaceInferer,
-                  FillInferShapeFunctor);
+                  FillAnyInferShapeFunctor);
 
 REGISTER_OPERATOR(fill_any_grad,
                   ops::FillAnyGradOp,
                   ops::FillAnyGradInplaceInferer,
-                  FillAnyInferShapeFunctor);
+                  FillAnyGradInferShapeFunctor);

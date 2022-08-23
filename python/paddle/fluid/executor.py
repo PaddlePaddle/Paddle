@@ -1461,7 +1461,9 @@ class Executor(object):
 
                 return use_standalone_executor_for_compiled_program
             else:
-                if isinstance(program._graph, compiler.CompiledProgram):
+                if isinstance(
+                        program._graph, compiler.CompiledProgram
+                ) and not use_standalone_executor_for_compiled_program:
                     warnings.warn("Standalone executor is not used for Graph",
                                   UserWarning)
                     return False
@@ -1510,12 +1512,20 @@ class Executor(object):
                 # while use program to geet _StandaloneExecutor
                 if key not in self._executor_cache._cached_executors:
                     # To apply IR pass, compile the Program to IrGraph and convert it back to Program
-                    if isinstance(program, compiler.CompiledProgram):
-                        build_strategy = program._build_strategy
+                    if isinstance(program,
+                                  compiler.CompiledProgram) or isinstance(
+                                      program._graph, compiler.CompiledProgram):
+                        compiled_program = program if isinstance(
+                            program,
+                            compiler.CompiledProgram) else program._graph
+                        build_strategy = compiled_program._build_strategy
                         # print(f"Program before convert:\n {inner_program}", flush=True)
-                        program._compile(scope, self.place)
-                        ir_graph = framework.IrGraph(program._graph)
-                        inner_program = ir_graph.to_program()
+                        compiled_program._compile(scope, self.place)
+                        ir_graph = framework.IrGraph(compiled_program._graph)
+                        converted_program = ir_graph.to_program()
+                        if hasattr(inner_program, 'lr_sheduler'):
+                            converted_program.lr_sheduler = inner_program.lr_sheduler
+                        inner_program = converted_program
                         # print(f"Program after convert:\n {inner_program}", flush=True)
                         logging.warning(
                             "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
