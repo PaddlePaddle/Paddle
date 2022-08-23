@@ -138,12 +138,14 @@ template <typename T, typename Context>
 void BincountKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const paddle::optional<DenseTensor>& weights,
-                    int minlength,
+                    const Scalar& minlength,
                     DenseTensor* out) {
   if (x.dtype() == DataType::INT32) {
-    BincountCUDAInner<Context, T, int>(dev_ctx, x, weights, minlength, out);
+    BincountCUDAInner<Context, T, int>(
+        dev_ctx, x, weights, minlength.to<int>(), out);
   } else if (x.dtype() == DataType::INT64) {
-    BincountCUDAInner<Context, T, int64_t>(dev_ctx, x, weights, minlength, out);
+    BincountCUDAInner<Context, T, int64_t>(
+        dev_ctx, x, weights, minlength.to<int>(), out);
   }
 }
 }  // namespace phi

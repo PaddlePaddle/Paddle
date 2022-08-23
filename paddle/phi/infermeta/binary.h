@@ -57,7 +57,7 @@ void BCELossInferMeta(const MetaTensor& input,
 
 void BincountInferMeta(const MetaTensor& x,
                        const MetaTensor& weights,
-                       int minlength,
+                       const Scalar& minlength,
                        MetaTensor* out);
 
 void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
