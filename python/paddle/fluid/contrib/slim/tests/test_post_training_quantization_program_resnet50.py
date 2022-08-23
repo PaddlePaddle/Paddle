@@ -181,7 +181,9 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
         exe = fluid.Executor(place)
         scope = fluid.global_scope()
         val_reader = val()
-        same_scale_tensor_list = [['batch_norm_3.tmp_2', 'batch_norm_4.tmp_2']]
+        same_scale_tensor_list = [[
+            'batch_norm_3.tmp_2#/#1', 'batch_norm_4.tmp_2#*#1'
+        ], ['batch_norm_27.tmp_2', 'batch_norm_26.tmp_2']]
         ptq = PostTrainingQuantizationProgram(
             executor=exe,
             program=program,

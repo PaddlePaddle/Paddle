@@ -300,17 +300,14 @@ def _get_output_name_index(op, output_var_name):
     return res
 
 
-def load_variable_data(scope, var_name, return_numpy=True):
+def load_variable_data(scope, var_name):
     '''
     Load variable value from scope
     '''
     var_node = scope.find_var(var_name)
     assert var_node is not None, \
         "Cannot find " + var_name + " in scope."
-    if return_numpy == False:
-        return var_node.get_tensor()
-    else:
-        return np.array(var_node.get_tensor())
+    return np.array(var_node.get_tensor())
 
 
 def set_variable_data(scope, place, var_name, np_value):
