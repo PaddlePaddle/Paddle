@@ -465,7 +465,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         # hang caused by tcp
         paddle.distributed.barrier(group=group)
         # NOTE(liyurui): All processors should hang and wait using tcp store, in case master exit before sub-group is created.
-        if backend != 'heter':
+        if backend not in ['heter', 'mpi']:
             _barrier_by_tcp_store(group_name, _default_store, timeout)
         else:
             print("Warning: store barrier is not supported for heter backend.")
