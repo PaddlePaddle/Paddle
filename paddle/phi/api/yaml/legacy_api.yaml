@@ -704,6 +704,16 @@
   kernel :
     func : diag_embed
 
+- api : distribute_fpn_proposals
+  args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
+  output : Tensor[](multi_fpn_rois){max_level - min_level + 1}, Tensor[](multi_level_rois_num){max_level - min_level + 1}, Tensor(restore_index)
+  infer_meta :
+    func : DistributeFpnProposalsInferMeta
+  kernel :
+    func : distribute_fpn_proposals
+    data_type : fpn_rois
+  optional : rois_num
+
 - api : divide
   args : (Tensor x, Tensor y)
   output : Tensor
