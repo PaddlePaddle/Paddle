@@ -793,7 +793,7 @@ floor_mod = remainder  # noqa: F841
 
 def multiply(x, y, name=None):
     """
-    multiply two tensors element-wise. The equation is:      
+    multiply two tensors element-wise. The equation is:
 
     .. math::
         out = x * y
