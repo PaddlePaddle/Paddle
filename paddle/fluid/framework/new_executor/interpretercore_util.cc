@@ -210,8 +210,14 @@ void build_variable_scope(const framework::BlockDesc& block,
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
 
+  VLOG(3) << "var num: " << block.AllVars().size();
+  int count = 0;
+
   for (auto& var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
+    count++;
+    VLOG(3) << "var name: " << var_name << " cnt: " << count
+            << " var num: " << block.AllVars().size();
     // TODO(xiongkun): user may create a variable with name that exists before.
     // under such circumstances, we should raise a error. Currently we can't
     // get the var_desc of startup_program, so leave it later.
@@ -237,6 +243,7 @@ void build_variable_scope(const framework::BlockDesc& block,
     }
     var_scope->AddVar(var_name, var_desc);
   }
+  VLOG(3) << "build_variable_scope exit.";
 }
 
 void create_all_ops(const framework::BlockDesc& block,

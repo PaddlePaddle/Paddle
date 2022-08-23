@@ -33,6 +33,8 @@
 #define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
 #endif
 
+DECLARE_bool(new_executor_use_local_scope);
+
 namespace paddle {
 namespace framework {
 
@@ -622,17 +624,22 @@ size_t VariableScope::VarSize() const { return name2id_.size(); }
 
 void VariableScope::AddVar(const std::string& name,
                            framework::VarDesc* var_desc) {
+  Scope* local_scope = FLAGS_new_executor_use_local_scope
+                           ? this->GetMutableLocalScope()
+                           : this->GetMutableScope();
+  VLOG(3) << "AddVar entry!";
   if (!HasVar(name)) {
     auto id = VarSize();
     name2id_[name] = id;
     vec_meta_info_.emplace_back(0, var_desc);
-    var_list_.push_back(local_scope_->FindVar(name));
+    var_list_.push_back(local_scope->FindVar(name));
     PADDLE_ENFORCE_EQ(
         var_list_.size(),
         name2id_.size(),
         platform::errors::InvalidArgument(
             "The size of var_list and name2id map should be equal"));
   }
+  VLOG(3) << "AddVar exit!";
 }
 
 void VariableScope::SetVarDesc(const std::string& name,

@@ -185,6 +185,7 @@ paddle::framework::FetchList InterpreterCore::Run(
 #endif
   if (!is_build_) {
     paddle::framework::interpreter::build_variable_scope(block_, &var_scope_);
+    VLOG(3) << "build_variable_scope sucess!";
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     paddle::framework::interpreter::build_op_func_list(place_,
@@ -193,6 +194,7 @@ paddle::framework::FetchList InterpreterCore::Run(
                                                        &op_func_nodes,
                                                        &var_scope_,
                                                        create_local_scope_);
+    VLOG(3) << "build_op_func_list sucess!";
     is_build_ = true;
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
