@@ -1981,12 +1981,6 @@ def check_backend(backend):
             "your paddle is not compiled with cuda but you assign 'nccl' as backend."
         )
 
-    if backend == 'mpi' and not fluid.core.is_compiled_with_mpi():
-        raise ValueError(
-            "paddle.distributed initialize error, "
-            "your paddle is not compiled with mpi but you assign 'mpi' as backend."
-        )
-
     if backend == 'bkcl' and not fluid.core.is_compiled_with_xpu():
         raise ValueError(
             "paddle.distributed initialize error, "

@@ -41,6 +41,10 @@ void* GetCurandDsoHandle() { return phi::dynload::GetCurandDsoHandle(); }
 void* GetROCFFTDsoHandle() { return phi::dynload::GetROCFFTDsoHandle(); }
 #endif
 
+#ifdef PADDLE_WITH_MPI
+void* GetMPIDsoHandle() { return phi::dynload::GetMPIDsoHandle(); }
+#endif
+
 void* GetNvjpegDsoHandle() { return phi::dynload::GetNvjpegDsoHandle(); }
 
 void* GetCusolverDsoHandle() { return phi::dynload::GetCusolverDsoHandle(); }

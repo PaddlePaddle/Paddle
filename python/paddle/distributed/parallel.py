@@ -72,6 +72,11 @@ def _start_kv_server(port, http_server_d, size):
 
 def _is_cpuonly(backend):
     check_backend(backend)
+    if backend == 'mpi':
+        if core.is_compiled_with_cuda() and core.is_compiled_with_mpi_aware():
+            return False
+        else:
+            return True
     if (backend in ['auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl'] and
         (core.is_compiled_with_cuda() or core.is_compiled_with_xpu()
          or core.is_compiled_with_npu()
@@ -79,11 +84,6 @@ def _is_cpuonly(backend):
 
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
-    elif backend == 'mpi':
-        if core.is_compiled_with_cuda() and core.is_compiled_with_mpi_aware():
-            return False
-        else:
-            return True
     else:
         return True
 
@@ -156,7 +156,7 @@ def init_parallel_env():
     """
 
     backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
-    if backend == 'mpi':
+    if backend == "mpi":
         pg = _new_process_group_impl(backend,
                                      None,
                                      -1,
@@ -237,7 +237,7 @@ def init_parallel_env():
     _set_expected_place(place)
 
     group = None
-    if backend == 'mpi':
+    if backend == "mpi":
         group = Group(rank,
                       world_size,
                       id=0,
