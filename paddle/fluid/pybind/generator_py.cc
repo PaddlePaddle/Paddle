@@ -39,7 +39,41 @@ void BindGenerator(py::module* m_ptr) {
       .def("current_seed",
            [](std::shared_ptr<phi::Generator::GeneratorState>& self) {
              return self->current_seed;
-           });
+           })
+      .def("__str__",
+           [](const phi::Generator::GeneratorState& self) {
+             std::stringstream ostr;
+             ostr << self.device << " " << self.current_seed << " "
+                  << self.thread_offset;
+             return ostr.str();
+           })
+      .def(py::pickle(
+          [](const phi::Generator::GeneratorState& s) {  // __getstate__
+            // NOTE(shenliang03): Due to the inability to serialize mt19937_64
+            // type, resulting in a problem with precision under the cpu.
+            PADDLE_ENFORCE_EQ(
+                core.is_compiled_with_cuda(),
+                true,
+                platform::errors::PermissionDenied(
+                    "Only support rng state serialization in CUDA"));
+            return py::make_tuple(s.device, s.current_seed, s.thread_offset);
+          },
+          [](py::tuple s) {  // __setstate__
+            PADDLE_ENFORCE_EQ(
+                core.is_compiled_with_cuda(),
+                true,
+                platform::errors::PermissionDenied(
+                    "Only support rng state serialization in CUDA"));
+            if (s.size() != 3)
+              throw std::runtime_error("Invalid Random state!");
+
+            phi::Generator::GeneratorState state;
+            state.device = s[0].cast<std::int64_t>();
+            state.current_seed = s[1].cast<std::uint64_t>();
+            state.thread_offset = s[2].cast<std::uint64_t>();
+            return state;
+          }));
+
   py::class_<std::mt19937_64>(m, "mt19937_64", "");
   py::class_<framework::Generator, std::shared_ptr<framework::Generator>>(
       m, "Generator")
