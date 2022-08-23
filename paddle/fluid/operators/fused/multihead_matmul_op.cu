@@ -298,10 +298,10 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     auto *bias_qk_d = bias_qk ? bias_qk->data<T>() : nullptr;
     T scale = static_cast<T>(context.Attr<float>("alpha"));
     
-    auto bias_qk_dims=bias_qk.dims();
+    auto bias_qk_dims=bias_qk->dims();
     int window_num=bias_qk_dims[0];
-  // printf("@#@@@ multihead op \r\n");
-  // printf("@#@@ bias qk dims: %d %d %d %d \r\n",bias_qk_dims[0],bias_qk_dims[1],bias_qk_dims[2],bias_qk_dims[3]);
+    // printf("@#@@@ multihead op \r\n");
+    // printf("@#@@ bias qk dims: %d %d %d %d \r\n",bias_qk_dims[0],bias_qk_dims[1],bias_qk_dims[2],bias_qk_dims[3]);
     // print_float<T><<<1,1>>>(w_d,0);
     // print_float<T><<<1,1>>>(bias_d,0);
     // printf("\r\n @@@ scale %f: \r\n", scale);
@@ -347,7 +347,7 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     // if bias_qk is [window_num,head_number,seq_len,seq_len]
     // in swin SW-MSA block dim[0] of input is batch_number*windows_number 
     // therefore, we broadcast bias_qk to [window_num*originalBatch, head_number, seq_len, seq_len]
-    if(bias_qk.numel()==(window_num*head_number*seq_len*seq_len)){
+    if(bias_qk->numel()==(window_num*head_number*seq_len*seq_len)){
       temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
     // printf("@#@@@ type of multihead: %s \r\n",__PRETTY_FUNCTION__);
     // printf("@#@@@ batch %d, windows %d, head_num %d, seq_len %d \r\n",

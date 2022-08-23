@@ -51,6 +51,57 @@ __global__ void transpose(T *src,
 }
 
 template <typename T>
+__global__ void transpose_qkv_unpadding(const T *src,
+                                        T *dst,
+                                        const int batch_size,
+                                        const int seq_len,
+                                        const int head_num,
+                                        const int size_per_head,
+                                        const int real_seq_len){
+  int batch_id = blockIdx.x / (head_num*real_seq_len);
+  int seq_id = blockIdx.x % real_seq_len;
+  int head_id = blockIdx.x % (head_num * real_seq_len) / real_seq_len;
+  dst[batch_id * head_num * real_seq_len *size_per_head +
+      seq_id   * head_num * size_per_head +
+      head_id  * size_per_head +
+      threadIdx.x] = src[batch_id * head_num * seq_len * size_per_head +
+                         head_id  * seq_len * size_per_head +
+                         seq_id   * size_per_head +
+                         threadIdx.x];
+}
+
+template <typename T>
+__global__ void transpose_qkv_padding(const T *src, // (Batch, real_seq_len, 3 , head_num * size_per_head)
+                                      T *dst,       // (3 * batch * head_num * seq_len * size_per_head)
+                                      const int batch_size,
+                                      const int seq_len,
+                                      const int head_num,
+                                      const int size_per_head,
+                                      const int real_seq_len){
+  //const dim3 grid(seq_len, batch, 3);
+  //const dim3 block(head_size, head_num, 1);
+  int qkv_id = blockIdx.z;
+  int batch_id = blockIdx.y;
+  int seq_id = blockIdx.x;
+  int head_id = threadIdx.y;
+  const int dst_offset = qkv_id * batch_size * head_num * seq_len * size_per_head +
+                         batch_id * head_num * seq_len * size_per_head +
+                         head_id * seq_len * size_per_head +
+                         seq_id * size_per_head;
+  const int src_offset = batch_id * real_seq_len * 3 * head_num * size_per_head +
+                         seq_id * 3 * head_num * size_per_head +
+                         qkv_id * head_num * size_per_head +
+                         head_id * size_per_head;
+  if(seq_id<real_seq_len){
+    dst[threadIdx.x + dst_offset] = src[threadIdx.x + src_offset];
+  } else if (seq_id < seq_len) {
+    dst[threadIdx.x + dst_offset] = 0;
+  }
+}
+
+
+
+template <typename T>
 __global__ void TransposeQkvKernel(const int H, const T *input, T *output) {
   // Input: BxSx3xNxH
   // Bias: 3xSxB
@@ -320,6 +371,7 @@ __global__ void broadcast_batch(const T *src,
   }
 }
 
+
 template <typename T>
 __global__ void broadcast_batch(const T *src,
                           T *dst,
@@ -436,7 +488,7 @@ int QkvToContextPluginDynamic::enqueue(
   // TODO, padding from very beginning
   int real_seq_len = seq_len;
   if (input_desc[0].type == nvinfer1::DataType::kHALF) {
-    // seq_len = (seq_len + paddingNum - 1) / paddingNum * paddingNum;
+    seq_len = (seq_len + paddingNum - 1) / paddingNum * paddingNum;
     input_num = batch * seq_len * 3 * head_number_ * head_size_;
   }
   
@@ -555,51 +607,51 @@ int QkvToContextPluginDynamic::enqueue(
     VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp16";
     int device_id;
     cudaGetDevice(&device_id);
-    int *padding_offset = nullptr;
-    half *padding_input = nullptr;
     const half *input0_data = static_cast<const half *>(inputs[0]);
     // input[0], (B, S, 3 * N * H, 1, 1)
-    cudaDeviceSynchronize();
-    printf("@#@@@ input0 data before padding \r\n");
-    if(batch==64){
-      print_float<half><<<1,1>>>(input0_data,
-                                0,
-                                batch*real_seq_len * 3 * head_number_ * head_size_,
-                                3 * head_number_ * head_size_,
-                                1);
-    }
-    cudaDeviceSynchronize();
 
-    framework::Tensor padding_offset_tensor;
-    framework::Tensor padding_input_tensor;
-     if (real_seq_len != seq_len) {
-       padding_offset_tensor.Resize({batch, real_seq_len});
-       padding_offset = padding_offset_tensor.mutable_data<int>(
-           platform::CUDAPlace(device_id));
-       cudaMemset(padding_offset, 0, sizeof(int) * batch * real_seq_len);
+    // cudaDeviceSynchronize();
+    // printf("@#@@@ input0 data before padding \r\n");
+    // if(batch==64){
+    //   print_float<half><<<1,1>>>(input0_data,
+    //                             0,
+    //                             batch*real_seq_len * 3 * head_number_ * head_size_,
+    //                             3 * head_number_ * head_size_,
+    //                             1);
+    // }
+    // cudaDeviceSynchronize();
 
-       padding_input_tensor.Resize(
-           {batch* seq_len* 3* head_number_* head_size_});  // BxSx3xNxH
-       padding_input =
-           reinterpret_cast<half *>(padding_input_tensor.mutable_data<int16_t>(
-               platform::CUDAPlace(device_id)));
-      printf("@@@ padding_input_size : %d, padding input begin: %X, end: %X \r\n",
-       batch* seq_len* 3* head_number_* head_size_,padding_input,padding_input+batch* seq_len* 3* head_number_* head_size_);
+    // fengshuai's padding
+    // framework::Tensor padding_offset_tensor;
+    // framework::Tensor padding_input_tensor;
+    //  if (real_seq_len != seq_len) {
+    //    padding_offset_tensor.Resize({batch, real_seq_len});
+    //    padding_offset = padding_offset_tensor.mutable_data<int>(
+    //        platform::CUDAPlace(device_id));
+    //    cudaMemset(padding_offset, 0, sizeof(int) * batch * real_seq_len);
 
-       cudaMemset(
-           padding_input,
-           0,
-           sizeof(half) * batch * seq_len * 3 * head_number_ * head_size_);
-       set_padding_offset<<<1, 1, 0, stream>>>(
-           padding_offset, real_seq_len, batch, seq_len);
-       int m = batch * real_seq_len;
-       rebuild_sequence_length_padding<<<m, 256, 0, stream>>>(
-           static_cast<const half *>(inputs[0]),
-           padding_input,
-           padding_offset,
-           head_number_ * head_size_ * 3);
-       input0_data = padding_input;
-     }
+    //    padding_input_tensor.Resize(
+    //        {batch* seq_len* 3* head_number_* head_size_});  // BxSx3xNxH
+    //    padding_input =
+    //        reinterpret_cast<half *>(padding_input_tensor.mutable_data<int16_t>(
+    //            platform::CUDAPlace(device_id)));
+    //   // printf("@@@ padding_input_size : %d, padding input begin: %X, end: %X \r\n",
+    //   //  batch* seq_len* 3* head_number_* head_size_,padding_input,padding_input+batch* seq_len* 3* head_number_* head_size_);
+    //    cudaMemset(
+    //        padding_input,
+    //        0,
+    //        sizeof(half) * batch * seq_len * 3 * head_number_ * head_size_);
+    //    set_padding_offset<<<1, 1, 0, stream>>>(
+    //        padding_offset, real_seq_len, batch, seq_len);
+    //    int m = batch * real_seq_len;
+    //    rebuild_sequence_length_padding<<<m, 256, 0, stream>>>(
+    //        static_cast<const half *>(inputs[0]),
+    //        padding_input,
+    //        padding_offset,
+    //        head_number_ * head_size_ * 3);
+    //    input0_data = padding_input;
+    //  }
+    // fengshuai's padding
 
     // cudaDeviceSynchronize();
     // printf("@#@@@ input0 data after padding \r\n");
@@ -662,8 +714,10 @@ int QkvToContextPluginDynamic::enqueue(
     // in swin SW-MSA block dim[0] of input is batch_number*windows_number 
     // therefore, we broadcast bias_qk to [Batch_num*window_num, head_number, seq_len, seq_len]
     int window_num=input_desc[1].dims.d[0];
-    printf("@@@ window_num %d head_number_ %d real_seq_len %d real_seq_len %d \r\n",
-          window_num,head_number_,real_seq_len,real_seq_len);
+
+    // printf("@@@ window_num %d head_number_ %d real_seq_len %d real_seq_len %d \r\n",
+    //       window_num,head_number_,real_seq_len,real_seq_len);
+    
     const size_t swin_qk_bias_size=window_num*head_number_*real_seq_len*real_seq_len;
     if(ProductDim(input_desc[1].dims)==swin_qk_bias_size){
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
@@ -672,9 +726,11 @@ int QkvToContextPluginDynamic::enqueue(
               platform::CUDAPlace(device_id)));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
-      printf("@@@ seq_len %d, real_seq_len %d \r\n",
-            seq_len, real_seq_len);
-      printf("@@@ temp qk bias address %X \r\n",temp_qk_bias);
+
+      // printf("@@@ seq_len %d, real_seq_len %d \r\n",
+      //       seq_len, real_seq_len);
+      // printf("@@@ temp qk bias address %X \r\n",temp_qk_bias);
+      
       broadcast_batch<half><<<grid, block, 0, stream>>>(
           static_cast<const half *>(inputs[1]), 
           temp_qk_bias, 
@@ -694,32 +750,43 @@ int QkvToContextPluginDynamic::enqueue(
     // cudaDeviceSynchronize();
     // printf("\r\n");
 
-    cudaDeviceSynchronize();
-    printf("@#@@@ input0 data after padding \r\n");
-    printf("@@@ input0 data address %X \r\n",input0_data);
+    // cudaDeviceSynchronize();
+    // printf("@#@@@ input0 data after padding \r\n");
+    // printf("@@@ input0 data address %X \r\n",input0_data);
 
-    if(batch==64){
-      print_float<half><<<1,1>>>(input0_data,
-                                  0,
-                                  batch * seq_len * 3 * head_number_ * head_size_,
-                                  3 * head_number_ * head_size_,
-                                  1);
-    }
-    cudaDeviceSynchronize();
+    // if(batch==64){
+    //   print_float<half><<<1,1>>>(input0_data,
+    //                               0,
+    //                               batch * seq_len * 3 * head_number_ * head_size_,
+    //                               3 * head_number_ * head_size_,
+    //                               1);
+    // }
+    // cudaDeviceSynchronize();
 
     // BxSx3xNxH => tptr: 3xBxNxSxH.
-    TransposeQKV(
-        batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
-    cudaDeviceSynchronize();
-    if(batch==64){
-    printf("@#@@  TransposeQKV before mha functor result: \r\n");
-    print_float<half><<<1,1,0,stream>>>(tptr,
-                                        0,
-                                        batch * seq_len * 3 * head_number_ * head_size_,
-                                        head_size_,1);
-    }
-    cudaDeviceSynchronize();
-    printf("\r\n");
+    // TransposeQKV(
+    //     batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
+    const dim3 grid_trans_qkv_padding(seq_len, batch, 3);
+    const dim3 block_trans_qkv_padding(head_size_, head_number_, 1);
+    transpose_qkv_padding<<<grid_trans_qkv_padding,
+                            block_trans_qkv_padding,0,
+                            stream>>>(input0_data,
+                                      tptr,batch,
+                                      seq_len,
+                                      head_number_,
+                                      head_size_,
+                                      real_seq_len);
+
+    // cudaDeviceSynchronize();
+    // if(batch==64){
+    // printf("@#@@  TransposeQKV before mha functor result: \r\n");
+    // print_float<half><<<1,1,0,stream>>>(tptr,
+    //                                     0,
+    //                                     batch * seq_len * 3 * head_number_ * head_size_,
+    //                                     head_size_,1);
+    // }
+    // cudaDeviceSynchronize();
+    // printf("\r\n");
     // cudaDeviceSynchronize();
     // printf("@@@@ tptr data \r\n");
     // print_float<half><<<1,1>>>(tptr,0,3*batch*head_size_*seq_len*head_size_);
@@ -751,32 +818,39 @@ int QkvToContextPluginDynamic::enqueue(
                            static_cast<half>(scale_),
                            half(0.0));
     // printf("@@ multihead_compute_func done \r\n");
-    cudaDeviceSynchronize();
-    if(batch==64){
-    printf("@#@@ multihead_compute_func qkv result: \r\n");
-    print_float<half><<<1,1,0,stream>>>(qkptr,0,(batch*head_number_)*seq_len*head_size_,head_size_,1);
-    }
-    // cudaDeviceSynchronize();
-    // print_float<half><<<1,1,0,stream>>>(tptr,
-    //                                     (batch*window_num-2)*seq_len*head_size_,
-    //                                     (batch*window_num)*seq_len*head_size_,head_size_,1);
-    cudaDeviceSynchronize();
-    printf("\r\n");
-    int grid = batch * head_number_ * seq_len;
-    int block = head_size_;
-    half *output = static_cast<half *>(outputs[0]);
-    transpose<half><<<grid, block, 0, stream>>>(
-        tptr, output, batch, seq_len, head_number_, head_size_);
-    cudaDeviceSynchronize();
-    printf("@#@@ multihead_compute_func qkv^T result: \r\n");
-    print_float<half><<<1,1,0,stream>>>(output,0,2*seq_len*head_size_,head_size_,1);
-    cudaDeviceSynchronize();
-    print_float<half><<<1,1,0,stream>>>(output,
-                                        (batch*head_number_-2)*seq_len*head_size_,
-                                        (batch*head_number_)*seq_len*head_size_,head_size_,1);
-    cudaDeviceSynchronize();
 
-    printf("\r\n");
+    // cudaDeviceSynchronize();
+    // if(batch==64){
+    // printf("@#@@ multihead_compute_func qkv result: \r\n");
+    // print_float<half><<<1,1,0,stream>>>(qkptr,0,(batch*head_number_)*seq_len*head_size_,head_size_,1);
+    // }
+    // // cudaDeviceSynchronize();
+    // // print_float<half><<<1,1,0,stream>>>(tptr,
+    // //                                     (batch*window_num-2)*seq_len*head_size_,
+    // //                                     (batch*window_num)*seq_len*head_size_,head_size_,1);
+    // cudaDeviceSynchronize();
+    // printf("\r\n");
+
+    half *output = static_cast<half *>(outputs[0]);
+    // int grid = batch * head_number_ * seq_len;
+    // int block = head_size_;
+    // transpose<half><<<grid, block, 0, stream>>>(
+    //     tptr, output, batch, seq_len, head_number_, head_size_);
+    int grid = batch * head_number_ * real_seq_len;
+    int block = head_size_;
+    transpose_qkv_unpadding<half><<<grid, block, 0, stream>>>(
+        tptr, output, batch, seq_len, head_number_, head_size_, real_seq_len);
+
+    // cudaDeviceSynchronize();
+    // printf("@#@@ multihead_compute_func qkv^T result: \r\n");
+    // print_float<half><<<1,1,0,stream>>>(output,0,2*seq_len*head_size_,head_size_,1);
+    // cudaDeviceSynchronize();
+    // print_float<half><<<1,1,0,stream>>>(output,
+    //                                     (batch*head_number_-2)*seq_len*head_size_,
+    //                                     (batch*head_number_)*seq_len*head_size_,head_size_,1);
+    // cudaDeviceSynchronize();
+
+    // printf("\r\n");
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "The Ernie(Bert) TensorRT Plugin should be "
