@@ -122,12 +122,14 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
       TRT_NOEXCEPT override;
 
   void destroy() TRT_NOEXCEPT override { delete this; }
-  // void attachToContext(cudnnContext* cudnnContext,
-  //                      cublasContext* cublasContext,
-  //                      nvinfer1::IGpuAllocator* gpuAllocator)
-  //     TRT_NOEXCEPT override;
-  // void detachFromContext() TRT_NOEXCEPT override;
-  
+
+  void attachToContext(cudnnContext* cudnnContext,
+                      cublasContext* cublasContext,
+                      nvinfer1::IGpuAllocator* gpuAllocator)
+    TRT_NOEXCEPT override;
+
+  void detachFromContext() TRT_NOEXCEPT override;
+
  private:
   int hidden_;
   int head_number_;
