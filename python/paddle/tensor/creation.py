@@ -370,10 +370,6 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
             elif isinstance(data, (list, tuple)):
                 data = np.array(data)
 
-        for x in data:
-            if isinstance(x, Variable):
-                pass
-
         if isinstance(data, np.ndarray) and len(data.shape) > 0 and any(
                 isinstance(x, Variable) for x in data):
             if not all(
