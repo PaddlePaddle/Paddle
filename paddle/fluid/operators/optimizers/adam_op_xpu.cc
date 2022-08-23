@@ -7,7 +7,7 @@ you may not use this file except in compliance with the License.
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
-THOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
@@ -24,7 +24,7 @@ using float16 = paddle::platform::float16;
 
 #ifdef PADDLE_WITH_XPU
 template <typename T1, typename T2>
-static int ConvertDataByType(T1* x,
+static int ConvertDataByType(const T1* x,
                              T2** y,
                              int len,
                              bool allocateFlag,
@@ -35,10 +35,11 @@ static int ConvertDataByType(T1* x,
   if (allocateFlag) {
     r = xpu_malloc(reinterpret_cast<void**>(y), sizeof(T2) * len);
 
-    PADDLE_ENFORCE_EQ(r,
-                      0,
-                      platform::errors::External(
-                          "Alloc memory in xpu for result data failed"));
+    PADDLE_ENFORCE_EQ(
+        r,
+        xpu::Error_t::SUCCESS,
+        platform::errors::External(
+            "Alloc memory in xpu for result data failed with [%d]", r));
   }
 
   T1* cpu_data = reinterpret_cast<T1*>(malloc(sizeof(T1) * len));
@@ -69,17 +70,16 @@ static void getDataPointer(const phi::DenseTensor& tensorData,
                            T** result,
                            const framework::ExecutionContext& ctx) {
   if (tensorData.dtype() == paddle::experimental::DataType::FLOAT16) {
-    float16* real_data = const_cast<float16*>(
-        tensorData.template data<paddle::platform::float16>());
+    const float16* real_data =
+        tensorData.template data<paddle::platform::float16>();
     int len = tensorData.numel();
 
     int r = ConvertDataByType<float16, T>(real_data, result, len, true, ctx);
-    PADDLE_ENFORCE_EQ(r,
-                      xpu::Error_t::SUCCESS,
-                      platform::errors::External(
-                          "execute function ConvertDataByType failed"));
-  } else {
-    *result = const_cast<T*>(tensorData.template data<T>());
+    PADDLE_ENFORCE_EQ(
+        r,
+        xpu::Error_t::SUCCESS,
+        platform::errors::External(
+            "execute function ConvertDataByType failed with [%d]", r));
   }
 }
 
@@ -100,7 +100,7 @@ static void copyOutData(const Tensor& srcTensor,
                         phi::DenseTensor* dstTensor,
                         const framework::ExecutionContext& ctx) {
   if (dstTensor->dtype() == paddle::experimental::DataType::FLOAT16) {
-    T* xpu_out_data = const_cast<T*>(srcTensor.template data<T>());
+    const T* xpu_out_data = srcTensor.template data<T>();
     float16* out_data =
         dstTensor->template mutable_data<float16>(ctx.GetPlace());
 
@@ -108,10 +108,11 @@ static void copyOutData(const Tensor& srcTensor,
 
     int r =
         ConvertDataByType<T, float16>(xpu_out_data, &out_data, len, false, ctx);
-    PADDLE_ENFORCE_EQ(r,
-                      xpu::Error_t::SUCCESS,
-                      platform::errors::External(
-                          "execute function ConvertDataByType failed"));
+    PADDLE_ENFORCE_EQ(
+        r,
+        xpu::Error_t::SUCCESS,
+        platform::errors::External(
+            "execute function ConvertDataByType failed with[%d]", r));
   }
 }
 
@@ -155,8 +156,6 @@ static void scale(phi::DenseTensor* beta_pow_out,
                      false,
                      beta,
                      0.0f);
-
-  xpu_wait(dev_ctx.x_context()->xpu_stream);
   PADDLE_ENFORCE_EQ(r,
                     xpu::SUCCESS,
                     platform::errors::External(
@@ -164,8 +163,7 @@ static void scale(phi::DenseTensor* beta_pow_out,
                         r,
                         XPUAPIErrorMsg[r]));
 
-  float* xpu_beta_pow_out_data =
-      const_cast<T*>(xpu_beta_pow_out.template data<T>());
+  const float* xpu_beta_pow_out_data = xpu_beta_pow_out.template data<T>();
   int len = xpu_beta_pow_out.numel();
 
   r = ConvertDataByType<T, float16>(
@@ -173,7 +171,8 @@ static void scale(phi::DenseTensor* beta_pow_out,
   PADDLE_ENFORCE_EQ(
       r,
       xpu::Error_t::SUCCESS,
-      platform::errors::External("execute function ConvertDataByType failed"));
+      platform::errors::External(
+          "execute function ConvertDataByType failed with [%d]", r));
 }
 
 template <typename T>
@@ -225,6 +224,7 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
         ctx.Input<LoDTensor>("Beta1Pow"), "Input", "Beta1Pow", "Adam");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     float* beta1_pow_ptr = nullptr;
+    const float* beta1_const_pow_ptr = nullptr;
     if (beta1_pow.place() == platform::CPUPlace()) {
       Tensor xpu_beta1_pow;
       paddle::framework::TensorCopy(
@@ -232,18 +232,18 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
       if (xpu_beta1_pow.dtype() == paddle::experimental::DataType::FLOAT16)
         getDataPointer<float>(xpu_beta1_pow, &beta1_pow_ptr, ctx);
       else
-        beta1_pow_ptr =
-            const_cast<float*>(xpu_beta1_pow.template data<float>());
+        beta1_const_pow_ptr = xpu_beta1_pow.template data<float>();
     } else {
       if (beta1_pow.dtype() == paddle::experimental::DataType::FLOAT16)
         getDataPointer<float>(beta1_pow, &beta1_pow_ptr, ctx);
       else
-        beta1_pow_ptr = const_cast<float*>(beta1_pow.template data<float>());
+        beta1_const_pow_ptr = beta1_pow.template data<float>();
     }
 
     auto& beta2_pow = GET_DATA_SAFELY(
         ctx.Input<LoDTensor>("Beta2Pow"), "Input", "Beta2Pow", "Adam");
     float* beta2_pow_ptr = nullptr;
+    const float* beta2_const_pow_ptr = nullptr;
     if (beta2_pow.place() == platform::CPUPlace()) {
       Tensor xpu_beta2_pow;
       paddle::framework::TensorCopy(
@@ -251,13 +251,12 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
       if (xpu_beta2_pow.dtype() == paddle::experimental::DataType::FLOAT16)
         getDataPointer<float>(xpu_beta2_pow, &beta2_pow_ptr, ctx);
       else
-        beta2_pow_ptr =
-            const_cast<float*>(xpu_beta2_pow.template data<float>());
+        beta2_const_pow_ptr = xpu_beta2_pow.template data<float>();
     } else {
       if (beta2_pow.dtype() == paddle::experimental::DataType::FLOAT16)
         getDataPointer<float>(beta2_pow, &beta2_pow_ptr, ctx);
       else
-        beta2_pow_ptr = const_cast<float*>(beta2_pow.template data<float>());
+        beta2_const_pow_ptr = beta2_pow.template data<float>();
     }
 
     auto& param_out = GET_DATA_SAFELY(
@@ -375,21 +374,22 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
           ctx.Input<LoDTensor>("Grad"), "Input", "Grad", "Adam");
       getDataPointer<float>(grad, &grad_c, ctx);
 
-      int r = xpu::adam(dev_ctx.x_context(),
-                        grad_c,
-                        mom1_ptr,
-                        mom2_ptr,
-                        param_ptr,
-                        beta1_pow_ptr,
-                        beta2_pow_ptr,
-                        lr_ptr,
-                        mom1_out_ptr,
-                        mom2_out_ptr,
-                        param_out_ptr,
-                        beta1,
-                        beta2,
-                        epsilon,
-                        param.numel());
+      int r = xpu::adam(
+          dev_ctx.x_context(),
+          grad_c != nullptr ? grad_c : grad.template data<float>(),
+          mom1_ptr != nullptr ? mom1_ptr : mom1.template data<float>(),
+          mom2_ptr != nullptr ? mom2_ptr : mom2.template data<float>(),
+          param_ptr != nullptr ? param_ptr : param.template data<float>(),
+          beta1_pow_ptr != nullptr ? beta1_pow_ptr : beta1_const_pow_ptr,
+          beta2_pow_ptr != nullptr ? beta2_pow_ptr : beta2_const_pow_ptr,
+          lr_ptr != nullptr ? lr_ptr : lr.template data<float>(),
+          mom1_out_ptr,
+          mom2_out_ptr,
+          param_out_ptr,
+          beta1,
+          beta2,
+          epsilon,
+          param.numel());
 
       xpu_wait(dev_ctx.x_context()->xpu_stream);
       PADDLE_ENFORCE_EQ(
@@ -418,10 +418,11 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
             scale<DeviceContext, float>(
                 beta1_pow_out, beta1_pow, beta1_pow_ptr, beta1, ctx);
           } else {
+            const float* beta1_pow_data = beta1_pow.template data<float>();
             beta1_pow_out_p1 =
                 beta1_pow_out->mutable_data<float>(ctx.GetPlace());
             r = xpu::scale(dev_ctx.x_context(),
-                           beta1_pow_ptr,
+                           beta1_pow_data,
                            beta1_pow_out_p1,
                            beta1_pow.numel(),
                            false,
@@ -520,25 +521,26 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
       auto ori_rows = param.numel() / row_numel;
 
       int lazy_mode = static_cast<int>(ctx.Attr<bool>("lazy_mode"));
-      int r = xpu::sparse_adam(dev_ctx.x_context(),
-                               grad_c,
-                               mom1_ptr,
-                               mom2_ptr,
-                               param_ptr,
-                               beta1_pow_ptr,
-                               beta2_pow_ptr,
-                               lr_ptr,
-                               mom1_out_ptr,
-                               mom2_out_ptr,
-                               param_out_ptr,
-                               beta1,
-                               beta2,
-                               epsilon,
-                               ori_rows,
-                               xpu_rows,
-                               row_numel,
-                               grad_merge.rows().size(),
-                               lazy_mode);
+      int r = xpu::sparse_adam(
+          dev_ctx.x_context(),
+          grad_c != nullptr ? grad_c : grad_tensor.template data<float>(),
+          mom1_ptr != nullptr ? mom1_ptr : mom1.template data<float>(),
+          mom2_ptr != nullptr ? mom2_ptr : mom2.template data<float>(),
+          param_ptr != nullptr ? param_ptr : param.template data<float>(),
+          beta1_pow_ptr != nullptr ? beta1_pow_ptr : beta1_const_pow_ptr,
+          beta2_pow_ptr != nullptr ? beta2_pow_ptr : beta2_const_pow_ptr,
+          lr_ptr != nullptr ? lr_ptr : lr.template data<float>(),
+          mom1_out_ptr,
+          mom2_out_ptr,
+          param_out_ptr,
+          beta1,
+          beta2,
+          epsilon,
+          ori_rows,
+          xpu_rows,
+          row_numel,
+          grad_merge.rows().size(),
+          lazy_mode);
 
       PADDLE_ENFORCE_EQ(
           r == xpu::Error_t::SUCCESS,
