@@ -20,45 +20,9 @@ from .base.topology import ParallelMode
 from .meta_parallel import TensorParallel, model_parallel_random_seed
 from .meta_parallel import PipelineParallel, ShardingParallel
 from paddle.fluid import core
-from paddle.distributed.fleet.utils.recompute import LegacyRecomputeFunction
+from paddle.distributed.fleet.meta_parallel.pp_utils.utils import _initialize_recompute_setting, _initialize_recompute_hcg
 from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
 from paddle.distributed import fleet
-
-
-class _RecomputeModelWrapper(paddle.nn.Layer):
-
-    def __init__(self, model, segments=2, preserve_rng_state=True):
-        super(_RecomputeModelWrapper, self).__init__()
-        assert isinstance(model, paddle.nn.Sequential), (
-            "The model passed to RecomputeModelWrapper must be of type "
-            "paddle.nn.Sequential.")
-        self._model = model
-        self._segments = segments
-        self._preserve_rng_state = preserve_rng_state
-        self._layers = list(model.children())
-        self._segment_size = len(self._layers) // segments
-
-    def _run_func(self, begin, end):
-
-        def do_run(input):
-            for i in range(begin, end):
-                input = self._layers[i](input)
-            return input
-
-        return do_run
-
-    def _checkpoint(self, func, *args, **kwargs):
-        return LegacyRecomputeFunction.apply(func, self._preserve_rng_state,
-                                             *args)
-
-    def forward(self, input):
-        end = 0
-        for begin in range(0, self._segment_size * (self._segments - 1),
-                           self._segment_size):
-            end = begin + self._segment_size
-            input = self._checkpoint(self._run_func(begin, end), input)
-        return self._run_func(end, len(self._layers))(input)
-
 
 _grad_scalar = None
 
@@ -125,7 +89,6 @@ def distributed_model(model):
         return model
 
     amp_enable = False
-    recompute_enable = False
     strategy = fleet_env._user_defined_strategy
     if strategy.amp == True:
         amp_enable = True
@@ -155,8 +118,18 @@ def distributed_model(model):
             use_dynamic_loss_scaling=use_dynamic_loss_scaling)
 
     if strategy.recompute == True:
-        recompute_enable = True
-        model = _RecomputeModelWrapper(model)
+        #NOTE when in hybrid parallel, init global recompute env.
+        if fleet_env._hcg.get_parallel_mode() in [
+                ParallelMode.TENSOR_PARALLEL, ParallelMode.PIPELINE_PARALLEL
+        ]:
+            _initialize_recompute_hcg(fleet_env._hcg)
+
+            keys = strategy.recompute_configs.keys()
+            enable_offload = keys["enable_offload"] if "enable_offload" in keys(
+            ) else False
+            enable_partition = keys[
+                "enable_partition"] if "enable_partition" in keys() else False
+            _initialize_recompute_setting(enable_offload, enable_partition)
 
     if strategy.heter_ccl_mode == True:
         distributed_model = paddle.DataParallel(

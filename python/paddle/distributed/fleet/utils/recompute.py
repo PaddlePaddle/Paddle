@@ -474,3 +474,56 @@ def recompute(function, *args, **kwargs):
         check_recompute_necessary(args)
 
     return RecomputeFunction.apply(function, preserve, *args)
+
+
+def recompute_sequential(functions, segments, input, **kwargs):
+    """
+    recompute intermediate activations to save then memory for 'Sequential' models.
+
+    Parameters:
+        functions(paddle.nn.Sequential): layer of sequence of layers that describes part of forward pass of the model  
+              whose intermediate activations will be released to save memory in forward stage and will be recomputed 
+              in backward stage for gradient calculation. 
+        segments(int): Number of chunks to create in the model
+        input(Tensor): inputs to the function.    
+        **kwargs(Dict): Kwargs should only contain the key-value pair of preserve_rng_state, which is used to 
+              indicate whether to save the forward rng. If it is True, then the last forward rng value will be 
+              restored when the forward recalculation of backpropagation is performed. The default 
+              preserve_rng_state is True.
+
+    Returns:
+        Output of function on args.
+
+    Examples:
+        .. code-block:: python
+
+            model = paddle.nn.Sequential(...)
+            input = recompute_sequential(model, segments, input)
+    """
+    preserve = kwargs.pop('preserve_rng_state', True)
+    if kwargs:
+        raise ValueError("Unexpected keyword arguments: " +
+                         ",".join(arg for arg in kwargs))
+
+    def _run_func(begin, end, functions):
+
+        def do_run(input):
+            for i in range(begin, end):
+                input = functions[i](input)
+            return input
+
+        return do_run
+
+    assert isinstance(functions, paddle.nn.Sequential), (
+        "The functions must be of type paddle.nn.Sequential.")
+
+    functions = list(functions.children())
+    segment_size = len(functions) // segments
+
+    end = 0
+    for begin in range(0, segment_size * (segments - 1), segment_size):
+        end = begin + segment_size
+        input = recompute(_run_func(begin, end),
+                          input,
+                          preserve_rng_state=preserve)
+    return _run_func(end, len(functions))(input)
