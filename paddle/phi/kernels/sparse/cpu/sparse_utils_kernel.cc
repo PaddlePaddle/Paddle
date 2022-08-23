@@ -280,9 +280,7 @@ void SparseCooToDenseCPUKernel(const CPUContext& dev_ctx,
   const int64_t dense_dim = x.dense_dim();
 
   const T* x_data = values.data<T>();
-  *out = phi::Empty(
-      dev_ctx,
-      DenseTensorMeta(x.dtype(), x.dims(), x.non_zero_elements().layout()));
+  dev_ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
   int64_t base_offset = 1;
   for (int64_t i = 0; i < dense_dim; i++) {

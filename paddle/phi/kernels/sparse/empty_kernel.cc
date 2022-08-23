@@ -27,7 +27,6 @@ template <typename T, typename Context>
 void EmptyLikeCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         SparseCooTensor* out) {
-  // out->set_dims(x.dims());
   MetaTensor meta_out(out);
   phi::sparse::UnchangedInferMeta(x, &meta_out);
   *(out->mutable_non_zero_indices()) = x.non_zero_indices();
@@ -42,7 +41,6 @@ template <typename T, typename Context>
 void EmptyLikeCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
                         SparseCsrTensor* out) {
-  // out->set_dims(x.dims());
   MetaTensor meta_out(out);
   phi::sparse::UnchangedInferMeta(x, &meta_out);
   *(out->mutable_non_zero_crows()) = x.non_zero_crows();
