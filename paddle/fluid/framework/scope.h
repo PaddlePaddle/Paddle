@@ -118,10 +118,10 @@ class Scope : public ScopeBase {
 
   const std::list<Scope*>& kids() const { return kids_; }
 
-  // enumerate all the variable names current contains.
+  // enumerate all the variable names which current scope contains.
   std::vector<std::string> LocalVarNames() const;
 
-  // enumerate all the variables current contains.
+  // enumerate all the variables which current scope contains.
   std::vector<Variable*> LocalVars();
 
   // Rename variable to a new name
