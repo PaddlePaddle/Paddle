@@ -485,6 +485,7 @@ def recompute(function, *args, **kwargs):
         assert _hcg is not None, "please init recompute env in hybrid parallel by add recompute_config in DistributedStrategy firstly."
         return _hp_recompute(function, *args)
     else:
+        # when in pure data parallel or non-parallel training, use simple recompute.
         return RecomputeFunction.apply(function, preserve, *args)
 
 
