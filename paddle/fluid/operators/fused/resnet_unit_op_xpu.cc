@@ -144,34 +144,114 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
         x_maxlist.push_back(nullptr);
       }
     }
-    int r = xpu::resnet_unit_fusion<XPUType, XPUType, XPUType, int16_t>(
-        dev_ctx.x_context(),
-        x_list,
-        w_list,
-        conv_y_list,
-        reinterpret_cast<XPUType *>(output->mutable_data<T>(place)),
-        x_shape_list,
-        filter_x_shape[0],
-        ksize_list,
-        stride_list,
-        paddings,
-        dilations,
-        group,
-        eps,
-        momentum,
-        x_maxlist,
-        w_maxlist,
-        scale_list,
-        bias_list,
-        batch_mean_list,
-        batch_invstd_list,
-        global_mean_list,
-        global_var_list,
-        xpu::Activation_t::RELU,
-        is_nchw,
-        has_shortcut,
-        fuse_add,
-        is_train);
+
+    Tensor *bitmask = ctx.Output<Tensor>("BitMask");
+    size_t bitmask_size = 0;
+    if (std::getenv("XPU_PADDLE_LOCAL") != nullptr) {
+      bitmask_size = xpu::resnet_unit_fusion_get_reserve_space_size<XPUType,
+                                                                    XPUType,
+                                                                    XPUType,
+                                                                    float>(
+          dev_ctx.x_context(),
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          x_maxlist,
+          w_maxlist,
+          xpu::Activation_t::RELU,
+          is_nchw,
+          has_shortcut,
+          fuse_add);
+    } else {
+      bitmask_size = xpu::resnet_unit_fusion_get_reserve_space_size<XPUType,
+                                                                    XPUType,
+                                                                    XPUType,
+                                                                    int16_t>(
+          dev_ctx.x_context(),
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          x_maxlist,
+          w_maxlist,
+          xpu::Activation_t::RELU,
+          is_nchw,
+          has_shortcut,
+          fuse_add);
+    }
+    int64_t aligned_bitmask_size = (bitmask_size + 3) / 4;
+    bitmask->Resize(
+        phi::make_ddim({static_cast<int64_t>(aligned_bitmask_size)}));
+    auto *bitmask_ptr = bitmask->mutable_data<int>(place);
+    int r = 0;
+    if (std::getenv("XPU_PADDLE_LOCAL") != nullptr) {
+      r = xpu::resnet_unit_fusion<XPUType, XPUType, XPUType, float>(
+          dev_ctx.x_context(),
+          x_list,
+          w_list,
+          conv_y_list,
+          reinterpret_cast<XPUType *>(output->mutable_data<T>(place)),
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          eps,
+          momentum,
+          x_maxlist,
+          w_maxlist,
+          scale_list,
+          bias_list,
+          batch_mean_list,
+          batch_invstd_list,
+          global_mean_list,
+          global_var_list,
+          xpu::Activation_t::RELU,
+          is_nchw,
+          has_shortcut,
+          fuse_add,
+          is_train,
+          bitmask_ptr);
+    } else {
+      r = xpu::resnet_unit_fusion<XPUType, XPUType, XPUType, int16_t>(
+          dev_ctx.x_context(),
+          x_list,
+          w_list,
+          conv_y_list,
+          reinterpret_cast<XPUType *>(output->mutable_data<T>(place)),
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          eps,
+          momentum,
+          x_maxlist,
+          w_maxlist,
+          scale_list,
+          bias_list,
+          batch_mean_list,
+          batch_invstd_list,
+          global_mean_list,
+          global_var_list,
+          xpu::Activation_t::RELU,
+          is_nchw,
+          has_shortcut,
+          fuse_add,
+          is_train,
+          bitmask_ptr);
+    }
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet_unit_fusion");
   }
 };
@@ -198,7 +278,11 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
     const Tensor *conv_out_x = ctx.Input<Tensor>("ConvX");
     const Tensor *output = ctx.Input<Tensor>("Y");
 
-    Tensor *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    Tensor *x_grad = nullptr;
+    int has_dx = ctx.Attr<bool>("has_dx");
+    if (has_dx) {
+      x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    }
     Tensor *filter_x_grad =
         ctx.Output<Tensor>(framework::GradVarName("FilterX"));
     Tensor *scale_x_grad = ctx.Output<Tensor>(framework::GradVarName("ScaleX"));
@@ -222,8 +306,10 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
         reinterpret_cast<const XPUType *>(filter_x->data<T>())};
     std::vector<const XPUType *> conv_y_list = {
         reinterpret_cast<const XPUType *>(conv_out_x->data<T>())};
-    std::vector<XPUType *> dx_list = {
-        reinterpret_cast<XPUType *>(x_grad->mutable_data<T>(place))};
+    std::vector<XPUType *> dx_list = {nullptr};
+    if (has_dx) {
+      dx_list[0] = reinterpret_cast<XPUType *>(x_grad->mutable_data<T>(place));
+    }
     std::vector<XPUType *> dw_list = {
         reinterpret_cast<XPUType *>(filter_x_grad->mutable_data<T>(place))};
 
@@ -309,34 +395,69 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    int r = xpu::resnet_unit_grad_fusion<XPUType, XPUType, XPUType, int16_t>(
-        dev_ctx.x_context(),
-        x_list,
-        w_list,
-        reinterpret_cast<const XPUType *>(y_grad->data<T>()),
-        reinterpret_cast<const XPUType *>(output->data<T>()),
-        conv_y_list,
-        dx_list,
-        dw_list,
-        x_shape_list,
-        filter_x_shape[0],
-        ksize_list,
-        stride_list,
-        paddings,
-        dilations,
-        group,
-        x_maxlist,
-        w_maxlist,
-        scale_list,
-        batch_mean_list,
-        batch_invstd_list,
-        dscale_list,
-        dbias_list,
-        xpu::Activation_t::RELU,
-        eps,
-        is_nchw,
-        has_shortcut,
-        fuse_add);
+    const Tensor *bitmask = ctx.Input<Tensor>("BitMask");
+    int r = 0;
+    if (std::getenv("XPU_PADDLE_LOCAL_BACKWARD") != nullptr) {
+      r = xpu::resnet_unit_grad_fusion<XPUType, XPUType, XPUType, float>(
+          dev_ctx.x_context(),
+          x_list,
+          w_list,
+          reinterpret_cast<const XPUType *>(y_grad->data<T>()),
+          reinterpret_cast<const XPUType *>(output->data<T>()),
+          conv_y_list,
+          dx_list,
+          dw_list,
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          x_maxlist,
+          w_maxlist,
+          scale_list,
+          batch_mean_list,
+          batch_invstd_list,
+          dscale_list,
+          dbias_list,
+          xpu::Activation_t::RELU,
+          eps,
+          is_nchw,
+          has_shortcut,
+          fuse_add,
+          reinterpret_cast<void *>(const_cast<int *>(bitmask->data<int>())));
+    } else {
+      r = xpu::resnet_unit_grad_fusion<XPUType, XPUType, XPUType, int16_t>(
+          dev_ctx.x_context(),
+          x_list,
+          w_list,
+          reinterpret_cast<const XPUType *>(y_grad->data<T>()),
+          reinterpret_cast<const XPUType *>(output->data<T>()),
+          conv_y_list,
+          dx_list,
+          dw_list,
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          x_maxlist,
+          w_maxlist,
+          scale_list,
+          batch_mean_list,
+          batch_invstd_list,
+          dscale_list,
+          dbias_list,
+          xpu::Activation_t::RELU,
+          eps,
+          is_nchw,
+          has_shortcut,
+          fuse_add,
+          reinterpret_cast<void *>(const_cast<int *>(bitmask->data<int>())));
+    }
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet_unit_grad_fusion");
   }
 };

@@ -201,8 +201,8 @@ done
 FILTER=`git diff --name-only upstream/develop | grep -v "tools/"`
 HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH $FILTER | grep '^\+' | grep -o -m 1 "const_cast" || true`
 if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93) approval for the usage of const_cast.\n"
-    check_approval 1 46782768 12538138 6836917 22561442 6888866 16605440
+    echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93,houj04) approval for the usage of const_cast.\n"
+    check_approval 1 46782768 12538138 6836917 22561442 6888866 16605440 2002279 35131887
 fi
 
 # infrt needs to temporarily use LOG(FATAL) during the debugging period, and will replace it with standard error format in the future.

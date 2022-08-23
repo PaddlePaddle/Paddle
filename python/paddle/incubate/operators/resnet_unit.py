@@ -39,7 +39,7 @@ from paddle import _C_ops
 def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
                 scale_z, bias_z, mean_z, var_z, stride, stride_z, padding,
                 dilation, groups, momentum, eps, data_format, fuse_add,
-                has_shortcut, use_global_stats, is_test, act):
+                has_shortcut, has_dx, use_global_stats, is_test, act):
 
     helper = LayerHelper('resnet_unit', **locals())
     bn_param_dtype = fluid.core.VarDesc.VarType.FP32
@@ -94,6 +94,7 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
         'data_format': data_format,
         'fuse_add': fuse_add,
         'has_shortcut': has_shortcut,
+        'has_dx': has_dx,
         'use_global_stats': use_global_stats,
         'is_test': is_test,
         'act_type': act
@@ -139,6 +140,7 @@ class ResNetUnit(Layer):
                  act='relu',
                  fuse_add=False,
                  has_shortcut=False,
+                 has_dx=True,
                  use_global_stats=False,
                  is_test=False,
                  filter_x_attr=None,
@@ -165,6 +167,7 @@ class ResNetUnit(Layer):
         self._data_format = data_format
         self._act = act
         self._fuse_add = fuse_add
+        self._has_dx = has_dx
         self._has_shortcut = has_shortcut
         self._use_global_stats = use_global_stats
         self._is_test = is_test
@@ -274,6 +277,6 @@ class ResNetUnit(Layer):
                           self._stride, self._stride_z, self._padding,
                           self._dilation, self._groups, self._momentum,
                           self._eps, self._data_format, self._fuse_add,
-                          self._has_shortcut, self._use_global_stats,
-                          self._is_test, self._act)
+                          self._has_shortcut, self._has_dx,
+                          self._use_global_stats, self._is_test, self._act)
         return out
