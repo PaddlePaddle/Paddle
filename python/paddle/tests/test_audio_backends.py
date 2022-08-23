@@ -12,7 +12,7 @@ from typing import Optional
 
 
 def normalize_wav(tensor: paddle.Tensor) -> paddle.Tensor:
-    """Normalize singal
+    """Normalize wav
     Args:
         paddle.Tensor with different dtypes
     
