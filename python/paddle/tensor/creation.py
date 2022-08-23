@@ -1933,7 +1933,7 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
     and above the diagonal.
     Args:
         row (int): The input x which is a int number describe the number of row of the matrix.
-        col (int): The input x which is a int number describe the number of col of the matrix.
+        col (int, optional): The input x which is a int number describe the number of col of the matrix.
             default value for col is None, then it will be set equal to row, indicting a square matix.
         offset (int, optional): The offset to consider, default value is 0.
             - If offset = 0, all elements on and below the main diagonal are retained.
