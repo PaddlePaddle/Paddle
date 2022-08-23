@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .dynamic_dims_inference import DynamicDimensionsInference
 from .completion import Completer
 from .dist_context import get_default_distributed_context
 from .utils import print_program_with_dist_attr
+from .tuner.parallel_tuner import ParallelTuner
 
 # from .tuner.parallel_tuner import ParallelTuner
 
@@ -27,32 +29,35 @@ class Planner:
 
         # NOTE: [HighOrderGrad]. There are grad ops in forward phase, and it need
         # dependency of backward-forward ops in forward completion.
+        # TODO: The id mapping will be lost if we clone the original program.
         default_ctx = get_default_distributed_context()
         self._dist_context._dist_op_context = default_ctx.dist_op_context
-        if not default_ctx.data_parallel:
-            # Use SSA graph for complex parallism
-            self._dist_context.initialize(with_graph=True)
-        else:
-            # Use program for data parallel parallism
-            self._dist_context.initialize(with_graph=False)
+        self._dist_context.initialize()
+
+        self._dynamic_dims_inference = DynamicDimensionsInference(
+            self._dist_context)
 
         self._completer = Completer(self._dist_context)
 
         self._strategy = dist_context.strategy
-        # if self._strategy.auto_search:
-        #     self._parallel_tuner = ParallelTuner(
-        #         self._dist_context, mode=self._mode)
+        if self._strategy.auto_search:
+            self._parallel_tuner = ParallelTuner(self._dist_context,
+                                                 mode=self._mode)
 
     @property
     def completer(self):
         return self._completer
 
     def plan(self):
-        self._completer.complete_forward_annotation()
-        # if self._strategy.auto_search:
-        #     self._parallel_tuner.tune()
-        # else:
-        #     self._completer.complete_forward_annotation()
+        # Find the dynamic dims
+        self._dynamic_dims_inference.infer_dynamic_dims()
+
+        # Complete the dist attr
+        if self._strategy.auto_search:
+            self._parallel_tuner.tune()
+        else:
+            self._completer.complete_forward_annotation()
+
         # parse forward sub block
         self._dist_context.block_state.parse_forward_blocks(
             self._dist_context.serial_main_program)

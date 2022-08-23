@@ -19,7 +19,7 @@ import time
 from paddle.fluid import core
 from paddle.fluid import framework
 
-from .utils import print_program_with_dist_attr, _is_gradient_clip_op
+from .utils import print_program_with_dist_attr
 from .operators import find_compatible_distributed_operator_impls
 from .dist_context import get_default_distributed_context, _node_id
 from .dist_tensor import DistributedTensor
@@ -27,7 +27,6 @@ from .dist_op import DistributedOperator
 from .dist_attribute import TensorDistributedAttribute
 from .dist_attribute import OperatorDistributedAttribute
 from .process_mesh import ProcessMesh
-from .process_group import get_world_process_group
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 
@@ -142,6 +141,7 @@ class Completer:
     def __init__(self, dist_context):
         assert dist_context is not None
         self._dist_context = dist_context
+        self._has_prepared = False
 
     def _update_tensor_node_dims_mapping(self, tensor_node, fwd=True):
         changed = False
@@ -160,6 +160,7 @@ class Completer:
             return False
         tensor_dims_mapping = tensor_dist_attr.dims_mapping
         if fwd:
+            # print("tensor fwd 1", tensor_desc.name(), tensor_desc.original_id(), tensor_dist_attr, changed, flush=True)
             dims_mapping_list = []
             for pred_op_node in tensor_node.inputs:
                 if pred_op_node.op() is not None:
@@ -183,7 +184,9 @@ class Completer:
                 (compatible_dims_mapping != tensor_dims_mapping):
                 tensor_dist_attr.dims_mapping = compatible_dims_mapping
                 changed = True
+            # print("tensor fwd 2", tensor_desc.name(), tensor_desc.original_id(), tensor_dist_attr, changed, flush=True)
         else:
+            # print("tensor bwd 1", tensor_desc.name(), tensor_desc.original_id(), tensor_dist_attr, changed, flush=True)
             dims_mapping_list = []
             for succ_op_node in tensor_node.outputs:
                 if succ_op_node.op() is not None:
@@ -207,6 +210,7 @@ class Completer:
                 (compatible_dims_mapping != tensor_dims_mapping):
                 tensor_dist_attr.dims_mapping = compatible_dims_mapping
                 changed = True
+            # print("tensor bwd 2", tensor_desc.name(), tensor_desc.original_id(), tensor_dist_attr, changed, flush=True)
         return changed
 
     def _update_op_node_dims_mapping(self, op_node, fwd=True):
@@ -224,6 +228,7 @@ class Completer:
         op_dist_attr = dist_op.dist_attr
         original_op_dist_attr = copy.deepcopy(op_dist_attr)
         if fwd:
+            # print("op fwd 1", op_desc.type(), op_desc.original_id(), op_dist_attr, changed, flush=True)
             for tensor_node in op_node.inputs:
                 if tensor_node.is_var() and tensor_node.var() is not None:
                     if tensor_node.var().type() == core.VarDesc.VarType.READER:
@@ -279,7 +284,9 @@ class Completer:
             else:
                 dist_op.dist_attr = original_op_dist_attr
                 changed = False
+            # print("op fwd 3", op_desc.type(), op_desc.original_id(), op_dist_attr, changed, flush=True)
         else:
+            # print("op bwd 1", op_desc.type(), op_desc.original_id(), op_dist_attr, changed, flush=True)
             for tensor_node in op_node.outputs:
                 if tensor_node.is_var() and tensor_node.var() is not None:
                     if tensor_node.var().type() == core.VarDesc.VarType.READER:
@@ -308,6 +315,7 @@ class Completer:
             # Find the most compatible implemenetations from the distributed operator
             op_dist_impls = find_compatible_distributed_operator_impls(
                 dist_op, fwd=False)
+            # print("op bwd 2", op_desc.type(), op_desc.original_id(), op_dist_attr, changed, op_dist_impls, flush=True)
             if op_dist_impls is not None:
                 not_compatible = True
                 backup_op_dist_attr = copy.deepcopy(op_dist_attr)
@@ -335,6 +343,7 @@ class Completer:
             else:
                 dist_op.dist_attr = original_op_dist_attr
                 changed = False
+            # print("op bwd 3", op_desc.type(), op_desc.original_id(), op_dist_attr, changed, flush=True)
         return changed
 
     def _update_dims_mapping_between_graphs(self):
@@ -530,6 +539,20 @@ class Completer:
                     dist_attr.set_output_dims_mapping(arg_name,
                                                       new_dims_mapping)
 
+        # Amend the process meshes related to array
+        for array_node_list in self._array_nodes.values():
+            merged_process_mesh = None
+            for array_node in array_node_list:
+                dist_attr = self._dist_context.get_dist_attr_for_graph(
+                    array_node)
+                merged_process_mesh = merge_process_mesh_two(
+                    merged_process_mesh, dist_attr.process_mesh)
+            for array_node in array_node_list:
+                dist_attr = self._dist_context.get_dist_attr_for_graph(
+                    array_node)
+                dist_attr.process_mesh = merged_process_mesh
+                _make_dims_mapping_replicate(dist_attr)
+
         # Amend the process meshes related to while_op
         for while_op_node, while_op_node_idx in self._while_op_nodes.values():
             sub_graph_id = while_op_node.op()._block_attr_id("sub_block")
@@ -618,20 +641,6 @@ class Completer:
                     nearest_tensor_node)
                 tensor_dist_attr.process_mesh = nearest_tensor_dist_attr.process_mesh
 
-        # Amend the process meshes related to array
-        for array_node_list in self._array_nodes.values():
-            merged_process_mesh = None
-            for array_node in array_node_list:
-                dist_attr = self._dist_context.get_dist_attr_for_graph(
-                    array_node)
-                merged_process_mesh = merge_process_mesh_two(
-                    merged_process_mesh, dist_attr.process_mesh)
-            for array_node in array_node_list:
-                dist_attr = self._dist_context.get_dist_attr_for_graph(
-                    array_node)
-                dist_attr.process_mesh = merged_process_mesh
-                _make_dims_mapping_replicate(dist_attr)
-
     def _update_process_mesh_between_graphs(self):
         for parent_node, child_node in self._node_pairs_between_graphs:
             parent_node_dist_attr = self._dist_context.get_dist_attr_for_graph(
@@ -719,6 +728,8 @@ class Completer:
         self._update_process_mesh_between_graphs()
 
     def _prepare(self):
+        if self._has_prepared:
+            return
         self._while_op_nodes = {}
         self._array_nodes = {}
         self._node_pairs_between_graphs = []
@@ -732,6 +743,8 @@ class Completer:
                     if self._array_nodes.get(array_var_name, None) is None:
                         self._array_nodes[array_var_name] = []
                     self._array_nodes[array_var_name].append(node)
+                    # Add the array input node
+                    self._array_nodes[array_var_name].append(node.inputs[0])
                 if node.op().type() == "write_to_array":
                     array_var_name = node.op().output("Out")[0]
                     if self._array_nodes.get(array_var_name, None) is None:
@@ -752,6 +765,7 @@ class Completer:
                                 and after_node.var().name() == node.var().name():
                             self._node_pairs_between_graphs.append(
                                 (after_node, node))
+        self._has_prepared = True
 
     def complete_forward_annotation(self, serial_main_program=None):
         """ Complete annotation for the partial annotated serial_main_program.
@@ -766,29 +780,19 @@ class Completer:
         else:
             self._dist_context._serial_main_program = serial_main_program
 
-        start_time = time.time()
-        # print("start time", start_time, flush=True)
-        if not self._dist_context.data_parallel:
-            self._dist_context.initialize(with_graph=True)
+        self._dist_context.initialize()
 
-            # self._dist_context.validate_dist_attr_for_program()
+        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
+        # self._dist_context.validate_dist_attr_for_program()
 
-            self._prepare()
+        self._prepare()
 
-            self._update_process_mesh()
+        self._update_process_mesh()
 
-            self._update_dims_mapping()
+        self._update_dims_mapping()
 
-            # Copy the corresponding distributed attribute from graph to serial_main_program
-            self._dist_context.copy_dist_attr_from_graph_to_program()
-        else:
-            self._dist_context.initialize(with_graph=False)
-
-            # A fast and special completion for data parallel
-            self._update_dist_attr_for_dp()
-
-            # print_program_with_dist_attr(self._dist_context.serial_main_program,
-            #                              self._dist_context)
+        # Copy the corresponding distributed attribute from graph to serial_main_program
+        self._dist_context.copy_dist_attr_from_graph_to_program()
 
         # NOTE:[HighOrderGrad] update vars and ops distributed attribute in high order gradient
         self._complete_high_order_grad_annotation(serial_main_program)
@@ -796,108 +800,87 @@ class Completer:
         # Do the validation check and amend some completion
         self._dist_context.amend_dist_attr_for_program()
 
-        self._dist_context.validate_dist_attr_for_program()
+        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
 
-        end_time = time.time()
-        # print("end time", end_time, flush=True)
-        # print("elapsed time", end_time - start_time, flush=True)
+        self._dist_context.validate_dist_attr_for_program()
 
         return serial_main_program
 
-    def _update_dist_attr_for_dp(self):
-        # TODO: we must ensure the world process group contains all ranks
-        ranks = get_world_process_group().ranks
-        process_mesh = ProcessMesh(ranks)
-        for dist_tensor in self._dist_context._dist_tensors_for_program.values(
-        ):
-            serial_tensor = dist_tensor.serial_tensor
-            tensor_dist_attr = dist_tensor.dist_attr
-            tensor_dist_attr.process_mesh = process_mesh
+    def _complete_tensor_dist_attr_by_op(self, serial_main_program=None):
+        if serial_main_program is None:
+            serial_main_program = self._dist_context.serial_main_program
+        else:
+            self._dist_context._serial_main_program = serial_main_program
 
-        for dist_op in self._dist_context._dist_ops_for_program.values():
-            serial_op = dist_op.serial_op
-            op_desc = serial_op.desc
-            op_dist_attr = dist_op.dist_attr
-            op_dist_attr.process_mesh = process_mesh
-            original_op_dist_attr = copy.deepcopy(op_dist_attr)
-            input_xshape_arg_names = []
-            if "XShape" in op_desc.input_names():
-                input_xshape_arg_names = op_desc.input("XShape")
-            for arg_name in serial_op.input_arg_names:
-                serial_tensor = dist_op.get_serial_input(arg_name)
-                if not serial_tensor.is_parameter:
-                    if arg_name not in input_xshape_arg_names:
-                        old_dims_mapping = op_dist_attr.get_input_dims_mapping(
-                            arg_name)
-                        if len(old_dims_mapping) > 0:
-                            new_dims_mapping = [0] + [
-                                -1 for _ in range(len(old_dims_mapping) - 1)
-                            ]
-                            op_dist_attr.set_input_dims_mapping(
-                                arg_name, new_dims_mapping)
-                    else:
-                        old_dims_mapping = op_dist_attr.get_input_dims_mapping(
-                            arg_name)
-                        if len(old_dims_mapping) > 1:
-                            new_dims_mapping = [-1, 0] + [
-                                -1 for _ in range(len(old_dims_mapping) - 2)
-                            ]
-                            op_dist_attr.set_input_dims_mapping(
-                                arg_name, new_dims_mapping)
-                # Set tensor's dims_mapping by the op's
-                tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
-                    serial_tensor)
-                tensor_dist_attr.dims_mapping = op_dist_attr.get_input_dims_mapping(
-                    arg_name)
-            output_xshape_arg_names = []
-            if "XShape" in op_desc.output_names():
-                output_xshape_arg_names = op_desc.output("XShape")
-            for arg_name in serial_op.output_arg_names:
-                serial_tensor = dist_op.get_serial_output(arg_name)
-                if not serial_tensor.is_parameter:
-                    if arg_name not in output_xshape_arg_names:
-                        old_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                            arg_name)
-                        if len(old_dims_mapping) > 0:
-                            new_dims_mapping = [0] + [
-                                -1 for _ in range(len(old_dims_mapping) - 1)
-                            ]
-                            op_dist_attr.set_output_dims_mapping(
-                                arg_name, new_dims_mapping)
-                    else:
-                        old_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                            arg_name)
-                        if len(old_dims_mapping) > 1:
-                            new_dims_mapping = [-1, 0] + [
-                                -1 for _ in range(len(old_dims_mapping) - 2)
-                            ]
-                            op_dist_attr.set_output_dims_mapping(
-                                arg_name, new_dims_mapping)
-                # Set tensor's dims_mapping by the op's
-                tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
-                    serial_tensor)
-                tensor_dist_attr.dims_mapping = op_dist_attr.get_output_dims_mapping(
-                    arg_name)
+        self._dist_context.initialize()
 
-            op_dist_impls = find_compatible_distributed_operator_impls(
-                dist_op, partial=False)
-            if op_dist_impls is not None:
-                not_compatible = True
-                backup_op_dist_attr = copy.deepcopy(op_dist_attr)
-                for op_dist_impl in op_dist_impls:
-                    op_dist_impl.update_dims_mapping(dist_op)
-                    if op_dist_impl.is_auto_compatible(dist_op) \
-                        and dist_op.validate_dist_attr():
-                        op_dist_attr.impl_type = op_dist_impl.type
-                        op_dist_attr.impl_idx = op_dist_impl.idx
-                        not_compatible = False
-                        break
-                    else:
-                        dist_op.dist_attr = backup_op_dist_attr
-                if not_compatible:
-                    dist_op.dist_attr = original_op_dist_attr
-            else:
-                dist_op.dist_attr = original_op_dist_attr
+        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
+
+        self._prepare()
+
+        has_set_dist_attr = set()
+
+        all_nodes = self._dist_context.serial_ordered_nodes
+        for node in all_nodes:
+            if node.is_op():
+                # if node.op().type() in [
+                #         "while", "read_from_array", "write_to_array"
+                # ]:
+                #     continue
+                if node.op().type() in ["while"]:
+                    continue
+                dist_op = self._dist_context.get_dist_op_for_graph(node)
+                op_dist_attr = dist_op.dist_attr
+                for tensor_node in node.inputs:
+                    if tensor_node.is_var() and tensor_node.var() is not None:
+                        # Skip the non-leaf var node
+                        if len(tensor_node.inputs) != 0:
+                            continue
+                        tensor_desc = tensor_node.var()
+                        tensor_name = tensor_desc.name()
+                        tensor = dist_op.get_serial_input(tensor_name)
+                        # Use the first op to set the tensor dist attr
+                        if tensor_name in has_set_dist_attr:
+                            continue
+                        tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
+                            tensor_node)
+                        tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
+                        tensor_dist_attr.dims_mapping = op_dist_attr.get_input_dims_mapping(
+                            tensor_name) if tensor.is_parameter else [
+                                -1 for i in tensor_desc.shape()
+                            ]
+                        has_set_dist_attr.add(tensor_name)
+                for tensor_node in node.outputs:
+                    if tensor_node.is_var() and tensor_node.var() is not None:
+                        tensor_name = tensor_node.var().name()
+                        if tensor_name in has_set_dist_attr:
+                            continue
+                        tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
+                            tensor_node)
+                        tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
+                        tensor_dist_attr.dims_mapping = op_dist_attr.get_output_dims_mapping(
+                            tensor_name)
+                        has_set_dist_attr.add(tensor_name)
+
+        self._update_process_mesh_for_specials()
+
+        self._update_process_mesh_between_graphs()
+
+        self._update_dims_mapping_for_special()
+
+        self._update_dims_mapping_between_graphs()
+
+        # Copy the corresponding distributed attribute from graph to serial_main_program
+        self._dist_context.copy_dist_attr_from_graph_to_program()
+
+        # # NOTE:[HighOrderGrad] update vars and ops distributed attribute in high order gradient
+        # self._complete_high_order_grad_annotation(serial_main_program)
+
+        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
+        # Do the validation check and amend some completion
+        self._dist_context.amend_dist_attr_for_program()
+
+        self._dist_context.validate_dist_attr_for_program()
 
     def _complete_high_order_grad_annotation(self, serial_main_program=None):
         """
@@ -1300,10 +1283,6 @@ class Completer:
 
     def complete_update_annotation(self, serial_main_program):
         """Complete the annotation of vars and ops in the update phase for parallel program."""
-        # Copy the dist tensors and dist ops annotated by users from the default context
-        # global mesh
-        from paddle.distributed.auto_parallel.process_group import get_world_process_group
-        world_ranks = get_world_process_group().ranks
 
         # Notice: serial_main_program is actually a dist_main_program of current rank,
         # and must be passed into this function.
@@ -1319,70 +1298,26 @@ class Completer:
             # TODO to add attribute for moment var
             op = ops[idx]
             if int(op.attr('op_role')) == int(OpRole.Optimize):
-                # TODO:
-                # 1. move `generate_optimizer` before `partitioner`
-                # 2. implement grad_clip completion by `dist_op`
-                # 3. allreduce dist_gloabl_norm (mp-group) and no_dist_global_norm (pp-group, sharding-group)
-                if _is_gradient_clip_op(op):
-                    if op.type in [
-                            "sum", "sqrt", "fill_constant", "elementwise_max",
-                            "elementwise_div"
-                    ]:
-                        op_dist_attr = OperatorDistributedAttribute()
-                        op_dist_attr.process_mesh = world_ranks
-                        for in_name in op.input_arg_names:
-                            in_var = vars[in_name]
-                            in_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
-                                in_var)
-                            op_dist_attr.set_input_dist_attr(
-                                in_name, in_dist_attr)
-                        for out_name in op.output_arg_names:
-                            out_var = vars[out_name]
-                            out_dist_attr = TensorDistributedAttribute()
-                            out_dist_attr.process_mesh = world_ranks
-                            out_dist_attr.dims_mapping = [
-                                -1 for _ in range(len(out_var.shape))
-                            ]
-                            self._dist_context.set_tensor_dist_attr_for_program(
-                                out_var, out_dist_attr)
-                            op_dist_attr.set_output_dist_attr(
-                                out_name, out_dist_attr)
-                        remove_no_need_in_op(op, self._dist_context)
-                    else:
-                        in_var = vars[op.input("X")[0]]
-                        in_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
-                            in_var)
-                        assert in_dist_attr is not None
-                        ref_process_mesh = in_dist_attr.process_mesh
-                        ref_dims_mapping = in_dist_attr.dims_mapping
+                if op.type == "clip_by_norm":
+                    param_grad = vars[op.input("X")[0]]
+                    param_grad_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                        param_grad)
+                    assert param_grad_dist_attr is not None
+                    ref_process_mesh = param_grad_dist_attr.process_mesh
+                    ref_dims_mapping = param_grad_dist_attr.dims_mapping
 
-                        if op.type == "cast" and ops[
-                                idx + 1].type == "elementwise_mul":
-                            ref_var = vars[ops[idx + 1].input("X")[0]]
-                            ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
-                                ref_var)
-                            assert ref_dist_attr is not None
-                            ref_process_mesh = ref_dist_attr.process_mesh
+                    out = vars[op.output("Out")[0]]
+                    out_dist_attr = TensorDistributedAttribute()
+                    out_dist_attr.process_mesh = ref_process_mesh
+                    out_dist_attr.dims_mapping = ref_dims_mapping
+                    self._dist_context.set_tensor_dist_attr_for_program(
+                        out, out_dist_attr)
 
-                        out_var = vars[op.output("Out")[0]]
-                        out_dist_attr = TensorDistributedAttribute()
-                        out_dist_attr.process_mesh = ref_process_mesh
-                        if out_var.shape == in_var.shape:
-                            out_dist_attr.dims_mapping = ref_dims_mapping
-                        else:
-                            assert len(
-                                out_var.shape) == 1 and out_var.shape[0] == 1
-                            out_dist_attr.dims_mapping = [-1]
-                        self._dist_context.set_tensor_dist_attr_for_program(
-                            out_var, out_dist_attr)
-
-                        op_dist_attr = OperatorDistributedAttribute()
-                        op_dist_attr.process_mesh = ref_process_mesh
-                        op_dist_attr.set_input_dist_attr(
-                            in_var.name, in_dist_attr)
-                        op_dist_attr.set_output_dist_attr(
-                            out_var.name, out_dist_attr)
-
+                    op_dist_attr = OperatorDistributedAttribute()
+                    op_dist_attr.process_mesh = ref_process_mesh
+                    op_dist_attr.set_input_dist_attr(param_grad.name,
+                                                     param_grad_dist_attr)
+                    op_dist_attr.set_output_dist_attr(out.name, out_dist_attr)
                     self._dist_context.set_op_dist_attr_for_program(
                         op, op_dist_attr)
 
@@ -1419,7 +1354,7 @@ class Completer:
                     if not learning_rate_completed:
                         learning_rate_completed = True
                         var_dist_attr = TensorDistributedAttribute()
-                        var_dist_attr.process_mesh = world_ranks
+                        var_dist_attr.process_mesh = ref_process_mesh
                         var_dist_attr.dims_mapping = [-1]
                         self._dist_context.set_tensor_dist_attr_for_program(
                             learning_var, var_dist_attr)
@@ -1427,16 +1362,10 @@ class Completer:
                     for input_name in op.desc.input_names():
 
                         if input_name in [
-                                'Param',
-                                'Grad',
-                                'LearningRate',
-                                "SkipUpdate",
-                                "Beta1Tensor",
-                                "Beta2Tensor",
-                                "EpsilonTensor",
+                                'Param', 'Grad', 'LearningRate', "SkipUpdate",
+                                "Beta1Tensor", "Beta2Tensor", "EpsilonTensor",
+                                "MasterParam"
                         ]:
-                            continue
-                        if len(op.desc.input(input_name)) == 0:
                             continue
 
                         assert len(op.desc.input(input_name)) == 1
@@ -1450,6 +1379,7 @@ class Completer:
                             op_dist_attr.set_output_dims_mapping(
                                 input_var.name, [-1])
                         else:
+                            assert "Moment" in input_name
                             input_var_attr.dims_mapping = ref_dims_mapping
                             op_dist_attr.set_input_dims_mapping(
                                 input_var.name, ref_dims_mapping)
@@ -1530,20 +1460,3 @@ class Completer:
                             break
                         else:
                             dist_op.dist_attr = backup_op_dist_attr
-
-
-def remove_no_need_in_op(op, dist_context):
-    if op.type == "fill_constant":
-        return
-
-    filter_vars = []
-    main_block = op.block
-    rank_id = dist_context.dist_op_context.rank_id
-    for varname in op.input("X"):
-        if rank_id in dist_context.get_tensor_dist_attr_for_program(
-                main_block.var(varname)).process_mesh.processes:
-            filter_vars.append(varname)
-
-    if not filter_vars:
-        return
-    op.desc.set_input('X', filter_vars)

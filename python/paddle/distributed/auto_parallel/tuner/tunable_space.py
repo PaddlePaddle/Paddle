@@ -44,9 +44,17 @@ class TunableSpace(object):
     def variables(self):
         return self._variables
 
+    @variables.setter
+    def variables(self, variables):
+        self._variables = variables
+
     @property
     def values(self):
         return self._values
+
+    @values.setter
+    def values(self, values):
+        self._values = values
 
     def get_value(self, name):
         if name in self.values:

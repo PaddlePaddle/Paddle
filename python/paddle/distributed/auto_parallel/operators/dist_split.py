@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
@@ -22,6 +23,9 @@ from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 from .dist_default import DistributedDefaultImpl0
+from ..cost import SplitOpCost
+from ..cost import build_comp_desc_from_dist_op
+from ..cost import build_comp_costs_from_desc_mapping
 
 
 class DistributedSplit(DistributedOperatorImplContainer):
@@ -39,6 +43,28 @@ class DistributedSplitImpl(DistributedOperatorImpl):
         super(DistributedSplitImpl, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
+
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Backward):
+            raise NotImplementedError(
+                "The backward cost of dist split has not implemented.")
+        else:
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        op_type = dist_op.serial_op.type
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            SplitOpCost, ctx, processes, desc_mapping, cluster)
+
+        res_cost = [cost_mapping]
+        return res_cost
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc

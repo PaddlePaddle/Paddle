@@ -28,8 +28,8 @@ from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from .dist_default import DistributedDefaultImpl0
-from ..cost import build_comp_desc_from_dist_op, build_comp_costs_from_descs
-from ..cost import build_comm_costs_from_descs
+from ..cost import build_comp_desc_from_dist_op, build_comp_costs_from_desc_mapping
+from ..cost import build_comm_costs_from_desc_mapping
 from ..cost import Reshape2OpCost
 from ..cost import Reshape2GradOpCost
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
@@ -85,9 +85,8 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         for key in desc_mapping:
             desc_mapping[key]["shape"] = shape_list
 
-        cost_mapping = build_comp_costs_from_descs(Reshape2OpCost, ctx,
-                                                   processes, desc_mapping,
-                                                   cluster)
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            Reshape2OpCost, ctx, processes, desc_mapping, cluster)
         res.append(cost_mapping)
 
         return res
@@ -102,9 +101,8 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         processes = process_mesh.processes
         op_type = dist_op.serial_op.type
 
-        cost_mapping = build_comp_costs_from_descs(Reshape2GradOpCost, ctx,
-                                                   processes, desc_mapping,
-                                                   cluster)
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            Reshape2GradOpCost, ctx, processes, desc_mapping, cluster)
         res.append(cost_mapping)
 
         backward_op = dist_op.serial_op
@@ -260,7 +258,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
                         idx] = shape_list[idx] // process_mesh_shape[axis]
 
         # create op
-        new_op_desc = main_block.append_op(type='nop').desc
+        new_op_desc = main_block.desc.append_op()
         new_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
@@ -269,6 +267,8 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         new_op_desc.set_output('XShape', [XShape_var.name])
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
+
+        main_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -316,9 +316,8 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         for key in desc_mapping:
             desc_mapping[key]["shape"] = shape_list
 
-        cost_mapping = build_comp_costs_from_descs(Reshape2OpCost, ctx,
-                                                   processes, desc_mapping,
-                                                   cluster)
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            Reshape2OpCost, ctx, processes, desc_mapping, cluster)
         res.append(cost_mapping)
 
         return res
@@ -333,9 +332,8 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         processes = process_mesh.processes
         op_type = dist_op.serial_op.type
 
-        cost_mapping = build_comp_costs_from_descs(Reshape2GradOpCost, ctx,
-                                                   processes, desc_mapping,
-                                                   cluster)
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            Reshape2GradOpCost, ctx, processes, desc_mapping, cluster)
         res.append(cost_mapping)
 
         backward_op = dist_op.serial_op
@@ -416,7 +414,8 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
 
         if x_shape_dims_mapping[1:] != x_dims_mapping[:]:
             return False
-
+        # if len(x_dims_mapping) == 3:
+        #     print("dist_reshape.py True******", x_dims_mapping, out_dims_mapping)
         return True
 
     def update_dims_mapping(self, dist_op):
@@ -494,7 +493,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
                         idx] = shape_list[idx] // process_mesh_shape[axis]
 
         # create op
-        new_op_desc = main_block.append_op(type='nop').desc
+        new_op_desc = main_block.desc.append_op()
         new_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
@@ -503,6 +502,8 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         new_op_desc.set_output('XShape', [XShape_var.name])
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
+
+        main_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -550,9 +551,8 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         for key in desc_mapping:
             desc_mapping[key]["shape"] = shape_list
 
-        cost_mapping = build_comp_costs_from_descs(Reshape2OpCost, ctx,
-                                                   processes, desc_mapping,
-                                                   cluster)
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            Reshape2OpCost, ctx, processes, desc_mapping, cluster)
         res.append(cost_mapping)
 
         return res
@@ -567,9 +567,8 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         processes = process_mesh.processes
         op_type = dist_op.serial_op.type
 
-        cost_mapping = build_comp_costs_from_descs(Reshape2GradOpCost, ctx,
-                                                   processes, desc_mapping,
-                                                   cluster)
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            Reshape2GradOpCost, ctx, processes, desc_mapping, cluster)
         res.append(cost_mapping)
 
         backward_op = dist_op.serial_op
@@ -721,7 +720,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
                         idx] = shape_list[idx] // process_mesh_shape[axis]
 
         # create op
-        new_op_desc = main_block.append_op(type='nop').desc
+        new_op_desc = main_block.desc.append_op()
         new_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
@@ -730,6 +729,8 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         new_op_desc.set_output('XShape', [XShape_var.name])
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
+
+        main_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):

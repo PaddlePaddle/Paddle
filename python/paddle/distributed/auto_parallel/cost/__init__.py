@@ -20,8 +20,15 @@ from .base_cost import build_dp_costs
 from .base_cost import build_comp_desc_str_for_predict
 from .base_cost import build_comp_desc_from_dist_op
 from .base_cost import build_comm_desc_from_dist_op
-from .base_cost import build_comm_costs_from_descs
-from .base_cost import build_comp_costs_from_descs
+from .base_cost import build_comm_costs_from_desc_mapping
+from .base_cost import build_comp_costs_from_desc_mapping
+
+from .comm_op_cost import SendOpCost
+from .comm_op_cost import RecvOpCost
+from .comm_op_cost import IdentityOpCost
+from .comm_op_cost import BroadcastOpCost
+from .comm_op_cost import AllgatherOpCost
+from .comm_op_cost import AllreduceSumOpCost
 
 from .comp_op_cost import EmbeddingOpCost
 from .comp_op_cost import EmbeddingGradOpCost
@@ -41,10 +48,13 @@ from .comp_op_cost import SoftmaxGradOpCost
 from .comp_op_cost import Transpose2OpCost
 from .comp_op_cost import Transpose2GradOpCost
 from .comp_op_cost import FillConstantBatchSizeLikeOpCost
+from .comp_op_cost import FillConstantBatchSizeLikeGradOpCost
 
 from .tensor_cost import TensorCost
 
 from .estimate_cost import CostEstimator
+
+from .comp_op_cost import MatmulV2OpCost
 
 from .comm_op_cost import SendOpCost
 from .comm_op_cost import RecvOpCost

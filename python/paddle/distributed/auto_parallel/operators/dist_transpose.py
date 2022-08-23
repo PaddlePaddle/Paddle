@@ -24,11 +24,10 @@ from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 from .dist_default import DistributedDefaultImpl0
-from ..cost import Transpose2OpCost, Transpose2GradOpCost
+from ..cost import AllreduceSumOpCost, Transpose2OpCost, Transpose2GradOpCost
 from ..cost import build_comp_desc_from_dist_op, build_comm_desc_from_dist_op, build_dp_costs
-from ..cost import build_comp_costs_from_descs
+from ..cost import build_comm_costs_from_desc_mapping, build_comp_costs_from_desc_mapping
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.distributed.auto_parallel.cost.comm_op_cost import AllreduceSumOpCost
 
 
 class DistributedTranspose2(DistributedOperatorImplContainer):
@@ -70,6 +69,7 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
         new_dims_mapping = [-1 for i in range(len(x_dims_mapping))]
+        assert len(x_dims_mapping) == len(perm)
         for i in range(len(x_dims_mapping)):
             new_dims_mapping[i] = x_dims_mapping[perm[i]]
 
@@ -137,9 +137,8 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
                                                     dist_context=ctx)
         processes = dist_op.dist_attr.process_mesh.processes
         op_type = dist_op.serial_op.type
-        cost_mapping = build_comp_costs_from_descs(Transpose2OpCost, ctx,
-                                                   processes, desc_mapping,
-                                                   cluster)
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            Transpose2OpCost, ctx, processes, desc_mapping, cluster)
 
         res_cost = [cost_mapping]
         return res_cost
@@ -153,9 +152,8 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         process_mesh = dist_attr.process_mesh
         processes = process_mesh.processes
         op_type = dist_op.serial_op.type
-        cost_mapping = build_comp_costs_from_descs(Transpose2GradOpCost, ctx,
-                                                   processes, desc_mapping,
-                                                   cluster)
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            Transpose2GradOpCost, ctx, processes, desc_mapping, cluster)
         res.append(cost_mapping)
 
         backward_op = dist_op.serial_op

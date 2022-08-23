@@ -48,6 +48,7 @@ from .mapper import mapping
 from .dist_op import DistributedOperator
 from .dist_tensor import DistributedTensor
 from .planner import Planner
+from paddle.distributed.passes import new_pass, PassContext
 
 _logger = get_logger(logging.INFO)
 

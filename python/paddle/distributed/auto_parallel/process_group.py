@@ -16,12 +16,10 @@ from collections import OrderedDict
 
 import paddle
 import paddle.fluid.core as core
-
 from ..collective import _get_global_env
 from ..collective import _new_ring_id
 from ...fluid.framework import _non_static_mode
 from ...fluid.layers.tensor import fill_constant
-from paddle.fluid.framework import _enable_legacy_dygraph
 
 
 def get_all_process_groups():
@@ -42,13 +40,7 @@ def get_world_process_group():
     return _g_process_group_map[0]
 
 
-def clear_all_process_groups():
-    global _g_process_group_map
-    _g_process_group_map = {}
-    _g_process_group_map[0] = ProcessGroup(0, [])
-
-
-def new_process_group(ranks, group_id=None):
+def new_process_group(ranks):
     global _g_process_group_map
     # A key constructed from ranks is used for avoiding duplication
     new_key = ''.join(map(str, sorted(ranks)))
@@ -60,9 +52,7 @@ def new_process_group(ranks, group_id=None):
     num_groups = len(_g_process_group_map)
     # Note: our process group may interfere with the original implementation
     # so the created group id should start from the original _new_ring_id()
-    if group_id == None:
-        group_id = _new_ring_id() + num_groups + 1
-
+    group_id = _new_ring_id() + num_groups + 1
     new_pg = ProcessGroup(group_id, ranks)
     _g_process_group_map[group_id] = new_pg
     return new_pg
@@ -142,41 +132,36 @@ class ProcessGroup:
             else:
                 assert False, ("No CUDA device found")
 
-            # TODO(shenliang03): This is a temporary solution to solve the problem of
-            # hang caused by cross-creation of new_group
-            paddle.disable_static()
-            _enable_legacy_dygraph()
-            paddle.set_device('gpu:%d' %
-                              paddle.distributed.ParallelEnv().dev_id)
-            tmp = paddle.to_tensor(
-                [1], dtype="int32") if _non_static_mode() else fill_constant(
-                    [0], dtype="int32", value="1")
-            paddle.distributed.all_reduce(tmp, use_calc_stream=True, group=self)
-            paddle.distributed.wait(tmp, group=self)
-            paddle.enable_static()
+        # TODO(shenliang03): This is a temporary solution to solve the problem of
+        # hang caused by cross-creation of new_group
+        paddle.disable_static()
+        paddle.set_device('gpu:%d' % paddle.distributed.ParallelEnv().dev_id)
+        tmp = paddle.to_tensor(
+            [1], dtype="int32") if _non_static_mode() else fill_constant(
+                [0], dtype="int32", value="1")
+        paddle.distributed.all_reduce(tmp, use_calc_stream=True, group=self)
+        paddle.distributed.wait(tmp, group=self)
+        paddle.enable_static()
 
         self._is_instantiate = True
 
     def is_member(self):
         return True
 
-    def __eq__(self, other):
-        if not isinstance(other, ProcessGroup):
-            return False
-        if self.id != other.id:
-            return False
-        return True
+    # def __eq__(self, other):
+    #     if not isinstance(other, ProcessGroup):
+    #         return False
+    #     if self.id != other.id:
+    #         return False
+    #     return True
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
+    # def __ne__(self, other):
+    #     return not self.__eq__(other)
 
     def __str__(self):
         string = "id: {}, nranks: {}, ranks: {}.".format(
             self.id, self.nranks, ", ".join(map(str, self.ranks)))
         return string
-
-    def __hash__(self):
-        return hash(self.__str__())
 
 
 # Note that Process group 0 is reserved for representing all ranks.

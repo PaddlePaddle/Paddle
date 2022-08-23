@@ -34,11 +34,9 @@ _g_op_cost_factory = {}
 
 def build_comp_desc_from_op(op):
     """Build the description of computation op."""
-    # NOTE: The desc is for serial op.
     from ..reshard import get_var_with_recursion
 
     desc = {}
-    # The desc of concat op is {"op": "concat", "inputs": {"X": [(paddle.float32, [20, 20]), (paddle.float32, [20, 20])]}, "outputs": {"Out": [(paddle.float32, [20, 40])], "attrs": {"axis": -1}}}
     vars = op.block.vars
     desc["op"] = op.type
     input_desc = OrderedDict()
@@ -66,18 +64,15 @@ def build_comp_desc_from_op(op):
     attr_desc = op.all_attrs
     desc["attrs"] = attr_desc
 
-    return desc
-
 
 def build_comp_desc_from_dist_op(dist_op, dist_context):
     """Build descriptions of computation op distributed on the processes."""
     from ..reshard import get_var_with_recursion
 
-    op_descs = {}
+    all_rank_op_desc = {}
     op = dist_op.serial_op
     dist_attr = dist_op.dist_attr
     process_mesh = dist_attr.process_mesh
-    assert process_mesh, "Process mesh must not be None."
     processes = process_mesh.processes
     for process in processes:
         desc = {}
@@ -88,17 +83,16 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
         input_desc = OrderedDict()
         output_desc = OrderedDict()
 
-        # Get partitioned shape of input
+        # get partitioned shape of input
         for input_name in op.input_names:
             var_name_list = op.input(input_name)
             var_desc = []
             for var_name in var_name_list:
                 var = get_var_with_recursion(var_name, op.block,
                                              op.block.program)
-                # Use op input_dims_mapping
+                # use op input_dims_mapping
                 dims_mapping = dist_attr.get_input_dims_mapping(var_name)
                 global_sizes = var.shape
-                # NOTE: When support uneven partition, the shard_sizes will be got from dist_attr.
                 shard_sizes = None
                 topology = process_mesh.topology
                 shape = DistributedTensor.get_local_sizes(
@@ -106,7 +100,7 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
                     shard_sizes)
                 var_desc.append((var.dtype, shape))
 
-                # For special op such as embedding and its grad op
+                # for special op such as embedding and its grad op
                 if op.type == "c_embedding" or op.type == "lookup_table_v2" or op.type == "c_embedding_grad" or op.type == "lookup_table_v2_grad":
                     if input_name == "W":
                         embedding_row_dim_mapping = dist_attr.get_input_dims_mapping(
@@ -125,7 +119,7 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
             var_name_list = op.output(out_name)
             var_desc = []
             for var_name in var_name_list:
-                # Use op output_dims_mapping
+                # use op output_dims_mapping
                 var = get_var_with_recursion(var_name, op.block,
                                              op.block.program)
                 dist_attr = dist_op.dist_attr
@@ -140,14 +134,13 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
                     shard_sizes)
                 var_desc.append((var.dtype, shape))
 
-                # For special op such as fill_constant_batch_size_like
                 if op.type == "fill_constant_batch_size_like":
-                    # Modify shape attr according to how output are partitioned
+                    # modify shape attr according to how output are partitioned
                     out_name = var_name_list[0]
                     dims_mapping = dist_attr.get_output_dims_mapping(out_name)
                     process_mesh_shape = dist_attr.process_mesh.topology
                     shape_list = op.attr("shape")
-                    # Modify target shape
+                    # modify target shape
                     for idx, axis in enumerate(dims_mapping):
                         if axis >= 0:
                             shape_list[idx] = shape_list[
@@ -157,13 +150,13 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
 
         desc["outputs"] = output_desc
 
-        op_descs[process] = desc
+        all_rank_op_desc[process] = desc
 
-    return op_descs
+    return all_rank_op_desc
 
 
 def build_comp_desc_str_for_predict(desc):
-    # NOTE: The description format may change in the future.
+    # NOTE: The description format may change in the future
     def _parse_dtype(dtype):
         dtype_str = ""
         if dtype == paddle.float32:
@@ -220,13 +213,9 @@ def build_comm_desc_from_dist_op(op_type,
     from ..reshard import get_var_with_recursion
 
     specific_op_type = []
-    dist_attr = dist_op.dist_attr
-    assert dist_attr, "Dist attr must not be None."
-    process_mesh = dist_attr.process_mesh
-    assert process_mesh, "Process mesh must not be None."
-
+    process_mesh = dist_op.dist_attr.process_mesh
     processes = process_mesh.processes
-    op_descs = {}
+    all_rank_op_desc = {}
     for process in processes:
         rank_id = process
         desc = {}
@@ -237,13 +226,12 @@ def build_comm_desc_from_dist_op(op_type,
         if op_type not in specific_op_type:
             serial_op = dist_op.serial_op
             input_list = []
-            # The var_names usually contain just one item.
+            # the var_names usually contains just one item
             for var_name in var_names:
                 dist_attr = dist_op.dist_attr
                 has_found = False
-                # Find var_name in serial op input or output
                 for name in dist_op.serial_op.input_arg_names:
-                    # If a tensor is the input of multi ops, sum the grad of all ops, so the name will be varname@RENAME@block@0 and so on.
+                    # if a tensor is the input of multi ops, sum the grad of all ops, so the name will be varname@RENAME@block@0 and so on
                     if var_name in name:
                         var_name = name
                         has_found = True
@@ -271,10 +259,10 @@ def build_comm_desc_from_dist_op(op_type,
                     shard_sizes)
                 input_list.append((var.dtype, shape))
 
-            # NOTE: The input_name of comm ops used usually is X.
+            # NOTE: The input_name of comm ops used usually is X
             desc["inputs"] = {"X": input_list}
 
-            # Get comm group by parallel_axis or the given group_ranks.
+            # get comm group by parallel_axis or the given group_ranks
             if parallel_axis is not None:
                 process_mesh_shape = process_mesh.topology
                 process_mesh_group = process_mesh.processes
@@ -297,28 +285,29 @@ def build_comm_desc_from_dist_op(op_type,
             desc["attrs"] = op_attrs
             desc["group_ranks"] = comm_group_ranks
 
-            op_descs[rank_id] = desc
+            all_rank_op_desc[rank_id] = desc
 
-    return op_descs
+    return all_rank_op_desc
 
 
 def build_comm_desc(op_type, group_ranks, dtype, shape, attrs=None):
-    """Build a comm desc directly."""
     desc = {}
     desc["op"] = op_type
     desc["group_ranks"] = group_ranks
     desc["inputs"] = {"X": [(dtype, shape)]}
-    desc["attrs"] = attrs
+    if attrs is not None:
+        desc["attrs"] = attrs
     return desc
 
 
-def build_comm_costs_from_descs(op_cost_class, ctx, processes, descs, cluster):
+def build_comm_costs_from_desc_mapping(op_cost_class, ctx, processes,
+                                       desc_mapping, cluster):
     """Build comm costs by descriptions"""
     comm_context = CommContext(cluster)
     group_ranks_list = []
     comm_op_cost_list = []
     for process in processes:
-        desc = descs[process]
+        desc = desc_mapping[process]
         group_ranks = desc["group_ranks"]
         if group_ranks not in group_ranks_list:
             group_ranks_list.append(group_ranks)
@@ -328,18 +317,19 @@ def build_comm_costs_from_descs(op_cost_class, ctx, processes, descs, cluster):
     return comm_op_cost_list
 
 
-def build_comp_costs_from_descs(op_cost_class, ctx, processes, descs, cluster):
+def build_comp_costs_from_desc_mapping(op_cost_class, ctx, processes,
+                                       desc_mapping, cluster):
     """Build comp costs by descriptions."""
-    costs = {}
+    cost_mapping = {}
     for process in processes:
-        costs[process] = op_cost_class(op_desc=descs[process], cluster=cluster)
-    return costs
+        cost_mapping[process] = op_cost_class(op_desc=desc_mapping[process],
+                                              cluster=cluster)
+    return cost_mapping
 
 
 def build_dp_costs(result, dist_op, ctx, var_names, attrs, parallel_axis,
                    cluster):
     """DP cost contains a allreduce_sum op cost and a scale op cost"""
-    # The costs will be appended in the given result.
     from ..reshard import get_var_with_recursion
 
     dist_attr = dist_op.dist_attr
@@ -364,23 +354,23 @@ def build_dp_costs(result, dist_op, ctx, var_names, attrs, parallel_axis,
     if not has_found:
         return
 
-    c_allreduce_sum_descs = build_comm_desc_from_dist_op(
+    c_allreduce_sum_desc_mapping = build_comm_desc_from_dist_op(
         "c_allreduce_sum",
         dist_op,
         ctx,
         var_names,
         attrs=attrs,
         parallel_axis=parallel_axis)
-    comm_cost_list = build_comm_costs_from_descs(
+    comm_cost_list = build_comm_costs_from_desc_mapping(
         _g_op_cost_factory["c_allreduce_sum"], ctx, processes,
-        c_allreduce_sum_descs, cluster)
+        c_allreduce_sum_desc_mapping, cluster)
     result.append(comm_cost_list)
 
-    # The scale op just on the group_ranks
+    # the scale op just on the group_ranks
     for comm_cost in comm_cost_list:
         group_ranks = comm_cost.group_ranks
         dp_degree = len(group_ranks)
-        scale_costs = {}
+        scale_cost_mapping = {}
         op_type = "scale"
         for rank in group_ranks:
             desc = {}
@@ -404,8 +394,8 @@ def build_dp_costs(result, dist_op, ctx, var_names, attrs, parallel_axis,
             desc["attrs"] = attrs
             scale_op_cost = _g_op_cost_factory["scale"](op_desc=desc,
                                                         cluster=cluster)
-            scale_costs[rank] = scale_op_cost
-        result.append(scale_costs)
+            scale_cost_mapping[rank] = scale_op_cost
+        result.append(scale_cost_mapping)
 
 
 class CommContext:

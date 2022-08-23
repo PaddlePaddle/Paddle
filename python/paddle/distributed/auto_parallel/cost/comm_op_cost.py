@@ -44,6 +44,7 @@ class AllreduceSumOpCost(CommOpCost):
         alpha += 2 * (self.machine_count - 1) * (
             self.comm_context.inter_ring + self.hops * self.comm_context.switch)
         beta = self.comm_context.get_max_beta(self.group_ranks)
+        # print("comm_op_cost.py self.comm_count: ", self.group_ranks, self.comm_count, beta, self.rank_count, alpha)
         time = alpha + 2 * (self.rank_count -
                             1) / self.rank_count * self.comm_count * beta
 

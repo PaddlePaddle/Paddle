@@ -24,12 +24,11 @@ from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 from .dist_default import DistributedDefaultImpl0
-from ..cost import _g_op_cost_factory
+from ..cost import AllreduceSumOpCost, _g_op_cost_factory
 from ..cost import build_comp_desc_from_dist_op, build_dp_costs
-from ..cost import build_comp_costs_from_descs
+from ..cost import build_comp_costs_from_desc_mapping
 from ..cost import SoftmaxOpCost, SoftmaxGradOpCost
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.distributed.auto_parallel.cost.comm_op_cost import AllreduceSumOpCost
 
 
 class DistributedSoftmax(DistributedOperatorImplContainer):
@@ -62,9 +61,8 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
                                                     dist_context=ctx)
         processes = dist_op.dist_attr.process_mesh.processes
-        cost_mapping = build_comp_costs_from_descs(SoftmaxOpCost, ctx,
-                                                   processes, desc_mapping,
-                                                   cluster)
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            SoftmaxOpCost, ctx, processes, desc_mapping, cluster)
 
         res_cost = [cost_mapping]
         return res_cost
@@ -77,9 +75,8 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
         processes = process_mesh.processes
-        cost_mapping = build_comp_costs_from_descs(SoftmaxGradOpCost, ctx,
-                                                   processes, desc_mapping,
-                                                   cluster)
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            SoftmaxGradOpCost, ctx, processes, desc_mapping, cluster)
         res.append(cost_mapping)
 
         backward_op = dist_op.serial_op

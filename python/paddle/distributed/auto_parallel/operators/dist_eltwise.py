@@ -34,7 +34,7 @@ from ..utils import _get_comm_group, _get_corresponding_rank
 from .dist_default import DistributedDefaultImpl0
 from ..cost import _g_op_cost_factory
 from ..cost import build_comp_desc_from_dist_op, build_dp_costs
-from ..cost import build_comp_costs_from_descs
+from ..cost import build_comp_costs_from_desc_mapping
 
 
 class DistributedElementwise(DistributedOperatorImplContainer):
@@ -71,9 +71,8 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
                                                     dist_context=ctx)
         processes = dist_op.dist_attr.process_mesh.processes
         op_type = dist_op.serial_op.type
-        cost_mapping = build_comp_costs_from_descs(_g_op_cost_factory[op_type],
-                                                   ctx, processes, desc_mapping,
-                                                   cluster)
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            _g_op_cost_factory[op_type], ctx, processes, desc_mapping, cluster)
         res_cost = [cost_mapping]
 
         return res_cost
@@ -88,9 +87,8 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
         processes = process_mesh.processes
         backward_op = dist_op.serial_op
         op_type = backward_op.type
-        cost_mapping = build_comp_costs_from_descs(_g_op_cost_factory[op_type],
-                                                   ctx, processes, desc_mapping,
-                                                   cluster)
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            _g_op_cost_factory[op_type], ctx, processes, desc_mapping, cluster)
         res.append(cost_mapping)
 
         main_block = backward_op.block

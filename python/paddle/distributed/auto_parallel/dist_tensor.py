@@ -73,11 +73,13 @@ class DistributedTensor:
                         topology,
                         processes,
                         rank=None,
-                        shard_sizes=None):
-        DistributedTensor._validate_sizes_and_dist_attr(global_sizes,
-                                                        dims_mapping, topology,
-                                                        processes, rank,
-                                                        shard_sizes)
+                        shard_sizes=None,
+                        validate=True):
+        if validate:
+            DistributedTensor._validate_sizes_and_dist_attr(global_sizes,
+                                                            dims_mapping, topology,
+                                                            processes, rank,
+                                                            shard_sizes)
 
         local_sizes = []
         # for even sharding, the local sizes of every rank are equal
@@ -163,6 +165,7 @@ class DistributedTensor:
         self._batch_dim = 0
         # Reuse the dist_attr setter to initialize _dist_attr
         self.dist_attr = dist_attr
+        # self._local_sizes_map = {}
         self._local_offsets_map = {}
         self._local_shard_map = {}
         self._local_tensor_map = {}
@@ -203,6 +206,16 @@ class DistributedTensor:
             tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
             self._dist_attr.dims_mapping = tensor_dims_mapping
 
+        if self._dist_attr.dynamic_dims is None:
+            if self.serial_tensor.type == core.VarDesc.VarType.READER \
+                or self.serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+                or self.serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES:
+                tensor_shape = []
+            else:
+                tensor_shape = self._serial_tensor.shape
+            tensor_dynamic_dims = [0 for _ in range(len(tensor_shape))]
+            self._dist_attr.dynamic_dims = tensor_dynamic_dims
+
     def validate_dist_attr(self):
         if self.serial_tensor.type == core.VarDesc.VarType.READER \
             or self.serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
@@ -222,17 +235,25 @@ class DistributedTensor:
         return True
 
     def local_sizes(self, rank=None):
-        """Get local sizes of the given rank."""
         rank = paddle.distributed.get_rank() if rank is None else rank
-        global_sizes = self.serial_tensor.shape
-        dims_mapping = self.dist_attr.dims_mapping
-        shard_sizes = self.dist_attr.shard_sizes
-        processes = self.dist_attr.process_mesh.processes
-        topology = self.dist_attr.process_mesh.topology
-        local_sizes = DistributedTensor.get_local_sizes(global_sizes,
-                                                        dims_mapping, topology,
-                                                        processes, rank,
-                                                        shard_sizes)
+        # local_sizes = None
+        # if rank in self._local_sizes_map.keys():
+        #     local_sizes = self._local_sizes_map[rank]
+        # else:
+        if self.serial_tensor.type == core.VarDesc.VarType.READER \
+            or self.serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+            or self.serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES:
+            local_sizes = None
+        else:
+            global_sizes = self.serial_tensor.shape
+            dims_mapping = self.dist_attr.dims_mapping
+            shard_sizes = self.dist_attr.shard_sizes
+            processes = self.dist_attr.process_mesh.processes
+            topology = self.dist_attr.process_mesh.topology
+            local_sizes = DistributedTensor.get_local_sizes(
+                global_sizes, dims_mapping, topology, processes, rank,
+                shard_sizes)
+                # self._local_sizes_map[rank] = local_sizes
 
         return local_sizes
 
@@ -278,6 +299,7 @@ class DistributedTensor:
     def new_local_tensor(self, block=None, rank=None, name=None):
         """
         Create a new local tensor of serial tensor corresponding to rank.
+
         Args:
             block (Block): The block contains the new tensor. Default value is recommend and it will be created in the block of dist main program corresponding to the serial tensor block id. Default: None.
             rank (int): The rank id. Default value is recommend and it will be the current rank. Default: None.
@@ -388,6 +410,13 @@ class DistributedTensor:
             annotated_str = "non-annotated"
         str += ", dims_mapping ({}): {}".format(annotated_str,
                                                 self.dist_attr.dims_mapping)
+
+        if self.dist_attr.is_annotated("dynamic_dims"):
+            annotated_str = "annotated"
+        else:
+            annotated_str = "non-annotated"
+        str += ", dynamic_dims ({}): {}".format(annotated_str,
+                                                self.dist_attr.dynamic_dims)
 
         if self.dist_attr.is_annotated("shard_mask"):
             annotated_str = "annotated"
