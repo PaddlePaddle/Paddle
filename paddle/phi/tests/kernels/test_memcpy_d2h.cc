@@ -70,8 +70,10 @@ TEST(DEV_API, memcpy_d2h) {
   bool value_equal = true;
   auto* dense_out_data = out.data<float>();
   for (int i = 0; i < x_cpu.numel(); i++) {
-    if (std::abs(x_cpu_data[i] - dense_out_data[i]) > 1e-6f)
+    if (x_cpu_data[i] != dense_out_data[i]) {
       value_equal = false;
+      break;
+    }
   }
   ASSERT_EQ(value_equal, true);
 }
