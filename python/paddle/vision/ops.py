@@ -902,7 +902,7 @@ def distribute_fpn_proposals(fpn_rois,
 
     if in_dygraph_mode():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
-        multi_rois, rois_num_per_level, restore_ind = _C_ops.final_state_distribute_fpn_proposals(
+        multi_rois, rois_num_per_level, restore_ind = _C_ops.distribute_fpn_proposals(
             fpn_rois, rois_num, min_level, max_level, refer_level, refer_scale,
             pixel_offset)
         return multi_rois, restore_ind, rois_num_per_level

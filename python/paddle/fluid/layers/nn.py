@@ -12774,7 +12774,7 @@ Examples:
 
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
     if _non_static_mode():
-        op = getattr(_C_ops, op_name)
+        op = getattr(_legacy_C_ops, op_name)
         if binary_op:
             return op(x, y)
         else:
