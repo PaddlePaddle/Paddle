@@ -28,7 +28,7 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         if attrs[0]['in_dtype'] == 0:
-            return False
+            return True
         if attrs[0]['in_dtype'] in [4, 5] and attrs[0]['out_dtype'] == 4:
             return False
         if attrs[0]['in_dtype'] not in [
@@ -49,20 +49,35 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
             else:
                 return np.ones([1, 3, 64, 64]).astype(np.float32)
 
-        for in_dtype in [0, 2, 4, 5, 6]:
-            for out_dtype in [0, 2, 4, 5, 6]:
+        for in_dtype in [0]:
+            for out_dtype in [2, 5]:
                 dics = [{"in_dtype": in_dtype, "out_dtype": out_dtype}]
 
-                ops_config = [{
-                    "op_type": "cast",
-                    "op_inputs": {
-                        "X": ["input_data"]
+                ops_config = [
+                    {
+                        "op_type": "cast",
+                        "op_inputs": {
+                            "X": ["input_data"]
+                        },
+                        "op_outputs": {
+                            "Out": ["cast_output_data"]
+                        },
+                        "op_attrs": dics[0]
                     },
-                    "op_outputs": {
-                        "Out": ["cast_output_data"]
+                    {
+                        "op_type": "elementwise_add",
+                        "op_inputs": {
+                            "X": ["cast_output_data"],
+                            "Y": ["cast_output_data"]
+                        },
+                        "op_outputs": {
+                            "Out": ["output_data"]
+                        },
+                        "op_attrs": {
+                            "axis": -1
+                        },
                     },
-                    "op_attrs": dics[0]
-                }]
+                ]
                 ops = self.generate_op_config(ops_config)
 
                 program_config = ProgramConfig(
@@ -72,7 +87,7 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
                         "input_data":
                         TensorConfig(data_gen=partial(generate_input, in_dtype))
                     },
-                    outputs=["cast_output_data"])
+                    outputs=["output_data"])
 
                 yield program_config
 

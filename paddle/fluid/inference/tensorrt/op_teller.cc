@@ -2148,6 +2148,10 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 #if !IS_TRT_VERSION_GE(7000)
       return false;
 #endif
+      // 0 : bool
+      // 2 : int
+      // 4 : half
+      // 5 : float
       if (!(desc.HasAttr("in_dtype") && desc.HasAttr("out_dtype"))) {
         VLOG(3) << "the " << op_type
                 << " does not have attr (in_dtype or "
@@ -2160,9 +2164,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         VLOG(3) << "unsupport data type conversion";
         return false;
       }
-      if (in_dtype == 0) {
-        VLOG(3) << "do not support input data type as bool now";
-        return false;
+      if (in_dtype == 0 && (out_dtype == 2 || out_dtype == 5)) {
+        return true;
       }
       if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2) &&
             (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
