@@ -28,7 +28,7 @@ class TestDistMnist2x2(TestDistBase):
         self._use_reduce = False
 
     def test_dist_train(self):
-        self.check_with_place(os.path.abspath("dist_mnist.py"),
+        self.check_with_place("dist_mnist.py",
                               delta=1e-5,
                               check_error_log=True,
                               log_name=flag_name)
@@ -41,7 +41,7 @@ class TestDistMnist2x2WithMemopt(TestDistBase):
         self._mem_opt = True
 
     def test_dist_train(self):
-        self.check_with_place(os.path.abspath("dist_mnist.py"),
+        self.check_with_place("dist_mnist.py",
                               delta=1e-5,
                               check_error_log=True,
                               log_name=flag_name)
@@ -54,7 +54,7 @@ class TestDistMnistAsync(TestDistBase):
         self._use_reduce = False
 
     def test_dist_train(self):
-        self.check_with_place(os.path.abspath("dist_mnist.py"),
+        self.check_with_place("dist_mnist.py",
                               delta=200,
                               check_error_log=True,
                               log_name=flag_name)

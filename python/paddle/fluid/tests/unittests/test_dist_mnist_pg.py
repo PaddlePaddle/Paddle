@@ -15,7 +15,7 @@
 from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
-import paddle, os
+import paddle
 
 paddle.enable_static()
 
