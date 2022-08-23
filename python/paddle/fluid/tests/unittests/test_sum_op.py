@@ -493,8 +493,7 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
         paddle.disable_static()
         paddle.seed(2022)
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.save_path = os.path.join(self.temp_dir.name,
-                                      'sum_with_tensor_axis')
+        self.save_path = os.path.join(self.temp_dir.name, 'reduce_tensor_axis')
         self.place = paddle.CUDAPlace(
             0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
         self.init_data()
@@ -543,7 +542,7 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
                     else:
                         axis.append(paddle.full([1], self.np_axis[i], 'int64'))
 
-            conv = paddle.nn.Conv2D(x.shape[1], 5, 3)
+            conv = paddle.nn.Linear(x.shape[-1], 5)
             conv_out = conv(x)
             out = self.pd_api(conv_out, axis)
             exe = paddle.static.Executor(self.place)
@@ -555,6 +554,10 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
             paddle.static.save_inference_model(self.save_path, [x], [out], exe)
             config = paddle_infer.Config(self.save_path + '.pdmodel',
                                          self.save_path + '.pdiparams')
+            if paddle.is_compiled_with_cuda():
+                config.enable_use_gpu(100, 0)
+            else:
+                config.disable_gpu()
             predictor = paddle_infer.create_predictor(config)
             input_names = predictor.get_input_names()
             input_handle = predictor.get_input_handle(input_names[0])
@@ -565,9 +568,7 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
             output_names = predictor.get_output_names()
             output_handle = predictor.get_output_handle(output_names[0])
             infer_out = output_handle.copy_to_cpu()
-
             np.testing.assert_allclose(static_out[0], infer_out)
-            # paddle.disable_static()
 
 
 class TestSumWithTensorAxis1(TestReduceOPTensorAxisBase):
