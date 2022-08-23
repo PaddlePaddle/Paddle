@@ -44,7 +44,7 @@ from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 import warnings
 from paddle import _C_ops
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _current_expected_place
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
@@ -443,7 +443,13 @@ class Optimizer(object):
             self._learning_rate = value
             current_lr = self._global_learning_rate()
             if current_lr is not None:
-                if framework._non_static_mode():
+                if in_dygraph_mode():
+                    place = _current_expected_place()
+                    _C_ops.final_state_full_(current_lr, list(current_lr.shape),
+                                             float(value), current_lr.dtype,
+                                             place)
+
+                elif _in_legacy_dygraph():
                     _C_ops.fill_constant(current_lr, 'value', float(value),
                                          'dtype', current_lr.dtype, 'shape',
                                          list(current_lr.shape))

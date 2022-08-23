@@ -63,6 +63,8 @@ class XPUContext : public DeviceContext {
 
   void SetXPUStream(XPUStream stream);
 
+  XPUStream stream() const;
+
  private:
   struct Impl;
   std::unique_ptr<Impl> impl_;

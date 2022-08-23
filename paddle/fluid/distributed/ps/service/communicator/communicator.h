@@ -370,7 +370,7 @@ class Communicator {
     return communicator_.get();
   }
 
-  // Init is called by InitInstance.
+  // called by InitInstance.
   template <typename T>
   static void InitWithRpcCtx(const RpcCtxMap &send_ctx,
                              const RecvCtxMap &recv_ctx,
@@ -378,6 +378,7 @@ class Communicator {
                              const std::vector<std::string> &host_sign_list,
                              Scope *recv_scope,
                              const std::map<std::string, std::string> &envs) {
+    VLOG(0) << "Communicator type is: " << typeid(T).name();
     if (communicator_.get() == nullptr) {
       communicator_.reset(new T(std::ref(envs)));
       communicator_->InitEnvs();
@@ -601,10 +602,6 @@ class GeoCommunicator : public AsyncCommunicator {
   explicit GeoCommunicator(const std::map<std::string, std::string> &envs)
       : AsyncCommunicator(envs) {}
 
-  void InitImpl(const RpcCtxMap &send_varname_to_ctx,
-                const RecvCtxMap &recv_varname_to_ctx,
-                Scope *recv_scope) override;
-
   void InitParams(const RecvCtxMap &recv_varname_to_ctx) override;
   void InitDense(std::vector<std::string> &varnames, int table_id);  // NOLINT
   void InitSparse(const std::string &var_name, int table_id);
@@ -621,7 +618,7 @@ class GeoCommunicator : public AsyncCommunicator {
 
   void MainThread() override;
 
-  void InitEnvs() {
+  virtual void InitEnvs() {
     independent_recv_ = false;
     min_send_grad_num_before_recv_ = 0;
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
@@ -631,6 +628,10 @@ class GeoCommunicator : public AsyncCommunicator {
     send_queue_size_ = max_merge_var_num_;
     VLOG(1) << "GeoCommunicator Initialized";
   }
+
+  void InitImpl(const RpcCtxMap &send_varname_to_ctx,
+                const RecvCtxMap &recv_varname_to_ctx,
+                Scope *recv_scope) override;
 
   void Send(const std::vector<std::string> &var_names,
             const framework::Scope &scope) override;
@@ -651,7 +652,7 @@ class GeoCommunicator : public AsyncCommunicator {
     return param_name;
   }
 
- private:
+ public:
   // parameter for delta calc and send
   std::shared_ptr<Scope> delta_scope_;
   // parameter for storage the pserver param after last recv
@@ -684,7 +685,7 @@ class FLCommunicator : public GeoCommunicator {
 
   void InitImpl(const RpcCtxMap &send_varname_to_ctx,
                 const RecvCtxMap &recv_varname_to_ctx,
-                Scope *recv_scope) override {}
+                Scope *recv_scope) {}
 
   void StartCoordinatorClient(
       const std::vector<std::string> &trainer_endpoints);

@@ -82,6 +82,7 @@ list(APPEND DIST_TEST_OPS test_collective_alltoall_single)
 list(APPEND DIST_TEST_OPS test_eager_dist_api)
 list(APPEND DIST_TEST_OPS test_collective_batch_isend_irecv)
 list(APPEND DIST_TEST_OPS test_collective_reduce_scatter)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_qat)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 
@@ -171,20 +172,14 @@ list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
-  list(REMOVE_ITEM TEST_OPS test_c_concat)
-  list(REMOVE_ITEM TEST_OPS test_c_split)
   list(REMOVE_ITEM TEST_OPS test_allgather)
-  list(REMOVE_ITEM TEST_OPS test_c_identity)
   list(REMOVE_ITEM TEST_OPS test_c_embedding_op)
-  list(REMOVE_ITEM TEST_OPS test_allreduce)
-  list(REMOVE_ITEM TEST_OPS test_broadcast)
   list(REMOVE_ITEM TEST_OPS test_collective_reduce)
   list(REMOVE_ITEM TEST_OPS test_pipeline_parallel)
   list(REMOVE_ITEM TEST_OPS test_collective_scatter)
   list(REMOVE_ITEM TEST_OPS test_collective_sendrecv)
   list(REMOVE_ITEM TEST_OPS test_reducescatter)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
-  list(REMOVE_ITEM TEST_OPS test_collective_split_embedding)
   list(REMOVE_ITEM TEST_OPS test_collective_split_embedding_none_divisible)
   list(REMOVE_ITEM TEST_OPS test_collective_split_row_linear)
   list(REMOVE_ITEM TEST_OPS test_collective_split_col_linear)
@@ -352,6 +347,7 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_eager_dist_api)
   list(REMOVE_ITEM TEST_OPS test_collective_batch_isend_irecv)
   list(REMOVE_ITEM TEST_OPS test_collective_reduce_scatter)
+  list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_qat)
 
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
@@ -785,6 +781,7 @@ if(WITH_DISTRIBUTE)
   add_subdirectory(distributed_passes)
   add_subdirectory(ps)
   add_subdirectory(auto_parallel)
+  add_subdirectory(collective)
 
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -1562,6 +1559,8 @@ set_tests_properties(test_reader_reset PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool3d_api PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program PROPERTIES TIMEOUT 120)
+set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
+set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)
@@ -1606,6 +1605,7 @@ if(WITH_DISTRIBUTE
   set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT 100)
   set_tests_properties(test_collective_batch_isend_irecv PROPERTIES TIMEOUT 100)
   set_tests_properties(test_collective_reduce_scatter PROPERTIES TIMEOUT 100)
+  set_tests_properties(test_parallel_dygraph_qat PROPERTIES TIMEOUT 120)
   if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
     set_tests_properties(test_parallel_dygraph_sparse_embedding
                          PROPERTIES TIMEOUT 200)
@@ -1647,7 +1647,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_static_model_parallel_fused_multi_transformer
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(
-      test_collective_split_embedding
       test_collective_split_embedding_none_divisible
       test_collective_split_row_linear
       test_collective_split_col_linear
@@ -1667,16 +1666,11 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   endif()
   set_tests_properties(test_paddle_multiprocessing PROPERTIES TIMEOUT 120)
   set_tests_properties(test_reducescatter_api PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_broadcast PROPERTIES TIMEOUT 120)
   set_tests_properties(test_reducescatter PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_reduce_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_pipeline_parallel PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_reduce PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_allreduce PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_c_concat PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_c_split PROPERTIES TIMEOUT 120)
   set_tests_properties(test_allgather PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_c_identity PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_scatter_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_barrier_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_scatter PROPERTIES TIMEOUT 120)
@@ -1759,3 +1753,9 @@ set_tests_properties(test_renorm_op_without_eager PROPERTIES TIMEOUT 120)
 py_test_modules(
   test_eager_deletion_padding_rnn_for_interpretercore MODULES
   test_eager_deletion_padding_rnn ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+
+# ExecutionStrategy is deprecated in standalone executor
+set_tests_properties(test_parallel_executor_dry_run
+                     PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
+set_tests_properties(test_parallel_executor_drop_scope
+                     PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")

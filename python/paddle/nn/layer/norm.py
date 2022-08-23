@@ -1110,7 +1110,7 @@ class SyncBatchNorm(_BatchNormBase):
         ### train mode: use mini-batch stats, eval mode: use global stats
         ### use_global_stats only support False in sync_batch_norm
         if in_dygraph_mode():
-            sync_batch_norm_out, _, _, _, _, _ = _C_ops.final_state_sync_batch_norm(
+            sync_batch_norm_out, _, _, _, _, _ = _C_ops.final_state_sync_batch_norm_(
                 x, self.weight, self.bias, self._mean, self._variance,
                 self._momentum, self._epsilon, self._data_format,
                 not self.training, False, False, False)

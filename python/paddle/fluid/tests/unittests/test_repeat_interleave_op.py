@@ -131,7 +131,7 @@ class TestIndexSelectAPI(unittest.TestCase):
                            fetch_list=[z.name],
                            return_numpy=False)
         expect_out = np.repeat(self.data_x, self.data_index, axis=1)
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 2:
         repeats = np.array([1, 2, 1]).astype('int32')
@@ -150,7 +150,7 @@ class TestIndexSelectAPI(unittest.TestCase):
                            fetch_list=[z.name],
                            return_numpy=False)
         expect_out = np.repeat(self.data_x, repeats, axis=0)
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         repeats = 2
         with program_guard(Program(), Program()):
@@ -161,7 +161,7 @@ class TestIndexSelectAPI(unittest.TestCase):
                            fetch_list=[z.name],
                            return_numpy=False)
         expect_out = np.repeat(self.data_x, repeats, axis=0)
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
         self.input_data()
@@ -175,7 +175,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             z = paddle.repeat_interleave(x, index, None)
             np_z = z.numpy()
         expect_out = np.repeat(input_x, index_x, axis=None)
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case repeats int
         with fluid.dygraph.guard():
@@ -184,7 +184,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             z = paddle.repeat_interleave(x, index, None)
             np_z = z.numpy()
         expect_out = np.repeat(input_x, index, axis=None)
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 1:
         with fluid.dygraph.guard():
@@ -193,7 +193,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             z = paddle.repeat_interleave(x, index, -1)
             np_z = z.numpy()
         expect_out = np.repeat(self.data_x, self.data_index, axis=-1)
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(self.data_x)
@@ -201,7 +201,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             z = paddle.repeat_interleave(x, index, 1)
             np_z = z.numpy()
         expect_out = np.repeat(self.data_x, self.data_index, axis=1)
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 2:
         index_x = np.array([1, 2, 1]).astype('int32')
@@ -211,7 +211,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             z = paddle.repeat_interleave(x, index, axis=0)
             np_z = z.numpy()
         expect_out = np.repeat(self.data_x, index, axis=0)
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
 
 if __name__ == '__main__':

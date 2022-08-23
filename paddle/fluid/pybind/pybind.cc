@@ -97,6 +97,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
+#include "paddle/fluid/pybind/auto_parallel_py.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
@@ -427,7 +428,7 @@ static std::vector<std::string> inline GetNameList(
   return vec_res;
 }
 
-static void inline CreateVariableIfNotExit(
+static void inline CreateVariableIfNotExist(
     const py::handle &py_handle,
     const framework::Scope &scope,
     const framework::Executor *exe = nullptr) {
@@ -628,7 +629,7 @@ PYBIND11_MODULE(core_noavx, m) {
         [](const py::handle &vec_var_list,
            const Scope &scope,
            const Executor *executor) {
-          CreateVariableIfNotExit(vec_var_list, scope, executor);
+          CreateVariableIfNotExist(vec_var_list, scope, executor);
         });
 
   m.def("save_op_version_info", [](framework::ProgramDesc &desc) {
@@ -1698,9 +1699,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindCostModel(&m);
   BindConstValue(&m);
   BindGlobalValueGetterSetter(&m);
-  BindProcessMeshDesc(&m);
   BindFleetExecutor(&m);
   BindTCPStore(&m);
+  BindAutoParallel(&m);
   BindJitProperty(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
@@ -2133,6 +2134,12 @@ All parameter, weight, gradient are variables in Paddle.
       .value("PythonUserDefined",
              paddle::platform::TracerEventType::PythonUserDefined);
   m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
+  m.def("enable_memory_recorder", &paddle::platform::EnableMemoryRecorder);
+  m.def("disable_memory_recorder", &paddle::platform::DisableMemoryRecorder);
+  m.def("enable_input_shape_recorder",
+        &paddle::platform::EnableInputShapeRecorder);
+  m.def("disable_input_shape_recorder",
+        &paddle::platform::DisableInputShapeRecorder);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
