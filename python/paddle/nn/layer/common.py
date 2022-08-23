@@ -1314,7 +1314,7 @@ class CosineSimilarity(Layer):
 class Embedding(Layer):
     r"""
     
-    Embedding Layer, This interface is used to construct a callable object of the ``Embedding`` class.
+    Embedding Layer, used to construct a callable object of the ``Embedding`` class.
     For specific usage, refer to code examples. It implements the function of the Embedding Layer.
     This layer is used to lookup embeddings vector of ids provided by :attr:`x` .
     It automatically constructs a 2D embedding matrix based on the
