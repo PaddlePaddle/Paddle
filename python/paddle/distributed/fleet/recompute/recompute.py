@@ -20,6 +20,8 @@ from paddle.autograd.py_layer import LegacyPyLayer
 from paddle.fluid import framework
 import contextlib
 from paddle.fluid.framework import in_dygraph_mode
+from paddle.distributed import fleet
+from paddle.distributed.fleet.meta_parallel.pp_utils.utils import _hp_recompute
 
 import logging
 
@@ -30,7 +32,7 @@ ch = logging.StreamHandler()
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
-__all__ = []
+__all__ = ["recompute", "recompute_sequential"]
 
 
 def detach_variable(inputs):
@@ -473,7 +475,17 @@ def recompute(function, *args, **kwargs):
     if framework._dygraph_tracer()._has_grad:
         check_recompute_necessary(args)
 
-    return RecomputeFunction.apply(function, preserve, *args)
+    fleet_env = fleet.fleet
+    #NOTE: when in hybrid parallel, recompute supports offload and partition function, config it in DistributedStrategy firstly.
+    if hasattr(fleet_env, "_hcg") and fleet_env._hcg.get_parallel_mode() in [
+            ParallelMode.TENSOR_PARALLEL, ParallelMode.PIPELINE_PARALLEL
+    ]:
+        # global env var in _hp_recompute
+        global _hcg
+        assert _hcg is not None, "please init recompute env in hybrid parallel by add recompute_config in DistributedStrategy firstly."
+        return _hp_recompute(function, *args)
+    else:
+        return RecomputeFunction.apply(function, preserve, *args)
 
 
 def recompute_sequential(functions, segments, input, **kwargs):
