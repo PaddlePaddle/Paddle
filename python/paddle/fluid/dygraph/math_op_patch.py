@@ -387,6 +387,9 @@ def monkey_patch_math_varbase():
         ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
                                       None)),
         ('__floordiv__',
+         _binary_creator_('__floordiv__', 'floor_divide', False, None, True))
+        if framework._in_eager_mode_ else
+        ('__floordiv__',
          _binary_creator_('__floordiv__', 'elementwise_floordiv', False, None)),
         ('__mod__', _binary_creator_('__mod__', 'modulo', False, None, True))
         if framework._in_eager_mode_ else
