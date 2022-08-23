@@ -77,7 +77,7 @@ fi
 
 op_kernel_dtype_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_kernel_same_dtypes.py ${PADDLE_ROOT}/paddle/fluid/OP_KERNEL_DTYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_KERNEL_DTYPE_PR.spec`
 if [ "$op_kernel_dtype_spec_diff" != "" ]; then
-    echo_line="You have added or modified Op Kernel, resulting in inconsistent data types supported by the forward and backward kernels of the same op, such modifications are not allowed in principle. If it is a mismatch, please request one RD (lanxianghit (Recommend) or chenwhql) review and approve. Including the following kernels:\n${INVALID_PADDLE_CHECK}\n"
+    echo_line="You have added or modified Op Kernel, resulting in inconsistent data types supported by the forward and backward kernels of the same op, such modifications are not allowed in principle. If it is a mismatch, please request one RD (lanxianghit (Recommend) or chenwhql) review and approve. Including the following kernels:\n${op_kernel_dtype_spec_diff}\n"
     check_approval 1 47554610 22561442
 fi
 
