@@ -2714,10 +2714,10 @@ def clip(x, min=None, max=None, name=None):
     x_dtype = str(x.dtype)
     if x_dtype == 'paddle.int32':
         min_ = np.iinfo(np.int32).min
-        max_ = np.iinfo(np.int32).max - 2**7
+        max_ = np.iinfo(np.int32).max 
     elif x_dtype == 'paddle.int64':
         min_ = np.iinfo(np.int64).min
-        max_ = np.iinfo(np.int64).max - 2**39
+        max_ = np.iinfo(np.int64).max 
     else:
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
