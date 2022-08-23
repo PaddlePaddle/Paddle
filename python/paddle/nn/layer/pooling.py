@@ -245,10 +245,6 @@ class AvgPool3D(Layer):
 
     Returns:
         A callable object of AvgPool3D.
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
 
     Shape:
         - x(Tensor): The input tensor of avg pool3d operator, which is a 5-D tensor.
