@@ -38,15 +38,15 @@ T* mutable_data(const DDim& dims,
                 size_t requested_size = 0);
 
 void* mutable_data(const phi::Place& place,
-                    paddle::experimental::DataType type,
-                    size_t requested_size = 0);
+                   paddle::experimental::DataType type,
+                   size_t requested_size = 0);
 
 void* mutable_data(const phi::Place& place,
-                    size_t requested_size = 0);
+                   size_t requested_size = 0);
 
 void* mutable_data(const phi::Place& place,
-                    paddle::experimental::DataType type,
-                    const phi::Stream& stream);
+                   paddle::experimental::DataType type,
+                   const phi::Stream& stream);
 
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
 */
