@@ -15,7 +15,7 @@
 from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
-import paddle, os
+import paddle
 
 paddle.enable_static()
 
@@ -31,9 +31,9 @@ class TestDistMnistLocalSGDFleetApi(TestDistBase):
         self._use_local_sgd = True
 
     def test_dist_train(self):
-        import paddle, os, os, os, os.fluid as fluid
+        import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(os.path.abspath("dist_mnist.py"), delta=1e-5)
+            self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
 class TestDistMnistGradAllReduceFleetApi(TestDistBase):
@@ -47,7 +47,7 @@ class TestDistMnistGradAllReduceFleetApi(TestDistBase):
         self._ut4grad_allreduce = True
 
     def test_dist_train(self):
-        import paddle, os, os, os, os.fluid as fluid
+        import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist.py", delta=1e-5)
 
