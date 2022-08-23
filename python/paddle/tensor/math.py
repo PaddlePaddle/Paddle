@@ -1092,24 +1092,6 @@ def fmin(x, y, name=None):
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
-for func in [
-        multiply
-]:
-    op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
-
-    additional_args_lines = [
-        "name (string, optional): Name of the output. \
-        Default is None. It's used to print debug info for developers. Details: \
-        :ref:`api_guide_Name` "
-    ]
-
-    func.__doc__ = _generate_doc_string_(
-        op_proto,
-        additional_args_lines=additional_args_lines,
-        skip_attrs_set={"x_data_format", "y_data_format", "axis",
-            "use_quantizer", "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
-        }) + """\n""" + str(func.__doc__)
-
 
 def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     """
