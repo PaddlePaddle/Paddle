@@ -108,9 +108,7 @@ def train(fetch):
                    dropout_ratio=0.1,
                    initializer_range=0.02)
     loss = paddle.nn.CrossEntropyLoss()
-    scheduler = paddle.optimizer.lr.CosineAnnealingDecay(learning_rate=0.00001,
-                                                         T_max=10)
-    optimizer = paddle.optimizer.Adam(learning_rate=scheduler,
+    optimizer = paddle.optimizer.Adam(learning_rate=0.00001,
                                       beta1=0.9,
                                       beta2=0.999,
                                       epsilon=1e-08,

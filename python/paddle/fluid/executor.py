@@ -24,7 +24,7 @@ from .wrapped_decorator import signature_safe_contextmanager
 import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator
-from .framework import convert_np_dtype_to_dtype_
+from .framework import convert_np_dtype_to_dtype_, _apply_pass
 
 from . import core
 from . import unique_name
@@ -1461,12 +1461,31 @@ class Executor(object):
 
                 return use_standalone_executor_for_compiled_program
             else:
-                if isinstance(program._graph, compiler.CompiledProgram):
+                if isinstance(
+                        program._graph, compiler.CompiledProgram
+                ) and not use_standalone_executor_for_compiled_program:
                     warnings.warn("Standalone executor is not used for Graph",
                                   UserWarning)
                     return False
                 assert isinstance(program, Program)
                 return True
+
+        def _apply_inplace_addto_pass(program, enable_inplace, enable_addto,
+                                      skip_var_names):
+            use_cuda = True if core.is_compiled_with_cuda() else False
+
+            attrs = {"use_cuda": use_cuda, "mem_opt_skip_vars": skip_var_names}
+            attr_types = {"use_cuda": "bool", "mem_opt_skip_vars": "list[str]"}
+
+            empty_startup_program = Program()
+            if enable_inplace:
+                pass_name = "buffer_shared_inplace_pass"
+                _apply_pass(program, empty_startup_program, pass_name, attrs,
+                            attr_types)
+            if enable_addto and use_cuda:
+                pass_name = "inplace_addto_op_pass"
+                _apply_pass(program, empty_startup_program, pass_name, attrs,
+                            attr_types)
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
@@ -1493,16 +1512,26 @@ class Executor(object):
                 # while use program to geet _StandaloneExecutor
                 if key not in self._executor_cache._cached_executors:
                     # To apply IR pass, compile the Program to IrGraph and convert it back to Program
-                    if isinstance(program, compiler.CompiledProgram):
+                    if isinstance(program,
+                                  compiler.CompiledProgram) or isinstance(
+                                      program._graph, compiler.CompiledProgram):
+                        compiled_program = program if isinstance(
+                            program,
+                            compiler.CompiledProgram) else program._graph
+                        build_strategy = compiled_program._build_strategy
                         # print(f"Program before convert:\n {inner_program}", flush=True)
-                        program._compile(scope, self.place)
-                        ir_graph = framework.IrGraph(program._graph)
-                        inner_program = ir_graph.to_program()
+                        compiled_program._compile(scope, self.place)
+                        ir_graph = framework.IrGraph(compiled_program._graph)
+                        converted_program = ir_graph.to_program()
+                        if hasattr(inner_program, 'lr_sheduler'):
+                            converted_program.lr_sheduler = inner_program.lr_sheduler
+                        inner_program = converted_program
                         # print(f"Program after convert:\n {inner_program}", flush=True)
                         logging.warning(
                             "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
                         )
                     else:
+                        build_strategy = None
                         from paddle.incubate.autograd import prim_enabled, prim2orig
                         if prim_enabled() and program == default_main_program():
                             prim2orig()
@@ -1514,6 +1543,17 @@ class Executor(object):
                         feed_var_name=feed_var_name,
                         fetch_var_name=fetch_var_name,
                         use_fetch_v2=True)
+
+                    # standalone executor will apply buffer_shared_inplace_pass and
+                    # inplace_addto_op_pass to program according to build_strategy
+                    enable_inplace = True if build_strategy is None or build_strategy.enable_inplace else False
+                    enable_addto = True if build_strategy is not None and build_strategy.enable_addto else False
+                    if enable_inplace or enable_addto:
+                        # inplace should skip feed and fetch var
+                        skip_var_names = eval(
+                            _get_program_cache_key(feed, fetch_list))
+                        _apply_inplace_addto_pass(program, enable_inplace,
+                                                  enable_addto, skip_var_names)
 
                     new_program = program.clone()
                     new_exe = _StandaloneExecutor(self.place, new_program,
