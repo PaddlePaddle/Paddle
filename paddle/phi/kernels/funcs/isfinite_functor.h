@@ -37,7 +37,7 @@ struct IsNanFunctor<T,
 template <>
 struct IsNanFunctor<phi::dtype::float16, void> {
   HOSTDEVICE bool operator()(const phi::dtype::float16 a) const {
-    return isnan(a);
+    return std::isnan(a);
   }
 };
 
@@ -61,7 +61,7 @@ struct IsInfFunctor<T,
 template <>
 struct IsInfFunctor<phi::dtype::float16, void> {
   HOSTDEVICE bool operator()(const phi::dtype::float16 a) const {
-    return isinf(a);
+    return std::isinf(a);
   }
 };
 
@@ -86,7 +86,7 @@ struct IsFiniteFunctor<
 template <>
 struct IsFiniteFunctor<phi::dtype::float16, void> {
   HOSTDEVICE bool operator()(const phi::dtype::float16 a) const {
-    return isfinite(a);
+    return std::isfinite(a);
   }
 };
 
