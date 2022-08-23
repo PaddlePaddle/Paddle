@@ -1,4 +1,6 @@
+"""define return audio meta data of info function"""
 # code from: https://github.com/pytorch/audio/blob/main/torchaudio/backend/common.py
+
 
 class AudioMetaData:
     """Return type of ``info`` function.
