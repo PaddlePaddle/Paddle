@@ -254,14 +254,14 @@ def _new_process_group_impl(backend,
     if backend == "gloo":
         place = core.CPUPlace()
         pg = core.ProcessGroupGloo(store, rank, world_size, place, group_id)
+    elif backend == "mpi":
+        pg = core.ProcessGroupMPI.create(src_ranks, group_id)
     elif backend == "nccl":
         place = core.CUDAPlace(genv.device_id)
         pg = core.ProcessGroupNCCL(store, rank, world_size, place, group_id)
     elif backend == "hccl":
         place = core.NPUPlace(genv.device_id)
         pg = core.ProcessGroupHCCL(store, rank, world_size, place, group_id)
-    elif backend == "mpi":
-        pg = core.ProcessGroupMPI.create(src_ranks, group_id)
     elif backend == "xccl":
         place = core.CustomPlace(genv.device_type, genv.device_id)
         pg = core.ProcessGroupCustom(store, rank, world_size, place, group_id)
