@@ -33,8 +33,7 @@ class TestDistMnistLocalSGDFleetApi(TestDistBase):
     def test_dist_train(self):
         import paddle, os, os, os, os.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(
-                os.path.abspath("collective/fleet/dist_mnist.py"), delta=1e-5)
+            self.check_with_place(os.path.abspath("dist_mnist.py"), delta=1e-5)
 
 
 class TestDistMnistGradAllReduceFleetApi(TestDistBase):
@@ -50,8 +49,7 @@ class TestDistMnistGradAllReduceFleetApi(TestDistBase):
     def test_dist_train(self):
         import paddle, os, os, os, os.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(
-                os.path.abspath("collective/fleet/dist_mnist.py"), delta=1e-5)
+            self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
 if __name__ == "__main__":
