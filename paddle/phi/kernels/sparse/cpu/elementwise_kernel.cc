@@ -272,15 +272,15 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                        const SparseCsrTensor& y,         \
                                        SparseCsrTensor* out) {           \
     funcs::name##Functor<T> functor;                                     \
-    auto coo_x = SparseCsrToCoo<T>(dev_ctx, x);                          \
-    auto coo_y = SparseCsrToCoo<T>(dev_ctx, y);                          \
-    DenseTensor indeces;                                                 \
-    DenseTensor values;                                                  \
+    SparseCooTensor coo_x, coo_y;                                        \
+    SparseCsrToCooKernel<T>(dev_ctx, x, &coo_x);                         \
+    SparseCsrToCooKernel<T>(dev_ctx, y, &coo_y);                         \
     SparseCooTensor coo_out;                                             \
-    coo_out.SetMember(indeces, values, x.dims());                        \
+    MetaTensor meta_out_coo(&coo_out);                                   \
+    phi::sparse::UnchangedInferMeta(x, &meta_out_coo);                   \
     ElementWiseCooKernelImpl<T, IntT, Context, funcs::name##Functor<T>>( \
         dev_ctx, coo_x, coo_y, &coo_out, functor);                       \
-    *out = SparseCooToCsr<T>(dev_ctx, coo_out);                          \
+    SparseCooToCsrKernel<T>(dev_ctx, coo_out, out);                      \
   }
 
 #define DEFINE_CSR_ELEMENTWISE_KERNEL(name)                                   \
@@ -312,6 +312,8 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                     const SparseCooTensor& x,                  \
                                     const SparseCooTensor& y,                  \
                                     SparseCooTensor* out) {                    \
+    MetaTensor meta_out(out);                                                  \
+    phi::sparse::UnchangedInferMeta(x, &meta_out);                             \
     PD_VISIT_BASE_INTEGRAL_TYPES(x.non_zero_indices().dtype(),                 \
                                  "ElementWise##name##CooCPUKernel",            \
                                  ([&] {                                        \

@@ -119,6 +119,17 @@ void SparseCsrTensor::SetMember(const DenseTensor& non_zero_crows,
   meta_.dims = dims;
 }
 
+void SparseCsrTensor::SetMember(const DenseTensor& non_zero_crows,
+                                const DenseTensor& non_zero_cols,
+                                const DenseTensor& non_zero_elements,
+                                const SparseTensorMeta& meta) {
+  Check(non_zero_crows, non_zero_cols, non_zero_elements, meta.dims);
+  this->non_zero_crows_ = non_zero_crows;
+  this->non_zero_cols_ = non_zero_cols;
+  this->non_zero_elements_ = non_zero_elements;
+  set_meta(meta);
+}
+
 void SparseCsrTensor::set_meta(SparseTensorMeta&& meta) {
   PADDLE_ENFORCE(!meta_.valid(),
                  phi::errors::InvalidArgument(

@@ -140,6 +140,16 @@ void SparseCooTensor::SetMember(const DenseTensor& non_zero_indices,
   this->coalesced_ = coalesced;
 }
 
+void SparseCooTensor::SetMember(const DenseTensor& non_zero_indices,
+                                const DenseTensor& non_zero_elements,
+                                const SparseTensorMeta& meta,
+                                const bool coalesced) {
+  this->non_zero_indices_ = non_zero_indices;
+  this->non_zero_elements_ = non_zero_elements;
+  this->coalesced_ = coalesced;
+  set_meta(meta);
+}
+
 int32_t SparseCooTensor::sparse_dim() const {
   return non_zero_indices_.dims()[0];
 }

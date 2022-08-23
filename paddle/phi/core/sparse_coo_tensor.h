@@ -141,6 +141,17 @@ class SparseCooTensor : public TensorBase,
                  const DDim& dims,
                  const bool coalesced = false);
 
+  /// \brief set the member of sparse coo tensor.
+  /// \param non_zero_indices The indices of non zero elements in original dense
+  /// tensor.
+  /// \param non_zero_elements The non zero elements of original dense tensor.
+  /// \param meta The meta of original dense tensor.
+  /// \param coalesced whether the indices has coalesced.
+  void SetMember(const DenseTensor& non_zero_indices,
+                 const DenseTensor& non_zero_elements,
+                 const SparseTensorMeta& meta,
+                 const bool coalesced = false);
+
   /// \brief Get a mutable pointer of non_zero_indices_.
   /// return a mutable pointer of non_zero_indices_.
   DenseTensor* mutable_non_zero_indices() { return &non_zero_indices_; }
