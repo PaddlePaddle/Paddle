@@ -295,7 +295,7 @@ class TestIndexAddAPIError(unittest.TestCase):
 
             def test_index_dtype():
                 axis = 0
-                x = paddle.static.data(name='X',
+                x = paddle.static.data(name='X1',
                                        shape=[10, 10],
                                        dtype="float64")
                 index = paddle.static.data(name='Index1',
@@ -310,13 +310,13 @@ class TestIndexAddAPIError(unittest.TestCase):
 
             def test_index_shape():
                 axis = 0
-                x = paddle.static.data(name='X',
+                x = paddle.static.data(name='X2',
                                        shape=[10, 10],
                                        dtype="float64")
-                index = paddle.static.data(name='Index',
+                index = paddle.static.data(name='Index2',
                                            shape=[4, 3],
                                            dtype="int32")
-                add_value = paddle.static.data(name='AddValue',
+                add_value = paddle.static.data(name='AddValue2',
                                                shape=[4, 10],
                                                dtype="float64")
                 out = paddle.index_add(x, index, add_value, axis)
@@ -325,13 +325,13 @@ class TestIndexAddAPIError(unittest.TestCase):
 
             def test_axis_value():
                 axis = 3
-                x = paddle.static.data(name='X',
+                x = paddle.static.data(name='X3',
                                        shape=[10, 10],
                                        dtype="float64")
-                index = paddle.static.data(name='Index',
+                index = paddle.static.data(name='Index3',
                                            shape=[4],
                                            dtype="int32")
-                add_value = paddle.static.data(name='AddValue',
+                add_value = paddle.static.data(name='AddValue3',
                                                shape=[4, 10],
                                                dtype="float64")
                 out = paddle.index_add(x, index, add_value, axis)
@@ -340,13 +340,13 @@ class TestIndexAddAPIError(unittest.TestCase):
 
             def test_add_value_broadcast():
                 axis = 0
-                x = paddle.static.data(name='X',
+                x = paddle.static.data(name='X4',
                                        shape=[10, 10],
                                        dtype="float64")
-                index = paddle.static.data(name='Index',
+                index = paddle.static.data(name='Index4',
                                            shape=[4],
                                            dtype="int32")
-                add_value = paddle.static.data(name='AddValue',
+                add_value = paddle.static.data(name='AddValue4',
                                                shape=[4],
                                                dtype="float64")
                 out = paddle.index_add(x, index, add_value, axis)
