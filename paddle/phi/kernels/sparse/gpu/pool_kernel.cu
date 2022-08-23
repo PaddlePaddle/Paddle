@@ -144,7 +144,7 @@ void MaxPoolCooKernel(const Context& dev_ctx,
   phi::sparse::UnchangedInferMeta(x, &meta_out);
 
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "MaxPoolCooGPUKernel", ([&] {
+      x.indices().dtype(), "MaxPoolCooGPUKernel", ([&] {
         MaxPoolCooGPUKernel<T, data_t>(dev_ctx,
                                        x,
                                        kernel_sizes,

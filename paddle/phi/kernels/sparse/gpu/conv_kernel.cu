@@ -206,21 +206,20 @@ void Conv3dCooKernel(const Context& dev_ctx,
   MetaTensor meta_out(out);
   phi::sparse::UnchangedInferMeta(x, &meta_out);
 
-  PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "Conv3dCooGPUKernel", ([&] {
-        Conv3dCooGPUKernel<T, data_t>(dev_ctx,
-                                      x,
-                                      kernel,
-                                      paddings,
-                                      dilations,
-                                      strides,
-                                      groups,
-                                      subm,
-                                      key,
-                                      out,
-                                      rulebook,
-                                      counter);
-      }));
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "Conv3dCooGPUKernel", ([&] {
+                                 Conv3dCooGPUKernel<T, data_t>(dev_ctx,
+                                                               x,
+                                                               kernel,
+                                                               paddings,
+                                                               dilations,
+                                                               strides,
+                                                               groups,
+                                                               subm,
+                                                               key,
+                                                               out,
+                                                               rulebook,
+                                                               counter);
+                               }));
 }
 
 }  // namespace sparse
