@@ -542,9 +542,9 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
                     else:
                         axis.append(paddle.full([1], self.np_axis[i], 'int64'))
 
-            conv = paddle.nn.Linear(x.shape[-1], 5)
-            conv_out = conv(x)
-            out = self.pd_api(conv_out, axis)
+            linear = paddle.nn.Linear(x.shape[-1], 5)
+            linear_out = linear(x)
+            out = self.pd_api(linear_out, axis)
             exe = paddle.static.Executor(self.place)
             exe.run(starup_prog)
             static_out = exe.run(feed={'x': self.x.numpy().astype('float32')},
