@@ -268,8 +268,9 @@ if((WITH_GPU
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21298;http_proxy=;https_proxy=")
+    "PADDLE_DIST_UT_PORT=21298;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
+  )
   set_tests_properties(test_gen_nccl_id_op PROPERTIES RUN_SERIAL 1)
 endif()
-add_subdirectory(multinode)
 add_subdirectory(fleet)
+add_subdirectory(multinode)

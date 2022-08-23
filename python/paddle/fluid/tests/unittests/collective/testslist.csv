@@ -31,4 +31,4 @@ test_collective_split_row_linear,linux,gpu;rocm,300,DIST,test_runner.py,2,1,http
 test_collective_wait,linux,gpu;rocm,300,DIST,test_runner.py,2,1,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_eager_dist_api,linux,gpu;rocm,120,DIST,test_runner.py,2,1,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_new_group_api,linux,gpu;rocm,120,DIST,test_runner.py,2,1,http_proxy=;https_proxy=;PYTHONPATH=..,
-test_gen_nccl_id_op,,gpu;rocm;ASCEND;ASCEND_CL,,DIST,../dist_test.sh,2,1,http_proxy=;https_proxy=,
+test_gen_nccl_id_op,,gpu;rocm;ASCEND;ASCEND_CL,,DIST,../dist_test.sh,2,1,http_proxy=;https_proxy=;PYTHONPATH=..,
