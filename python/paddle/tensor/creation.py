@@ -1925,7 +1925,7 @@ def tril_indices(row, col, offset=0, dtype='int64'):
     return out
 
 
-def triu_indices(row, col, offset=0, dtype='int64'):
+def triu_indices(row, col=None, offset=0, dtype='int64'):
     """
     Return the indices of the upper triangular part of the 2-D matrix
     whose row and col is known. Indices are ordered based on row and then columns.
@@ -1934,7 +1934,7 @@ def triu_indices(row, col, offset=0, dtype='int64'):
     Args:
         row (int): The input x which is a int number describe the number of row of the matrix.
         col (int): The input x which is a int number describe the number of col of the matrix.
-            if the col is None, then it will be set equal to row, indicting a square matix.
+            default value for col is None, then it will be set equal to row, indicting a square matix.
         offset (int, optional): The offset to consider, default value is 0.
             - If offset = 0, all elements on and below the main diagonal are retained.
             - If offset > 0, include just as few diagonals above the main diagonal.
