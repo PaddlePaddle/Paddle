@@ -8,4 +8,4 @@ astor
 paddle_bfloat==0.1.7
 opt_einsum==3.3.0
 soundfile==1.0.25
-resampy=0.4.0
+resampy==0.4.0
