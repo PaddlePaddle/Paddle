@@ -1,9 +1,9 @@
+#code is from https://github.com/pytorch/audio/blob/main/torchaudio/_internal/module_utils.py
+
 import importlib.util
 import warnings
 from functools import wraps
 from typing import Optional
-
-#code is from https://github.com/pytorch/audio/blob/main/torchaudio/_internal/module_utils.py
 
 
 def is_module_available(*modules: str) -> bool:
@@ -33,6 +33,7 @@ def requires_module(*modules: str):
             missing) == 1 else f"modules: {missing}"
 
         def decorator(func):
+
             @wraps(func)
             def wrapped(*args, **kwargs):
                 raise RuntimeError(
@@ -43,7 +44,7 @@ def requires_module(*modules: str):
     return decorator
 
 
-def deprecated(direction: str, version: Optional[str]=None):
+def deprecated(direction: str, version: Optional[str] = None):
     """Decorator to add deprecation message
     Args:
         direction (str): Migration steps to be given to users.
@@ -51,6 +52,7 @@ def deprecated(direction: str, version: Optional[str]=None):
     """
 
     def decorator(func):
+
         @wraps(func)
         def wrapped(*args, **kwargs):
             message = (
@@ -78,6 +80,7 @@ def requires_kaldi():
     else:
 
         def decorator(func):
+
             @wraps(func)
             def wrapped(*args, **kwargs):
                 raise RuntimeError(
@@ -116,6 +119,7 @@ def requires_soundfile():
     else:
 
         def decorator(func):
+
             @wraps(func)
             def wrapped(*args, **kwargs):
                 raise RuntimeError(
@@ -138,6 +142,7 @@ def requires_sox():
     else:
 
         def decorator(func):
+
             @wraps(func)
             def wrapped(*args, **kwargs):
                 raise RuntimeError(

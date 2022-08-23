@@ -63,6 +63,10 @@ repos:
         exclude: |
             (?x)^(
                 paddle/utils/.*
+                python/paddle/audio/backends/common.py
+                python/paddle/audio/backends/utils.py
+                python/paddle/audio/_internal/module_utils.py
+                python/paddle/tests/test_audio_backends.py
             )$
 -   repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13

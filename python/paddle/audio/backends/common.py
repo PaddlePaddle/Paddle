@@ -1,7 +1,7 @@
 # code from: https://github.com/pytorch/audio/blob/main/torchaudio/backend/common.py
 
 class AudioMetaData:
-    """Return type of ``torchaudio.info`` function.
+    """Return type of ``info`` function.
 
     This class is used by :ref:`"sox_io" backend<sox_io_backend>` and
     :ref:`"soundfile" backend with the new interface<soundfile_backend>`.
@@ -44,12 +44,10 @@ class AudioMetaData:
         self.encoding = encoding
 
     def __str__(self):
-        return (
-            f"AudioMetaData("
-            f"sample_rate={self.sample_rate}, "
-            f"num_frames={self.num_frames}, "
-            f"num_channels={self.num_channels}, "
-            f"bits_per_sample={self.bits_per_sample}, "
-            f"encoding={self.encoding}"
-            f")"
-        )
+        return (f"AudioMetaData("
+                f"sample_rate={self.sample_rate}, "
+                f"num_frames={self.num_frames}, "
+                f"num_channels={self.num_channels}, "
+                f"bits_per_sample={self.bits_per_sample}, "
+                f"encoding={self.encoding}"
+                f")")

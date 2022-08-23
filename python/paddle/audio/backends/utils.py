@@ -1,4 +1,4 @@
-"""Defines utilities for switching audio backends"""
+"""Defines utilities for switching audio backends."""
 #code is from: https://github.com/pytorch/audio/blob/main/torchaudio/backend/utils.py
 
 import warnings
@@ -53,6 +53,7 @@ def set_audio_backend(backend: Optional[str]):
     for func in ["save", "load", "info"]:
         setattr(paddle.audio, func, getattr(module, func))
 
+
 def _init_audio_backend():
     backends = list_audio_backends()
     if "soundfile" in backends:
@@ -60,6 +61,7 @@ def _init_audio_backend():
     else:
         warnings.warn("No audio backend is available.")
         set_audio_backend(None)
+
 
 def get_audio_backend() -> Optional[str]:
     """Get the name of the current backend

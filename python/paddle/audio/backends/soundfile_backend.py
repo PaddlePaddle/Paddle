@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Defines soundfile backends, including load, save, info."""
 
 import os
 import warnings
@@ -28,15 +29,8 @@ from ..utils import ParameterError
 from .common import AudioMetaData
 
 __all__ = [
-    'resample',
-    'to_mono',
-    'normalize',
-    'save',
-    'soundfile_save',
-    'load',
-    'soundfile_load',
-    'info',
-    'to_mono'
+    'resample', 'to_mono', 'normalize', 'save', 'soundfile_save', 'load',
+    'soundfile_load', 'info', 'to_mono'
 ]
 NORMALMIZE_TYPES = ['linear', 'gaussian']
 MERGE_TYPES = ['ch0', 'ch1', 'random', 'average']
@@ -44,14 +38,14 @@ RESAMPLE_MODES = ['kaiser_best', 'kaiser_fast']
 EPS = 1e-8
 
 
-def resample(y: np.ndarray,
+def resample(waveform: np.ndarray,
              src_sr: int,
              target_sr: int,
-             mode: str='kaiser_fast') -> np.ndarray:
+             mode: str = 'kaiser_fast') -> np.ndarray:
     """Audio resampling.
 
     Args:
-        y (np.ndarray): Input waveform array in 1D or 2D.
+        waveform (np.ndarray): Input waveform array in 1D or 2D.
         src_sr (int): Source sample rate.
         target_sr (int): Target sample rate.
         mode (str, optional): The resampling filter to use. Defaults to 'kaiser_fast'.
@@ -65,9 +59,10 @@ def resample(y: np.ndarray,
             f'Using resampy in kaiser_best to {src_sr}=>{target_sr}. This function is pretty slow, \
         we recommend the mode kaiser_fast in large scale audio trainning')
 
-    if not isinstance(y, np.ndarray):
+    if not isinstance(waveform, np.ndarray):
         raise ParameterError(
-            'Only support numpy np.ndarray, but received y in {type(y)}')
+            'Only support numpy np.ndarray, but received waveform in {type(waveform)}'
+        )
 
     if mode not in RESAMPLE_MODES:
         raise ParameterError(f'resample mode must in {RESAMPLE_MODES}')
@@ -75,7 +70,7 @@ def resample(y: np.ndarray,
     return resampy.resample(y, src_sr, target_sr, filter=mode)
 
 
-def to_mono(y: np.ndarray, merge_type: str='average') -> np.ndarray:
+def to_mono(y: np.ndarray, merge_type: str = 'average') -> np.ndarray:
     """Convert sterior audio to mono.
 
     Args:
@@ -110,13 +105,15 @@ def to_mono(y: np.ndarray, merge_type: str='average') -> np.ndarray:
     elif y.dtype == 'int16':
         y_out = y.astype('int32')
         y_out = (y_out[0] + y_out[1]) // 2
-        y_out = np.clip(y_out, np.iinfo(y.dtype).min,
+        y_out = np.clip(y_out,
+                        np.iinfo(y.dtype).min,
                         np.iinfo(y.dtype).max).astype(y.dtype)
 
     elif y.dtype == 'int8':
         y_out = y.astype('int16')
         y_out = (y_out[0] + y_out[1]) // 2
-        y_out = np.clip(y_out, np.iinfo(y.dtype).min,
+        y_out = np.clip(y_out,
+                        np.iinfo(y.dtype).min,
                         np.iinfo(y.dtype).max).astype(y.dtype)
     else:
         raise ParameterError(f'Unsupported dtype: {y.dtype}')
@@ -124,9 +121,9 @@ def to_mono(y: np.ndarray, merge_type: str='average') -> np.ndarray:
 
 
 def soundfile_load_(file: os.PathLike,
-                    offset: Optional[float]=None,
-                    dtype: str='int16',
-                    duration: Optional[int]=None) -> Tuple[np.ndarray, int]:
+                    offset: Optional[float] = None,
+                    dtype: str = 'int16',
+                    duration: Optional[int] = None) -> Tuple[np.ndarray, int]:
     """Load audio using soundfile library. This function load audio file using libsndfile.
 
     Args:
@@ -151,8 +148,9 @@ def soundfile_load_(file: os.PathLike,
     return y, sf_desc.samplerate
 
 
-def normalize(y: np.ndarray, norm_type: str='linear',
-              mul_factor: float=1.0) -> np.ndarray:
+def normalize(y: np.ndarray,
+              norm_type: str = 'linear',
+              mul_factor: float = 1.0) -> np.ndarray:
     """Normalize an input audio with additional multiplier.
 
     Args:
@@ -180,7 +178,8 @@ def normalize(y: np.ndarray, norm_type: str='linear',
 
 
 def soundfile_save(y: np.ndarray, sr: int, file: os.PathLike) -> None:
-    """Save audio file to disk. This function saves audio to disk using scipy.io.wavfile, with additional step to convert input waveform to int16.
+    """Save audio file to disk. This function saves audio to disk using scipy.io.wavfile,
+     with additional step to convert input waveform to int16.
 
     Args:
         y (np.ndarray): Input waveform array in 1D or 2D.
@@ -205,18 +204,19 @@ def soundfile_save(y: np.ndarray, sr: int, file: os.PathLike) -> None:
 
     wavfile.write(file, sr, y_out)
 
+
 def soundfile_load(
         file: os.PathLike,
-        sr: Optional[int]=None,
-        mono: bool=True,
-        merge_type: str='average',  # ch0,ch1,random,average
-        normal: bool=True,
-        norm_type: str='linear',
-        norm_mul_factor: float=1.0,
-        offset: float=0.0,
-        duration: Optional[int]=None,
-        dtype: str='float32',
-        resample_mode: str='kaiser_fast') -> Tuple[np.ndarray, int]:
+        sr: Optional[int] = None,
+        mono: bool = True,
+        merge_type: str = 'average',  # ch0,ch1,random,average
+        normal: bool = True,
+        norm_type: str = 'linear',
+        norm_mul_factor: float = 1.0,
+        offset: float = 0.0,
+        duration: Optional[int] = None,
+        dtype: str = 'float32',
+        resample_mode: str = 'kaiser_fast') -> Tuple[np.ndarray, int]:
     """Load audio file from disk. This function loads audio from disk using using audio beackend.
 
     Args:
@@ -257,9 +257,13 @@ def soundfile_load(
     y = depth_convert(y, dtype)
     return y, r
 
-#the code below is form: https://github.com/pytorch/audio/blob/main/torchaudio/backend/soundfile_backend.py
 
-def _get_subtype_for_wav(dtype: paddle.dtype, encoding: str, bits_per_sample: int):
+# the code below is form:
+# https://github.com/pytorch/audio/blob/main/torchaudio/backend/soundfile_backend.py
+
+
+def _get_subtype_for_wav(dtype: paddle.dtype, encoding: str,
+                         bits_per_sample: int):
     if not encoding:
         if not bits_per_sample:
             subtype = {
@@ -316,7 +320,8 @@ def _get_subtype_for_sphere(encoding: str, bits_per_sample: int):
     raise ValueError(f"sph does not support {encoding}.")
 
 
-def _get_subtype(dtype: paddle.dtype, format: str, encoding: str, bits_per_sample: int):
+def _get_subtype(dtype: paddle.dtype, format: str, encoding: str,
+                 bits_per_sample: int):
     if format == "wav":
         return _get_subtype_for_wav(dtype, encoding, bits_per_sample)
     if format == "flac":
@@ -329,13 +334,15 @@ def _get_subtype(dtype: paddle.dtype, format: str, encoding: str, bits_per_sampl
         return "PCM_S8" if bits_per_sample == 8 else f"PCM_{bits_per_sample}"
     if format in ("ogg", "vorbis"):
         if encoding or bits_per_sample:
-            raise ValueError("ogg/vorbis does not support encoding/bits_per_sample.")
+            raise ValueError(
+                "ogg/vorbis does not support encoding/bits_per_sample.")
         return "VORBIS"
     if format == "sph":
         return _get_subtype_for_sphere(encoding, bits_per_sample)
     if format in ("nis", "nist"):
         return "PCM_16"
     raise ValueError(f"Unsupported format: {format}")
+
 
 def save(
     filepath: str,
@@ -372,7 +379,8 @@ def save(
         filepath (str or pathlib.Path): Path to audio file.
         src (paddle.Tensor): Audio data to save. must be 2D tensor.
         sample_rate (int): sampling rate
-        channels_first (bool, optional): If ``True``, the given tensor is interpreted as `[channel, time]`,
+        channels_first (bool, optional): 
+        If ``True``, the given tensor is interpreted as `[channel, time]`,
             otherwise `[time, channel]`.
         compression (float of None, optional): Not used.
             It is here only for interface compatibility reson with "sox_io" backend.
@@ -442,11 +450,11 @@ def save(
     if compression is not None:
         warnings.warn(
             '`save` function of "soundfile" backend does not support "compression" parameter. '
-            "The argument is silently ignored."
-        )
+            "The argument is silently ignored.")
     if hasattr(filepath, "write"):
         if format is None:
-            raise RuntimeError("`format` is required when saving to file object.")
+            raise RuntimeError(
+                "`format` is required when saving to file object.")
         ext = format.lower()
     else:
         ext = str(filepath).split(".")[-1].lower()
@@ -456,8 +464,7 @@ def save(
     if bits_per_sample == 24:
         warnings.warn(
             "Saving audio with 24 bits per sample might warp samples near -1. "
-            "Using 16 bits per sample might be able to avoid this."
-        )
+            "Using 16 bits per sample might be able to avoid this.")
     subtype = _get_subtype(src.dtype, ext, encoding, bits_per_sample)
 
     # sph is a extension used in TED-LIUM but soundfile does not recognize it as NIST format,
@@ -468,7 +475,12 @@ def save(
     if channels_first:
         src = src.t()
 
-    soundfile.write(file=filepath, data=src, samplerate=sample_rate, subtype=subtype, format=format)
+    soundfile.write(file=filepath,
+                    data=src,
+                    samplerate=sample_rate,
+                    subtype=subtype,
+                    format=format)
+
 
 _SUBTYPE2DTYPE = {
     "PCM_S8": "int8",
@@ -478,6 +490,7 @@ _SUBTYPE2DTYPE = {
     "FLOAT": "float32",
     "DOUBLE": "float64",
 }
+
 
 def load(
     filepath: str,
@@ -565,7 +578,7 @@ def load(
 
     waveform = paddle.to_tensor(waveform)
     if channels_first:
-        waveform = paddle.transpose(waveform, perm=[1,0])
+        waveform = paddle.transpose(waveform, perm=[1, 0])
     return waveform, sample_rate
 
 
@@ -589,7 +602,8 @@ _SUBTYPE_TO_BITS_PER_SAMPLE = {
     "ALAW": 8,  # A-Law encoded. See https://en.wikipedia.org/wiki/G.711#Types
     "IMA_ADPCM": 0,  # IMA ADPCM.
     "MS_ADPCM": 0,  # Microsoft ADPCM.
-    "GSM610": 0,  # GSM 6.10 encoding. (Wikipedia says 1.625 bit depth?? https://en.wikipedia.org/wiki/Full_Rate)
+    "GSM610":
+    0,  # GSM 6.10 encoding. (Wikipedia says 1.625 bit depth?? https://en.wikipedia.org/wiki/Full_Rate)
     "VOX_ADPCM": 0,  # OKI / Dialogix ADPCM
     "G721_32": 0,  # 32kbs G721 ADPCM encoding.
     "G723_24": 0,  # 24kbs G723 ADPCM encoding.
@@ -607,15 +621,16 @@ _SUBTYPE_TO_BITS_PER_SAMPLE = {
     "ALAC_32": 32,  # Apple Lossless Audio Codec (32 bit).
 }
 
+
 def _get_bit_depth(subtype):
     if subtype not in _SUBTYPE_TO_BITS_PER_SAMPLE:
         warnings.warn(
             f"The {subtype} subtype is unknown to PaddleAudio. As a result, the bits_per_sample "
             "attribute will be set to 0. If you are seeing this warning, please "
             "report by opening an issue on github (after checking for existing/closed ones). "
-            "You may otherwise ignore this warning."
-        )
+            "You may otherwise ignore this warning.")
     return _SUBTYPE_TO_BITS_PER_SAMPLE.get(subtype, 0)
+
 
 _SUBTYPE_TO_ENCODING = {
     "PCM_S8": "PCM_S",
@@ -630,10 +645,12 @@ _SUBTYPE_TO_ENCODING = {
     "VORBIS": "VORBIS",
 }
 
+
 def _get_encoding(format: str, subtype: str):
     if format == "FLAC":
         return "FLAC"
     return _SUBTYPE_TO_ENCODING.get(subtype, "UNKNOWN")
+
 
 def info(filepath: str, format: Optional[str] = None) -> AudioMetaData:
     """Get signal information of an audio file.
