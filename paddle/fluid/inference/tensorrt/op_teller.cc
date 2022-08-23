@@ -1828,6 +1828,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                    "the pass.";
         return false;
       }
+      // return true; //TODO !!! important, wangbojun test only, remove befaule
+      // pr
       auto* input_desc = block->FindVar(desc.Input("Input").front());
       const auto input_shape = input_desc->GetShape();
       const auto head_number =

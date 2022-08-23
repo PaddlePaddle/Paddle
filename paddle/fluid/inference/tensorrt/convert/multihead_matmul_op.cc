@@ -24,8 +24,9 @@ class MultiheadMatMulOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid multihead_mamul op to a corresponding tensorrt "
-               "network structure";
+    VLOG(3)
+        << "convert a fluid multihead_matmul op to a corresponding tensorrt "
+           "network structure";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("Input").front());
@@ -528,7 +529,77 @@ class MultiheadMatMulOpConverter : public OpConverter {
                 "but it's (%d) now.",
                 input->getDimensions().nbDims));
         // transpose weight_data from m * n to  n * m
-        auto* input_bias_qk =
+
+        bool is_BiasQK_directInput = false;
+        if (op_desc.HasAttr("BiasQK_directInput")) {
+          is_BiasQK_directInput =
+              PADDLE_GET_CONST(bool, op_desc.GetAttr("BiasQK_directInput"));
+        }
+        bool with_fp16 =
+            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+
+        nvinfer1::ILayer* biasQK_constLayer = nullptr;
+        if (is_BiasQK_directInput) {
+          auto biasqk_name = op_desc.Input("BiasQK").front();
+
+          auto biasqk_constlayer_outputname = biasqk_name + "_cl";
+          auto* biasqk_v = scope.FindVar(biasqk_name);
+          auto* biasqk_t = biasqk_v->GetMutable<framework::LoDTensor>();
+          nvinfer1::Dims biasqk_dims;
+          biasqk_dims.nbDims = 0;
+          for (int i = 0; i < biasqk_t->dims().size(); ++i) {
+            biasqk_dims.d[biasqk_dims.nbDims++] = biasqk_t->dims()[i];
+          }
+          nvinfer1::Weights biasqk_const_nvWeight;
+          biasqk_const_nvWeight.count = biasqk_t->numel();
+          if (with_fp16) {
+            auto biasqk_const_weight =
+                engine_->GetTrtWeight(biasqk_name, *biasqk_t);
+
+            // auto half_biasqk_data=new half[biasqk_t->numel()];
+
+            biasqk_const_nvWeight.type = nvinfer1::DataType::kHALF;
+
+            if (biasqk_const_weight.get().type == nvinfer1::DataType::kFLOAT) {
+              std::unique_ptr<framework::Tensor> half_biasqk_tensor(
+                  new framework::Tensor());
+              half_biasqk_tensor->Resize({biasqk_t->numel()});
+              auto* half_biasqk_data =
+                  half_biasqk_tensor->mutable_data<paddle::platform::float16>(
+                      platform::CPUPlace());
+
+              for (int i = 0; i < biasqk_t->numel(); i++) {
+                half_biasqk_data[i] = static_cast<paddle::platform::float16>(
+                    static_cast<const float*>(
+                        biasqk_const_weight.get().values)[i]);
+              }
+              engine_->SetWeights(biasqk_constlayer_outputname + "_fp16",
+                                  std::move(half_biasqk_tensor));
+              biasqk_const_nvWeight.values = half_biasqk_data;
+            } else if (biasqk_const_weight.get().type ==
+                       nvinfer1::DataType::kHALF) {
+              biasqk_const_nvWeight = biasqk_const_weight.get();
+            }
+            biasQK_constLayer = TRT_ENGINE_ADD_LAYER(
+                engine_, Constant, biasqk_dims, biasqk_const_nvWeight);
+            biasQK_constLayer->setOutputType(0, nvinfer1::DataType::kHALF);
+            biasQK_constLayer->setPrecision(nvinfer1::DataType::kHALF);
+          } else {
+            auto biasqk_const_weight =
+                engine_->GetFp32TrtWeight(biasqk_name, *biasqk_t);
+            biasQK_constLayer = TRT_ENGINE_ADD_LAYER(
+                engine_, Constant, biasqk_dims, biasqk_const_weight.get());
+            biasQK_constLayer->setOutputType(0, nvinfer1::DataType::kFLOAT);
+            biasQK_constLayer->setPrecision(nvinfer1::DataType::kFLOAT);
+          }
+          biasQK_constLayer->getOutput(0)->setName(
+              biasqk_constlayer_outputname.c_str());
+          engine_->SetITensor(biasQK_constLayer->getOutput(0)->getName(),
+                              biasQK_constLayer->getOutput(0));
+          op_desc.SetInput("BiasQK",
+                           {biasQK_constLayer->getOutput(0)->getName()});
+        }
+        nvinfer1::ITensor* input_bias_qk =
             engine_->GetITensor(op_desc.Input("BiasQK").front());
 
         TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
@@ -608,8 +679,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
         std::vector<nvinfer1::ITensor*> plugin_inputs;
         plugin_inputs.push_back(fc_layer->getOutput(0));
         plugin_inputs.push_back(input_bias_qk);
-        bool with_fp16 =
-            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
         if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
           with_fp16 = true;

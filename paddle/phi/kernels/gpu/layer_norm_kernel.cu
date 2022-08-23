@@ -20,7 +20,6 @@
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 
 namespace phi {
-
 template <typename T>
 void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                                const T *input,
@@ -36,9 +35,10 @@ void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
   auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
+
   switch (paddle::operators::GetDesiredBlockDim(feature_size)) {
     FIXED_BLOCK_DIM_CASE(
-        paddle::operators::LayerNormForward<T, T, kBlockDim>
+        paddle::operators::LayerNormForward<T, T, kBlockDim, true>
         <<<batch_size, kBlockDim, 0, stream>>>(
             input, scale, bias, output, mean, variance, eps, feature_size));
     default:
@@ -68,6 +68,7 @@ void LayerNormKernel(const Context &dev_ctx,
 
   const auto x_dims = x.dims();
   auto *x_data = x.data<T>();
+
   auto *y_data = dev_ctx.template Alloc<T>(y);
   auto *mean_data = dev_ctx.template Alloc<U>(mean);
   auto *var_data = dev_ctx.template Alloc<U>(var);
