@@ -15,7 +15,7 @@
 #pragma once
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "oneapi/dnnl/dnnl.hpp"
+#include "dnnl.hpp"  // NOLINT
 #endif
 
 #include "paddle/phi/common/data_type.h"

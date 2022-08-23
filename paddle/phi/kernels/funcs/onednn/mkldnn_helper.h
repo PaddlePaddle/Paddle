@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "dnnl.hpp"  // NOLINT
 #include "glog/logging.h"
-#include "oneapi/dnnl/dnnl.hpp"
 
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
