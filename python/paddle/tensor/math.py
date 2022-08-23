@@ -2867,15 +2867,14 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
                "axis1 and axis2 cannot be the same axis." \
                 "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
 
-    __check_input(input, offset, axis1, axis2)
     if in_dygraph_mode():
         return _C_ops.final_state_trace( x, offset, axis1, axis2 )
 
     if _in_legacy_dygraph():
         return _C_ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
 
-    inputs = {'Input': [x]}
-    attrs = {'offset': offset, 'axis1': axis1, 'axis2': axis2}
+    __check_input(input, offset, axis1, axis2)
+
     helper = LayerHelper('trace', **locals())
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
