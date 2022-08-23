@@ -17,9 +17,6 @@ limitations under the License. */
 namespace phi {
 namespace dynload {
 
-std::once_flag mpi_dso_flag;
-void *mpi_dso_handle;
-
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 MPI_RAND_ROUTINE_EACH(DEFINE_WRAP);
