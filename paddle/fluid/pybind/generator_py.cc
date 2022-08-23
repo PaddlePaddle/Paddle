@@ -71,6 +71,10 @@ void BindGenerator(py::module* m_ptr) {
             state.device = s[0].cast<std::int64_t>();
             state.current_seed = s[1].cast<std::uint64_t>();
             state.thread_offset = s[2].cast<std::uint64_t>();
+
+            std::seed_seq seq({state.current_seed});
+            auto engine = std::make_shared<std::mt19937_64>(seq);
+            state.cpu_engine = *engine;
             return state;
           }));
 
