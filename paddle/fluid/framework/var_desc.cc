@@ -221,11 +221,11 @@ const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
   PADDLE_ENFORCE_EQ(
       desc_.has_type(),
       true,
-      platform::errors::NotFound("The variable's type was not be set."));
+      platform::errors::NotFound("The variable's type was not set."));
   PADDLE_ENFORCE_EQ(
       desc_.type().has_type(),
       true,
-      platform::errors::NotFound("The variable's type was not be set."));
+      platform::errors::NotFound("The variable's type was not set."));
   switch (desc_.type().type()) {
     case proto::VarType::SELECTED_ROWS:
       return desc_.type().selected_rows();
