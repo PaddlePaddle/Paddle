@@ -294,7 +294,7 @@ class Tracer(core.Tracer):
                 outputs[key].reconstruct_from_(returns, False)
 
     def trace_op(self,
-                 op_type,
+                 type,
                  inputs,
                  outputs,
                  attrs,
@@ -303,17 +303,17 @@ class Tracer(core.Tracer):
         if not framework._in_legacy_dygraph():
             # inputs : {"sum": [tensor], ...}
             # outputs : {"sum": [tensor], ...}
-            if op_type in name_mapping.keys():
-                op_type = name_mapping[op_type]["final_op_name"]
+            if type in name_mapping.keys():
+                type = name_mapping[type]["final_op_name"]
 
-                assert op_type in _legacy_C_ops.__dict__
-                self.eager_trace_op(op_type, inputs, outputs, attrs,
-                                    stop_gradient, inplace_map)
+                assert type in _legacy_C_ops.__dict__
+                self.eager_trace_op(type, inputs, outputs, attrs, stop_gradient,
+                                    inplace_map)
             else:
-                self.eager_legacy_trace_op(op_type, inputs, outputs, attrs,
+                self.eager_legacy_trace_op(type, inputs, outputs, attrs,
                                            stop_gradient, inplace_map)
         else:
-            self.trace(op_type, inputs, outputs, attrs,
+            self.trace(type, inputs, outputs, attrs,
                        framework._current_expected_place(), self._has_grad
                        and not stop_gradient,
                        inplace_map if inplace_map else {})
