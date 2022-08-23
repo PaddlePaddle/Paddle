@@ -317,6 +317,7 @@ def rfft(x, n=None, axis=-1, norm="backward", name=None):
         out(Tensor) : complex tensor
 
     Examples:
+    
     .. code-block:: python
         import paddle
 
