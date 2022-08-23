@@ -542,9 +542,12 @@ def cast_parameters_to_fp16(place, program, scope=None, to_fp16_var_names=None):
 
     fp16_var_names = to_fp16_var_names if to_fp16_var_names else set()
     var_scope = scope if scope else global_scope()
+    print(
+        "======================cast_parameters_to_fp16=============================="
+    )
     for param in all_parameters:
         if param.name in fp16_var_names:
-            _logger.debug("---- cast {} to fp16 dtype ----".format(param.name))
+            print("---- cast {} to fp16 dtype ----".format(param.name))
             param_t = var_scope.find_var(param.name).get_tensor()
             data = np.array(param_t)
             param_t.set(np.float16(data), place)
