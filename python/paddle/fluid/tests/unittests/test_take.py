@@ -65,20 +65,19 @@ class TestTakeAPI(unittest.TestCase):
                                     'input': self.input_np,
                                     'index': self.index_np
                                 },
-                                fetch_list=[out])
-            self.assertTrue(
-                np.allclose(
-                    st_result,
-                    np.take(self.input_np, self.index_np, mode=self.mode)))
+                                fetch_list=out)
+            np.testing.assert_allclose(
+                st_result[0],
+                np.take(self.input_np, self.index_np, mode=self.mode))
 
     def test_dygraph(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.input_np)
         index = paddle.to_tensor(self.index_np)
         dy_result = paddle.take(x, index, mode=self.mode)
-        self.assertTrue(
-            np.allclose(np.take(self.input_np, self.index_np, mode=self.mode),
-                        dy_result.numpy()))
+        np.testing.assert_allclose(
+            np.take(self.input_np, self.index_np, mode=self.mode),
+            dy_result.numpy())
 
 
 class TestTakeInt32(TestTakeAPI):

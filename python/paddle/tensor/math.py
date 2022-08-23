@@ -4886,7 +4886,6 @@ def take(x, index, mode='raise', name=None):
     if mode == 'raise':
         # This processing enables 'take' to handle negative indexes within the correct range.
         index_1d = paddle.where(index_1d < 0, index_1d % max_index, index_1d)
-        pass
     elif mode == 'wrap':
         # The out of range indices are constrained by taking the remainder.
         index_1d = paddle.where(index_1d < 0,
