@@ -148,6 +148,10 @@ struct MKLDNNActivationGradUseOutFunc : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T>
+using AbsMKLDNNGradFunctor =
+    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_abs>;
+
+template <typename T>
 using ReluMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_relu>;
 
@@ -193,6 +197,7 @@ DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, SqrtMKLDNNGradUseOutFunctor);
 DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid,
                                             SigmoidMKLDNNGradUseOutFunctor);
 DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, ExpMKLDNNGradUseOutFunctor);
+DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Abs, AbsMKLDNNGradFunctor);
 DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, ReluMKLDNNGradFunctor);
 
 DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
@@ -240,6 +245,7 @@ PD_REGISTER_KERNEL(relu_grad,
   PD_REGISTER_KERNEL(                                  \
       name, OneDNN, ALL_LAYOUT, phi::func, float, phi::dtype::bfloat16) {}
 
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(abs_grad, AbsGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(elu_grad, EluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(exp_grad, ExpGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_swish_grad, HardSwishGradKernel)

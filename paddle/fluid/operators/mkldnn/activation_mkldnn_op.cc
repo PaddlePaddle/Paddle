@@ -151,13 +151,6 @@ struct MKLDNNActivationGradFunc : public BaseActivationFunctor<T> {
   }
 };
 
-template <typename T, dnnl::algorithm algorithm>
-struct MKLDNNActivationGradUseOutFunc : public BaseActivationFunctor<T> {
-  void operator()(const framework::ExecutionContext &ctx) const {
-    eltwise_grad_use_out<T>(ctx, algorithm);
-  }
-};
-
 template <typename T>
 struct GeluMKLDNNFunctor : public BaseActivationFunctor<T> {
   void operator()(const framework::ExecutionContext &ctx) const {
@@ -194,10 +187,6 @@ template <typename T>
 using Relu6MKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_bounded_relu>;
 
-template <typename T>
-using AbsMKLDNNGradFunctor =
-    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_abs>;
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -223,5 +212,4 @@ namespace ops = paddle::operators;
 REGISTER_FWD_ACTIVATION_MKLDNN_KERNEL(softplus, SoftplusMKLDNNFunctor);
 REGISTER_FWD_ACTIVATION_MKLDNN_KERNEL(gelu, GeluMKLDNNFunctor);
 REGISTER_GRAD_ACTIVATION_MKLDNN_KERNEL(gelu, GeluMKLDNNGradFunctor);
-REGISTER_GRAD_ACTIVATION_MKLDNN_KERNEL(abs, AbsMKLDNNGradFunctor);
 REGISTER_GRAD_ACTIVATION_MKLDNN_KERNEL(relu6, Relu6MKLDNNGradFunctor);
