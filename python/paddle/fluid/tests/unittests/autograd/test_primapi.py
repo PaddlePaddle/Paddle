@@ -16,11 +16,11 @@ import typing
 import unittest
 
 import numpy as np
-import autograd
-import autograd.numpy as np_autograd
-
 import paddle
 
+import autograd
+import autograd.numpy as anp
+import autograd.scipy as ascipy
 import config
 import utils
 
@@ -278,6 +278,7 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
             np.array([1, 2, 3]),
             np.array([2, 2, 2]),
         ), None, 'float32'),
+        ('erf', paddle.erf, (np.random.rand(300, 288), ), None, 'float32'),
     ))
 class TestGrad(unittest.TestCase):
 
@@ -397,11 +398,12 @@ def multiply_pd(x):
 
 
 multiply_ag = lambda xs: xs[0] * xs[0] * xs[0] * xs[0] * xs[0]
-sin_ag = lambda xs: np_autograd.sin(xs[0])
-cos_ag = lambda xs: np_autograd.cos(xs[0])
-exp_ag = lambda xs: np_autograd.exp(xs[0])
+sin_ag = lambda xs: anp.sin(xs[0])
+cos_ag = lambda xs: anp.cos(xs[0])
+exp_ag = lambda xs: anp.exp(xs[0])
 pow_ag = lambda xs: xs[0]**xs[1]
-log_ag = lambda xs: np_autograd.log(xs[0])
+log_ag = lambda xs: anp.log(xs[0])
+erf_ag = lambda xs: ascipy.special.erf(xs[0])
 
 
 @utils.place(config.DEVICES)
@@ -415,6 +417,8 @@ log_ag = lambda xs: np_autograd.log(xs[0])
         ('pow', paddle.pow, pow_ag,
          (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
         ('log', paddle.log, log_ag, (np.random.rand(3, 8), ), None, 'float32'),
+        ('erf', paddle.erf, erf_ag,
+         (np.random.rand(100, 200), ), None, 'float32'),
     ))
 class TestGradWithHigherOrder(unittest.TestCase):
 

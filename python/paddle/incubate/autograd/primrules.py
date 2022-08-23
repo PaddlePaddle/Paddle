@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import typing
+import math
 
 import paddle
 
@@ -19,7 +20,7 @@ from . import primops
 from .primops import (add, broadcast, concat, cos, div, exp, fill_const, gather,
                       matmul, mul, neg, reduce, reshape, scatter_add, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose, log, select, eq, max)
+                      transpose, log, select, eq, max, erf)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -169,6 +170,11 @@ def cos_orig2prim(op, x):
 @REGISTER_ORIG2PRIM('exp')
 def exp_orig2prim(op, x):
     return exp(x)
+
+
+@REGISTER_ORIG2PRIM('erf')
+def erf_orig2prim(op, x):
+    return erf(x)
 
 
 @REGISTER_ORIG2PRIM('log')
@@ -373,6 +379,11 @@ def exp_prim2orig(op, x):
     return paddle.exp(x)
 
 
+@REGISTER_PRIM2ORIG('erf_p')
+def erf_prim2orig(op, x):
+    return paddle.erf(x)
+
+
 @REGISTER_PRIM2ORIG('log_p')
 def log_prim2orig(op, x):
     return paddle.log(x)
@@ -572,6 +583,16 @@ def exp_jvp(op, x_dot):
         return None
     y = op_position_output(op)
     return mul(x_dot, y)
+
+
+@REGISTER_JVP('erf_p')
+def erf_jvp(op, x_dot):
+    if x_dot is None:
+        return None
+    x, = op_position_inputs(op)
+    return mul(
+        fill_const(2. / math.sqrt(math.pi), x.shape, x.dtype),
+        mul(x_dot, exp(neg(primops.pow(x, fill_const(2., x.shape, x.dtype))))))
 
 
 @REGISTER_JVP('log_p')
