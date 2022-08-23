@@ -88,12 +88,18 @@ void BincountKernel(const Context& dev_ctx,
                     const paddle::optional<DenseTensor>& weights,
                     const Scalar& minlength,
                     DenseTensor* out) {
+  int int_minlength = minlength.to<int>();
+  PADDLE_ENFORCE_GE(int_minlength,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The minlength should be greater than or equal to 0."
+                        "But received minlength is %d",
+                        int_minlength));
+
   if (x.dtype() == DataType::INT32) {
-    BincountInner<Context, T, int>(
-        dev_ctx, x, weights, minlength.to<int>(), out);
+    BincountInner<Context, T, int>(dev_ctx, x, weights, int_minlength, out);
   } else if (x.dtype() == DataType::INT64) {
-    BincountInner<Context, T, int64_t>(
-        dev_ctx, x, weights, minlength.to<int>(), out);
+    BincountInner<Context, T, int64_t>(dev_ctx, x, weights, int_minlength, out);
   }
 }
 }  // namespace phi
