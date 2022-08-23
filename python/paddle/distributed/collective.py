@@ -353,12 +353,14 @@ def _set_custom_gid(gid):
     _custom_gid = gid
 
 
-def new_group(ranks=None, backend=None):
+def new_group(ranks=None, backend=None, timeout=_default_timeout):
     """
     Creates a new distributed communication group.
     Args:
         ranks (list): The global ranks of group members.
         backend (str): The backend used to create group, only nccl is supported now.
+        timeout (datetime.timedelta, optional): The waiting timeout for store relevant options, default is 30 minutes.
+
     Returns:
         Group: The group instance.
     Examples:
