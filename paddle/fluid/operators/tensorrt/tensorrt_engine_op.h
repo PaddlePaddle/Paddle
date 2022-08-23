@@ -497,12 +497,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
     for (const auto &x : runtime_input_names_) {
 #if IS_TRT_VERSION_LT(8000)
       // trt may remove input tensor if it's unused or used only at compile-time
-      std::unordered_map<std::string, int> name_idx;
-      for (int i = 0; i < num_bindings; i++) {
-        name_idx[engine->engine()->getBindingName(i)] = i;
-      }
-      if (name_idx.find(x.c_str()) == name_idx.end()) continue;
+      if (engine->engine()->getBindingIndex(x.c_str()) < 0) continue;
 #endif
+
       // convert input and copy to TRT engine's buffer
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
