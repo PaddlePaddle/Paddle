@@ -12,26 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/erfinv_kernel.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
-template <typename T>
-struct ErfinvFunctor {
-  HOSTDEVICE inline T operator()(const T x) const { return erfinv(x); }
-};
-
 template <typename T, typename Context>
-void ErfinvKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  ctx.template Alloc<T>(out);
-  std::vector<const DenseTensor*> ins = {&x};
-  std::vector<DenseTensor*> outs = {out};
-  phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, ErfinvFunctor<T>());
-}
+void DistributeFpnProposalsKernel(
+    const Context& ctx,
+    const DenseTensor& fpn_rois,
+    const paddle::optional<DenseTensor>& rois_num,
+    int min_level,
+    int max_level,
+    int refer_level,
+    int refer_scale,
+    bool pixel_offset,
+    std::vector<DenseTensor*> multi_fpn_rois,
+    std::vector<DenseTensor*> multi_level_rois_num,
+    DenseTensor* restore_index);
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL(erfinv, GPU, ALL_LAYOUT, phi::ErfinvKernel, float, double) {}
