@@ -1752,6 +1752,25 @@ py_test_modules(
 set_tests_properties(test_add_reader_dependency_for_interpretercore
                      PROPERTIES TIMEOUT 120)
 
+set_tests_properties(
+  test_buffer_shared_memory_reuse_pass
+  test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
+  PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
+
+py_test_modules(
+  test_buffer_shared_memory_reuse_pass_for_standalone_executor MODULES
+  test_buffer_shared_memory_reuse_pass ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+py_test_modules(
+  test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass_for_standalone_executor
+  MODULES
+  test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
+  ENVS
+  FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+set_tests_properties(
+  test_buffer_shared_memory_reuse_pass_for_standalone_executor
+  test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass_for_standalone_executor
+  PROPERTIES TIMEOUT 200)
+
 py_test_modules(test_renorm_op_without_eager MODULES test_renorm_op ENVS
                 FLAGS_enable_eager_mode=0)
 
