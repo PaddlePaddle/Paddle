@@ -1527,7 +1527,7 @@ class Executor(object):
                             converted_program.lr_sheduler = inner_program.lr_sheduler
                         inner_program = converted_program
                         # print(f"Program after convert:\n {inner_program}", flush=True)
-                        logging.warning(
+                        warnings.warn(
                             "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
                         )
                     else:
@@ -1543,6 +1543,11 @@ class Executor(object):
                         feed_var_name=feed_var_name,
                         fetch_var_name=fetch_var_name,
                         use_fetch_v2=True)
+
+                    # If there are multiple blocks in the program, subblock will not be
+                    # executed with the new executor in temporary
+                    if program.num_blocks > 1:
+                        warnings.warn("There are more than 1 block in program.")
 
                     # standalone executor will apply buffer_shared_inplace_pass and
                     # inplace_addto_op_pass to program according to build_strategy
