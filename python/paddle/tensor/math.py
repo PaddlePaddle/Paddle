@@ -793,13 +793,13 @@ floor_mod = remainder  # noqa: F841
 
 def multiply(x, y, name=None):
     """
-    multiply two tensors element-wise. The equation is:
+    multiply two tensors element-wise. The equation is:      
 
     .. math::
         out = x * y
 
     **Note**:
-    ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
         x (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
