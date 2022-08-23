@@ -24,17 +24,6 @@ from typing import Optional, List, Callable, Dict, Any, Set
 class TrtConvertCastTest(TrtLayerAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        attrs = [
-            program_config.ops[i].attrs for i in range(len(program_config.ops))
-        ]
-        if attrs[0]['in_dtype'] == 0:
-            return True
-        if attrs[0]['in_dtype'] in [4, 5] and attrs[0]['out_dtype'] == 4:
-            return False
-        if attrs[0]['in_dtype'] not in [
-                2, 4, 5
-        ] or attrs[0]['out_dtype'] not in [2, 4, 5]:
-            return False
         return True
 
     def sample_program_configs(self):
@@ -49,47 +38,65 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
             else:
                 return np.ones([1, 3, 64, 64]).astype(np.float32)
 
-        for in_dtype in [0]:
-            for out_dtype in [2, 5]:
-                dics = [{"in_dtype": in_dtype, "out_dtype": out_dtype}]
+        def dtype2int(type):
+            if type == "bool":
+                return 0
+            elif type == "int":
+                return 2
+            elif type == "fp16":
+                return 4
+            elif type == "fp32":
+                return 5
 
-                ops_config = [
-                    {
-                        "op_type": "cast",
-                        "op_inputs": {
-                            "X": ["input_data"]
-                        },
-                        "op_outputs": {
-                            "Out": ["cast_output_data"]
-                        },
-                        "op_attrs": dics[0]
+        for [in_dtype, out_dtype] in [
+            ["bool", "int"],
+            ["bool", "fp32"],
+            ["int", "fp32"],
+            ["int", "int"],
+            ["fp32", "int"],
+            ["fp32", "fp32"],
+        ]:
+            dics = [{
+                "in_dtype": dtype2int(in_dtype),
+                "out_dtype": dtype2int(out_dtype)
+            }]
+            ops_config = [
+                {
+                    "op_type": "cast",
+                    "op_inputs": {
+                        "X": ["input_data"]
                     },
-                    {
-                        "op_type": "elementwise_add",
-                        "op_inputs": {
-                            "X": ["cast_output_data"],
-                            "Y": ["cast_output_data"]
-                        },
-                        "op_outputs": {
-                            "Out": ["output_data"]
-                        },
-                        "op_attrs": {
-                            "axis": -1
-                        },
+                    "op_outputs": {
+                        "Out": ["cast_output_data"]
                     },
-                ]
-                ops = self.generate_op_config(ops_config)
+                    "op_attrs": dics[0]
+                },
+                {
+                    "op_type": "elementwise_add",
+                    "op_inputs": {
+                        "X": ["cast_output_data"],
+                        "Y": ["cast_output_data"]
+                    },
+                    "op_outputs": {
+                        "Out": ["output_data"]
+                    },
+                    "op_attrs": {
+                        "axis": -1
+                    },
+                },
+            ]
+            ops = self.generate_op_config(ops_config)
 
-                program_config = ProgramConfig(
-                    ops=ops,
-                    weights={},
-                    inputs={
-                        "input_data":
-                        TensorConfig(data_gen=partial(generate_input, in_dtype))
-                    },
-                    outputs=["output_data"])
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs={
+                    "input_data":
+                    TensorConfig(data_gen=partial(generate_input, in_dtype))
+                },
+                outputs=["output_data"])
 
-                yield program_config
+            yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):

@@ -2164,6 +2164,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         VLOG(3) << "unsupport data type conversion";
         return false;
       }
+      // Now only support bool -> (int || float)
       if (in_dtype == 0 && (out_dtype == 2 || out_dtype == 5)) {
         return true;
       }
