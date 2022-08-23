@@ -15,11 +15,12 @@
 from .fs import LocalFS  # noqa: F401
 from .fs import HDFSClient  # noqa: F401
 from .ps_util import DistributedInfer  # noqa: F401
-from ..recompute.recompute import recompute  # noqa: F401
+from ..recompute.recompute import recompute, recompute_sequential  # noqa: F401
 
 from . import log_util  # noqa: F401
 from . import hybrid_parallel_util  # noqa: F401
 
 __all__ = [  #noqa
-    "LocalFS", "recompute", "DistributedInfer", "HDFSClient"
+    "LocalFS", "recompute", "recompute_sequential", "DistributedInfer",
+    "HDFSClient"
 ]

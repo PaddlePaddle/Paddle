@@ -32,7 +32,7 @@ from .fleet import Fleet
 from .model import distributed_model
 from .optimizer import distributed_optimizer
 from .scaler import distributed_scaler
-from .recompute.recompute import recompute
+from .recompute.recompute import recompute, recompute_sequential
 
 __all__ = [  #noqa
     "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
@@ -92,3 +92,4 @@ shrink = fleet.shrink
 get_hybrid_communicate_group = fleet.get_hybrid_communicate_group
 distributed_scaler = distributed_scaler
 recompute = recompute
+recompute_sequential = recompute_sequential
