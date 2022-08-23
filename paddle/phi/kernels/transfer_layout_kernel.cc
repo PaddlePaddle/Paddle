@@ -14,10 +14,15 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
 
+#include <sstream>
+#include <string>
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/onednn/mkldnn_helper.h"
 
 namespace phi {
 
@@ -46,11 +51,10 @@ void CastDataLayout(const Context& dev_ctx,
 }
 
 template <typename Context>
-void TransferLayoutKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          int src_layout,
-                          int dst_layout,
-                          DenseTensor* out) {
+void TransferLayoutGeneral(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           DataLayout dst_layout,
+                           DenseTensor* out) {
   auto src_dim = x.dims();
 
   auto axis = GetAxis(x.layout(), static_cast<DataLayout>(dst_layout));
@@ -62,12 +66,90 @@ void TransferLayoutKernel(const Context& dev_ctx,
   }
 
   dev_ctx.Alloc(out, x.dtype());
-
   out->ResizeAndAllocate(phi::make_ddim(dst_dim));
 
   PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
                        CastDataLayout<data_t, Context>(dev_ctx, x, axis, out);
                      }));
+}
+
+#ifdef PADDLE_WITH_MKLDNN
+template <typename Context>
+void TransferLayoutMKLDNN(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          DataLayout src_layout,
+                          DataLayout dst_layout,
+                          DenseTensor* out) {
+  auto print_tensor_meta = [](const DenseTensor& x) {
+    std::ostringstream oss;
+
+    oss << "[";
+    oss << "layout:" << x.layout() << " ,";
+    oss << "dims:" << x.dims() << " ,";
+    if (x.IsInitialized()) oss << "place:" << x.place();
+    oss << "]";
+
+    return oss.str();
+  };
+  VLOG(10) << " x: " << print_tensor_meta(x);
+  VLOG(10) << " out: " << print_tensor_meta(*out) << " " << out;
+
+  if (src_layout != DataLayout::MKLDNN && dst_layout == DataLayout::MKLDNN) {
+    VLOG(4) << "hhhh";
+    // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
+    // Just set layout/format. No real transform occur
+    auto out_format = funcs::MKLDNNFormatForSize(
+        x.dims().size(), funcs::ToMKLDNNFormat(src_layout));
+    out->ShareDataWith(x);
+    VLOG(4) << "hhhh1";
+    // For NHWC data we need reshape of tensors as MKL-DNN
+    // is expecting NHWC dims description order
+    if (src_layout == DataLayout::NHWC) {
+      VLOG(4) << "NHWC";
+      funcs::MatchShapeToLayout(out, src_layout, dst_layout);
+      VLOG(4) << "hhhh1";
+      OneDNNContext::tls().set_cur_paddle_data_layout(src_layout);
+    }
+    out->set_layout(DataLayout::MKLDNN);
+    out->set_format(out_format);
+  } else if (src_layout == DataLayout::MKLDNN &&
+             dst_layout != DataLayout::MKLDNN) {
+    auto target_layout = OneDNNContext::tls().get_cur_paddle_data_layout();
+    VLOG(4) << "innerTransDataLayoutFromMKLDNN: " << src_layout << "->"
+            << target_layout;
+    // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
+    // Do transform via MKLDNN lib
+    funcs::innerTransDataLayoutFromMKLDNN(
+        src_layout, target_layout, x, out, dev_ctx.GetPlace());
+  } else {
+    TransferLayoutGeneral<Context>(dev_ctx, x, dst_layout, out);
+  }
+}
+#endif
+
+template <typename Context>
+void TransferLayoutKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          int src_layout,
+                          int dst_layout,
+                          DenseTensor* out) {
+  PADDLE_ENFORCE_NE(src_layout,
+                    dst_layout,
+                    errors::PreconditionNotMet(
+                        "No layout transform needed between same layout."));
+  VLOG(10) << "TransDataLayout from " << static_cast<DataLayout>(src_layout)
+           << " -> " << static_cast<DataLayout>(dst_layout);
+
+#ifdef PADDLE_WITH_MKLDNN
+  TransferLayoutMKLDNN<Context>(dev_ctx,
+                                x,
+                                static_cast<DataLayout>(src_layout),
+                                static_cast<DataLayout>(dst_layout),
+                                out);
+#else
+  TransferLayoutGeneral<Context>(
+      dev_ctx, x, static_cast<DataLayout>(dst_layout), out);
+#endif
 }
 
 }  // namespace phi
