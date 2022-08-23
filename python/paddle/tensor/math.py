@@ -2958,7 +2958,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
         if _in_legacy_dygraph():
             return _C_ops.diagonal(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
 
-    def __check_input(x, offset, dim1, dim2):
+    def __check_input(x, offset, axis1, axis2):
         check_dtype(x.dtype, 'Input',
                     ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
                     'diagonal')
