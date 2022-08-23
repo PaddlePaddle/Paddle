@@ -846,11 +846,14 @@ class NLLLoss(Layer):
          name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Shape:
+
         input (Tensor): Input tensor, the shape is :math:`[N, C]`, `C` is the number of classes.
             But in K-dimension situation, the shape is :math:`[N, C, d_1, d_2, ..., d_K]`.
             The data type is float32, float64.
+
         label (Tensor): Label tensor, the shape is :math:`[N,]` or :math:`[N, d_1, d_2, ..., d_K]`.
             The data type is int64.
+
         output (Tensor): the `negative log likelihood loss` between input `x` and `label`.
             If `reduction` is `'none'`, the shape is `[N, *]`.
             If `reduction` is `'sum'` or `'mean'`, the shape is `[1]`.
