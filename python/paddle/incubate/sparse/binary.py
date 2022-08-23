@@ -399,3 +399,27 @@ def divide(x, y, name=None):
         if y.dtype != x.dtype:
             y = _C_ops.final_state_sparse_cast(y, None, x.dtype)
         return _C_ops.final_state_sparse_divide(x, y)
+
+
+@dygraph_only
+def is_same_shape(x, y):
+    """
+    Check whether x.shape equal to y.shape.
+    Args:
+        x (Tensor): The input tensor. It can be DenseTensor/SparseCooTensor/SparseCsrTensor.
+        y (Tensor): The input tensor. It can be DenseTensor/SparseCooTensor/SparseCsrTensor.
+    Returns:
+        bool: True for same shape and False for different shape.
+    Examples:
+        .. code-block:: python
+            import paddle
+            x = paddle.rand([2, 3, 8])
+            y = paddle.rand([2, 3, 8])
+            y = y.to_sparse_csr()
+            z = paddle.rand([2, 5])
+            paddle.incubate.sparse.is_same_shape(x, y)
+            # True
+            paddle.incubate.sparse.is_same_shape(x, z)
+            # False
+    """
+    return x.is_same_shape(y)
