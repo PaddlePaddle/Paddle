@@ -17,23 +17,42 @@
 namespace phi {
 namespace funcs {
 
-template <typename T>
+template <typename T, class Enable = void>
 struct IsNanFunctor {
   HOSTDEVICE bool operator()(const T a) const { return std::isnan(a); }
 };
 
 template <typename T>
+struct IsNanFunctor<T,
+                    typename std::enable_if<std::is_integral<T>::value>::type> {
+  HOSTDEVICE bool operator()(const T a) const { return false; }
+};
+
+template <typename T, class Enable = void>
 struct IsInfFunctor {
   HOSTDEVICE bool operator()(const T a) const { return std::isinf(a); }
 };
 
 template <typename T>
+struct IsInfFunctor<T,
+                    typename std::enable_if<std::is_integral<T>::value>::type> {
+  HOSTDEVICE bool operator()(const T a) const { return false; }
+};
+
+template <typename T, class Enable = void>
 struct IsFiniteFunctor {
   HOSTDEVICE bool operator()(const T a) const { return std::isfinite(a); }
 };
 
+template <typename T>
+struct IsFiniteFunctor<
+    T,
+    typename std::enable_if<std::is_integral<T>::value>::type> {
+  HOSTDEVICE bool operator()(const T a) const { return true; }
+};
+
 template <>
-struct IsFiniteFunctor<phi::dtype::float16> {
+struct IsFiniteFunctor<phi::dtype::float16, void> {
   HOSTDEVICE bool operator()(const phi::dtype::float16 a) const {
     return isfinite(a);
   }

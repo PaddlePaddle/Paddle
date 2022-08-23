@@ -66,9 +66,11 @@ bool TensorIsfinite(const framework::Tensor& tensor);
 FiniteVisitor(Isnan, Any, CPU);
 FiniteVisitor(Isinf, Any, CPU);
 FiniteVisitor(Isfinite, All, CPU);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 FiniteVisitor(Isnan, Any, GPU);
 FiniteVisitor(Isinf, Any, GPU);
 FiniteVisitor(Isfinite, All, GPU);
+#endif
 
 // store the result bool in gpu tensor, async operation. Faster than above ones.
 inline void TensorContainsNAN(const framework::Tensor& tensor,
@@ -79,8 +81,8 @@ inline void TensorContainsNAN(const framework::Tensor& tensor,
                         IsnanVisitorCPU(tensor, out));
     return;
   }
-  if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::is_gpu_place(place)) {
     VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
                         IsnanVisitorGPU(tensor, out));
     return;
@@ -96,8 +98,8 @@ inline void TensorContainsInf(const framework::Tensor& tensor,
                         IsinfVisitorCPU(tensor, out));
     return;
   }
-  if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::is_gpu_place(place)) {
     VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
                         IsinfVisitorGPU(tensor, out));
     return;
@@ -113,8 +115,8 @@ inline void TensorIsfinite(const framework::Tensor& tensor,
                         IsfiniteVisitorCPU(tensor, out));
     return;
   }
-  if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::is_gpu_place(place)) {
     VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
                         IsfiniteVisitorGPU(tensor, out));
     return;
