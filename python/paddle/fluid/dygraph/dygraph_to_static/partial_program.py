@@ -18,7 +18,7 @@ import six
 
 import paddle
 from paddle.fluid import framework, backward, core, program_guard
-from paddle.fluid.executor import _is_enable_standalone_executor
+from paddle.fluid.executor import _is_enable_standalone_executor, _is_dy2st_enable_standalone_executor
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
@@ -563,7 +563,8 @@ class PartialProgramLayer:
                 ('cuda_graph_capture_mode', self._cuda_graph_capture_mode,
                  'cuda_graph_pool_id', self._cuda_graph_pool_id))
 
-        use_interpretorcore = _is_enable_standalone_executor()
+        use_interpretorcore = _is_enable_standalone_executor(
+        ) and _is_dy2st_enable_standalone_executor()
         attrs.extend(('use_interpretorcore', use_interpretorcore))
         if use_interpretorcore:
             attrs.extend(
@@ -633,6 +634,8 @@ class PartialProgramLayer:
                 core.Scope(), framework._current_expected_place())
             ir_graph = framework.IrGraph(forward_compiled_program._graph)
             forward_builded_program = ir_graph.to_program()
+            if hasattr(forward_compiled_program._program, 'lr_sheduler'):
+                forward_builded_program.lr_sheduler = forward_compiled_program._program.lr_sheduler
         else:
             forward_builded_program = whole_program
 
@@ -646,6 +649,8 @@ class PartialProgramLayer:
                 core.Scope(), framework._current_expected_place())
             ir_graph = framework.IrGraph(backward_compiled_program._graph)
             backward_builded_program = ir_graph.to_program()
+            if hasattr(backward_compiled_program._program, 'lr_sheduler'):
+                backward_builded_program.lr_sheduler = backward_compiled_program._program.lr_sheduler
         else:
             backward_builded_program = paddle.static.Program()
 

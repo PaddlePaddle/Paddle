@@ -19,7 +19,7 @@ from paddle.fluid.framework import _test_eager_guard, Variable, _in_legacy_dygra
 from paddle.fluid import core
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.executor import _is_enable_standalone_executor
+from paddle.fluid.executor import _is_enable_standalone_executor, _is_dy2st_enable_standalone_executor
 import paddle.compat as cpt
 
 import unittest
@@ -127,7 +127,8 @@ class TestRunProgram(unittest.TestCase):
                 _hash_with_id(program)
             ]
 
-            use_interpretorcore = _is_enable_standalone_executor()
+            use_interpretorcore = _is_enable_standalone_executor(
+            ) and _is_dy2st_enable_standalone_executor()
             attrs.extend(('use_interpretorcore', use_interpretorcore))
             if use_interpretorcore:
                 attrs.extend(

@@ -26,7 +26,7 @@ from paddle import compat as cpt
 from paddle.fluid import core, framework, executor
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.framework import _in_eager_mode_
-from paddle.fluid.executor import _is_enable_standalone_executor
+from paddle.fluid.executor import _is_enable_standalone_executor, _is_dy2st_enable_standalone_executor
 from paddle.fluid.dygraph.base import switch_to_static_graph
 
 paddle.enable_static()
@@ -241,7 +241,8 @@ class RunProgramOpTest(unittest.TestCase):
             forward_program_desc, backward_program_desc = self.get_forward_backward_program_desc(
                 self.program_desc, self.fwd_op_num, len(outputs['Out']))
 
-            use_interpretorcore = _is_enable_standalone_executor()
+            use_interpretorcore = _is_enable_standalone_executor(
+            ) and _is_dy2st_enable_standalone_executor()
             self.attrs.extend(('use_interpretorcore', use_interpretorcore))
             if use_interpretorcore:
                 self.attrs.extend(
@@ -265,7 +266,8 @@ class RunProgramOpTest(unittest.TestCase):
             forward_program_desc, backward_program_desc = self.get_forward_backward_program_desc(
                 self.program_desc, self.fwd_op_num, len(outputs['Out']))
 
-            use_interpretorcore = _is_enable_standalone_executor()
+            use_interpretorcore = _is_enable_standalone_executor(
+            ) and _is_dy2st_enable_standalone_executor()
             self.attrs.extend(('use_interpretorcore', use_interpretorcore))
             if use_interpretorcore:
                 self.attrs.extend(

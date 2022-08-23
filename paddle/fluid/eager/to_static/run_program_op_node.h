@@ -264,7 +264,7 @@ inline void RunProgramAPI(
     is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
   }
   auto program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
-  const auto &place = egr::Controller::Instance().GetExpectedPlace();
+  auto place = egr::Controller::Instance().GetExpectedPlace();
 
   // NOTE(chenweihang): In order not to add new variable type, use vector
   // here. Originally, here can use scope directly.
@@ -464,7 +464,7 @@ inline void RunProgramGradAPI(
                         "least one sub scope."));
 
   auto &scope = *(global_inner_scope->kids().front());
-  const auto &place = egr::Controller::Instance().GetExpectedPlace();
+  auto place = egr::Controller::Instance().GetExpectedPlace();
 
   if (use_interpretorcore) {
     VLOG(2) << "RunProgramGradOp use interpretercore to execute program.";

@@ -110,7 +110,7 @@ class InterpreterCore {
 
   bool is_build_;
 
-  const platform::Place& place_;
+  platform::Place place_;
   const BlockDesc& block_;  // not owned
   std::set<std::string> skip_gc_vars_;
 

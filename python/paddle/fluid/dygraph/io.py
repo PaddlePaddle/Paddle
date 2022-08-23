@@ -30,7 +30,7 @@ from paddle.fluid.layers import nn
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.executor import _is_enable_standalone_executor
+from paddle.fluid.executor import _is_enable_standalone_executor, _is_dy2st_enable_standalone_executor
 from paddle import _C_ops
 
 __all__ = ['TranslatedLayer']
@@ -955,7 +955,8 @@ def _run_dygraph(instance, input, program_holder):
         _hash_with_id(trace_program, instance)
     ]
 
-    use_interpretorcore = _is_enable_standalone_executor()
+    use_interpretorcore = _is_enable_standalone_executor(
+    ) and _is_dy2st_enable_standalone_executor()
     attrs.extend(('use_interpretorcore', True))
     if use_interpretorcore:
         attrs.extend(
