@@ -35,11 +35,10 @@ class TestParallelDygraphSparseEmdedding_GLOO(TestDistBase):
         self._dygraph = True
 
     def test_sparse_embedding(self):
-        self.check_with_place(
-            "./collective/fleet/parallel_dygraph_sparse_embedding.py",
-            delta=1e-5,
-            check_error_log=True,
-            log_name=flag_name)
+        self.check_with_place("parallel_dygraph_sparse_embedding.py",
+                              delta=1e-5,
+                              check_error_log=True,
+                              log_name=flag_name)
 
 
 class TestParallelDygraphSparseEmdeddingFP64_GLOO(TestDistBase):
@@ -50,11 +49,10 @@ class TestParallelDygraphSparseEmdeddingFP64_GLOO(TestDistBase):
         self._dygraph = True
 
     def test_sparse_embedding_fp64(self):
-        self.check_with_place(
-            "./collective/fleet/parallel_dygraph_sparse_embedding_fp64.py",
-            delta=1e-5,
-            check_error_log=True,
-            log_name=flag_name)
+        self.check_with_place("parallel_dygraph_sparse_embedding_fp64.py",
+                              delta=1e-5,
+                              check_error_log=True,
+                              log_name=flag_name)
 
 
 if __name__ == "__main__":

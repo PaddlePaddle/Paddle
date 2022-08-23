@@ -35,7 +35,7 @@ class TestDistMnistNCCL2FleetApi(TestDistBase):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
-                os.path.abspath("collective/fleet/dist_mnist.py"),
+                "dist_mnist.py",
                 delta=1e-5,
                 check_error_log=True,
                 need_envs={'FLAGS_allreduce_record_one_event': '1'})
