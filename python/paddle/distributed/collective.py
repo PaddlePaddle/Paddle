@@ -402,41 +402,6 @@ def _barrier_by_tcp_store(group_name, store, timeout):
 
 def new_group(ranks=None, backend=None, timeout=_default_timeout):
     """
-
-    if global_world_size < 2:
-        return
-
-    barrier_prefix = "Barrier/" + group_name + "/"
-    is_master = (global_rank == 0)
-
-    def _check_keys_ready(wait_keys):
-        start_time = time.time()
-        while len(wait_keys) > 0:
-            time.sleep(0.1)
-            elapse_time = time.time() - start_time
-            if datetime.timedelta(seconds=elapse_time) > timeout:
-                raise RuntimeError(
-                    "Timeout while initializing process group {}."
-                    "Keys {} are not ready sinck rank {} is waiting them."
-                    "Two reason may cause this error:\n 1. The create process group api should be called by all ranks.\n"
-                    " 2. Try to increase the waiting time.\n".format(
-                        group_name, wait_keys, global_rank))
-            wait_keys = list(
-                filter(lambda key: int(store.get(key)) != 1, wait_keys))
-
-    # all the workers set their exiting key and exit
-    # the master will wait for all workers' exiting key, ensure to exit in the end
-    if is_master:
-        wait_keys = [
-            barrier_prefix + str(rank) for rank in range(1, global_world_size)
-        ]
-        _check_keys_ready(wait_keys)
-    else:
-        store.add(barrier_prefix + str(global_rank), 1)
-
-
-def new_group(ranks=None, backend=None, timeout=_default_timeout):
-    """
     Creates a new distributed communication group.
     Args:
         ranks (list): The global ranks of group members.
@@ -500,7 +465,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         # hang caused by tcp
         paddle.distributed.barrier(group=group)
         # NOTE(liyurui): All processors should hang and wait using tcp store, in case master exit before sub-group is created.
-        if backend != 'heter':
+        if backend not in ['heter', 'mpi']:
             _barrier_by_tcp_store(group_name, _default_store, timeout)
         else:
             print("Warning: store barrier is not supported for heter backend.")
