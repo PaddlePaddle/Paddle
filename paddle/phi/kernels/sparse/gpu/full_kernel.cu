@@ -49,8 +49,8 @@ void CooFullLikeKernel(const Context& dev_ctx,
                      false,
                      out->mutable_non_zero_indices());
 
-  DenseTensor* values = out->mutable_non_zero_elements();
-  values->Resize(x.non_zero_elements().dims());
+  DenseTensor* values = out->mutable_values();
+  values->Resize(x.values().dims());
   dev_ctx.template Alloc<T>(values);
 
   std::vector<const DenseTensor*> inputs = {};
@@ -84,8 +84,8 @@ void CsrFullLikeKernel(const Context& dev_ctx,
                      false,
                      out->mutable_non_zero_cols());
 
-  DenseTensor* values = out->mutable_non_zero_elements();
-  values->Resize(x.non_zero_elements().dims());
+  DenseTensor* values = out->mutable_values();
+  values->Resize(x.values().dims());
   dev_ctx.template Alloc<T>(values);
 
   std::vector<const DenseTensor*> inputs = {};

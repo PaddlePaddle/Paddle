@@ -19,7 +19,7 @@ import time
 from paddle.fluid import core
 from paddle.fluid import framework
 
-from .utils import print_program_with_dist_attr
+from .utils import print_program_with_dist_attr, _is_gradient_clip_op
 from .operators import find_compatible_distributed_operator_impls
 from .dist_context import get_default_distributed_context, _node_id
 from .dist_tensor import DistributedTensor
@@ -1319,26 +1319,70 @@ class Completer:
             # TODO to add attribute for moment var
             op = ops[idx]
             if int(op.attr('op_role')) == int(OpRole.Optimize):
-                if op.type == "clip_by_norm":
-                    param_grad = vars[op.input("X")[0]]
-                    param_grad_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
-                        param_grad)
-                    assert param_grad_dist_attr is not None
-                    ref_process_mesh = param_grad_dist_attr.process_mesh
-                    ref_dims_mapping = param_grad_dist_attr.dims_mapping
+                # TODO:
+                # 1. move `generate_optimizer` before `partitioner`
+                # 2. implement grad_clip completion by `dist_op`
+                # 3. allreduce dist_gloabl_norm (mp-group) and no_dist_global_norm (pp-group, sharding-group)
+                if _is_gradient_clip_op(op):
+                    if op.type in [
+                            "sum", "sqrt", "fill_constant", "elementwise_max",
+                            "elementwise_div"
+                    ]:
+                        op_dist_attr = OperatorDistributedAttribute()
+                        op_dist_attr.process_mesh = world_ranks
+                        for in_name in op.input_arg_names:
+                            in_var = vars[in_name]
+                            in_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                                in_var)
+                            op_dist_attr.set_input_dist_attr(
+                                in_name, in_dist_attr)
+                        for out_name in op.output_arg_names:
+                            out_var = vars[out_name]
+                            out_dist_attr = TensorDistributedAttribute()
+                            out_dist_attr.process_mesh = world_ranks
+                            out_dist_attr.dims_mapping = [
+                                -1 for _ in range(len(out_var.shape))
+                            ]
+                            self._dist_context.set_tensor_dist_attr_for_program(
+                                out_var, out_dist_attr)
+                            op_dist_attr.set_output_dist_attr(
+                                out_name, out_dist_attr)
+                        remove_no_need_in_op(op, self._dist_context)
+                    else:
+                        in_var = vars[op.input("X")[0]]
+                        in_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                            in_var)
+                        assert in_dist_attr is not None
+                        ref_process_mesh = in_dist_attr.process_mesh
+                        ref_dims_mapping = in_dist_attr.dims_mapping
 
-                    out = vars[op.output("Out")[0]]
-                    out_dist_attr = TensorDistributedAttribute()
-                    out_dist_attr.process_mesh = ref_process_mesh
-                    out_dist_attr.dims_mapping = ref_dims_mapping
-                    self._dist_context.set_tensor_dist_attr_for_program(
-                        out, out_dist_attr)
+                        if op.type == "cast" and ops[
+                                idx + 1].type == "elementwise_mul":
+                            ref_var = vars[ops[idx + 1].input("X")[0]]
+                            ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                                ref_var)
+                            assert ref_dist_attr is not None
+                            ref_process_mesh = ref_dist_attr.process_mesh
 
-                    op_dist_attr = OperatorDistributedAttribute()
-                    op_dist_attr.process_mesh = ref_process_mesh
-                    op_dist_attr.set_input_dist_attr(param_grad.name,
-                                                     param_grad_dist_attr)
-                    op_dist_attr.set_output_dist_attr(out.name, out_dist_attr)
+                        out_var = vars[op.output("Out")[0]]
+                        out_dist_attr = TensorDistributedAttribute()
+                        out_dist_attr.process_mesh = ref_process_mesh
+                        if out_var.shape == in_var.shape:
+                            out_dist_attr.dims_mapping = ref_dims_mapping
+                        else:
+                            assert len(
+                                out_var.shape) == 1 and out_var.shape[0] == 1
+                            out_dist_attr.dims_mapping = [-1]
+                        self._dist_context.set_tensor_dist_attr_for_program(
+                            out_var, out_dist_attr)
+
+                        op_dist_attr = OperatorDistributedAttribute()
+                        op_dist_attr.process_mesh = ref_process_mesh
+                        op_dist_attr.set_input_dist_attr(
+                            in_var.name, in_dist_attr)
+                        op_dist_attr.set_output_dist_attr(
+                            out_var.name, out_dist_attr)
+
                     self._dist_context.set_op_dist_attr_for_program(
                         op, op_dist_attr)
 
@@ -1383,10 +1427,16 @@ class Completer:
                     for input_name in op.desc.input_names():
 
                         if input_name in [
-                                'Param', 'Grad', 'LearningRate', "SkipUpdate",
-                                "Beta1Tensor", "Beta2Tensor", "EpsilonTensor",
-                                "MasterParam"
+                                'Param',
+                                'Grad',
+                                'LearningRate',
+                                "SkipUpdate",
+                                "Beta1Tensor",
+                                "Beta2Tensor",
+                                "EpsilonTensor",
                         ]:
+                            continue
+                        if len(op.desc.input(input_name)) == 0:
                             continue
 
                         assert len(op.desc.input(input_name)) == 1
@@ -1400,7 +1450,6 @@ class Completer:
                             op_dist_attr.set_output_dims_mapping(
                                 input_var.name, [-1])
                         else:
-                            assert "Moment" in input_name or "Velocity" in input_name
                             input_var_attr.dims_mapping = ref_dims_mapping
                             op_dist_attr.set_input_dims_mapping(
                                 input_var.name, ref_dims_mapping)
@@ -1481,3 +1530,20 @@ class Completer:
                             break
                         else:
                             dist_op.dist_attr = backup_op_dist_attr
+
+
+def remove_no_need_in_op(op, dist_context):
+    if op.type == "fill_constant":
+        return
+
+    filter_vars = []
+    main_block = op.block
+    rank_id = dist_context.dist_op_context.rank_id
+    for varname in op.input("X"):
+        if rank_id in dist_context.get_tensor_dist_attr_for_program(
+                main_block.var(varname)).process_mesh.processes:
+            filter_vars.append(varname)
+
+    if not filter_vars:
+        return
+    op.desc.set_input('X', filter_vars)

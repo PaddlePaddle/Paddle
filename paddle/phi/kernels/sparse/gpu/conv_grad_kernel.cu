@@ -81,7 +81,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
   auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
   DenseTensor x_grad_indices =
       phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
-  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.values());
   T* x_grad_values_ptr = x_grad_values.data<T>();
   phi::backends::gpu::GpuMemsetAsync(x_grad_values_ptr,
                                      0,
@@ -109,16 +109,15 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
   offsets[kernel_size] = offset;
 
   if (subm) {
-    phi::funcs::sparse::SubmPreProcess<T, GPUContext>(
-        dev_ctx,
-        x,
-        kernel,
-        out_grad.non_zero_elements(),
-        in_channels,
-        out_channels,
-        half_kernel_size,
-        kernel_grad,
-        &x_grad_values);
+    phi::funcs::sparse::SubmPreProcess<T, GPUContext>(dev_ctx,
+                                                      x,
+                                                      kernel,
+                                                      out_grad.values(),
+                                                      in_channels,
+                                                      out_channels,
+                                                      half_kernel_size,
+                                                      kernel_grad,
+                                                      &x_grad_values);
     if (max_count == 0) {
       return;
     }
@@ -181,7 +180,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                                       unique_value_ptr);
 
   GatherV2<T, IntT>(dev_ctx,
-                    x.non_zero_elements().data<T>(),
+                    x.values().data<T>(),
                     out_index_ptr,
                     unique_value_ptr,
                     x.nnz(),
@@ -192,7 +191,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                     in_features_ptr);
 
   Gather<T, IntT>(dev_ctx,
-                  out_grad.non_zero_elements().data<T>(),
+                  out_grad.values().data<T>(),
                   rulebook_ptr + rulebook_len,
                   rulebook_len,
                   out_channels,
