@@ -1759,3 +1759,7 @@ set_tests_properties(test_parallel_executor_dry_run
                      PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
 set_tests_properties(test_parallel_executor_drop_scope
                      PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
+
+# py_reader is unsupported in standalone executor since it has been deprecated a long time ago
+set_tests_properties(test_py_reader_using_executor
+                     PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
