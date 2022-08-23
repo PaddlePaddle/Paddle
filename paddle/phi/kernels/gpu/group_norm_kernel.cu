@@ -228,6 +228,98 @@ void GroupNormKernel(const Context& dev_ctx,
                    data_layout);
 }
 
+template <typename T>
+void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
+                                               const T* input,
+                                               std::vector<int> input_shape,
+                                               const T* bias,
+                                               const T* scale,
+                                               T* temp_mean,
+                                               T* temp_variance,
+                                               int groups,
+                                               float eps,
+                                               T* output,
+                                               T* mean,
+                                               T* variance,
+                                               const DataLayout data_layout) {
+  const auto input_ddim = phi::make_ddim(input_shape);
+  const int C =
+      (data_layout == DataLayout::kNCHW ? input_ddim[1]
+                                        : input_ddim[input_ddim.size() - 1]);
+  const int group_size = C / groups;
+  const int W =
+      (data_layout == DataLayout::kNCHW ? input_ddim[input_ddim.size() - 1]
+                                        : input_ddim[input_ddim.size() - 2]);
+
+  int image_size = 1;
+  if (data_layout == DataLayout::kNCHW) {
+    for (int i = 2; i < input_ddim.size(); ++i) {
+      image_size *= input_ddim[i];
+    }
+  } else {
+    for (int i = 1; i < input_ddim.size() - 1; ++i) {
+      image_size *= input_ddim[i];
+    }
+  }
+#ifdef __HIPCC__
+  int block_size = std::max(std::min(256, image_size), 64);
+#else
+  int block_size = std::min(1024, image_size);
+#endif
+  dim3 grid(group_size, groups, input_ddim[0]);
+  dim3 threads(block_size, 1, 1);
+  if (data_layout == DataLayout::kNCHW) {
+    using AccT = typename phi::kps::details::MPTypeTrait<float>::Type;
+    constexpr int vec_size = sizeof(float4) / sizeof(float);
+    int size = group_size * image_size;  // group element size
+    const int max_num_threads = 1024;
+    int max_block_size = std::min(size / vec_size, max_num_threads);
+    int block_size_nchw = 1;
+    while (block_size_nchw < max_block_size) {
+      block_size_nchw *= 2;
+    }
+
+    block_size_nchw = std::max(block_size_nchw, phi::kps::details::kWarpSize);
+    dim3 grids(input_ddim[0] * groups);
+    dim3 blocks(block_size_nchw);
+
+    if (size < vec_size * block_size_nchw) {
+      phi::ScalarGetMeanAndVarNCHW<T>
+          <<<grids, blocks, 0, stream>>>(input, temp_mean, temp_variance, size);
+    } else {
+      phi::VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
+          <<<grids, blocks, 0, stream>>>(input, temp_mean, temp_variance, size);
+    }
+  } else {
+    phi::GroupNormForwardGetMeanAndVar<T>
+        <<<grid, threads, 0, stream>>>(input,
+                                       input_ddim[0],
+                                       C,
+                                       W,
+                                       image_size,
+                                       groups,
+                                       group_size,
+                                       temp_mean,
+                                       temp_variance);
+  }
+  GroupNormForward<T, 3><<<grid, threads, 0, stream>>>(
+      input,
+      temp_mean,
+      temp_variance,
+      scale,
+      bias,
+      input_ddim[0],
+      C,
+      W,
+      image_size,
+      groups,
+      group_size,
+      eps,
+      output,
+      variance,
+      data_layout);  // for now, we only support nchw for group norm
+}
+template class GroupNormDirectCUDAFunctor<float>;
 }  // namespace phi
 
 PD_REGISTER_KERNEL(

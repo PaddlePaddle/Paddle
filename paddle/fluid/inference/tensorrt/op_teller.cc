@@ -32,11 +32,9 @@ namespace tensorrt {
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {
-// TODO(baoachun) The group_norm trt plugin will check input's dim
-// not -1 failed when dynamic shape mode.
-// #if IS_TRT_VERSION_GE(7130)
-//     teller_set.insert("group_norm");
-// #endif
+#if IS_TRT_VERSION_GE(7130)
+    teller_set.insert("group_norm");
+#endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
     teller_set.insert("flatten_contiguous_range");
@@ -583,12 +581,26 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       const auto x_shape = x_var_desc->GetShape();
     }
     if (op_type == "group_norm") {
-      if (!with_dynamic_shape) return false;
       bool has_attrs = (desc.HasAttr("epsilon") && desc.HasAttr("groups"));
       if (has_attrs == false) return false;
-
       auto registry = GetPluginRegistry();
       if (registry == nullptr) return false;
+      std::string layout_str =
+          PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout"));
+      if (layout_str != "NCHW") {
+        VLOG(3) << "Group norm trt plugin only support NCHW layout, but got "
+                << layout_str;
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) return false;
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto dtype = x_var_desc->GetDataType();
+      if (dtype != 5) {
+        VLOG(3) << "Group norm trt plugin only support float32";
+        return false;
+      }
     }
     if (op_type == "concat") {
       if (!desc.HasAttr("axis")) {
@@ -2049,10 +2061,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 #endif
 
-    // conv2d_transpose, conv3d_transpose, depthwise_conv2d_transpose
-    if (op_type.find("d_transpose") > 0) {
-      // trt doen't support output_padding,
-      // output_padding is set when stride > 1
+    // conv3d_transpose
+    if (op_type == "conv3d_transpose") {
+      // trt doen't support output_padding when < 8406
+      // output_padding is usually set when stride > 1
+#if !IS_TRT_VERSION_GE(8400)
       if (desc.HasAttr("output_padding")) {
         const std::vector<int> output_padding =
             PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("output_padding"));
@@ -2062,6 +2075,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           if (max_padding > 0) return false;
         }
       }
+#endif
     }
 
     if (op_type == "conv3d" || op_type == "conv3d_transpose") {

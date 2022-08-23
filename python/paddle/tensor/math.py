@@ -424,6 +424,7 @@ OP_NAMEMAPPING = {
     'elementwise_sub': 'final_state_subtract',
     'elementwise_mul': 'final_state_multiply',
     'elementwise_div': 'final_state_divide',
+    'elementwise_mod': 'final_state_modulo',
 }
 
 @dygraph_only
@@ -565,9 +566,12 @@ def add_(x, y, name=None):
     if out_shape != x.shape:
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
 
-    out = _elementwise_op_in_dygraph(
-        x, y, axis=axis, op_name=op_type)
-    return out
+    if in_dygraph_mode():
+        return _C_ops.final_state_add_(x, y)
+    else:
+        out = _elementwise_op_in_dygraph(
+            x, y, axis=axis, op_name=op_type)
+        return out
 
 
 def subtract(x, y, name=None):
@@ -650,9 +654,12 @@ def subtract_(x, y, name=None):
     if out_shape != x.shape:
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
 
-    out = _elementwise_op_in_dygraph(
-        x, y, axis=axis, act=act, op_name='elementwise_sub_')
-    return out
+    if in_dygraph_mode():
+        return _C_ops.final_state_subtract_(x, y)
+    else:
+        out = _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_sub_')
+        return out
 
 
 def divide(x, y, name=None):
@@ -730,7 +737,9 @@ def floor_divide(x, y, name=None):
     """
     op_type = 'elementwise_floordiv'
     axis = -1
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_floor_divide(x, y)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
 
@@ -770,7 +779,9 @@ def remainder(x, y, name=None):
     """
     op_type = 'elementwise_mod'
     axis = -1
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_modulo(x, y)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
 
@@ -888,7 +899,9 @@ def maximum(x, y, name=None):
     op_type = 'elementwise_max'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_maximum(x, y)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -947,7 +960,9 @@ def minimum(x, y, name=None):
     op_type = 'elementwise_min'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_minimum(x, y)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -3499,6 +3514,8 @@ def tanh_(x, name=None):
     Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_tanh`.
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_tanh_( x )
     return _C_ops.tanh_(x)
 
 
@@ -4076,6 +4093,8 @@ def lerp_(x, y, weight, name=None):
         out_shape = broadcast_shape(out_shape, weight.shape)
     if out_shape != x.shape:
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
+    if in_dygraph_mode():
+        return _C_ops.final_state_lerp_( x, y, weight)
     return _C_ops.lerp_(x, y, weight)
 
 def erfinv(x, name=None):
@@ -4124,6 +4143,8 @@ def erfinv_(x, name=None):
     Please refer to :ref:`api_tensor_erfinv`.
     """
     check_type(x, 'x', (paddle.Tensor, Variable), 'erfinv')
+    if in_dygraph_mode():
+        return _C_ops.final_state_erfinv_( x )
     return _C_ops.erfinv_(x)
 
 def rad2deg(x, name=None):
@@ -4446,7 +4467,46 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     dtype = x.dtype
     axes = [axis]
     infer_flags = list(1 for i in range(len(axes)))
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        has_pend = False
+        input_list = []
+        if prepend is not None and append is not None:
+            input_list = [prepend, x, append]
+            has_pend = True
+        elif prepend is not None:
+            input_list = [prepend, x]
+            has_pend = True
+        elif append is not None:
+            input_list = [x, append]
+            has_pend = True
+        if has_pend:
+            new_input = _C_ops.final_state_concat(input_list, axis)
+        else:
+            new_input = x
+
+        attrs_1 = ()
+        attrs_2 = ()
+
+        dim_len = new_input.shape[axis]
+
+        starts_1 = [0]
+        attrs_1 += ('starts', starts_1)
+        ends_1 = [dim_len - 1]
+        attrs_1 += ('ends', ends_1)
+        input_front = _C_ops.final_state_slice(new_input, axes, starts_1, ends_1, infer_flags,
+                                            [])
+        starts_2 = [1]
+        attrs_2 += ('starts', starts_2)
+        ends_2 = [dim_len]
+        attrs_2 += ('ends', ends_2)
+        input_back = _C_ops.final_state_slice(new_input, axes, starts_2, ends_2, infer_flags,
+                                            [])
+
+        if x.dtype == paddle.bool:
+            return _C_ops.final_state_logical_xor(input_back, input_front)
+        else:
+            return elementwise_sub(input_back, input_front, axis=axis)
+    elif _in_legacy_dygraph():
         has_pend = False
         input_list = []
         if prepend is not None and append is not None:
@@ -4473,31 +4533,19 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         attrs_1 += ('starts', starts_1)
         ends_1 = [dim_len - 1]
         attrs_1 += ('ends', ends_1)
-        if in_dygraph_mode():
-            input_front = _C_ops.final_state_slice(new_input, axes, starts_1, ends_1, infer_flags,
-                                            [])
-        else:
-            input_front = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
+        input_front = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
                 'infer_flags', infer_flags, *attrs_1)
         starts_2 = [1]
         attrs_2 += ('starts', starts_2)
         ends_2 = [dim_len]
         attrs_2 += ('ends', ends_2)
-        if in_dygraph_mode():
-            input_back = _C_ops.final_state_slice(new_input, axes, starts_2, ends_2, infer_flags,
-                                            [])
-        else:
-            input_back = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
+        input_back = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
                 'infer_flags', infer_flags, *attrs_2)
 
         if x.dtype == paddle.bool:
-            if in_dygraph_mode():
-                return _C_ops.final_state_logical_xor(input_back, input_front)
-            else:
-                return _C_ops.logical_xor(input_back, input_front)
+            return _C_ops.logical_xor(input_back, input_front)
         else:
             return elementwise_sub(input_back, input_front, axis=axis)
-
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff')
         check_type(axis, 'axis', (int), 'diff')
