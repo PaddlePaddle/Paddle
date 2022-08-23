@@ -69,9 +69,9 @@ void MemcpyD2HMultiIOKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_NOT_NULL(
         array[i],
         errors::PreconditionNotMet("input tesnor %d should not be nullptr", i));
-    PADDLE_ENFORCE_NOT_NULL(
-        out_array[i],
-        errors::PreconditionNotMet("input tesnor %d should not be nullptr", i));
+    PADDLE_ENFORCE_NOT_NULL(out_array[i],
+                            errors::PreconditionNotMet(
+                                "output tesnor %d should not be nullptr", i));
 
     const auto& x = *(array[i]);
     MemcpyD2HKernel<T, Context>(dev_ctx, x, dst_place_type, out_array[i]);
