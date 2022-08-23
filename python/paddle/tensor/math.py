@@ -4799,7 +4799,7 @@ def sgn(x, name=None):
 
 def take(x, index, mode='raise', name=None):
     """
-    Returns a new tensor with the elements of tnput tensor x at the given index.
+    Returns a new tensor with the elements of input tensor x at the given index.
     The input tensor is treated as if it were viewed as a 1-D tensor.
     The result takes the same shape as the index.
 
