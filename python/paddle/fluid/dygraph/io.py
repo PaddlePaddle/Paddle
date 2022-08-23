@@ -957,7 +957,7 @@ def _run_dygraph(instance, input, program_holder):
 
     use_interpretorcore = _is_enable_standalone_executor(
     ) and _is_dy2st_enable_standalone_executor()
-    attrs.extend(('use_interpretorcore', True))
+    attrs.extend(('use_interpretorcore', use_interpretorcore))
     if use_interpretorcore:
         attrs.extend(
             ('forward_global_block', forward_program.block(0),
