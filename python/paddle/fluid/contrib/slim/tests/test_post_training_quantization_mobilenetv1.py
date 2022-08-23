@@ -93,7 +93,7 @@ def _reader_creator(file_list,
 
             for line in lines:
                 img_path, label = line.split()
-                img_path + data_dir + '/' + img_path
+                img_path = os.path.join(data_dir, img_path)
                 if not os.path.exists(img_path):
                     continue
                 yield img_path, int(label)
@@ -107,7 +107,7 @@ def _reader_creator(file_list,
 
 
 def val(data_dir=DATA_DIR):
-    file_list = data_dir + '/val_list.txt'
+    file_list = os.path.join(data_dir, 'val_list.txt')
     return _reader_creator(file_list, 'val', shuffle=False, data_dir=data_dir)
 
 
@@ -152,7 +152,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
             'DATASET') == 'full' else 2
 
         self.root_path = tempfile.TemporaryDirectory()
-        self.int8_model = self.root_path.name + "/post_training_quantization"
+        self.int8_model = os.path.join(self.root_path.name,
+                                       "post_training_quantization")
 
     def tearDown(self):
         self.root_path.cleanup()
@@ -164,7 +165,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             os.system(cmd)
 
     def download_data(self, data_urls, data_md5s, folder_name, is_model=True):
-        data_cache_folder = self.cache_folder + '/' + folder_name
+        data_cache_folder = os.path.join(self.cache_folder, folder_name)
         zip_path = ''
         if os.environ.get('DATASET') == 'full':
             file_names = []
@@ -172,18 +173,20 @@ class TestPostTrainingQuantization(unittest.TestCase):
                 download(data_urls[i], self.int8_download, data_md5s[i])
                 file_names.append(data_urls[i].split('/')[-1])
 
-            zip_path = self.cache_folder + '/' + 'full_imagenet_val.tar.gz'
+            zip_path = os.path.join(self.cache_folder,
+                                    'full_imagenet_val.tar.gz')
             if not os.path.exists(zip_path):
                 cat_command = 'cat'
                 for file_name in file_names:
-                    cat_command += ' ' + self.cache_folder + '/' + file_name
+                    cat_command += ' ' + os.path.join(self.cache_folder,
+                                                      file_name)
                 cat_command += ' > ' + zip_path
                 os.system(cat_command)
 
         if os.environ.get('DATASET') != 'full' or is_model:
             download(data_urls[0], self.int8_download, data_md5s[0])
             file_name = data_urls[0].split('/')[-1]
-            zip_path = self.cache_folder + '/' + file_name
+            zip_path = os.path.join(self.cache_folder, file_name)
 
         print('Data is downloaded at {0}'.format(zip_path))
         self.cache_unzipping(data_cache_folder, zip_path)
@@ -289,13 +292,13 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         print("Start FP32 inference for {0} on {1} images ...".format(
             model, infer_iterations * batch_size))
-        (fp32_throughput, fp32_latency,
-         fp32_acc1) = self.run_program(model_cache_folder + "/model",
-                                       batch_size, infer_iterations)
+        (fp32_throughput, fp32_latency, fp32_acc1) = self.run_program(
+            os.path.join(model_cache_folder, "model"), batch_size,
+            infer_iterations)
 
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(model, sample_iterations * batch_size))
-        self.generate_quantized_model(model_cache_folder + "/model",
+        self.generate_quantized_model(os.path.join(model_cache_folder, "model"),
                                       quantizable_op_type, algo, round_type,
                                       is_full_quantize, is_use_cache_file,
                                       is_optimize_model, onnx_format)
@@ -449,30 +452,6 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1(TestPostTrainingQuantization):
                       is_optimize_model,
                       diff_threshold,
                       onnx_format=onnx_format)
-
-
-class TestPostTrainingPtfForMobilenetv1(TestPostTrainingQuantization):
-
-    def test_post_training_ptf_mobilenetv1(self):
-        model = "MobileNet-V1"
-        algo = "ptf"
-        round_type = "round"
-        data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
-        ]
-        data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
-        quantizable_op_type = [
-            "conv2d",
-            "mul",
-        ]
-        is_full_quantize = False
-        is_use_cache_file = False
-        is_optimize_model = False
-        # The accuracy diff of post-training quantization (abs_max) maybe bigger
-        diff_threshold = 0.05
-        self.run_test(model, algo, round_type, data_urls, data_md5s,
-                      quantizable_op_type, is_full_quantize, is_use_cache_file,
-                      is_optimize_model, diff_threshold)
 
 
 if __name__ == '__main__':
