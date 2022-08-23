@@ -98,12 +98,7 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
   for (auto& attr : op_desc.attrs()) {
     auto it = extra_attrs.find(attr.name());
     if (it != extra_attrs.end()) {
-      VLOG(1) << "#@@@@@## " << op_desc.type() << " : " << attr.name();
       it->second = GetAttrValue(attr);
-      if (attr.name() == "fuse_relu_before_depthwise_conv") {
-        VLOG(1) << "@@@@@@ fuse_relu_before_depthwise_conv : "
-                << PADDLE_GET_CONST(bool, GetAttrValue(attr));
-      }
     } else {
       attrs[attr.name()] = GetAttrValue(attr);
     }
