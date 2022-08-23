@@ -497,7 +497,7 @@ class TestIOU(unittest.TestCase):
 
         expt_output = np.array([2.0 / 16.0]).astype('float32')
         calc_output = np.array([iou(box1, box2, True)]).astype('float32')
-        self.assertTrue(np.allclose(calc_output, expt_output))
+        np.testing.assert_allclose(calc_output, expt_output, rtol=1e-05)
 
 
 class TestMulticlassNMS2Op(TestMulticlassNMSOp):

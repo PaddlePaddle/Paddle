@@ -108,11 +108,11 @@ class TestRunProgram(unittest.TestCase):
             loss = paddle.mean(out_t)
             loss.backward()
 
-            self.assertTrue(np.array_equal(np.ones([2, 2]) * 4, out_t.numpy()))
-            self.assertTrue(
-                np.array_equal(np.ones([2, 4]) * 0.5, x_t.grad.numpy()))
-            self.assertTrue(
-                np.array_equal(np.ones([4, 2]) * 0.5, y_t.grad.numpy()))
+            np.testing.assert_array_equal(np.ones([2, 2]) * 4, out_t.numpy())
+            np.testing.assert_array_equal(
+                np.ones([2, 4]) * 0.5, x_t.grad.numpy())
+            np.testing.assert_array_equal(
+                np.ones([4, 2]) * 0.5, y_t.grad.numpy())
 
 
 if __name__ == '__main__':

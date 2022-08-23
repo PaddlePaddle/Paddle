@@ -58,33 +58,64 @@ void AffineGridInferMeta(const MetaTensor& input,
           theta_dims.size(),
           theta_dims));
 
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_GE(
       outputShape.GetData().size(),
       4,
       phi::errors::InvalidArgument(
-          "The size of attribute 'output_shape' in AffineGridOp should be "
+          "The size of attribute 'output_shape' in AffineGridOp should be >= "
           "4. But received output_shape's size=[%d].",
           outputShape.GetData().size()));
 
-  PADDLE_ENFORCE_EQ(
-      theta_dims[1],
-      2,
+  PADDLE_ENFORCE_LE(
+      outputShape.GetData().size(),
+      5,
       phi::errors::InvalidArgument(
-          "The second dimesion of input 'theta' in AffineGridOp should be 2. "
-          "But received second dimesion=[%d], dimesions=[%s]",
-          theta_dims[1],
-          theta_dims));
-  PADDLE_ENFORCE_EQ(
+          "The size of attribute 'output_shape' in AffineGridOp should be <= "
+          "5. But received output_shape's size=[%d].",
+          outputShape.GetData().size()));
+
+  PADDLE_ENFORCE_GE(theta_dims[1],
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The second dimesion of input 'theta' in AffineGridOp "
+                        "should be >= 2. "
+                        "But received second dimesion=[%d], dimesions=[%s]",
+                        theta_dims[1],
+                        theta_dims));
+
+  PADDLE_ENFORCE_LE(theta_dims[1],
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The second dimesion of input 'theta' in AffineGridOp "
+                        "should be <= 3. "
+                        "But received second dimesion=[%d], dimesions=[%s]",
+                        theta_dims[1],
+                        theta_dims));
+
+  PADDLE_ENFORCE_GE(
       theta_dims[2],
       3,
       phi::errors::InvalidArgument(
-          "The third dimesion of input 'theta' in AffineGridOp should be 3. "
+          "The third dimesion of input 'theta' in AffineGridOp should be >= 3. "
           "But received third dimesion=[%d], dimesions=[%s]",
           theta_dims[2],
           theta_dims));
 
-  // N * H * W * 2
-  output->set_dims(phi::make_ddim({theta_dims[0], -1, -1, 2}));
+  PADDLE_ENFORCE_LE(
+      theta_dims[2],
+      4,
+      phi::errors::InvalidArgument(
+          "The third dimesion of input 'theta' in AffineGridOp should be <= 4. "
+          "But received third dimesion=[%d], dimesions=[%s]",
+          theta_dims[2],
+          theta_dims));
+  if (outputShape.GetData().size() == 4) {
+    // N * H * W * 2
+    output->set_dims(phi::make_ddim({theta_dims[0], -1, -1, 2}));
+  } else {
+    // N * D * H * W * 3
+    output->set_dims(phi::make_ddim({theta_dims[0], -1, -1, -1, 3}));
+  }
   output->set_dtype(input.dtype());
   output->share_lod(input);
 }
@@ -307,6 +338,35 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
           dims[rank - 1]));
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
+}
+
+void ClassCenterSampleInferMeta(const MetaTensor& label,
+                                int num_classes,
+                                int num_samples,
+                                int ring_id,
+                                int rank,
+                                int nranks,
+                                bool fix_seed,
+                                int seed,
+                                MetaTensor* remapped_label,
+                                MetaTensor* sampled_local_class_center) {
+  PADDLE_ENFORCE_EQ(
+      label.dims().size(),
+      1,
+      errors::InvalidArgument("Rank of Input(Label) should be equal to 1, "
+                              "but the value given is %d.",
+                              label.dims().size()));
+  PADDLE_ENFORCE_NOT_NULL(remapped_label,
+                          phi::errors::InvalidArgument(
+                              "output of remapped label should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      sampled_local_class_center,
+      phi::errors::InvalidArgument(
+          "output of sampled local class center should not be null."));
+  remapped_label->set_dims(label.dims());
+  remapped_label->set_dtype(label.dtype());
+  sampled_local_class_center->set_dims(phi::make_ddim({num_samples}));
+  sampled_local_class_center->set_dtype(label.dtype());
 }
 
 void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out) {
@@ -3062,8 +3122,9 @@ void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
 }
 
 void SqueezeInferMeta(const MetaTensor& x,
-                      const std::vector<int>& axes,
-                      MetaTensor* out) {
+                      const IntArray& axes,
+                      MetaTensor* out,
+                      MetaConfig config) {
   const auto& x_dims = x.dims();
   // Check input tensor dims (<6) Eigen limit.
   PADDLE_ENFORCE_LE(x_dims.size(),
@@ -3075,22 +3136,34 @@ void SqueezeInferMeta(const MetaTensor& x,
                         x_dims.size(),
                         x_dims));
 
-  auto out_dims = funcs::GetOutputSqueezeShape(axes, x_dims, false);
-  out->set_dims(out_dims);
-  if (x_dims[0] == out_dims[0]) {
-    // Only pass LoD when the first dimension of output and Input(X)
-    // are the same.
-    out->share_lod(x);
+  if (!config.is_runtime && axes.FromTensor()) {
+    // compile time infershape, set all elements to -1.
+    int output_size = x.dims().size() - axes.GetData().size();
+    std::vector<int64_t> vec_out_dims(output_size, -1);
+    out->set_dims(phi::make_ddim(vec_out_dims));
+  } else {
+    std::vector<int32_t> tmp;
+    tmp.reserve(axes.GetData().size());
+    std::for_each(axes.GetData().begin(),
+                  axes.GetData().end(),
+                  [&tmp](const int64_t& t) { tmp.push_back(t); });
+    auto out_dims = funcs::GetOutputSqueezeShape(tmp, x_dims, false);
+    out->set_dims(out_dims);
+    if (x_dims[0] == out_dims[0]) {
+      // Only pass LoD when the first dimension of output and Input(X)
+      // are the same.
+      out->share_lod(x);
+    }
   }
-
   out->set_dtype(x.dtype());
 }
 
 void SqueezeWithXShapeInferMeta(const MetaTensor& x,
-                                const std::vector<int>& axes,
+                                const IntArray& axes,
                                 MetaTensor* out,
-                                MetaTensor* xshape) {
-  SqueezeInferMeta(x, axes, out);
+                                MetaTensor* xshape,
+                                MetaConfig config) {
+  SqueezeInferMeta(x, axes, out, config);
   const auto& x_dims = x.dims();
   std::vector<int64_t> xshape_dims(x_dims.size() + 1);
   xshape_dims[0] = 0;
@@ -3799,6 +3872,7 @@ void UnfoldInferMeta(const MetaTensor& x,
                                                 paddings[1],
                                                 paddings[3],
                                                 strides[1]);
+  int output_col_length = output_height * output_width;
   if (config.is_runtime) {
     // only check output height and width in runtime
     PADDLE_ENFORCE_GT(
@@ -3837,8 +3911,10 @@ void UnfoldInferMeta(const MetaTensor& x,
             dilations[1],
             output_height,
             output_width));
+  } else {
+    output_col_length =
+        output_height == -1 || output_width == -1 ? -1 : output_col_length;
   }
-  int output_col_length = output_height * output_width;
   out_dims.push_back(output_col_length);
   out->set_dims(phi::make_ddim(out_dims));
 }

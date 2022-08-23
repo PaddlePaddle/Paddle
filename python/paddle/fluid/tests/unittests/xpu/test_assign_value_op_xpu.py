@@ -98,10 +98,7 @@ class TestAssignApi(unittest.TestCase):
 
         exe = fluid.Executor(self.place)
         [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
-        np.testing.assert_allclose(fetched_x,
-                                   self.value,
-                                   err_msg="fetch_x=%s val=%s" %
-                                   (fetched_x, self.value))
+        np.testing.assert_allclose(fetched_x, self.value)
         self.assertEqual(fetched_x.dtype, self.value.dtype)
 
 

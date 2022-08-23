@@ -168,6 +168,8 @@ message TrainerDescConfig {
   repeated string stat_var_names = 4;
   optional string trainer = 5;
   optional string device_worker = 6;
+  repeated string local_sparse = 7;
+  repeated string remote_sparse = 8;
 }
 
 message PipelineConfig {

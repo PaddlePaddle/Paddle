@@ -82,7 +82,7 @@ class TestErfinvAPI(unittest.TestCase):
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'x': self.x.reshape([1, 5])})
             for r in res:
-                self.assertEqual(np.allclose(self.res_ref, r), True)
+                np.testing.assert_allclose(self.res_ref, r, rtol=1e-05)
 
         for place in self.place:
             run(place)
@@ -93,7 +93,7 @@ class TestErfinvAPI(unittest.TestCase):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
             out = paddle.erfinv(x)
-            self.assertEqual(np.allclose(self.res_ref, out.numpy()), True)
+            np.testing.assert_allclose(self.res_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:
@@ -105,7 +105,7 @@ class TestErfinvAPI(unittest.TestCase):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
             x.erfinv_()
-            self.assertEqual(np.allclose(self.res_ref, x.numpy()), True)
+            np.testing.assert_allclose(self.res_ref, x.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:
