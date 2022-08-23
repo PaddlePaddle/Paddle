@@ -189,8 +189,9 @@ class Engine:
             serial_main_prog = self._orig_main_prog.clone()
             serial_startup_prog = self._orig_startup_prog.clone()
             # FIXME to support grad clip
-            with static.program_guard(serial_main_prog, serial_startup_prog), \
-                utils.unique_name.guard():
+            # with static.program_guard(serial_main_prog, serial_startup_prog), \
+            #     utils.unique_name.guard():
+            with static.program_guard(serial_main_prog, serial_startup_prog):
                 inputs_spec = self.inputs_spec
                 labels_spec = self.labels_spec if self.labels_spec else []
                 inputs = [s._create_feed_layer() for s in inputs_spec]
@@ -440,6 +441,7 @@ class Engine:
         for epoch in range(epochs):
             train_logs = {"epoch: {:d} ": epoch}
             for step, _ in enumerate(train_dataloader):
+
                 outs = self._executor.run(self.main_program,
                                           fetch_list=fetch_list,
                                           use_program_cache=use_cache,

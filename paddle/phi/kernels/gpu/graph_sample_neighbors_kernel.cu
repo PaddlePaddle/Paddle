@@ -54,7 +54,7 @@ struct MaxFunctor {
     if (x > cap) {
       return cap;
     }
-    return x;
+    return x >= 0 ? x : 0;
   }
 };
 

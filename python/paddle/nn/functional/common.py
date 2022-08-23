@@ -1483,6 +1483,11 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             pad, (list, tuple)) and len(pad) == x_dim * 2:
         paddings = pad
         pad_value = value
+
+        if in_dygraph_mode():
+            out = _C_ops.final_state_pad(x, paddings, float(pad_value))
+            return out
+
         check_variable_and_dtype(x, 'x', [
             'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
             'complex128'
