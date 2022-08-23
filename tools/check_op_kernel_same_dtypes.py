@@ -24,9 +24,6 @@ import re
 import collections
 import paddle
 
-# some special ops
-WHITE_LIST = ['fft_c2r_grad', 'fft_r2c_grad']
-
 
 def get_all_kernels():
     all_kernels_info = paddle.framework.core._get_all_register_op_kernels()
