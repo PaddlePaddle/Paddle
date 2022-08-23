@@ -16,6 +16,7 @@ from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
 import paddle
+import os
 
 paddle.enable_static()
 
@@ -34,7 +35,7 @@ class TestDistMnistNCCL2FleetApi(TestDistBase):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
-                "dist_mnist.py",
+                os.path.abspath("collective/fleet/dist_mnist.py"),
                 delta=1e-5,
                 check_error_log=True,
                 need_envs={'FLAGS_allreduce_record_one_event': '1'})

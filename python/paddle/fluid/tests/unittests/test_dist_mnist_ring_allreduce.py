@@ -15,7 +15,7 @@
 from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
-import paddle
+import paddle, os
 
 paddle.enable_static()
 
@@ -29,9 +29,10 @@ class TestDistMnistNCCL2(TestDistBase):
         self._nccl2_mode = True
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
+        import paddle, os, os.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("dist_mnist.py", delta=1e-5)
+            self.check_with_place(
+                os.path.abspath("collective/fleet/dist_mnist.py"), delta=1e-5)
 
 
 if __name__ == "__main__":

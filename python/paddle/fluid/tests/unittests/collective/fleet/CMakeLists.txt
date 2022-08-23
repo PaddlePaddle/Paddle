@@ -48,7 +48,7 @@ if(WITH_NCCL)
       LABELS
       "RUN_TYPE=DIST"
       ENVS
-      "PADDLE_DIST_UT_PORT=21200;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+      "PADDLE_DIST_UT_PORT=21206;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
     )
     set_tests_properties(test_parallel_margin_cross_entropy
                          PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
@@ -63,7 +63,7 @@ if(WITH_NCCL)
       LABELS
       "RUN_TYPE=DIST"
       ENVS
-      "PADDLE_DIST_UT_PORT=21202;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+      "PADDLE_DIST_UT_PORT=21208;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
     )
     set_tests_properties(test_dygraph_sharding_stage3 PROPERTIES TIMEOUT "350"
                                                                  RUN_SERIAL 1)
@@ -79,7 +79,7 @@ if(WITH_NCCL)
         LABELS
         "RUN_TYPE=DIST"
         ENVS
-        "PADDLE_DIST_UT_PORT=21204;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+        "PADDLE_DIST_UT_PORT=21210;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
       )
       set_tests_properties(test_parallel_dygraph_transformer
                            PROPERTIES RUN_SERIAL 1)
@@ -94,7 +94,7 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21206;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21212;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_transformer PROPERTIES RUN_SERIAL
                                                                     1)
@@ -120,7 +120,7 @@ if((WITH_GPU
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21208;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21214;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_rnn_dp PROPERTIES RUN_SERIAL 1)
 endif()
@@ -133,7 +133,7 @@ if(WITH_NCCL)
       LABELS
       "RUN_TYPE=DIST"
       ENVS
-      "PADDLE_DIST_UT_PORT=21210;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+      "PADDLE_DIST_UT_PORT=21216;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
     )
     set_tests_properties(test_parallel_dygraph_mp_layers
                          PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
@@ -147,7 +147,7 @@ if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21212;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21218;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_tcp_store PROPERTIES RUN_SERIAL 1)
 endif()
@@ -159,7 +159,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21214;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21220;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_dygraph_sharding_stage3_for_eager
                        PROPERTIES TIMEOUT "350" RUN_SERIAL 1)
@@ -177,7 +177,7 @@ if((WITH_GPU
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21216;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21222;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_fleet_graph_execution_meta_optimizer
                        PROPERTIES RUN_SERIAL 1)
@@ -214,7 +214,7 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21218;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21224;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_pipeline_parallel
                        PROPERTIES TIMEOUT "500" RUN_SERIAL 1)
@@ -241,7 +241,7 @@ if(WITH_NCCL)
       LABELS
       "RUN_TYPE=DIST"
       ENVS
-      "PADDLE_DIST_UT_PORT=21220;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+      "PADDLE_DIST_UT_PORT=21226;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
     )
     set_tests_properties(test_parallel_class_center_sample
                          PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
@@ -255,7 +255,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21222;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21228;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_pipeline PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
 endif()
@@ -273,7 +273,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21224;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21230;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_static_model_parallel PROPERTIES TIMEOUT "240"
                                                              RUN_SERIAL 1)
@@ -287,7 +287,7 @@ if(WITH_NCCL)
       LABELS
       "RUN_TYPE=DIST"
       ENVS
-      "PADDLE_DIST_UT_PORT=21226;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+      "PADDLE_DIST_UT_PORT=21232;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
     )
     set_tests_properties(test_parallel_dygraph_no_sync PROPERTIES TIMEOUT "300"
                                                                   RUN_SERIAL 1)
@@ -301,7 +301,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21228;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21234;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_dygraph_sharding_stage2 PROPERTIES TIMEOUT "200"
                                                                RUN_SERIAL 1)
@@ -314,7 +314,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21230;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21236;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_control_flow
                        PROPERTIES TIMEOUT "350" RUN_SERIAL 1)
@@ -332,7 +332,7 @@ if((WITH_GPU
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21232;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21238;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_fleet_lars_meta_optimizer PROPERTIES RUN_SERIAL 1)
 endif()
@@ -344,7 +344,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21234;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21240;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_hybrid_parallel_inference_helper
                        PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
@@ -391,7 +391,7 @@ if((WITH_GPU
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21236;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21242;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_fleet_pipeline_meta_optimizer PROPERTIES RUN_SERIAL
                                                                      1)
@@ -423,7 +423,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21238;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21244;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_dygraph_sharding_optimizer_stage2
                        PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
@@ -447,7 +447,7 @@ if((WITH_GPU
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21240;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21246;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_fleet_raw_program_meta_optimizer
                        PROPERTIES RUN_SERIAL 1)
@@ -460,7 +460,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21242;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21248;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_sharding_parallel
                        PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
@@ -473,7 +473,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21244;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21250;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_tensor_parallel
                        PROPERTIES TIMEOUT "200" RUN_SERIAL 1)
@@ -486,7 +486,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21246;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21252;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_dygraph_group_sharded_api_for_eager
                        PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
@@ -514,7 +514,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21248;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21254;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_unused_variables
                        PROPERTIES TIMEOUT "350" RUN_SERIAL 1)
@@ -546,7 +546,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21250;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21256;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_no_sync_gradient_check
                        PROPERTIES TIMEOUT "60" RUN_SERIAL 1)
@@ -564,7 +564,7 @@ if((WITH_GPU
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21252;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21258;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_fleet_pipeline_meta_optimizer_with_recompute
                        PROPERTIES RUN_SERIAL 1)
@@ -589,7 +589,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21254;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21260;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_qat PROPERTIES TIMEOUT "120"
                                                             RUN_SERIAL 1)
@@ -604,7 +604,7 @@ if(WITH_NCCL)
         LABELS
         "RUN_TYPE=DIST"
         ENVS
-        "PADDLE_DIST_UT_PORT=21256;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+        "PADDLE_DIST_UT_PORT=21262;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
       )
       set_tests_properties(test_parallel_dygraph_sparse_embedding
                            PROPERTIES TIMEOUT "200" RUN_SERIAL 1)
@@ -619,7 +619,7 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21258;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21264;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_sparse_embedding
                        PROPERTIES TIMEOUT "200" RUN_SERIAL 1)
@@ -645,7 +645,7 @@ if(WITH_NCCL)
         LABELS
         "RUN_TYPE=DIST"
         ENVS
-        "PADDLE_DIST_UT_PORT=21260;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+        "PADDLE_DIST_UT_PORT=21266;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
       )
       set_tests_properties(test_parallel_dygraph_sparse_embedding_over_height
                            PROPERTIES TIMEOUT "150" RUN_SERIAL 1)
@@ -660,7 +660,7 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21262;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21268;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_sparse_embedding_over_height
                        PROPERTIES TIMEOUT "350" RUN_SERIAL 1)
@@ -679,7 +679,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21264;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21270;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_auto_parallel_parallelizer PROPERTIES TIMEOUT "120"
                                                                   RUN_SERIAL 1)
@@ -705,7 +705,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21266;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21272;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_dygraph_group_sharded_api PROPERTIES TIMEOUT "120"
                                                                  RUN_SERIAL 1)
@@ -729,7 +729,7 @@ if((WITH_GPU
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21268;http_proxy=;https_proxy=")
+    "PADDLE_DIST_UT_PORT=21274;http_proxy=;https_proxy=")
   set_tests_properties(test_new_group PROPERTIES RUN_SERIAL 1)
 endif()
 if((WITH_GPU
@@ -745,7 +745,7 @@ if((WITH_GPU
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21270;http_proxy=;https_proxy=")
+    "PADDLE_DIST_UT_PORT=21276;http_proxy=;https_proxy=")
   set_tests_properties(test_c_comm_init_op PROPERTIES TIMEOUT "120" RUN_SERIAL
                                                       1)
 endif()
@@ -757,7 +757,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21272;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21278;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_ir_pass_pipeline PROPERTIES TIMEOUT "120"
                                                         RUN_SERIAL 1)
@@ -770,7 +770,7 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21274;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21280;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_mnist PROPERTIES TIMEOUT "200"
                                                               RUN_SERIAL 1)
@@ -783,7 +783,7 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21276;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_se_resnext
                        PROPERTIES TIMEOUT "200" RUN_SERIAL 1)
@@ -841,7 +841,7 @@ if(WITH_NCCL OR WITH_RCCL)
         LABELS
         "RUN_TYPE=DIST"
         ENVS
-        "PADDLE_DIST_UT_PORT=21278;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+        "PADDLE_DIST_UT_PORT=21284;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
       )
       set_tests_properties(test_dist_mnist_dgc_nccl PROPERTIES RUN_SERIAL 1)
     endif()
@@ -857,7 +857,7 @@ if(WITH_NCCL OR WITH_RCCL)
         LABELS
         "RUN_TYPE=DIST"
         ENVS
-        "PADDLE_DIST_UT_PORT=21280;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+        "PADDLE_DIST_UT_PORT=21286;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
       )
       set_tests_properties(test_dist_se_resnext_dgc PROPERTIES RUN_SERIAL 1)
     endif()

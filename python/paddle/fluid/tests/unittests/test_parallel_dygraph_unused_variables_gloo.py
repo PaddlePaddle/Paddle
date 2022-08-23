@@ -34,10 +34,11 @@ class TestParallelDygraphUnusedVar_GLOO(TestDistBase):
         self._dygraph = True
 
     def test_net(self):
-        self.check_with_place("parallel_dygraph_unused_variables.py",
-                              delta=1e-5,
-                              check_error_log=True,
-                              log_name=flag_name)
+        self.check_with_place(
+            "./collective/fleet/parallel_dygraph_unused_variables.py",
+            delta=1e-5,
+            check_error_log=True,
+            log_name=flag_name)
 
 
 class TestParallelDygraphNoVar_GLOO(TestDistBase):
@@ -48,7 +49,7 @@ class TestParallelDygraphNoVar_GLOO(TestDistBase):
         self._dygraph = True
 
     def test_net(self):
-        self.check_with_place("parallel_dygraph_none_var.py",
+        self.check_with_place("./collective/fleet/parallel_dygraph_none_var.py",
                               delta=1e-5,
                               check_error_log=True,
                               log_name=flag_name)
@@ -62,10 +63,11 @@ class TestParallelDygraphSharedUnusedVariables_GLOO(TestDistBase):
         self._dygraph = True
 
     def test_mnist(self):
-        self.check_with_place("parallel_dygraph_shared_unused_var.py",
-                              delta=1e-5,
-                              check_error_log=True,
-                              log_name=flag_name)
+        self.check_with_place(
+            "./collective/fleet/parallel_dygraph_shared_unused_var.py",
+            delta=1e-5,
+            check_error_log=True,
+            log_name=flag_name)
 
 
 if __name__ == "__main__":

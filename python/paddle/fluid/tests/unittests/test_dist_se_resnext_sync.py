@@ -30,7 +30,7 @@ class TestDistSeResneXt2x2(TestDistBase):
 
     @unittest.skip(reason="Skip unstable ci")
     def test_dist_train(self):
-        self.check_with_place("dist_se_resnext.py",
+        self.check_with_place("./collective/fleet/dist_se_resnext.py",
                               delta=1e-7,
                               check_error_log=True,
                               log_name=flag_name)
