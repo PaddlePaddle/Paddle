@@ -24,7 +24,7 @@ void CooValuesGradKernel(const Context& dev_ctx,
                          const SparseCooTensor& x,
                          const DenseTensor& out_grad,
                          SparseCooTensor* x_grad) {
-  x_grad->SetMember(x.non_zero_indices(), out_grad, x.dims(), true);
+  x_grad->SetMember(x.indices(), out_grad, x.dims(), true);
 }
 
 template <typename T, typename Context>

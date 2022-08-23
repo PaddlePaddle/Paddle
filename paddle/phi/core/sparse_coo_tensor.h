@@ -65,9 +65,15 @@ class SparseCooTensor : public TensorBase,
   /// \return The indices of non zero elemetns in original dense tensor.
   const DenseTensor& indices() const { return non_zero_indices_; }
 
+  /// Note: This function will removed soon. It is recommended to use indices()
+  const DenseTensor& non_zero_indices() const { return non_zero_indices_; }
+
   /// \brief Returns the non zero elemetns in original dense tensor.
   /// \return The non zero elemetns in original dense tensor.
   const DenseTensor& values() const { return non_zero_elements_; }
+
+  /// Note: This function will removed soon. It is recommended to use values()
+  const DenseTensor& non_zero_elements() const { return non_zero_elements_; }
 
   /// \brief Returns whether the indices has coalesced
   /// \return whether the indices has coalesced
