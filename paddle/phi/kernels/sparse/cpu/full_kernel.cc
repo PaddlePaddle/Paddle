@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/infermeta/sparse/unary.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
@@ -47,6 +48,8 @@ void CooFullLikeKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(values);
   FullValue<T, Context>(dev_ctx, values, val.to<T>());
 
+  MetaTensor meta_out(out);
+  phi::sparse::UnchangedInferMeta(x, &meta_out);
   out->set_dims(x.dims());
 }
 
@@ -73,6 +76,8 @@ void CsrFullLikeKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(values);
   FullValue<T, Context>(dev_ctx, values, val.to<T>());
 
+  MetaTensor meta_out(out);
+  phi::sparse::UnchangedInferMeta(x, &meta_out);
   out->set_dims(x.dims());
 }
 

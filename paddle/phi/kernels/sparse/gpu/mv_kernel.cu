@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/infermeta/sparse/unary.h"
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
 
 namespace phi {
@@ -64,6 +65,8 @@ void MvCooKernel(const Context& dev_ctx,
                  const SparseCooTensor& x,
                  const DenseTensor& vec,
                  DenseTensor* out) {
+  MetaTensor meta_out(out);
+  phi::sparse::UnchangedInferMeta(x, &meta_out);
   MvKernelImpl<T>(dev_ctx, x, vec, out);
 }
 
@@ -72,6 +75,8 @@ void MvCsrKernel(const Context& dev_ctx,
                  const SparseCsrTensor& x,
                  const DenseTensor& vec,
                  DenseTensor* out) {
+  MetaTensor meta_out(out);
+  phi::sparse::UnchangedInferMeta(x, &meta_out);
   MvKernelImpl<T>(dev_ctx, x, vec, out);
 }
 

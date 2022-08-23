@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/infermeta/sparse/unary.h"
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
 
 namespace phi {
@@ -89,6 +90,9 @@ void AddmmKernelImpl(const Context& dev_ctx,
       phi::errors::PreconditionNotMet(
           "The shape of Input(x) and Input(y) is not suitable for matmul "
           "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
+
+  MetaTensor meta_out(out);
+  phi::sparse::UnchangedInferMeta(input, &meta_out);
 
   phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
 
