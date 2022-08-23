@@ -1339,7 +1339,8 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     Returns: 
         Tensor, a Tensor padded according to pad and mode and data type is same as input.
 
-    Examples:
+    Example:
+    
         .. code-block:: text
 
             x = [[[[[1., 2., 3.],
@@ -1387,7 +1388,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                           [5. 6. 4. 5. 6. 4. 5.]
                           [2. 3. 1. 2. 3. 1. 2.]]]]]
 
-    Code Examples:
+    Examples:
         .. code-block:: python
 
             import paddle
