@@ -2160,18 +2160,10 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
       int in_dtype = PADDLE_GET_CONST(int, desc.GetAttr("in_dtype"));
       int out_dtype = PADDLE_GET_CONST(int, desc.GetAttr("out_dtype"));
-      if ((in_dtype == 4 || in_dtype == 5) && out_dtype == 4) {
-        VLOG(3) << "unsupport data type conversion";
-        return false;
-      }
-      // Now only support bool -> (int || float)
-      if (in_dtype == 0 && (out_dtype == 2 || out_dtype == 5)) {
-        return true;
-      }
-      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2) &&
-            (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
+      if (!((in_dtype == 0 || in_dtype == 2 || in_dtype == 5) &&
+            (out_dtype == 0 || out_dtype == 2 || out_dtype == 5))) {
         VLOG(3) << "only valid conversions are: "
-                   "(kFLOAT | kHALF | kINT32) -> (kFLOAT | kHALF | kINT32)";
+                   "(kBOOL | kINT32 | kFLOAT) -> (kBOOL | kINT32 | kFLOAT)";
         return false;
       }
     }

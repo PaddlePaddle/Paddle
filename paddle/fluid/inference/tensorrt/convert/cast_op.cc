@@ -42,6 +42,9 @@ class CastOpConverter : public OpConverter {
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
 
     switch (out_dtype) {
+      case 0:  // BOOL = 0
+        layer->setOutputType(0, nvinfer1::DataType::kBOOL);
+        break;
       case 2:  // INT32 = 2
         layer->setOutputType(0, nvinfer1::DataType::kINT32);
         break;
