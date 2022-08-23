@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .backends import soundfile_backend
+from ._internal import module_utils
