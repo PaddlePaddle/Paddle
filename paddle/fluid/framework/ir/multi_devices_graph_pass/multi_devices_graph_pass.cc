@@ -109,7 +109,8 @@ details::VarHandle *CreateOrGetLatestVarHandle(ir::Graph *graph, ir::Node *node,
   details::VarHandle *var = nullptr;
   if (var_holder.empty()) {
     if (node->Var()) {
-      var = new details::VarHandle(graph->CreateVarNode(node->Var()), 0,
+      VLOG(4) << "yoki multi_devices_graph_pass 1: " << node->GetVarNodeBlockId();
+      var = new details::VarHandle(graph->CreateVarNode(node->Var(), node->GetVarNodeBlockId()), 0,
                                    place_offset, node->Name(), place);
     } else {
       var = new details::VarHandle(
@@ -364,7 +365,8 @@ void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
   for (ir::Node *output : node->outputs) {
     ir::Node *new_node = nullptr;
     if (output->Var()) {
-      new_node = result->CreateVarNode(output->Var());
+      VLOG(4) << "yoki multi_devices_graph_pass 2: " << output->GetVarNodeBlockId();
+      new_node = result->CreateVarNode(output->Var(), output->GetVarNodeBlockId());
     } else {
       new_node =
           result->CreateEmptyNode(output->Name(), ir::Node::Type::kVariable);
@@ -632,8 +634,9 @@ void MultiDevSSAGraphBuilderBase::CreateScaleLossGradOp(
     // loss->pending_ops_.emplace_back(op_handle);
     // op_handle->inputs_.emplace_back(loss);
 
+    VLOG(4) << "yoki multi_devices_graph_pass 3: " << out_var_node->GetVarNodeBlockId();
     CreateOpOutput(result, op_handle,
-                   result->CreateVarNode(out_var_node->Var()), places_[i], i);
+                   result->CreateVarNode(out_var_node->Var(), out_var_node->GetVarNodeBlockId()), places_[i], i);
   }
 }
 
@@ -1120,7 +1123,8 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
       p = places_[outvar_dev_id];
       ir::Node *new_node = nullptr;
       if (output->Var()) {
-        new_node = result->CreateVarNode(output->Var());
+        VLOG(4) << "yoki multi_devices_graph_pass 4: " << output->GetVarNodeBlockId();
+        new_node = result->CreateVarNode(output->Var(), output->GetVarNodeBlockId());
       } else {
         new_node =
             result->CreateEmptyNode(output->Name(), ir::Node::Type::kVariable);

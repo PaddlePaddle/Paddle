@@ -393,6 +393,7 @@ class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
     outputs.emplace_back(output);
 
     if (ctx.Attr<bool>("save_intermediate_out")) {
+      VLOG(3) << "yoki: forward save_intermediate_out true";
       PADDLE_ENFORCE_EQ(ctx.HasOutput("IntermediateOut"), true,
                         platform::errors::InvalidArgument(
                             "The save_intermediate_out is enable, so the "
@@ -401,6 +402,7 @@ class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
       auto intermediate_out = ctx.Output<framework::Tensor>("IntermediateOut");
       outputs.emplace_back(intermediate_out);
     } else {
+      VLOG(3) << "yoki: forward save_intermediate_out false";
       outputs.emplace_back(nullptr);
     }
 
@@ -443,6 +445,7 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
       // if save_intermediate_out is true, for Unary(Binary(x, y)) and
       // Binary(x, Unary(y)), the Binary(x, y) and Unary(y) not need to
       // recompute.
+      VLOG(3) << "yoki: grad save_intermediate_out true";
       in_intermediate_out = const_cast<framework::Tensor *>(
           ctx.Input<framework::Tensor>("IntermediateOut"));
       PADDLE_ENFORCE_NE(in_intermediate_out, nullptr,
@@ -450,6 +453,7 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
                             "The option of 'save_intermediate_out' is opened,"
                             " so the number of 'Out' should be two."));
     } else {
+      VLOG(3) << "yoki: grad save_intermediate_out false";
       if (!InputXCanBeAbsent(functor_list)) {
         PADDLE_ENFORCE_NE(
             in_x, nullptr,

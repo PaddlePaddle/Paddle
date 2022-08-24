@@ -443,6 +443,7 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
       OpProtoAndCheckerMaker::OpRoleAttrName(),
       (static_cast<int>(OpRole::kBackward) | static_cast<int>(OpRole::kLoss)));
   desc->SetAttr("value", 1.0f);
+  desc->SetAttr("shape", std::vector<int64_t>({1}));
   std::vector<std::string> output_names;
   for (auto out : node.outputs) {
     output_names.emplace_back(out->Name());
@@ -504,6 +505,15 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
 
 static void GraphToBlock(const Graph &graph, proto::BlockDesc *block,
                          const SortKind *sort_kind) {
+  for (Node *n : graph.Nodes()) {
+    // if node is not Op, skip
+    if (!n->IsOp()) continue;
+
+    if (n->Op()) {
+      VLOG(4) << "yoki graph op node: " << n->Op()->Type();
+      VLOG(4) << n->ToString();
+    }
+  }
   // Remove the unneeded variables after memory optimization.
   std::unordered_set<std::string> vars2remove;
   if (graph.Has(kGraphToProgramVarsToRemove)) {
@@ -516,12 +526,37 @@ static void GraphToBlock(const Graph &graph, proto::BlockDesc *block,
   block->clear_vars();
   std::unordered_set<std::string> visited_vars;
   for (Node *n : graph.Nodes()) {
+    VLOG(4) << "yoki: node" << n->Name() << "   ptr: " << n;
     if (n->IsVar()) {
+      if (n->Var() && visited_vars.count(n->Var()->Name()) == 0 &&
+          !vars2remove.count(n->Var()->Name())) {
+        VLOG(4) << "yoki: GetVarNodeBlockId: " << n->GetVarNodeBlockId() << "   graph_block_id: " << graph.GetBlockId();
+      }
       if (n->Var() && visited_vars.count(n->Var()->Name()) == 0 &&
           !vars2remove.count(n->Var()->Name()) &&
           n->GetVarNodeBlockId() == graph.GetBlockId()) {
         visited_vars.insert(n->Var()->Name());
         block->add_vars()->MergeFrom(*n->Var()->Proto());
+      }
+    }
+  }
+  VLOG(4) << "yoki graph_helper log1";
+  if (graph.Has(details::kRemovedVars)) {
+    VLOG(4) << "yoki graph_helper log2";
+    auto &removed_vars = graph.Get<details::RemovedVars>(details::kRemovedVars);
+    VLOG(4) << "yoki graph_helper log3";
+    if (removed_vars.empty()) {
+      VLOG(4) << "yoki graph_helper log4";
+    }
+    for (auto& n : removed_vars) {
+      VLOG(4) << "yoki: removed node: " << n->Name() << "   ptr: " << n.get();
+      if (n->IsVar()) {
+        if (n->Var() && visited_vars.count(n->Var()->Name()) == 0 &&
+            !vars2remove.count(n->Var()->Name()) &&
+            n->GetVarNodeBlockId() == graph.GetBlockId()) {
+          visited_vars.insert(n->Var()->Name());
+          block->add_vars()->MergeFrom(*n->Var()->Proto());
+        }
       }
     }
   }
@@ -566,6 +601,10 @@ void GraphToProgram(const Graph &graph, ProgramDesc *program,
 
     VLOG(3) << "Graph to program need convert " << graph.SubGraphsSize()
             << " sub graph";
+    //std::unordered_set<std::string> vars_in_root_block;
+     //for (const proto::VarDesc &var : block->vars()) {
+     //  vars_in_root_block.insert(var.name());
+     //}
     for (size_t idx = 0; idx < graph.SubGraphsSize(); ++idx) {
       // avoid kRootBlockIndex not 0
       if (idx == kRootBlockIndex) continue;
@@ -573,13 +612,32 @@ void GraphToProgram(const Graph &graph, ProgramDesc *program,
       block = program_pb.add_blocks();
       block->set_idx(idx);
       block->set_parent_idx(kRootBlockIndex);
+      
       GraphToBlock(*graph.GetSubGraph(idx), block, sort_kind);
+      //Graph *subgraph = graph.GetSubGraph(idx);
+      // subgraph->SetNotOwned<std::unordered_set<std::string>>(
+      //     kGraphToProgramVarsToRemove, &vars_in_root_block);
+
+      // GraphToBlock(*subgraph, block, sort_kind);
+
+      // subgraph->Erase(kGraphToProgramVarsToRemove);
     }
   } else {
     GraphToBlock(graph, block, sort_kind);
   }
 
   program->CopyFrom(program_pb);
+  // VLOG(3) << "yoki print block";
+  // auto block_ops = program->Block(0).AllOps();
+  // for (const auto *op_desc : block_ops) {
+  //   VLOG(3) << "yoki: op_type: " << op_desc->Type();
+  //   for (auto output : op_desc->Outputs()) {
+  //     VLOG(3) << "yoki output name: " << output.first;
+  //     for (auto output_name : output.second) {
+  //       VLOG(3) << "yoki output var name: " << output_name;
+  //     }
+  //   }
+  // }
 }
 
 static std::vector<std::vector<ir::Node::Dep>> GetOpDependencies(

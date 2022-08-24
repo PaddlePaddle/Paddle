@@ -1517,6 +1517,7 @@ void ParallelExecutor::CreateVariableInfos(
     for (auto &fused_var : fused_vars) {
       var_infos->emplace_back();
       var_infos->back() = fused_var.second;
+      VLOG(3) << "yoki pe fused_var: first: " << fused_var.first; 
 
       member_->is_persistable_.emplace(fused_var.first,
                                        fused_var.second.persistable_);

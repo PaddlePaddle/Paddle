@@ -25,9 +25,11 @@ class FillConstantOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
+    VLOG(3) << "yoki fill_constant 1";
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "FillConstant");
 
     auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
+    VLOG(3) << "yoki fill_constant 2 shape: " << phi::make_ddim(shape);
     if (!ctx->HasInput("ShapeTensor") && !ctx->HasInputs("ShapeTensorList")) {
       for (size_t i = 0; i < shape.size(); ++i) {
         PADDLE_ENFORCE_GE(
@@ -39,16 +41,19 @@ class FillConstantOp : public framework::OperatorWithKernel {
       }
     }
     if (shape.empty() && ctx->HasInput("ShapeTensor")) {
+      VLOG(3) << "yoki fill_constant 3 shapeTensor: ";
       auto shape_dims = ctx->GetInputDim("ShapeTensor");
       int num_ele = 1;
       for (int i = 0; i < shape_dims.size(); ++i) {
         num_ele *= shape_dims[i];
       }
       auto vec_dims = std::vector<int>(num_ele, -1);
+      VLOG(3) << "yoki fill_constant 4 shapeTensor dims" << phi::make_ddim(vec_dims);
       ctx->SetOutputDim("Out", phi::make_ddim(vec_dims));
 
       return;
     }
+    VLOG(3) << "yoki fill_constant 5 shape dims" << phi::make_ddim(shape);
     ctx->SetOutputDim("Out", phi::make_ddim(shape));
   }
 

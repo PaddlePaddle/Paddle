@@ -41,6 +41,30 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       graph_(graph),
       // add one more thread for generate op_deps
       prepare_pool_(1) {
+  if (local_scopes.size()) {
+    VLOG(3) << "yoki pe local_scope!!";
+    for (auto scope : local_scopes) {
+      if (scope) {
+        VLOG(3) << "yoki scope not null";
+        auto vars = scope->LocalVarNames();
+        for (const auto& name : vars) {
+          VLOG(3) << "yoki: pe local scope var: " << name;
+        }
+      }
+    }
+  }
+  if (local_exec_scopes.size()) {
+    VLOG(3) << "yoki pe local_exec_scopes!!";
+    for (auto scope : local_exec_scopes) {
+      if (scope) {
+        VLOG(3) << "yoki scopes not null";
+        auto vars = scope->LocalVarNames();
+        for (const auto& name : vars) {
+          VLOG(3) << "yoki: pe local_exec_scopes var: " << name;
+        }
+      }
+    }
+  }
   platform::EmplaceDeviceContexts(
       &fetch_ctxs_, places,
       /*disable_setting_default_stream_for_allocator=*/true);

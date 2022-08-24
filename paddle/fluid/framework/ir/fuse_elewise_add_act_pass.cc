@@ -267,6 +267,7 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
             cur_node->outputs = this->RemoveNode(out, cur_node->outputs);
             need_removed_nodes.insert(std::move(out));
             cur_node->Op()->SetAttr("save_intermediate_out", false);
+            VLOG(3) << "yoki: fused_elemwise_add_activation remove node";
           }
         }
       }
@@ -283,14 +284,57 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
       for (auto &out : cur_node_outputs) {
         if (out->Name() == intermediate_out_grad_args[0] &&
             out->outputs.empty()) {
-          cur_node->Op()->SetOutput(GradVarName("IntermediateOut"), {});
+          // cur_node->Op()->SetOutput(GradVarName("IntermediateOut"), {});
           cur_node->outputs = this->RemoveNode(out, cur_node->outputs);
           need_removed_nodes.insert(std::move(out));
+          VLOG(3) << "yoki: fused_elemwise_add_activation_grad remove node";
         }
       }
     }
   }
-  GraphSafeRemoveNodes(graph, need_removed_nodes);
+
+  for (const Node *n : need_removed_nodes) {
+    VLOG(4) << "yoki: remove ori1 need_removed_nodes: " << n->Name() << "   ptr: " << n;
+  }
+
+  // GraphSafeRemoveNodes(graph, need_removed_nodes, true);
+  // std::unordered_set<const Node *> need_removed_nodes_new;
+  // GraphSafeRemoveNodes2(graph, need_removed_nodes, need_removed_nodes_new);
+
+  // GraphSafeRemoveNodes(graph, need_removed_nodes, true);
+
+  // std::unordered_set<const Node *> save_removed_nodes;
+  std::unordered_set<std::shared_ptr<Node>> need_removed_nodes_new;
+  GraphSafeRemoveNodes(graph, need_removed_nodes, need_removed_nodes_new, true);
+  // GraphSafeRemoveNodes2(graph, need_removed_nodes, save_removed_nodes, true);
+  
+  for (const Node *n : need_removed_nodes) {
+    VLOG(4) << "yoki: remove ori2 need_removed_nodes: " << n->Name() << "   ptr: " << n;
+  }
+
+  // for (const Node *n : save_removed_nodes) {
+  //   VLOG(4) << "yoki: remove after3 save_removed_nodes: " << n->Name() << "   ptr: " << n;
+  // }
+
+  
+  if (!need_removed_nodes_new.empty()) {
+    if (!graph->Has(details::kRemovedVars)) {
+      VLOG(3) << "yoki remove 111";
+      graph->Set(details::kRemovedVars, new details::RemovedVars(need_removed_nodes_new));
+      // auto &removed_vars = graph->Get<details::RemovedVars>(details::kRemovedVars);
+      // VLOG(4) << "yoki remove log1";
+      // for (auto& n : need_removed_nodes_new) {
+      //   removed_vars.insert(std::move(n));
+      // }
+      // for (auto const& n : removed_vars) {
+      //   VLOG(4) << "yoki: remove removed node: " << n->Name() << "   ptr: " << n.get();
+      // }
+    } else {
+      VLOG(3) << "yoki remove 222";
+      // auto &removed_vars = graph->Get<details::RemovedVars>(details::kRemovedVars);
+      // removed_vars.insert(need_removed_nodes_new.begin(), need_removed_nodes_new.end());
+    }
+  }
 }
 
 void FuseElewiseAddActPass::ReLinkNodes(Graph *graph,

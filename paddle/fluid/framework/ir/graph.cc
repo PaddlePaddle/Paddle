@@ -97,15 +97,18 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
       name_to_desc_block_id;
 
   block_id_ = block.ID();
+  VLOG(4) << "yoki graph block_id: " << block_id_;
   const BlockDesc *block_var_visible = &block;
   while (block_var_visible != nullptr) {
     for (auto *var : block_var_visible->AllVars()) {
+      VLOG(4) << "yoki graph2 var_name: " << var->Name() << "  block_id: " << block_var_visible->ID();
       name_to_desc_block_id.emplace(
           var->Name(), std::make_pair(var, block_var_visible->ID()));
     }
     const BlockDesc *forward_block = block_var_visible->ForwardBlock();
     if (forward_block != nullptr) {
       for (auto *var : forward_block->AllVars()) {
+        VLOG(4) << "yoki graph3 forward var_name: " << var->Name() << "  block_id: " << forward_block->ID();
         name_to_desc_block_id.emplace(var->Name(),
                                       std::make_pair(var, forward_block->ID()));
       }
@@ -193,6 +196,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
       auto *var_desc = pair.second;
       if (var_name != kEmptyVarName) {
         VLOG(10) << "Create isolated var node " << var_name;
+        VLOG(4) << "yoki graph5: " << var_name;
         var_nodes[var_name].push_back(CreateVarNode(var_desc));
       }
     }

@@ -35,6 +35,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     const std::string blocking_queue_prefix = "lod_tensor_blocking_queue";
     auto vars = scope->LocalVarNames();
     for (const auto& name : vars) {
+      // VLOG(3) << "yoki: scope var: " << name;
       if (name.find(blocking_queue_prefix) != std::string::npos) {
         if (!global_scope_.HasVar(name)) {
           auto* v = scope->Var(name);

@@ -164,6 +164,7 @@ void build_variable_scope(const framework::BlockDesc& block,
 
   for (auto& var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
+    VLOG(3) << "yoki: build_variable_scope: var_name: " << var_name;
     // TODO(xiongkun): user may create a variable with name that exists before.
     // under such circumstances, we should raise a error. Currently we can't
     // get the var_desc of startup_program, so leave it later.
@@ -350,25 +351,34 @@ void build_op_func_list(const platform::Place& place,
     VLOG(6) << "Build OpFuncNode from : " << op->Type();
 
     auto inputs_names = op->Inputs();
+    VLOG(6) << "yoki1";
     auto outputs_names = op->Outputs();
+    VLOG(6) << "yoki2";
 
     VariableValueMap ins_map;
+    VLOG(6) << "yoki3";
     VariableIdMap ins_name2id;
+    VLOG(6) << "yoki4";
     bool enforce_exist = true;
     if (op->Type() == "recurrent_grad" || op->Type() == "rnn_memory_helper" ||
         op->Type() == "rnn_memory_helper_grad" ||
         op->Type() == "conditional_block" ||
         op->Type() == "conditional_block_grad" || op->Type() == "while" ||
         op->Type() == "while_grad") {
+      // || op->Type() == "fused_elemwise_add_activation") {
+      VLOG(6) << "yoki5";
       enforce_exist = false;
     }
     std::tie(ins_map, ins_name2id) =
         build_variable_map(inputs_names, var_scope, enforce_exist);
+    VLOG(6) << "yoki6";
 
     VariableValueMap outs_map;
     VariableIdMap outs_name2id;
+    VLOG(6) << "yoki7";
     std::tie(outs_map, outs_name2id) =
         build_variable_map(outputs_names, var_scope, enforce_exist);
+    VLOG(6) << "yoki8";
 
     // step 2: build OpFuncNode
     OpFuncNode op_func_node;

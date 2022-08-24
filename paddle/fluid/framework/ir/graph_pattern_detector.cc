@@ -752,8 +752,49 @@ bool IsNthOutput(Node *var, Node *op, const std::string &argument, size_t nth) {
 
 void GraphSafeRemoveNodes(Graph *graph,
                           const std::unordered_set<const Node *> &nodes) {
+  std::unordered_set<std::shared_ptr<Node>> empty_nodes;
+  GraphSafeRemoveNodes(graph, nodes, empty_nodes, false);
+  /*
   for (auto *node : nodes) {
-    graph->RemoveNode(const_cast<Node *>(node));
+    // if (flag_save_nodes) {
+    //   save_nodes.insert(graph->RemoveNode(const_cast<Node *>(node)).release());
+    // } else {
+    //   graph->RemoveNode(const_cast<Node *>(node));
+    // }
+    if (flag_save_nodes) {
+      // graph->RemoveNode(const_cast<Node *>(node)).release();
+      graph->RemoveNode(const_cast<Node *>(node));
+    } else{
+      graph->RemoveNode(const_cast<Node *>(node));
+    }
+  }
+
+  for (auto *node : graph->Nodes()) {
+    for (auto it = node->inputs.begin(); it != node->inputs.end();) {
+      if (nodes.count(*it)) {
+        it = const_cast<Node *>(node)->inputs.erase(it);
+      } else {
+        it++;
+      }
+    }
+    for (auto it = node->outputs.begin(); it != node->outputs.end();) {
+      if (nodes.count(*it)) {
+        it = const_cast<Node *>(node)->outputs.erase(it);
+      } else {
+        it++;
+      }
+    }
+  }*/
+}
+
+void GraphSafeRemoveNodes(Graph *graph,
+                          const std::unordered_set<const Node *> &nodes, std::unordered_set<std::shared_ptr<Node>> &save_nodes, bool flag_save_nodes) {
+  for (auto *node : nodes) {
+    if (flag_save_nodes) {
+      save_nodes.insert(std::move(graph->RemoveNode(const_cast<Node *>(node))));
+    } else {
+      graph->RemoveNode(const_cast<Node *>(node));
+    }
   }
 
   for (auto *node : graph->Nodes()) {

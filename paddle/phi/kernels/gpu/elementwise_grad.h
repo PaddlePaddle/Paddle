@@ -90,18 +90,27 @@ void GetGradXOrYOut(const GPUContext &dev_ctx,
   dev_ctx.Alloc<T>(dxy);
 
   std::vector<DenseTensor *> outs;
+  VLOG(4) << "yoki GetGradXOrYOut 1: dyx_dims: " << dxy->dims();
+  VLOG(4) << "yoki GetGradXOrYOut 2: dout_dims: " << dout.dims();
   if (dxy->dims() != dout.dims()) {
+    VLOG(4) << "yoki GetGradXOrYOut 3";
     tmp_dxy.Resize(dout.dims());
     dev_ctx.Alloc<T>(&tmp_dxy);
     outs = {&tmp_dxy};
+    VLOG(4) << "yoki GetGradXOrYOut 4";
   } else {
+    VLOG(4) << "yoki GetGradXOrYOut 5";
     outs = {dxy};
   }
 
+  VLOG(4) << "yoki GetGradXOrYOut 6";
   funcs::BroadcastKernel<ET, T, T>(dev_ctx, ins, &outs, axis, func);
+  VLOG(4) << "yoki GetGradXOrYOut 7";
   if (dxy->dims() != dout.dims()) {
+    VLOG(4) << "yoki GetGradXOrYOut 8";
     ReduceWrapper<T>(dev_ctx, axis, &tmp_dxy, dxy);
   }
+  VLOG(4) << "yoki GetGradXOrYOut 9";
 }
 
 /*
@@ -380,6 +389,7 @@ void ElementwiseMulGrad(const GPUContext &dev_ctx,
   const auto place = dev_ctx.GetPlace();
 
   if (dx != nullptr && dy != nullptr) {
+    VLOG(4) << "yoki elementwise_grad 1";
     std::vector<const DenseTensor *> ins = {&dout, &y, &x};
     GetGradXAndYOut<ElementwiseType::kTernary, T>(
         dev_ctx,
@@ -391,10 +401,12 @@ void ElementwiseMulGrad(const GPUContext &dev_ctx,
         dy,
         funcs::MultiplyGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
+    VLOG(4) << "yoki elementwise_grad 2";
     std::vector<const DenseTensor *> ins = {&dout, &y};
     GetGradXOrYOut<ElementwiseType::kBinary, T>(
         dev_ctx, place, axis, ins, dout, dx, funcs::MultiplyGradFunctor<T>());
   } else if (dx == nullptr && dy != nullptr) {
+    VLOG(4) << "yoki elementwise_grad 3";
     std::vector<const DenseTensor *> ins = {&dout, &x};
     GetGradXOrYOut<ElementwiseType::kBinary, T>(
         dev_ctx, place, axis, ins, dout, dy, funcs::MultiplyGradFunctor<T>());

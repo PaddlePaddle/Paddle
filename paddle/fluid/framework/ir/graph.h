@@ -45,6 +45,8 @@ namespace details {
 // This attr is not recommended, because the graph should not dependence
 // the program once it is built.
 constexpr char kStaleProgramOpDescs[] = "stale_program_op_descs";
+constexpr char kRemovedVars[] = "removed_vars";
+typedef std::unordered_set<std::shared_ptr<ir::Node>> RemovedVars;
 }  //  namespace details
 
 namespace ir {
@@ -228,6 +230,7 @@ class Graph {
     PADDLE_ENFORCE_NOT_NULL(
         var_desc, platform::errors::InvalidArgument(
                       "The VarDesc used to create variable node is null."));
+    VLOG(4) << "yoki create var_node: " << var_desc->Name() << "  block_id: " << block_id << "  block_id_: " << block_id_;
     auto *x =
         AddNode(new ir::Node(var_desc, block_id == -1 ? block_id_ : block_id));
     x->SetId(num_node_created_++);

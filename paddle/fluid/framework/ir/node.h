@@ -56,6 +56,7 @@ namespace ir {
 class Node {
  public:
   virtual ~Node() {
+    VLOG(4) << "yoki node destruct: " << Name();
     if (!wrapper_.empty()) {
       VLOG(10) << "ir::Node deleting a wrapper node " << Name();
       wrapper_deleter_();
