@@ -1931,6 +1931,7 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
     whose row and col is known. Indices are ordered based on row and then columns.
     The upper triangular part of the matrix is defined as the elements on
     and above the diagonal.
+
     Args:
         row (int): The input x which is a int number describe the number of row of the matrix.
         col (int, optional): The input x which is a int number describe the number of col of the matrix.
@@ -1946,6 +1947,7 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
     Returns:
         Tensor: Results of the indices of upper triangular part of a row * col matrix,
         where the first row contains row coordinates of and the second row contains column coordinates.
+
     Examples:
         .. code-block:: python
 
