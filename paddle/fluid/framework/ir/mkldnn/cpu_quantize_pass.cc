@@ -490,6 +490,7 @@ void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
       LogQuantizationDisabled(fc);
       return;
     }
+    // TODO(sfraczek): Do we need below check or is the above check enough?
     if (!fc->Op()->GetAttrIfExists<bool>("use_mkldnn")) {
       MarkAndLogCannotQuantizeOp(fc, "use_mkldnn attribute set to false");
       return;

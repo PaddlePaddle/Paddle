@@ -432,8 +432,11 @@ class FCPrimitiveFactory {
     auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
     bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-    bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
-    auto scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
+    bool fuse_residual_conn = ctx.HasAttr("fuse_residual_connection") &&
+                              ctx.Attr<bool>("fuse_residual_connection");
+    auto scale_in_eltwise_data = ctx.HasAttr("Scale_in_eltwise")
+                                     ? ctx.Attr<float>("Scale_in_eltwise")
+                                     : 1.0f;
 
     // If the output will be in floats, we don't multiply by scale_out.
 

@@ -1095,7 +1095,7 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
   if (with_residual_data) {
     auto res_fc_var = pattern->NewNode(residual_data_repr())
                           ->AsOutput()
-                          ->assert_is_op_output("conv2d", "ResidualData");
+                          ->assert_is_op_output("fc", "ResidualData");
     links_from.push_back(res_fc_var);
   }
 

@@ -592,7 +592,7 @@ struct FC : public PatternBase {
 // op: fc
 // named node:
 // fc
-// w, bias, output
+// w, bias, output, residual_data
 struct FCMKLDNN : public PatternBase {
   FCMKLDNN(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fc_mkldnn") {}
@@ -945,7 +945,6 @@ struct ElewiseAddMatmulAct : public PatternBase {
 // conv_out, conv,
 // eltwise_bias, eltwise_out,
 // elementwise_add
-// residual_data
 struct ConvBias : public PatternBase {
   ConvBias(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_bias") {}
@@ -958,7 +957,6 @@ struct ConvBias : public PatternBase {
   PATTERN_DECL_NODE(conv_out);
   PATTERN_DECL_NODE(eltwise_bias);
   PATTERN_DECL_NODE(eltwise_out);
-  PATTERN_DECL_NODE(conv_residual_data);
 };
 
 // Convolution op
