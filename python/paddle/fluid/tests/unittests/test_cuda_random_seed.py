@@ -200,10 +200,9 @@ class TestGeneratorSeed(unittest.TestCase):
         x2_np = x2.numpy()
         x3_np = x3.numpy()
 
-        if core.is_compiled_with_cuda():
-            print(">>>>>>> gaussian random dygraph state load/save >>>>>>>")
-            np.testing.assert_equal(x1_np, x2_np)
-            np.testing.assert_equal(x1_np, x2_np)
+        print(">>>>>>> gaussian random dygraph state load/save >>>>>>>")
+        np.testing.assert_equal(x1_np, x2_np)
+        np.testing.assert_equal(x1_np, x2_np)
 
         shutil.rmtree(output_dir)
 
