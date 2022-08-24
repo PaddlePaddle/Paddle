@@ -1329,8 +1329,11 @@ def _deal_with_undefined_var(output_vars, loop_vars):
         if isinstance(o_var,
                       (Variable, ) + support_ret_buildin_type) or o_var is None:
             return create_undefined_variable()
-        if isinstance(o_var, (tuple, list)):
-            return [create_undefined_variable() for i in range(len(o_var))]
+        if is_sequence(o_var):
+            """ 
+            Create a complex container class inside the body of while, including Python list and python Dict
+            """
+            return map_structure(lambda x: create_undefined_variable(), o_var)
 
     if len(output_vars) != len(loop_vars):
         raise ValueError("The length of loop_vars should be the same.")
