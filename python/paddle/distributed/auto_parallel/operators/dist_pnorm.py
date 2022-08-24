@@ -182,32 +182,6 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         check_dtype(X_var.dtype, 'dtype', ['float16', 'float32', 'float64'],
                     'norm')
 
-        # 1. insert barrier op
-        ref_process_mesh = op_dist_attr.process_mesh
-        constant_out_dims_mapping = [-1]
-        fill_constant_out, fill_constant_op = _insert_fill_constant_op(
-            main_block, src_op.attr('op_role'))
-        # set fill_constant_out tensor dist_attr
-        constant_out_dist_attr = TensorDistributedAttribute()
-        constant_out_dist_attr.process_mesh = ref_process_mesh
-        constant_out_dist_attr.dims_mapping = constant_out_dims_mapping
-        ctx.set_tensor_dist_attr_for_program(fill_constant_out,
-                                             constant_out_dist_attr)
-        # set fill_constant op dist_attr
-        constant_op_dist_attr = OperatorDistributedAttribute()
-        constant_op_dist_attr.process_mesh = ref_process_mesh
-        constant_op_dist_attr.set_output_dims_mapping(
-            fill_constant_out.name, constant_out_dims_mapping)
-        ctx.set_op_dist_attr_for_program(fill_constant_op,
-                                         constant_op_dist_attr)
-        barrier_op = main_block.append_op(type='barrier',
-                                          inputs={'X': [fill_constant_out]},
-                                          outputs={'Out': [fill_constant_out]},
-                                          attrs={'ring_id': group.id})
-        # set barrier op dist attr
-        set_comm_op_dist_attr_for_program(barrier_op, ref_process_mesh,
-                                          constant_out_dist_attr, ctx)
-
         # 2. insert c_allgather op
         # create c_allgather output var
         allgather_out = main_block.create_var(

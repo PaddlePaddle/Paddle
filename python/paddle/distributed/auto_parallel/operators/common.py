@@ -428,6 +428,9 @@ def gradient_synchronization(dist_ctx, op, act_grad_names, out_grad_names,
         rank (int): global ranks index for current process.
     """
 
+    if not dist_ctx.dist_op_context.in_backward_phase():
+        return
+
     if is_optimize_op(op) or len(act_grad_names) == 0 or len(
             out_grad_names) == 0:
         return
