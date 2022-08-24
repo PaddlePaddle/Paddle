@@ -179,7 +179,18 @@ int LayerNormPluginDynamic::enqueue(
   // the batch num should be involved in mean/variance shape
   int64_t batched_mean_shape = mean_shape_[0] * input_dims.d[0];
   int64_t batched_variance_shape = variance_shape_[0] * input_dims.d[0];
-
+  PADDLE_ENFORCE_EQ(1,
+                    mean_shape_.size(),
+                    platform::errors::InvalidArgument(
+                        "Size of mean_shape vector should be equal to 1,"
+                        "but got Size of mean_shape vector:%d",
+                        mean_shape_.size()));
+  PADDLE_ENFORCE_EQ(1,
+                    variance_shape_.size(),
+                    platform::errors::InvalidArgument(
+                        "Size of variance_shape vector should be equal to 1,"
+                        "but got Size of mean_shape vector:%d",
+                        mean_shape_.size()));
   const auto input_ddim = phi::make_ddim(input_shape);
   auto matrix_dim = phi::flatten_to_2d(input_ddim, begin_norm_axis);
   int feature_size = static_cast<int>(matrix_dim[1]);
