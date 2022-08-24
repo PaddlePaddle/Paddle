@@ -49,8 +49,7 @@ std::vector<const phi::DenseTensor*> TensorToConstDenseTensorPtr(
   std::vector<const phi::DenseTensor*> pt_tensors(tensors.size());
 
   for (size_t i = 0; i < tensors.size(); ++i) {
-    pt_tensors[i] =
-        std::dynamic_pointer_cast<phi::DenseTensor>(tensors[i].impl()).get();
+    pt_tensors[i] = static_cast<phi::DenseTensor*>(tensors[i].impl().get());
   }
 
   return pt_tensors;
@@ -66,8 +65,7 @@ TensorToConstDenseTensorPtr(
         paddle::optional<std::vector<const phi::DenseTensor*>>(tensors->size());
     for (size_t i = 0; i < tensors->size(); ++i) {
       pt_tensors->at(i) =
-          std::dynamic_pointer_cast<phi::DenseTensor>(tensors->at(i).impl())
-              .get();
+          static_cast<phi::DenseTensor*>(tensors->at(i).impl().get());
     }
   }
 
