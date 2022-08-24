@@ -2979,11 +2979,7 @@ void SoftmaxInferMeta(const MetaTensor& x, int axis, MetaTensor* out) {
   out->share_lod(x);
 }
 
-void SplitInferMeta(const MetaTensor& x,
-                    const IntArray& num_or_sections,
-                    const Scalar& axis,
-                    std::vector<MetaTensor*> out,
-                    MetaConfig config) {
+int GetSplitAxisValue(const MetaTensor& x, const Scalar& axis) {
   if (axis.dtype() == DataType::FLOAT32 || axis.dtype() == DataType::FLOAT64) {
     PADDLE_THROW(
         phi::errors::InvalidArgument("%s(): argument (position 3) must be "
@@ -3004,117 +3000,141 @@ void SplitInferMeta(const MetaTensor& x,
   if (axis_value < 0) {
     axis_value = axis_value + rank;
   }
+  return axis_value;
+}
 
-  auto input_axis_dim = x.dims().at(axis_value);
-  auto num_or_sections_data = num_or_sections.GetData();
-  // step1: get formated sections
-  std::vector<int64_t> sections;
-  // num_or_sections is a number
-  if (num_or_sections_data.size() == 1 && num_or_sections_data[0] > 0) {
-    int num = num_or_sections_data.at(0);
-
-    PADDLE_ENFORCE_EQ(input_axis_dim % num,
-                      0,
-                      phi::errors::InvalidArgument(
-                          "The input's size along the split dimension "
-                          "must be evenly divisible by Attr(num_or_sections). "
-                          "But received Attr(num_or_sections) "
-                          "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
-                          num,
-                          x.dims(),
-                          axis_value));
-
-    for (int i = 0; i < num; ++i) {
-      sections.push_back(input_axis_dim / num);
-    }
-  } else {
-    // num_or_sections is a sections
-    const int unknow_dim_val = -1;
-    int unknow_dim_idx = -1;
-    int num_of_unknow = 0;
-    int sum_of_section = 0;
-
-    for (size_t i = 0; i < num_or_sections_data.size(); ++i) {
-      sections.push_back(num_or_sections_data[i]);
-
-      if (num_or_sections_data[i] == unknow_dim_val) {
-        num_of_unknow++;
-        unknow_dim_idx = i;
-      } else {
-        sum_of_section += num_or_sections_data[i];
-      }
-    }
-
-    if (config.is_runtime) {
-      PADDLE_ENFORCE_LE(num_of_unknow,
-                        1,
-                        phi::errors::InvalidArgument(
-                            "Only one dimension value of Attr(num_or_sections) "
-                            "in SplitOp can be -1. "
-                            "But received Attr(num_or_sections) = [%s].",
-                            phi::make_ddim(num_or_sections_data)));
-    }
-
-    if (unknow_dim_idx != -1) {
-      // for example, input shape = [4 ,5], axis = 1, sections = [2, 3, -1].
-      // input_axis_dim = 5, sum_of_sections = 5.
-      // the following check will fail.
-      PADDLE_ENFORCE_LT(
-          sum_of_section,
-          input_axis_dim,
-          phi::errors::InvalidArgument(
-              "Sum of Attr(num_or_sections) other than unknown section "
-              "must be less than the input's "
-              "size "
-              "along the split dimension. But received Attr(num_or_sections) "
-              "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-              phi::make_ddim(num_or_sections_data),
-              x.dims(),
-              axis_value));
-
-      if (config.is_runtime) {
-        sections[unknow_dim_idx] = input_axis_dim - sum_of_section;
-      }
-    } else {
-      PADDLE_ENFORCE_EQ(
-          sum_of_section,
-          input_axis_dim,
-          phi::errors::InvalidArgument(
-              "Sum of Attr(num_or_sections) must be equal to the input's "
-              "size "
-              "along the split dimension. But received Attr(num_or_sections)"
-              " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-              phi::make_ddim(num_or_sections_data),
-              x.dims(),
-              axis_value));
-    }
-  }
-
-  // setp2: fill out dims
-  std::vector<phi::DDim> out_dims(sections.size(), x.dims());
+void FillSplitOutDims(const MetaTensor& x,
+                      const int axis_value,
+                      const int64_t input_axis_dim,
+                      const std::vector<int64_t>& sections_vec,
+                      std::vector<MetaTensor*>* out,
+                      MetaConfig config) {
+  std::vector<phi::DDim> out_dims(sections_vec.size(), x.dims());
   if (config.is_runtime || input_axis_dim > 0) {
-    for (size_t i = 0; i < sections.size(); ++i) {
-      out_dims[i][axis_value] = sections[i];
+    for (size_t i = 0; i < sections_vec.size(); ++i) {
+      out_dims[i][axis_value] = sections_vec[i];
     }
   } else {
-    for (size_t i = 0; i < sections.size(); ++i) {
+    for (size_t i = 0; i < sections_vec.size(); ++i) {
       out_dims[i][axis_value] = -1;
     }
   }
 
-  for (size_t i = 0; i < sections.size(); ++i) {
+  for (size_t i = 0; i < sections_vec.size(); ++i) {
     if (axis_value != 0) {
       // Only pass LoD when not spliting along the first dim.
-      out[i]->set_dtype(x.dtype());
-      out[i]->set_dims(out_dims[i]);
-      out[i]->set_layout(x.layout());
+      (*out)[i]->set_dtype(x.dtype());
+      (*out)[i]->set_dims(out_dims[i]);
+      (*out)[i]->set_layout(x.layout());
     } else {
-      out[i]->set_dtype(x.dtype());
-      out[i]->set_dims(out_dims[i]);
-      out[i]->set_layout(x.layout());
-      out[i]->share_lod(x);
+      (*out)[i]->set_dtype(x.dtype());
+      (*out)[i]->set_dims(out_dims[i]);
+      (*out)[i]->set_layout(x.layout());
+      (*out)[i]->share_lod(x);
     }
   }
+}
+
+void SplitInferMeta(const MetaTensor& x,
+                    const IntArray& sections,
+                    const Scalar& axis,
+                    std::vector<MetaTensor*> out,
+                    MetaConfig config) {
+  int axis_value = GetSplitAxisValue(x, axis);
+
+  auto input_axis_dim = x.dims().at(axis_value);
+  auto sections_data = sections.GetData();
+  // step1: get formated sections
+  std::vector<int64_t> sections_vec;
+  const int unknow_dim_val = -1;
+  int unknow_dim_idx = -1;
+  int num_of_unknow = 0;
+  int sum_of_section = 0;
+
+  for (size_t i = 0; i < sections_data.size(); ++i) {
+    sections_vec.push_back(sections_data[i]);
+
+    if (sections_data[i] == unknow_dim_val) {
+      num_of_unknow++;
+      unknow_dim_idx = i;
+    } else {
+      sum_of_section += sections_data[i];
+    }
+  }
+
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_LE(num_of_unknow,
+                      1,
+                      phi::errors::InvalidArgument(
+                          "Only one dimension value of Attr(num_or_sections) "
+                          "in SplitOp can be -1. "
+                          "But received Attr(num_or_sections) = [%s].",
+                          phi::make_ddim(sections_data)));
+  }
+
+  if (unknow_dim_idx != -1) {
+    // for example, input shape = [4 ,5], axis = 1, sections = [2, 3, -1].
+    // input_axis_dim = 5, sum_of_sections = 5.
+    // the following check will fail.
+    PADDLE_ENFORCE_LT(
+        sum_of_section,
+        input_axis_dim,
+        phi::errors::InvalidArgument(
+            "Sum of Attr(num_or_sections) other than unknown section "
+            "must be less than the input's "
+            "size "
+            "along the split dimension. But received Attr(num_or_sections) "
+            "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
+            phi::make_ddim(sections_data),
+            x.dims(),
+            axis_value));
+
+    if (config.is_runtime) {
+      sections_vec[unknow_dim_idx] = input_axis_dim - sum_of_section;
+    }
+  } else {
+    PADDLE_ENFORCE_EQ(
+        sum_of_section,
+        input_axis_dim,
+        phi::errors::InvalidArgument(
+            "Sum of Attr(num_or_sections) must be equal to the input's "
+            "size "
+            "along the split dimension. But received Attr(num_or_sections)"
+            " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
+            phi::make_ddim(sections_data),
+            x.dims(),
+            axis_value));
+  }
+  // setp2: fill out dims
+  FillSplitOutDims(x, axis_value, input_axis_dim, sections_vec, &out, config);
+}
+
+void SplitWithNumInferMeta(const MetaTensor& x,
+                           int num,
+                           const Scalar& axis,
+                           std::vector<MetaTensor*> out,
+                           MetaConfig config) {
+  int axis_value = GetSplitAxisValue(x, axis);
+
+  auto input_axis_dim = x.dims().at(axis_value);
+  // step1: get formated sections
+  std::vector<int64_t> sections_vec;
+  PADDLE_ENFORCE_EQ(input_axis_dim % num,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The input's size along the split dimension "
+                        "must be evenly divisible by Attr(num_or_sections). "
+                        "But received Attr(num_or_sections) "
+                        "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
+                        num,
+                        x.dims(),
+                        axis_value));
+
+  for (int i = 0; i < num; ++i) {
+    sections_vec.push_back(input_axis_dim / num);
+  }
+  // setp2: fill out dims
+  FillSplitOutDims(x, axis_value, input_axis_dim, sections_vec, &out, config);
 }
 
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {

@@ -2514,10 +2514,22 @@
   backward : spectral_norm_grad
 
 - api : split
-  args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)
-  output : Tensor[]
-  invoke : split_impl(x, num_or_sections, axis)
+  args : (Tensor x, IntArray sections, Scalar(int) axis)
+  output : Tensor[]{sections.size()}
+  infer_meta :
+    func : SplitInferMeta
+  kernel :
+    func : split
   backward : split_grad
+
+- api : split_with_num
+  args : (Tensor x, int num, Scalar(int) axis)
+  output : Tensor[]{num}
+  infer_meta :
+    func : SplitWithNumInferMeta
+  kernel :
+    func : split_with_num
+  backward : split_with_num_grad
 
 - api : sqrt
   args : (Tensor x)
