@@ -712,7 +712,6 @@ class OperatorWithKernel : public OperatorBase {
   // used for IndicateOrPromoteVarDataTypes
   Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                    const std::string& name) const;
-  void InitOpCache(const Scope& scope, const platform::Place& place) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;

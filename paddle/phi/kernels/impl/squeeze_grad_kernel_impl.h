@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 
@@ -21,7 +22,7 @@ template <typename T, typename Context>
 void SqueezeGradKernel(const Context& dev_ctx,
                        const DenseTensor& xshape,
                        const DenseTensor& dout,
-                       const std::vector<int>& axes,
+                       const IntArray& axes,
                        DenseTensor* dx) {
   auto xshape_dims = xshape.dims();
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());

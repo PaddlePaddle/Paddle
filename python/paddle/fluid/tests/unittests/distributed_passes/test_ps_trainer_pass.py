@@ -149,7 +149,7 @@ class TestPsTrainerPass(PsPassTestBase):
         self.config['debug_new_minimize'] = '0'
         self.config['log_dir'] = ps_log_root_dir + "gpubox_log_old_minimize"
         remove_path_if_exists(self.config['log_dir'])
-        self.ps_launch("gpu-ps")
+        #self.ps_launch("gpu-ps")
 
         self.config['debug_new_minimize'] = '1'
         self.config['log_dir'] = ps_log_root_dir + "gpubox_log_new_minimize"
