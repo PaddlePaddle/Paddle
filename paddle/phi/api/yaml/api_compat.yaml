@@ -4,11 +4,6 @@
   outputs :
     out : Out
 
-- api : batch_norm
-  backward : batch_norm_grad
-  extra :
-    attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
-
 - api : bernoulli
   inputs :
     x : X
