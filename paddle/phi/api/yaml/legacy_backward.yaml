@@ -1964,8 +1964,8 @@
   inplace : (out_grad -> x_grad)
 
 - backward_api : reverse_array_grad
-  forward : reverse_array (Tensor[] x, int[] axis) -> Tensor[](out)
-  args : (Tensor[] out_grad, int[] axis)
+  forward : reverse_array (Tensor[] x, IntArray axis) -> Tensor[](out)
+  args : (Tensor[] out_grad, IntArray axis)
   output : Tensor[](x_grad){out_grad.size()}
   infer_meta :
     func : ReverseArrayInferMeta
@@ -1973,8 +1973,8 @@
     func : reverse
 
 - backward_api : reverse_grad
-  forward : reverse (Tensor x, int[] axis) -> Tensor(out)
-  args : (Tensor out_grad, int[] axis)
+  forward : reverse (Tensor x, IntArray axis) -> Tensor(out)
+  args : (Tensor out_grad, IntArray axis)
   output : Tensor(x_grad)
   infer_meta :
     func : ReverseInferMeta

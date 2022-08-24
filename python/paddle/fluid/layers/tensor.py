@@ -1280,7 +1280,7 @@ def reverse(x, axis):
     check_variable_and_dtype(x, 'x',
                              ('float32', 'float64', 'int32', 'int64', 'uint8'),
                              'reverse')
-    check_type(axis, 'axis', (int, tuple, list), 'reverse')
+    check_type(axis, 'axis', (int, tuple, list, Variable), 'reverse')
     if isinstance(axis, int):
         axis = [axis]
     if in_dygraph_mode():

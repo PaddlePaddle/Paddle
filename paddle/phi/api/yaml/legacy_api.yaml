@@ -2205,7 +2205,7 @@
   backward: reshape_grad
 
 - api : reverse
-  args : (Tensor x, int[] axis)
+  args : (Tensor x, IntArray axis)
   output : Tensor
   infer_meta :
     func : ReverseInferMeta
@@ -2214,7 +2214,7 @@
   backward : reverse_grad
 
 - api : reverse_array
-  args : (Tensor[] x, int[] axis)
+  args : (Tensor[] x, IntArray axis)
   output : Tensor[]{x.size()}
   infer_meta :
     func : ReverseArrayInferMeta

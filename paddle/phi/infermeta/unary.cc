@@ -2735,13 +2735,22 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
 }
 
 void ReverseInferMeta(const MetaTensor& x,
-                      const std::vector<int>& axis,
-                      MetaTensor* out) {
-  PADDLE_ENFORCE_NE(axis.empty(),
+                      const IntArray& axis,
+                      MetaTensor* out,
+                      MetaConfig config) {
+  // NOTE(Aurelius84): In Reverse Op, output TensorMeta is always same
+  // as input, so we only verify axis when it is not from Tensor or in
+  // runtime.
+  if (!config.is_runtime && axis.FromTensor()) {
+    out->share_meta(x);
+    return;
+  }
+  auto& axis_data = axis.GetData();
+  PADDLE_ENFORCE_NE(axis_data.empty(),
                     true,
                     phi::errors::InvalidArgument("'axis' can not be empty."));
   const auto& x_dims = x.dims();
-  for (int a : axis) {
+  for (int a : axis_data) {
     PADDLE_ENFORCE_LT(a,
                       x_dims.size(),
                       phi::errors::OutOfRange(
@@ -2762,22 +2771,27 @@ void ReverseInferMeta(const MetaTensor& x,
 }
 
 void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
-                           const std::vector<int>& axis,
-                           std::vector<phi::MetaTensor*> out) {
+                           const IntArray& axis,
+                           std::vector<phi::MetaTensor*> out,
+                           MetaConfig config) {
+  if (!config.is_runtime && axis.FromTensor()) {
+    return;
+  }
+  auto& axis_data = axis.GetData();
   PADDLE_ENFORCE_EQ(
-      axis.size(),
+      axis_data.size(),
       1,
       phi::errors::InvalidArgument(
           "The size of axis must be 1 when the Input(X) is LoDTensorArray, "
           "but received %d.",
-          axis.size()));
+          axis_data.size()));
   PADDLE_ENFORCE_EQ(
-      axis[0],
+      axis_data[0],
       0,
       phi::errors::InvalidArgument("The value of axis should be 1 when "
                                    "the Input(X) is LoDTensorArray, "
                                    "but received %d.",
-                                   axis[0]));
+                                   axis_data[0]));
 }
 
 void RollInferMeta(const MetaTensor& x,
