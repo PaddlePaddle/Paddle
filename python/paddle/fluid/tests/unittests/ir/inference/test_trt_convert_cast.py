@@ -19,6 +19,7 @@ import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
+import os
 
 
 def generate_input(type):
@@ -144,6 +145,8 @@ class TrtConvertCastTest2(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         ver = paddle_infer.get_trt_compile_version()
         if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 7000:
+            return False
+        if (os.name == 'nt'):
             return False
         return True
 
