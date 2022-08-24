@@ -101,14 +101,14 @@ struct ConvCacheKey {
         groups_(groups),
         data_layout_(data_layout) {}
   size_t hash_value() const {
-    return ConvKey(x_dims_,
-                   w_dims_,
-                   strides_,
-                   paddings_,
-                   dilations_,
-                   dtype_,
-                   groups_,
-                   data_layout_);
+    return GetKey(x_dims_,
+                  w_dims_,
+                  strides_,
+                  paddings_,
+                  dilations_,
+                  static_cast<int64_t>(dtype_),
+                  groups_,
+                  data_layout_);
   }
   std::vector<int64_t> x_dims_;
   std::vector<int64_t> w_dims_;
@@ -142,12 +142,11 @@ struct ConvCacheKeyEqual {
   }
 };
 
-template <typename AlgorithmT>
-class CudnnAlgorithmsCache {
+class CudnnAlgorithmsCacheMap {
  public:
-  CudnnAlgorithmsCache() : cache_mutex_(new std::mutex()) { hash_.clear(); }
+  CudnnAlgorithmsCacheMap() : cache_mutex_(new std::mutex()) { hash_.clear(); }
 
-  AlgorithmT Get(const ConvCacheKey& key) {
+  DnnNode Get(const ConvCacheKey& key) {
     std::lock_guard<std::mutex> lock(*cache_mutex_);
     PADDLE_ENFORCE_NE(
         hash_.find(key),
@@ -175,7 +174,7 @@ class CudnnAlgorithmsCache {
     cache_misses_ = 0;
   }
 
-  void Set(const ConvCacheKey& key, AlgorithmT algo) {
+  void Set(const ConvCacheKey& key, DnnNode algo) {
     std::lock_guard<std::mutex> lock(*cache_mutex_);
     if (hash_.size() > static_cast<size_t>(FLAGS_search_cache_max_number)) {
       hash_.clear();
@@ -200,10 +199,7 @@ class CudnnAlgorithmsCache {
   int64_t Size() const { return hash_.size(); }
 
  private:
-  std::unordered_map<ConvCacheKey,
-                     AlgorithmT,
-                     ConvCacheKeyHash,
-                     ConvCacheKeyEqual>
+  std::unordered_map<ConvCacheKey, DnnNode, ConvCacheKeyHash, ConvCacheKeyEqual>
       hash_;
   std::shared_ptr<std::mutex> cache_mutex_;
 
@@ -287,7 +283,6 @@ enum class AlgorithmType {
 
 // AlgorithmsConfigKey -> AlgorithmsID
 // (todo. hong) use cudnnConvolutionFwdAlgo_t
-using CudnnAlgorithmsCacheMap = CudnnAlgorithmsCache<DnnNode>;
 using AlgorithmsCacheMap = AlgorithmsCache<int64_t>;
 // AlgorithmType -> AlgorithmsCache
 using AlgorithmsTypeMap = std::unordered_map<int64_t, AlgorithmsCacheMap>;
@@ -360,17 +355,19 @@ class AutoTuneCache {
 
   void Register(const AlgorithmType& algo_type) {
     std::lock_guard<std::mutex> lock(*autotune_cache_mutex_);
-    if (algo_type == AlgorithmType::kTranspose) {
-      int64_t key = static_cast<int64_t>(algo_type);
-      if (auto_tune_map_.find(key) == auto_tune_map_.end()) {
-        AlgorithmsCacheMap cache;
-        auto_tune_map_[key] = cache;
-      }
-    } else {
+    if (algo_type == AlgorithmType::kConvForward ||
+        algo_type == AlgorithmType::kConvBackwardData ||
+        algo_type == AlgorithmType::kConvBackwardFilter) {
       int64_t key = static_cast<int64_t>(algo_type);
       if (auto_tune_map_.find(key) == auto_tune_map_.end()) {
         CudnnAlgorithmsCacheMap cache;
         cudnn_auto_tune_map_[key] = cache;
+      }
+    } else {
+      int64_t key = static_cast<int64_t>(algo_type);
+      if (auto_tune_map_.find(key) == auto_tune_map_.end()) {
+        AlgorithmsCacheMap cache;
+        auto_tune_map_[key] = cache;
       }
     }
   }

@@ -108,25 +108,6 @@ struct ConvArgsBase {
         data_layout(layout) {}
 
   template <typename T>
-  size_t GetCacheKey() const {
-    auto x_shape = phi::vectorize(x->dims());
-    auto w_shape = phi::vectorize(w->dims());
-    VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape
-             << ", strides=" << s << ", paddings=" << p << ", dilations=" << d;
-    return phi::autotune::ConvKey(
-        x_shape,
-        w_shape,
-        p,
-        s,
-        d,
-        paddle::experimental::CppTypeToDataType<T>::Type(),
-        group,
-        static_cast<int64_t>(data_layout));  // (todo,hong) data layeout is a
-                                             // deprecated enum, show use phi
-                                             // datalayout
-  }
-
-  template <typename T>
   phi::autotune::ConvCacheKey Convert2ConvCacheKey() const {
     auto x_shape = phi::vectorize(x->dims());
     auto w_shape = phi::vectorize(w->dims());
