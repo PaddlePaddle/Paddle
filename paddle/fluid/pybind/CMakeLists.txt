@@ -159,6 +159,11 @@ if(NOT ON_INFER)
   if(WITH_CUSTOM_DEVICE)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_custom)
   endif()
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+    set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+  endif()
+  set_source_files_properties(
+    distributed_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()
 
@@ -190,9 +195,18 @@ if(WITH_PSLIB)
     heter_wrapper_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 endif()
 if(WITH_PSCORE)
-  set(DISTRIBUTE_COMPILE_FLAGS
-      "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
-  )
+  if(WITH_ARM_BRPC)
+    set(DISTRIBUTE_COMPILE_FLAGS
+        "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+    )
+  else()
+    set(DISTRIBUTE_COMPILE_FLAGS
+        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+    )
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+      set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+    endif()
+  endif()
   set_source_files_properties(
     fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   list(APPEND PYBIND_DEPS fleet index_wrapper index_sampler)
