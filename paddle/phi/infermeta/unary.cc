@@ -405,6 +405,15 @@ void CumInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void CumScalarAxisInferMeta(const MetaTensor& x,
+                            const Scalar& axis,
+                            bool flatten,
+                            bool exclusive,
+                            bool reverse,
+                            MetaTensor* out) {
+  CumInferMeta(x, axis.to<int>(), flatten, exclusive, reverse, out);
+}
+
 void CropTensorInferMeta(const MetaTensor& x,
                          const IntArray& shape,
                          const IntArray& offsets,
