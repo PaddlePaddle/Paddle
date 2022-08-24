@@ -436,11 +436,26 @@ void SliceRawInferMeta(const MetaTensor& input,
 
 void SoftmaxInferMeta(const MetaTensor& x, int axis, MetaTensor* out);
 
+int GetSplitAxisValue(const MetaTensor& x, const Scalar& axis);
+
+void FillSplitOutDims(const MetaTensor& x,
+                      const int axis_value,
+                      const int64_t input_axis_dim,
+                      const std::vector<int64_t>& sections_vec,
+                      std::vector<MetaTensor*>* out,
+                      MetaConfig config);
+
 void SplitInferMeta(const MetaTensor& x_meta,
-                    const IntArray& num_or_sections,
+                    const IntArray& sections,
                     const Scalar& axis,
                     std::vector<MetaTensor*> out,
                     MetaConfig config = MetaConfig());
+
+void SplitWithNumInferMeta(const MetaTensor& x_meta,
+                           int num,
+                           const Scalar& axis,
+                           std::vector<MetaTensor*> out,
+                           MetaConfig config = MetaConfig());
 
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out);
 

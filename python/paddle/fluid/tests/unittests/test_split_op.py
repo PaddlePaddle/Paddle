@@ -421,6 +421,23 @@ class API_TestSplit4(unittest.TestCase):
             np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
 
 
+class API_TestSplit5(unittest.TestCase):
+
+    def test_out(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input_1 = np.random.random([5, 4]).astype("int32")
+            # input is a variable which shape is [5, 4]
+            input = paddle.to_tensor(input_1)
+            n = paddle.full([1], 5, dtype='int32')
+            out = paddle.split(input, [n])
+            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            re = exe.run(fetch_list=[out])
+            re = re[0]
+            ex_out = np.split(input_1, [5])
+            ex_out = ex_out[0]
+            np.testing.assert_allclose(ex_out, re, rtol=1e-05)
+
+
 class API_TestDygraphSplit(unittest.TestCase):
 
     def test_out1(self):
@@ -470,6 +487,25 @@ class API_TestDygraphSplit(unittest.TestCase):
         np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
+
+    def test_out3(self):
+        with fluid.dygraph.guard():
+            np.random.seed(2021)
+            input_1 = np.random.random([4, 6, 6]).astype("int32")
+            # input is a variable which shape is [4, 6, 6]
+            input = paddle.to_tensor(input_1)
+            out_dy = paddle.split(input, [6], axis=1)
+            out_dy = out_dy[0]
+            out_dy_np = out_dy.numpy()
+            ex_out = np.split(input_1, [6], axis=1)
+            ex_out = ex_out[0]
+            with _test_eager_guard():
+                input = paddle.to_tensor(input_1)
+                out_eager = paddle.split(input, [6], axis=1)
+                out_eager = out_eager[0]
+                out_eager_np = out_dy.numpy()
+                np.testing.assert_allclose(ex_out, out_eager_np, rtol=1e-05)
+        np.testing.assert_allclose(ex_out, out_dy_np, rtol=1e-05)
 
     def test_out_tensor_input(self):
         with fluid.dygraph.guard():
