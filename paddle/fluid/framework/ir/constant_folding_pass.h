@@ -22,9 +22,6 @@ namespace ir {
 
 class Graph;
 
-// Notice:
-// the rank of input is obtained from var_desc,
-// it maybe change in runtime.
 class ConstantFoldingPass : public FusePassBase {
  public:
   ConstantFoldingPass();

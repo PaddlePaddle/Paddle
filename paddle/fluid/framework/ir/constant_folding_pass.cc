@@ -62,8 +62,8 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     if (std::find(blacklist.begin(), blacklist.end(), op_node->Name()) !=
         blacklist.end())
       continue;
-    bool input_persis = true;
 
+    bool input_persis = true;
     // map is used to record how many time a name string occures in the whole
     // model
     std::map<std::string, int> map;
