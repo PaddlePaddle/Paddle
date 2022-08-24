@@ -25,7 +25,5 @@ namespace sparse {
 // Common InferMeta Functions of SparseTensor for unary operators:
 void UnchangedInferMeta(const MetaTensor& x_meta, MetaTensor* out);
 
-void CreateLikeInferMeta(const MetaTensor& x, MetaTensor* out);
-
 }  // namespace sparse
 }  // namespace phi

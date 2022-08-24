@@ -469,5 +469,32 @@ class TestCsrError(unittest.TestCase):
                     crows, cols, values, shape)
 
 
+class TestStatic(unittest.TestCase):
+
+    def test_coo(self):
+        paddle.enable_static()
+        indices = paddle.static.data(name='indices',
+                                     shape=[2, 2],
+                                     dtype='float32')
+        values = paddle.static.data(name='values',
+                                    shape=[2, 1],
+                                    dtype='float32')
+        shape = [2, 4]
+        out = sparse.sparse_coo_tensor(indices, values, shape)
+
+        exe = paddle.static.Executor(paddle.CUDAPlace(0))
+
+        indices_data = [[0, 1], [1, 2]]
+        values_data = [[1.0], [2.0]]
+
+        fetch = exe.run(feed={
+            'indices': indices_data,
+            'values': values_data
+        },
+                        fetch_list=[out])
+        print(out)
+        paddle.disable_static()
+
+
 if __name__ == "__main__":
     unittest.main()
