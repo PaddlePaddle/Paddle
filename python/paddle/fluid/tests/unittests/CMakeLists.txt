@@ -722,6 +722,7 @@ if(WITH_DISTRIBUTE)
     endif()
 
     # port range (20000, 21200) is reserved for dist-ops
+    set(dist_ut_port 20001)
     foreach(TEST_OP ${DIST_TEST_OPS})
       bash_test_modules(
         ${TEST_OP}
@@ -731,7 +732,7 @@ if(WITH_DISTRIBUTE)
         "RUN_TYPE=EXCLUSIVE"
         ENVS
         "PADDLE_DIST_UT_PORT=${dist_ut_port}")
-      math(EXPR dist_ut_port "${dist_ut_port}+20")
+      math(EXPR dist_ut_port "${dist_ut_port}+10")
       if(dist_ut_port GREATER_EQUAL 21198)
         message(
           FATAL_ERROR "available ports have been exhausted:${dist_ut_port}")
