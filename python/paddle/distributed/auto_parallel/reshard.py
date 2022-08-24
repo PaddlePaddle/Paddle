@@ -1784,7 +1784,7 @@ class Resharder:
 
             dist_op = self.dist_context.get_dist_op_for_program(op)
             if dist_op is not None:
-                op_input_dist_attrs = [
+                op_inputs_dist_attrs = [
                 ]  # [(op_process_mesh, op_input_dims_mapping), (op_process_mesh, op_input_dims_mapping)]
                 if op.type == "while":
                     if not self.is_condition_replicative(op):
