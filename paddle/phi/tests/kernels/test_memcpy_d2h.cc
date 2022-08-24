@@ -18,11 +18,12 @@
 
 #include "glog/logging.h"
 
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/kernels/memcpy_d2h_kernel.h"
 #include "paddle/phi/kernels/memcpy_h2d_kernel.h"
 
@@ -36,8 +37,7 @@ using DDim = phi::DDim;
 TEST(DEV_API, memcpy_d2h) {
   // 1. create tensor
   const auto cpu_alloc =
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   phi::DenseTensor x_cpu(cpu_alloc.get(),
                          phi::DenseTensorMeta(phi::DataType::FLOAT32,
                                               phi::make_ddim({3, 2, 2, 3}),
@@ -48,13 +48,13 @@ TEST(DEV_API, memcpy_d2h) {
     x_cpu_data[i] = i;
   }
 
-  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
-      paddle::platform::CUDAPlace());
+  const auto alloc =
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::GPUPlace());
   phi::DenseTensor x;
 
   // 2. test API
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
-  auto place = paddle::platform::CUDAPlace();
+  auto& pool = phi::DeviceContextPool::Instance();
+  auto place = phi::GPUPlace();
   auto* dev_ctx = static_cast<const phi::GPUContext*>(pool.GetByPlace(place));
 
   phi::MemcpyH2DKernel<float, phi::GPUContext>(*dev_ctx, x_cpu, 1, &x);
