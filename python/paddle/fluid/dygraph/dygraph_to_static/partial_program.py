@@ -262,43 +262,20 @@ class PartialProgramLayer:
     def _infer_pure_fp16_program(self):
         return self._create_pure_fp16_program(is_infer_mode=True)
 
-    # forward
     @LazyInitialized
-    def _train_forward_program(self):
-        forwrd_program, backward_program = self._create_forward_backward_train_program(
-        )
-        return forwrd_program
+    def _train_forward_backward_program(self):
+        program = self._create_forward_backward_train_program()
+        return program
 
     @LazyInitialized
-    def _train_amp_forward_program(self):
-        forwrd_program, backward_program = self._create_forward_backward_train_amp_program(
-        )
-        return forwrd_program
+    def _train_amp_forward_backward_program(self):
+        program = self._create_forward_backward_train_amp_program()
+        return program
 
     @LazyInitialized
-    def _train_pure_fp16_forward_program(self):
-        forwrd_program, backward_program = self._create_forward_backward_train_pure_fp16_program(
-        )
-        return forwrd_program
-
-    # backward
-    @LazyInitialized
-    def _train_backward_program(self):
-        forwrd_program, backward_program = self._create_forward_backward_train_program(
-        )
-        return backward_program
-
-    @LazyInitialized
-    def _train_amp_backward_program(self):
-        forwrd_program, backward_program = self._create_forward_backward_train_amp_program(
-        )
-        return backward_program
-
-    @LazyInitialized
-    def _train_pure_fp16_backward_program(self):
-        forwrd_program, backward_program = self._create_forward_backward_train_pure_fp16_program(
-        )
-        return backward_program
+    def _train_pure_fp16_forward_backward_program(self):
+        program = self._create_forward_backward_train_pure_fp16_program()
+        return program
 
     @property
     def whole_program(self):
@@ -321,11 +298,14 @@ class PartialProgramLayer:
     def forward_program(self):
         if self.training:
             if _in_amp_guard():
-                return self._train_amp_forward_program
+                program = self._train_amp_forward_backward_program
+                return program[0]
             elif _in_pure_fp16_guard():
-                return self._train_pure_fp16_forward_program
+                program = self._train_pure_fp16_forward_backward_program
+                return program[0]
             else:
-                return self._train_forward_program
+                program = self._train_forward_backward_program
+                return program[0]
         else:
             if _in_amp_guard():
                 return self._infer_amp_program
@@ -338,11 +318,14 @@ class PartialProgramLayer:
     def backward_program(self):
         if self.training:
             if _in_amp_guard():
-                return self._train_amp_backward_program
+                program = self._train_amp_forward_backward_program
+                return program[1]
             elif _in_pure_fp16_guard():
-                return self._train_pure_fp16_backward_program
+                program = self._train_pure_fp16_forward_backward_program
+                return program[1]
             else:
-                return self._train_backward_program
+                program = self._train_forward_backward_program
+                return program[1]
         else:
             return paddle.static.Program()
 
@@ -657,7 +640,7 @@ class PartialProgramLayer:
         self._apply_inplace_pass(forward_builded_program,
                                  backward_builded_program, True)
 
-        return forward_builded_program, backward_builded_program
+        return [forward_builded_program, backward_builded_program]
 
     def _apply_inplace_pass(self, forward_program, backward_program,
                             enable_inplace):
