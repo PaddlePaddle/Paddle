@@ -31,7 +31,7 @@ from paddle.fluid.framework import Program, Parameter, Variable
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process_group import new_process_group
-from ..utils import _get_comm_group, _get_idx_in_axis, _get_corresponding_rank
+from ..utils import _get_comm_group, _get_idx_in_axis, _get_corresponding_rank, set_var_dist_attr
 from ..cost import build_comp_desc_from_dist_op, build_comm_desc_from_dist_op
 from ..cost import build_comm_costs_from_descs, build_comp_costs_from_descs, build_dp_costs
 from ..cost import EmbeddingOpCost, EmbeddingGradOpCost
@@ -299,8 +299,26 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                                               })
 
             # set dist attr
-            Ids_var_dims_mapping = op_dist_attr.get_input_dist_attr(
-                Ids_var.name)
+            Ids_var_dist_attr = op_dist_attr.get_input_dist_attr(Ids_var.name)
+            assert Ids_var_dist_attr is not None
+            set_var_dist_attr(ctx, intermediate_var_0,
+                              Ids_var_dist_attr.dims_mapping,
+                              Ids_var_dist_attr.process_mesh)
+            set_var_dist_attr(ctx, xshape_var,
+                              [-1] + list(Ids_var_dist_attr.dims_mapping),
+                              Ids_var_dist_attr.process_mesh)
+
+            new_op_dist_attr = OperatorDistributedAttribute()
+            new_op_dist_attr.process_mesh = Ids_var_dist_attr.process_mesh
+            new_op_dist_attr.impl_type = "default"
+            new_op_dist_attr.impl_idx = 0
+            new_op_dist_attr.set_input_dims_mapping(
+                Ids_var.name, Ids_var_dist_attr.dims_mapping)
+            new_op_dist_attr.set_output_dims_mapping(
+                intermediate_var_0.name, Ids_var_dist_attr.dims_mapping)
+            new_op_dist_attr.set_output_dims_mapping(
+                xshape_var.name, [-1] + list(Ids_var_dist_attr.dims_mapping))
+            ctx.set_op_dist_attr_for_program(reshape_op, new_op_dist_attr)
 
         # got dist attribute info
         embedding_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
