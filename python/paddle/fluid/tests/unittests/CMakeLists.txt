@@ -1769,7 +1769,7 @@ py_test_modules(
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_for_standalone_executor
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass_for_standalone_executor
-  PROPERTIES TIMEOUT 200)
+  PROPERTIES TIMEOUT 300)
 
 py_test_modules(test_renorm_op_without_eager MODULES test_renorm_op ENVS
                 FLAGS_enable_eager_mode=0)
