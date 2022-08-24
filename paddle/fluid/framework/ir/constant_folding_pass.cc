@@ -98,8 +98,6 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         new_scope->Var(out_node->Var()->Name());
         new_scope->FindVar(out_node->Var()->Name())->GetMutable<LoDTensor>();
         if (out_node->outputs.size() == 0L) remove_nodes.emplace(out_node);
-        std::cout << out_node->Var()->Name() << std::endl;
-        std::cout << out_node->outputs.size() << std::endl;
       }
       op->Run(*new_scope, platform::CPUPlace());
       for (auto out_node : op_node->outputs) {

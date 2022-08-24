@@ -84,11 +84,11 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "identity_scale_op_clean_pass",              //
-      "adaptive_pool2d_convert_global_pass",   //
-      "shuffle_channel_detect_pass",           //
-      "quant_conv2d_dequant_fuse_pass",        //
-      "delete_fill_constant_op_pass",          //
+  "identity_scale_op_clean_pass",             //
+      "adaptive_pool2d_convert_global_pass",  //
+      "shuffle_channel_detect_pass",          //
+      "quant_conv2d_dequant_fuse_pass",       //
+      "delete_fill_constant_op_pass",         //
       "constant_folding_pass",
       "delete_quant_dequant_op_pass",          //
       "delete_quant_dequant_filter_op_pass",   //
@@ -199,11 +199,11 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "gpu_cpu_map_matmul_v2_to_mul_pass",      //
         "gpu_cpu_map_matmul_v2_to_matmul_pass",   //
         "constant_folding_pass",
-        "matmul_scale_fuse_pass",                 //
-        "multihead_matmul_fuse_pass_v3",          //
-        "gpu_cpu_map_matmul_to_mul_pass",         //
-        "fc_fuse_pass",                           //
-        "fc_elementwise_layernorm_fuse_pass",     //
+        "matmul_scale_fuse_pass",              //
+        "multihead_matmul_fuse_pass_v3",       //
+        "gpu_cpu_map_matmul_to_mul_pass",      //
+        "fc_fuse_pass",                        //
+        "fc_elementwise_layernorm_fuse_pass",  //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
