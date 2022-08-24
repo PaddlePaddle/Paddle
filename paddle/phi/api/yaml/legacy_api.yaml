@@ -40,13 +40,14 @@
     func : acosh
   backward : acosh_grad
 
-- api : adadelta
+- api : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, float rho, float epsilon)
   output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out)
   infer_meta :
     func : AdadeltaInferMeta
   kernel :
     func : adadelta
+  inplace : (param -> param_out), (avg_squared_grad -> moment_out), (avg_squared_update -> inf_norm_out)
 
 - api : adagrad_
   args : (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, float epsilon)
@@ -71,13 +72,14 @@
   optional : master_param, skip_update
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
 
-- api : adamax
+- api : adamax_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment, Tensor inf_norm, Tensor beta1_pow, float beta1, float beta2, float epsilon)
   output : Tensor(param_out), Tensor(avg_squared_grad_out), Tensor(avg_squared_update_out)
   infer_meta :
     func : AdamaxInferMeta
   kernel :
     func : adamax
+  inplace : (param -> param_out), (moment -> avg_squared_grad_out), (inf_norm -> avg_squared_update_out)
 
 - api : adamw_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, float lr_ratio, float coeff, bool with_decay, bool lazy_mode, int64_t min_row_size_to_use_multithread, bool multi_precision, bool use_global_beta_pow)
@@ -540,7 +542,7 @@
   backward : conj_grad
 
 - api : conv2d
-  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
   output : Tensor
   infer_meta :
     func : ConvInferMeta
@@ -636,10 +638,10 @@
   backward : cumprod_grad
 
 - api : cumsum
-  args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
+  args : (Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse)
   output : Tensor(out)
   infer_meta :
-    func : CumInferMeta
+    func : CumScalarAxisInferMeta
   kernel :
     func : cumsum
   backward : cumsum_grad
@@ -701,6 +703,16 @@
     func : DiagEmbedInferMeta
   kernel :
     func : diag_embed
+
+- api : distribute_fpn_proposals
+  args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
+  output : Tensor[](multi_fpn_rois){max_level - min_level + 1}, Tensor[](multi_level_rois_num){max_level - min_level + 1}, Tensor(restore_index)
+  infer_meta :
+    func : DistributeFpnProposalsInferMeta
+  kernel :
+    func : distribute_fpn_proposals
+    data_type : fpn_rois
+  optional : rois_num
 
 - api : divide
   args : (Tensor x, Tensor y)
@@ -1941,7 +1953,6 @@
     func : NormInferMeta
   kernel :
     func : norm
-  intermediate : norm
   backward : norm_grad
 
 - api : not_equal

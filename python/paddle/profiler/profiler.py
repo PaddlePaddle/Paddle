@@ -38,6 +38,23 @@ class SummaryView(Enum):
     r"""
     SummaryView define the summary view of different contents.
 
+    - **SummaryView.DeviceView** : The device summary view.
+
+    - **SummaryView.OverView** : The overview summary view.
+
+    - **SummaryView.ModelView** : The model summary view.
+
+    - **SummaryView.DistributedView** : The distributed summary view.
+
+    - **SummaryView.KernelView** : The kernel summary view.
+
+    - **SummaryView.OperatorView** : The operator summary view.
+
+    - **SummaryView.MemoryView** : The memory summary view.
+
+    - **SummaryView.MemoryManipulationView** : The meomory manipulation summary view.
+
+    - **SummaryView.UDFView** : The user defined summary view.
     """
     DeviceView = 0
     OverView = 1
@@ -85,6 +102,7 @@ class ProfilerTarget(Enum):
     CPU = 0
     GPU = 1
     MLU = 2
+    CUSTOM_DEVICE = 3
 
 
 def make_scheduler(*,
@@ -279,10 +297,14 @@ def _get_supported_targets() -> Iterable[ProfilerTarget]:
     Get the current supported profiler target in the system.
     """
     if _Profiler.is_cupti_supported():
-        return [ProfilerTarget.CPU, ProfilerTarget.GPU]
+        return [
+            ProfilerTarget.CPU, ProfilerTarget.GPU, ProfilerTarget.CUSTOM_DEVICE
+        ]
     if _Profiler.is_cnpapi_supported():
-        return [ProfilerTarget.CPU, ProfilerTarget.MLU]
-    return [ProfilerTarget.CPU]
+        return [
+            ProfilerTarget.CPU, ProfilerTarget.MLU, ProfilerTarget.CUSTOM_DEVICE
+        ]
+    return [ProfilerTarget.CPU, ProfilerTarget.CUSTOM_DEVICE]
 
 
 class Profiler:
@@ -420,7 +442,8 @@ class Profiler:
                  record_shapes: Optional[bool] = False,
                  profile_memory=False,
                  timer_only: Optional[bool] = False,
-                 emit_nvtx: Optional[bool] = False):
+                 emit_nvtx: Optional[bool] = False,
+                 custom_device_types: Optional[list] = []):
         supported_targets = _get_supported_targets()
         if targets:
             self.targets = set(targets)
@@ -438,8 +461,12 @@ class Profiler:
             profileoption.trace_switch |= (1 << 1)
         if ProfilerTarget.MLU in self.targets:
             profileoption.trace_switch |= (1 << 2)
+        if ProfilerTarget.CUSTOM_DEVICE in self.targets:
+            profileoption.trace_switch |= (1 << 3)
+            if not custom_device_types:
+                custom_device_types = paddle.device.get_all_custom_device_type()
         wrap_optimizers()
-        self.profiler = _Profiler.create(profileoption)
+        self.profiler = _Profiler.create(profileoption, custom_device_types)
         if callable(scheduler):
             self.scheduler = scheduler
         elif isinstance(scheduler, (tuple, list)):
@@ -760,7 +787,7 @@ class Profiler:
             op_detail(bool, optional): expand each operator detail information, default value is True.
             thread_sep(bool, optional): print op table each thread, default value is False.
             time_unit(str, optional): time unit for display, can be chosen form ['s', 'ms', 'us', 'ns'], default value is 'ms'.
-            views(list[SummaryView], optional): summary tables to print, default to None means all views to be printed.
+            views(SummaryView|list[SummaryView], optional): summary tables to print, default to None means all views to be printed.
 
         Examples:
             .. code-block:: python
@@ -779,6 +806,9 @@ class Profiler:
                 prof.stop()
                 prof.summary(sorted_by=profiler.SortedKeys.CPUTotal, op_detail=True, thread_sep=False, time_unit='ms')
         """
+        if isinstance(views, SummaryView):
+            views = [views]
+
         if self.profiler_result:
             statistic_data = StatisticData(
                 self.profiler_result.get_data(),
