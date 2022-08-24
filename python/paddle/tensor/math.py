@@ -4806,13 +4806,13 @@ def take(x, index, mode='raise', name=None):
     Args:
         x (Tensor): An N-D Tensor, its data type should be int32, int64, float32, float64.
         index (Tensor): An N-D Tensor, its data type should be int32, int64.
-        mode (str, optional): Specifies how out-of-bounds index will behave.
-                the candicates are ``'raise'`` | ``'wrap'`` | ``'clip'``.
-                If :attr:`mode` is ``'raise'``, raise an error (default);
-                If :attr:`mode` is ``'wrap'``, wrap around;
-                If :attr:`mode` is ``'clip'``, clip to the range.
-                    ``'clip'`` mode means that all indices that are too large are replaced by the index that
-                    addresses the last element. Note that this disables indexing with negative numbers.
+        mode (str, optional): Specifies how out-of-bounds index will behave. the candicates are ``'raise'``, ``'wrap'`` and ``'clip'``.
+
+            - ``'raise'``: raise an error (default);
+            - ``'wrap'``: wrap around;
+            - ``'clip'``: clip to the range. ``'clip'`` mode means that all indices that are too large are replaced by
+            the index that addresses the last element. Note that this disables indexing with negative numbers.
+
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
