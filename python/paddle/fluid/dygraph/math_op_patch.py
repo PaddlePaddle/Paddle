@@ -296,6 +296,11 @@ def monkey_patch_math_varbase():
             if call_final_api:
                 if op_type == "matmul":
                     return math_op(self, other_var, False, False)
+                if op_type == "pow":
+                    if isinstance(other_var, core.eager.Tensor):
+                        return _C_ops.elementwise_pow(self, other_var)
+                    else:
+                        return _C_ops.elementwise_pow(self, other_var)
                 return math_op(self, other_var, -1)
             return math_op(self, other_var, 'axis', axis)
 
@@ -379,9 +384,7 @@ def monkey_patch_math_varbase():
         if framework._in_eager_mode_ else
         ('__rtruediv__',
          _binary_creator_('rtruediv__', 'elementwise_div', True, None)),
-        ('__pow__',
-         _binary_creator_('__pow__', 'elementwise_pow', False,
-                          _C_ops.elementwise_pow, True))
+        ('__pow__', _binary_creator_('__pow__', 'pow', False, _C_ops.pow, True))
         if framework._in_eager_mode_ else
         ('__pow__',
          _binary_creator_('__pow__', 'elementwise_pow', False, None)),
