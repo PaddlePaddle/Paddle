@@ -35,6 +35,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
+#include "paddle/phi/core/compat/convert_utils.h"
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
 #include "paddle/fluid/inference/api/onnxruntime_predictor.h"
@@ -396,6 +397,10 @@ void BindInferenceApi(py::module *m) {
            auto pred = std::unique_ptr<paddle_infer::Predictor>(
                new paddle_infer::Predictor(config));
            return pred;
+         });
+  m->def("trans_to_phi_kernel_name",
+         [](const std::string &fluid_op_name) -> const std::string & {
+           return phi::TransToPhiKernelName(fluid_op_name);
          });
   m->def("copy_tensor", &CopyPaddleInferTensor);
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
