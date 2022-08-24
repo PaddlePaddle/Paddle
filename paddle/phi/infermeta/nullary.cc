@@ -165,8 +165,7 @@ void TriuIndicesInferMeta(
   auto n_first_row =
       offset > 0 ? std::min<int64_t>(col, 1 + offset) : row + offset > 0;
   // number of elements in the last row of the tril, bounded by [0, cols]
-  auto n_last_row =
-      std::max<int64_t>(0, std::min<int64_t>(col, row + offset));
+  auto n_last_row = std::max<int64_t>(0, std::min<int64_t>(col, row + offset));
   // number of rows, bounded by [0, rows]
   auto n_row_all = std::max<int64_t>(0, std::min<int64_t>(row, row + offset));
   auto n_row_trapezoid = (n_last_row - n_first_row + 1);
