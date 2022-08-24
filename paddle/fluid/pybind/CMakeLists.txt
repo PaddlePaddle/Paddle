@@ -161,9 +161,9 @@ if(NOT ON_INFER)
   endif()
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
     set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+    set_source_files_properties(
+      distributed_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   endif()
-  set_source_files_properties(
-    distributed_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()
 
