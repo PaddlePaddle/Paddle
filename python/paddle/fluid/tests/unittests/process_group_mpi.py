@@ -29,9 +29,6 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.collective import _group_map_by_name
 from paddle.distributed.collective import _default_group_name
 import paddle.distributed as dist
-import ctypes
-
-ctypes.CDLL("libmpi.so", mode=ctypes.RTLD_GLOBAL)
 
 
 def init_process_group(strategy=None):
@@ -165,12 +162,10 @@ class TestProcessGroup(unittest.TestCase):
             if pg.rank() == 0:
                 task = dist.broadcast(tensor_x, 0, use_calc_stream=False)
                 task.synchronize()
-                paddle.device.cuda.synchronize()
                 assert task.is_completed()
                 assert np.array_equal(broadcast_result, tensor_x)
             else:
                 task = dist.broadcast(tensor_y, 0)
-                paddle.device.cuda.synchronize()
                 assert np.array_equal(broadcast_result, tensor_y)
 
             print("test broadcast api ok")
@@ -199,7 +194,6 @@ class TestProcessGroup(unittest.TestCase):
             if pg.rank() == 0:
                 task = pg.all_gather(tensor_x, tensor_out)
                 task.wait()
-                paddle.device.cuda.synchronize()
             # rank 1
             else:
                 tensor_out_list = [
@@ -209,7 +203,6 @@ class TestProcessGroup(unittest.TestCase):
                 task = dist.all_gather(tensor_out_list,
                                        tensor_y,
                                        use_calc_stream=False)
-                paddle.device.cuda.synchronize()
                 tensor_out = paddle.concat(tensor_out_list)
             out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
             out_2 = paddle.slice(tensor_out, [0], [out_shape[0] // 2],
@@ -221,14 +214,12 @@ class TestProcessGroup(unittest.TestCase):
             if pg.rank() == 0:
                 task = pg.all_gather(tensor_x, tensor_out)
                 task.wait()
-                paddle.device.cuda.synchronize()
             # rank 1
             else:
                 tensor_out_list = []
                 task = dist.all_gather(tensor_out_list,
                                        tensor_y,
                                        use_calc_stream=False)
-                paddle.device.cuda.synchronize()
                 tensor_out = paddle.concat(tensor_out_list)
             out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
             out_2 = paddle.slice(tensor_out, [0], [out_shape[0] // 2],
@@ -260,7 +251,6 @@ class TestProcessGroup(unittest.TestCase):
                 out_1, out_2 = paddle.split(tensor_out2, 2)
                 out_tensor_list = [out_1, out_2]
                 task = dist.alltoall([in_1, in_2], out_tensor_list)
-                paddle.device.cuda.synchronize()
                 tensor_out2 = paddle.concat(out_tensor_list)
             out1_2 = paddle.slice(tensor_out1, [0], [self.shape[0] // 2],
                                   [self.shape[0]])
@@ -292,7 +282,6 @@ class TestProcessGroup(unittest.TestCase):
                 out_1, out_2 = paddle.split(tensor_out2, 2)
                 out_tensor_list = []
                 task = dist.alltoall([in_1, in_2], out_tensor_list)
-                paddle.device.cuda.synchronize()
                 tensor_out2 = paddle.concat(out_tensor_list)
             out1_2 = paddle.slice(tensor_out1, [0], [self.shape[0] // 2],
                                   [self.shape[0]])
@@ -312,12 +301,10 @@ class TestProcessGroup(unittest.TestCase):
             sum_result = tensor_x + tensor_y
             if pg.rank() == 0:
                 task = dist.reduce(tensor_x, 0, use_calc_stream=True)
-                paddle.device.cuda.synchronize()
             # rank 1
             else:
                 task = dist.reduce(tensor_y, 0, use_calc_stream=False)
                 task.wait()
-                paddle.device.cuda.synchronize()
             if pg.rank() == 0:
                 assert np.array_equal(tensor_x, sum_result)
             print("test reduce sum api ok\n")
@@ -413,12 +400,10 @@ class TestProcessGroup(unittest.TestCase):
                                     0,
                                     use_calc_stream=True)
                 #task.wait()
-                paddle.device.cuda.synchronize()
             # rank 1
             else:
                 task = dist.scatter(tensor_y, [], 0, use_calc_stream=False)
                 task.wait()
-                paddle.device.cuda.synchronize()
             out1 = paddle.slice(tensor_x, [0], [0], [self.shape[0]])
             out2 = paddle.slice(tensor_x, [0], [self.shape[0]],
                                 [self.shape[0] * 2])

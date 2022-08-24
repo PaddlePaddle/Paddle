@@ -18,8 +18,8 @@
 #include <string>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/dynload/mpi_comm.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/backends/dynload/mpi_comm.h"
 
 #include "paddle/fluid/distributed/collective/Types.h"
 
