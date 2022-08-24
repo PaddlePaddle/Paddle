@@ -429,7 +429,7 @@ static std::vector<std::string> inline GetNameList(
   return vec_res;
 }
 
-static void inline CreateVariableIfNotExit(
+static void inline CreateVariableIfNotExist(
     const py::handle &py_handle,
     const framework::Scope &scope,
     const framework::Executor *exe = nullptr) {
@@ -630,7 +630,7 @@ PYBIND11_MODULE(core_noavx, m) {
         [](const py::handle &vec_var_list,
            const Scope &scope,
            const Executor *executor) {
-          CreateVariableIfNotExit(vec_var_list, scope, executor);
+          CreateVariableIfNotExist(vec_var_list, scope, executor);
         });
 
   m.def("save_op_version_info", [](framework::ProgramDesc &desc) {

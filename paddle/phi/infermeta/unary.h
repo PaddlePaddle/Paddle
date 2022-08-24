@@ -438,13 +438,15 @@ void SplitInferMeta(const MetaTensor& x_meta,
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void SqueezeInferMeta(const MetaTensor& x,
-                      const std::vector<int>& axes,
-                      MetaTensor* out);
+                      const IntArray& axes,
+                      MetaTensor* out,
+                      MetaConfig config = MetaConfig());
 
 void SqueezeWithXShapeInferMeta(const MetaTensor& x,
-                                const std::vector<int>& axes,
+                                const IntArray& axes,
                                 MetaTensor* out,
-                                MetaTensor* xshape);
+                                MetaTensor* xshape,
+                                MetaConfig config = MetaConfig());
 
 void StridedSliceRawInferMeta(const MetaTensor& x,
                               const std::vector<int>& axes,

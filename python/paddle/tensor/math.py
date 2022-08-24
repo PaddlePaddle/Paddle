@@ -176,8 +176,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_scale(x, scale, float(bias), bias_after_scale)
-        return dygraph_utils._append_activation_in_dygraph(out)
+        return _C_ops.final_state_scale(x, scale, float(bias), bias_after_scale)
     if _non_static_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = _C_ops.scale(x, 'scale',
@@ -343,8 +342,8 @@ def pow(x, y, name=None):
     .. math::
         out = x^{y} 
 
-    **Note**:
-    ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
 
     Args:
@@ -386,8 +385,7 @@ def pow(x, y, name=None):
         if isinstance(y, (int, float)):
             return _C_ops.final_state_pow(x, y)
         elif isinstance(y, (paddle.Tensor, Variable)):
-            return _elementwise_op_in_dygraph(
-                x, y, axis=-1, act=None, op_name='elementwise_pow')
+            return _C_ops.final_state_elementwise_pow(x, y)
         else:
             raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
     if _in_legacy_dygraph():
@@ -426,6 +424,7 @@ OP_NAMEMAPPING = {
     'elementwise_sub': 'final_state_subtract',
     'elementwise_mul': 'final_state_multiply',
     'elementwise_div': 'final_state_divide',
+    'elementwise_mod': 'final_state_modulo',
 }
 
 @dygraph_only
@@ -567,9 +566,12 @@ def add_(x, y, name=None):
     if out_shape != x.shape:
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
 
-    out = _elementwise_op_in_dygraph(
-        x, y, axis=axis, op_name=op_type)
-    return out
+    if in_dygraph_mode():
+        return _C_ops.final_state_add_(x, y)
+    else:
+        out = _elementwise_op_in_dygraph(
+            x, y, axis=axis, op_name=op_type)
+        return out
 
 
 def subtract(x, y, name=None):
@@ -652,9 +654,12 @@ def subtract_(x, y, name=None):
     if out_shape != x.shape:
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
 
-    out = _elementwise_op_in_dygraph(
-        x, y, axis=axis, act=act, op_name='elementwise_sub_')
-    return out
+    if in_dygraph_mode():
+        return _C_ops.final_state_subtract_(x, y)
+    else:
+        out = _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_sub_')
+        return out
 
 
 def divide(x, y, name=None):
@@ -664,8 +669,8 @@ def divide(x, y, name=None):
     .. math::
         out = x / y
 
-    **Note**:
-    ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -707,8 +712,8 @@ def floor_divide(x, y, name=None):
     .. math::
         out = x // y
 
-    **Note**:
-    ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be int32, int64.
@@ -732,7 +737,9 @@ def floor_divide(x, y, name=None):
     """
     op_type = 'elementwise_floordiv'
     axis = -1
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_floor_divide(x, y)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
 
@@ -747,8 +754,8 @@ def remainder(x, y, name=None):
 
         out = x \% y
 
-    **Note**:
-    ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -772,7 +779,9 @@ def remainder(x, y, name=None):
     """
     op_type = 'elementwise_mod'
     axis = -1
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_modulo(x, y)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
 
@@ -790,8 +799,8 @@ def multiply(x, y, name=None):
     .. math::
         out = x * y
 
-    **Note**:
-    ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
         x (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
@@ -843,8 +852,8 @@ def maximum(x, y, name=None):
     .. math::
         out = max(x, y)
 
-    **Note**:
-    ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -890,7 +899,9 @@ def maximum(x, y, name=None):
     op_type = 'elementwise_max'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_maximum(x, y)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -902,8 +913,8 @@ def minimum(x, y, name=None):
     .. math::
         out = min(x, y)
 
-    **Note**:
-    ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -949,7 +960,9 @@ def minimum(x, y, name=None):
     op_type = 'elementwise_min'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_minimum(x, y)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -963,8 +976,8 @@ def fmax(x, y, name=None):
     .. math::
         out = fmax(x, y)
 
-    **Note**:
-    ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -1026,8 +1039,8 @@ def fmin(x, y, name=None):
     .. math::
         out = fmin(x, y)
 
-    **Note**:
-    ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -1079,25 +1092,6 @@ def fmin(x, y, name=None):
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
-
-for func in [
-        multiply
-]:
-    proto_dict = {'multiply': 'elementwise_mul'}
-    op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
-
-    additional_args_lines = [
-        "name (string, optional): Name of the output. \
-        Default is None. It's used to print debug info for developers. Details: \
-        :ref:`api_guide_Name` "
-    ]
-
-    func.__doc__ = _generate_doc_string_(
-        op_proto,
-        additional_args_lines=additional_args_lines,
-        skip_attrs_set={"x_data_format", "y_data_format", "axis",
-            "use_quantizer", "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
-        }) + """\n""" + str(func.__doc__)
 
 
 def sum(x, axis=None, dtype=None, keepdim=False, name=None):
@@ -3033,8 +3027,8 @@ def cumsum(x, axis=None, dtype=None, name=None):
     """
     The cumulative sum of the elements along a given axis. 
     
-    **Note**:
-    The first element of the result is the same as the first element of the input. 
+    Note:
+        The first element of the result is the same as the first element of the input. 
 
     Args:
         x (Tensor): The input tensor needed to be cumsumed.
@@ -3172,8 +3166,8 @@ def cumprod(x, dim=None, dtype=None, name=None):
     """
     Compute the cumulative product of the input tensor x along a given dimension dim.
 
-    **Note**:
-    The first element of the result is the same as the first element of the input.
+    Note:
+        The first element of the result is the same as the first element of the input.
 
     Args:
         x (Tensor): the input tensor need to be cumproded.
@@ -3501,12 +3495,14 @@ def tanh_(x, name=None):
     Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_tanh`.
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_tanh_( x )
     return _C_ops.tanh_(x)
 
 
 def increment(x, value=1.0, name=None):
     """
-    The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
+    The API is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
     Notice that the number of elements in :attr:`x` must be equal to 1.
 
     Args:
@@ -4078,6 +4074,8 @@ def lerp_(x, y, weight, name=None):
         out_shape = broadcast_shape(out_shape, weight.shape)
     if out_shape != x.shape:
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
+    if in_dygraph_mode():
+        return _C_ops.final_state_lerp_( x, y, weight)
     return _C_ops.lerp_(x, y, weight)
 
 def erfinv(x, name=None):
@@ -4126,6 +4124,8 @@ def erfinv_(x, name=None):
     Please refer to :ref:`api_tensor_erfinv`.
     """
     check_type(x, 'x', (paddle.Tensor, Variable), 'erfinv')
+    if in_dygraph_mode():
+        return _C_ops.final_state_erfinv_( x )
     return _C_ops.erfinv_(x)
 
 def rad2deg(x, name=None):
@@ -4448,7 +4448,46 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     dtype = x.dtype
     axes = [axis]
     infer_flags = list(1 for i in range(len(axes)))
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        has_pend = False
+        input_list = []
+        if prepend is not None and append is not None:
+            input_list = [prepend, x, append]
+            has_pend = True
+        elif prepend is not None:
+            input_list = [prepend, x]
+            has_pend = True
+        elif append is not None:
+            input_list = [x, append]
+            has_pend = True
+        if has_pend:
+            new_input = _C_ops.final_state_concat(input_list, axis)
+        else:
+            new_input = x
+
+        attrs_1 = ()
+        attrs_2 = ()
+
+        dim_len = new_input.shape[axis]
+
+        starts_1 = [0]
+        attrs_1 += ('starts', starts_1)
+        ends_1 = [dim_len - 1]
+        attrs_1 += ('ends', ends_1)
+        input_front = _C_ops.final_state_slice(new_input, axes, starts_1, ends_1, infer_flags,
+                                            [])
+        starts_2 = [1]
+        attrs_2 += ('starts', starts_2)
+        ends_2 = [dim_len]
+        attrs_2 += ('ends', ends_2)
+        input_back = _C_ops.final_state_slice(new_input, axes, starts_2, ends_2, infer_flags,
+                                            [])
+
+        if x.dtype == paddle.bool:
+            return _C_ops.final_state_logical_xor(input_back, input_front)
+        else:
+            return elementwise_sub(input_back, input_front, axis=axis)
+    elif _in_legacy_dygraph():
         has_pend = False
         input_list = []
         if prepend is not None and append is not None:
@@ -4475,31 +4514,19 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         attrs_1 += ('starts', starts_1)
         ends_1 = [dim_len - 1]
         attrs_1 += ('ends', ends_1)
-        if in_dygraph_mode():
-            input_front = _C_ops.final_state_slice(new_input, axes, starts_1, ends_1, infer_flags,
-                                            [])
-        else:
-            input_front = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
+        input_front = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
                 'infer_flags', infer_flags, *attrs_1)
         starts_2 = [1]
         attrs_2 += ('starts', starts_2)
         ends_2 = [dim_len]
         attrs_2 += ('ends', ends_2)
-        if in_dygraph_mode():
-            input_back = _C_ops.final_state_slice(new_input, axes, starts_2, ends_2, infer_flags,
-                                            [])
-        else:
-            input_back = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
+        input_back = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
                 'infer_flags', infer_flags, *attrs_2)
 
         if x.dtype == paddle.bool:
-            if in_dygraph_mode():
-                return _C_ops.final_state_logical_xor(input_back, input_front)
-            else:
-                return _C_ops.logical_xor(input_back, input_front)
+            return _C_ops.logical_xor(input_back, input_front)
         else:
             return elementwise_sub(input_back, input_front, axis=axis)
-
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff')
         check_type(axis, 'axis', (int), 'diff')
@@ -4623,7 +4650,7 @@ def heaviside(x, y, name=None):
                 \end{array}
             \\right.
 
-    Notes:
+    Note:
         ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:

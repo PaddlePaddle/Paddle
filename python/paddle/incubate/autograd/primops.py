@@ -350,3 +350,8 @@ def eq(x, y, out=None):
 @REGISTER_FN('pow_p', 'X', 'Y', 'Z')
 def pow(x, y, out=None):
     return _simple_binop(LayerHelper('pow_p', **locals()))
+
+
+@REGISTER_FN('max_p', 'X', 'Y', 'Z')
+def max(x, y, out=None):
+    return _simple_binop(LayerHelper('max_p', **locals()))
