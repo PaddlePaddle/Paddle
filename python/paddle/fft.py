@@ -715,14 +715,13 @@ def irfftn(x, s=None, axes=None, norm="backward", name=None):
     Args:
         x (Tensor): The input data. It's a Tensor type.
         s (sequence of ints, optional): The length of the output transform axis. 
-            (``s[0]`` refers to axis 0, ``s[1]`` to axis 1, etc.). `s` is also the
-            number of input points used along this axis, except for the last axis,
-            where ``s[-1]//2+1`` points of the input are used. Along any axis, if 
-            the shape indicated by `s` is smaller than that of the input, the input 
-            is cropped. If it is larger, the input is padded with zeros. 
-            If `s` is not given, the shape of the input along the axes specified by axes 
-            is used. Except for the last axis which is taken to be ``2*(k-1)`` where 
-            ``k`` is the length of the input along that axis.
+            (``s[0]`` refers to axis 0, ``s[1]`` to axis 1, etc.). 
+            
+            - `s` is also the number of input points used along this axis, except for the last axis, where ``s[-1]//2+1`` points of the input are used. 
+            - Along any axis, if the shape indicated by `s` is smaller than that of the input, the input is cropped. If it is larger, the input is padded with zeros. 
+            - If `s` is not given, the shape of the input along the axes specified by axes is used. Except for the last axis which is taken to be ``2*(k-1)`` 
+            where ``k`` is the length of the input along that axis.
+            
         axes (sequence of ints, optional): Axes over which to compute the inverse FFT. If not given, the last
             `len(s)` axes are used, or all axes if `s` is also not specified.      
         norm (str): Indicates which direction to scale the `forward` or `backward` transform
@@ -730,10 +729,8 @@ def irfftn(x, s=None, axes=None, norm="backward", name=None):
             of "forward" or "backward" or "ortho". Default is "backward". The details of 
             three operations are shown below:
             
-                - "backward": The factor of forward direction and backward direction are ``1`` 
-                and ``1/n`` respectively;
-                - "forward": The factor of forward direction and backward direction are ``1/n`` 
-                and ``1`` respectively;
+                - "backward": The factor of forward direction and backward direction are ``1`` and ``1/n`` respectively;
+                - "forward": The factor of forward direction and backward direction are ``1/n`` and ``1`` respectively;
                 - "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
                 
             Where ``n`` is the multiplication of each element in  ``s`` .
@@ -753,14 +750,17 @@ def irfftn(x, s=None, axes=None, norm="backward", name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x = (np.array([2, 2, 3]) + 1j * np.array([2, 2, 3])).astype(np.complex128)
-            xp = paddle.to_tensor(x)
-            irfftn_xp = paddle.fft.irfftn(xp).numpy()
-            print(irfftn_xp)
-            #  [ 2.25 -1.25  0.25  0.75]
+            x = paddle.to_tensor([2.+2.j, 2.+2.j, 3.+3.j]).astype(paddle.complex128)
+            print(x)
+            irfftn_x = paddle.fft.irfftn(x)
+            print(irfftn_x)
+            
+            # Tensor(shape=[3], dtype=complex128, place=Place(cpu), stop_gradient=True,
+            #        [(2+2j), (2+2j), (3+3j)])
+            # Tensor(shape=[4], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [ 2.25000000, -1.25000000,  0.25000000,  0.75000000])
     
     """
     return fftn_c2r(x, s, axes, norm, forward=False, name=name)
