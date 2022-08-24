@@ -140,10 +140,10 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
 
 
 class TrtConvertCastTest2(TrtLayerAutoScanTest):
-
+    # trt6.x not support cast to bool
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         ver = paddle_infer.get_trt_compile_version()
-        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 <= 7000:
+        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 7000:
             return False
         return True
 
