@@ -370,14 +370,13 @@ def irfft(x, n=None, axis=-1, norm="backward", name=None):
 
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        x = paddle.to_tensor([1, -1j, -1])
-        irfft_x = paddle.fft.irfft(x)
-        print(irfft_x)
-        # Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        #        [0., 1., 0., 0.])
-
+            x = paddle.to_tensor([1, -1j, -1])
+            irfft_x = paddle.fft.irfft(x)
+            print(irfft_x)
+            # Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0., 1., 0., 0.])
     """
     return fft_c2r(x, n, axis, norm, forward=False, name=name)
 
@@ -413,13 +412,13 @@ def hfft(x, n=None, axis=-1, norm="backward", name=None):
 
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        x = paddle.to_tensor([1, -1j, -1])
-        hfft_x = paddle.fft.hfft(x)
-        print(hfft_x)
-        # Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        #        [0., 0., 0., 4.])
+            x = paddle.to_tensor([1, -1j, -1])
+            hfft_x = paddle.fft.hfft(x)
+            print(hfft_x)
+            # Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0., 0., 0., 4.])
     """
 
     return fft_c2r(x, n, axis, norm, forward=True, name=name)
@@ -594,20 +593,19 @@ def ifftn(x, s=None, axes=None, norm="backward", name=None):
 
         import paddle
 
-        x = paddle.eye(3)
-        ifftn_x = paddle.fft.ifftn(x, axes=(1,))
-        print(ifftn_x)
-        # Tensor(shape=[3, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-        #        [[ (0.3333333432674408+0j)                  ,
-        #           (0.3333333432674408-0j)                  ,
-        #           (0.3333333432674408+0j)                  ],
-        #         [ (0.3333333432674408+0j)                  ,
-        #          (-0.1666666716337204+0.28867512941360474j),
-        #          (-0.1666666716337204-0.28867512941360474j)],
-        #         [ (0.3333333432674408+0j)                  ,
-        #          (-0.1666666716337204-0.28867512941360474j),
-        #          (-0.1666666716337204+0.28867512941360474j)]])
-
+            x = paddle.eye(3)
+            ifftn_x = paddle.fft.ifftn(x, axes=(1,))
+            print(ifftn_x)
+            # Tensor(shape=[3, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            #        [[ (0.3333333432674408+0j)                  ,
+            #           (0.3333333432674408-0j)                  ,
+            #           (0.3333333432674408+0j)                  ],
+            #         [ (0.3333333432674408+0j)                  ,
+            #          (-0.1666666716337204+0.28867512941360474j),
+            #          (-0.1666666716337204-0.28867512941360474j)],
+            #         [ (0.3333333432674408+0j)                  ,
+            #          (-0.1666666716337204-0.28867512941360474j),
+            #          (-0.1666666716337204+0.28867512941360474j)]])
     """
     if is_integer(x) or is_floating_point(x):
         return fftn_r2c(x,
@@ -809,13 +807,13 @@ def hfftn(x, s=None, axes=None, norm="backward", name=None):
 
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        x = paddle.to_tensor([(2+2j), (2+2j), (3+3j)])
-        hfftn_x = paddle.fft.hfftn(x)
-        print(hfftn_x)
-        # Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        #        [ 9.,  3.,  1., -5.])
+            x = paddle.to_tensor([(2+2j), (2+2j), (3+3j)])
+            hfftn_x = paddle.fft.hfftn(x)
+            print(hfftn_x)
+            # Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [ 9.,  3.,  1., -5.])
     """
     return fftn_c2r(x, s, axes, norm, forward=True, name=name)
 
@@ -1022,6 +1020,7 @@ def rfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     Examples:
 
     .. code-block:: python
+    
         import paddle
         import numpy as np
 
@@ -1077,14 +1076,14 @@ def irfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        x = paddle.to_tensor([[3.+3.j, 2.+2.j, 3.+3.j], [2.+2.j, 2.+2.j, 3.+3.j]])
-        irfft2_x = paddle.fft.irfft2(x)
-        print(irfft2_x)
-        # Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        #        [[ 2.37500000, -1.12500000,  0.37500000,  0.87500000],
-        #         [ 0.12500000,  0.12500000,  0.12500000,  0.12500000]])
+            x = paddle.to_tensor([[3.+3.j, 2.+2.j, 3.+3.j], [2.+2.j, 2.+2.j, 3.+3.j]])
+            irfft2_x = paddle.fft.irfft2(x)
+            print(irfft2_x)
+            # Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[ 2.37500000, -1.12500000,  0.37500000,  0.87500000],
+            #         [ 0.12500000,  0.12500000,  0.12500000,  0.12500000]])
     """
     _check_at_least_ndim(x, 2)
     if s is not None:
@@ -1127,14 +1126,14 @@ def hfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        x = paddle.to_tensor([[3.+3.j, 2.+2.j, 3.+3.j], [2.+2.j, 2.+2.j, 3.+3.j]])
-        hfft2_x = paddle.fft.hfft2(x)
-        print(hfft2_x)
-        # Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        #        [[19.,  7.,  3., -9.],
-        #         [ 1.,  1.,  1.,  1.]])
+            x = paddle.to_tensor([[3.+3.j, 2.+2.j, 3.+3.j], [2.+2.j, 2.+2.j, 3.+3.j]])
+            hfft2_x = paddle.fft.hfft2(x)
+            print(hfft2_x)
+            # Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[19.,  7.,  3., -9.],
+            #         [ 1.,  1.,  1.,  1.]])
     """
     _check_at_least_ndim(x, 2)
     if s is not None:
