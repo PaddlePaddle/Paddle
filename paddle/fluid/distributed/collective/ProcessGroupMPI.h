@@ -69,7 +69,7 @@ class ProcessGroupMPI : public ProcessGroup {
         : ProcessGroup::Task(-1, inputTensors, CommType::UNKNOWN),
           outputs_(std::move(outputTensors)) {}
 
-    void Synchronize() {}
+    void Synchronize() { Wait(); }
 
     bool Wait(std::chrono::milliseconds timeout = kWaitTimeout) {
       std::unique_lock<std::mutex> lock(mutex_);
