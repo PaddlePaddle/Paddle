@@ -175,8 +175,8 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             import paddle
             import paddle.nn as nn
 
-            x0 = paddle.arange(3, 6).reshape((3, 1)).astype('int64')
-            w0 = paddle.full(shape=(10, 3), fill_value=2).astype(np.float32)
+            x0 = paddle.arange(3, 6).reshape((3, 1)).astype(paddle.int64)
+            w0 = paddle.full(shape=(10, 3), fill_value=2).astype(paddle.float32)
 
             # x.data = [[3], [4], [5]]
             # x.shape = [3, 1]
