@@ -1892,11 +1892,19 @@ PDNode *patterns::Reshape2Matmul::operator()() {
   return matmul_out;
 }
 
-PDNode *patterns::MatmulWithInputOps::operator()() {
+PDNode *patterns::MatmulWithInputOps::operator()(bool with_residual) {
   auto prev_op_x = pattern->NewNode(prev_op_x_repr())->assert_is_op();
   auto prev_op_y = pattern->NewNode(prev_op_y_repr())->assert_is_op();
 
   auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+
+  if (!with_residual) {
+    matmul_op->assert_more([&](Node *x) {
+      return (!HasInput(x, "ResidualData") ||
+              x->Op()->Input("ResidualData").size() == 0);
+    });
+  }
+
   auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
                          ->AsInput()
                          ->assert_is_op_input("matmul", "X");
@@ -1905,11 +1913,21 @@ PDNode *patterns::MatmulWithInputOps::operator()() {
                          ->assert_is_op_input("matmul", "Y");
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsOutput()
-                        ->assert_is_op_output("matmul", "Out");
+                        ->assert_is_op_output("matmul", "Out")
+                        ->assert_is_only_output_of_op("matmul");
+  std::vector<PDNode *> links_from{matmul_in_x, matmul_in_y};
+
+  if (with_residual) {
+    auto matmul_residual_data =
+        pattern->NewNode(matmul_residual_data_repr())
+            ->AsInput()
+            ->assert_is_op_input("matmul", "ResidualData");
+    links_from.push_back(matmul_residual_data);
+  }
 
   prev_op_x->LinksTo({matmul_in_x});
   prev_op_y->LinksTo({matmul_in_y});
-  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
+  matmul_op->LinksFrom(links_from).LinksTo({matmul_out});
   return matmul_out;
 }
 
@@ -2079,46 +2097,6 @@ PDNode *patterns::Concat::operator()() {
 
   concat_op->LinksTo({output_var});
   return output_var;
-}
-
-PDNode *patterns::ConcatReLU::operator()() {
-  auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
-  auto relu_op = pattern->NewNode(relu_op_repr())->assert_is_op("relu");
-
-  auto concat_out =
-      pattern->NewNode(concat_out_repr())->assert_is_op_output("concat", "Out");
-
-  auto relu_out = pattern->NewNode(relu_out_repr())
-                      ->AsOutput()
-                      ->assert_is_op_output("relu", "Out");
-
-  concat_op->LinksTo({concat_out});
-  relu_op->LinksFrom({concat_out}).LinksTo({relu_out});
-
-  return relu_out;
-}
-
-PDNode *patterns::ConvConcatReLU::operator()() {
-  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
-  auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
-  auto relu_op = pattern->NewNode(relu_op_repr())->assert_is_op("relu");
-
-  auto conv_out = pattern->NewNode(conv_out_repr())
-                      ->assert_is_op_output("conv2d", "Output");
-
-  auto concat_out = pattern->NewNode(concat_out_repr())
-                        ->assert_is_op_output("concat", "Out")
-                        ->assert_is_op_input("relu", "X");
-
-  auto relu_out = pattern->NewNode(relu_out_repr())
-                      ->AsOutput()
-                      ->assert_is_op_output("relu", "Out");
-
-  conv_op->LinksTo({conv_out});
-  concat_op->LinksFrom({conv_out}).LinksTo({concat_out});
-  relu_op->LinksFrom({concat_out}).LinksTo({relu_out});
-
-  return relu_out;
 }
 
 PDNode *patterns::OpRequant::operator()() {

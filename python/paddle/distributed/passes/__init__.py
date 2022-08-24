@@ -19,6 +19,7 @@ from .auto_parallel_sharding import *
 from .auto_parallel_amp import *
 from .auto_parallel_fp16 import *
 from .auto_parallel_recompute import *
+from .auto_parallel_quantization import *
 from .auto_parallel_data_parallel_optimization import *
 from .cpp_pass import *
 import os

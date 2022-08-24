@@ -40,13 +40,14 @@
     func : acosh
   backward : acosh_grad
 
-- api : adadelta
+- api : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, float rho, float epsilon)
   output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out)
   infer_meta :
     func : AdadeltaInferMeta
   kernel :
     func : adadelta
+  inplace : (param -> param_out), (avg_squared_grad -> moment_out), (avg_squared_update -> inf_norm_out)
 
 - api : adagrad_
   args : (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, float epsilon)
@@ -71,13 +72,14 @@
   optional : master_param, skip_update
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
 
-- api : adamax
+- api : adamax_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment, Tensor inf_norm, Tensor beta1_pow, float beta1, float beta2, float epsilon)
   output : Tensor(param_out), Tensor(avg_squared_grad_out), Tensor(avg_squared_update_out)
   infer_meta :
     func : AdamaxInferMeta
   kernel :
     func : adamax
+  inplace : (param -> param_out), (moment -> avg_squared_grad_out), (inf_norm -> avg_squared_update_out)
 
 - api : adamw_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, float lr_ratio, float coeff, bool with_decay, bool lazy_mode, int64_t min_row_size_to_use_multithread, bool multi_precision, bool use_global_beta_pow)
@@ -92,11 +94,12 @@
 
 - api : add
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
   kernel :
     func : add
+  inplace : (x -> out)
   backward : add_grad
 
 - api : add_n
@@ -470,6 +473,7 @@
     func : UnchangedInferMeta
   kernel :
     func : ceil
+  inplace : (x -> out)
   backward : ceil_grad
 
 - api : celu
@@ -538,7 +542,7 @@
   backward : conj_grad
 
 - api : conv2d
-  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
   output : Tensor
   infer_meta :
     func : ConvInferMeta
@@ -700,6 +704,16 @@
   kernel :
     func : diag_embed
 
+- api : distribute_fpn_proposals
+  args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
+  output : Tensor[](multi_fpn_rois){max_level - min_level + 1}, Tensor[](multi_level_rois_num){max_level - min_level + 1}, Tensor(restore_index)
+  infer_meta :
+    func : DistributeFpnProposalsInferMeta
+  kernel :
+    func : distribute_fpn_proposals
+    data_type : fpn_rois
+  optional : rois_num
+
 - api : divide
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -779,12 +793,13 @@
 # elu
 - api : elu
   args : (Tensor x, float alpha)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : elu
+  inplace : (x -> out)
   backward : elu_grad
 
 - api : embedding
@@ -836,11 +851,12 @@
 # exp
 - api : exp
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : exp
+  inplace : (x -> out)
   backward : exp_grad
 
 # expand
@@ -958,6 +974,7 @@
     func : UnchangedInferMeta
   kernel :
     func : floor
+  inplace : (x -> out)
   backward : floor_grad
 
 - api : floor_divide
@@ -1432,11 +1449,12 @@
 
 - api : lerp
   args : (Tensor x, Tensor y, Tensor weight)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : LerpInferMeta
   kernel :
     func : lerp
+  inplace : (x -> out)
   backward : lerp_grad
 
 - api : less_equal
@@ -1913,7 +1931,6 @@
     func : NormInferMeta
   kernel :
     func : norm
-  intermediate : norm
   backward : norm_grad
 
 - api : not_equal
@@ -2052,13 +2069,14 @@
 # put_along_axis
 - api : put_along_axis
   args : (Tensor x, Tensor index, Tensor value, int axis, str reduce)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
-    param : [index]
+    param : [x]
   kernel :
     func : put_along_axis
     data_type : x
+  inplace : (x -> out)
   backward : put_along_axis_grad
 
 - api : qr
@@ -2105,11 +2123,12 @@
 
 - api : reciprocal
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : reciprocal
+  inplace : (x -> out)
   backward : reciprocal_grad
 
 # reduce_prod
@@ -2253,6 +2272,7 @@
     func : UnchangedInferMeta
   kernel :
     func : round
+  inplace : (x -> out)
   backward : round_grad
 
 - api : rsqrt
@@ -2279,12 +2299,13 @@
 
 - api : scatter
   args : (Tensor x, Tensor index, Tensor updates, bool overwrite)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ScatterInferMeta
     dtype : x
   kernel :
     func : scatter
+  inplace : (x -> out)
   backward : scatter_grad
 
 - api : scatter_nd_add
@@ -2463,12 +2484,13 @@
 
 - api : softmax
   args : (Tensor x, int axis)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : SoftmaxInferMeta
   kernel :
     func : softmax
     use_gpudnn : true
+  inplace : (x -> out)
   backward : softmax_grad
 
 - api : softplus
@@ -2510,11 +2532,12 @@
 
 - api : sqrt
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : sqrt
+  inplace : (x -> out)
   backward : sqrt_grad
 
 - api : square
@@ -2542,6 +2565,7 @@
     func : SqueezeWithXShapeInferMeta
   kernel :
     func : squeeze_with_xshape
+  inplace : (x -> out)
   view: (x -> out)
   intermediate : xshape
   backward : squeeze_grad
@@ -2566,11 +2590,12 @@
 
 - api : subtract
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
   kernel :
     func : subtract
+  inplace : (x -> out)
   backward : subtract_grad
 
 - api : sum
@@ -2640,11 +2665,12 @@
 # tanh
 - api : tanh
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : tanh
+  inplace : (x -> out)
   backward : tanh_grad
 
 # tanh_shrink
@@ -2817,6 +2843,7 @@
     func : UnsqueezeWithXShapeInferMeta
   kernel :
     func : unsqueeze_with_xshape
+  inplace : (x -> out)
   view: (x -> out)
   intermediate : xshape
   backward : unsqueeze_grad

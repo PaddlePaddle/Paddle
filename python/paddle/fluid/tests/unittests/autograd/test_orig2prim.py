@@ -539,5 +539,25 @@ class TestPowOrig2Prim(TestElementWiseAddOrig2Prim):
         self.out_map = {0: self.output['Out']}
 
 
+class TestMaxOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'elementwise_max'
+        X = paddle.static.data(name='X', shape=[5, 8], dtype='float')
+        Y = paddle.static.data(name='Y', shape=[5, 8], dtype='float')
+
+        self.input = {'X': X, 'Y': Y}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.orig2prim_args = (X, Y)
+        self.all_ops = ['elementwise_max', 'max_p']
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Out']}
+
+
 if __name__ == '__main__':
     unittest.main()

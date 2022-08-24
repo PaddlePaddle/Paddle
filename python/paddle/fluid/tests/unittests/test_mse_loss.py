@@ -40,12 +40,12 @@ class TestMseLoss(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = Executor(place)
-            result = exe.run(fluid.default_main_program(),
-                             feed={
-                                 "input": input_val,
-                                 "label": label_val
-                             },
-                             fetch_list=[output])
+            result, = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "input": input_val,
+                                  "label": label_val
+                              },
+                              fetch_list=[output])
 
             np.testing.assert_allclose(np_result, result, rtol=1e-05)
 
@@ -91,12 +91,12 @@ class TestNNMseLoss(unittest.TestCase):
                 ret = mse_loss(input, label)
 
                 exe = fluid.Executor(place)
-                static_result = exe.run(prog,
-                                        feed={
-                                            "input": input_np,
-                                            "label": label_np
-                                        },
-                                        fetch_list=[ret])
+                static_result, = exe.run(prog,
+                                         feed={
+                                             "input": input_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[ret])
 
             with fluid.dygraph.guard():
                 mse_loss = paddle.nn.loss.MSELoss()
@@ -106,9 +106,9 @@ class TestNNMseLoss(unittest.TestCase):
 
             sub = input_np - label_np
             expected = np.mean(sub * sub)
-            self.assertTrue(np.allclose(static_result, expected))
-            self.assertTrue(np.allclose(static_result, dy_result))
-            self.assertTrue(np.allclose(dy_result, expected))
+            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             self.assertTrue(dy_result.shape, [1])
 
     def test_NNMseLoss_sum(self):
@@ -131,12 +131,12 @@ class TestNNMseLoss(unittest.TestCase):
                 ret = mse_loss(input, label)
 
                 exe = fluid.Executor(place)
-                static_result = exe.run(prog,
-                                        feed={
-                                            "input": input_np,
-                                            "label": label_np
-                                        },
-                                        fetch_list=[ret])
+                static_result, = exe.run(prog,
+                                         feed={
+                                             "input": input_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[ret])
 
             with fluid.dygraph.guard():
                 mse_loss = paddle.nn.loss.MSELoss(reduction='sum')
@@ -146,9 +146,9 @@ class TestNNMseLoss(unittest.TestCase):
 
             sub = input_np - label_np
             expected = np.sum(sub * sub)
-            self.assertTrue(np.allclose(static_result, expected))
-            self.assertTrue(np.allclose(static_result, dy_result))
-            self.assertTrue(np.allclose(dy_result, expected))
+            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             self.assertTrue(dy_result.shape, [1])
 
     def test_NNMseLoss_none(self):
@@ -171,12 +171,12 @@ class TestNNMseLoss(unittest.TestCase):
                 ret = mse_loss(input, label)
 
                 exe = fluid.Executor(place)
-                static_result = exe.run(prog,
-                                        feed={
-                                            "input": input_np,
-                                            "label": label_np
-                                        },
-                                        fetch_list=[ret])
+                static_result, = exe.run(prog,
+                                         feed={
+                                             "input": input_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[ret])
 
             with fluid.dygraph.guard():
                 mse_loss = paddle.nn.loss.MSELoss(reduction='none')
@@ -186,9 +186,9 @@ class TestNNMseLoss(unittest.TestCase):
 
             sub = input_np - label_np
             expected = (sub * sub)
-            self.assertTrue(np.allclose(static_result, expected))
-            self.assertTrue(np.allclose(static_result, dy_result))
-            self.assertTrue(np.allclose(dy_result, expected))
+            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             self.assertTrue(dy_result.shape, [1])
 
 
@@ -214,12 +214,12 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "target": target_np
-                                    },
-                                    fetch_list=[mse_loss])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "target": target_np
+                                     },
+                                     fetch_list=[mse_loss])
 
             paddle.disable_static()
             dy_ret = paddle.nn.functional.mse_loss(paddle.to_tensor(input_np),
@@ -229,9 +229,9 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
             sub = input_np - target_np
             expected = np.mean(sub * sub)
-            self.assertTrue(np.allclose(static_result, expected))
-            self.assertTrue(np.allclose(static_result, dy_result))
-            self.assertTrue(np.allclose(dy_result, expected))
+            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             self.assertTrue(dy_result.shape, [1])
 
     def test_NNFunctionalMseLoss_sum(self):
@@ -254,12 +254,12 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
                 exe = paddle.static.Executor(place)
                 exe.run(startup_prog)
-                static_result = exe.run(prog,
-                                        feed={
-                                            "input": input_np,
-                                            "target": target_np
-                                        },
-                                        fetch_list=[mse_loss])
+                static_result, = exe.run(prog,
+                                         feed={
+                                             "input": input_np,
+                                             "target": target_np
+                                         },
+                                         fetch_list=[mse_loss])
 
             paddle.disable_static()
             dy_ret = paddle.nn.functional.mse_loss(paddle.to_tensor(input_np),
@@ -269,9 +269,9 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
             sub = input_np - target_np
             expected = np.sum(sub * sub)
-            self.assertTrue(np.allclose(static_result, expected))
-            self.assertTrue(np.allclose(static_result, dy_result))
-            self.assertTrue(np.allclose(dy_result, expected))
+            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             self.assertTrue(dy_result.shape, [1])
 
     def test_NNFunctionalMseLoss_none(self):
@@ -294,12 +294,12 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
                 exe = paddle.static.Executor(place)
                 exe.run(startup_prog)
-                static_result = exe.run(prog,
-                                        feed={
-                                            "input": input_np,
-                                            "target": target_np
-                                        },
-                                        fetch_list=[mse_loss])
+                static_result, = exe.run(prog,
+                                         feed={
+                                             "input": input_np,
+                                             "target": target_np
+                                         },
+                                         fetch_list=[mse_loss])
 
             paddle.disable_static()
             dy_ret = paddle.nn.functional.mse_loss(paddle.to_tensor(input_np),
@@ -309,9 +309,9 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
             sub = input_np - target_np
             expected = sub * sub
-            self.assertTrue(np.allclose(static_result, expected))
-            self.assertTrue(np.allclose(static_result, dy_result))
-            self.assertTrue(np.allclose(dy_result, expected))
+            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             self.assertTrue(dy_result.shape, [1])
 
 

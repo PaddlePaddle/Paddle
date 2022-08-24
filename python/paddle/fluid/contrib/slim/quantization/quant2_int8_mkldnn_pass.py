@@ -403,12 +403,13 @@ class Quant2Int8MkldnnPass(object):
     def _optimize_fp32_graph(self, graph):
         graph = self._update_activations(graph)
         graph = self._remove_ctrl_vars(graph)
+        graph = self._apply_pass(graph, 'mkldnn_placement_pass',
+                                 ['mkldnn_enabled_op_types'], [set()])
+        # remove dropout ops
+        graph = self._apply_pass(graph, 'simplify_with_basic_ops_pass')
         graph = self._apply_pass(graph, 'layer_norm_fuse_pass')
         graph = self._apply_pass(graph, 'attention_lstm_fuse_pass')
         graph = self._apply_pass(graph, 'seqconv_eltadd_relu_fuse_pass')
-        #  graph = self._apply_pass(graph, 'seqpool_concat_fuse_pass')
-        graph = self._apply_pass(graph, 'seqpool_cvm_concat_fuse_pass')
-        #  graph = self._apply_pass(graph, 'embedding_fc_lstm_fuse_pass')
         graph = self._apply_pass(graph, 'fc_lstm_fuse_pass')
         graph = self._apply_pass(graph, 'mul_lstm_fuse_pass')
         graph = self._apply_pass(graph, 'fc_gru_fuse_pass')
@@ -427,8 +428,6 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'matmul_scale_fuse_pass')
         graph = self._apply_pass(graph, 'gpu_cpu_map_matmul_to_mul_pass')
         graph = self._apply_pass(graph, 'repeated_fc_relu_fuse_pass')
-        graph = self._apply_pass(graph, 'mkldnn_placement_pass',
-                                 ['mkldnn_enabled_op_types'], [set()])
         graph = self._apply_pass(graph, 'depthwise_conv_mkldnn_pass')
         graph = self._apply_pass(graph, 'conv_bn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_eltwiseadd_bn_fuse_pass')
@@ -439,7 +438,6 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'conv_bias_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_transpose_bias_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_elementwise_add_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_concat_relu_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_activation_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'fc_fuse_pass',
                                  ['use_gpu', 'use_fc_padding'], [False, False])
@@ -452,6 +450,11 @@ class Quant2Int8MkldnnPass(object):
                                  'matmul_transpose_reshape_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'batch_norm_act_fuse_pass')
         graph = self._apply_pass(graph, 'softplus_activation_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
+        graph = self._apply_pass(graph,
+                                 'reshape_transpose_matmul_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph,
+                                 'matmul_elementwise_add_mkldnn_fuse_pass')
         # the following pass should be the last one since it will work on all fused ops.
         graph = self._apply_pass(graph, 'runtime_context_cache_pass')
         return graph
@@ -477,8 +480,6 @@ class Quant2Int8MkldnnPass(object):
         return graph
 
     def _final_optimizations(self, graph):
-        # remove dropout ops
-        graph = self._apply_pass(graph, 'simplify_with_basic_ops_pass')
         # make some MKL-DNN ops working inplace
         graph = self._apply_pass(graph, 'mkldnn_inplace_pass')
         return graph
