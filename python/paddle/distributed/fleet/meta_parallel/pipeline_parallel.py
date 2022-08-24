@@ -14,7 +14,6 @@
 import paddle
 import paddle.fluid as fluid
 from .meta_parallel_base import MetaParallelBase
-from .pp_utils.utils import is_float_tensor, _initialize_recompute_hcg
 from .parallel_layers.pp_layers import PipelineLayer
 
 from ..utils.hybrid_parallel_util import broadcast_mp_parameters
@@ -54,8 +53,6 @@ class PipelineParallel(MetaParallelBase):
         self.pp_group = self._hcg.get_pipe_parallel_group()
 
         p2p.initialize_p2p_groups(hcg, self._using_cache)
-
-        _initialize_recompute_hcg(hcg)
 
         self.is_first_stage = self.stage_id == 0
         self.is_last_stage = (self.stage_id == (self.num_stages - 1))

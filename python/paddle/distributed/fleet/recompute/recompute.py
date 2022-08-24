@@ -20,8 +20,6 @@ from paddle.autograd.py_layer import LegacyPyLayer
 from paddle.fluid import framework
 import contextlib
 from paddle.fluid.framework import in_dygraph_mode
-from paddle.distributed import fleet
-from paddle.distributed.fleet.meta_parallel.pp_utils.utils import _hp_recompute
 
 import logging
 
@@ -478,16 +476,7 @@ def recompute(function, *args, **kwargs):
     if framework._dygraph_tracer()._has_grad:
         check_recompute_necessary(args)
 
-    fleet_env = fleet.fleet
-    #NOTE: when in hybrid parallel, recompute supports offload and partition function, config it in DistributedStrategy firstly.
-    if hasattr(
-            fleet_env, "_hcg"
-    ) and fleet_env._user_defined_strategy.recompute and fleet_env._hcg.get_parallel_mode(
-    ) in [ParallelMode.TENSOR_PARALLEL, ParallelMode.PIPELINE_PARALLEL]:
-        return _hp_recompute(function, *args)
-    else:
-        # when in pure data parallel or non-parallel training or strategy.recompute is False, use simple recompute.
-        return RecomputeFunction.apply(function, preserve, *args)
+    return RecomputeFunction.apply(function, preserve, *args)
 
 
 def recompute_sequential(functions, segments, input, **kwargs):

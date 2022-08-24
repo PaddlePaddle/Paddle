@@ -49,7 +49,7 @@ from functools import partial
 import paddle
 from paddle.fluid.dygraph.layers import Layer
 from ...utils.log_util import logger, layer_to_str
-from ..pp_utils.utils import _hp_recompute, _initialize_recompute_setting
+from paddle.distributed import fleet
 from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = []
@@ -190,7 +190,6 @@ class PipelineLayer(Layer):
             logger.info(
                 "Start Recompute for PipeLineParallel. recompute_offload: {}, recompute_partition: {}"
                 .format(recompute_offload, recompute_partition))
-        _initialize_recompute_setting(recompute_offload, recompute_partition)
 
         world_size = dist.get_world_size()
         self.global_rank = dist.get_rank()
@@ -402,8 +401,10 @@ class PipelineLayer(Layer):
                     input = (input, )
 
                 if self._need_recompute(funcs, input):
-                    input = _hp_recompute(
-                        self.forward_function(start_idx, end_idx), *input)
+                    input = fleet.hybrid_recompute(
+                        self.forward_function(start_idx,
+                                              end_idx), self._recompute_offload,
+                        self._recompute_partition, *input)
                 else:
                     input = self.forward_function(start_idx, end_idx)(*input)
 

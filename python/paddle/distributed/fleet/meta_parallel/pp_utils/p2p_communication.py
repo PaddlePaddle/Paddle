@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from .utils import paddle_2_number, number_2_dtype
 from ...utils.log_util import logger
 import numpy as np
 from paddle import _C_ops
@@ -103,6 +102,7 @@ class SendRecvMeta:
             self.recv_stop_gradient = tuple(stop_grads)
 
     def _send_dims_shape_dtype(self, tensor, group):
+        from ...recompute.hybrid_recompute import paddle_2_number
         # send len(shape)
         dims = paddle.to_tensor(len(tensor.shape))
         dst_rank = group.ranks[1]
@@ -143,6 +143,7 @@ class SendRecvMeta:
                 self._send_dims_shape_dtype(d, group=group)
 
     def set_send_message(self, tensor):
+        from ...recompute.hybrid_recompute import paddle_2_number
         if isinstance(tensor, (paddle.Tensor, core.eager.Tensor)):
             self.send_shape_message = tensor.shape
             self.send_dtype_message = paddle_2_number(tensor.dtype)
@@ -274,6 +275,7 @@ def allgather_partial(tensor,
 
 
 def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
+    from ...recompute.hybrid_recompute import number_2_dtype
     global _hcg
 
     tensor_recv_prev = None

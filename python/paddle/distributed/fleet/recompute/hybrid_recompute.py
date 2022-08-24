@@ -19,10 +19,15 @@ from paddle.fluid import core
 from paddle import _C_ops
 from paddle.autograd import PyLayer
 from paddle.fluid import framework
-from ..parallel_layers.random import get_rng_state_tracker
+from ..meta_parallel.parallel_layers.random import get_rng_state_tracker
 from paddle.fluid.framework import in_dygraph_mode
+from paddle.distributed import fleet
+from .recompute import check_recompute_necessary, detach_variable, swith_rng_state_tracker
 
-__all__ = []
+__all__ = [
+    "hybrid_recompute", "is_float_tensor", "get_tensor_dtype",
+    "paddle_2_number", "get_tensor_bytes"
+]
 
 FLOAT_TYPE_DICT = {
     paddle.float16: "float16",
@@ -87,23 +92,6 @@ def get_tensor_bytes(tensor):
     return tensor.numel() * elem_size
 
 
-_hcg = None
-_recompute_offload = False
-_recompute_partition = False
-
-
-def _initialize_recompute_setting(is_offload, is_partition):
-    global _recompute_offload, _recompute_partition
-
-    _recompute_offload = is_offload
-    _recompute_partition = is_partition
-
-
-def _initialize_recompute_hcg(hcg):
-    global _hcg
-    _hcg = hcg
-
-
 def _all_gather(tensor, group=None, use_calc_stream=True):
     """
     The main difference with paddle.distributed.all_gather: 
@@ -119,10 +107,9 @@ def _all_gather(tensor, group=None, use_calc_stream=True):
 
 
 def _split_activation(tensor):
-    global _hcg
 
-    mp_degree = _hcg.get_model_parallel_world_size()
-    mp_rank = _hcg.get_model_parallel_rank()
+    mp_degree = fleet.fleet._hcg.get_model_parallel_world_size()
+    mp_rank = fleet.fleet._hcg.get_model_parallel_rank()
     if mp_degree < 2:
         return tensor
 
@@ -141,10 +128,9 @@ def _split_activation(tensor):
 
 
 def _merge_activation(tensor):
-    global _hcg
-    mp_degree = _hcg.get_model_parallel_world_size()
-    mp_rank = _hcg.get_model_parallel_rank()
-    mp_group = _hcg.get_model_parallel_group()
+    mp_degree = fleet.fleet._hcg.get_model_parallel_world_size()
+    mp_rank = fleet.fleet._hcg.get_model_parallel_rank()
+    mp_group = fleet.fleet._hcg.get_model_parallel_group()
     if mp_degree < 2:
         return tensor
     return _all_gather(tensor, group=mp_group)
@@ -160,8 +146,8 @@ class _HPRecomputeFunction(PyLayer):
     """
 
     @staticmethod
-    def forward(ctx, run_function, all_outputs, *args):
-        paddle.distributed.fleet.recompute.check_recompute_necessary(args)
+    def forward(ctx, run_function, all_outputs, offload, partition, *args):
+        check_recompute_necessary(args)
 
         # store for recomputing
         ctx.run_function = run_function
@@ -170,6 +156,10 @@ class _HPRecomputeFunction(PyLayer):
         ctx.fwd_cuda_rng_state = paddle.get_cuda_rng_state()
         ctx.fwd_cuda_rng_state_tracker = get_rng_state_tracker(
         ).get_states_tracker()
+
+        # save config info
+        ctx.offload = offload
+        ctx.partition = partition
 
         # save input for backward
         ctx.inputs = []
@@ -200,13 +190,13 @@ class _HPRecomputeFunction(PyLayer):
         for i, arg in enumerate(args):
             if paddle.is_tensor(arg):
                 state = arg.stop_gradient
-                if _recompute_partition:
+                if partition:
                     ctx.tensor_shapes.append(arg.shape)
                     partition = _split_activation(arg.detach()).clone()
                     # TODO(shenliang03) not use calculate stream to D2H to speed
-                    arg = partition.cpu() if _recompute_offload else partition
+                    arg = partition.cpu() if offload else partition
                 else:
-                    arg = arg.cpu() if _recompute_offload else arg
+                    arg = arg.cpu() if offload else arg
                 arg.stop_gradient = state
                 tensor_inputs.append(arg)
                 ctx.tensor_indices.append(i)
@@ -234,26 +224,25 @@ class _HPRecomputeFunction(PyLayer):
 
             device_id = paddle.distributed.ParallelEnv().device_id
             for i, idx in enumerate(tensor_indices):
-                if _recompute_partition:
+                if ctx.partition:
                     state = tensors[i].stop_gradient
                     tensors[i] = _merge_activation(
                         tensors[i]).detach().reshape_(tensor_shapes[i])
                     tensors[i].stop_gradient = state
                 inputs[idx] = tensors[i].cuda(
-                    device_id) if _recompute_offload else tensors[i]
+                    device_id) if ctx.offload else tensors[i]
 
             tracer = framework._dygraph_tracer()
             tracer._has_grad = True
 
             # need restore auto_cast state as well as w/b list
-            with paddle.distributed.fleet.recompute.swith_rng_state_tracker(
-                    ctx.fwd_cuda_rng_state, ctx.fwd_cuda_rng_state_tracker):
+            with swith_rng_state_tracker(ctx.fwd_cuda_rng_state,
+                                         ctx.fwd_cuda_rng_state_tracker):
                 with paddle.amp.auto_cast(enable=ctx.is_fw_autocast,
                                           custom_white_list=ctx.amp_white_list,
                                           custom_black_list=ctx.amp_black_list,
                                           level=ctx.amp_level):
-                    detached_inputs = paddle.distributed.fleet.recompute.detach_variable(
-                        tuple(inputs))
+                    detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs)
 
             if isinstance(outputs, (core.VarBase, core.eager.Tensor)):
@@ -283,15 +272,28 @@ class _HPRecomputeFunction(PyLayer):
             return grads
 
 
-def _hp_recompute(function, *args):
+def hybrid_recompute(function, offload, partition, *args):
+    """
     # NODTE(shenliang03)The current hybrid parallel recompute has limitations.
     # It cannot handle the following situations:
     # 1. The calculation output of recompute, there are tensors that do not require gradients.
     # 2. The forward output tensor has no gradient. This problem can be solved temporarily by detach().
     # 3. Here, we only use float dtype to distinguish whether a gradient is needed in output tensor
 
+    Parameters:
+        function(paddle.nn.Sequential): layer of sequence of layers that describes part of forward pass of the model
+              whose intermediate activations will be released to save memory in forward stage and will be recomputed
+              in backward stage for gradient calculation.
+        offload(bool): whether to offload checkpoint.
+        partition: whether to split activation into each rank in model group.
+        *args(Tensor): inputs to the function.
+    Returns:
+        Output of function on args.
+
+    """
+
     all_outputs = []
-    _HPRecomputeFunction.apply(function, all_outputs, *args)
+    _HPRecomputeFunction.apply(function, all_outputs, offload, partition, *args)
 
     if len(all_outputs) == 1:
         return all_outputs[0]

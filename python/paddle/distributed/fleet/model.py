@@ -20,7 +20,6 @@ from .base.topology import ParallelMode
 from .meta_parallel import TensorParallel, model_parallel_random_seed
 from .meta_parallel import PipelineParallel, ShardingParallel
 from paddle.fluid import core
-from paddle.distributed.fleet.meta_parallel.pp_utils.utils import _initialize_recompute_setting, _initialize_recompute_hcg
 from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
 from paddle.distributed import fleet
 
@@ -116,20 +115,6 @@ def distributed_model(model):
             incr_every_n_steps=incr_every_n_steps,
             decr_every_n_nan_or_inf=decr_every_n_nan_or_inf,
             use_dynamic_loss_scaling=use_dynamic_loss_scaling)
-
-    if strategy.recompute == True:
-        #NOTE when in hybrid parallel, init global recompute env.
-        if fleet_env._hcg.get_parallel_mode() in [
-                ParallelMode.TENSOR_PARALLEL, ParallelMode.PIPELINE_PARALLEL
-        ]:
-            _initialize_recompute_hcg(fleet_env._hcg)
-
-            keys = strategy.recompute_configs.keys()
-            enable_offload = keys["enable_offload"] if "enable_offload" in keys(
-            ) else False
-            enable_partition = keys[
-                "enable_partition"] if "enable_partition" in keys() else False
-            _initialize_recompute_setting(enable_offload, enable_partition)
 
     if strategy.heter_ccl_mode == True:
         distributed_model = paddle.DataParallel(
