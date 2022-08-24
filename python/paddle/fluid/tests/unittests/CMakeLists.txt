@@ -1606,6 +1606,10 @@ if(WITH_DISTRIBUTE
   set_tests_properties(test_collective_batch_isend_irecv PROPERTIES TIMEOUT 100)
   set_tests_properties(test_collective_reduce_scatter PROPERTIES TIMEOUT 100)
   set_tests_properties(test_parallel_dygraph_qat PROPERTIES TIMEOUT 120)
+  if(CUDA_VERSION GREATER_EQUAL 11.7)
+    set_tests_properties(test_dygraph_sharding_stage2
+                         PROPERTIES ENVIRONMENT "NVIDIA_TF32_OVERRIDE=1")
+  endif()
   if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
     set_tests_properties(test_parallel_dygraph_sparse_embedding
                          PROPERTIES TIMEOUT 200)
