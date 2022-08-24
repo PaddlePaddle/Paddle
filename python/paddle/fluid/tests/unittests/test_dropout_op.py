@@ -1147,7 +1147,7 @@ class TestDropOutWithProbTensor(unittest.TestCase):
         for x in self.inputs:
             static_res = self.run_static(x)
             dygraph_res = self.run_dygraph(x)
-            self.assertTrue(np.array_equal(static_res, dygraph_res))
+            np.testing.assert_array_equal(static_res, dygraph_res)
 
 
 class TestRandomValue(unittest.TestCase):

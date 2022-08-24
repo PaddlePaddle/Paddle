@@ -397,44 +397,7 @@ void ChromeTracingLogger::LogDeviceTraceEventNode(
 void ChromeTracingLogger::HandleTypeKernel(
     const DeviceTraceEventNode& device_node) {
   KernelEventInfo kernel_info = device_node.KernelInfo();
-  float blocks_per_sm = 0.0;
-  float warps_per_sm = 0.0;
-  float occupancy = 0.0;
-#if defined(PADDLE_WITH_CUPTI)
-#ifdef PADDLE_WITH_HIP
-  constexpr int threads_per_warp = 64;
-#else
-  constexpr int threads_per_warp = 32;
-#endif
-  const gpuDeviceProp& device_property =
-      GetDeviceProperties(device_node.DeviceId());
-  blocks_per_sm = static_cast<float>(kernel_info.grid_x * kernel_info.grid_y *
-                                     kernel_info.grid_z) /
-                  device_property.multiProcessorCount;
-  warps_per_sm =
-      blocks_per_sm *
-      (kernel_info.block_x * kernel_info.block_y * kernel_info.block_z) /
-      threads_per_warp;
-#ifdef PADDLE_WITH_HIP
-  occupancy = CalculateEstOccupancy(device_node.DeviceId(),
-                                    kernel_info.dynamic_shared_memory,
-                                    kernel_info.block_x,
-                                    kernel_info.block_y,
-                                    kernel_info.block_z,
-                                    kernel_info.kernelFunc,
-                                    kernel_info.launchType);
-#else
-  occupancy = CalculateEstOccupancy(device_node.DeviceId(),
-                                    kernel_info.registers_per_thread,
-                                    kernel_info.static_shared_memory,
-                                    kernel_info.dynamic_shared_memory,
-                                    kernel_info.block_x,
-                                    kernel_info.block_y,
-                                    kernel_info.block_z,
-                                    blocks_per_sm);
-#endif  // PADDLE_WITH_HIP
 
-#endif
   float dur = nsToMsFloat(device_node.Duration());
   std::string dur_display;
   if (dur > 1.0) {
@@ -480,15 +443,15 @@ void ChromeTracingLogger::HandleTypeKernel(
       device_node.CorrelationId(),
       kernel_info.registers_per_thread,
       kernel_info.static_shared_memory + kernel_info.dynamic_shared_memory,
-      blocks_per_sm,
-      warps_per_sm,
+      kernel_info.blocks_per_sm,
+      kernel_info.warps_per_sm,
       kernel_info.grid_x,
       kernel_info.grid_y,
       kernel_info.grid_z,
       kernel_info.block_x,
       kernel_info.block_y,
       kernel_info.block_z,
-      occupancy * 100);
+      kernel_info.occupancy * 100);
 }
 
 void ChromeTracingLogger::HandleTypeMemcpy(

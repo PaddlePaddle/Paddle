@@ -136,6 +136,8 @@ def elu_(x, alpha=1.0, name=None):
     Please refer to :ref:`api_nn_cn_elu`.
     """
     assert alpha >= 0., "elu_ only support alpha >= 0, please use elu instead."
+    if in_dygraph_mode():
+        return _C_ops.final_state_elu_(x, alpha)
     return _C_ops.elu_(x, 'alpha', alpha)
 
 
@@ -1146,7 +1148,16 @@ def softmax_(x, axis=-1, dtype=None, name=None):
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
     use_cudnn = True
-    return _C_ops.softmax_(x, 'axis', axis, 'use_cudnn', use_cudnn)
+
+    if in_dygraph_mode():
+        outs_cast = x if dtype is None \
+            else _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        return _C_ops.final_state_softmax_(outs_cast, axis)
+
+    if _in_legacy_dygraph():
+        outs_cast = x if dtype is None \
+            else _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        return _C_ops.softmax_(outs_cast, 'axis', axis, 'use_cudnn', use_cudnn)
 
 
 def softplus(x, beta=1, threshold=20, name=None):

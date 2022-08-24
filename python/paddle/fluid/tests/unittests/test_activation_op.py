@@ -534,7 +534,7 @@ class TestSinh(TestActivation):
             x = fluid.dygraph.to_variable(np_x)
             z = fluid.layers.sinh(x).numpy()
             z_expected = np.sinh(np_x)
-            self.assertTrue(np.allclose(z, z_expected))
+            np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
     def test_api(self):
         test_data_shape = [11, 17]
@@ -549,12 +549,12 @@ class TestSinh(TestActivation):
             pd_sinh_out = fluid.layers.sinh(data_x)
             exe = fluid.Executor(place=fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
-            np_sinh_res = exe.run(fluid.default_main_program(),
-                                  feed={"data_x": input_x},
-                                  fetch_list=[pd_sinh_out])
+            np_sinh_res, = exe.run(fluid.default_main_program(),
+                                   feed={"data_x": input_x},
+                                   fetch_list=[pd_sinh_out])
 
         expected_res = np.sinh(input_x)
-        self.assertTrue(np.allclose(np_sinh_res, expected_res))
+        np.testing.assert_allclose(np_sinh_res, expected_res, rtol=1e-05)
 
     def test_backward(self):
         test_data_shape = [11, 17]
@@ -607,7 +607,7 @@ class TestCosh(TestActivation):
             x = fluid.dygraph.to_variable(np_x)
             z = fluid.layers.cosh(x).numpy()
             z_expected = np.cosh(np_x)
-            self.assertTrue(np.allclose(z, z_expected))
+            np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
     def test_api(self):
         test_data_shape = [11, 17]
@@ -622,12 +622,12 @@ class TestCosh(TestActivation):
             pd_cosh_out = paddle.cosh(data_x)
             exe = fluid.Executor(place=fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
-            np_cosh_res = exe.run(fluid.default_main_program(),
-                                  feed={"data_x": input_x},
-                                  fetch_list=[pd_cosh_out])
+            np_cosh_res, = exe.run(fluid.default_main_program(),
+                                   feed={"data_x": input_x},
+                                   fetch_list=[pd_cosh_out])
 
         expected_res = np.cosh(input_x)
-        self.assertTrue(np.allclose(np_cosh_res, expected_res))
+        np.testing.assert_allclose(np_cosh_res, expected_res, rtol=1e-05)
 
     def test_backward(self):
         test_data_shape = [11, 17]
@@ -2261,11 +2261,11 @@ class TestLog2(TestActivation):
             out1 = paddle.log2(data_x)
             exe = paddle.static.Executor(place=fluid.CPUPlace())
             exe.run(paddle.static.default_startup_program())
-            res1 = exe.run(paddle.static.default_main_program(),
-                           feed={"data_x": input_x},
-                           fetch_list=[out1])
+            res1, = exe.run(paddle.static.default_main_program(),
+                            feed={"data_x": input_x},
+                            fetch_list=[out1])
         expected_res = np.log2(input_x)
-        self.assertTrue(np.allclose(res1, expected_res))
+        np.testing.assert_allclose(res1, expected_res, rtol=1e-05)
 
         # dygraph
         with fluid.dygraph.guard():
@@ -2274,7 +2274,7 @@ class TestLog2(TestActivation):
             z = paddle.log2(data_x)
             np_z = z.numpy()
             z_expected = np.array(np.log2(np_x))
-        self.assertTrue(np.allclose(np_z, z_expected))
+        np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
 class TestLog10(TestActivation):
@@ -2314,11 +2314,11 @@ class TestLog10(TestActivation):
             out1 = paddle.log10(data_x)
             exe = paddle.static.Executor(place=paddle.CPUPlace())
             exe.run(paddle.static.default_startup_program())
-            res1 = exe.run(paddle.static.default_main_program(),
-                           feed={"data_x": input_x},
-                           fetch_list=[out1])
+            res1, = exe.run(paddle.static.default_main_program(),
+                            feed={"data_x": input_x},
+                            fetch_list=[out1])
         expected_res = np.log10(input_x)
-        self.assertTrue(np.allclose(res1, expected_res))
+        np.testing.assert_allclose(res1, expected_res, rtol=1e-05)
 
         # dygraph
         with fluid.dygraph.guard():
@@ -2327,7 +2327,7 @@ class TestLog10(TestActivation):
             z = paddle.log10(data_x)
             np_z = z.numpy()
             z_expected = np.array(np.log10(np_x))
-        self.assertTrue(np.allclose(np_z, z_expected))
+        np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
 class TestLog1p(TestActivation):
@@ -2361,11 +2361,11 @@ class TestLog1p(TestActivation):
             out1 = paddle.log1p(data_x)
             exe = fluid.Executor(place=fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
-            res1 = exe.run(fluid.default_main_program(),
-                           feed={"data_x": input_x},
-                           fetch_list=[out1])
+            res1, = exe.run(fluid.default_main_program(),
+                            feed={"data_x": input_x},
+                            fetch_list=[out1])
         expected_res = np.log1p(input_x)
-        self.assertTrue(np.allclose(res1, expected_res))
+        np.testing.assert_allclose(res1, expected_res, rtol=1e-05)
 
         # dygraph
         with fluid.dygraph.guard():
@@ -2374,7 +2374,7 @@ class TestLog1p(TestActivation):
             z = paddle.log1p(data_x)
             np_z = z.numpy()
             z_expected = np.array(np.log1p(np_x))
-        self.assertTrue(np.allclose(np_z, z_expected))
+        np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
 class TestSquare(TestActivation):
