@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
 namespace paddle {
+
 namespace framework {
 namespace ir {
 
