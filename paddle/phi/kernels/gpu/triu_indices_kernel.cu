@@ -25,7 +25,7 @@ namespace phi {
 
 template <typename T>
 __device__ inline int resolve_root_int(int b, int cX4, int x, int32_t sign) {
-  int bXb_cX4 = b * b - cX4;
+  int64_t bXb_cX4 = b * b - cX4;
   double sr = ::sqrt(static_cast<double>(bXb_cX4));
   T res = ::__double2ll_rd((-b + sign * sr) / 2);
   if (bXb_cX4 != static_cast<int>(sr * sr)) {
@@ -90,8 +90,8 @@ __global__ void triu_indices_kernel(T* out_data,
 
 template <typename T, typename Context>
 void TriuIndicesKernel(const Context& dev_ctx,
-                       int rows,
-                       int cols,
+                       int row,
+                       int col,
                        int offset,
                        DataType dtype,
                        DenseTensor* out) {
@@ -103,14 +103,14 @@ void TriuIndicesKernel(const Context& dev_ctx,
 
   if (triu_size > 0) {
     // # of triu elements in the first row
-    auto m_first_row = offset > 0 ? std::max<int>(cols - offset, 0)
+    auto m_first_row = offset > 0 ? std::max<int>(col - offset, 0)
                                   :  // upper bounded by col
-                           cols;
+                           col;
 
     // size of the top rectangle
     int rectangle_size = 0;
     if (offset < 0) {
-      rectangle_size = std::min<int>(rows, -offset) * cols;
+      rectangle_size = std::min<int>(row, -offset) * col;
     }
 
     //  using gpu_launch_config to get grid_size and block_size
@@ -122,7 +122,7 @@ void TriuIndicesKernel(const Context& dev_ctx,
                              dev_ctx.stream()>>>(out_data,
                                                  std::max<int>(0, offset),
                                                  m_first_row,
-                                                 cols,
+                                                 col,
                                                  rectangle_size,
                                                  triu_size);
   }

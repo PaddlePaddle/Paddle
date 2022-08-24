@@ -37,12 +37,12 @@ class TriuIndicesOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddOutput("out",
               "Tensor, the output tensor, with the shape (2,x), x bounded by "
-              "[0,rows*cols])");
-    AddAttr<int>("rows",
+              "[0,row*col])");
+    AddAttr<int>("row",
                  "int number, the input of triu_indices op"
                  "which describes the number of row of the matrix")
         .SetDefault(0);
-    AddAttr<int>("cols",
+    AddAttr<int>("col",
                  "int number, the input of triu_indices op"
                  "which describes the number of col of the matrix")
         .SetDefault(0);

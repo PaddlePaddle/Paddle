@@ -2748,14 +2748,14 @@
   backward : trilinear_interp_grad
 
 - api : triu_indices
-  args : (int rows, int cols, int offset, DataType dtype, Place place={})
+  args : (int row, int col, int offset, DataType dtype, Place place={})
   output : Tensor(out)
   infer_meta :
     func : TriuIndicesInferMeta
-    param : [rows, cols, offset, dtype]
+    param : [row, col, offset, dtype]
   kernel :
     func : triu_indices
-    param : [rows, cols, offset, dtype]
+    param : [row, col, offset, dtype]
     data_type : dtype
     backend : place
 

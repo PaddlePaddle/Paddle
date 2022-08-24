@@ -154,7 +154,7 @@ void TrilIndicesInferMeta(
 }
 
 void TriuIndicesInferMeta(
-    int rows, int cols, int offset, DataType dtype, MetaTensor* out) {
+    int row, int col, int offset, DataType dtype, MetaTensor* out) {
   // number of elements in the first row of the tril,bounded by [0, cols]
   // use total item number minus bottom rectangle item number to get
   // the above rectangle item number
@@ -163,21 +163,21 @@ void TriuIndicesInferMeta(
   // the item on the diagonal line
   offset = offset - 1;
   auto n_first_row =
-      offset > 0 ? std::min<int64_t>(cols, 1 + offset) : rows + offset > 0;
+      offset > 0 ? std::min<int64_t>(col, 1 + offset) : row + offset > 0;
   // number of elements in the last row of the tril, bounded by [0, cols]
   auto n_last_row =
-      std::max<int64_t>(0, std::min<int64_t>(cols, rows + offset));
+      std::max<int64_t>(0, std::min<int64_t>(col, row + offset));
   // number of rows, bounded by [0, rows]
-  auto n_row_all = std::max<int64_t>(0, std::min<int64_t>(rows, rows + offset));
+  auto n_row_all = std::max<int64_t>(0, std::min<int64_t>(row, row + offset));
   auto n_row_trapezoid = (n_last_row - n_first_row + 1);
   // calculate # of elements in the top trapezoid
   auto tril_size = (n_first_row + n_last_row) * n_row_trapezoid >> 1;
   // calculate # of elements in the bottom rectangle if there is any
   auto diff_row = n_row_all - n_row_trapezoid;
   if (diff_row > 0) {
-    tril_size += diff_row * cols;
+    tril_size += diff_row * col;
   }
-  std::vector<int64_t> tmp = {2, rows * cols - tril_size};
+  std::vector<int64_t> tmp = {2, row * col - tril_size};
   auto out_dims = phi::make_ddim(tmp);
   out->set_dims(out_dims);
   out->set_dtype(dtype);

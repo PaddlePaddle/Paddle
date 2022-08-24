@@ -20,8 +20,8 @@ namespace phi {
 
 template <typename T, typename Context>
 void TriuIndicesKernel(const Context& dev_ctx,
-                       int rows,
-                       int cols,
+                       int row,
+                       int col,
                        int offset,
                        DataType dtype,
                        DenseTensor* out);

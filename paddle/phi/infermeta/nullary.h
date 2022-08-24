@@ -76,5 +76,5 @@ void TrilIndicesInferMeta(
     int rows, int cols, int offset, DataType dtype, MetaTensor* out);
 
 void TriuIndicesInferMeta(
-    int rows, int cols, int offset, DataType dtype, MetaTensor* out);
+    int row, int col, int offset, DataType dtype, MetaTensor* out);
 }  // namespace phi

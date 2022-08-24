@@ -20,8 +20,8 @@
 namespace phi {
 template <typename T, typename Context>
 void TriuIndicesKernel(const Context& dev_ctx,
-                       int rows,
-                       int cols,
+                       int row,
+                       int col,
                        int offset,
                        DataType dtype,
                        DenseTensor* out) {
@@ -36,7 +36,7 @@ void TriuIndicesKernel(const Context& dev_ctx,
 
     // move to the next column and check if (r, c) is still in bound
     c += 1;
-    if (c >= cols) {
+    if (c >= col) {
       r += 1;
       // not typing std::max with scalar_t as it could be an unsigned type
       // NOTE: not necessary to check if c is less than col or overflows here,

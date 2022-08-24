@@ -36,16 +36,16 @@ class TestTriuIndicesOp(OpTest):
         self.check_output()
 
     def init_config(self):
-        self.attrs = {'rows': 4, 'cols': 4, 'offset': -1}
-        self.target = np.triu_indices(self.attrs['rows'], self.attrs['offset'],
-                                      self.attrs['cols'])
+        self.attrs = {'row': 4, 'col': 4, 'offset': -1}
+        self.target = np.triu_indices(self.attrs['row'], self.attrs['offset'],
+                                      self.attrs['col'])
         self.target = np.array(self.target)
 
 
 class TestTriuIndicesOpCase1(TestTriuIndicesOp):
 
     def init_config(self):
-        self.attrs = {'rows': 0, 'cols': 0, 'offset': 0}
+        self.attrs = {'row': 0, 'col': 0, 'offset': 0}
         self.target = np.triu_indices(0, 0, 0)
         self.target = np.array(self.target)
 
@@ -53,9 +53,9 @@ class TestTriuIndicesOpCase1(TestTriuIndicesOp):
 class TestTriuIndicesOpCase2(TestTriuIndicesOp):
 
     def init_config(self):
-        self.attrs = {'rows': 4, 'cols': 4, 'offset': 2}
-        self.target = np.triu_indices(self.attrs['rows'], self.attrs['offset'],
-                                      self.attrs['cols'])
+        self.attrs = {'row': 4, 'col': 4, 'offset': 2}
+        self.target = np.triu_indices(self.attrs['row'], self.attrs['offset'],
+                                      self.attrs['col'])
         self.target = np.array(self.target)
 
 

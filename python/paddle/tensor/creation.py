@@ -1989,7 +1989,7 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
         return out
 
     if _in_legacy_dygraph():
-        out = _C_ops.triu_indices('rows', row, 'cols', col, 'offset', offset,
+        out = _C_ops.triu_indices('row', row, 'col', col, 'offset', offset,
                                   "dtype", dtype)
         return out
 
@@ -2002,8 +2002,8 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
                          inputs={},
                          outputs={'out': [out]},
                          attrs={
-                             'rows': row,
-                             'cols': col,
+                             'row': row,
+                             'col': col,
                              'offset': offset,
                              'dtype': dtype
                          })
