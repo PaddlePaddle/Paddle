@@ -3631,7 +3631,8 @@ void TransferLayoutInferMeta(const MetaTensor& x,
                              MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
-  out->set_layout(static_cast<DataLayout>(dst_layout));
+  out->set_layout(x.layout());
+  out->share_lod(x);
 }
 
 void TransposeInferMeta(const MetaTensor& x,

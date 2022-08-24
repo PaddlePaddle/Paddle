@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
+#include "glog/logging.h"
+
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
@@ -109,6 +111,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
   MatchShapeToLayout(out, in_layout, out_layout);
 
   out->set_layout(DataLayout::kNCHW);
+  VLOG(10) << "out->layout: " << out->layout() << " in->dims: " << in.dims()
+           << " out->dims: " << out->dims();
   // reset format since the out tensor will be feed to non-MKLDNN OPkernel
   out->set_format(MKLDNNMemoryFormat::undef);
 }

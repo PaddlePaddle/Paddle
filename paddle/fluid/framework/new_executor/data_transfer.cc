@@ -205,6 +205,13 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
                                              bool is_fetch_v2) {
 #ifdef PADDLE_WITH_MKLDNN
 
+  // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in fetch_op.cc
+  if (in_layout == framework::DataLayout::kMKLDNN &&
+      var_name == framework::GradVarName("Filter") && is_fetch_v2) {
+    VLOG(4) << "Match special case(Filter && fetch_v2) " << var_name;
+    out_layout = framework::DataLayout::kNCHW;
+  }
+
   if (in_layout == framework::DataLayout::MKLDNN &&
       out_layout != framework::DataLayout::MKLDNN) {
     auto target_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
@@ -213,15 +220,10 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
 
     if (out_layout == DataLayout::kNCHW &&
         var_name == framework::GradVarName("Filter")) {
+      VLOG(4) << "Match special case(Filter) " << var_name;
       target_layout = out_layout;
     }
     out_layout = target_layout;
-
-    // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in fetch_op.cc
-  } else if (in_layout == framework::DataLayout::kMKLDNN &&
-             var_name == framework::GradVarName("Filter") && is_fetch_v2) {
-    VLOG(4) << "Match special case(Filter && fetch_v2)";
-    out_layout = framework::DataLayout::kNCHW;
   }
 #endif
 
@@ -524,9 +526,11 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
         }
         // NOTE(Aurelius84): avoid deepcopy twice if we already insert data
         // transfer op.
+        VLOG(4) << "2 ";
         if (op_base->Type() == "fetch_v2") {
           op_base->SetAttr("deepcopy", false);
         }
+        VLOG(4) << "1 ";
       } else {
         // record no need data transformer input var_id
         VLOG(3) << op_base->Type()
