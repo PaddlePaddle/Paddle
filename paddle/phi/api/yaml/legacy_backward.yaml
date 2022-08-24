@@ -974,7 +974,6 @@
     data_type : out_grad
   optional: out, dst_count
 
-# grid sample
 - backward_api : grid_sample_grad
   forward : grid_sample (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners) -> Tensor(out)
   args : (Tensor x, Tensor grid, Tensor out_grad, str mode, str padding_mode, bool align_corners)
@@ -2214,7 +2213,6 @@
     func : softmax_grad
     use_gpudnn : true
 
-# softplus
 - backward_api : softplus_grad
   forward : softplus (Tensor x, float beta, float threshold) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float beta, float threshold)
@@ -2681,7 +2679,6 @@
     func : yolov3_loss_grad
   optional : gt_score
 
-# fold
 - backward_api: fold_grad
   forward: fold (Tensor x, int[] output_sizes, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations) -> Tensor(out)
   args: (Tensor x, Tensor out_grad, int[] output_sizes, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
@@ -2693,7 +2690,6 @@
     func: fold_grad
   no_need_buffer : x
 
-# unpool3d
 - backward_api: unpool3d_grad
   forward: unpool3d (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format) -> Tensor(out)
   args: (Tensor x, Tensor indices, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)
@@ -2706,7 +2702,6 @@
     data_type: x
   no_need_buffer : x
 
-# unpool
 - backward_api: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding,  int[] output_size, str data_format) -> Tensor(out)
   args: (Tensor x, Tensor indices, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)

@@ -10,7 +10,6 @@
     func : abs
   backward : abs_grad
 
-# accuracy
 - api : accuracy
   args : (Tensor x, Tensor indices, Tensor label)
   output : Tensor(accuracy), Tensor(correct), Tensor(total)
@@ -20,7 +19,6 @@
     func : accuracy
     dtype : x
 
-# acos
 - api : acos
   args : (Tensor x)
   output : Tensor
@@ -30,7 +28,6 @@
     func : acos
   backward : acos_grad
 
-# acosh
 - api : acosh
   args : (Tensor x)
   output : Tensor
@@ -191,7 +188,6 @@
   data_transform :
     support_trans_dtype : start, end, step
 
-# arg_max
 - api : argmax
   args : (Tensor x, int64_t axis, bool keepdims, bool flatten, int dtype)
   output : Tensor
@@ -200,7 +196,6 @@
   kernel :
     func : arg_max
 
-# arg_min
 - api : argmin
   args : (Tensor x, int64_t axis, bool keepdims, bool flatten, int dtype)
   output : Tensor
@@ -235,7 +230,7 @@
   kernel :
     func : as_real
   backward : as_real_grad
-# asin
+
 - api : asin
   args : (Tensor x)
   output : Tensor
@@ -245,7 +240,6 @@
     func : asin
   backward : asin_grad
 
-# asinh
 - api : asinh
   args : (Tensor x)
   output : Tensor
@@ -255,7 +249,6 @@
     func : asinh
   backward : asinh_grad
 
-# assign
 - api : assign
   args : (Tensor x)
   output : Tensor
@@ -277,7 +270,6 @@
   inplace : (output -> out)
   backward : assign_out__grad
 
-# assgin_value
 - api : assign_value_
   args : (Tensor output, int[] shape, DataType dtype, Scalar[] values, Place place = {})
   output : Tensor(out)
@@ -291,7 +283,6 @@
     data_type : dtype
     backend : place > output
 
-# atan
 - api : atan
   args : (Tensor x)
   output : Tensor
@@ -301,7 +292,6 @@
     func : atan
   backward : atan_grad
 
-# atanh
 - api : atanh
   args : (Tensor x)
   output : Tensor
@@ -311,7 +301,6 @@
     func : atanh
   backward : atanh_grad
 
-# auc
 - api : auc
   args : (Tensor x, Tensor label, Tensor stat_pos, Tensor stat_neg, Tensor ins_tag_weight, str curve, int num_thresholds, int slide_steps)
   output : Tensor(auc), Tensor(stat_pos_out), Tensor(stat_neg_out)
@@ -321,7 +310,6 @@
     func : auc
   optional : ins_tag_weight
 
-#average_accumulates
 - api : average_accumulates_
   args : (Tensor param, Tensor in_sum_1, Tensor in_sum_2, Tensor in_sum_3, Tensor in_num_accumulates, Tensor in_old_num_accumulates, Tensor in_num_updates, float average_window, int64_t max_average_window, int64_t min_average_window)
   output : Tensor(out_sum_1), Tensor(out_sum_2), Tensor(out_sum_3), Tensor(out_num_accumulates), Tensor(out_old_num_accumulates), Tensor(out_num_updates)
@@ -332,7 +320,6 @@
     data_type : param
   inplace : (in_sum_1 -> out_sum_1), (in_sum_2 -> out_sum_2), (in_sum_3 -> out_sum_3), (in_num_accumulates -> out_num_accumulates), (in_old_num_accumulates -> out_old_num_accumulates), (in_num_updates -> out_num_updates)
 
-# batch_norm
 - api : batch_norm
   args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
@@ -358,7 +345,6 @@
   optional : bias
   backward : bilinear_tensor_product_grad
 
-# bitwise_and
 - api : bitwise_and
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -367,7 +353,6 @@
   kernel :
     func : bitwise_and
 
-# bitwise_not
 - api : bitwise_not
   args : (Tensor x)
   output : Tensor
@@ -376,7 +361,6 @@
   kernel :
     func : bitwise_not
 
-# bitwise_or
 - api : bitwise_or
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -385,7 +369,6 @@
   kernel :
     func : bitwise_or
 
-# bitwise_xor
 - api : bitwise_xor
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -394,7 +377,6 @@
   kernel :
     func : bitwise_xor
 
-# bmm
 - api : bmm
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -404,7 +386,6 @@
     func : bmm
   backward : bmm_grad
 
-# box_coder
 - api : box_coder
   args : (Tensor prior_box, Tensor prior_box_var, Tensor target_box, str code_type, bool box_normalized, int axis, float[] variance)
   output : Tensor(output_box)
@@ -414,7 +395,6 @@
     func : box_coder
   optional : prior_box_var
 
-# brelu
 - api : brelu
   args : (Tensor x, float t_min, float t_max)
   output : Tensor
@@ -555,7 +535,6 @@
   output : Tensor
   invoke : copy_to_impl(x, place, blocking)
 
-# cos
 - api : cos
   args : (Tensor x)
   output : Tensor
@@ -565,7 +544,6 @@
     func : cos
   backward : cos_grad
 
-# cosh
 - api : cosh
   args : (Tensor x)
   output : Tensor
@@ -615,7 +593,6 @@
     func : cumsum
   backward : cumsum_grad
 
-# decode_jpeg
 - api : decode_jpeg
   args : (Tensor x, str mode)
   output : Tensor(out)
@@ -703,7 +680,6 @@
     data_type: DataType::FLOAT32
   optional : hypslength, refslength
 
-# eigh
 - api : eigh
   args : (Tensor x, str uplo)
   output : Tensor(out_w), Tensor(out_v)
@@ -749,7 +725,6 @@
     func : elementwise_pow
   backward : elementwise_pow_grad
 
-# elu
 - api : elu
   args : (Tensor x, float alpha)
   output : Tensor
@@ -806,7 +781,6 @@
   kernel :
     func : equal_all
 
-# exp
 - api : exp
   args : (Tensor x)
   output : Tensor
@@ -816,7 +790,6 @@
     func : exp
   backward : exp_grad
 
-# expand
 - api : expand
   args : (Tensor x, IntArray shape)
   output : Tensor
@@ -826,7 +799,6 @@
     func : expand
   backward : expand_grad
 
-# expand_as
 - api : expand_as
   args : (Tensor x, Tensor y, int[] target_shape)
   output : Tensor
@@ -914,7 +886,6 @@
   intermediate : xshape
   backward : flatten_grad
 
-# flip
 - api : flip
   args : (Tensor x, int[] axis)
   output : Tensor
@@ -991,7 +962,6 @@
     data_type : dtype
     backend : place
 
-# full
 - api : full_
   args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output : Tensor(out)
@@ -1127,7 +1097,6 @@
   kernel :
     func : greater_than
 
-# grid sample
 - api : grid_sample
   args : (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners)
   output : Tensor(out)
@@ -1159,7 +1128,6 @@
     func : gumbel_softmax
   backward : gumbel_softmax_grad
 
-# hard_shrink
 - api : hard_shrink
   args : (Tensor x, float threshold)
   output : Tensor
@@ -1170,7 +1138,6 @@
     func : hard_shrink
   backward : hard_shrink_grad
 
-# hard_sigmoid
 - api : hard_sigmoid
   args : (Tensor x, float slope, float offset)
   output : Tensor
@@ -1191,7 +1158,6 @@
     func : hard_swish
   backward : hard_swish_grad
 
-# hierarchical_sigmoid
 - api : hierarchical_sigmoid
   args : (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias, int num_classes, bool remote_prefetch, int trainer_id, int64_t[] height_sections, str[] epmap, str[] table_names, bool is_sparse)
   output : Tensor(out), Tensor(pre_out), Tensor(w_out)
@@ -1203,7 +1169,6 @@
     data_type : x
   backward : hierarchical_sigmoid_grad
 
-# histogram
 - api : histogram
   args : (Tensor x, int64_t bins, int min, int max)
   output : Tensor
@@ -1230,7 +1195,6 @@
     func : imag
   backward : imag_grad
 
-# increment
 - api : increment
   args : (Tensor x, float value)
   output : Tensor
@@ -1280,7 +1244,6 @@
     func : inverse
   backward : inverse_grad
 
-# is_empty
 - api : is_empty
   args : (Tensor x)
   output : Tensor
@@ -1298,7 +1261,6 @@
   kernel :
     func : isclose
 
-# isfinite
 - api : isfinite
   args : (Tensor x)
   output : Tensor
@@ -1308,7 +1270,6 @@
     func : isfinite {dense -> dense},
            infinite_sr {selected_rows -> selected_rows}
 
-# isinf
 - api : isinf
   args : (Tensor x)
   output : Tensor
@@ -1318,7 +1279,6 @@
     func : isinf {dense -> dense},
            isinf_sr {selected_rows -> selected_rows}
 
-# isnan
 - api : isnan
   args : (Tensor x)
   output : Tensor
@@ -1356,7 +1316,6 @@
     func : kthvalue
   backward : kthvalue_grad
 
-# label_smooth
 - api : label_smooth
   args : (Tensor label, Tensor prior_dist, float epsilon)
   output : Tensor
@@ -1392,7 +1351,6 @@
   backward : layer_norm_grad
   optional : scale, bias
 
-# leaky_relu
 - api : leaky_relu
   args : (Tensor x, float alpha)
   output : Tensor
@@ -1484,7 +1442,6 @@
     func : log2
   backward: log2_grad
 
-# log_loss
 - api : log_loss
   args : (Tensor input, Tensor label, float epsilon)
   output : Tensor
@@ -1512,7 +1469,6 @@
     func : logcumsumexp
   backward : logcumsumexp_grad
 
-# logical_and
 - api : logical_and
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -1521,7 +1477,6 @@
   kernel :
     func : logical_and
 
-# logical_not
 - api : logical_not
   args : (Tensor x)
   output : Tensor
@@ -1530,7 +1485,6 @@
   kernel :
     func : logical_not
 
-# logical_or
 - api : logical_or
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -1539,7 +1493,6 @@
   kernel :
     func : logical_or
 
-# logical_xor
 - api : logical_xor
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -1548,7 +1501,6 @@
   kernel :
     func : logical_xor
 
-# logit
 - api : logit
   args : (Tensor x, float eps = 1e-6f)
   output : Tensor
@@ -1559,7 +1511,6 @@
     func : logit
   backward : logit_grad
 
-# logsigmoid
 - api : logsigmoid
   args : (Tensor x)
   output : Tensor
@@ -1616,7 +1567,6 @@
     data_type : logits
   backward : margin_cross_entropy_grad
 
-# masked_select
 - api : masked_select
   args : (Tensor x, Tensor mask)
   output : Tensor
@@ -1644,7 +1594,6 @@
   kernel :
     func : matrix_nms
 
-# matrix_power
 - api : matrix_power
   args : (Tensor x, int n)
   output : Tensor
@@ -1814,7 +1763,6 @@
     func : multiclass_nms3
   optional : rois_num
 
-# multinomial
 - api : multinomial
   args : (Tensor x, int num_samples, bool replacement)
   output : Tensor
@@ -1907,7 +1855,6 @@
     func : p_norm
   backward : p_norm_grad
 
-# pad
 - api : pad
   args : (Tensor x, int[] paddings, float pad_value)
   output : Tensor
@@ -1926,7 +1873,6 @@
     func : pad3d
   backward : pad3d_grad
 
-# pixel_shuffle
 - api : pixel_shuffle
   args : (Tensor x, int upscale_factor, str data_format)
   output : Tensor
@@ -2005,7 +1951,6 @@
   optional : boxes_num
   backward : psroi_pool_grad
 
-# put_along_axis
 - api : put_along_axis
   args : (Tensor x, Tensor index, Tensor value, int axis, str reduce)
   output : Tensor
@@ -2068,7 +2013,6 @@
     func : reciprocal
   backward : reciprocal_grad
 
-# reduce_prod
 - api : reduce_prod
   args : (Tensor x, int64_t[] dims, bool keep_dim, bool reduce_all)
   output : Tensor
@@ -2262,7 +2206,6 @@
     func : searchsorted
     data_type : sorted_sequence
 
-# segment_pool
 - api : segment_pool
   args : (Tensor x, Tensor segment_ids, str pooltype)
   output : Tensor(out), Tensor(summed_ids)
@@ -2273,7 +2216,6 @@
     data_type : x
   backward : segment_pool_grad
 
-# selu
 - api : selu
   args : (Tensor x, float scale, float alpha)
   output : Tensor
@@ -2310,7 +2252,6 @@
   data_transform:
     skip_transform : input
 
-# shard_index
 - api : shard_index
   args : (Tensor in, int index_num, int nshards, int shard_id, int ignore_value)
   output : Tensor
@@ -2319,7 +2260,6 @@
   kernel :
     func : shard_index
 
-# sigmoid
 - api : sigmoid
   args : (Tensor x)
   output : Tensor
@@ -2329,7 +2269,6 @@
     func : sigmoid
   backward : sigmoid_grad
 
-# sigmoid_cross_entropy_with_logits
 - api : sigmoid_cross_entropy_with_logits
   args : (Tensor x, Tensor label, bool normalize, int ignore_index)
   output : Tensor
@@ -2347,7 +2286,6 @@
   kernel :
     func : sign
 
-# silu
 - api : silu
   args : (Tensor x)
   output : Tensor
@@ -2357,7 +2295,6 @@
     func : silu
   backward : silu_grad
 
-# sin
 - api : sin
   args : (Tensor x)
   output : Tensor
@@ -2367,7 +2304,6 @@
     func : sin
   backward : sin_grad
 
-# sinh
 - api : sinh
   args : (Tensor x)
   output : Tensor
@@ -2377,7 +2313,6 @@
     func : sinh
   backward : sinh_grad
 
-# size
 - api : size
   args : (Tensor x)
   output : Tensor
@@ -2406,7 +2341,6 @@
     func : slogdeterminant
   backward : slogdet_grad
 
-# soft_shrink
 - api : soft_shrink
   args : (Tensor x, float lambda)
   output : Tensor
@@ -2437,7 +2371,6 @@
     func : softplus
   backward : softplus_grad
 
-# softsign
 - api : softsign
   args : (Tensor x)
   output : Tensor
@@ -2559,7 +2492,6 @@
     func : swish
   backward : swish_grad
 
-# sync_batch_norm
 - api : sync_batch_norm_
   args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
@@ -2571,7 +2503,6 @@
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
 
-# take_along_axis
 - api : take_along_axis
   args : (Tensor x, Tensor index, int axis)
   output : Tensor
@@ -2583,7 +2514,6 @@
     data_type : x
   backward : take_along_axis_grad
 
-# tan
 - api : tan
   args : (Tensor x)
   output : Tensor
@@ -2593,7 +2523,6 @@
     func : tan
   backward : tan_grad
 
-# tanh
 - api : tanh
   args : (Tensor x)
   output : Tensor
@@ -2603,7 +2532,6 @@
     func : tanh
   backward : tanh_grad
 
-# tanh_shrink
 - api : tanh_shrink
   args : (Tensor x)
   output : Tensor
@@ -2613,7 +2541,6 @@
     func : tanh_shrink
   backward : tanh_shrink_grad
 
-# temporal_shift
 - api : temporal_shift
   args : (Tensor x, int seg_num, float shift_ratio, str data_format_str)
   output : Tensor
@@ -2623,7 +2550,6 @@
     func : temporal_shift
   backward : temporal_shift_grad
 
-# thresholded_relu
 - api : thresholded_relu
   args : (Tensor x, float threshold)
   output : Tensor
@@ -2634,7 +2560,6 @@
     func : thresholded_relu
   backward : thresholded_relu_grad
 
-# tile
 - api : tile
   args : (Tensor x, IntArray repeat_times)
   output : Tensor
@@ -2714,7 +2639,6 @@
     func : unbind
   backward : unbind_grad
 
-# unfold
 - api : unfold
   args : (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
   output : Tensor
@@ -2766,7 +2690,6 @@
   intermediate : xshape
   backward : unsqueeze_grad
 
-# unstack
 - api : unstack
   args : (Tensor x, int axis, int num)
   output : Tensor[]{num}
@@ -2776,7 +2699,6 @@
     func : unstack
   backward : unstack_grad
 
-# viterbi_decode
 - api : viterbi_decode
   args : (Tensor input, Tensor transition, Tensor length, bool include_bos_eos_tag)
   output : Tensor(scores), Tensor(path)
@@ -2807,7 +2729,6 @@
     func : where
   backward : where_grad
 
-# where_index
 - api : where_index
   args : (Tensor condition)
   output : Tensor
@@ -2816,7 +2737,6 @@
   kernel :
     func : where_index
 
-# yolo_box
 - api : yolo_box
   args : (Tensor x, Tensor img_size, int[] anchors, int class_num, float conf_thresh, int downsample_ratio, bool clip_bbox, float scale_x_y=1.0, bool iou_aware=false, float iou_aware_factor=0.5)
   output : Tensor(boxes), Tensor(scores)
@@ -2826,7 +2746,6 @@
     func : yolo_box
     data_type : x
 
-# yolov3_loss
 - api : yolov3_loss
   args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth=true, float scale_x_y=1.0)
   output : Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
@@ -2857,7 +2776,6 @@
     func: broadcast_tensors
   backward: broadcast_tensors_grad
 
-# dirichlet
 - api: dirichlet
   args: (Tensor alpha)
   output: Tensor
@@ -2866,7 +2784,6 @@
   kernel:
     func: dirichlet
 
-# eig
 - api: eig
   args: (Tensor x)
   output: Tensor(out_w), Tensor(out_v)
@@ -2876,7 +2793,6 @@
     func: eig
   backward: eig_grad
 
-# fold
 - api: fold
   args: (Tensor x, int[] output_sizes, int[] kernel_sizes,  int[] strides, int[] paddings, int[] dilations)
   output: Tensor(out)
@@ -2886,7 +2802,6 @@
     func: fold
   backward: fold_grad
 
-# overlap_add
 - api: overlap_add
   args: (Tensor x, int hop_length, int axis)
   output: Tensor
@@ -2907,7 +2822,6 @@
   inplace: (x -> out)
   backward: uniform_random_inplace_grad
 
-# unpool
 - api: unpool
   args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)
   output: Tensor(out)
@@ -2918,7 +2832,6 @@
     data_type: x
   backward: unpool_grad
 
-# unpool3d
 - api: unpool3d
   args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)
   output: Tensor(out)
