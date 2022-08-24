@@ -2745,6 +2745,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
               phi_kernel_context->EmplaceBackAttr(std::move(
                   phi::Scalar(PADDLE_GET_CONST(float, attr_iter->second))));
               break;
+            case proto::AttrType::FLOAT64:
+              phi_kernel_context->EmplaceBackAttr(std::move(
+                  phi::Scalar(PADDLE_GET_CONST(double, attr_iter->second))));
+              break;
             case proto::AttrType::INT:
               phi_kernel_context->EmplaceBackAttr(std::move(
                   phi::Scalar(PADDLE_GET_CONST(int, attr_iter->second))));
@@ -2883,6 +2887,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
           case phi::AttributeType::FLOAT32:
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(float, attr_iter->second));
+            break;
+          case phi::AttributeType::FLOAT64:
+            phi_kernel_context->EmplaceBackAttr(
+                PADDLE_GET_CONST(double, attr_iter->second));
             break;
           case phi::AttributeType::INT32:
             phi_kernel_context->EmplaceBackAttr(
