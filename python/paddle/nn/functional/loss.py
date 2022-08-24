@@ -415,7 +415,7 @@ def square_error_cost(input, label):
         minus_out = _C_ops.final_state_subtract(input, label)
         square_out = _C_ops.final_state_square(minus_out)
         return square_out
-    if _in_legacy_dygraph():
+    elif _in_legacy_dygraph():
         minus_out = _C_ops.elementwise_sub(input, label)
         square_out = _C_ops.square(minus_out)
         return square_out
@@ -2476,7 +2476,7 @@ def cross_entropy(input,
                 weight_gather_reshape = reshape(weight_gather, shape=out_shape)
                 out = paddle.cast(out, weight_gather_reshape.dtype)
 
-                out = paddle.multiply(out, weight_gather_reshape)
+                out = _C_ops.elementwise_mul(out, weight_gather_reshape)
 
             else:
                 if input.shape[axis] != weight.shape[-1]:
@@ -2501,19 +2501,19 @@ def cross_entropy(input,
                         weight, valid_label.transpose(temp_perm))
                 else:
                     weight_gather = _C_ops.gather_nd(weight, valid_label)
-                weight_gather = paddle.multiply(weight_gather,
-                                                ignore_weight_mask)
+                weight_gather = _C_ops.elementwise_mul(weight_gather,
+                                                       ignore_weight_mask)
                 input_shape = list(label.shape)
                 weight_gather_reshape = reshape(weight_gather,
                                                 shape=input_shape)
                 out = paddle.cast(out, weight_gather_reshape.dtype)
-                out = paddle.multiply(out, weight_gather_reshape)
+                out = _C_ops.elementwise_mul(out, weight_gather_reshape)
 
         if reduction == "sum":
             #   because of fluid_softmax_with_cross_entropy op's inner logic,
             #   in the out tensor of this op, the loss of sample with class_index==ignore_index is 0
             #   so, reduce_sum all directly is ok
-            return paddle.sum(out)
+            return _C_ops.reduce_sum(out, 'reduce_all', True)
         elif reduction == "mean":
             # 1. if weight==none,
             #     numerator: reduce_sum all loss directly is ok causeof fluid_softmax_with_cross_entropy's inner logic
@@ -2522,25 +2522,27 @@ def cross_entropy(input,
             #     numerator: loss's weighted sum
             #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
             if ignore_index >= 0:
-                out_sum = paddle.sum(out)
+                out_sum = _C_ops.reduce_sum(out, 'reduce_all', True)
                 # for each label[i],set 1 or 0, according to ignore_index
                 # mask[i]=0, if label[i]==ignore_index
                 # mask[i]=1, otherwise
                 mask = (label != ignore_index)
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
-                    count = paddle.sum(mask)
+                    count = _C_ops.reduce_sum(mask, 'reduce_all', True)
                     ret = out_sum / (count + (count == 0.0))
                 else:
                     mask = paddle.cast(mask, weight_gather_reshape.dtype)
                     weight_ignored = _C_ops.elementwise_mul(
                         mask, weight_gather_reshape)
-                    weight_sum = paddle.sum(weight_ignored)
+                    weight_sum = _C_ops.reduce_sum(weight_ignored, 'reduce_all',
+                                                   True)
                     ret = out_sum / (weight_sum + (weight_sum == 0.0))
                 return ret
             elif weight is not None:
-                out_sum = paddle.sum(out)
-                total_weight = paddle.sum(weight_gather_reshape)
+                out_sum = _C_ops.reduce_sum(out, 'reduce_all', True)
+                total_weight = _C_ops.reduce_sum(weight_gather_reshape,
+                                                 'reduce_all', True)
                 return out_sum / (total_weight + (total_weight == 0.0))
             else:
                 return _C_ops.mean(out)
