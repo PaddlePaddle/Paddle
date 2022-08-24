@@ -107,7 +107,16 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
                           int nb_inputs,
                           const nvinfer1::PluginTensorDesc* outputs,
                           int nb_outputs) const TRT_NOEXCEPT override {
-    return 0;
+    auto input_dims = inputs[0].dims;
+    const int batch = 512;
+    int seq_len = input_dims.d[1];
+    const int padding_num=8;
+    seq_len = (seq_len + padding_num - 1) / padding_num * padding_num;
+    const int input_num = batch * seq_len * 3 * head_number_ * head_size_;
+    const size_t qk_temp_ptr_size = batch * head_number_ * seq_len * seq_len + input_num;
+    const size_t biasqk_size =  batch* head_number_* seq_len* seq_len;
+    return qk_temp_ptr_size+biasqk_size;
+    // return 0;
   }
 
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,

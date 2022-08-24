@@ -794,25 +794,6 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
     // platform::dynload::nvtxRangePushA("MatMulWithHeadQK gemm");
     
     // gemm with no bias
-    // cublasStatus_t cublasltMatmul_reslut = platform::dynload::cublasLtMatmul(
-    //     lt_handle,
-    //     operation_desc,
-    //     (&alpha_half),
-    //     (q_buf_),
-    //     q_desc,
-    //     (k_buf_),
-    //     k_desc,
-    //     (&beta_half),
-    //     (qk_buf_),
-    //     qk_desc,
-    //     (qk_buf_),
-    //     qk_desc,
-    //     algo,
-    //     workspace->ptr(),
-    //     workspace_size,
-    //     stream);
-
-
     cublasStatus_t cublasltMatmul_reslut = platform::dynload::cublasLtMatmul(
         lt_handle,
         operation_desc,
@@ -822,14 +803,33 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
         (k_buf_),
         k_desc,
         (&beta_half),
-        (bias_qk),
-        qk_bias_desc,
-        (qk_gemm_data),
+        (qk_buf_),
+        qk_desc,
+        (qk_buf_),
         qk_desc,
         algo,
         workspace->ptr(),
         workspace_size,
         stream);
+
+
+    // cublasStatus_t cublasltMatmul_reslut = platform::dynload::cublasLtMatmul(
+    //     lt_handle,
+    //     operation_desc,
+    //     (&alpha_half),
+    //     (q_buf_),
+    //     q_desc,
+    //     (k_buf_),
+    //     k_desc,
+    //     (&beta_half),
+    //     (bias_qk),
+    //     qk_bias_desc,
+    //     (qk_gemm_data),
+    //     qk_desc,
+    //     algo,
+    //     workspace->ptr(),
+    //     workspace_size,
+    //     stream);
 
     // platform::dynload::nvtxRangePop();
     VLOG(1)<<"@@@ cublasltMatmul_reslut:"<<cublasltMatmul_reslut;
@@ -848,23 +848,23 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
     platform::DataLayout cudnn_layout = platform::DataLayout::kNCHW;
     std::vector<int> cudnn_tensor_dims = phi::vectorize<int>(qk_gemm_tensor.dims());
 
-    platform::ScopedTensorDescriptor xDesc;
-    platform::ScopedTensorDescriptor yDesc;
-    cudnnTensorDescriptor_t cudnn_x_desc =
-      xDesc.descriptor<run_type>(cudnn_layout, cudnn_tensor_dims);
-    cudnnTensorDescriptor_t cudnn_y_desc =
-      xDesc.descriptor<run_type>(cudnn_layout, cudnn_tensor_dims);
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxForward(
-      context.cudnn_handle(),
-      CUDNN_SOFTMAX_ACCURATE,
-      CUDNN_SOFTMAX_MODE_INSTANCE,
-      platform::CudnnDataType<run_type>::kOne(),
-      cudnn_x_desc,
-      qk_gemm_data,
-      platform::CudnnDataType<run_type>::kZero(),
-      cudnn_y_desc,
-      qk_buf_
-      ));
+    // platform::ScopedTensorDescriptor xDesc;
+    // platform::ScopedTensorDescriptor yDesc;
+    // cudnnTensorDescriptor_t cudnn_x_desc =
+    //   xDesc.descriptor<run_type>(cudnn_layout, cudnn_tensor_dims);
+    // cudnnTensorDescriptor_t cudnn_y_desc =
+    //   xDesc.descriptor<run_type>(cudnn_layout, cudnn_tensor_dims);
+    // PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxForward(
+    //   context.cudnn_handle(),
+    //   CUDNN_SOFTMAX_ACCURATE,
+    //   CUDNN_SOFTMAX_MODE_INSTANCE,
+    //   platform::CudnnDataType<run_type>::kOne(),
+    //   cudnn_x_desc,
+    //   qk_gemm_data,
+    //   platform::CudnnDataType<run_type>::kZero(),
+    //   cudnn_y_desc,
+    //   qk_buf_
+    //   ));
 
     
     // printf("@@ cuda error before cudaDeviceSynchronize %s \r\n", cudaGetErrorString(cudaGetLastError()));

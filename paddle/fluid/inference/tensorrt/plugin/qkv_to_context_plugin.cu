@@ -481,14 +481,14 @@ int QkvToContextPluginDynamic::enqueue(
   auto input_dims = input_desc[0].dims;
   int input_num = ProductDim(input_dims);
   // input[0], (B, S, 3 * N * H, 1, 1)
-  const int paddingNum=8;
+  const int padding_num=8;
   int batch = input_dims.d[0];
   int seq_len = input_dims.d[1];
 
   // TODO, padding from very beginning
   int real_seq_len = seq_len;
   if (input_desc[0].type == nvinfer1::DataType::kHALF) {
-    seq_len = (seq_len + paddingNum - 1) / paddingNum * paddingNum;
+    seq_len = (seq_len + padding_num - 1) / padding_num * padding_num;
     input_num = batch * seq_len * 3 * head_number_ * head_size_;
   }
   
@@ -672,17 +672,19 @@ int QkvToContextPluginDynamic::enqueue(
     //                            3*head_number_*head_size_);
     // cudaDeviceSynchronize();
     // printf("\r\n");
-    framework::Tensor multihead_temp_tensor;
+    // framework::Tensor multihead_temp_tensor;
     int scratch_size = batch * head_number_ * seq_len * seq_len * 1;
-    multihead_temp_tensor.Resize({scratch_size + input_num});
+    int qk_temp_ptr_size = scratch_size + input_num;
+    // multihead_temp_tensor.Resize({scratch_size + input_num});
 
-    auto *multihead_temp_data =
-        multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
-            platform::CUDAPlace(device_id));
+    // auto *multihead_temp_data =
+    //     multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
+    //         platform::CUDAPlace(device_id));
     
-    half *qkptr = reinterpret_cast<half *>(multihead_temp_data);
+    half *qkptr = reinterpret_cast<half *>(workspace);
     half *tptr = qkptr + scratch_size;
-
+    // printf("@@@ qkptr address: %X, scratch_size: %X, tptr address: %X, qkptr address end: %X \r\n",
+    //       qkptr,scratch_size,tptr, qkptr + scratch_size + input_num);
     // cudaDeviceSynchronize();
     // printf("@#@@@ input0 data \r\n");
     // print_float<half><<<1,1>>>(input0_data,0,input_num);
@@ -690,7 +692,7 @@ int QkvToContextPluginDynamic::enqueue(
     // printf("\r\n");
 
     // fit to [batch, head_num, length, length] + [batch, 1, 1, length]
-    framework::Tensor temp_qk_bias_tensor;
+    // framework::Tensor temp_qk_bias_tensor;
     
     half *qk_bias = const_cast<half *>(static_cast<const half *>(inputs[1]));
     // printf("@#@@ in origin plugin biasqk 0 1 2 3 fp16, before type check: \r\n");
@@ -699,10 +701,11 @@ int QkvToContextPluginDynamic::enqueue(
     // printf("\r\n");
 
     if (ProductDim(input_desc[1].dims) == (batch * seq_len)) {
-      temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
-      auto *temp_qk_bias =
-          reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
-              platform::CUDAPlace(device_id)));
+      // temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
+      // auto *temp_qk_bias =
+      //     reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
+      //         platform::CUDAPlace(device_id)));
+      auto * temp_qk_bias = reinterpret_cast<half *>(workspace)+qk_temp_ptr_size;
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(
@@ -723,10 +726,11 @@ int QkvToContextPluginDynamic::enqueue(
     
     const size_t swin_qk_bias_size=window_num*head_number_*real_seq_len*real_seq_len;
     if(ProductDim(input_desc[1].dims)==swin_qk_bias_size){
-      temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
-      auto *temp_qk_bias =
-          reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
-              platform::CUDAPlace(device_id)));
+      // temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
+      // auto *temp_qk_bias =
+      //     reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
+      //         platform::CUDAPlace(device_id)));
+      auto * temp_qk_bias = reinterpret_cast<half *>(workspace)+qk_temp_ptr_size;
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
 
