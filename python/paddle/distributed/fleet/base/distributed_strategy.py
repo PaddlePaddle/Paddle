@@ -1992,6 +1992,60 @@ class DistributedStrategy(object):
             print("WARNING: auto-search should have value of bool type")
 
     @property
+    def qat(self):
+        """
+        Indicating whether we are using quantization training
+        Default Value: False
+        """
+        return self.strategy.qat
+
+    @qat.setter
+    def qat(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.qat = flag
+        else:
+            print("WARNING: qat should have value of bool type")
+
+    @property
+    def qat_configs(self):
+        """
+        Set quantization training configurations. In general, qat has serveral configurable
+        settings that can be configured through a dict.
+
+        **Notes**:
+            channel_wise_abs_max(bool): Whether to use `per_channel` quantization training. Default is True.
+
+            weight_bits(int): quantization bit number for weight. Default is 8.
+
+            activation_bits(int): quantization bit number for activation. Default is 8.
+
+            not_quant_pattern(list[str]): When the skip pattern is detected in an op's name scope, 
+                the corresponding op will not be quantized.
+
+            algo(str): Other quantization training algorithm.
+
+        Exampless:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.qat = True
+            strategy.qat_configs = {
+                "channel_wise_abs_max": True,
+                "weight_bits": 8,
+                "activation_bits: 8,
+                "not_quant_pattern": ['skip_quant']}
+
+        """
+        return get_msg_dict(self.strategy.qat_configs)
+
+    @qat_configs.setter
+    def qat_configs(self, configs):
+        check_configs_key(self.strategy.qat_configs, configs, "qat_configs")
+        assign_configs_value(self.strategy.qat_configs, configs)
+
+    @property
     def heter_ccl_mode(self):
         """
         Indicating whether we are using heter_ccl_mode for model training.
