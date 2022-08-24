@@ -339,14 +339,20 @@ std::vector<LoDTensor> SplitLoDTensor(
                     platform::errors::InvalidArgument(
                         "Place number cannot be empty when splitting."));
   src.check_memory_size();
-  PADDLE_ENFORCE_GE(src.dims().size(), 1, platform::errors::InvalidArgument("0D Tensor can not be splited, due to it has not batch_size"));
+  auto rank = src.dims().size();
+
+  // if rank is 0, just return places.size() copys of src
+  if (rank == 0) {
+    LoDTensor dst;
+    framework::TensorCopy(src, src.place(), &dst);
+    std::vector<LoDTensor> ret;
+    ret.emplace_back(std::move(dst));
+  }
+
   size_t batch_size = src.lod().empty() ? static_cast<size_t>(src.dims()[0])
                                         : src.lod()[0].size() - 1;
 
-  // if batch_size is 0, just return #places.size() copys of empty
-  // tensors.
-  //VLOG(0) << "places_size: " << places.size() << "\n";
-  //VLOG(0) << "batch_size: " << batch_size << "\n";
+  // if batch_size is 0, just return places.size() copys of empty tensor
   if (batch_size == 0) {
     std::vector<LoDTensor> empty_results;
     empty_results.reserve(places.size());
@@ -430,6 +436,9 @@ void MergeLoDTensor(LoDTensor *target,
 
   LoD new_lod = lod_tensors[0]->lod();
   auto rank = lod_tensors[0]->dims().size();
+  
+  //VLOG(0) << "merge lod tensor lod_tensors.size(): " << lod_tensors.size();
+  //VLOG(0) << "merge lod tensor rank: " << rank;
 
   for (size_t i = 1; i < lod_tensors.size(); ++i) {
     auto *t = lod_tensors[i];
@@ -459,18 +468,10 @@ void MergeLoDTensor(LoDTensor *target,
                           platform::errors::InvalidArgument(
                               "LoDTensor.ddim[%d] should eaqual to %d, but is %d", j, new_dim[j], tensor_dims[j]));
       }
-    }
-
-    // for 0D tensor, can't concat eath tensor, stack them. for 1+D tensor, concat them
-    if (rank ==0) {
-      new_dim = phi::make_ddim(std::vector<int>(lod_tensors.size(), 1));
-    } else {
-      for (size_t i = 1; i < lod_tensors.size(); ++i) {
-        auto *t = lod_tensors[i];
+      if(rank > 0) {
         new_dim[0] += t->dims()[0];
       }
     }
-
     auto &lod = t->lod();
     PADDLE_ENFORCE_EQ(new_lod.size(),
                       lod.size(),
@@ -487,20 +488,28 @@ void MergeLoDTensor(LoDTensor *target,
       }
     }
   }
+
+  // for 0D tensor, can't concat eath tensor, so stack OD. concat 1+D
+  if (rank ==0) {
+    int place_num = lod_tensors.size();
+    new_dim = phi::make_ddim(std::vector<int>({place_num}));
+    VLOG(0) << "new_dim[0]: " << new_dim[0] << "\n";
+  }
+
   target->Resize(new_dim);
   target->set_layout(new_layout);
   target->set_lod(new_lod);
   target->mutable_data(dst_place,
                        paddle::framework::TransToPhiDataType(new_type));
 
-  // for 0D tensor, can't concat eath tensor, stack them. for 1+D tensor, concat them
+  // for 0D tensor, can't concat eath tensor, so stack OD. concat 1+D
   int begin = 0;
   int end = 0;
   for (auto *src : lod_tensors) {
     if(rank==0) {
-      end = begin + src->dims()[0];
-    } else {
       end = begin + 1;
+    } else {
+      end = begin + src->dims()[0];
     }
     if (end == begin) {
       continue;

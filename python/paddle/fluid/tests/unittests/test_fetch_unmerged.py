@@ -22,6 +22,7 @@ import paddle
 
 os.environ["CPU_NUM"] = "2"
 
+paddle.enable_static()
 
 class TestFetchUnmerged(unittest.TestCase):
 
@@ -90,10 +91,12 @@ class TestFetchUnmerged(unittest.TestCase):
                                            feed=feeder.feed(data),
                                            fetch_list=[loss, prediction],
                                            return_merged=False)
-            self.assertEqual(np.array(loss_v).shape, (device_num, ))
-            self.assertEqual(
-                np.array(prediction_v).shape,
-                (device_num, batch_size / device_num, 10))
+            # return value should be [[loss_v_place1, loss_v_place2...], []]
+            self.assertEqual(len(loss_v), device_num)
+            self.assertEqual(len(loss_v), len(prediction_v))
+            for i in range(device_num):
+                self.assertEqual(loss_v[i].shape, ())
+                self.assertEqual(prediction_v[i].shape, (batch_size / device_num, 10))
 
         for _ in range(iters):
             data = next(train_reader())
@@ -101,8 +104,9 @@ class TestFetchUnmerged(unittest.TestCase):
                                            feed=feeder.feed(data),
                                            fetch_list=[loss, prediction],
                                            return_merged=True)
-            self.assertEqual(np.array(loss_v).shape, (device_num, ))
-            self.assertEqual(np.array(prediction_v).shape, (batch_size, 10))
+            # return value should be [loss_v, prediction_v]
+            self.assertEqual(loss_v.shape, (device_num, ))
+            self.assertEqual(prediction_v.shape, (batch_size, 10))
 
     def test_fetch_unmerged(self):
         if fluid.core.is_compiled_with_cuda():

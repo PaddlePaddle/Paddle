@@ -603,8 +603,7 @@ class TestPatchMethodVarBase(unittest.TestCase):
             paddle.split(x, 2)[0].numpy())
         m = paddle.to_tensor(
             np.random.uniform(-1, 1, [1, 6, 1, 1])
-        np.testing.assert_array_equal(
-            m.squeeze([]).numpy(),
+        np.testing.assert_array_equal(m.squeeze([]).numpy(),
             paddle.squeeze(m, []).numpy())
         np.testing.assert_array_equal(
             m.squeeze([1, 2]).numpy(),

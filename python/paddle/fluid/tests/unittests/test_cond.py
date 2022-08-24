@@ -427,8 +427,6 @@ class TestCondBackward(unittest.TestCase):
                                          fetch_list=[loss.name])
                     multi_device_grad = (loss_delta[0] -
                                          loss_value) / delta / num_devices
-                    print("=============111=============\n", multi_device_grad)
-                    print(type(multi_device_grad))
                     for d in range(num_devices):
                         numerical_grad[d][j] = multi_device_grad[d]
                 else:

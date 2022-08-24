@@ -112,7 +112,7 @@ void ExpandKernel(const Context& ctx,
   auto rank = x.dims().size();
   PADDLE_ENFORCE_GE(
       rank,
-      1,
+      0,
       phi::errors::InvalidArgument(
           "The rank of the input 'X' for expand_v2 op must be positive, "
           "but the value received is %d.",
