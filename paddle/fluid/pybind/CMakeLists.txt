@@ -54,6 +54,10 @@ if(WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
 endif()
 
+if(WITH_MPI)
+  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_mpi)
+endif()
+
 if(WITH_GPU)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_profiler)
 endif()
