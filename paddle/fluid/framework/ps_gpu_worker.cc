@@ -143,8 +143,8 @@ void PSGPUWorker::TrainFiles() {
 #elif defined(PADDLE_WITH_XPU_BKCL)
   platform::SetXPUDeviceId(thread_id_);
 #endif
-  int pull_box_sparse_idx = 0;
-  int push_box_sparse_idx = 0;
+  int pull_box_sparse_idx = -1;
+  int push_box_sparse_idx = -1;
   int ops_cnt = 0;
   for (auto& op : ops_) {
     bool need_skip = false;
@@ -165,7 +165,7 @@ void PSGPUWorker::TrainFiles() {
     }
   }
 
-  while ((cur_batch = device_reader_->Next()) > 0) {
+  while (true) {
     TIMER_MULTITHREAD_ENTER(platform::TIMER_WORKER_FEED_NEXT, thread_id_);
     if ((cur_batch = device_reader_->Next()) <= 0) {
         TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_FEED_NEXT, thread_id_);
@@ -273,8 +273,8 @@ void PSGPUWorker::TrainFilesWithProfiler() {
 #endif
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
-  int pull_box_sparse_idx = 0;
-  int push_box_sparse_idx = 0;
+  int pull_box_sparse_idx = -1;
+  int push_box_sparse_idx = -1;
   int ops_cnt = 0;
   for (auto& op : ops_) {
     bool need_skip = false;
