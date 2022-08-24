@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/kernels/funcs/onednn/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace platform {
@@ -852,21 +852,7 @@ class ActivationMKLDNNHandler
     float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
     float beta = ctx.HasAttr("beta") ? ctx.Attr<float>("beta") : 0;
 
-    if (ctx.Type() == "scale") {
-      bool bias_after_scale = ctx.Attr<bool>("bias_after_scale");
-      auto* scale_tensor = ctx.Input<Tensor>("ScaleTensor");
-      alpha = (scale_tensor == nullptr)
-                  ? ctx.Attr<float>("scale")
-                  : static_cast<float>(*(scale_tensor->data<T>()));
-      beta = ctx.Attr<float>("bias");
-      // if bias_after_scale == true
-      //   out = scale*X + bias
-      // else
-      //   out = scale*(X + bias) = scale*X + scale*bias
-      if (!bias_after_scale) {
-        beta *= alpha;
-      }
-    } else if (ctx.Type() == "clip") {
+    if (ctx.Type() == "clip") {
       alpha = ctx.HasInput("Min") ? ctx.Input<Tensor>("Min")->data<float>()[0]
                                   : ctx.Attr<float>("min");
       beta = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max")->data<float>()[0]
