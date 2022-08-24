@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/timer.h"
 
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps.h"
+#include "paddle/fluid/platform/timer_manager.h"
 
 #if defined(PADDLE_WITH_XPU_KP)
 DECLARE_bool(dump_cache_array);
@@ -112,6 +113,9 @@ void PSGPUWrapper::InitAfsApi(const std::string& fs_name,
 #endif
 void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   VLOG(3) << "PSGPUWrapper::BuildGPUPSTask begin";
+  //platform::TimerManager* time_manager = platform::TimerManager::instance();
+  //time_manager->init(platform::TIMER_MAX_ID);
+
   platform::Timer timeline;
   timeline.Start();
   int device_num = heter_devices_.size();
@@ -928,16 +932,15 @@ void PSGPUWrapper::build_task() {
   if (!buildcpu_ready_channel_->Get(gpu_task)) {
     return;
   }
-
   VLOG(0) << "BuildPull start.";
   platform::Timer timer;
   timer.Start();
   BuildPull(gpu_task);
   BuildGPUTask(gpu_task);
   timer.Pause();
+
   VLOG(0) << "BuildPull + BuildGPUTask end, cost time: " << timer.ElapsedSec()
           << "s";
-
   current_task_ = gpu_task;
 }
 
@@ -988,7 +991,6 @@ void PSGPUWrapper::EndPass() {
   gpu_free_channel_->Put(current_task_);
   timer.Pause();
   VLOG(0) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
-
 #if defined(PADDLE_WITH_XPU_KP)
   if (FLAGS_dump_cache_manager) {
     auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
