@@ -67,6 +67,17 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
 
+void ClassCenterSampleInferMeta(const MetaTensor& label,
+                                int num_classes,
+                                int num_samples,
+                                int ring_id,
+                                int rank,
+                                int nranks,
+                                bool fix_seed,
+                                int seed,
+                                MetaTensor* remapped_label,
+                                MetaTensor* sampled_local_class_center);
+
 void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out);
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
@@ -83,6 +94,13 @@ void CumInferMeta(const MetaTensor& x,
                   bool exclusive,
                   bool reverse,
                   MetaTensor* out);
+
+void CumScalarAxisInferMeta(const MetaTensor& x,
+                            const Scalar& axis,
+                            bool flatten,
+                            bool exclusive,
+                            bool reverse,
+                            MetaTensor* out);
 
 void DecodeJpegInferMeta(const MetaTensor& x,
                          const std::string& mode,
@@ -427,13 +445,15 @@ void SplitInferMeta(const MetaTensor& x_meta,
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void SqueezeInferMeta(const MetaTensor& x,
-                      const std::vector<int>& axes,
-                      MetaTensor* out);
+                      const IntArray& axes,
+                      MetaTensor* out,
+                      MetaConfig config = MetaConfig());
 
 void SqueezeWithXShapeInferMeta(const MetaTensor& x,
-                                const std::vector<int>& axes,
+                                const IntArray& axes,
                                 MetaTensor* out,
-                                MetaTensor* xshape);
+                                MetaTensor* xshape,
+                                MetaConfig config = MetaConfig());
 
 void StridedSliceRawInferMeta(const MetaTensor& x,
                               const std::vector<int>& axes,

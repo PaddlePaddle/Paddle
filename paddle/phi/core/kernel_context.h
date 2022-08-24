@@ -122,8 +122,15 @@ class KernelContext {
   template <typename TensorType>
   std::vector<TensorType*> MutableOutputBetween(size_t start, size_t end) {
     std::vector<TensorType*> v;
+    bool is_empty_vector = true;
     for (size_t i = start; i < end; ++i) {
       v.emplace_back(static_cast<TensorType*>(outputs_.at(i)));
+      if (outputs_.at(i) != nullptr) {
+        is_empty_vector = false;
+      }
+    }
+    if (is_empty_vector) {
+      v.clear();
     }
     return v;
   }

@@ -61,7 +61,7 @@ class TestCosineSimilarityAPI(unittest.TestCase):
                               fetch_list=[result])
 
             np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
-            self.assertTrue(np.allclose(fetches[0], np_out))
+            np.testing.assert_allclose(fetches[0], np_out, rtol=1e-05)
 
     def test_static(self):
         for place in self.places:
@@ -82,7 +82,7 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         tesnor_x2 = paddle.to_tensor(np_x2)
         y = F.cosine_similarity(tesnor_x1, tesnor_x2, axis=axis, eps=eps)
 
-        self.assertTrue(np.allclose(y.numpy(), np_out))
+        np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 
     def test_dygraph_2(self):
         paddle.disable_static()
@@ -99,7 +99,7 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         tesnor_x2 = paddle.to_tensor(np_x2)
         y = F.cosine_similarity(tesnor_x1, tesnor_x2, axis=axis, eps=eps)
 
-        self.assertTrue(np.allclose(y.numpy(), np_out))
+        np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 
     def test_dygraph_3(self):
         paddle.disable_static()
@@ -117,7 +117,7 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         tesnor_x2 = paddle.to_tensor(np_x2)
         y = F.cosine_similarity(tesnor_x1, tesnor_x2, axis=axis, eps=eps)
 
-        self.assertTrue(np.allclose(y.numpy(), np_out))
+        np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 
     def test_dygraph_4(self):
         paddle.disable_static()
@@ -136,7 +136,7 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         tesnor_x2 = paddle.to_tensor(np_x2)
         y = cos_sim_func(tesnor_x1, tesnor_x2)
 
-        self.assertTrue(np.allclose(y.numpy(), np_out))
+        np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 
 
 if __name__ == '__main__':

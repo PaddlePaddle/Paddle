@@ -129,9 +129,6 @@ def is_to_variable(node):
     if utils.is_dygraph_api(node):
         return api_name.endswith("to_variable")
 
-    if utils.is_paddle_api(node):
-        return api_name.endswith("to_tensor")
-
     return False
 
 
