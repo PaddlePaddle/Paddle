@@ -156,12 +156,12 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                         x.dims(),
                         y.dims()));
   int64_t element_size = 1;
-  for (auto j = 1; j < x.non_zero_elements().dims().size(); ++j) {
-    element_size *= x.non_zero_elements().dims()[j];
+  for (auto j = 1; j < x.values().dims().size(); ++j) {
+    element_size *= x.values().dims()[j];
   }
   IntT nnz = 0;
-  const auto x_values = x.non_zero_elements().data<T>();
-  const auto y_values = y.non_zero_elements().data<T>();
+  const auto x_values = x.values().data<T>();
+  const auto y_values = y.values().data<T>();
   const auto sparse_dim = x.indices().dims()[0];
   const bool is_divide = std::is_same<Functor, funcs::DivideFunctor<T>>::value;
 
@@ -234,8 +234,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
 
   if (nnz == 0) {
     phi::DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
-    phi::DenseTensor out_values =
-        phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+    phi::DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x.values());
     out->SetMember(out_indices, out_values, x.dims());
   } else {
     DenseTensorMeta indices_meta(
@@ -243,8 +242,8 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
         phi::make_ddim(
             {static_cast<int64_t>(sparse_dim), static_cast<int64_t>(nnz)}),
         DataLayout::NCHW);
-    auto indeces_dim = vectorize(slice_ddim(
-        x.non_zero_elements().dims(), 1, x.non_zero_elements().dims().size()));
+    auto indeces_dim =
+        vectorize(slice_ddim(x.values().dims(), 1, x.values().dims().size()));
     indeces_dim.insert(indeces_dim.begin(), nnz);
     DenseTensorMeta values_meta(
         paddle::experimental::CppTypeToDataType<T>::Type(),

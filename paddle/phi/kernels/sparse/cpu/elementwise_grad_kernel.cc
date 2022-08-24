@@ -35,7 +35,7 @@ void AllocCsrPtr(const Context& dev_ctx,
                  SparseCsrTensor* dx) {
   DenseTensor dx_crows = phi::EmptyLike<IntT>(dev_ctx, x.crows());
   DenseTensor dx_cols = phi::EmptyLike<IntT>(dev_ctx, x.cols());
-  DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.values());
   dx->SetMember(dx_crows, dx_cols, dx_values, x.dims());
 }
 
@@ -44,7 +44,7 @@ void AllocCooPtr(const Context& dev_ctx,
                  const SparseCooTensor& x,
                  SparseCooTensor* dx) {
   DenseTensor dx_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
-  DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.values());
   dx->SetMember(dx_indices, dx_values, x.dims(), true);
 }
 
@@ -88,7 +88,7 @@ void ElementWiseSubtractCsrGradCPUKernel(const Context& dev_ctx,
     AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
     Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     phi::NegativeKernel<T, Context>(
-        dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
+        dev_ctx, dout.values(), dy->mutable_values());
   }
 }
 
@@ -131,7 +131,7 @@ void ElementWiseDivideCsrGradCPUKernel(const Context& dev_ctx,
     AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
     Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     phi::NegativeKernel<T, Context>(
-        dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
+        dev_ctx, dout.values(), dy->mutable_values());
     auto tmp = sparse::ElementWiseMultiplyCsr<T, Context>(dev_ctx, *dy, out);
     sparse::ElementWiseDivideCsrKernel<T, Context>(dev_ctx, tmp, y, dy);
   }
@@ -177,7 +177,7 @@ void ElementWiseSubtractCooGradCPUKernel(const Context& dev_ctx,
     AllocCooPtr<T, IntT>(dev_ctx, y, dy);
     Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     phi::NegativeKernel<T, Context>(
-        dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
+        dev_ctx, dout.values(), dy->mutable_values());
   }
 }
 
@@ -220,7 +220,7 @@ void ElementWiseDivideCooGradCPUKernel(const Context& dev_ctx,
     AllocCooPtr<T, IntT>(dev_ctx, y, dy);
     Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     phi::NegativeKernel<T, Context>(
-        dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
+        dev_ctx, dout.values(), dy->mutable_values());
     auto tmp = sparse::ElementWiseMultiplyCoo<T, Context>(dev_ctx, *dy, out);
     sparse::ElementWiseDivideCooKernel<T, Context>(dev_ctx, tmp, y, dy);
   }

@@ -39,8 +39,8 @@ void CooFullLikeKernel(const Context& dev_ctx,
   phi::Copy<Context>(
       dev_ctx, x.indices(), dev_ctx.GetPlace(), false, out->mutable_indices());
 
-  DenseTensor* values = out->mutable_non_zero_elements();
-  values->Resize(x.non_zero_elements().dims());
+  DenseTensor* values = out->mutable_values();
+  values->Resize(x.values().dims());
   dev_ctx.template Alloc<T>(values);
   FullValue<T, Context>(dev_ctx, values, val.to<T>());
 
@@ -59,8 +59,8 @@ void CsrFullLikeKernel(const Context& dev_ctx,
   phi::Copy<Context>(
       dev_ctx, x.cols(), dev_ctx.GetPlace(), false, out->mutable_cols());
 
-  DenseTensor* values = out->mutable_non_zero_elements();
-  values->Resize(x.non_zero_elements().dims());
+  DenseTensor* values = out->mutable_values();
+  values->Resize(x.values().dims());
   dev_ctx.template Alloc<T>(values);
   FullValue<T, Context>(dev_ctx, values, val.to<T>());
 

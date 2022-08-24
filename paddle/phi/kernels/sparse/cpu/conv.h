@@ -155,9 +155,8 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
       paddle::experimental::CppTypeToDataType<IntT>::Type(),
       {sparse_dim, out_non_zero_num},
       DataLayout::NCHW);
-  DenseTensorMeta values_meta(x.dtype(),
-                              {out_non_zero_num, out_channels},
-                              x.non_zero_elements().layout());
+  DenseTensorMeta values_meta(
+      x.dtype(), {out_non_zero_num, out_channels}, x.values().layout());
   phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
   phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
   IntT* out_indices_ptr = out_indices.data<IntT>();

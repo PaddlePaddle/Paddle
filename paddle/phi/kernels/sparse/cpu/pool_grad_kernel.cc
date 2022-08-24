@@ -42,12 +42,12 @@ void MaxPoolCooGradCPUKernel(const CPUContext& dev_ctx,
 
   phi::funcs::sparse::PrefixSum(counter_ptr, &offsets[0], kernel_size);
 
-  const T* in_features_ptr = x.non_zero_elements().data<T>();
-  const T* out_features_ptr = out.non_zero_elements().data<T>();
-  const T* out_grad_ptr = out_grad.non_zero_elements().data<T>();
+  const T* in_features_ptr = x.values().data<T>();
+  const T* out_features_ptr = out.values().data<T>();
+  const T* out_grad_ptr = out_grad.values().data<T>();
   // TODO(zhangkaihuo): call phi::sparse::EmptyLike
   DenseTensor x_grad_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
-  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.values());
   x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), true);
   T* x_grad_ptr = x_grad_values.data<T>();
   memset(x_grad_ptr, 0, sizeof(T) * x_grad_values.numel());

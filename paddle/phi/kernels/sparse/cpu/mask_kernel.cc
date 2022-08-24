@@ -38,7 +38,7 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
       mask.dims(),
       phi::errors::InvalidArgument("the input x and mask must have the shape"));
   const DenseTensor& indices = mask.indices();
-  const DenseTensor& values = mask.non_zero_elements();
+  const DenseTensor& values = mask.values();
   const int sparse_dim = mask.sparse_dim();
 
   DenseTensor out_indices = phi::EmptyLike<T>(dev_ctx, indices);
@@ -121,12 +121,12 @@ void SparseMaskHelperCPUKernel(const CPUContext& dev_ctx,
   for (uint64_t i = 0; i < x_indexs.size(); i++) {
     x_indexs_map[x_indexs[i]] = i;
   }
-  *out = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  *out = phi::EmptyLike<T>(dev_ctx, x.values());
   T* out_ptr = out->data<T>();
   memset(out_ptr, static_cast<T>(0), out->numel() * sizeof(T));
   const int64_t stride =
-      x.dims().size() == sparse_dim ? 1 : x.non_zero_elements().dims()[1];
-  const T* in_ptr = x.non_zero_elements().data<T>();
+      x.dims().size() == sparse_dim ? 1 : x.values().dims()[1];
+  const T* in_ptr = x.values().data<T>();
   // TODO(zhangkaihuo): multithreading can be used for acceleration
   for (uint64_t i = 0; i < mask_indexs.size(); i++) {
     auto iter = x_indexs_map.find(mask_indexs[i]);
