@@ -577,6 +577,7 @@ if(WITH_PYTHON)
     libpaddle SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+  target_link_options(paddle_pybind PRIVATE -Wl,--enable-new-dtags)
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_dependencies(libpaddle legacy_eager_codegen)

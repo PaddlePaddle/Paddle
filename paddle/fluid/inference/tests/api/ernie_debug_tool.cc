@@ -13,16 +13,16 @@
 // limitations under the License.
 
 #include <chrono>
+#include <ctime>
 #include <iostream>
 #include <memory>
 #include <numeric>
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-#include <ctime>
+#include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/infrt/tests/timer.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/infrt/tests/timer.h"
 
 using paddle_infer::Config;
 using paddle_infer::CreatePredictor;
@@ -34,9 +34,6 @@ DEFINE_string(model_dir, "", "Directory of the inference model.");
 DEFINE_bool(tuned_dynamic_shape, false, "use tuned dynamic shape");
 DEFINE_bool(tune, false, "tune to get shape range.");
 DEFINE_bool(enable_cinn, false, "enable cinn");
-
-DECLARE_string(allow_cinn_ops);
-DECLARE_string(deny_cinn_ops);
 
 constexpr char shape_range_info[] = "shape_range_info.pbtxt";
 
@@ -92,11 +89,10 @@ std::shared_ptr<Predictor> InitPredictor() {
   if (FLAGS_enable_cinn) {
     config.EnableMemoryOptim(false);
     config.pass_builder()->ClearPasses();
-    // config.pass_builder()->AppendPass("gpu_cpu_map_matmul_v2_to_mul_pass");
-    // config.pass_builder()->AppendPass("gpu_cpu_map_matmul_v2_to_matmul_pass");
-    // config.pass_builder()->AppendPass("gpu_cpu_map_matmul_to_mul_pass");
+    config.pass_builder()->AppendPass("gpu_cpu_map_matmul_v2_to_mul_pass");
+    config.pass_builder()->AppendPass("gpu_cpu_map_matmul_v2_to_matmul_pass");
+    config.pass_builder()->AppendPass("gpu_cpu_map_matmul_to_mul_pass");
     config.pass_builder()->AppendPass("build_cinn_pass");
-    config.pass_builder()->AppendPass("graph_viz_pass");
   }
 
   LOG(INFO) << "Used passes: " << config.pass_builder()->DebugString();
