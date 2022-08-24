@@ -591,7 +591,7 @@ def ifftn(x, s=None, axes=None, norm="backward", name=None):
 
         .. code-block:: python
 
-        import paddle
+            import paddle
 
             x = paddle.eye(3)
             ifftn_x = paddle.fft.ifftn(x, axes=(1,))
@@ -723,6 +723,7 @@ def irfftn(x, s=None, axes=None, norm="backward", name=None):
             - `s` is also the number of input points used along this axis, except for the last axis, where ``s[-1]//2+1`` points of the input are used. 
             - Along any axis, if the shape indicated by `s` is smaller than that of the input, the input is cropped. If it is larger, the input is padded with zeros. 
             - If `s` is not given, the shape of the input along the axes specified by axes is used. Except for the last axis which is taken to be ``2*(k-1)`` 
+            
             where ``k`` is the length of the input along that axis.
             
         axes (sequence of ints, optional): Axes over which to compute the inverse FFT. If not given, the last
@@ -834,7 +835,7 @@ def ihfftn(x, s=None, axes=None, norm="backward", name=None):
             of the input, the input is cropped. If it is larger, the input is 
             padded with zeros. if `s` is not given, the shape of the input 
             along the axes specified by `axes` is used.
-        axis(Sequence[int], optional) : Axis over which to compute the inverse FFT. If not
+        axes(Sequence[int], optional) : Axis over which to compute the inverse FFT. If not
             given, the last axis is used.
         norm(str, optional) : Normalization mode, indicates which direction of 
             the forward/backward pair of transforms is scaled and with what 
@@ -1117,11 +1118,6 @@ def hfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     Returns:
         Real tensor. The real result of the 2-D Hermitian complex real FFT.
     
-    Raises:
-        ValueError: if `s` not be a sequence of 2 integers or None.
-        ValueError: if `axes` not be a sequence of 2 integers or None.
-        ValueError: If the input dimension is smaller than 2.
-    
     Examples:
 
         .. code-block:: python
@@ -1157,12 +1153,12 @@ def ihfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     For more details see `ihfftn`.
 
     Args:
-        x(Tensor): Input tensor
+        x(Tensor): Input tensor.
         s(Sequence[int], optional): Shape of the real input to the inverse FFT.
         axes(Sequance[int], optional): The axes over which to compute the 
             inverse fft. Default is the last two axes.
         norm(str, optional): {"backward", "ortho", "forward"}. Default is 
-        "backward".
+            "backward".
         name(str, optional): The default value is None.  Normally there is no 
             need for user to set this property. For more information, please 
             refer to :ref:`api_guide_Name` . 
