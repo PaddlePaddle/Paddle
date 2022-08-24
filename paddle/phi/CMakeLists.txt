@@ -46,10 +46,10 @@ set(PHI_DEPS
 get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
 set(PHI_DEPS ${PHI_DEPS} ${phi_kernels})
 
-if(WIN32)
-  create_dummy_static_lib(phi LIBS ${PHI_DEPS} LIMIT 100)
-else()
+if(APPLE AND WITH_ARM)
   cc_library(phi DEPS ${PHI_DEPS})
+else()
+  create_dummy_static_lib(phi LIBS ${PHI_DEPS} LIMIT 100)
 endif()
 
 set(phi_extension_header_file
