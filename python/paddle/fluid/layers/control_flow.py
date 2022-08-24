@@ -89,9 +89,9 @@ def select_input(inputs, mask):
     check_type(inputs, 'inputs', (list, tuple), 'select_input')
     check_variable_and_dtype(mask, 'mask', ['int32'], 'select_input')
 
-    input_dtype = inputs[0].dtype
-    input_shape = inputs[0].shape
-    input_type = inputs[0].type
+    input_dtype = inputs[1].dtype
+    input_shape = inputs[1].shape
+    input_type = inputs[1].type
 
     out = helper.create_variable(dtype=input_dtype,
                                  shape=input_shape,
@@ -1188,6 +1188,13 @@ def assign_skip_lod_tensor_array(input, output):
     """
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     """
+
+    def _shape_diff(vara, varb):
+        if len(vara.shape) != len(varb.shape): return True
+        for sa, sb in zip(vara.shape, varb.shape):
+            if sa != sb and -1 not in [sa, sb]: return True
+        return False
+
     if not isinstance(input, (Variable, core.VarBase)):
         if isinstance(output, Variable) and isinstance(
                 input, support_ret_buildin_type):
@@ -1203,6 +1210,11 @@ def assign_skip_lod_tensor_array(input, output):
         if parent_block and not parent_block._find_var_recursive(input.name):
             assign(input, output)
     else:
+        if isinstance(output, Variable) and isinstance(
+                input, Variable) and _shape_diff(input, output):
+            warnings.warn(
+                "In dy2static mode, we attemp to assign a variable with shape {} into a variable with shape{}, which is not always right."
+                .format(input.shape, output.shape))
         assign(input, output)
 
 
