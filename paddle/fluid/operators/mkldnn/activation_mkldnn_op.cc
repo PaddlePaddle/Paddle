@@ -182,7 +182,6 @@ struct SoftplusMKLDNNFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-
 template <typename T>
 using Relu6MKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_bounded_relu>;
