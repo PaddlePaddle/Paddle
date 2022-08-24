@@ -638,10 +638,10 @@
   backward : cumprod_grad
 
 - api : cumsum
-  args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)
+  args : (Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse)
   output : Tensor(out)
   infer_meta :
-    func : CumInferMeta
+    func : CumScalarAxisInferMeta
   kernel :
     func : cumsum
   backward : cumsum_grad

@@ -591,11 +591,11 @@
     func : cumprod_grad
 
 - backward_api : cumsum_grad
-  forward : cumsum(Tensor x, int axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
+  forward : cumsum(Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
-  args : (Tensor out_grad, int axis, bool flatten, bool exclusive, bool reverse)
+  args : (Tensor out_grad, Scalar axis, bool flatten, bool exclusive, bool reverse)
   output : Tensor(x_grad)
   invoke : cumsum(out_grad, axis, flatten, exclusive, !reverse)
 
