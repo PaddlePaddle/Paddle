@@ -75,7 +75,14 @@ class ProcessMesh(object):
 
     """
 
-    def __init__(self, mesh):
+    def __init__(self, mesh=None, shape=None, process_ids=None):
+        # Use shape and process_ids just for compatibility
+        # Users should not use these directly
+        if mesh is None:
+            assert shape is not None
+            assert process_ids is not None
+            mesh = numpy.array(process_ids).reshape(shape).tolist()
+
         if mesh is None or not isinstance(mesh, list):
             raise ValueError('mesh must be an instance of list.')
 
@@ -112,6 +119,21 @@ class ProcessMesh(object):
 
     @property
     def processes(self):
+        r"""
+        Get a list of all processes belonging to this ProcessMesh.
+        """
+        return self._processes
+
+    @property
+    def shape(self):
+        r"""
+        Get the topology of logical processes belonging to this ProcessMesh.
+        This is the shape of `mesh` used to initialized this ProcessMesh.
+        """
+        return self._topology
+
+    @property
+    def process_ids(self):
         r"""
         Get a list of all processes belonging to this ProcessMesh.
         """

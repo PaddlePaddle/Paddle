@@ -108,9 +108,10 @@ class TensorDistAttr {
  private:
   static std::vector<std::string> fields_;
   const VarDesc* tensor_{nullptr};
+  std::vector<int64_t> tensor_shape_;
   ProcessMesh process_mesh_;
   std::vector<int64_t> dims_mapping_;
-  int64_t batch_dim_;
+  int64_t batch_dim_{0};
   std::vector<bool> dynamic_dims_;
   std::map<std::string, bool> annotated_;
 };
@@ -150,9 +151,15 @@ class OperatorDistAttr {
     return input_dist_attrs_;
   }
 
+  void set_input_dist_attrs(
+      const std::map<std::string, TensorDistAttr>& dist_attrs);
+
   const std::map<std::string, TensorDistAttr>& output_dist_attrs() const {
     return output_dist_attrs_;
   }
+
+  void set_output_dist_attrs(
+      const std::map<std::string, TensorDistAttr>& dist_attrs);
 
   const TensorDistAttr& input_dist_attr(const std::string& name) const {
     return input_dist_attrs_.at(name);
@@ -197,6 +204,16 @@ class OperatorDistAttr {
   }
 
   void annotate(const std::string& name);
+
+  const std::vector<int64_t>& input_dims_mapping(const std::string& name) const;
+
+  void set_input_dims_mapping(const std::string& name,
+                              const std::vector<int64_t>& dims_mapping);
+
+  const std::vector<int64_t>& output_dims_mapping(const std::string& name);
+
+  void set_output_dims_mapping(const std::string& name,
+                               const std::vector<int64_t>& dims_mapping);
 
   bool verify_input_dist_attr(const std::string& name,
                               const TensorDistAttr& dist_attr) const;
