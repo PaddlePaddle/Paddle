@@ -22,8 +22,8 @@ limitations under the License. */
 
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {
@@ -142,7 +142,7 @@ TEST(MemorySparseTable, SGD) {
   // table->PullSparse(pull_values.data(), value);
 
   for (size_t i = 0; i < init_keys.size(); ++i) {
-    for (size_t j = 2; j < emb_dim + 3; ++j) {
+    for (int j = 2; j < emb_dim + 3; ++j) {
       auto update_val = init_values[i * (emb_dim + 1) + j] -
                         0.1 * total_gradients[3 + i * (emb_dim + 4) + j];
       VLOG(3) << total_gradients[i * (emb_dim + 4) + j + 3] << ":"
@@ -150,9 +150,6 @@ TEST(MemorySparseTable, SGD) {
       VLOG(3) << update_val << ": " << pull_values[i * (emb_dim + 1) + j];
     }
   }
-
-  MemorySparseTable *ctr_table = dynamic_cast<MemorySparseTable *>(table);
-  ctr_table->SaveLocalFS("./work/table.save", "0", "test");
 }
 
 }  // namespace distributed

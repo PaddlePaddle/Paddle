@@ -109,6 +109,7 @@ _act_supported_quantizable_op_type = [
     "square",
     "softplus",
     "shuffle_channel",
+    "reduce_max",
 ]
 
 _out_scale_op_list = list(
@@ -213,6 +214,7 @@ _op_real_in_out_name = {
     "square": [["X"], ["Out"]],
     "softplus": [["X"], ["Out"]],
     "shuffle_channel": [["X"], ["Out"]],
+    "reduce_max": [["X"], ["Out"]],
 }
 
 
@@ -321,7 +323,7 @@ def set_variable_data(scope, place, var_name, np_value):
         tensor.set(np_value, place)
 
 
-def quant_tensor(x, scale, quant_axis=0, weight_bits=8):
+def quant_tensor(x, scale, quant_axis=0, weight_bits=8, onnx_format=False):
     # symmetry quant
     def _clip(x, scale):
         x[x > scale] = scale
@@ -335,15 +337,27 @@ def quant_tensor(x, scale, quant_axis=0, weight_bits=8):
             if s == 0.0:
                 s = 1e-8
             if quant_axis == 0:
-                x[i] = _clip(x[i], s)
-                x[i] = x[i] / s * bnt
+                if onnx_format:
+                    x[i] = np.round(x[i] / s * bnt)
+                    x[i] = np.clip(x[i], -bnt - 1, bnt)
+                else:
+                    x[i] = _clip(x[i], s)
+                    x[i] = x[i] / s * bnt
             else:
-                x[:, i] = _clip(x[:, i], s)
-                x[:, i] = x[:, i] / s * bnt
+                if onnx_format:
+                    x[:, i] = np.round(x[:, i] / s * bnt)
+                    x[:, i] = np.clip(x[:, i], -bnt - 1, bnt)
+                else:
+                    x[:, i] = _clip(x[:, i], s)
+                    x[:, i] = x[:, i] / s * bnt
     else:
         scale = 1e-8 if scale == 0.0 else scale
-        x = _clip(x, scale)
-        x = x / scale * bnt
+        if onnx_format:
+            x = np.round(x / scale * bnt)
+            x = np.clip(x, -bnt - 1, bnt)
+        else:
+            x = _clip(x, scale)
+            x = x / scale * bnt
     return x
 
 

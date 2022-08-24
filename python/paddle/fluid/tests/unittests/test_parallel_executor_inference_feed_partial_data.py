@@ -49,12 +49,12 @@ class TestInferencePartialFeed(unittest.TestCase):
 
         gen_random = lambda shape: np.random.uniform(
             low=-1.0, high=1.0, size=shape).astype('float32')
-        assert_result = lambda feed, result: self.assertTrue(
-            np.array_equal(np.maximum(0, feed), result))
+        assert_result = lambda feed, result: np.testing.assert_array_equal(
+            np.maximum(0, feed), result)
 
         def assert_merged_unmerged(merged, unmerged):
             unmerged = np.concatenate(unmerged, axis=0)
-            self.assertTrue(np.array_equal(merged, unmerged))
+            np.testing.assert_array_equal(merged, unmerged)
 
         def feed_split_test():
             for place_num in six.moves.range(1, len(places) * 3):

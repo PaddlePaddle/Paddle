@@ -45,7 +45,8 @@ class GLOOParallelContext : public ParallelContext {
   void InitWithRingID(int ring_id) override;
 
   void AllReduceByStream(const framework::Variable& src,
-                         framework::Variable* dst, int ring_id,
+                         framework::Variable* dst,
+                         int ring_id,
                          bool use_calc_stream) override;
 
   void Broadcast(framework::Variable* src, int ring_id) override;
@@ -63,7 +64,7 @@ class GLOOParallelContext : public ParallelContext {
   void AllReduce(const phi::SelectedRows& src, phi::SelectedRows* dst);
 
  private:
-  std::unique_ptr<platform::CPUDeviceContext> device_;
+  std::unique_ptr<phi::CPUContext> device_;
 };
 
 }  //  namespace imperative

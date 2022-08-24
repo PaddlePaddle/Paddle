@@ -37,7 +37,7 @@ np.random.seed(SEED)
 # Use a decorator to test exception
 @paddle.jit.to_static
 def dyfunc_with_if(x_v):
-    if fluid.layers.mean(x_v).numpy()[0] > 5:
+    if paddle.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -58,7 +58,7 @@ def nested_func(x_v):
 @paddle.jit.to_static
 def dyfunc_with_third_library_logging(x_v):
     logging.info('test dyfunc_with_third_library_logging')
-    if fluid.layers.mean(x_v).numpy()[0] > 5:
+    if paddle.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -91,9 +91,12 @@ class TestRecursiveCall1(unittest.TestCase):
     def test_transformed_static_result(self):
         static_res = self.get_static_output()
         dygraph_res = self.get_dygraph_output()
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph res is {}\nstatic_res is {}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph res is {}\nstatic_res is {}'.format(
+                dygraph_res, static_res))
 
 
 lambda_fun = lambda x: x
@@ -176,9 +179,7 @@ class TestRecursiveCall2(unittest.TestCase):
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph is {}\n static_res is \n{}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 class TestThirdPartyLibrary(TestRecursiveCall2):
@@ -266,7 +267,7 @@ class TestDynamicToStaticCode(unittest.TestCase):
         return get_source_code(self.answer_func)
 
     def _get_transformed_code(self):
-        transformed_func = _jst.convert_call(self.func)
+        transformed_func = _jst.Call(self.func)
         return get_source_code(transformed_func)
 
     def test_code(self):
@@ -289,7 +290,7 @@ class TestDynamicToStaticCode2(TestDynamicToStaticCode):
         class StaticCode():
 
             def func_convert_then_not_to_static(x):
-                y = _jst.convert_call(func_not_to_static)(x)
+                y = _jst.Call(func_not_to_static)(x)
                 return y
 
         self.answer_func = StaticCode.func_convert_then_not_to_static

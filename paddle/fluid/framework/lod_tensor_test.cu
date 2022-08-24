@@ -34,8 +34,13 @@ TEST(LoD, data) {
   paddle::framework::MixVector<size_t> mix_vector_v(&v);
   paddle::platform::CUDAPlace gpu(0);
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL(test, dim3(1), dim3(1), 0, 0,
-                     mix_vector_v.CUDAMutableData(gpu), v.size());
+  hipLaunchKernelGGL(test,
+                     dim3(1),
+                     dim3(1),
+                     0,
+                     0,
+                     mix_vector_v.CUDAMutableData(gpu),
+                     v.size());
   hipDeviceSynchronize();
 #else
   test<<<1, 1>>>(mix_vector_v.CUDAMutableData(gpu), v.size());
@@ -67,8 +72,13 @@ TEST(LoDTensor, LoDInGPU) {
   paddle::framework::MixVector<size_t> mix_vector(&(lod[0]));
 
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL(test, dim3(1), dim3(8), 0, 0,
-                     mix_vector.CUDAMutableData(place), lod[0].size());
+  hipLaunchKernelGGL(test,
+                     dim3(1),
+                     dim3(8),
+                     0,
+                     0,
+                     mix_vector.CUDAMutableData(place),
+                     lod[0].size());
   hipDeviceSynchronize();
 #else
   test<<<1, 8>>>(mix_vector.CUDAMutableData(place), lod[0].size());

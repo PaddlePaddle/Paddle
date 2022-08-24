@@ -46,6 +46,7 @@ def fused_feedforward(x,
                       training=True,
                       mode='upscale_in_train',
                       ring_id=-1,
+                      add_residual=True,
                       name=None):
     r"""
     This is a fusion operator to compute feed forward layer in transformer model architecture.
@@ -54,12 +55,19 @@ def fused_feedforward(x,
 
     .. code-block:: python
 
-        residual = src;
+        residual = x
         if pre_layer_norm:
-            src = layer_norm(src)
-        src = linear(dropout(activation(dropout(linear(src)))))
+            out = layer_norm1(x)
+        else:
+            out = x
+        out = linear2(dropout1(activation(linear1(src))))
+        if add_residual:
+            out = residual + dropout2(out)
+        else:
+            out = dropout2(out)
         if not pre_layer_norm:
-            src = layer_norm(out)
+            out = layer_norm2(out)
+
 
     Args:
         x (Tensor): the input tensor could be 3-D tensor, the input data type could be float16, float32 or float64, the shape is`[batch\_size, sequence\_length, d_model]`.
@@ -90,6 +98,7 @@ def fused_feedforward(x,
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
         ring_id (int, optional): For distributed forward in tensor model parallel, only support NCCL. Default is -1, means not using tensor parallel.
+        add_residual (bool, optional): Whether add residual at the end. Default is True.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -100,15 +109,13 @@ def fused_feedforward(x,
 
             # required: gpu
             import paddle
-            import numpy as np
-            x_data = np.random.random((1, 8, 8)).astype("float32")
-            linear1_weight_data = np.random.random((8, 8)).astype("float32")
-            linear2_weight_data = np.random.random((8, 8)).astype("float32")
-            x = paddle.to_tensor(x_data)
-            linear1_weight = paddle.to_tensor(linear1_weight_data)
-            linear2_weight = paddle.to_tensor(linear2_weight_data)
-            out = paddle.incubate.nn.functional.fused_feedforward(x, linear1_weight, linear2_weight)
-            print(out.numpy().shape)
+            import paddle.incubate.nn.functional as F
+
+            x = paddle.randn(shape=(1, 8, 8), dtype="float32")
+            linear1_weight = paddle.randn(shape=(8, 8), dtype="float32")
+            linear2_weight = paddle.randn(shape=(8, 8), dtype="float32")
+            out = F.fused_feedforward(x, linear1_weight, linear2_weight)
+            print(out.shape)
             # (1, 8, 8)
     """
     _verify_dropout_rate(dropout1_rate)
@@ -134,7 +141,8 @@ def fused_feedforward(x,
             "dropout2_fix_seed", seed is not None, "dropout1_seed",
             seed if seed is not None else 0, "dropout2_seed",
             seed if seed is not None else 0, 'dropout1_implementation', mode,
-            'dropout2_implementation', mode, 'ring_id', ring_id)
+            'dropout2_implementation', mode, 'add_residual', add_residual,
+            'ring_id', ring_id)
         return out
 
     helper = LayerHelper("fused_feedforward")
@@ -208,6 +216,7 @@ def fused_feedforward(x,
                          'dropout2_seed': seed if seed is not None else 0,
                          'dropout1_implementation': mode,
                          'dropout2_implementation': mode,
+                         'add_residual': add_residual,
                          'ring_id': ring_id,
                      })
     return out
@@ -378,6 +387,7 @@ def fused_multi_head_attention(x,
                                training=True,
                                mode='upscale_in_train',
                                ring_id=-1,
+                               add_residual=True,
                                name=None):
     r"""
     Attention mapps queries and a set of key-value pairs to outputs, and
@@ -387,27 +397,34 @@ def fused_multi_head_attention(x,
 
     .. code-block:: python
 
-    	if pre_layer_norm:
-    	    out = layer_norm(x)
-            out = linear(out) + qkv) + bias
-    	else:
-            out = linear(x) + bias
-            out = transpose(out, perm=[2, 0, 3, 1, 4])
-    	# extract q, k and v from out.
-    	q = out[0:1,::]
-    	k = out[1:2,::]
-    	v = out[2:3,::]
-    	out = q * k^t
-    	out = attn_mask + out
-    	out = softmax(out)
-    	out = dropout(out)
-    	out = out * v
-    	out = transpose(out, perm=[0, 2, 1, 3])
-    	out = out_linear(out)
-    	if pre_layer_norm:
-    	    out = x + dropout(linear_bias + out)
+        residual = x
+        if pre_layer_norm:
+            out = layer_norm(x)
         else:
-            out = layer_norm(x + dropout(linear_bias + out))
+            out = x
+        # compute q, k, v
+        out = matmul(out, qkv_weight) + qkv_bias
+        out = transpose(out, perm=[2, 0, 3, 1, 4])
+        # extract q, k and v from out
+        q = out[0:1,::] * (head_dim ** -0.5)
+        k = out[1:2,::]
+        v = out[2:3,::]
+        out = matmul(q, k, transpose_y=True)
+        out = out + attn_mask
+        out = softmax(out)
+        out = dropout(out)
+        out = matmul(out, v)
+        # combine heads
+        out = transpose(out, perm=[0, 2, 1, 3])
+        # project to output
+        out = linear(out)
+        if add_residual:
+            out = residual + dropout(out)
+        else:
+            out = dropout(out)
+        if not pre_layer_norm:
+            out = layer_norm(out)
+
 
     Parameters:
         x (Tensor): The input tensor of fused_multi_head_attention. The shape is
@@ -415,7 +432,7 @@ def fused_multi_head_attention(x,
         qkv_weight (Tensor): The qkv weight tensor. The shape is `[3, num_head, dim_head, dim_embed]`.
         linear_weight (Tensor): The linear weight tensor. The shape is `[embed_dim, embed_dim]`.
         pre_layer_norm (bool, optional): whether it is pre_layer_norm (True) or post_layer_norm architecture
-	    (False). Default False.
+                                        (False). Default False.
         pre_ln_scale (Tensor, optional): The weight tensor of pre layernorm. Default None.
         pre_ln_bias (Tensor, optional): The bias tensor of pre layernorm. Default None.
         ln_scale (Tensor, optional): The weight tensor of layernorm. Default None.
@@ -427,7 +444,7 @@ def fused_multi_head_attention(x,
         linear_bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
         cache_kv (Tensor, optional): For generation model, cache structure. The shape is `[2, bsz, num_head, seq_len, head_dim]`. Default None.
         attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
- 	    some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
+            some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
             with shape broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`. When the
             data type is bool, the unwanted positions have `False` values and the others have `True` values.
             When the data type is int, the unwanted positions have 0 values and the others have 1 values.
@@ -454,6 +471,7 @@ def fused_multi_head_attention(x,
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
         ring_id (int, optional): For distributed forward in mp, only support NCCL and forward. Default is -1, means not using mp
+        add_residual (bool, optional): Whether add residual at the end. Default is True.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -508,8 +526,10 @@ def fused_multi_head_attention(x,
             0] == 3, "The shape of qkv_weight should be [3, num_head, head_dim, embed_dim]."
         assert qkv_weight.shape[3] == x.shape[
             2], "The 3rd dim of qkv_weight and 2nd dim of x should be the same, i.e., embed_dim."
-        assert qkv_weight.shape[1] * qkv_weight.shape[2] == qkv_weight.shape[
-            3], "embed_dim must be divisible by num_heads."
+        if ring_id == -1:
+            # under mp, the num head will be split, this equation will not hold
+            assert qkv_weight.shape[1] * qkv_weight.shape[2] == qkv_weight.shape[
+                3], "embed_dim must be divisible by num_heads."
 
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, cache_kv_out, final_out = _C_ops.fused_attention(
             x, pre_ln_scale, pre_ln_bias, qkv_weight, qkv_bias, cache_kv,
@@ -521,7 +541,8 @@ def fused_multi_head_attention(x,
             'dropout_fix_seed', seed is not None, 'attn_dropout_seed',
             seed if seed is not None else 0, 'dropout_seed',
             seed if seed is not None else 0, 'attn_dropout_implementation',
-            mode, 'dropout_implementation', mode, 'ring_id', ring_id)
+            mode, 'dropout_implementation', mode, 'add_residual', add_residual,
+            'ring_id', ring_id)
         if cache_kv is not None:
             return final_out, cache_kv_out
         return final_out
@@ -571,6 +592,7 @@ def fused_multi_head_attention(x,
             'dropout_seed': seed if seed is not None else 0,
             'attn_dropout_implementation': mode,
             'dropout_implementation': mode,
+            'add_residual': add_residual,
             'ring_id': ring_id
         }
 
@@ -658,6 +680,7 @@ def fused_multi_transformer(x,
                             activation="gelu",
                             training=False,
                             mode='upscale_in_train',
+                            trans_qkvw=True,
                             ring_id=-1,
                             name=None):
     r"""
@@ -734,6 +757,9 @@ def fused_multi_transformer(x,
 
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
+        trans_qkvw (bool, optional): Whether to transpose for weights of qkv.
+            If true, the shape eights of qkv should be [3, num_head, dim_head, dim_embed].
+            Otherwise the shape of weights of qkv should be [dim_embed, 3, num_head, dim_head]. Default True.
         ring_id (int, optional): For distributed forward in tensor model parallel, only support NCCL. Default is -1, means not using mp.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -804,8 +830,8 @@ def fused_multi_transformer(x,
             ffn_ln_biases, ffn1_weights, ffn1_biases, ffn2_weights, ffn2_biases,
             cache_kvs, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
             'dropout_rate', dropout_rate, 'is_test', not training,
-            'dropout_implementation', mode, 'act_method', activation, 'ring_id',
-            ring_id)
+            'dropout_implementation', mode, 'act_method', activation,
+            'trans_qkvw', trans_qkvw, 'ring_id', ring_id)
         if cache_kvs is not None:
             return final_out, cache_kv_out
         return final_out
@@ -853,6 +879,7 @@ def fused_multi_transformer(x,
             'is_test': not training,
             'dropout_implementation': mode,
             'act_method': activation,
+            'trans_qkvw': trans_qkvw,
             'ring_id': ring_id
         }
 

@@ -21,7 +21,7 @@ from paddle.fluid import core
 __all__ = []
 
 
-class PyLayerContext(object):
+class LegacyPyLayerContext(object):
     """
     The object of this class is a context that is used in PyLayer to enhance the function.
 
@@ -181,7 +181,7 @@ class CPyLayer(object):
             return core.pylayer_apply(place, cls, *args, **kwargs)
 
 
-class PyLayerBackward(PyLayerContext):
+class PyLayerBackward(LegacyPyLayerContext):
 
     def backward(self, *args, **kwargs):
         with paddle.fluid.dygraph.guard():
@@ -205,7 +205,7 @@ class LayerMeta(type):
         return super(LayerMeta, cls).__init__(name, bases, attrs)
 
 
-class PyLayer(with_mateclass(LayerMeta, CPyLayer)):
+class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
     """
     Build a custom `Layer` by creating subclasses. Subclasses need to follow the following rules:
     1. Subclasses contain `forward` and `backward` function. Both forward and backward are @staticmethod.
@@ -407,13 +407,50 @@ class EagerPyLayerContext(object):
         """
         return self.container
 
-    def mark_dirty(self, *args):
-        self.dirty_tensors = args
+    def mark_not_inplace(self, *args):
+        """
+        Marks inputs as not inplace.
+        This should be called at most once, only from inside the `forward` method, 
+        and all arguments should be Tensor inputs.
+
+        If the Tensor returned by `forward` method is the same as the Tensor input of forward, 
+        and this Tensor is marked as not_inplace, then Paddle will help the user create a new Tensor as output. 
+        Thereby preventing the auto grad information of the input Tensor from being overwritten.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class Exp(paddle.autograd.PyLayer):
+                    @staticmethod
+                    def forward(ctx, x):
+                        ctx.mark_not_inplace(x)
+                        return x
+                    
+                    @staticmethod
+                    def backward(ctx, grad_output):
+                        out = grad_output.exp()
+                        return out
+
+                x = paddle.randn((1, 1))
+                x.stop_gradient = False
+                attn_layers = []
+                for idx in range(0, 2):
+                    attn_layers.append(Exp())
+                
+                for step in range(0, 2):
+                    a = x
+                    for j in range(0,2):
+                        a = attn_layers[j].apply(x)
+                    a.backward()
+        """
+        self.not_inplace_tensors = args
 
     def mark_non_differentiable(self, *args):
         """
         Marks outputs as non-differentiable.
-        This should be called at most once, only from inside thethe `forward` method, 
+        This should be called at most once, only from inside the `forward` method, 
         and all arguments should be tensor outputs.
 
         This will mark outputs as not requiring gradients, increasing the
@@ -425,6 +462,8 @@ class EagerPyLayerContext(object):
         Examples:
             .. code-block:: python
 
+                import os
+                os.environ['FLAGS_enable_eager_mode'] = '1'
                 import paddle
                 from paddle.autograd import PyLayer
                 import numpy as np
@@ -464,6 +503,8 @@ class EagerPyLayerContext(object):
         Examples:
             .. code-block:: python
 
+                import os
+                os.environ['FLAGS_enable_eager_mode'] = '1'
                 import paddle
                 from paddle.autograd import PyLayer
                 import numpy as np
@@ -471,7 +512,7 @@ class EagerPyLayerContext(object):
                 class Tanh(PyLayer):
                     @staticmethod
                     def forward(ctx, x):
-                        return x, x+x
+                        return x+x+x, x+x
 
                     @staticmethod
                     def backward(ctx, grad, grad2):
@@ -482,7 +523,7 @@ class EagerPyLayerContext(object):
                     @staticmethod
                     def forward(ctx, x):
                         ctx.set_materialize_grads(False)
-                        return x, x+x
+                        return x+x+x, x+x
 
                     @staticmethod
                     def backward(ctx, grad, grad2):

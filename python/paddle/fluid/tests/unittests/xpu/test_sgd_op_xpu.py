@@ -79,7 +79,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         out = fluid.layers.l2_normalize(x=emb, axis=-1)
 
         cost = fluid.layers.square_error_cost(input=out, label=label)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
 

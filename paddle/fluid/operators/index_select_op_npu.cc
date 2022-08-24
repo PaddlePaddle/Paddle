@@ -71,8 +71,8 @@ class IndexSelectGradNPUKernel : public framework::OpKernel<T> {
     if (framework::TransToProtoVarType(index->dtype()) !=
         framework::proto::VarType::INT32) {
       casted_index.mutable_data<int32_t>(index->dims(), ctx.GetPlace());
-      const auto& cast_runner = NpuOpRunner("Cast", {*index}, {casted_index},
-                                            {{"dst_type", ACL_INT32}});
+      const auto& cast_runner = NpuOpRunner(
+          "Cast", {*index}, {casted_index}, {{"dst_type", ACL_INT32}});
       cast_runner.Run(stream);
     } else {
       casted_index.ShareDataWith(*index);

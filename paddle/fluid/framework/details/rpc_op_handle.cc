@@ -21,8 +21,10 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-RPCOpHandle::RPCOpHandle(ir::Node *node, const framework::OpDesc &op_desc,
-                         Scope *local_scope, const std::string &name,
+RPCOpHandle::RPCOpHandle(ir::Node *node,
+                         const framework::OpDesc &op_desc,
+                         Scope *local_scope,
+                         const std::string &name,
                          const platform::Place &place)
     : OpHandleBase(node),
       op_(framework::OpRegistry::CreateOp(op_desc)),

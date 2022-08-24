@@ -103,7 +103,8 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
                       std::unordered_set<OpHandleBase *> *ready_ops,
                       std::unordered_map<OpHandleBase *, size_t> *pending_ops,
                       std::unordered_set<VarHandleBase *> *pending_vars,
-                      FetchResultType *fetch_data, bool return_merged);
+                      FetchResultType *fetch_data,
+                      bool return_merged);
 
   void PrepareOpDeps();
 

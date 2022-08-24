@@ -61,9 +61,11 @@ class ModifiedHuberLossGradGPUKernel : public framework::OpKernel<T> {
       auto iter_begin = thrust::make_zip_iterator(
           thrust::make_tuple(x_grad_ptr, inter_val_ptr, y_ptr, out_grad_ptr));
 
-      auto iter_end = thrust::make_zip_iterator(
-          thrust::make_tuple(x_grad_ptr + counts, inter_val_ptr + counts,
-                             y_ptr + counts, out_grad_ptr + counts));
+      auto iter_end =
+          thrust::make_zip_iterator(thrust::make_tuple(x_grad_ptr + counts,
+                                                       inter_val_ptr + counts,
+                                                       y_ptr + counts,
+                                                       out_grad_ptr + counts));
 
       thrust::for_each(iter_begin, iter_end, ModifiedHuberLossBackward());
     }
@@ -74,8 +76,7 @@ class ModifiedHuberLossGradGPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    modified_huber_loss,
-    ops::ModifiedHuberLossKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(modified_huber_loss,
+                        ops::ModifiedHuberLossKernel<phi::GPUContext, float>);
 REGISTER_OP_CUDA_KERNEL(modified_huber_loss_grad,
                         ops::ModifiedHuberLossGradGPUKernel<float>);

@@ -24,7 +24,8 @@ namespace operators {
 using Tensor = framework::Tensor;
 using SelectedRows = phi::SelectedRows;
 using LoDTensor = framework::LoDTensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
@@ -45,7 +46,9 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
     auto &in0 = in_vars[0]->Get<phi::SelectedRows>();
     temp_in0.set_height(in0.height());
     temp_in0.set_rows(in0.rows());
-    framework::TensorCopy(in0.value(), in0.place(), context.device_context(),
+    framework::TensorCopy(in0.value(),
+                          in0.place(),
+                          context.device_context(),
                           temp_in0.mutable_value());
     inputs.push_back(&temp_in0);
     for (size_t i = 1; i < in_vars.size(); ++i) {
@@ -93,7 +96,8 @@ void LodTensorArrayCompute(const framework::ExecutionContext &context) {
   bool in_place = out_var == in_vars[0];
   auto &out_array = *out_var->GetMutable<framework::LoDTensorArray>();
   for (size_t i = in_place ? 1 : 0; i < in_vars.size(); ++i) {
-    PADDLE_ENFORCE_EQ(in_vars[i]->IsType<framework::LoDTensorArray>(), true,
+    PADDLE_ENFORCE_EQ(in_vars[i]->IsType<framework::LoDTensorArray>(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Only support all inputs are TensorArray, "
                           "but inputs[%d] is not TensorArray.",
@@ -106,16 +110,20 @@ void LodTensorArrayCompute(const framework::ExecutionContext &context) {
           out_array.resize(i + 1);
         }
         if (!out_array[i].IsInitialized() || (out_array[i].numel() == 0)) {
-          framework::TensorCopy(in_array[i], in_array[i].place(),
-                                context.device_context(), &out_array[i]);
+          framework::TensorCopy(in_array[i],
+                                in_array[i].place(),
+                                context.device_context(),
+                                &out_array[i]);
           out_array[i].set_lod(in_array[i].lod());
         } else {
           PADDLE_ENFORCE_EQ(
-              out_array[i].lod(), in_array[i].lod(),
+              out_array[i].lod(),
+              in_array[i].lod(),
               platform::errors::InvalidArgument(
                   "The lod message between inputs[%d] and"
                   " outputs[%d] must be same, but now is not same.",
-                  i, i));
+                  i,
+                  i));
           auto in = EigenVector<T>::Flatten(in_array[i]);
           auto result = EigenVector<T>::Flatten(out_array[i]);
           result.device(*context.template device_context<DeviceContext>()
@@ -170,7 +178,8 @@ class SumKernel : public framework::OpKernel<T> {
           VLOG(10) << "Fill with constant = 0 in sum kernel.";
           phi::funcs::SetConstant<DeviceContext, T> constant_functor;
           constant_functor(context.template device_context<DeviceContext>(),
-                           out, static_cast<T>(0));
+                           out,
+                           static_cast<T>(0));
         }
       }
 

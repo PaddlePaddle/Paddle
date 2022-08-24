@@ -47,8 +47,8 @@ struct CountInfo {
   std::atomic<int> refcount;
 };
 
-void AllocateMemoryMap(std::string filename, int flags, size_t size,
-                       void **map_ptr_, int *fd_) {
+void AllocateMemoryMap(
+    std::string filename, int flags, size_t size, void **map_ptr_, int *fd_) {
   // TODO(@ZHUI): support win32
   int file_flags = 0;
   int fd = -1;
@@ -68,7 +68,8 @@ void AllocateMemoryMap(std::string filename, int flags, size_t size,
     if (flags & MAPPED_SHAREDMEM) {
       fd = shm_open(filename.c_str(), file_flags, (mode_t)0600);
       PADDLE_ENFORCE_NE(
-          fd, -1,
+          fd,
+          -1,
           platform::errors::Unavailable(
               "File descriptor %s open failed, unable in read-write mode",
               filename.c_str()));
@@ -78,7 +79,8 @@ void AllocateMemoryMap(std::string filename, int flags, size_t size,
     fd = -1;
   }
 
-  PADDLE_ENFORCE_EQ(ftruncate(fd, size), 0,
+  PADDLE_ENFORCE_EQ(ftruncate(fd, size),
+                    0,
                     platform::errors::Unavailable(
                         "Fruncate a file to a specified length failed!"));
 
@@ -88,14 +90,16 @@ void AllocateMemoryMap(std::string filename, int flags, size_t size,
     *map_ptr_ = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
   }
 
-  PADDLE_ENFORCE_NE(*map_ptr_, MAP_FAILED,
+  PADDLE_ENFORCE_NE(*map_ptr_,
+                    MAP_FAILED,
                     platform::errors::Unavailable(
                         "Memory map failed when create shared memory."));
 
   if (flags & MAPPED_KEEPFD) {
     *fd_ = fd;
   } else {
-    PADDLE_ENFORCE_NE(::close(fd), -1,
+    PADDLE_ENFORCE_NE(::close(fd),
+                      -1,
                       platform::errors::Unavailable(
                           "Error closing memory maped file <", filename, ">"));
 
@@ -104,15 +108,16 @@ void AllocateMemoryMap(std::string filename, int flags, size_t size,
 }
 
 std::shared_ptr<RefcountedMemoryMapAllocation>
-AllocateRefcountedMemoryMapAllocation(std::string filename, int flags,
+AllocateRefcountedMemoryMapAllocation(std::string filename,
+                                      int flags,
                                       size_t size) {
   int fd = -1;
   void *base_ptr = nullptr;
   AllocateMemoryMap(filename, flags, size + mmap_alignment, &base_ptr, &fd);
   void *aliged_base_ptr =
       static_cast<void *>(static_cast<char *>(base_ptr) + mmap_alignment);
-  return std::make_shared<RefcountedMemoryMapAllocation>(aliged_base_ptr, size,
-                                                         filename, flags, fd);
+  return std::make_shared<RefcountedMemoryMapAllocation>(
+      aliged_base_ptr, size, filename, flags, fd);
 }
 
 RefcountedMemoryMapAllocation::RefcountedMemoryMapAllocation(
@@ -167,28 +172,35 @@ void RefcountedMemoryMapAllocation::close() {
   CountInfo *info = reinterpret_cast<CountInfo *>(data);
   if (--info->refcount == 0) {
     PADDLE_ENFORCE_NE(
-        shm_unlink(ipc_name_.c_str()), -1,
+        shm_unlink(ipc_name_.c_str()),
+        -1,
         platform::errors::Unavailable(
             "could not unlink the shared memory file ", ipc_name_));
     VLOG(6) << "shm_unlink file: " << ipc_name_;
   }
 
   PADDLE_ENFORCE_NE(
-      munmap(map_ptr_, map_size_), -1,
+      munmap(map_ptr_, map_size_),
+      -1,
       platform::errors::Unavailable("could not unmap the shared memory file: ",
-                                    strerror(errno), " (", errno, ")"));
+                                    strerror(errno),
+                                    " (",
+                                    errno,
+                                    ")"));
 }
 
 MemoryMapWriterAllocation::~MemoryMapWriterAllocation() {
   PADDLE_ENFORCE_NE(
-      munmap(this->ptr(), this->size()), -1,
+      munmap(this->ptr(), this->size()),
+      -1,
       platform::errors::Unavailable("could not unmap the shared memory file %s",
                                     this->ipc_name()));
 }
 
 MemoryMapReaderAllocation::~MemoryMapReaderAllocation() {
   PADDLE_ENFORCE_NE(
-      munmap(this->ptr(), this->size()), -1,
+      munmap(this->ptr(), this->size()),
+      -1,
       platform::errors::Unavailable("could not unmap the shared memory file %s",
                                     this->ipc_name()));
   /* Here we do not pay attention to the result of shm_unlink,
@@ -218,15 +230,18 @@ std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
   const std::string &ipc_name = GetIPCName();
   int flags = O_RDWR | O_CREAT;
   int fd = shm_open(ipc_name.c_str(), flags, 0600);
-  PADDLE_ENFORCE_NE(fd, -1,
+  PADDLE_ENFORCE_NE(fd,
+                    -1,
                     platform::errors::Unavailable(
                         "File descriptor %s open failed", ipc_name.c_str()));
-  PADDLE_ENFORCE_EQ(ftruncate(fd, size), 0,
+  PADDLE_ENFORCE_EQ(ftruncate(fd, size),
+                    0,
                     platform::errors::Unavailable(
                         "Fruncate a file to a specified length failed!"));
 
   void *ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  PADDLE_ENFORCE_NE(ptr, MAP_FAILED,
+  PADDLE_ENFORCE_NE(ptr,
+                    MAP_FAILED,
                     platform::errors::Unavailable(
                         "Memory map failed when create shared memory."));
   close(fd);
@@ -240,11 +255,13 @@ std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
   flags &= ~O_CREAT;
 
   int fd = shm_open(ipc_name.c_str(), flags, 0600);
-  PADDLE_ENFORCE_NE(fd, -1,
+  PADDLE_ENFORCE_NE(fd,
+                    -1,
                     platform::errors::Unavailable(
                         "File descriptor %s open failed", ipc_name.c_str()));
   void *ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  PADDLE_ENFORCE_NE(ptr, MAP_FAILED,
+  PADDLE_ENFORCE_NE(ptr,
+                    MAP_FAILED,
                     platform::errors::Unavailable(
                         "Memory map failed when rebuild shared memory."));
   close(fd);

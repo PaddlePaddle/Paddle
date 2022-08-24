@@ -36,7 +36,8 @@ USE_OP_ITSELF(elementwise_sub);
 USE_OP_DEVICE_KERNEL(elementwise_sub, NPU);
 
 template <typename T>
-void Compare(f::Scope *scope, const p::DeviceContext &ctx,
+void Compare(f::Scope *scope,
+             const p::DeviceContext &ctx,
              std::string op_type) {
   // init
   auto x = scope->Var("X");
@@ -66,8 +67,8 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx,
 
   // run
   f::AttributeMap attrs;
-  auto op = f::OpRegistry::CreateOp(op_type, {{"X", {"X"}}, {"Y", {"Y"}}},
-                                    {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      op_type, {{"X", {"X"}}, {"Y", {"Y"}}}, {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
 
@@ -88,7 +89,8 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx,
 }
 
 template <typename T>
-void CompareGrad(f::Scope *scope, const p::DeviceContext &ctx,
+void CompareGrad(f::Scope *scope,
+                 const p::DeviceContext &ctx,
                  std::string op_type) {
   // init
   auto dout = scope->Var("DOut");
@@ -120,8 +122,10 @@ void CompareGrad(f::Scope *scope, const p::DeviceContext &ctx,
   // run
   f::AttributeMap attrs;
   auto op = f::OpRegistry::CreateOp(
-      op_type, {{"Out@GRAD", {"DOut"}}, {"X", {"X"}}, {"Y", {"Y"}}},
-      {{"X@GRAD", {"DX"}}, {"Y@GRAD", {"DY"}}}, attrs);
+      op_type,
+      {{"Out@GRAD", {"DOut"}}, {"X", {"X"}}, {"Y", {"Y"}}},
+      {{"X@GRAD", {"DX"}}, {"Y@GRAD", {"DY"}}},
+      attrs);
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);

@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 from paddle.fluid.framework import _test_eager_guard
@@ -111,7 +112,7 @@ class MNIST(fluid.dygraph.Layer):
         x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
         cost = self._linear(x)
         loss = fluid.layers.cross_entropy(cost, label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
         return avg_loss
 
 

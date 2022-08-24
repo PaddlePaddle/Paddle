@@ -61,7 +61,8 @@ void PrintDebugInfo(const std::string preStr, const std::vector<T>& data) {
   std::cout << std::endl;
 }
 
-void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx,
+void PrepareUniqueId(f::Scope* scope,
+                     const p::DeviceContext& ctx,
                      HcclRootInfo* hccl_id) {
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
@@ -85,8 +86,8 @@ void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx,
 
   VLOG(3) << "break";
 
-  auto comm_init_op = f::OpRegistry::CreateOp("c_gen_hccl_id", {},
-                                              {{"Out", {"Out"}}}, gen_hccl_id);
+  auto comm_init_op = f::OpRegistry::CreateOp(
+      "c_gen_hccl_id", {}, {{"Out", {"Out"}}}, gen_hccl_id);
   VLOG(3) << "break";
   auto place = ctx.GetPlace();
   comm_init_op->Run(*scope, place);
@@ -95,7 +96,8 @@ void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx,
   memcpy(hccl_id, id, 1024);
 }
 
-void Prepare(f::Scope* scope, const p::DeviceContext& ctx,
+void Prepare(f::Scope* scope,
+             const p::DeviceContext& ctx,
              HcclRootInfo* hccl_id) {
   auto x = scope->Var("X");
   auto id = x->GetMutable<HcclRootInfo>();
@@ -124,7 +126,8 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx,
 }
 
 template <typename T>
-void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
+void TestHCCLAllReduceOp(f::Scope* scope,
+                         const p::DeviceContext& ctx,
                          int iter) {
   // init
   auto x = scope->Var("Data");
@@ -159,8 +162,8 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   attrs["ring_id"] = 0;
   attrs["use_calc_stream"] = 1;
 
-  auto op = f::OpRegistry::CreateOp("c_allreduce_sum", {{"X", {"Data"}}},
-                                    {{"Out", {"OutData"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      "c_allreduce_sum", {{"X", {"Data"}}}, {{"Out", {"OutData"}}}, attrs);
   for (int i = 0; i < 1; i++) {
     op->Run(*scope, place);
   }

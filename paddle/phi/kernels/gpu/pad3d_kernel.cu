@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/pad3d_kernel.h"
+
 #include <algorithm>
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -19,7 +21,6 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/pad3d_kernel.h"
 
 namespace phi {
 

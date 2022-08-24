@@ -63,8 +63,10 @@ class MarkerOpCPUKernel : public framework::OpKernel<T> {
     auto marker_pos = ctx.Attr<std::string>("marker_pos");
 
     platform::RecordEvent record_event(
-        "MarkerCPU", "marker_" + marker_role + "_" + marker_pos,
-        platform::TracerEventType::OperatorInner, 1,
+        "MarkerCPU",
+        "marker_" + marker_role + "_" + marker_pos,
+        platform::TracerEventType::OperatorInner,
+        1,
         platform::EventRole::kInnerOp);
   }
 };

@@ -28,20 +28,26 @@ class RangeMLUKernel : public framework::OpKernel<T> {
 
     framework::Tensor n;
     framework::TensorCopy(
-        *start_t, platform::CPUPlace(),
-        context.template device_context<platform::MLUDeviceContext>(), &n);
+        *start_t,
+        platform::CPUPlace(),
+        context.template device_context<platform::MLUDeviceContext>(),
+        &n);
     context.template device_context<paddle::platform::MLUDeviceContext>()
         .Wait();
     T start = n.data<T>()[0];
     framework::TensorCopy(
-        *end_t, platform::CPUPlace(),
-        context.template device_context<platform::MLUDeviceContext>(), &n);
+        *end_t,
+        platform::CPUPlace(),
+        context.template device_context<platform::MLUDeviceContext>(),
+        &n);
     context.template device_context<paddle::platform::MLUDeviceContext>()
         .Wait();
     T end = n.data<T>()[0];
     framework::TensorCopy(
-        *step_t, platform::CPUPlace(),
-        context.template device_context<platform::MLUDeviceContext>(), &n);
+        *step_t,
+        platform::CPUPlace(),
+        context.template device_context<platform::MLUDeviceContext>(),
+        &n);
     context.template device_context<paddle::platform::MLUDeviceContext>()
         .Wait();
     T step = n.data<T>()[0];
@@ -66,7 +72,8 @@ class RangeMLUKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_MLU_KERNEL(range, paddle::operators::RangeMLUKernel<int>,
+REGISTER_OP_MLU_KERNEL(range,
+                       paddle::operators::RangeMLUKernel<int>,
                        paddle::operators::RangeMLUKernel<int64_t>,
                        paddle::operators::RangeMLUKernel<float>,
                        paddle::operators::RangeMLUKernel<double>)

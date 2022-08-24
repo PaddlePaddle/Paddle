@@ -43,7 +43,8 @@ DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 // between host and device.  Allocates too much would reduce the amount
 // of memory available to the system for paging.  So, by default, we
 // should set false to use_pinned_memory.
-PADDLE_DEFINE_EXPORTED_bool(use_pinned_memory, true,
+PADDLE_DEFINE_EXPORTED_bool(use_pinned_memory,
+                            true,
                             "If set, allocate cpu pinned memory.");
 
 namespace paddle {

@@ -185,14 +185,18 @@ class ConvBNLayer(nn.Layer):
 
 class DenseNet(nn.Layer):
     """DenseNet model from
-    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
 
     Args:
-        layers (int): layers of densenet. Default: 121.
-        bn_size (int): expansion of growth rate in the middle layer. Default: 4.
-        dropout (float): dropout rate. Default: 0..
-        num_classes (int): output dim of last fc layer. Default: 1000.
-        with_pool (bool): use pool before the last fc layer or not. Default: True.
+        layers (int, optional): Layers of DenseNet. Default: 121.
+        bn_size (int, optional): Expansion of growth rate in the middle layer. Default: 4.
+        dropout (float, optional): Dropout rate. Default: :math:`0.0`.
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+                            will not be defined. Default: 1000.
+        with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of DenseNet model.
 
     Examples:
         .. code-block:: python
@@ -207,6 +211,7 @@ class DenseNet(nn.Layer):
             out = densenet(x)
 
             print(out.shape)
+            # [1, 1000]
     """
 
     def __init__(self,
@@ -314,14 +319,21 @@ def _densenet(arch, layers, pretrained, **kwargs):
 
 
 def densenet121(pretrained=False, **kwargs):
-    """DenseNet 121-layer model
+    """DenseNet 121-layer model from
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_DenseNet>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of DenseNet 121-layer model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import densenet121
 
             # build model
@@ -329,15 +341,27 @@ def densenet121(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = densenet121(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _densenet('densenet121', 121, pretrained, **kwargs)
 
 
 def densenet161(pretrained=False, **kwargs):
-    """DenseNet 161-layer model
+    """DenseNet 161-layer model from
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_DenseNet>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of DenseNet 161-layer model.
 
     Examples:
         .. code-block:: python
@@ -354,14 +378,21 @@ def densenet161(pretrained=False, **kwargs):
 
 
 def densenet169(pretrained=False, **kwargs):
-    """DenseNet 169-layer model
+    """DenseNet 169-layer model from
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_DenseNet>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of DenseNet 169-layer model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import densenet169
 
             # build model
@@ -369,19 +400,32 @@ def densenet169(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = densenet169(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _densenet('densenet169', 169, pretrained, **kwargs)
 
 
 def densenet201(pretrained=False, **kwargs):
-    """DenseNet 201-layer model
+    """DenseNet 201-layer model from
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_DenseNet>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of DenseNet 201-layer model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import densenet201
 
             # build model
@@ -389,19 +433,31 @@ def densenet201(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = densenet201(pretrained=True)
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _densenet('densenet201', 201, pretrained, **kwargs)
 
 
 def densenet264(pretrained=False, **kwargs):
-    """DenseNet 264-layer model
+    """DenseNet 264-layer model from
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`DenseNet <api_paddle_vision_DenseNet>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of DenseNet 264-layer model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import densenet264
 
             # build model
@@ -409,5 +465,11 @@ def densenet264(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = densenet264(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _densenet('densenet264', 264, pretrained, **kwargs)

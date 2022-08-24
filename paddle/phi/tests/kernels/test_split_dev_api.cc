@@ -40,7 +40,6 @@ TEST(DEV_API, split) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
-  dev_ctx.Init();
 
   auto* dense_x_data = dev_ctx.Alloc<float>(&dense_x);
   for (size_t i = 0; i < 4; ++i) {

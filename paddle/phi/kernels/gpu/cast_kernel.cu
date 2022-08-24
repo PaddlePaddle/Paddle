@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/cast_kernel.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/gpu/cast_impl.h"
 
 namespace phi {

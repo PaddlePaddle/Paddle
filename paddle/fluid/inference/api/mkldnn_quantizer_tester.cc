@@ -37,7 +37,9 @@ class MkldnnQuantizerTest : public testing::Test {
   }
 
   std::pair<std::vector<int>, float> Histogram(
-      const framework::LoDTensor& var_tensor, float min_val, float max_val,
+      const framework::LoDTensor& var_tensor,
+      float min_val,
+      float max_val,
       int num_bins) const {
     return mkldnn_quantizer->Histogram(var_tensor, min_val, max_val, num_bins);
   }
@@ -78,11 +80,27 @@ class MkldnnQuantizerTest : public testing::Test {
 };
 
 const std::array<float, 10> MkldnnQuantizerTest::non_negative_values = {
-    0.0158671, 0.026459,   0.0280772,  0.00962479, 0.0131628,
-    0.016704,  0.00118407, 0.00765726, 0.0123213,  0.00944741};
+    0.0158671,
+    0.026459,
+    0.0280772,
+    0.00962479,
+    0.0131628,
+    0.016704,
+    0.00118407,
+    0.00765726,
+    0.0123213,
+    0.00944741};
 const std::array<float, 10> MkldnnQuantizerTest::positive_and_negative_values =
-    {-0.0482659, -0.0102493, -0.00794221, -0.00387115, -0.00674586,
-     -0.0495346, 0.0629528,  -0.00531285, -0.0230353,  0.0269089};
+    {-0.0482659,
+     -0.0102493,
+     -0.00794221,
+     -0.00387115,
+     -0.00674586,
+     -0.0495346,
+     0.0629528,
+     -0.00531285,
+     -0.0230353,
+     0.0269089};
 
 TEST_F(MkldnnQuantizerTest, histogram_inverted_min_max) {
   const auto& values = non_negative_values;
@@ -91,7 +109,8 @@ TEST_F(MkldnnQuantizerTest, histogram_inverted_min_max) {
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(phi::make_dim(values.size()));
-  std::copy(begin(values), end(values),
+  std::copy(begin(values),
+            end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
   ASSERT_THROW(Histogram(var_tensor, max_val, min_val, 3),
@@ -106,7 +125,8 @@ TEST_F(MkldnnQuantizerTest, histogram_non_negative_to_3) {
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(phi::make_dim(values.size()));
-  std::copy(begin(values), end(values),
+  std::copy(begin(values),
+            end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
   std::vector<int> histogram;
@@ -129,7 +149,8 @@ TEST_F(MkldnnQuantizerTest, histogram_positive_and_negative_to_3) {
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(phi::make_dim(values.size()));
-  std::copy(begin(values), end(values),
+  std::copy(begin(values),
+            end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
   std::vector<int> histogram;
@@ -152,7 +173,8 @@ TEST_F(MkldnnQuantizerTest, histogram_zero_bins) {
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(phi::make_dim(values.size()));
-  std::copy(begin(values), end(values),
+  std::copy(begin(values),
+            end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
   ASSERT_THROW(Histogram(var_tensor, min_val, max_val, 0),
@@ -176,7 +198,8 @@ TEST_F(MkldnnQuantizerTest, kl_scaling_factor_signed) {
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(phi::make_dim(values.size()));
-  std::copy(begin(values), end(values),
+  std::copy(begin(values),
+            end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
   bool is_unsigned;
@@ -195,7 +218,8 @@ TEST_F(MkldnnQuantizerTest, max_scaling_factor_signed) {
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(phi::make_dim(values.size()));
-  std::copy(begin(values), end(values),
+  std::copy(begin(values),
+            end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
   bool is_unsigned;
@@ -214,7 +238,8 @@ TEST_F(MkldnnQuantizerTest, max_scaling_factor_unsigned) {
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(phi::make_dim(values.size()));
-  std::copy(begin(values), end(values),
+  std::copy(begin(values),
+            end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
   bool is_unsigned;
@@ -235,7 +260,8 @@ TEST_F(MkldnnQuantizerTest, max_scaling_factor_chwise_unsigned) {
   framework::LoDTensor var_tensor;
   var_tensor.Resize(phi::make_dim(channels, 1, 1, values.size()));
   for (int i = 0; i < channels; i++)
-    std::copy(begin(values), end(values),
+    std::copy(begin(values),
+              end(values),
               var_tensor.mutable_data<float>(platform::CPUPlace()) +
                   i * values.size());
 
@@ -256,7 +282,8 @@ TEST_F(MkldnnQuantizerTest, kl_scaling_factor_unsigned) {
 
   framework::LoDTensor var_tensor;
   var_tensor.Resize(phi::make_dim(values.size()));
-  std::copy(begin(values), end(values),
+  std::copy(begin(values),
+            end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
   bool is_unsigned;
@@ -283,21 +310,23 @@ TEST_F(MkldnnQuantizerTest, max_ch_gru_scaling_factor) {
   wx_tensor.Resize(phi::make_dim(wx.size(), wx[0].size()));
   for (size_t i = 0; i < wx.size(); i++)
     std::copy(
-        begin(wx[i]), end(wx[i]),
+        begin(wx[i]),
+        end(wx[i]),
         wx_tensor.mutable_data<float>(platform::CPUPlace()) + i * wx[0].size());
 
   wh_tensor.Resize(phi::make_dim(wh.size(), wh[0].size()));
   for (size_t i = 0; i < wh.size(); i++)
     std::copy(
-        begin(wh[i]), end(wh[i]),
+        begin(wh[i]),
+        end(wh[i]),
         wh_tensor.mutable_data<float>(platform::CPUPlace()) + i * wh[0].size());
 
   bool is_unsigned;
   std::tie(is_unsigned, lod_tensor) =
       GetMaxChGRUScalingFactor(wx_tensor, wh_tensor);
 
-  std::vector<double> scales = {2.35381475, 1.08304947, 1.32427582,
-                                1.19001095, 1.00151656, 1.01785819};
+  std::vector<double> scales = {
+      2.35381475, 1.08304947, 1.32427582, 1.19001095, 1.00151656, 1.01785819};
   ASSERT_EQ(is_unsigned, false);
   ASSERT_EQ(lod_tensor.numel(), static_cast<int64_t>(scales.size()));
   for (int64_t i = 0; i < lod_tensor.numel(); i++) {
@@ -311,21 +340,23 @@ TEST_F(MkldnnQuantizerTest, max_ch_lstm_scaling_factor) {
   wx_tensor.Resize(phi::make_dim(wx.size(), wx[0].size()));
   for (size_t i = 0; i < wx.size(); i++)
     std::copy(
-        begin(wx[i]), end(wx[i]),
+        begin(wx[i]),
+        end(wx[i]),
         wx_tensor.mutable_data<float>(platform::CPUPlace()) + i * wx[0].size());
 
   wh_tensor.Resize(phi::make_dim(wh.size(), wh[0].size()));
   for (size_t i = 0; i < wh.size(); i++)
     std::copy(
-        begin(wh[i]), end(wh[i]),
+        begin(wh[i]),
+        end(wh[i]),
         wh_tensor.mutable_data<float>(platform::CPUPlace()) + i * wh[0].size());
 
   bool is_unsigned;
   std::tie(is_unsigned, lod_tensor) =
       GetMaxChLSTMScalingFactor(wx_tensor, wh_tensor);
 
-  std::vector<double> scales = {2.35381475, 1.10797026, 1.00151656,
-                                1.19001095, 1.09045166, 1.01785819};
+  std::vector<double> scales = {
+      2.35381475, 1.10797026, 1.00151656, 1.19001095, 1.09045166, 1.01785819};
   ASSERT_EQ(is_unsigned, false);
   ASSERT_EQ(lod_tensor.numel(), static_cast<int64_t>(scales.size()));
   for (int64_t i = 0; i < lod_tensor.numel(); i++) {

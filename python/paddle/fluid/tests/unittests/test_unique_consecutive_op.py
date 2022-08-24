@@ -72,6 +72,7 @@ class TestUniqueConsecutiveOp(OpTest):
         self.x_range = 20
         self.return_inverse = False
         self.return_counts = False
+        self.python_api = paddle.unique_consecutive
 
     def init_kernel_type(self):
         self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
@@ -88,13 +89,14 @@ class TestUniqueConsecutiveOp(OpTest):
         self.inputs = {
             'X': x,
         }
+        self.python_out_sig = ["Out"]
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
             'Out': out,
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
@@ -105,6 +107,7 @@ class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
         self.x_range = 20
         self.return_inverse = True
         self.return_counts = False
+        self.python_api = paddle.unique_consecutive
 
     def setUp(self):
         self.init_kernel_type()
@@ -122,6 +125,7 @@ class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
             'return_inverse': self.return_inverse,
             'dtype': int(core.VarDesc.VarType.INT32)
         }
+        self.python_out_sig = ["Out"]
         self.outputs = {'Out': result, 'Index': inverse}
 
 
@@ -133,6 +137,7 @@ class TestUniqueConsecutiveOp3(TestUniqueConsecutiveOp):
         self.x_range = 20
         self.return_inverse = False
         self.return_counts = True
+        self.python_api = paddle.unique_consecutive
 
     def setUp(self):
         self.init_kernel_type()
@@ -150,6 +155,7 @@ class TestUniqueConsecutiveOp3(TestUniqueConsecutiveOp):
             'return_counts': self.return_counts,
             'dtype': int(core.VarDesc.VarType.INT32)
         }
+        self.python_out_sig = ["Out"]
         self.outputs = {'Out': result, 'Counts': counts}
 
 
@@ -161,6 +167,7 @@ class TestUniqueConsecutiveOp4(TestUniqueConsecutiveOp):
         self.x_range = 20
         self.return_inverse = True
         self.return_counts = True
+        self.python_api = paddle.unique_consecutive
 
     def setUp(self):
         self.init_kernel_type()
@@ -180,6 +187,7 @@ class TestUniqueConsecutiveOp4(TestUniqueConsecutiveOp):
             'return_counts': self.return_counts,
             'dtype': int(core.VarDesc.VarType.INT32)
         }
+        self.python_out_sig = ["Out"]
         self.outputs = {'Out': result, 'Index': inverse, 'Counts': counts}
 
 

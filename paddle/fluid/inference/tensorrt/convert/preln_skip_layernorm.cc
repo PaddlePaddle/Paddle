@@ -21,7 +21,8 @@ namespace tensorrt {
 class PrelnSkipLayerNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert fused preln_skip_layernorm op to tensorrt layer";
     if (!(engine_->use_varseqlen() && engine_->with_interleaved())) {
@@ -48,7 +49,8 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
       auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
       (*dims) = temp_tensor->dims();
 
-      auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor);
+      auto* temp_data = const_cast<float*>(static_cast<const float*>(
+          engine_->GetFp32TrtWeight(var_name, *temp_tensor).get().values));
       return temp_data;
     };
 
@@ -66,7 +68,8 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
     auto creator = GetPluginRegistry()->getPluginCreator(
         "CustomSkipLayerNormPluginDynamic", "4");
     PADDLE_ENFORCE_NE(
-        creator, nullptr,
+        creator,
+        nullptr,
         platform::errors::InvalidArgument(
             "fail to get creator of CustomPrelnSkipLayerNormPluginDynamic"));
     const std::vector<nvinfer1::PluginField> fields{
@@ -88,7 +91,8 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
         inputs.data(), inputs.size(), *pluginObj);
 
     PADDLE_ENFORCE_NE(
-        plugin_layer, nullptr,
+        plugin_layer,
+        nullptr,
         platform::errors::InvalidArgument(
             "fail to add CustomPrelnSkipLayerNormPluginDynamic layer"));
     layer = plugin_layer;
@@ -96,8 +100,8 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
     std::vector<std::string> output_names;
     output_names.push_back(op_desc.Output("Out_0")[0]);
     output_names.push_back(op_desc.Output("Out_1")[0]);
-    RreplenishLayerAndOutput(layer, "preln_skip_layernorm", {output_names},
-                             test_mode);
+    RreplenishLayerAndOutput(
+        layer, "preln_skip_layernorm", {output_names}, test_mode);
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "PreInErnie want to use oss, must be with interleaved, "

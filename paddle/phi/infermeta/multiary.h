@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
 namespace phi {
@@ -126,6 +127,7 @@ void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
                   const MetaTensor& stat_neg,
+                  const MetaTensor& ins_tag_weight,
                   const std::string& curve,
                   int num_thresholds,
                   int slide_steps,
@@ -133,6 +135,23 @@ void AucInferMeta(const MetaTensor& input,
                   MetaTensor* stat_pos_out,
                   MetaTensor* stat_neg_out,
                   MetaConfig config = MetaConfig());
+
+void AverageAccumulatesInferMeta(const MetaTensor& param,
+                                 const MetaTensor& in_sum_1,
+                                 const MetaTensor& in_sum_2,
+                                 const MetaTensor& in_sum_3,
+                                 const MetaTensor& in_num_accumulates,
+                                 const MetaTensor& in_old_num_accumulates,
+                                 const MetaTensor& in_num_updates,
+                                 float average_window,
+                                 int64_t max_average_window,
+                                 int64_t min_average_window,
+                                 MetaTensor* out_sum_1,
+                                 MetaTensor* out_sum_2,
+                                 MetaTensor* out_sum_3,
+                                 MetaTensor* out_num_accumulates,
+                                 MetaTensor* out_old_num_accumulates,
+                                 MetaTensor* out_num_updates);
 
 void BatchNormInferMeta(const MetaTensor& x,
                         const MetaTensor& scale,
@@ -177,6 +196,11 @@ void BilinearTensorProductInferMeta(const MetaTensor& x,
 void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
                                std::vector<MetaTensor*> out);
 
+void CheckFiniteAndUnscaleInferMeta(const std::vector<const MetaTensor*>& xs,
+                                    const MetaTensor& scale,
+                                    std::vector<MetaTensor*> outs,
+                                    MetaTensor* found_infinite);
+
 void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
@@ -194,6 +218,51 @@ void DeformableConvInferMeta(const MetaTensor& x,
                              int im2col_step,
                              MetaTensor* out,
                              MetaConfig config = MetaConfig());
+
+void EditDistanceInferMeta(const MetaTensor& hyps,
+                           const MetaTensor& refs,
+                           const MetaTensor& hypslength,
+                           const MetaTensor& refslength,
+                           bool normalized,
+                           MetaTensor* sequencenum,
+                           MetaTensor* out);
+
+void GenerateProposalsV2InferMeta(const MetaTensor& scores,
+                                  const MetaTensor& bbox_deltas,
+                                  const MetaTensor& im_shape,
+                                  const MetaTensor& anchors,
+                                  const MetaTensor& variances,
+                                  int pre_nms_top_n,
+                                  int post_nms_top_n,
+                                  float nms_thresh,
+                                  float min_size,
+                                  float eta,
+                                  bool pixel_offset,
+                                  MetaTensor* rpn_rois,
+                                  MetaTensor* rpn_roi_probs,
+                                  MetaTensor* rpn_rois_num);
+
+void GraphReindexInferMeta(const MetaTensor& x,
+                           const MetaTensor& neighbors,
+                           const MetaTensor& count,
+                           const MetaTensor& hashtable_value,
+                           const MetaTensor& hashtable_index,
+                           bool flag_buffer_hashtable,
+                           MetaTensor* reindex_src,
+                           MetaTensor* reindex_dst,
+                           MetaTensor* out_nodes);
+
+void GraphSampleNeighborsInferMeta(const MetaTensor& row,
+                                   const MetaTensor& col_ptr,
+                                   const MetaTensor& x,
+                                   const MetaTensor& eids,
+                                   const MetaTensor& perm_buffer,
+                                   int sample_size,
+                                   bool return_eids,
+                                   bool flag_perm_buffer,
+                                   MetaTensor* out,
+                                   MetaTensor* out_count,
+                                   MetaTensor* out_eids);
 
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   const MetaTensor& w,
@@ -228,11 +297,69 @@ void InterpolateInferMeta(
     MetaTensor* output,
     MetaConfig config = MetaConfig());
 
+void LambInferMeta(const MetaTensor& param,
+                   const MetaTensor& grad,
+                   const MetaTensor& learning_rate,
+                   const MetaTensor& moment1,
+                   const MetaTensor& moment2,
+                   const MetaTensor& beta1_pow,
+                   const MetaTensor& beta2_pow,
+                   const MetaTensor& master_param,
+                   const MetaTensor& skip_update,
+                   float weight_decay,
+                   float beta1,
+                   float beta2,
+                   float epsilon,
+                   bool multi_precision,
+                   MetaTensor* param_out,
+                   MetaTensor* moment1_out,
+                   MetaTensor* moment2_out,
+                   MetaTensor* beta1_pow_out,
+                   MetaTensor* beta2_pow_out,
+                   MetaTensor* master_param_outs);
+
 void LogspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& stop,
                        const MetaTensor& number,
                        const MetaTensor& base,
                        MetaTensor* out);
+
+void MergedAdamInferMeta(
+    const std::vector<const MetaTensor*>& param,
+    const std::vector<const MetaTensor*>& grad,
+    const std::vector<const MetaTensor*>& learning_rate,
+    const std::vector<const MetaTensor*>& moment1,
+    const std::vector<const MetaTensor*>& moment2,
+    const std::vector<const MetaTensor*>& beta1_pow,
+    const std::vector<const MetaTensor*>& beta2_pow,
+    const paddle::optional<std::vector<const MetaTensor*>>& master_param,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    std::vector<MetaTensor*> param_out,
+    std::vector<MetaTensor*> moment1_out,
+    std::vector<MetaTensor*> moment2_out,
+    std::vector<MetaTensor*> beta1_pow_out,
+    std::vector<MetaTensor*> beta2_pow_out,
+    std::vector<MetaTensor*> master_param_out);
+
+void MergedMomentumInferMeta(
+    const std::vector<const MetaTensor*>& param,
+    const std::vector<const MetaTensor*>& grad,
+    const std::vector<const MetaTensor*>& velocity,
+    const std::vector<const MetaTensor*>& learning_rate,
+    const paddle::optional<std::vector<const MetaTensor*>>& master_param,
+    float mu,
+    bool use_nesterov,
+    const std::vector<std::string>& regularization_method,
+    const std::vector<float>& regularization_coeff,
+    bool multi_precision,
+    float rescale_grad,
+    std::vector<MetaTensor*> param_out,
+    std::vector<MetaTensor*> velocity_out,
+    std::vector<MetaTensor*> master_param_out);
 
 void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);
@@ -315,41 +442,29 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
 void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
                              std::vector<MetaTensor*> out);
 
+void UpdateLossScalingInferMeta(const std::vector<const MetaTensor*>& xs,
+                                const MetaTensor& found_infinite,
+                                const MetaTensor& prev_loss_scaling,
+                                const MetaTensor& in_good_steps,
+                                const MetaTensor& in_bad_steps,
+                                std::vector<MetaTensor*> outs,
+                                MetaTensor* loss_scaling,
+                                MetaTensor* out_good_steps,
+                                MetaTensor* out_bad_steps);
+
 void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& label,
                       const MetaTensor& logits_length,
                       const MetaTensor& labels_length,
                       int blank,
                       bool norm_by_times,
-                      MetaTensor* warpctc_grad,
+                      MetaTensor* warpctcgrad,
                       MetaTensor* loss);
 
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,
                     MetaTensor* out);
-
-void GraphReindexInferMeta(const MetaTensor& x,
-                           const MetaTensor& neighbors,
-                           const MetaTensor& count,
-                           const MetaTensor& hashtable_value,
-                           const MetaTensor& hashtable_index,
-                           bool flag_buffer_hashtable,
-                           MetaTensor* reindex_src,
-                           MetaTensor* reindex_dst,
-                           MetaTensor* out_nodes);
-
-void GraphSampleNeighborsInferMeta(const MetaTensor& row,
-                                   const MetaTensor& col_ptr,
-                                   const MetaTensor& x,
-                                   const MetaTensor& eids,
-                                   const MetaTensor& perm_buffer,
-                                   int sample_size,
-                                   bool return_eids,
-                                   bool flag_perm_buffer,
-                                   MetaTensor* out,
-                                   MetaTensor* out_count,
-                                   MetaTensor* out_eids);
 
 void Yolov3LossInferMeta(const MetaTensor& x,
                          const MetaTensor& gt_box,
@@ -365,5 +480,22 @@ void Yolov3LossInferMeta(const MetaTensor& x,
                          MetaTensor* loss,
                          MetaTensor* objectness_mask,
                          MetaTensor* gt_match_mask);
+
+void GraphSendUERecvInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              const MetaTensor& src_index,
+                              const MetaTensor& dst_index,
+                              const std::string& message_op,
+                              const std::string& reduce_op,
+                              const IntArray& out_size,
+                              MetaTensor* out,
+                              MetaTensor* dst_count);
+
+void GraphSendUVInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const MetaTensor& src_index,
+                          const MetaTensor& dst_index,
+                          const std::string& message_op,
+                          MetaTensor* out);
 
 }  // namespace phi

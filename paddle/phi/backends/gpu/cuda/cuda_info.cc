@@ -241,6 +241,7 @@ void SetDeviceId(int id) {
                                    id,
                                    GetGPUDeviceCount()));
   PADDLE_RETRY_CUDA_SUCCESS(cudaSetDevice(id));
+  VLOG(4) << "SetDeviceId " << id;
 }
 
 void GpuMemcpyAsync(void *dst,

@@ -15,13 +15,37 @@
 
 import numpy as np
 import paddle
+import copy
 from paddle.fluid.contrib import sparsity
 import threading
+import logging
+from ...log_helper import get_logger
 
 __all__ = ['add_supported_layer']
 
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+
 
 def _default_pruning(weight_nparray, m, n, func_name, param_name):
+
+    # if the to-be-pruned dimension's size is smaller than m, we don't prune it. This strong assertion is required by the inference from cuSparseLT.
+    shape = weight_nparray.shape
+    weight_pruned_nparray = copy.deepcopy(weight_nparray)
+    weight_sparse_mask = np.ones_like(weight_pruned_nparray)
+    exlude_cond_shape2 = len(shape) == 2 and shape[0] < m
+    exlude_cond_shape4 = len(shape) == 4 and shape[1] < m
+    if exlude_cond_shape2:
+        _logger.warning(
+            '{} is not pruned because the first dimension of {} is smaller than {}'
+            .format(param_name, shape, m))
+        return weight_pruned_nparray, weight_sparse_mask
+    if exlude_cond_shape4:
+        _logger.warning(
+            '{} is not pruned because the second dimension of {} is smaller than {}'
+            .format(param_name, shape, m))
+        return weight_pruned_nparray, weight_sparse_mask
 
     checked_func_name = sparsity.CheckMethod.get_checking_method(func_name)
 

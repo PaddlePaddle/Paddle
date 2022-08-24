@@ -70,11 +70,17 @@ TEST(test_tracer, test_trace_op) {
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
   x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
-  paddle::memory::Copy(place, mutable_x, place, src_data.data(),
+  paddle::memory::Copy(place,
+                       mutable_x,
+                       place,
+                       src_data.data(),
                        sizeof(float) * src_data.size());
   y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
-  paddle::memory::Copy(place, mutable_y, place, src_data.data(),
+  paddle::memory::Copy(place,
+                       mutable_y,
+                       place,
+                       src_data.data(),
                        sizeof(float) * src_data.size());
 
   var_pair x_pair = var_pair("X", vb_vector(1, x_in));
@@ -87,8 +93,8 @@ TEST(test_tracer, test_trace_op) {
   tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
 
 #ifndef PADDLE_WITH_XPU
-  ASSERT_THROW(tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map,
-                                       platform::XPUPlace(0), true);
+  ASSERT_THROW(tracer.TraceOp<VarBase>(
+      "mul", ins, outs, mul_attr_map, platform::XPUPlace(0), true);
                , platform::EnforceNotMet);
 #endif
 
@@ -116,11 +122,17 @@ TEST(test_tracer, test_trace_op_with_backward) {
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
   x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
-  paddle::memory::Copy(place, mutable_x, place, src_data.data(),
+  paddle::memory::Copy(place,
+                       mutable_x,
+                       place,
+                       src_data.data(),
                        sizeof(float) * src_data.size());
   y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
-  paddle::memory::Copy(place, mutable_y, place, src_data.data(),
+  paddle::memory::Copy(place,
+                       mutable_y,
+                       place,
+                       src_data.data(),
                        sizeof(float) * src_data.size());
 
   var_pair x_pair = var_pair("X", vb_vector(1, x_in));
@@ -156,11 +168,17 @@ TEST(test_tracer, test_track_backward_output) {
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
   x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
-  paddle::memory::Copy(place, mutable_x, place, src_data.data(),
+  paddle::memory::Copy(place,
+                       mutable_x,
+                       place,
+                       src_data.data(),
                        sizeof(float) * src_data.size());
   y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
-  paddle::memory::Copy(place, mutable_y, place, src_data.data(),
+  paddle::memory::Copy(place,
+                       mutable_y,
+                       place,
+                       src_data.data(),
                        sizeof(float) * src_data.size());
 
   var_pair x_pair = var_pair("X", vb_vector(1, x_in));
@@ -195,11 +213,17 @@ TEST(test_tracer, test_track_backward_input) {
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
   x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
-  paddle::memory::Copy(place, mutable_x, place, src_data.data(),
+  paddle::memory::Copy(place,
+                       mutable_x,
+                       place,
+                       src_data.data(),
                        sizeof(float) * src_data.size());
   y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
-  paddle::memory::Copy(place, mutable_y, place, src_data.data(),
+  paddle::memory::Copy(place,
+                       mutable_y,
+                       place,
+                       src_data.data(),
                        sizeof(float) * src_data.size());
 
   var_pair x_pair = var_pair("X", vb_vector(1, x_in));
@@ -237,12 +261,19 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
   x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
-  paddle::memory::Copy(place, mutable_x, place, src_data.data(),
+  paddle::memory::Copy(place,
+                       mutable_x,
+                       place,
+                       src_data.data(),
                        sizeof(float) * src_data.size());
   y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(gpu_place);
-  paddle::memory::Copy(gpu_place, mutable_y, place, src_data.data(),
-                       sizeof(float) * src_data.size(), 0);
+  paddle::memory::Copy(gpu_place,
+                       mutable_y,
+                       place,
+                       src_data.data(),
+                       sizeof(float) * src_data.size(),
+                       0);
   var_pair x_pair = var_pair("X", vb_vector(1, x_in));
   var_pair y_pair = var_pair("Y", vb_vector(1, y_in));
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
@@ -250,8 +281,8 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp<VarBase>("elementwise_add", ins, outs, mul_attr_map, gpu_place,
-                          true);
+  tracer.TraceOp<VarBase>(
+      "elementwise_add", ins, outs, mul_attr_map, gpu_place, true);
 
   // run reduce sum
   std::shared_ptr<imperative::VarBase> reduce_sum_out(
@@ -261,8 +292,8 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   imperative::NameVarBaseMap reduce_in = {reduce_sum_in_pair};
   imperative::NameVarBaseMap reduce_out = {reduce_sum_out_pair};
   framework::AttributeMap reduce_attr_map;
-  tracer.TraceOp<VarBase>("reduce_sum", reduce_in, reduce_out, reduce_attr_map,
-                          gpu_place, true);
+  tracer.TraceOp<VarBase>(
+      "reduce_sum", reduce_in, reduce_out, reduce_attr_map, gpu_place, true);
   imperative::BasicEngine engine;
 
   std::vector<std::shared_ptr<imperative::VarBase>> tensors{reduce_sum_out};
@@ -271,30 +302,30 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   engine.Execute();
 
   framework::LoDTensor rlt;
-  framework::TensorCopySync(vout->Var().Get<framework::LoDTensor>(), place,
-                            &rlt);
+  framework::TensorCopySync(
+      vout->Var().Get<framework::LoDTensor>(), place, &rlt);
   for (int i = 0; i < rlt.numel(); i++) {
     ASSERT_EQ(rlt.data<float>()[i], 4.0);
   }
 
   framework::LoDTensor out_grad;
-  framework::TensorCopySync(vout->GradVar().Get<framework::LoDTensor>(), place,
-                            &out_grad);
+  framework::TensorCopySync(
+      vout->GradVar().Get<framework::LoDTensor>(), place, &out_grad);
   for (int i = 0; i < out_grad.numel(); ++i) {
     ASSERT_EQ(out_grad.data<float>()[i], 1.0);
   }
 
   framework::LoDTensor x_grad;
-  framework::TensorCopySync(x_in->GradVar().Get<framework::LoDTensor>(), place,
-                            &x_grad);
+  framework::TensorCopySync(
+      x_in->GradVar().Get<framework::LoDTensor>(), place, &x_grad);
 
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 1.0);
   }
 
   framework::LoDTensor y_grad;
-  framework::TensorCopySync(y_in->GradVar().Get<framework::LoDTensor>(), place,
-                            &y_grad);
+  framework::TensorCopySync(
+      y_in->GradVar().Get<framework::LoDTensor>(), place, &y_grad);
 
   for (int i = 0; i < y_grad.numel(); ++i) {
     ASSERT_EQ(y_grad.data<float>()[i], 1.0);
@@ -368,11 +399,17 @@ TEST(test_tracer, test_var_without_grad_var) {
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
   x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
-  paddle::memory::Copy(place, mutable_x, place, src_data.data(),
+  paddle::memory::Copy(place,
+                       mutable_x,
+                       place,
+                       src_data.data(),
                        sizeof(float) * src_data.size());
   y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
-  paddle::memory::Copy(place, mutable_y, place, src_data.data(),
+  paddle::memory::Copy(place,
+                       mutable_y,
+                       place,
+                       src_data.data(),
                        sizeof(float) * src_data.size());
 
   var_pair x_pair = var_pair("X", vb_vector(1, x_in));
@@ -401,16 +438,16 @@ TEST(test_tracer, test_var_without_grad_var) {
 
   // check the grad
   framework::LoDTensor x_grad;
-  framework::TensorCopySync(x_in->GradVar().Get<framework::LoDTensor>(), place,
-                            &x_grad);
+  framework::TensorCopySync(
+      x_in->GradVar().Get<framework::LoDTensor>(), place, &x_grad);
 
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 4.0);
   }
 
   framework::LoDTensor y_grad;
-  framework::TensorCopySync(y_in->GradVar().Get<framework::LoDTensor>(), place,
-                            &y_grad);
+  framework::TensorCopySync(
+      y_in->GradVar().Get<framework::LoDTensor>(), place, &y_grad);
 
   for (int i = 0; i < y_grad.numel(); ++i) {
     ASSERT_EQ(y_grad.data<float>()[i], 4.0);
@@ -453,9 +490,12 @@ static void TestVarOpDestructionMain(const platform::Place& place,
       size_t op_base_num = op_bases.size();
 
       auto z = std::make_shared<VarBase>("z_" + std::to_string(i));
-      tracer.TraceOp<VarBase>("mul", NameVarBaseMap{{"X", {x}}, {"Y", {y}}},
+      tracer.TraceOp<VarBase>("mul",
+                              NameVarBaseMap{{"X", {x}}, {"Y", {y}}},
                               NameVarBaseMap{{"Out", {z}}},
-                              framework::AttributeMap{}, place, true);
+                              framework::AttributeMap{},
+                              place,
+                              true);
 
       ASSERT_EQ(z->GradOpNum(), 0UL);
       ASSERT_EQ(z->GradVarBase()->GradOpNum(), 1UL);
@@ -552,9 +592,14 @@ TEST(test_tracer, test_execution_context) {
   NameVarBaseMap outs = {{"Out", {nullptr}}};
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(platform::CPUPlace());
-  auto dy_ctx = DygraphExecutionContext<VarBase>(
-      (*op.get()), scope, *dev_ctx, ctx, ins, outs, framework::AttributeMap{},
-      framework::AttributeMap{});
+  auto dy_ctx = DygraphExecutionContext<VarBase>((*op.get()),
+                                                 scope,
+                                                 *dev_ctx,
+                                                 ctx,
+                                                 ins,
+                                                 outs,
+                                                 framework::AttributeMap{},
+                                                 framework::AttributeMap{});
   ASSERT_EQ(dy_ctx.OutputName("Out"), framework::kEmptyVarName);
 }
 
@@ -573,11 +618,17 @@ TEST(test_tracer, eager_tracer) {
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
   x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
-  paddle::memory::Copy(place, mutable_x, place, src_data.data(),
+  paddle::memory::Copy(place,
+                       mutable_x,
+                       place,
+                       src_data.data(),
                        sizeof(float) * src_data.size());
   y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
-  paddle::memory::Copy(place, mutable_y, place, src_data.data(),
+  paddle::memory::Copy(place,
+                       mutable_y,
+                       place,
+                       src_data.data(),
                        sizeof(float) * src_data.size());
 
   ev_pair x_pair = ev_pair("X", ev_vector(1, x_in));
@@ -587,8 +638,8 @@ TEST(test_tracer, eager_tracer) {
   imperative::NameTensorMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp<egr::EagerVariable>("mul", ins, outs, mul_attr_map, place,
-                                     true);
+  tracer.TraceOp<egr::EagerVariable>(
+      "mul", ins, outs, mul_attr_map, place, true);
 
   const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
   for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {

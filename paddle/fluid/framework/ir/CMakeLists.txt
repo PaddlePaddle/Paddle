@@ -67,7 +67,7 @@ cc_library(
 cc_library(
   graph_helper
   SRCS graph_helper.cc
-  DEPS graph)
+  DEPS graph program_utils scale_loss_grad_op_handle)
 cc_library(
   pass
   SRCS pass.cc
@@ -117,6 +117,7 @@ pass_library(graph_viz_pass base)
 pass_library(lock_free_optimize_pass base DEPS string_helper)
 pass_library(fc_fuse_pass inference)
 pass_library(attention_lstm_fuse_pass inference)
+pass_library(vit_attention_fuse_pass inference)
 pass_library(fc_lstm_fuse_pass inference)
 pass_library(embedding_fc_lstm_fuse_pass inference)
 pass_library(fc_gru_fuse_pass inference)
@@ -143,6 +144,8 @@ pass_library(delete_quant_dequant_filter_op_pass inference)
 pass_library(delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_quant_dequant_linear_op_pass inference)
 pass_library(delete_dropout_op_pass inference)
+pass_library(delete_c_identity_op_pass inference)
+pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(delete_fill_constant_op_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
@@ -155,7 +158,6 @@ pass_library(layer_norm_fuse_pass inference)
 pass_library(add_support_int8_pass inference)
 pass_library(matmul_scale_fuse_pass inference)
 pass_library(gpu_cpu_map_matmul_to_mul_pass inference)
-pass_library(mixed_precision_configure_pass inference)
 pass_library(dense_fc_to_sparse_pass inference)
 pass_library(dense_multihead_matmul_to_sparse_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
@@ -197,9 +199,9 @@ if(WITH_MKLDNN)
   pass_library(conv_affine_channel_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_bias_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_activation_mkldnn_fuse_pass inference DIR mkldnn)
-  pass_library(conv_concat_relu_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(int8_scale_calculation_mkldnn_pass inference DIR mkldnn)
+  pass_library(params_quantization_mkldnn_pass inference DIR mkldnn)
   pass_library(fc_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(scale_matmul_fuse_pass inference DIR mkldnn)
   pass_library(cpu_bfloat16_placement_pass inference DIR mkldnn)
@@ -210,14 +212,13 @@ if(WITH_MKLDNN)
   pass_library(shuffle_channel_mkldnn_detect_pass inference DIR mkldnn)
   pass_library(fc_act_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(elt_act_mkldnn_fuse_pass inference DIR mkldnn)
+  pass_library(matmul_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
+  pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(cpu_quantize_placement_pass base DIR mkldnn)
   pass_library(cpu_quantize_pass inference DIR mkldnn)
   pass_library(cpu_quantize_squash_pass inference DIR mkldnn)
   pass_library(reshape_transpose_matmul_mkldnn_fuse_pass inference DIR mkldnn)
-  pass_library(reshape_transpose_matmul_v2_mkldnn_fuse_pass inference DIR
-               mkldnn)
-  pass_library(matmul_transpose_reshape_fuse_pass inference DIR mkldnn)
-  pass_library(matmul_v2_transpose_reshape_fuse_pass inference DIR mkldnn)
+  pass_library(matmul_transpose_reshape_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(batch_norm_act_fuse_pass inference DIR mkldnn)
   pass_library(multi_gru_fuse_pass inference DIR mkldnn)
   pass_library(multi_gru_seq_fuse_pass inference DIR mkldnn)
@@ -238,6 +239,7 @@ if(WITH_IPU)
   pass_library(infer_shape_pass base DIR ipu)
   pass_library(delete_scale_op_pass base DIR ipu)
   pass_library(avg_shard_pass base DIR ipu)
+  pass_library(inference_dtype_transfer_pass base DIR ipu)
 endif()
 
 cc_library(
@@ -406,7 +408,7 @@ if(WITH_MKLDNN)
   cc_test(
     test_conv_concat_relu_mkldnn_fuse_pass
     SRCS mkldnn/conv_concat_relu_mkldnn_fuse_pass_tester.cc
-    DEPS conv_concat_relu_mkldnn_fuse_pass)
+    DEPS conv_activation_mkldnn_fuse_pass)
   cc_test(
     test_conv_elementwise_add_mkldnn_fuse_pass
     SRCS mkldnn/conv_elementwise_add_mkldnn_fuse_pass_tester.cc
@@ -415,6 +417,10 @@ if(WITH_MKLDNN)
     test_int8_scale_calculation_mkldnn_pass
     SRCS mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc
     DEPS int8_scale_calculation_mkldnn_pass pass_test_util)
+  cc_test(
+    test_params_quantization_mkldnn_pass
+    SRCS mkldnn/params_quantization_mkldnn_pass_tester.cc
+    DEPS params_quantization_mkldnn_pass)
   cc_test(
     test_fc_elementwise_add_mkldnn_fuse_pass
     SRCS mkldnn/fc_elementwise_add_mkldnn_fuse_pass_tester.cc
@@ -466,6 +472,13 @@ if(WITH_MKLDNN)
     test_compute_propagate_scales_mkldnn_pass
     SRCS mkldnn/compute_propagate_scales_mkldnn_pass_tester.cc
     DEPS compute_propagate_scales_mkldnn_pass naive_executor)
+
+  if(WITH_ONNXRUNTIME AND WIN32)
+    # Copy onnxruntime for some c++ test in Windows, since the test will
+    # be build only in CI, so suppose the generator in Windows is Ninja.
+    copy_onnx(test_compute_propagate_scales_mkldnn_pass)
+  endif()
+
   cc_test(
     test_cpu_quantize_placement_pass
     SRCS mkldnn/cpu_quantize_placement_pass_tester.cc
@@ -481,13 +494,11 @@ if(WITH_MKLDNN)
   cc_test(
     test_reshape_transpose_matmul_mkldnn_fuse_pass
     SRCS mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass_tester.cc
-    DEPS reshape_transpose_matmul_mkldnn_fuse_pass
-         reshape_transpose_matmul_v2_mkldnn_fuse_pass)
+    DEPS reshape_transpose_matmul_mkldnn_fuse_pass)
   cc_test(
     test_matmul_transpose_reshape_fuse_pass
-    SRCS mkldnn/matmul_transpose_reshape_fuse_pass_tester.cc
-    DEPS matmul_transpose_reshape_fuse_pass
-         matmul_v2_transpose_reshape_fuse_pass)
+    SRCS mkldnn/matmul_transpose_reshape_mkldnn_fuse_pass_tester.cc
+    DEPS matmul_transpose_reshape_mkldnn_fuse_pass)
   cc_test(
     test_shuffle_channel_mkldnn_detect_pass
     SRCS mkldnn/shuffle_channel_mkldnn_detect_pass_tester.cc

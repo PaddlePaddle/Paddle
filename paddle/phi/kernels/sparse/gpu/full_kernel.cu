@@ -12,12 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/sparse/full_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/sparse/full_kernel.h"
 
 namespace phi {
 
@@ -41,14 +42,11 @@ void CooFullLikeKernel(const Context& dev_ctx,
                        const Scalar& val,
                        DataType dtype,
                        SparseCooTensor* out) {
-  phi::Copy<Context>(dev_ctx,
-                     x.non_zero_indices(),
-                     dev_ctx.GetPlace(),
-                     false,
-                     out->mutable_non_zero_indices());
+  phi::Copy<Context>(
+      dev_ctx, x.indices(), dev_ctx.GetPlace(), false, out->mutable_indices());
 
-  DenseTensor* values = out->mutable_non_zero_elements();
-  values->Resize(x.non_zero_elements().dims());
+  DenseTensor* values = out->mutable_values();
+  values->Resize(x.values().dims());
   dev_ctx.template Alloc<T>(values);
 
   std::vector<const DenseTensor*> inputs = {};
@@ -67,20 +65,14 @@ void CsrFullLikeKernel(const Context& dev_ctx,
                        const Scalar& val,
                        DataType dtype,
                        SparseCsrTensor* out) {
-  phi::Copy<Context>(dev_ctx,
-                     x.non_zero_crows(),
-                     dev_ctx.GetPlace(),
-                     false,
-                     out->mutable_non_zero_crows());
+  phi::Copy<Context>(
+      dev_ctx, x.crows(), dev_ctx.GetPlace(), false, out->mutable_crows());
 
-  phi::Copy<Context>(dev_ctx,
-                     x.non_zero_cols(),
-                     dev_ctx.GetPlace(),
-                     false,
-                     out->mutable_non_zero_cols());
+  phi::Copy<Context>(
+      dev_ctx, x.cols(), dev_ctx.GetPlace(), false, out->mutable_cols());
 
-  DenseTensor* values = out->mutable_non_zero_elements();
-  values->Resize(x.non_zero_elements().dims());
+  DenseTensor* values = out->mutable_values();
+  values->Resize(x.values().dims());
   dev_ctx.template Alloc<T>(values);
 
   std::vector<const DenseTensor*> inputs = {};

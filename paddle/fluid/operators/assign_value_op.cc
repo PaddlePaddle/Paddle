@@ -85,10 +85,13 @@ $$Out = values$$
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(assign_value, AssignValueInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(assign_value,
+                            AssignValueInferShapeFunctor,
                             PD_INFER_META(phi::AssignValueInferMeta));
 REGISTER_OPERATOR(
-    assign_value, ops::AssignValueOp, ops::AssignValueOpMaker,
+    assign_value,
+    ops::AssignValueOp,
+    ops::AssignValueOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     AssignValueInferShapeFunctor);

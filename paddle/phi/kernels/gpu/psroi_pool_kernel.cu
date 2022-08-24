@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/psroi_pool_kernel.h"
+
 #include <algorithm>
 #include <vector>
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/psroi_pool_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 

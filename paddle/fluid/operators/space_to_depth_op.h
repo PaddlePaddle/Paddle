@@ -24,9 +24,14 @@ namespace operators {
 template <typename T>
 class space_to_depth_compute {
  public:
-  HOSTDEVICE space_to_depth_compute(const T *x, int64_t w, int64_t h, int64_t c,
-                                    int64_t batch, int64_t blocksize,
-                                    int64_t forward, T *out)
+  HOSTDEVICE space_to_depth_compute(const T *x,
+                                    int64_t w,
+                                    int64_t h,
+                                    int64_t c,
+                                    int64_t batch,
+                                    int64_t blocksize,
+                                    int64_t forward,
+                                    T *out)
       : x_(x),
         w_(w),
         h_(h),

@@ -18,15 +18,14 @@ limitations under the License. */
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/common_table.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {
 
 TEST(BarrierTable, Barrier) {
-  int emb_dim = 10;
   int trainers = 2;
   bool sync = true;
 

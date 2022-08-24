@@ -27,6 +27,7 @@ class DotOp(OpTest):
 
     def setUp(self):
         self.op_type = "dot"
+        self.python_api = paddle.dot
         self.init_dtype()
         self.init_input_output()
 
@@ -38,34 +39,43 @@ class DotOp(OpTest):
         self.attrs = {}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_rocm():
             self.check_grad(
                 ['X', 'Y'],
                 'Out',
-                user_defined_grads=[self.inputs['Y'], self.inputs['X']])
+                user_defined_grads=[self.inputs['Y'], self.inputs['X']],
+                check_eager=True)
         else:
-            self.check_grad(['X', 'Y'], 'Out')
+            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
     def test_check_grad_ingore_x(self):
         if core.is_compiled_with_rocm():
             self.check_grad(['Y'],
                             'Out',
                             no_grad_set=set("X"),
-                            user_defined_grads=[self.inputs['X']])
+                            user_defined_grads=[self.inputs['X']],
+                            check_eager=True)
         else:
-            self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+            self.check_grad(['Y'],
+                            'Out',
+                            no_grad_set=set("X"),
+                            check_eager=True)
 
     def test_check_grad_ingore_y(self):
         if core.is_compiled_with_rocm():
             self.check_grad(['X'],
                             'Out',
                             no_grad_set=set('Y'),
-                            user_defined_grads=[self.inputs['Y']])
+                            user_defined_grads=[self.inputs['Y']],
+                            check_eager=True)
         else:
-            self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+            self.check_grad(['X'],
+                            'Out',
+                            no_grad_set=set('Y'),
+                            check_eager=True)
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [121]).astype(self.dtype)
@@ -121,22 +131,23 @@ class TestDygraph(unittest.TestCase):
         with fluid.dygraph.guard():
             x1 = fluid.dygraph.to_variable(np.array([1, 3]).astype(np.float32))
             y1 = fluid.dygraph.to_variable(np.array([2, 5]).astype(np.float32))
-            self.assertTrue(
-                np.allclose(paddle.dot(x1, y1).numpy(), np.array([17])))
+            np.testing.assert_allclose(paddle.dot(x1, y1).numpy(),
+                                       np.array([17]),
+                                       rtol=1e-05)
 
             x1 = fluid.dygraph.to_variable(
                 np.array([[1, 3], [3, 5]]).astype(np.float32))
             y1 = fluid.dygraph.to_variable(
                 np.array([[2, 5], [6, 8]]).astype(np.float32))
-            self.assertTrue(
-                np.array_equal(
-                    paddle.dot(x1, y1).numpy(), np.array([[17], [58]])))
+            np.testing.assert_array_equal(
+                paddle.dot(x1, y1).numpy(), np.array([[17], [58]]))
 
 
 class TestComplexDotOp(OpTest):
 
     def setUp(self):
         self.op_type = "dot"
+        self.python_api = paddle.dot
         self.init_base_dtype()
         self.init_input_output()
         self.init_grad_input_output()
@@ -164,27 +175,30 @@ class TestComplexDotOp(OpTest):
         self.grad_y = self.grad_out * np.conj(self.x)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'],
                         'Out',
                         user_defined_grads=[self.grad_x, self.grad_y],
-                        user_defined_grad_outputs=[self.grad_out])
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=True)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(['Y'],
                         'Out',
                         no_grad_set=set("X"),
                         user_defined_grads=[self.grad_y],
-                        user_defined_grad_outputs=[self.grad_out])
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=True)
 
     def test_check_grad_ingore_y(self):
         self.check_grad(['X'],
                         'Out',
                         no_grad_set=set('Y'),
                         user_defined_grads=[self.grad_x],
-                        user_defined_grad_outputs=[self.grad_out])
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=True)
 
 
 class TestComplexDotOp2D(OpTest):

@@ -98,11 +98,11 @@ def launch():
         The ``training_script_args`` includes arguments required by IPU distributed launch and illustrated as below.
         ``Examples 10`` has provided a example of paddle.distributed.launch with IPUs.
 
-        - ``--hosts``: The hosts for IPU distributd training.
+        - ``--hosts``: The hosts for IPU distributd training. Each host is able to include multiple processes.
         
-        - ``--nproc_per_host``: The number of processes launched per host.
+        - ``--nproc_per_host``: The number of processes launched per host. Each process is able to include multiple replicas.
 
-        - ``--ipus_per_replica``: The number of IPUs requested per replica.
+        - ``--ipus_per_replica``: The number of IPUs requested per replica. Each replica is able to include multiple IPUs.
 
         - ``--ipu_partition``: The partition name of IPU devices.
 
@@ -110,7 +110,7 @@ def launch():
 
         - ``training_script``: The full path to the IPU distributed training program/script to be launched in parallel. e.g., ``training.py``.
 
-        - ``training_script_args``: The args of the IPU distributed training program/script.
+        - ``training_script_args``: The args of the IPU distributed training program/script. e.g., ``--lr=0.1``.
 
     Returns:
         - ``None``
@@ -253,9 +253,11 @@ def launch():
         .. code-block:: bash
             :name: code-block-example-bash10
 
-            # With the following command, the job will begin to run the distributhed program with IPUs.
-            # Only support and require the `device_num` as the arg and `ipu` as the launch script.
-            # Please Check the details about the following args of the launch scripte from `utils/ipu_launch.py`.
+            # With the following command, the job will begin to run the distributhed program with IPUs
+            # Require `devices` as the number of IPUs
+            # Require `training_script` to be set as `ipu`
+            # Require `training_script_args` as the arguments of IPU distributed training instead of the arguments of the training program/script
+            # Please Check the `IPU Parameters` for details
             python -m paddle.distributed.launch --devices 4 ipu --hosts=localhost --nproc_per_host=2 --ipus_per_replica=1 --ipu_partition=pod16 --vipu_server=127.0.0.1 train.py
 
     """

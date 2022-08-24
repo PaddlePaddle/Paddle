@@ -105,7 +105,9 @@ $$
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    momentum, ops::MomentumOp, ops::MomentumOpMaker,
+    momentum,
+    ops::MomentumOp,
+    ops::MomentumOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::MomentumOpInferVarType);

@@ -19,6 +19,16 @@ if ! [[ $(pre-commit --version) == *"2.17.0"* ]]; then
     pip install pre-commit==2.17.0 1>nul
 fi
 
+# Install clang-format before git commit to avoid repeat installation due to
+# pre-commit multi-thread running.
+readonly VERSION="13.0.0"
+version=$(clang-format -version)
+if ! [[ $(python -V 2>&1 | awk '{print $2}' | awk -F '.' '{print $1$2}') -ge 36 ]]; then
+    echo "clang-format installation by pip need python version great equal 3.6, 
+          please change the default python to higher version."
+    exit 1
+fi
+
 diff_files=$(git diff --numstat ${BRANCH} | awk '{print $NF}')
 echo -e "diff files between pr and ${BRANCH}:\n${diff_files}"
 

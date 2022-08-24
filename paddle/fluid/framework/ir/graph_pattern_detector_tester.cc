@@ -192,14 +192,18 @@ TEST(GraphPatternDetector, IntermediateCheck) {
   v2->LinksFrom({op2}).LinksTo({op3});
 
   int count = 0;
-  detector(&graph, [&](const GraphPatternDetector::subgraph_t& g,
-                       Graph* graph) { ++count; });
+  detector(&graph,
+           [&](const GraphPatternDetector::subgraph_t& g, Graph* graph) {
+             ++count;
+           });
   EXPECT_EQ(count, 0);
 
   count = 0;
   v2->AsInput();
-  detector(&graph, [&](const GraphPatternDetector::subgraph_t& g,
-                       Graph* graph) { ++count; });
+  detector(&graph,
+           [&](const GraphPatternDetector::subgraph_t& g, Graph* graph) {
+             ++count;
+           });
   ASSERT_EQ(count, 1);
 }
 

@@ -84,12 +84,18 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
 
   x_tensor->Resize(phi::make_ddim(x_dims));
   auto* mutable_x = x_tensor->mutable_data<float>(place);
-  memory::Copy(place, mutable_x, place, src_data.data(),
+  memory::Copy(place,
+               mutable_x,
+               place,
+               src_data.data(),
                sizeof(float) * src_data.size());
 
   y_tensor->Resize(phi::make_ddim(y_dims));
   auto* mutable_y = y_tensor->mutable_data<float>(place);
-  memory::Copy(place, mutable_y, place, src_data.data(),
+  memory::Copy(place,
+               mutable_y,
+               place,
+               src_data.data(),
                sizeof(float) * src_data.size());
 
   var_pair x_pair = var_pair("X", vb_vector(1, x));
@@ -126,8 +132,8 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
 
   // verify VariableWrapper hook result
   framework::LoDTensor x_grad;
-  framework::TensorCopySync(x->GradVar().Get<framework::LoDTensor>(), place,
-                            &x_grad);
+  framework::TensorCopySync(
+      x->GradVar().Get<framework::LoDTensor>(), place, &x_grad);
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 8.0);
   }
@@ -135,8 +141,8 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   ASSERT_EQ(hook_value, 10);
 
   framework::LoDTensor y_grad;
-  framework::TensorCopySync(y->GradVar().Get<framework::LoDTensor>(), place,
-                            &y_grad);
+  framework::TensorCopySync(
+      y->GradVar().Get<framework::LoDTensor>(), place, &y_grad);
 
   for (int i = 0; i < y_grad.numel(); ++i) {
     ASSERT_EQ(y_grad.data<float>()[i], 4.0);
@@ -168,17 +174,26 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
 
   x_tensor->Resize(phi::make_ddim(x_dims));
   auto* mutable_x = x_tensor->mutable_data<float>(place);
-  memory::Copy(place, mutable_x, place, src_data.data(),
+  memory::Copy(place,
+               mutable_x,
+               place,
+               src_data.data(),
                sizeof(float) * src_data.size());
 
   y_tensor->Resize(phi::make_ddim(y_dims));
   auto* mutable_y = y_tensor->mutable_data<float>(place);
-  memory::Copy(place, mutable_y, place, src_data.data(),
+  memory::Copy(place,
+               mutable_y,
+               place,
+               src_data.data(),
                sizeof(float) * src_data.size());
 
   z_tensor->Resize(phi::make_ddim(z_dims));
   auto* mutable_z = z_tensor->mutable_data<float>(place);
-  memory::Copy(place, mutable_z, place, src_data.data(),
+  memory::Copy(place,
+               mutable_z,
+               place,
+               src_data.data(),
                sizeof(float) * src_data.size());
 
   // add VariableWrapper hook
@@ -212,8 +227,8 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   ins = {xy_pair, xz_pair};
   outs = {out_pair};
   framework::AttributeMap add_attr_map;
-  tracer.TraceOp<VarBase>("elementwise_add", ins, outs, add_attr_map, place,
-                          true);
+  tracer.TraceOp<VarBase>(
+      "elementwise_add", ins, outs, add_attr_map, place, true);
 
   ASSERT_EQ(x->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(y->GradVarBase()->GradOpNum(), 0UL);
@@ -229,8 +244,8 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
 
   // verify VariableWrapper hook result
   framework::LoDTensor x_grad;
-  framework::TensorCopySync(x->GradVar().Get<framework::LoDTensor>(), place,
-                            &x_grad);
+  framework::TensorCopySync(
+      x->GradVar().Get<framework::LoDTensor>(), place, &x_grad);
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 16.0);
   }
@@ -238,16 +253,16 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   ASSERT_EQ(hook_value, 100);
 
   framework::LoDTensor y_grad;
-  framework::TensorCopySync(y->GradVar().Get<framework::LoDTensor>(), place,
-                            &y_grad);
+  framework::TensorCopySync(
+      y->GradVar().Get<framework::LoDTensor>(), place, &y_grad);
 
   for (int i = 0; i < y_grad.numel(); ++i) {
     ASSERT_EQ(y_grad.data<float>()[i], 4.0);
   }
 
   framework::LoDTensor z_grad;
-  framework::TensorCopySync(z->GradVar().Get<framework::LoDTensor>(), place,
-                            &z_grad);
+  framework::TensorCopySync(
+      z->GradVar().Get<framework::LoDTensor>(), place, &z_grad);
 
   for (int i = 0; i < z_grad.numel(); ++i) {
     ASSERT_EQ(z_grad.data<float>()[i], 4.0);

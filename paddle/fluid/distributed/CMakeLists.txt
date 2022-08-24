@@ -1,3 +1,4 @@
+add_subdirectory(auto_parallel)
 add_subdirectory(collective)
 add_subdirectory(store)
 if(WITH_PYTHON)
@@ -33,11 +34,6 @@ if(NOT WITH_PSCORE)
 endif()
 
 proto_library(ps_framework_proto SRCS the_one_ps.proto)
-add_custom_command(
-  TARGET ps_framework_proto
-  POST_BUILD
-  COMMAND mv the_one_ps.pb.h ps.pb.h
-  COMMAND mv the_one_ps.pb.cc ps.pb.cc)
 
 set(DISTRIBUTE_COMPILE_FLAGS
     "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"

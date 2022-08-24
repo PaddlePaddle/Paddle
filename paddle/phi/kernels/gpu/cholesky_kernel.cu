@@ -15,6 +15,8 @@ limitations under the License. */
 #ifndef PADDLE_WITH_HIP
 // HIP not support cusolver
 
+#include "paddle/phi/kernels/cholesky_kernel.h"
+
 #include <thrust/device_vector.h>
 
 #include <algorithm>
@@ -25,7 +27,6 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cholesky_kernel.h"
 
 namespace phi {
 

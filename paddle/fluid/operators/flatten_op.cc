@@ -39,11 +39,13 @@ class FlattenOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Flatten");
     const auto &axis = ctx->Attrs().Get<int>("axis");
     const auto &in_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(axis, 0,
+    PADDLE_ENFORCE_GE(axis,
+                      0,
                       platform::errors::InvalidArgument(
                           "The axis should be greater than or equal to 0."));
     PADDLE_ENFORCE_LE(
-        axis, in_dims.size(),
+        axis,
+        in_dims.size(),
         platform::errors::InvalidArgument(
             "The axis should be less than or equal to input tensor's rank."));
 
@@ -189,11 +191,13 @@ class Flatten2Op : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Flatten2");
     const auto &axis = ctx->Attrs().Get<int>("axis");
     const auto &in_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(axis, 0,
+    PADDLE_ENFORCE_GE(axis,
+                      0,
                       platform::errors::InvalidArgument(
                           "The axis should be greater than or equal to 0."));
     PADDLE_ENFORCE_LE(
-        axis, in_dims.size(),
+        axis,
+        in_dims.size(),
         platform::errors::InvalidArgument(
             "The axis should be less than or equal to input tensor's rank"));
 
@@ -254,10 +258,12 @@ class Flatten2GradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(context->HasInput("XShape"), "Input", "XShape",
+    OP_INOUT_CHECK(
+        context->HasInput("XShape"), "Input", "XShape", "Flatten2Grad");
+    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
                    "Flatten2Grad");
-    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "Flatten2Grad");
     auto xshape_dims = context->GetInputDim("XShape");
     auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -278,8 +284,8 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FlattenContiguousRange");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "FlattenContiguousRange");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "FlattenContiguousRange");
     const auto &start_axis = ctx->Attrs().Get<int>("start_axis");
     const auto &stop_axis = ctx->Attrs().Get<int>("stop_axis");
 
@@ -292,8 +298,8 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
       xshape = std::move(std::unique_ptr<CompatMetaTensor>(new CompatMetaTensor(
           ctx->GetOutputVarPtrs("XShape")[0], ctx->IsRuntime())));
     }
-    phi::FlattenWithXShapeInferMeta(x, start_axis, stop_axis, &out,
-                                    xshape.get());
+    phi::FlattenWithXShapeInferMeta(
+        x, start_axis, stop_axis, &out, xshape.get());
   }
 };
 
@@ -364,10 +370,14 @@ class FlattenContiguousRangeGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(context->HasInput("XShape"), "Input", "XShape",
+    OP_INOUT_CHECK(context->HasInput("XShape"),
+                   "Input",
+                   "XShape",
                    "FlattenContiguousRangeGrad");
-    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "FlattenContiguousRangeGrad");
+    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "FlattenContiguousRangeGrad");
     // Construct MetaTensor for InferMeta Func
     using CompatMetaTensor = framework::CompatMetaTensor;
     CompatMetaTensor xshape(context->GetInputVarPtrs("XShape")[0],
@@ -396,23 +406,30 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(FlattenGradNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(flatten, ops::FlattenOp, ops::FlattenOpMaker,
+REGISTER_OPERATOR(flatten,
+                  ops::FlattenOp,
+                  ops::FlattenOpMaker,
                   ops::FlattenGradOpMaker<paddle::framework::OpDesc>,
                   ops::FlattenGradOpMaker<paddle::imperative::OpBase>,
                   ops::FlattenOpInplaceInferer);
-REGISTER_OPERATOR(flatten_grad, ops::FlattenGradOp,
+REGISTER_OPERATOR(flatten_grad,
+                  ops::FlattenGradOp,
                   ops::FlattenGradInplaceInferer,
                   ops::FlattenGradNoNeedBufferVarsInferer);
 
-REGISTER_OPERATOR(flatten2, ops::Flatten2Op, ops::Flatten2OpMaker,
+REGISTER_OPERATOR(flatten2,
+                  ops::Flatten2Op,
+                  ops::Flatten2OpMaker,
                   ops::Flatten2GradOpMaker<paddle::framework::OpDesc>,
                   ops::Flatten2GradOpMaker<paddle::imperative::OpBase>,
                   ops::FlattenOpInplaceInferer);
-REGISTER_OPERATOR(flatten2_grad, ops::Flatten2GradOp,
+REGISTER_OPERATOR(flatten2_grad,
+                  ops::Flatten2GradOp,
                   ops::FlattenGradInplaceInferer);
 
 REGISTER_OPERATOR(
-    flatten_contiguous_range, ops::FlattenContiguousRangeOp,
+    flatten_contiguous_range,
+    ops::FlattenContiguousRangeOp,
     ops::FlattenContiguousRangeOpMaker,
     ops::FlattenContiguousRangeGradOpMaker<paddle::framework::OpDesc>,
     ops::FlattenContiguousRangeGradOpMaker<paddle::imperative::OpBase>,
@@ -421,33 +438,31 @@ REGISTER_OPERATOR(flatten_contiguous_range_grad,
                   ops::FlattenContiguousRangeGradOp,
                   ops::FlattenGradInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    flatten, ops::FlattenKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FlattenKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FlattenKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::FlattenKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FlattenKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::FlattenKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    flatten_grad,
-    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    flatten2, ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, float>,
-    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, double>,
-    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int>,
-    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    flatten2_grad,
-    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(flatten,
+                       ops::FlattenKernel<phi::CPUContext, float>,
+                       ops::FlattenKernel<phi::CPUContext, double>,
+                       ops::FlattenKernel<phi::CPUContext, uint8_t>,
+                       ops::FlattenKernel<phi::CPUContext, int>,
+                       ops::FlattenKernel<phi::CPUContext, int8_t>,
+                       ops::FlattenKernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(flatten_grad,
+                       ops::FlattenGradKernel<phi::CPUContext, float>,
+                       ops::FlattenGradKernel<phi::CPUContext, double>,
+                       ops::FlattenGradKernel<phi::CPUContext, uint8_t>,
+                       ops::FlattenGradKernel<phi::CPUContext, int>,
+                       ops::FlattenGradKernel<phi::CPUContext, int8_t>,
+                       ops::FlattenGradKernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(flatten2,
+                       ops::Flatten2Kernel<phi::CPUContext, float>,
+                       ops::Flatten2Kernel<phi::CPUContext, double>,
+                       ops::Flatten2Kernel<phi::CPUContext, uint8_t>,
+                       ops::Flatten2Kernel<phi::CPUContext, int>,
+                       ops::Flatten2Kernel<phi::CPUContext, int8_t>,
+                       ops::Flatten2Kernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(flatten2_grad,
+                       ops::Flatten2GradKernel<phi::CPUContext, float>,
+                       ops::Flatten2GradKernel<phi::CPUContext, double>,
+                       ops::Flatten2GradKernel<phi::CPUContext, uint8_t>,
+                       ops::Flatten2GradKernel<phi::CPUContext, int>,
+                       ops::Flatten2GradKernel<phi::CPUContext, int8_t>,
+                       ops::Flatten2GradKernel<phi::CPUContext, int64_t>);

@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/rmsprop_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/rmsprop_kernel_impl.h"
-#include "paddle/phi/kernels/rmsprop_kernel.h"
 
 PD_REGISTER_KERNEL(
     rmsprop, GPU, ALL_LAYOUT, phi::RmspropDenseKernel, float, double) {}

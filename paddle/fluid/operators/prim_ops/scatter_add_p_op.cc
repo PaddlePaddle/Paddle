@@ -70,9 +70,10 @@ class ScatterAddPrimOpShapeInference : public framework::InferShapeBase {
       framework::InferShapeVarPtr index_var_ptr =
           ctx->GetInputVarPtrs("IndexTensor")[0];
       framework::VarDesc *index_var =
-          BOOST_GET(framework::VarDesc *, index_var_ptr);
+          PADDLE_GET(framework::VarDesc *, index_var_ptr);
       auto index_shape = index_var->GetShape();
-      PADDLE_ENFORCE_EQ(index_shape.size(), 1,
+      PADDLE_ENFORCE_EQ(index_shape.size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "The index tensor should be a 1D tensor,"
                             "but get rank %d",
@@ -82,35 +83,42 @@ class ScatterAddPrimOpShapeInference : public framework::InferShapeBase {
       num_index = ctx->Attrs().Get<std::vector<int64_t>>("index").size();
     }
     auto axis = ctx->Attrs().Get<int64_t>("axis");
-    framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
-    framework::VarDesc *y_var = BOOST_GET(framework::VarDesc *, y_var_ptr);
+    framework::VarDesc *x_var = PADDLE_GET(framework::VarDesc *, x_var_ptr);
+    framework::VarDesc *y_var = PADDLE_GET(framework::VarDesc *, y_var_ptr);
     auto x_shape = x_var->GetShape();
     auto y_shape = y_var->GetShape();
     size_t x_rank = x_shape.size();
     size_t y_rank = y_shape.size();
-    PADDLE_ENFORCE_EQ(x_rank, y_rank,
+    PADDLE_ENFORCE_EQ(x_rank,
+                      y_rank,
                       platform::errors::InvalidArgument(
                           "The dimensions of two input tensor should be same, "
                           "but get %d and %d",
-                          x_rank, y_rank));
-    PADDLE_ENFORCE_EQ(y_shape[axis], num_index,
+                          x_rank,
+                          y_rank));
+    PADDLE_ENFORCE_EQ(y_shape[axis],
+                      num_index,
                       platform::errors::InvalidArgument(
                           "The shape of source input tensor at scatter axis "
                           "should be  equal to num_index, "
                           "but get %d and %d",
-                          y_shape[axis], num_index));
+                          y_shape[axis],
+                          num_index));
     for (size_t i = 0; i < x_rank; ++i) {
       if (i != size_t(axis)) {
         PADDLE_ENFORCE_EQ(
-            x_shape[i], y_shape[i],
+            x_shape[i],
+            y_shape[i],
             platform::errors::InvalidArgument(
                 "The shape of two input tensor at dimension %d should be same, "
                 "but get %d and %d",
-                i, x_rank, y_rank));
+                i,
+                x_rank,
+                y_rank));
       }
     }
 
-    BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_shape);
+    PADDLE_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_shape);
   }
 };
 
@@ -125,26 +133,32 @@ class ScatterAddPrimOpVarTypeInference
     auto y_type = GetType(ctx, y_name);
     auto x_dtype = GetDataType(ctx, x_name);
     auto y_dtype = GetDataType(ctx, y_name);
-    PADDLE_ENFORCE_EQ(x_type, y_type,
+    PADDLE_ENFORCE_EQ(x_type,
+                      y_type,
                       platform::errors::InvalidArgument(
                           "The type of two input tensor should be same, "
                           "but get %d and %d",
-                          x_type, y_type));
-    PADDLE_ENFORCE_EQ(x_dtype, y_dtype,
+                          x_type,
+                          y_type));
+    PADDLE_ENFORCE_EQ(x_dtype,
+                      y_dtype,
                       platform::errors::InvalidArgument(
                           "The datatype of two input tensor should be same, "
                           "but get %d and %d",
-                          x_dtype, y_dtype));
+                          x_dtype,
+                          y_dtype));
 
     if (ctx->HasInput("IndexTensor")) {
       auto index_name = Input(ctx, "IndexTensor")[0];
       auto index_dtype = GetDataType(ctx, index_name);
       PADDLE_ENFORCE_EQ(
-          index_dtype, framework::proto::VarType_Type_INT32,
+          index_dtype,
+          framework::proto::VarType_Type_INT32,
           platform::errors::InvalidArgument(
               "The datatype of input tensor should be VarType_Type_INT32(%d), "
               "but get %d",
-              framework::proto::VarType_Type_INT32, index_dtype));
+              framework::proto::VarType_Type_INT32,
+              index_dtype));
     }
     SetType(ctx, z_name, GetType(ctx, x_name));
     SetDataType(ctx, z_name, GetDataType(ctx, x_name));
@@ -154,7 +168,8 @@ class ScatterAddPrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(scatter_add_p, paddle::operators::ScatterAddPrimOp,
+REGISTER_OPERATOR(scatter_add_p,
+                  paddle::operators::ScatterAddPrimOp,
                   paddle::operators::ScatterAddPrimOpMaker,
                   paddle::operators::ScatterAddPrimOpShapeInference,
                   paddle::operators::ScatterAddPrimOpVarTypeInference);

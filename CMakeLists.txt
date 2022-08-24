@@ -243,6 +243,7 @@ include(simd)
 option(WITH_AVX "Compile PaddlePaddle with AVX intrinsics" ${AVX_FOUND})
 option(WITH_PYTHON "Compile PaddlePaddle with python interpreter" ON)
 option(WITH_TESTING "Compile PaddlePaddle with unit testing" OFF)
+option(WITH_MULTINODE_TESTING "Test multinode apis and ops" OFF)
 option(WITH_MKL "Compile PaddlePaddle with MKL support." ${AVX_FOUND})
 option(WITH_SYSTEM_BLAS "Use system blas library" OFF)
 option(WITH_DISTRIBUTE "Compile with distributed support" OFF)
@@ -336,7 +337,12 @@ endif()
 if(LINUX
    AND NOT WITH_CUSTOM_DEVICE
    AND NOT ON_INFER)
-  set(WITH_CUSTOM_DEVICE ON)
+  set(WITH_CUSTOM_DEVICE
+      ON
+      CACHE BOOL "Enable Custom Device when compiling for Linux" FORCE)
+  message(
+    "Enable Custom Device when compiling for Linux. Force WITH_CUSTOM_DEVICE=ON."
+  )
 endif()
 
 if(WIN32)
@@ -430,6 +436,7 @@ endif()
 if(WITH_ROCM)
   include(hip)
   include(miopen) # set miopen libraries, must before configure
+  include(cupti)
 endif()
 
 if(WITH_XPU_KP)

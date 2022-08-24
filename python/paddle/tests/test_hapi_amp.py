@@ -20,7 +20,7 @@ import os
 os.environ['FLAGS_cudnn_deterministic'] = '1'
 
 import unittest
-
+import tempfile
 import numpy as np
 
 import paddle
@@ -101,7 +101,9 @@ class TestHapiWithAmp(unittest.TestCase):
                   batch_size=64,
                   num_iters=2,
                   log_freq=1)
-        model.save('./lenet_amp')
+        temp_dir = tempfile.TemporaryDirectory()
+        lenet_amp_path = os.path.join(temp_dir.name, './lenet_amp')
+        model.save(lenet_amp_path)
 
         with paddle.fluid.unique_name.guard():
             paddle.seed(2021)
@@ -119,17 +121,15 @@ class TestHapiWithAmp(unittest.TestCase):
                model._scaler.state_dict()['incr_count']))
 
         # equal after load
-        new_model.load('./lenet_amp')
+        new_model.load(lenet_amp_path)
+        temp_dir.cleanup()
         self.assertEqual(new_model._scaler.state_dict()['incr_count'],
                          model._scaler.state_dict()['incr_count'])
         self.assertEqual(new_model._scaler.state_dict()['decr_count'],
                          model._scaler.state_dict()['decr_count'])
-        self.assertTrue(
-            np.array_equal(
-                new_model._optimizer.state_dict()
-                ['conv2d_1.w_0_moment1_0'].numpy(),
-                model._optimizer.state_dict()
-                ['conv2d_1.w_0_moment1_0'].numpy()))
+        np.testing.assert_array_equal(
+            new_model._optimizer.state_dict()['conv2d_1.w_0_moment1_0'].numpy(),
+            model._optimizer.state_dict()['conv2d_1.w_0_moment1_0'].numpy())
 
     def test_dynamic_check_input(self):
         paddle.disable_static()

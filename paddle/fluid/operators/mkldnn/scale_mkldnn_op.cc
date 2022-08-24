@@ -50,8 +50,9 @@ class ScaleMKLDNNKernel : public framework::OpKernel<T> {
     auto activation_p = handler.AcquireForwardPrimitive();
 
     auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
-    activation_p->execute(astream, {{DNNL_ARG_FROM, *src_memory_p},
-                                    {DNNL_ARG_TO, *dst_memory_p}});
+    activation_p->execute(
+        astream,
+        {{DNNL_ARG_FROM, *src_memory_p}, {DNNL_ARG_TO, *dst_memory_p}});
     astream.wait();
 
     out->set_mem_desc(dst_memory_p->get_desc());
@@ -61,6 +62,8 @@ class ScaleMKLDNNKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(scale, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(scale,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::ScaleMKLDNNKernel<float>,
                    ops::ScaleMKLDNNKernel<paddle::platform::bfloat16>);

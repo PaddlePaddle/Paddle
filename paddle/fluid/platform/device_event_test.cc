@@ -33,8 +33,7 @@ TEST(DeviceEvent, CUDA) {
 
   auto& pool = DeviceContextPool::Instance();
   auto place = CUDAPlace(0);
-  auto* context =
-      static_cast<paddle::platform::CUDADeviceContext*>(pool.Get(place));
+  auto* context = static_cast<phi::GPUContext*>(pool.Get(place));
 
   ASSERT_NE(context, nullptr);
   // case 1. test for event_creator
@@ -44,8 +43,6 @@ TEST(DeviceEvent, CUDA) {
   ASSERT_EQ(status, true);
   // case 2. test for event_recorder
   event.Record(context);
-  status = event.Query();
-  ASSERT_EQ(status, false);
   // case 3. test for event_finisher
   event.Finish();
   status = event.Query();
@@ -56,8 +53,8 @@ TEST(DeviceEvent, CUDA) {
   int size = 1000000 * sizeof(float);
   cudaMallocHost(reinterpret_cast<void**>(&src_fp32), size);
   cudaMalloc(reinterpret_cast<void**>(&dst_fp32), size);
-  cudaMemcpyAsync(dst_fp32, src_fp32, size, cudaMemcpyHostToDevice,
-                  context->stream());
+  cudaMemcpyAsync(
+      dst_fp32, src_fp32, size, cudaMemcpyHostToDevice, context->stream());
   event.Record(context);  // step 1. record it
   status = event.Query();
   ASSERT_EQ(status, false);
@@ -85,8 +82,7 @@ TEST(DeviceEvent, CUDA) {
 
   auto& pool = DeviceContextPool::Instance();
   auto place = CUDAPlace(0);
-  auto* context =
-      static_cast<paddle::platform::CUDADeviceContext*>(pool.Get(place));
+  auto* context = static_cast<phi::GPUContext*>(pool.Get(place));
 
   ASSERT_NE(context, nullptr);
   // case 1. test for event_creator
@@ -108,8 +104,8 @@ TEST(DeviceEvent, CUDA) {
   int size = 1000000 * sizeof(float);
   hipMallocHost(reinterpret_cast<void**>(&src_fp32), size);
   hipMalloc(reinterpret_cast<void**>(&dst_fp32), size);
-  hipMemcpyAsync(dst_fp32, src_fp32, size, hipMemcpyHostToDevice,
-                 context->stream());
+  hipMemcpyAsync(
+      dst_fp32, src_fp32, size, hipMemcpyHostToDevice, context->stream());
   event.Record(context);  // step 1. record it
   status = event.Query();
   ASSERT_EQ(status, false);

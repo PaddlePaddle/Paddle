@@ -25,7 +25,8 @@ namespace framework {
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
   PADDLE_ENFORCE_NE(
-      from, to,
+      from,
+      to,
       platform::errors::InvalidArgument(
           "Layout transform should transform between different layout."));
   if (from == DataLayout::kNCHW && to == DataLayout::kNHWC) {
@@ -43,8 +44,8 @@ void CastDataLayout::apply() {
   auto place = ctx_->GetPlace();
 
   if (platform::is_cpu_place(place)) {
-    phi::funcs::Transpose<platform::CPUDeviceContext, T, 4> trans4;
-    auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
+    phi::funcs::Transpose<phi::CPUContext, T, 4> trans4;
+    auto* context = static_cast<const phi::CPUContext*>(ctx_);
     trans4(*context, in_, out_, axis_);
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -53,7 +54,8 @@ void CastDataLayout::apply() {
 }
 
 void TransDataLayout(const OpKernelType& kernel_type_for_var,
-                     const OpKernelType& expected_kernel_type, const Tensor& in,
+                     const OpKernelType& expected_kernel_type,
+                     const Tensor& in,
                      Tensor* out) {
   PADDLE_ENFORCE(
       platform::places_are_same_class(kernel_type_for_var.place_,
@@ -62,7 +64,8 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
           "TransDataLayout only support DataLayout transform on same place."));
 
   PADDLE_ENFORCE_EQ(
-      arity(in.dims()), 4,
+      arity(in.dims()),
+      4,
       platform::errors::InvalidArgument(
           "Input dimension arity only can be 4, the input dimension is %s.",
           in.dims()));
@@ -114,7 +117,8 @@ void* GetDataFromTensor(const Tensor& tensor, dnnl::memory::data_type type) {
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
-                               const Tensor& in, Tensor* out) {
+                               const Tensor& in,
+                               Tensor* out) {
   auto in_layout = kernel_type_for_var.data_layout_;
   auto out_layout = expected_kernel_type.data_layout_;
   auto place = expected_kernel_type.place_;
@@ -128,12 +132,17 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
   innerTransDataLayoutFromMKLDNN(
       in_layout,
       paddle::platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout(),
-      in, out, place);
+      in,
+      out,
+      place);
 }
 
-void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
-                                    const Tensor& in, Tensor* out,
-                                    platform::Place place, bool always_copy) {
+void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
+                                    DataLayout out_layout,
+                                    const Tensor& in,
+                                    Tensor* out,
+                                    platform::Place place,
+                                    bool always_copy) {
   // Set default as NCHW in case not specified
   out_layout =
       out_layout == DataLayout::kAnyLayout ? DataLayout::kNCHW : out_layout;
@@ -148,7 +157,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   memory::data_type in_type =
       ToMKLDNNDataType(framework::TransToProtoVarType(in.dtype()));
   PADDLE_ENFORCE_NE(
-      in_type, memory::data_type::undef,
+      in_type,
+      memory::data_type::undef,
       platform::errors::InvalidArgument(
           "Input tensor type (%s) is not supported.",
           DataTypeToString(framework::TransToProtoVarType(in.dtype()))));
@@ -177,7 +187,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     platform::RecordEvent record_reorder("ext_reorder",
                                          platform::TracerEventType::UserDefined,
-                                         2, platform::EventRole::kUniqueOp);
+                                         2,
+                                         platform::EventRole::kUniqueOp);
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
   } else {

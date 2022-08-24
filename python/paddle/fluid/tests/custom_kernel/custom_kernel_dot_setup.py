@@ -50,10 +50,9 @@ paddle_custom_kernel_include = list(
         site_packages_path))
 
 # include path third_party
-compile_third_party_path = os.path.join(os.environ['PADDLE_ROOT'],
-                                        'build/third_party')
+compile_third_party_path = os.path.join(os.environ['PADDLE_BINARY_DIR'],
+                                        'third_party')
 paddle_custom_kernel_include += [
-    os.path.join(compile_third_party_path, 'boost/src/extern_boost'),  # boost
     os.path.join(compile_third_party_path, 'install/gflags/include'),  # gflags
     os.path.join(compile_third_party_path, 'install/glog/include'),  # glog
 ]

@@ -21,12 +21,16 @@ add_subdirectory(ops)
 add_subdirectory(tools)
 # phi tests
 add_subdirectory(tests)
+# phi capi
+if(WITH_CUSTOM_DEVICE)
+  add_subdirectory(capi)
+endif()
 
 # make an unity target for compile deps
 set(PHI_DEPS
     convert_utils
     dense_tensor
-    phi_context
+    phi_backends
     kernel_factory
     kernel_context
     arg_map_context
@@ -54,6 +58,6 @@ file(
 
 # generate inner headers include dir for users
 generate_unify_header(backends)
-generate_unify_header(core)
+generate_unify_header(core EXCLUDES cuda_stream.h)
 generate_unify_header(infermeta)
 generate_unify_header(kernels SKIP_SUFFIX grad_kernel)

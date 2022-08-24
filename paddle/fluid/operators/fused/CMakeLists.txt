@@ -26,11 +26,17 @@ register_operators(
   fused_bias_dropout_residual_layer_norm_op
   resnet_unit_op
   fused_gemm_epilogue_op
-  fused_gate_attention_op)
+  fused_gate_attention_op
+  resnet_basic_block_op)
 
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
 op_library(fusion_lstm_op)
+
+if(WITH_XPU)
+  op_library(resnet_basic_block_op)
+  op_library(resnet_unit_op)
+endif()
 
 if(WITH_GPU OR WITH_ROCM)
   # fused_bn_activation_op needs cudnn 7.4.1 above

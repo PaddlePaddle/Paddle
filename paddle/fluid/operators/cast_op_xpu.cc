@@ -51,7 +51,9 @@ class CastXPUKernel : public framework::OpKernel<InT> {
     phi::CastKernel<InT>(
         static_cast<const typename paddle::framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
-        *in, pt_out_dtype, out);
+        *in,
+        pt_out_dtype,
+        out);
   }
 };
 
@@ -60,7 +62,8 @@ class CastXPUKernel : public framework::OpKernel<InT> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    cast, ops::CastXPUKernel<paddle::platform::XPUDeviceContext, int32_t>,
+    cast,
+    ops::CastXPUKernel<paddle::platform::XPUDeviceContext, int32_t>,
     ops::CastXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::CastXPUKernel<paddle::platform::XPUDeviceContext,
                        paddle::platform::float16>,

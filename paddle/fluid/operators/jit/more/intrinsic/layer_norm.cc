@@ -25,9 +25,15 @@ namespace jit {
 namespace more {
 namespace intrinsic {
 
-void LayerNorm(float* x, float* out, float* mean, float* var,
-               const float* scale, const float* bias, int height,
-               const float epsilon, int right) {
+void LayerNorm(float* x,
+               float* out,
+               float* mean,
+               float* var,
+               const float* scale,
+               const float* bias,
+               int height,
+               const float epsilon,
+               int right) {
   int block = YMM_FLOAT_BLOCK;
   const int rest = right % block;
   const int end = right - rest;
@@ -46,11 +52,14 @@ void LayerNorm(float* x, float* out, float* mean, float* var,
     __m256 epsilon_vec = _mm256_set1_ps(epsilon);
     int rest_mask =
         ((-1) & (~((~0U) >> (sizeof(int) * 8 - (block - rest))))) & 0x0ff;
-    __m256i mask_vec = _mm256_set_epi32(
-        rest_mask & 0x80 ? 0xffffffff : 0, rest_mask & 0x40 ? 0xffffffff : 0,
-        rest_mask & 0x20 ? 0xffffffff : 0, rest_mask & 0x10 ? 0xffffffff : 0,
-        rest_mask & 0x8 ? 0xffffffff : 0, rest_mask & 0x4 ? 0xffffffff : 0,
-        rest_mask & 0x2 ? 0xffffffff : 0, rest_mask & 0x1 ? 0xffffffff : 0);
+    __m256i mask_vec = _mm256_set_epi32(rest_mask & 0x80 ? 0xffffffff : 0,
+                                        rest_mask & 0x40 ? 0xffffffff : 0,
+                                        rest_mask & 0x20 ? 0xffffffff : 0,
+                                        rest_mask & 0x10 ? 0xffffffff : 0,
+                                        rest_mask & 0x8 ? 0xffffffff : 0,
+                                        rest_mask & 0x4 ? 0xffffffff : 0,
+                                        rest_mask & 0x2 ? 0xffffffff : 0,
+                                        rest_mask & 0x1 ? 0xffffffff : 0);
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp for
@@ -66,15 +75,17 @@ void LayerNorm(float* x, float* out, float* mean, float* var,
       if (rest != 0) {
         j = offset + right - block;
         tmp = _mm256_loadu_ps((const float*)x + j);
-        tmp = _mm256_blendv_ps(_mm256_setzero_ps(), tmp,
+        tmp = _mm256_blendv_ps(_mm256_setzero_ps(),
+                               tmp,
                                *(__m256*)&mask_vec);  // NOLINT
         sum = _mm256_add_ps(sum, tmp);
       }
       hi = _mm256_extractf128_ps(sum, 1);
       lo = _mm256_extractf128_ps(sum, 0);
       sum = _mm256_add_ps(
-          sum, _mm256_insertf128_ps(
-                   _mm256_insertf128_ps(_mm256_setzero_ps(), hi, 0), lo, 1));
+          sum,
+          _mm256_insertf128_ps(
+              _mm256_insertf128_ps(_mm256_setzero_ps(), hi, 0), lo, 1));
       sum = _mm256_hadd_ps(sum, sum);
       sum = _mm256_hadd_ps(sum, sum);
       mean_vec = _mm256_mul_ps(sum, reverse_num_vec);
@@ -91,15 +102,17 @@ void LayerNorm(float* x, float* out, float* mean, float* var,
         j = offset + right - block;
         tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)x + j), mean_vec);
         tmp = _mm256_mul_ps(tmp, tmp);
-        tmp = _mm256_blendv_ps(_mm256_setzero_ps(), tmp,
+        tmp = _mm256_blendv_ps(_mm256_setzero_ps(),
+                               tmp,
                                *(__m256*)&mask_vec);  // NOLINT
         sum = _mm256_add_ps(sum, tmp);
       }
       hi = _mm256_extractf128_ps(sum, 1);
       lo = _mm256_extractf128_ps(sum, 0);
       sum = _mm256_add_ps(
-          sum, _mm256_insertf128_ps(
-                   _mm256_insertf128_ps(_mm256_setzero_ps(), hi, 0), lo, 1));
+          sum,
+          _mm256_insertf128_ps(
+              _mm256_insertf128_ps(_mm256_setzero_ps(), hi, 0), lo, 1));
       sum = _mm256_hadd_ps(sum, sum);
       sum = _mm256_hadd_ps(sum, sum);
       var_vec = _mm256_mul_ps(sum, reverse_num_vec);

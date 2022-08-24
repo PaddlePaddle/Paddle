@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/reduce_sum_grad_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/reduce_grad.h"
-#include "paddle/phi/kernels/reduce_sum_grad_kernel.h"
 
 namespace phi {
 
@@ -36,6 +37,9 @@ void ReduceSumGradKernel(const Context& dev_ctx,
 
   // get reduce_dim and reduce_num for reduce_mean_grad
   int dim_size = in_x->dims().size();
+  if (dims.size() == 0) {
+    reduce_all = true;
+  }
   std::vector<int> reduce_dims =
       funcs::details::GetReduceDim(dims, dim_size, reduce_all);
 

@@ -136,6 +136,8 @@ def elu_(x, alpha=1.0, name=None):
     Please refer to :ref:`api_nn_cn_elu`.
     """
     assert alpha >= 0., "elu_ only support alpha >= 0, please use elu instead."
+    if in_dygraph_mode():
+        return _C_ops.final_state_elu_(x, alpha)
     return _C_ops.elu_(x, 'alpha', alpha)
 
 
@@ -601,7 +603,6 @@ def rrelu(x, lower=1. / 8., upper=1. / 3., training=True, name=None):
 
     Examples:
         .. code-block:: python
-            :name: rrelu-example
 
             import paddle
             import paddle.nn.functional as F
@@ -860,6 +861,8 @@ def relu6(x, name=None):
             out = F.relu6(x) # [0, 0.3, 6]
     """
     threshold = 6.0
+    if in_dygraph_mode():
+        return _C_ops.final_state_relu6(x, threshold)
     if in_dynamic_mode():
         return _C_ops.relu6(x, 'threshold', threshold)
 
@@ -962,7 +965,9 @@ def silu(x, name=None):
             out = F.silu(x) # [ 0.731059, 1.761594, 2.857722, 3.928055 ]
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_silu(x)
+    if _in_legacy_dygraph():
         return _C_ops.silu(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'silu')
@@ -1143,7 +1148,16 @@ def softmax_(x, axis=-1, dtype=None, name=None):
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
     use_cudnn = True
-    return _C_ops.softmax_(x, 'axis', axis, 'use_cudnn', use_cudnn)
+
+    if in_dygraph_mode():
+        outs_cast = x if dtype is None \
+            else _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        return _C_ops.final_state_softmax_(outs_cast, axis)
+
+    if _in_legacy_dygraph():
+        outs_cast = x if dtype is None \
+            else _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        return _C_ops.softmax_(outs_cast, 'axis', axis, 'use_cudnn', use_cudnn)
 
 
 def softplus(x, beta=1, threshold=20, name=None):
@@ -1175,7 +1189,11 @@ def softplus(x, beta=1, threshold=20, name=None):
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
     """
-    if in_dynamic_mode():
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_softplus(x, beta, threshold)
+
+    if _in_legacy_dygraph():
         return _C_ops.softplus(x, 'beta', beta, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -1273,6 +1291,8 @@ def softsign(x, name=None):
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_softsign(x)
     if in_dynamic_mode():
         return _C_ops.softsign(x)
 

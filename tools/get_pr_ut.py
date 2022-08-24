@@ -60,12 +60,15 @@ class PRChecker(object):
         last_commit = None
         ix = 0
         while True:
-            commits = self.pr.get_commits().get_page(ix)
-            for c in commits:
-                last_commit = c.commit
-            else:
+            try:
+                commits = self.pr.get_commits().get_page(ix)
+                if len(commits) == 0:
+                    raise ValueError("no commit found in {} page".format(ix))
+                last_commit = commits[-1].commit
+            except Exception as e:
                 break
-            ix = ix + 1
+            else:
+                ix = ix + 1
         if last_commit.message.find('test=allcase') != -1:
             print('PREC test=allcase is set')
             self.full_case = True
@@ -125,12 +128,16 @@ class PRChecker(object):
         """ Get files in pull request. """
         page = 0
         file_dict = {}
+        file_count = 0
         while True:
             files = self.pr.get_files().get_page(page)
             if not files:
                 break
             for f in files:
                 file_dict[PADDLE_ROOT + f.filename] = f.status
+                file_count += 1
+            if file_count == 30:  #if pr file count = 31, nend to run all case
+                break
             page += 1
         print("pr modify files: %s" % file_dict)
         return file_dict
@@ -282,6 +289,8 @@ class PRChecker(object):
         filterFiles = []
         file_list = []
         file_dict = self.get_pr_files()
+        if len(file_dict) == 30:  #if pr file count = 31, nend to run all case
+            return ''
         for filename in file_dict:
             if filename.startswith(PADDLE_ROOT + 'python/'):
                 file_list.append(filename)

@@ -18,6 +18,7 @@ import numpy as np
 import six
 import os
 import unittest
+import tempfile
 from simple_nets import simple_fc_net_with_inputs
 
 BATCH_SIZE = 32
@@ -26,8 +27,6 @@ EPOCH_NUM = 4
 
 IMAGE_SHAPE = [2, 3]
 LABEL_SHAPE = [1]
-
-ALL_WRITTEN_FILES = set()
 
 
 def get_place_string(p):
@@ -42,13 +41,7 @@ def get_place_string(p):
         return 'CUDAPlace()'
 
 
-def remove_all_written_files():
-    for filename in ALL_WRITTEN_FILES:
-        os.remove(filename)
-
-
 def write_reader_data_to_file(filename, reader):
-    ALL_WRITTEN_FILES.add(filename)
     with open(filename, 'w') as fid:
         for instance_list in reader():
             for i, instance in enumerate(instance_list):
@@ -81,10 +74,10 @@ class DatasetLoaderTestBase(unittest.TestCase):
     def setUp(self):
         self.dataset_name = "QueueDataset"
         self.drop_last = False
+        self.temp_dir = tempfile.TemporaryDirectory()
 
     def tearDown(self):
-        return
-        remove_all_written_files()
+        self.temp_dir.cleanup()
 
     def build_network(self):
         main_prog = fluid.Program()
@@ -129,7 +122,8 @@ class DatasetLoaderTestBase(unittest.TestCase):
             random_delta_batch_size = np.zeros(shape=[file_num])
 
         for i in six.moves.range(file_num):
-            filename = 'dataset_test_{}.txt'.format(i)
+            filename = os.path.join(self.temp_dir.name,
+                                    'dataset_test_{}.txt'.format(i))
             filelist.append(filename)
             write_reader_data_to_file(
                 filename,
@@ -214,6 +208,7 @@ class QueueDatasetTestWithoutDropLast(DatasetLoaderTestBase):
     def setUp(self):
         self.dataset_name = "QueueDataset"
         self.drop_last = True
+        self.temp_dir = tempfile.TemporaryDirectory()
 
 
 class InMemoryDatasetTestWithoutDropLast(DatasetLoaderTestBase):
@@ -221,6 +216,7 @@ class InMemoryDatasetTestWithoutDropLast(DatasetLoaderTestBase):
     def setUp(self):
         self.dataset_name = "InMemoryDataset"
         self.drop_last = False
+        self.temp_dir = tempfile.TemporaryDirectory()
 
 
 class InMemoryDatasetTestWithDropLast(DatasetLoaderTestBase):
@@ -228,6 +224,7 @@ class InMemoryDatasetTestWithDropLast(DatasetLoaderTestBase):
     def setUp(self):
         self.dataset_name = "InMemoryDataset"
         self.drop_last = True
+        self.temp_dir = tempfile.TemporaryDirectory()
 
 
 if __name__ == '__main__':

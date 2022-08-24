@@ -37,13 +37,21 @@ class HuberLossXPUKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::XPUDeviceContext>();
-    int r = xpu::huber_loss<T>(dev_ctx.x_context(), in0_data, in1_data,
-                               residual_data, out_data, in0->numel(), 1, delta);
+    int r = xpu::huber_loss<T>(dev_ctx.x_context(),
+                               in0_data,
+                               in1_data,
+                               residual_data,
+                               out_data,
+                               in0->numel(),
+                               1,
+                               delta);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
+        r,
+        XPU_SUCCESS,
         platform::errors::External("XPU API(huber_loss) return wrong "
                                    "value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+                                   r,
+                                   XPUAPIErrorMsg[r]));
   }
 };
 
@@ -69,14 +77,21 @@ class HuberLossGradXPUKernel : public framework::OpKernel<T> {
     auto residual_data = residual->data<T>();
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::XPUDeviceContext>();
-    int r =
-        xpu::huber_loss_grad<T>(dev_ctx.x_context(), residual_data, dout_data,
-                                dx_data, dy_data, dout->numel(), 1, delta);
+    int r = xpu::huber_loss_grad<T>(dev_ctx.x_context(),
+                                    residual_data,
+                                    dout_data,
+                                    dx_data,
+                                    dy_data,
+                                    dout->numel(),
+                                    1,
+                                    delta);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
+        r,
+        XPU_SUCCESS,
         platform::errors::External("XPU API(huber_loss_grad) return wrong "
                                    "value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+                                   r,
+                                   XPUAPIErrorMsg[r]));
   }
 };
 

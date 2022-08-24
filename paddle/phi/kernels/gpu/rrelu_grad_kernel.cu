@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/rrelu_grad_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -19,7 +21,6 @@
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/prelu_funcs.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
-#include "paddle/phi/kernels/rrelu_grad_kernel.h"
 
 namespace phi {
 

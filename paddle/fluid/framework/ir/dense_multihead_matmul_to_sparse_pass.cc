@@ -53,8 +53,10 @@ PDNode *patterns::DenseMultiheadMatmul::operator()() {
           ->assert_is_only_output_of_op("multihead_matmul");
 
   multihead_matmul
-      ->LinksFrom({multihead_matmul_input, multihead_matmul_weights,
-                   multihead_matmul_bias, multihead_matmul_biasqk})
+      ->LinksFrom({multihead_matmul_input,
+                   multihead_matmul_weights,
+                   multihead_matmul_bias,
+                   multihead_matmul_biasqk})
       .LinksTo({multihead_matmul_out});
 
   return multihead_matmul_out;
@@ -100,18 +102,20 @@ void DenseMultiheadMatmulToSparsePass::ApplyImpl(Graph *graph) const {
          return;
        }*/
 
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_out, multihead_matmul_out,
-                              multihead_matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul, multihead_matmul,
-                              multihead_matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_input, multihead_matmul_input,
+    GET_IR_NODE_FROM_SUBGRAPH(
+        multihead_matmul_out, multihead_matmul_out, multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        multihead_matmul, multihead_matmul, multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_input,
+                              multihead_matmul_input,
                               multihead_matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_weights,
                               multihead_matmul_weights,
                               multihead_matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_bias, multihead_matmul_bias,
-                              multihead_matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_biasqk, multihead_matmul_biasqk,
+    GET_IR_NODE_FROM_SUBGRAPH(
+        multihead_matmul_bias, multihead_matmul_bias, multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_biasqk,
+                              multihead_matmul_biasqk,
                               multihead_matmul_pattern);
 
     auto *multihead_matmul_op = multihead_matmul->Op();

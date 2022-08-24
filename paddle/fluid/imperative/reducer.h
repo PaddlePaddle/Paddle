@@ -64,7 +64,8 @@ struct DivNRanksForAllReduce {
   framework::Tensor* in_;
   int64_t nranks_;
   const platform::DeviceContext& ctx_;
-  DivNRanksForAllReduce(framework::Tensor* in, int64_t nranks,
+  DivNRanksForAllReduce(framework::Tensor* in,
+                        int64_t nranks,
                         const platform::DeviceContext& ctx)
       : in_(in), nranks_(nranks), ctx_(ctx) {}
 
@@ -110,7 +111,8 @@ class Group {
   void SplitTensors(const platform::DeviceContext& context);
 
   // use it in CUDA
-  void DivNRanks(framework::Tensor* tensor, int64_t nranks,
+  void DivNRanks(framework::Tensor* tensor,
+                 int64_t nranks,
                  const platform::DeviceContext& context);
 
   void DivNRanks(const platform::DeviceContext& context, int64_t nranks);
@@ -131,7 +133,8 @@ class Reducer {
       const std::vector<std::vector<size_t>>& group_indices,
       const std::vector<bool>& is_sparse_gradient,
       std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-      const std::vector<size_t>& group_size_limits, bool find_unused_vars);
+      const std::vector<size_t>& group_size_limits,
+      bool find_unused_vars);
 
   virtual ~Reducer() {}
 
@@ -151,7 +154,8 @@ class Reducer {
 
   void MarkGroupReady(size_t group_index);
 
-  void FusedAllReduceSchedule(const int run_order, Group& group,  // NOLINT
+  void FusedAllReduceSchedule(const int run_order,
+                              Group& group,  // NOLINT
                               const int curr_group_index);
 
   void FinalizeBackward();

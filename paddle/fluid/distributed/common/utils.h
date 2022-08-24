@@ -31,9 +31,9 @@ namespace paddle {
 namespace distributed {
 
 template <typename T>
-inline phi::funcs::BlasT<paddle::platform::CPUDeviceContext, T> GetBlas() {
-  paddle::platform::CPUDeviceContext cpu_ctx;
-  return phi::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(cpu_ctx);
+inline phi::funcs::BlasT<phi::CPUContext, T> GetBlas() {
+  phi::CPUContext cpu_ctx;
+  return phi::funcs::GetBlas<phi::CPUContext, T>(cpu_ctx);
 }
 
 template <typename T>

@@ -32,40 +32,57 @@ namespace operators {
 using Tensor = framework::Tensor;
 constexpr int kConvMKLDNNFP32 = 1;
 constexpr int kConvMKLDNNINT8 = 2;
+constexpr int kConvMKLDNNINT8WS8 = 3;
 constexpr int MaxKeyLength = 256;
 
 // Base convolution operator definations for other conv
 // like operators to reuse the implementation.
-inline int ConvOutputSize(int input_size, int filter_size, int dilation,
-                          int padding, int stride) {
+inline int ConvOutputSize(
+    int input_size, int filter_size, int dilation, int padding, int stride) {
   const int dkernel = dilation * (filter_size - 1) + 1;
   int output_size = (input_size + 2 * padding - dkernel) / stride + 1;
   PADDLE_ENFORCE_GT(
-      output_size, 0,
+      output_size,
+      0,
       platform::errors::InvalidArgument(
           "The output's size is expected to be greater than 0. "
           "But received: output's size is %d. The output's size is computed by "
           "((input_size + 2 * padding - (dilation * (filter_size - 1) + 1)) / "
           "stride + 1), where input_size is %d, padding is %d, "
           "filter_size is %d, dilation is %d, stride is %d.",
-          output_size, input_size, padding, filter_size, dilation, stride));
+          output_size,
+          input_size,
+          padding,
+          filter_size,
+          dilation,
+          stride));
 
   return output_size;
 }
 
-inline int ConvOutputSize(int input_size, int filter_size, int dilation,
-                          int padding_1, int padding_2, int stride) {
+inline int ConvOutputSize(int input_size,
+                          int filter_size,
+                          int dilation,
+                          int padding_1,
+                          int padding_2,
+                          int stride) {
   const int dkernel = dilation * (filter_size - 1) + 1;
   int output_size = (input_size + padding_1 + padding_2 - dkernel) / stride + 1;
   PADDLE_ENFORCE_GT(
-      output_size, 0,
+      output_size,
+      0,
       platform::errors::InvalidArgument(
           "The output's size is expected to be greater than 0. "
           "But received: output's size is %d. The output's size is computed by "
           "((input_size + padding_1 + padding_2 - (dilation * (filter_size - "
           "1) + 1)) / stride + 1), where input_size is %d, padding is "
           "(%d, %d), filter_size is %d, dilation is %d, stride is %d.",
-          output_size, input_size, padding_1, padding_2, filter_size, dilation,
+          output_size,
+          input_size,
+          padding_1,
+          padding_2,
+          filter_size,
+          dilation,
           stride));
 
   return output_size;
@@ -87,13 +104,16 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
     }
   } else {
     PADDLE_ENFORCE_EQ(
-        data_dims.size() * 2, paddings->size(),
+        data_dims.size() * 2,
+        paddings->size(),
         platform::errors::InvalidArgument(
             "Attribute padding's size should be the same or twice as the "
             "input's dimension. "
             "But received: padding's size is %d, padding is [%s]; input's "
             "dimension is %d, input's shape is [%s].",
-            paddings->size(), phi::make_ddim(*paddings), data_dims.size(),
+            paddings->size(),
+            phi::make_ddim(*paddings),
+            data_dims.size(),
             data_dims));
   }
 
@@ -186,7 +206,8 @@ class ConvOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override;
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 
@@ -200,7 +221,8 @@ class ConvOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override;
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 

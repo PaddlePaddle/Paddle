@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 
@@ -47,6 +48,10 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     // TODO(typhoonzero): support weight input
     AddInput("StatPos", "Statistic value when label = 1");
     AddInput("StatNeg", "Statistic value when label = 0");
+    AddInput("InsTagWeight",
+             "(Tensor, optional) If provided, auc Op will use this "
+             "1 means real data, 0 means false data")
+        .AsDispensable();
 
     AddOutput("AUC",
               "A scalar representing the "
@@ -84,7 +89,17 @@ There are two types of possible curves:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(auc, AucInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(auc,
+                            AucInferShapeFunctor,
                             PD_INFER_META(phi::AucInferMeta));
-REGISTER_OP_WITHOUT_GRADIENT(auc, ops::AucOp, ops::AucOpMaker,
+REGISTER_OP_WITHOUT_GRADIENT(auc,
+                             ops::AucOp,
+                             ops::AucOpMaker,
                              AucInferShapeFunctor);
+
+REGISTER_OP_VERSION(auc).AddCheckpoint(
+    R"ROC(
+      Upgrade auc, add a new input [InsTagWeight].
+    )ROC",
+    paddle::framework::compatible::OpVersionDesc().NewInput(
+        "ValueTensor", "In order to support multi-tag task"));

@@ -91,7 +91,8 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(
-        context->HasInput("I"), true,
+        context->HasInput("I"),
+        true,
         platform::errors::NotFound("Input(I) of WriteToArrayOp is not found."));
 
     // TODO(wangchaochaohu) control flow Op do not support runtime infer shape
@@ -101,7 +102,8 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(context->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(context->HasOutput("Out"),
+                      true,
                       platform::errors::NotFound(
                           "Output(Out) of WriteToArrayOp is not found."));
     context->SetOutputDim("Out", context->GetInputDim("X"));
@@ -151,8 +153,9 @@ class ReadFromArrayOp : public ArrayOp {
     auto &x_array = x->Get<framework::LoDTensorArray>();
     auto *out = scope.FindVar(Output("Out"));
     PADDLE_ENFORCE_NOT_NULL(
-        out, platform::errors::NotFound(
-                 "Output(Out) of ReadFromArrayOp is not found."));
+        out,
+        platform::errors::NotFound(
+            "Output(Out) of ReadFromArrayOp is not found."));
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
       auto *out_tensor = out->GetMutable<framework::LoDTensor>();
@@ -245,12 +248,16 @@ class ReadFromArrayGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(write_to_array, ops::WriteToArrayOp,
-                  ops::WriteToArrayInferShape, ops::WriteToArrayOpProtoMaker,
+REGISTER_OPERATOR(write_to_array,
+                  ops::WriteToArrayOp,
+                  ops::WriteToArrayInferShape,
+                  ops::WriteToArrayOpProtoMaker,
                   ops::WriteToArrayGradMaker<paddle::framework::OpDesc>,
                   ops::WriteToArrayGradMaker<paddle::imperative::OpBase>,
                   ops::WriteToArrayInferVarType);
-REGISTER_OPERATOR(read_from_array, ops::ReadFromArrayOp,
-                  ops::ReadFromArrayInferShape, ops::ReadFromArrayProtoMaker,
+REGISTER_OPERATOR(read_from_array,
+                  ops::ReadFromArrayOp,
+                  ops::ReadFromArrayInferShape,
+                  ops::ReadFromArrayProtoMaker,
                   ops::ReadFromArrayGradMaker<paddle::framework::OpDesc>,
                   ops::ReadFromArrayGradMaker<paddle::imperative::OpBase>);

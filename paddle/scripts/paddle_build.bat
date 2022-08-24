@@ -53,7 +53,7 @@ wmic process where name="cl.exe" call terminate 2>NUL
 wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 
-rem ------initialize common variable------
+rem variable to control building process
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
 if not defined WITH_TENSORRT set WITH_TENSORRT=ON
 if not defined TENSORRT_ROOT set TENSORRT_ROOT=D:/TensorRT
@@ -67,10 +67,15 @@ if not defined ON_INFER set ON_INFER=ON
 if not defined WITH_ONNXRUNTIME set WITH_ONNXRUNTIME=OFF
 if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
 if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
+if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
+if not defined NEW_RELEASE_ALL set NEW_RELEASE_ALL=ON
+if not defined NEW_RELEASE_PYPI set NEW_RELEASE_PYPI=OFF
+if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
+
+rem variable to control pipeline process
 if not defined WITH_TPCACHE set WITH_TPCACHE=OFF
 if not defined WITH_CACHE set WITH_CACHE=OFF
 if not defined WITH_SCCACHE set WITH_SCCACHE=OFF
-if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
 if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
@@ -78,9 +83,7 @@ if not defined NIGHTLY_MODE set NIGHTLY_MODE=OFF
 if not defined retry_times set retry_times=1
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 if not defined BUILD_DIR set BUILD_DIR=build
-if not defined NEW_RELEASE_ALL set NEW_RELEASE_ALL=ON
-if not defined NEW_RELEASE_PYPI set NEW_RELEASE_PYPI=OFF
-if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
+if not defined TEST_INFERENCE set TEST_INFERENCE=ON
 
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
@@ -92,15 +95,18 @@ rem ------initialize set git config------
 git config --global core.longpaths true
 
 rem ------initialize the python environment------
-set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
-set PATH=%PYTHON_ROOT%\Scripts;%PYTHON_ROOT%;%PATH%
+set PYTHON_VENV_ROOT=%cache_dir%\python_venv
+set PYTHON_EXECUTABLE=!PYTHON_VENV_ROOT!\Scripts\python.exe
+%PYTHON_ROOT%\python.exe -m venv --clear !PYTHON_VENV_ROOT!
+call !PYTHON_VENV_ROOT!\Scripts\activate.bat
+
 if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
-    pip install wheel --user
-    pip install pyyaml --user
-    pip install wget --user
-    pip install -r %work_dir%\python\requirements.txt --user
+    pip install wheel
+    pip install pyyaml
+    pip install wget
+    pip install -r %work_dir%\python\requirements.txt
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
         exit /b 5
@@ -305,9 +311,9 @@ if %errorlevel% NEQ 0 exit /b 1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :test_inference
+if "%TEST_INFERENCE%"=="ON" call :test_inference
 if %errorlevel% NEQ 0 set error_code=%errorlevel%
-call :test_inference_ut
+if "%TEST_INFERENCE%"=="ON" call :test_inference_ut
 if %errorlevel% NEQ 0 set error_code=%errorlevel%
 
 call :zip_cc_file || goto zip_cc_file_error
@@ -632,7 +638,7 @@ set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 @ECHO ON
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
-pip install %PADDLE_WHL_FILE_WIN% --user
+pip install %PADDLE_WHL_FILE_WIN%
 if %ERRORLEVEL% NEQ 0 (
     call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install whl package failed!
@@ -656,10 +662,7 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
-: set CI_SKIP_CPP_TEST if only *.py changed
-git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
-
-pip install -r %work_dir%\python\unittest_py\requirements.txt --user
+pip install -r %work_dir%\python\unittest_py\requirements.txt
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
     exit /b 5
@@ -682,7 +685,8 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
 %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
 %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib;%THIRD_PARTY_PATH:/=\%\install\paddle2onnx\lib;^
-%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%PATH%
+%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;^
+%PATH%
 
 REM TODO: make ut find .dll in install\onnxruntime\lib
 xcopy %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib\onnxruntime.dll %work_dir%\%BUILD_DIR%\paddle\fluid\inference\tests\api\ /Y

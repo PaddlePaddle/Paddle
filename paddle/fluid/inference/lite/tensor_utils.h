@@ -23,15 +23,18 @@ namespace lite {
 namespace utils {
 
 template <typename DstTensor, typename SrcTensor>
-void TensorCopyAsync(DstTensor* dst, const SrcTensor& src,
+void TensorCopyAsync(DstTensor* dst,
+                     const SrcTensor& src,
                      const platform::DeviceContext& ctx);
 
 template <typename DstTensor, typename SrcTensor>
 void TensorDataShare(DstTensor* dst, SrcTensor* src);
 
 template <typename DstTensor, typename SrcTensor>
-void TensorCopy(DstTensor* dst, SrcTensor* src,
-                const platform::DeviceContext& ctx, bool shared = true) {
+void TensorCopy(DstTensor* dst,
+                SrcTensor* src,
+                const platform::DeviceContext& ctx,
+                bool shared = true) {
   if (shared) {
     VLOG(3) << "TensorDataShare is running";
     TensorDataShare(dst, src);

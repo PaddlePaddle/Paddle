@@ -51,7 +51,8 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
 
     auto grad = context.Input<Tensor>(framework::GradVarName("Out"));
 
-    PADDLE_ENFORCE_EQ(grad->numel(), 1,
+    PADDLE_ENFORCE_EQ(grad->numel(),
+                      1,
                       platform::errors::InvalidArgument(
                           "Mean Gradient Input Tensor len should be 1. But "
                           "received Out@Grad's elements num is %d.",
@@ -93,7 +94,8 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
-    mean, ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    mean,
+    ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, plat::float16>)
 
 REGISTER_OP_NPU_KERNEL(

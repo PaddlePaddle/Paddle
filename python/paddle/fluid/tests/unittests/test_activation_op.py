@@ -132,7 +132,7 @@ class TestExpm1API(unittest.TestCase):
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'X': self.x})
             for r in res:
-                self.assertEqual(np.allclose(self.out_ref, r), True)
+                np.testing.assert_allclose(self.out_ref, r, rtol=1e-05)
 
         for place in self.place:
             run(place)
@@ -143,7 +143,7 @@ class TestExpm1API(unittest.TestCase):
             paddle.disable_static(place)
             X = paddle.to_tensor(self.x)
             out = paddle.expm1(X)
-            self.assertEqual(np.allclose(self.out_ref, out.numpy()), True)
+            np.testing.assert_allclose(self.out_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:
@@ -168,7 +168,7 @@ class TestParameter(object):
             exe = fluid.Executor(place)
             result, = exe.run(feed={"X": np_x}, fetch_list=[out])
             expected = eval("np.%s(np_x)" % self.op_type)
-            self.assertEqual(result, expected)
+            np.testing.assert_allclose(result, expected, rtol=1e-05)
 
     def test_dygraph(self):
         with fluid.dygraph.guard():
@@ -176,11 +176,7 @@ class TestParameter(object):
             x = fluid.dygraph.to_variable(np_x)
             z = eval("paddle.%s(x).numpy()" % self.op_type)
             z_expected = eval("np.%s(np_x)" % self.op_type)
-            # ROCM platform will fail in assertEqual
-            if core.is_compiled_with_rocm():
-                self.assertTrue(np.allclose(z, z_expected))
-            else:
-                self.assertEqual(z, z_expected)
+            np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
 
 class TestSigmoid(TestActivation):
@@ -274,7 +270,7 @@ class TestSiluAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = self.x_np / (1 + np.exp(-self.x_np))
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -284,7 +280,7 @@ class TestSiluAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = self.x_np / (1 + np.exp(-self.x_np))
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_errors(self):
@@ -341,7 +337,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = np.log(1 / (1 + np.exp(-self.x_np)))
         for r in res:
-            self.assertTrue(np.allclose(out_ref, r))
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -351,7 +347,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = np.log(1 / (1 + np.exp(-self.x_np)))
         for r in [out1, out2]:
-            self.assertTrue(np.allclose(out_ref, r.numpy()))
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -362,7 +358,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = np.log(1 / (1 + np.exp(-self.x_np)))
-        self.assertTrue(np.allclose(out_ref, res[0]))
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -429,7 +425,7 @@ class TestTanhAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = np.tanh(self.x_np)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -440,7 +436,7 @@ class TestTanhAPI(unittest.TestCase):
         out3 = th(x)
         out_ref = np.tanh(self.x_np)
         for r in [out1, out2, out3]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -451,7 +447,7 @@ class TestTanhAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = np.tanh(self.x_np)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -538,7 +534,7 @@ class TestSinh(TestActivation):
             x = fluid.dygraph.to_variable(np_x)
             z = fluid.layers.sinh(x).numpy()
             z_expected = np.sinh(np_x)
-            self.assertTrue(np.allclose(z, z_expected))
+            np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
     def test_api(self):
         test_data_shape = [11, 17]
@@ -553,12 +549,12 @@ class TestSinh(TestActivation):
             pd_sinh_out = fluid.layers.sinh(data_x)
             exe = fluid.Executor(place=fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
-            np_sinh_res = exe.run(fluid.default_main_program(),
-                                  feed={"data_x": input_x},
-                                  fetch_list=[pd_sinh_out])
+            np_sinh_res, = exe.run(fluid.default_main_program(),
+                                   feed={"data_x": input_x},
+                                   fetch_list=[pd_sinh_out])
 
         expected_res = np.sinh(input_x)
-        self.assertTrue(np.allclose(np_sinh_res, expected_res))
+        np.testing.assert_allclose(np_sinh_res, expected_res, rtol=1e-05)
 
     def test_backward(self):
         test_data_shape = [11, 17]
@@ -611,7 +607,7 @@ class TestCosh(TestActivation):
             x = fluid.dygraph.to_variable(np_x)
             z = fluid.layers.cosh(x).numpy()
             z_expected = np.cosh(np_x)
-            self.assertTrue(np.allclose(z, z_expected))
+            np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
     def test_api(self):
         test_data_shape = [11, 17]
@@ -626,12 +622,12 @@ class TestCosh(TestActivation):
             pd_cosh_out = paddle.cosh(data_x)
             exe = fluid.Executor(place=fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
-            np_cosh_res = exe.run(fluid.default_main_program(),
-                                  feed={"data_x": input_x},
-                                  fetch_list=[pd_cosh_out])
+            np_cosh_res, = exe.run(fluid.default_main_program(),
+                                   feed={"data_x": input_x},
+                                   fetch_list=[pd_cosh_out])
 
         expected_res = np.cosh(input_x)
-        self.assertTrue(np.allclose(np_cosh_res, expected_res))
+        np.testing.assert_allclose(np_cosh_res, expected_res, rtol=1e-05)
 
     def test_backward(self):
         test_data_shape = [11, 17]
@@ -703,7 +699,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_tanhshrink(self.x_np)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -713,7 +709,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
         out2 = tanhshrink(x)
         out_ref = ref_tanhshrink(self.x_np)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -724,7 +720,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_tanhshrink(self.x_np)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -799,7 +795,7 @@ class TestHardShrinkAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_hardshrink(self.x_np, 0.5)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -809,14 +805,14 @@ class TestHardShrinkAPI(unittest.TestCase):
         out2 = hd(x)
         out_ref = ref_hardshrink(self.x_np, 0.5)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
         out1 = F.hardshrink(x, 0.6)
         hd = paddle.nn.Hardshrink(0.6)
         out2 = hd(x)
         out_ref = ref_hardshrink(self.x_np, 0.6)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -827,7 +823,7 @@ class TestHardShrinkAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_hardshrink(self.x_np, 0.5)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -873,7 +869,7 @@ class TestHardtanhAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_hardtanh(self.x_np)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -883,14 +879,14 @@ class TestHardtanhAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = ref_hardtanh(self.x_np)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
         out1 = F.hardtanh(x, -2.0, 2.0)
         m = paddle.nn.Hardtanh(-2.0, 2.0)
         out2 = m(x)
         out_ref = ref_hardtanh(self.x_np, -2.0, 2.0)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_errors(self):
@@ -960,7 +956,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_softshrink(self.x_np, self.threshold)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -970,7 +966,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
         out2 = softshrink(x)
         out_ref = ref_softshrink(self.x_np, self.threshold)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -981,7 +977,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_softshrink(self.x_np, self.threshold)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -1192,7 +1188,7 @@ class TestTan(TestActivation):
         x = paddle.to_tensor(self.x_np)
         out_test = paddle.tan(x)
         out_ref = np.tan(self.x_np)
-        self.assertTrue(np.allclose(out_ref, out_test.numpy()))
+        np.testing.assert_allclose(out_ref, out_test.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_static_api(self):
@@ -1203,7 +1199,7 @@ class TestTan(TestActivation):
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = np.tan(self.x_np)
-        self.assertTrue(np.allclose(out_ref, res[0]))
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_backward(self):
         test_data_shape = [11, 17]
@@ -1402,7 +1398,7 @@ class TestReluAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = np.maximum(self.x_np, 0)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -1412,7 +1408,7 @@ class TestReluAPI(unittest.TestCase):
         out2 = self.relu(x)
         out_ref = np.maximum(self.x_np, 0)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_errors(self):
@@ -1508,7 +1504,7 @@ class TestLeakyReluAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_leaky_relu(self.x_np)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -1518,14 +1514,14 @@ class TestLeakyReluAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = ref_leaky_relu(self.x_np)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
         out1 = F.leaky_relu(x, 0.6)
         m = paddle.nn.LeakyReLU(0.6)
         out2 = m(x)
         out_ref = ref_leaky_relu(self.x_np, 0.6)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -1536,7 +1532,7 @@ class TestLeakyReluAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_leaky_relu(self.x_np)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -1623,7 +1619,7 @@ class TestGELUAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = gelu(self.x_np, False)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -1633,14 +1629,14 @@ class TestGELUAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = gelu(self.x_np, False)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
         out1 = F.gelu(x, True)
         m = paddle.nn.GELU(True)
         out2 = m(x)
         out_ref = gelu(self.x_np, True)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_errors(self):
@@ -1707,12 +1703,12 @@ class TestBreluAPI(unittest.TestCase):
             out = paddle.fluid.layers.brelu(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-            self.assertTrue(np.allclose(self.out_ref, res[0]))
+            np.testing.assert_allclose(self.out_ref, res[0], rtol=1e-05)
 
             paddle.disable_static(self.place)
             x = paddle.to_tensor(self.x_np)
             out = paddle.fluid.layers.brelu(x)
-            self.assertTrue(np.allclose(self.out_ref, out.numpy()))
+            np.testing.assert_allclose(self.out_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 
     def test_errors(self):
@@ -1741,6 +1737,7 @@ class TestRelu6(TestActivation):
     def setUp(self):
         self.op_type = "relu6"
         self.init_dtype()
+        self.python_api = paddle.nn.functional.relu6
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 10, [10, 12]).astype(self.dtype)
@@ -1754,7 +1751,7 @@ class TestRelu6(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestRelu6API(unittest.TestCase):
@@ -1777,7 +1774,7 @@ class TestRelu6API(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_relu6(self.x_np)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -1787,7 +1784,7 @@ class TestRelu6API(unittest.TestCase):
         out2 = relu6(x)
         out_ref = ref_relu6(self.x_np)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -1798,7 +1795,7 @@ class TestRelu6API(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_relu6(self.x_np)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -1872,7 +1869,7 @@ class TestHardswishAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_hardswish(self.x_np)
         for r in res:
-            self.assertTrue(np.allclose(out_ref, r))
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -1882,7 +1879,7 @@ class TestHardswishAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = ref_hardswish(self.x_np)
         for r in [out1, out2]:
-            self.assertTrue(np.allclose(out_ref, r.numpy()))
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -1892,12 +1889,12 @@ class TestHardswishAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_hardswish(self.x_np)
-        self.assertTrue(np.allclose(out_ref, res[0]))
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
         out = paddle.fluid.layers.hard_swish(x)
-        self.assertTrue(np.allclose(out_ref, out.numpy()))
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_errors(self):
@@ -2021,7 +2018,7 @@ class TestELUAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = elu(self.x_np, 1.0)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -2032,7 +2029,7 @@ class TestELUAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = elu(self.x_np, 1.0)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
         out1 = self.elu(x, 0.2)
         x = paddle.to_tensor(self.x_np)
@@ -2040,7 +2037,7 @@ class TestELUAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = elu(self.x_np, 0.2)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_errors(self):
@@ -2121,7 +2118,7 @@ class TestCELUAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = celu(self.x_np, 1.5)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -2132,7 +2129,7 @@ class TestCELUAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = celu(self.x_np, 1.5)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
         out1 = self.celu(x, 0.2)
         x = paddle.to_tensor(self.x_np)
@@ -2140,7 +2137,7 @@ class TestCELUAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = celu(self.x_np, 0.2)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_errors(self):
@@ -2264,11 +2261,11 @@ class TestLog2(TestActivation):
             out1 = paddle.log2(data_x)
             exe = paddle.static.Executor(place=fluid.CPUPlace())
             exe.run(paddle.static.default_startup_program())
-            res1 = exe.run(paddle.static.default_main_program(),
-                           feed={"data_x": input_x},
-                           fetch_list=[out1])
+            res1, = exe.run(paddle.static.default_main_program(),
+                            feed={"data_x": input_x},
+                            fetch_list=[out1])
         expected_res = np.log2(input_x)
-        self.assertTrue(np.allclose(res1, expected_res))
+        np.testing.assert_allclose(res1, expected_res, rtol=1e-05)
 
         # dygraph
         with fluid.dygraph.guard():
@@ -2277,7 +2274,7 @@ class TestLog2(TestActivation):
             z = paddle.log2(data_x)
             np_z = z.numpy()
             z_expected = np.array(np.log2(np_x))
-        self.assertTrue(np.allclose(np_z, z_expected))
+        np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
 class TestLog10(TestActivation):
@@ -2317,11 +2314,11 @@ class TestLog10(TestActivation):
             out1 = paddle.log10(data_x)
             exe = paddle.static.Executor(place=paddle.CPUPlace())
             exe.run(paddle.static.default_startup_program())
-            res1 = exe.run(paddle.static.default_main_program(),
-                           feed={"data_x": input_x},
-                           fetch_list=[out1])
+            res1, = exe.run(paddle.static.default_main_program(),
+                            feed={"data_x": input_x},
+                            fetch_list=[out1])
         expected_res = np.log10(input_x)
-        self.assertTrue(np.allclose(res1, expected_res))
+        np.testing.assert_allclose(res1, expected_res, rtol=1e-05)
 
         # dygraph
         with fluid.dygraph.guard():
@@ -2330,7 +2327,7 @@ class TestLog10(TestActivation):
             z = paddle.log10(data_x)
             np_z = z.numpy()
             z_expected = np.array(np.log10(np_x))
-        self.assertTrue(np.allclose(np_z, z_expected))
+        np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
 class TestLog1p(TestActivation):
@@ -2364,11 +2361,11 @@ class TestLog1p(TestActivation):
             out1 = paddle.log1p(data_x)
             exe = fluid.Executor(place=fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
-            res1 = exe.run(fluid.default_main_program(),
-                           feed={"data_x": input_x},
-                           fetch_list=[out1])
+            res1, = exe.run(fluid.default_main_program(),
+                            feed={"data_x": input_x},
+                            fetch_list=[out1])
         expected_res = np.log1p(input_x)
-        self.assertTrue(np.allclose(res1, expected_res))
+        np.testing.assert_allclose(res1, expected_res, rtol=1e-05)
 
         # dygraph
         with fluid.dygraph.guard():
@@ -2377,7 +2374,7 @@ class TestLog1p(TestActivation):
             z = paddle.log1p(data_x)
             np_z = z.numpy()
             z_expected = np.array(np.log1p(np_x))
-        self.assertTrue(np.allclose(np_z, z_expected))
+        np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
 class TestSquare(TestActivation):
@@ -2618,7 +2615,7 @@ class TestSTanhAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_stanh(self.x_np, self.scale_a, self.scale_b)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -2626,7 +2623,7 @@ class TestSTanhAPI(unittest.TestCase):
         out = paddle.stanh(x, self.scale_a, self.scale_b)
         out_ref = ref_stanh(self.x_np, self.scale_a, self.scale_b)
         for r in [out]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -2637,7 +2634,7 @@ class TestSTanhAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_stanh(self.x_np, self.scale_a, self.scale_b)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -2679,6 +2676,7 @@ class TestSoftplus(TestActivation):
 
     def setUp(self):
         self.op_type = "softplus"
+        self.python_api = paddle.nn.functional.softplus
         self.init_dtype()
 
         beta = 2
@@ -2691,10 +2689,14 @@ class TestSoftplus(TestActivation):
         self.attrs = {'beta': beta, "threshold": threshold}
         self.outputs = {'Out': out}
 
+        self.check_eager = True
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        if hasattr(self, 'check_eager'):
+            check_eager = self.check_eager
+        self.check_grad(['X'], 'Out', check_eager=check_eager)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -2748,7 +2750,7 @@ class TestSoftplusAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_softplus(self.x_np, self.beta, self.threshold)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -2758,7 +2760,7 @@ class TestSoftplusAPI(unittest.TestCase):
         out2 = softplus(x)
         out_ref = ref_softplus(self.x_np, self.beta, self.threshold)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -2769,7 +2771,7 @@ class TestSoftplusAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_softplus(self.x_np)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -2798,6 +2800,7 @@ class TestSoftsign(TestActivation):
     def setUp(self):
         self.op_type = "softsign"
         self.init_dtype()
+        self.python_api = paddle.nn.functional.softsign
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
@@ -2808,7 +2811,7 @@ class TestSoftsign(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestSoftsignAPI(unittest.TestCase):
@@ -2830,7 +2833,7 @@ class TestSoftsignAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_softsign(self.x_np)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -2840,7 +2843,7 @@ class TestSoftsignAPI(unittest.TestCase):
         out2 = softsign(x)
         out_ref = ref_softsign(self.x_np)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -2851,7 +2854,7 @@ class TestSoftsignAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_softsign(self.x_np)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -2918,7 +2921,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_thresholded_relu(self.x_np, self.threshold)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -2928,7 +2931,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
         out2 = thresholded_relu(x)
         out_ref = ref_thresholded_relu(self.x_np, self.threshold)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -2939,7 +2942,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_thresholded_relu(self.x_np, self.threshold)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -3020,7 +3023,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_hardsigmoid(self.x_np)
         for r in res:
-            self.assertTrue(np.allclose(out_ref, r))
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -3030,7 +3033,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = ref_hardsigmoid(self.x_np)
         for r in [out1, out2]:
-            self.assertTrue(np.allclose(out_ref, r.numpy()))
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -3040,12 +3043,12 @@ class TestHardsigmoidAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_hardsigmoid(self.x_np, 0.2, 0.5)
-        self.assertTrue(np.allclose(out_ref, res[0]))
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
         out = paddle.fluid.layers.hard_sigmoid(x)
-        self.assertTrue(np.allclose(out_ref, out.numpy()))
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_errors(self):
@@ -3112,7 +3115,7 @@ class TestSwishAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_swish(self.x_np)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -3122,7 +3125,7 @@ class TestSwishAPI(unittest.TestCase):
         out2 = swish(x)
         out_ref = ref_swish(self.x_np)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_dygraph_final_state_api(self):
@@ -3137,7 +3140,7 @@ class TestSwishAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_swish(self.x_np)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()
@@ -3203,7 +3206,7 @@ class TestMishAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_mish(self.x_np)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -3213,7 +3216,7 @@ class TestMishAPI(unittest.TestCase):
         out2 = mish(x)
         out_ref = ref_mish(self.x_np)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -3224,7 +3227,7 @@ class TestMishAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_mish(self.x_np)
-        self.assertEqual(np.allclose(out_ref, res[0]), True)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
     def test_errors(self):
         paddle.enable_static()

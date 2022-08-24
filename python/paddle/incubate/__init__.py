@@ -35,6 +35,11 @@ from . import sparse  #noqa: F401
 from . import nn  #noqa: F401
 from . import asp  #noqa: F401
 
+from ..fluid.layers.loss import identity_loss
+
+from ..fluid.incubate import fleet
+from . import xpu
+
 __all__ = [
     'LookAhead',
     'ModelAverage',
@@ -48,4 +53,5 @@ __all__ = [
     'segment_mean',
     'segment_max',
     'segment_min',
+    'identity_loss',
 ]

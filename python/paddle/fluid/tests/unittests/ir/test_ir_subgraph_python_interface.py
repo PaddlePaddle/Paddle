@@ -41,7 +41,7 @@ class TestQuantizationSubGraph(unittest.TestCase):
             for _ in six.moves.xrange(num):
                 hidden = fluid.layers.fc(hidden, size=128, act='relu')
             loss = fluid.layers.cross_entropy(input=hidden, label=label)
-            loss = fluid.layers.mean(loss)
+            loss = paddle.mean(loss)
             return loss
 
         main_program = Program()

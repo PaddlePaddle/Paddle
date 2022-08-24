@@ -48,7 +48,8 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
 
 #elif defined(PADDLE_WITH_ASCEND_CL)
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_npu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_npu_place(place),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "Sync comm stream op can run on npu place only for "
                           "now, but we got %s, please check the environment.",
@@ -60,7 +61,8 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
 
 #elif defined(PADDLE_WITH_CNCL)
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_mlu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_mlu_place(place),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "Sync stream op can run on mlu place only for now."));
     int ring_id = ctx.Attr<int>("ring_id");
@@ -69,7 +71,8 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     platform::MLUStreamSync(stream);
 #elif defined(PADDLE_WITH_XPU_BKCL)
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "Sync stream op can run on xpu place only for now."));
     int ring_id = ctx.Attr<int>("ring_id");

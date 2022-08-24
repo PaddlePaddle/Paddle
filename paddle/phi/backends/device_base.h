@@ -16,8 +16,15 @@
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include <vector>
 
+#include "paddle/phi/backends/c_comm_lib.h"
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
+
+namespace paddle {
+namespace platform {
+class TraceEventCollector;
+}  // namespace platform
+}  // namespace paddle
 
 namespace phi {
 
@@ -164,6 +171,97 @@ class DeviceInterface {  // Driver / Runtime
   virtual size_t GetMaxChunkSize(size_t dev_id);
 
   virtual size_t GetExtraPaddingSize(size_t dev_id);
+
+  // CCL
+  virtual void CCLDestroyComm(ccl::CCLComm ccl_comm);
+
+  virtual void CCLCommInitRank(size_t num_ranks,
+                               ccl::CCLRootId* root_id,
+                               size_t rank_id,
+                               ccl::CCLComm* ccl_comm);
+
+  virtual void CCLGetUniqueId(ccl::CCLRootId* root_id);
+
+  virtual void CCLBroadcast(void* data,
+                            size_t num,
+                            ccl::CCLDataType data_type,
+                            size_t root,
+                            const ccl::CCLComm& ccl_comm,
+                            const stream::Stream& stream);
+
+  virtual void CCLAllReduce(void* in_data,
+                            void* out_data,
+                            size_t num,
+                            ccl::CCLDataType data_type,
+                            ccl::CCLReduceOp reduce_op,
+                            const ccl::CCLComm& ccl_comm,
+                            const stream::Stream& stream);
+  virtual void CCLReduce(void* in_data,
+                         void* out_data,
+                         size_t num,
+                         ccl::CCLDataType data_type,
+                         ccl::CCLReduceOp reduce_op,
+                         size_t root_id,
+                         const ccl::CCLComm& ccl_comm,
+                         const stream::Stream& stream);
+  virtual void CCLAllGather(void* in_data,
+                            void* out_data,
+                            size_t num,
+                            ccl::CCLDataType data_type,
+                            const ccl::CCLComm& ccl_comm,
+                            const stream::Stream& stream);
+  virtual void CCLReduceScatter(void* in_data,
+                                void* out_data,
+                                size_t num,
+                                ccl::CCLDataType data_type,
+                                ccl::CCLReduceOp op,
+                                const ccl::CCLComm& ccl_comm,
+                                const stream::Stream& stream);
+  virtual void CCLGroupStart();
+  virtual void CCLGroupEnd();
+  virtual void CCLSend(void* sendbuf,
+                       size_t num,
+                       ccl::CCLDataType data_type,
+                       size_t dst_rank,
+                       const ccl::CCLComm& ccl_comm,
+                       const stream::Stream& stream);
+  virtual void CCLRecv(void* recvbuf,
+                       size_t num,
+                       ccl::CCLDataType data_type,
+                       size_t src_rank,
+                       const ccl::CCLComm& ccl_comm,
+                       const stream::Stream& stream);
+
+  // blas
+  virtual void BlasAXPBY(size_t dev_id,
+                         const stream::Stream& stream,
+                         paddle::experimental::DataType dtype,
+                         size_t numel,
+                         float alpha,
+                         void* x,
+                         float beta,
+                         void* y);
+
+  // profiler
+  virtual void ProfilerInitialize(
+      paddle::platform::TraceEventCollector* collector, void** user_data);
+
+  virtual void ProfilerFinalize(
+      paddle::platform::TraceEventCollector* collector, void* user_data);
+
+  virtual void ProfilerPrepareTracing(
+      paddle::platform::TraceEventCollector* collector, void* user_data);
+
+  virtual void ProfilerStartTracing(
+      paddle::platform::TraceEventCollector* collector, void* user_data);
+
+  virtual void ProfilerStopTracing(
+      paddle::platform::TraceEventCollector* collector, void* user_data);
+
+  virtual void ProfilerCollectTraceData(
+      paddle::platform::TraceEventCollector* collector,
+      uint64_t start_ns,
+      void* user_data);
 
  private:
   const std::string type_;

@@ -160,7 +160,7 @@ template <typename T, typename Context>
 void SparseCsrToCooKernel(const Context& dev_ctx,
                           const SparseCsrTensor& x,
                           SparseCooTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_VISIT_BASE_INTEGRAL_TYPES(
       x.non_zero_crows().dtype(), "SparseCsrToCooCPUKernel", ([&] {
         SparseCsrToCooCPUKernel<T, data_t>(dev_ctx, x, out);
       }));
@@ -198,7 +198,7 @@ void SparseCooToCsrCPUKernel(const CPUContext& dev_ctx,
   const auto& coo_values = x.non_zero_elements();
   const IntT* batchs_ptr = coo_indices.data<IntT>();
   const IntT* coo_rows_data =
-      batchs == 1 ? batchs_ptr : batchs_ptr + non_zero_num;
+      x_dims.size() == 2 ? batchs_ptr : batchs_ptr + non_zero_num;
   const IntT* coo_cols_data = coo_rows_data + non_zero_num;
   const T* coo_values_data = coo_values.data<T>();
 
@@ -206,7 +206,11 @@ void SparseCooToCsrCPUKernel(const CPUContext& dev_ctx,
   if (batchs > 1) {
     for (int i = 0; i < non_zero_num; i++) {
       if (i == non_zero_num - 1 || batchs_ptr[i] != batchs_ptr[i + 1]) {
-        offsets[batchs_ptr[i]] = i + 1;
+        const int start = batchs_ptr[i];
+        const int end = i == non_zero_num - 1 ? batchs : batchs_ptr[i + 1];
+        for (int j = start; j < end; j++) {
+          offsets[j] = i + 1;
+        }
       }
     }
   } else {
@@ -214,7 +218,6 @@ void SparseCooToCsrCPUKernel(const CPUContext& dev_ctx,
   }
 
   for (int b = 0; b < batchs; b++) {
-    if (offsets[b] == 0) continue;
     int batch_start = 0;
     int batch_non_zero_num = offsets[b];
     if (b > 0) {
@@ -233,6 +236,9 @@ void SparseCooToCsrCPUKernel(const CPUContext& dev_ctx,
     for (IntT i = coo_rows_ptr[batch_non_zero_num - 1] + 1; i < rows + 1; i++) {
       csr_crows_data[b * (rows + 1) + i] = batch_non_zero_num;
     }
+    if (batch_non_zero_num == 0) {
+      memset(csr_crows_data + b * (rows + 1), 0, sizeof(IntT) * (rows + 1));
+    }
   }
 
   memcpy(csr_cols_data, coo_cols_data, sizeof(IntT) * non_zero_num);
@@ -244,7 +250,7 @@ template <typename T, typename Context>
 void SparseCooToCsrKernel(const Context& dev_ctx,
                           const SparseCooTensor& x,
                           SparseCsrTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_VISIT_BASE_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "SparseCooToCsrCPUKernel", ([&] {
         SparseCooToCsrCPUKernel<T, data_t>(dev_ctx, x, out);
       }));
@@ -298,7 +304,7 @@ template <typename T, typename Context>
 void SparseCooToDenseKernel(const Context& dev_ctx,
                             const SparseCooTensor& x,
                             DenseTensor* out) {
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_VISIT_BASE_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "SparseCooToDenseCPUKernel", ([&] {
         SparseCooToDenseCPUKernel<T, data_t>(dev_ctx, x, out);
       }));

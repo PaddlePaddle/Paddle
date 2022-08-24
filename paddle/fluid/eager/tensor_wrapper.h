@@ -28,6 +28,7 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 
 namespace egr {
 class TensorWrapper {
@@ -57,9 +58,12 @@ class TensorWrapper {
         // Only Copy Meta
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(tensor.impl().get());
-        auto tw_dense_tensor = std::make_shared<phi::DenseTensor>();
-        tw_dense_tensor->set_meta(dense_tensor->meta());
-        intermidiate_tensor_.set_impl(tw_dense_tensor);
+        // TODO(jiabin): It's not a good idea to set memory size to zero, find
+        // another way and change this.
+        intermidiate_tensor_.set_impl(
+            std::move(std::make_shared<phi::DenseTensor>(
+                std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
+                std::move(dense_tensor->meta()))));
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Unrecognized tensor type for no_need_buffer feature"));
@@ -138,7 +142,8 @@ class TensorWrapper {
       uint32_t wrapper_version_snapshot = inplace_version_snapshot_;
       uint32_t tensor_version = inplace_version_counter.CurrentVersion();
       PADDLE_ENFORCE_EQ(
-          tensor_version, wrapper_version_snapshot,
+          tensor_version,
+          wrapper_version_snapshot,
           paddle::platform::errors::PermissionDenied(
               "Tensor '%s' used in gradient computation has been "
               "modified by an inplace operation. "
@@ -146,7 +151,8 @@ class TensorWrapper {
               "Please fix your code to void calling an inplace operator "
               "after using the Tensor which will used in gradient "
               "computation.",
-              intermidiate_tensor_.name(), tensor_version,
+              intermidiate_tensor_.name(),
+              tensor_version,
               wrapper_version_snapshot));
       VLOG(6) << " The wrapper_version_snapshot of Tensor '"
               << intermidiate_tensor_.name() << "' is [ "

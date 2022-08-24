@@ -120,4 +120,4 @@ REGISTER_OP_WITHOUT_GRADIENT(distributed_fused_lamb_init,
 
 REGISTER_OP_CPU_KERNEL(
     distributed_fused_lamb_init,
-    ops::DistributedFusedLambInitOpKernel<plat::CPUDeviceContext, float>);
+    ops::DistributedFusedLambInitOpKernel<phi::CPUContext, float>);

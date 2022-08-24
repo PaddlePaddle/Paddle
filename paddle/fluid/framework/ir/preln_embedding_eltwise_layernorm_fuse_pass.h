@@ -51,7 +51,8 @@ struct PrelnEmbedding2Eltwise1Pattern : public PatternBase {
       : PatternBase(pattern, name_scope, "Prelnembedding2_eltwise1") {}
 
   void operator()();
-
+  PATTERN_DECL_NODE(feed1);
+  PATTERN_DECL_NODE(feed2);
   PATTERN_DECL_NODE(lookup_table1_x);
   PATTERN_DECL_NODE(lookup_table2_x);
   PATTERN_DECL_NODE(lookup_table1_w);
@@ -81,6 +82,7 @@ struct PrelnEmbedding1Eltwise1Pattern : public PatternBase {
                                  const std::string& name_scope)
       : PatternBase(pattern, name_scope, "Prelnembedding1_eltwise1") {}
   void operator()();
+  PATTERN_DECL_NODE(feed1);
   PATTERN_DECL_NODE(lookup_table1_x);
   PATTERN_DECL_NODE(lookup_table1_w);
   PATTERN_DECL_NODE(lookup_table1);

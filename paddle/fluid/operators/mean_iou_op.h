@@ -21,7 +21,9 @@ namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
 
-template <typename T, int D, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int D,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
@@ -29,8 +31,8 @@ template <typename T>
 class MeanIoUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
+    auto& place =
+        *ctx.template device_context<phi::CPUContext>().eigen_device();
     // get input and output tensor
     auto* predictions = ctx.Input<Tensor>("Predictions");
     auto* labels = ctx.Input<Tensor>("Labels");

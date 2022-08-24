@@ -231,6 +231,12 @@ class PD_INFER_DECL PaddlePredictor {
     return {};
   }
 
+  /// \brief Get the input type of the model.
+  /// \return A map contains all the input names and type defined in the model.
+  virtual std::map<std::string, paddle_infer::DataType> GetInputTypes() {
+    return {};
+  }
+
   /// \brief Used to get the name of the network output.
   /// Be inherited by AnalysisPredictor, Only used in ZeroCopy scenarios.
   /// \return Output tensor names.
@@ -453,10 +459,12 @@ class PD_INFER_DECL InternalUtils {
   static void SyncStream(paddle_infer::Predictor* pred);
   static void SyncStream(cudaStream_t stream);
   template <typename T>
-  static void CopyFromCpuWithIoStream(paddle_infer::Tensor* t, const T* data,
+  static void CopyFromCpuWithIoStream(paddle_infer::Tensor* t,
+                                      const T* data,
                                       cudaStream_t stream);
   template <typename T>
-  static void CopyToCpuWithIoStream(paddle_infer::Tensor* t, T* data,
+  static void CopyToCpuWithIoStream(paddle_infer::Tensor* t,
+                                    T* data,
                                     cudaStream_t stream);
 };
 }  // namespace experimental

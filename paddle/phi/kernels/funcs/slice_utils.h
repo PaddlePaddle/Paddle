@@ -78,6 +78,9 @@ inline void CheckAndUpdateSliceAttrs(const DDim in_dims,
         // dim_value-1
         // "end is -1" means contain the 0-th element of this axis.
         start = std::min(start, dim_value - 1);
+        if (end < -1) {
+          end += dim_value;
+        }
         end = std::max(end, static_cast<T>(-1));
         PADDLE_ENFORCE_GE(
             start,

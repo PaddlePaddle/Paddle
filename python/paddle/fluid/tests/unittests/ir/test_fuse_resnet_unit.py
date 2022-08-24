@@ -25,8 +25,10 @@ np.random.seed(0)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_cuda()
-                 or paddle.get_cudnn_version() < 8000,
-                 "only support with cuda and cudnn version is at least 8.0.")
+                 or paddle.get_cudnn_version() < 8000
+                 or paddle.device.cuda.get_device_capability()[0] < 7,
+                 "only support with cuda and cudnn version is at least 8.0 "
+                 "and device's compute capability is at least 7.0")
 class TestFuseResNetUnit(unittest.TestCase):
 
     def test_fuse_resenet_unit(self):
@@ -60,4 +62,7 @@ class TestFuseResNetUnit(unittest.TestCase):
         feed = {"x": np.random.randn(1, 64, 64, 8).astype("float16")}
         before_out = exe.run(program, feed=feed, fetch_list=[out.name])
         after_out = exe.run(after_program, feed=feed, fetch_list=[out.name])
-        self.assertTrue(np.allclose(before_out[0], after_out[0], atol=5e-3))
+        np.testing.assert_allclose(before_out[0],
+                                   after_out[0],
+                                   rtol=1e-05,
+                                   atol=0.005)

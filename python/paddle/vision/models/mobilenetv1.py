@@ -58,10 +58,13 @@ class MobileNetV1(nn.Layer):
     `"MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications" <https://arxiv.org/abs/1704.04861>`_.
 
     Args:
-        scale (float): scale of channels in each layer. Default: 1.0.
-        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+        scale (float, optional): Scale of channels in each layer. Default: 1.0.
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
                             will not be defined. Default: 1000.
-        with_pool (bool): use pool before the last fc layer or not. Default: True.
+        with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV1 model.
 
     Examples:
         .. code-block:: python
@@ -75,6 +78,7 @@ class MobileNetV1(nn.Layer):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
 
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
@@ -216,11 +220,17 @@ def _mobilenet(arch, pretrained=False, **kwargs):
 
 
 def mobilenet_v1(pretrained=False, scale=1.0, **kwargs):
-    """MobileNetV1
+    """MobileNetV1 from
+    `"MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications" <https://arxiv.org/abs/1704.04861>`_.
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
-        scale: (float): scale of channels in each layer. Default: 1.0.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        scale (float, optional): Scale of channels in each layer. Default: 1.0.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV1 <api_paddle_vision_MobileNetV1>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV1 model.
 
     Examples:
         .. code-block:: python
@@ -241,6 +251,7 @@ def mobilenet_v1(pretrained=False, scale=1.0, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     model = _mobilenet('mobilenetv1_' + str(scale),
                        pretrained,

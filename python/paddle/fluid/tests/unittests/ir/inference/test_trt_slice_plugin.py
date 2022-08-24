@@ -108,5 +108,56 @@ class StaticSlicePluginTRTTestFp32(SlicePluginTRTTest):
         self.enable_trt = True
 
 
+class SlicePluginTRTTestInt32(SlicePluginTRTTest):
+
+    def setUp(self):
+        self.setUpSliceParams()
+        self.setUpTensorRTParams()
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="int32")
+            axes = self.params_axes
+            starts = self.params_starts
+            ends = self.params_ends
+            slice_out = fluid.layers.slice(data,
+                                           axes=axes,
+                                           starts=starts,
+                                           ends=ends)
+            cast_out = fluid.layers.cast(slice_out, 'float32')
+            out = fluid.layers.batch_norm(cast_out, is_test=True)
+
+        self.feeds = {
+            "data": np.random.random((3, 3, 3, 3)).astype("int32"),
+        }
+        self.fetch_list = [out]
+
+
+class StaticSlicePluginTRTTestInt32(SlicePluginTRTTest):
+
+    def setUpTensorRTParams(self):
+        self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, True, False)
+        self.enable_trt = True
+
+    def setUp(self):
+        self.setUpSliceParams()
+        self.setUpTensorRTParams()
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="int32")
+            axes = self.params_axes
+            starts = self.params_starts
+            ends = self.params_ends
+            slice_out = fluid.layers.slice(data,
+                                           axes=axes,
+                                           starts=starts,
+                                           ends=ends)
+            cast_out = fluid.layers.cast(slice_out, 'float32')
+            out = fluid.layers.batch_norm(cast_out, is_test=True)
+
+        self.feeds = {
+            "data": np.random.random((3, 3, 3, 3)).astype("int32"),
+        }
+        self.fetch_list = [out]
+
+
 if __name__ == "__main__":
     unittest.main()

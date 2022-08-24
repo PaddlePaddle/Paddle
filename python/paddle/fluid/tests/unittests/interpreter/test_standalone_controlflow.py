@@ -16,7 +16,7 @@ import os
 import sys
 import unittest
 import paddle
-from paddle.fluid import core
+from paddle.fluid import core, framework
 from paddle.fluid.core import StandaloneExecutor
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
@@ -81,17 +81,13 @@ class TestCompatibility(unittest.TestCase):
         return ret
 
     def run_raw_executor(self, feed):
-        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '0'
-        out = self._run(feed)
-        del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
-        print("GT:", out)
+        with framework._enable_standalone_executor(False):
+            out = self._run(feed)
         return out
 
     def run_new_executor(self, feed):
-        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
-        out = self._run(feed)
-        del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
-        print("New:", out)
+        with framework._enable_standalone_executor(True):
+            out = self._run(feed)
         return out
 
     def test_with_feed(self):
@@ -101,9 +97,9 @@ class TestCompatibility(unittest.TestCase):
         for x, y in zip(gt, res):
             if isinstance(x, list):
                 for tx, ty in zip(x, y):
-                    self.assertTrue(np.array_equal(tx, ty))
+                    np.testing.assert_array_equal(tx, ty)
             elif isinstance(x, np.ndarray):
-                self.assertTrue(np.array_equal(tx, ty))
+                np.testing.assert_array_equal(tx, ty)
             else:
                 raise Exception("Not Implement!")
 

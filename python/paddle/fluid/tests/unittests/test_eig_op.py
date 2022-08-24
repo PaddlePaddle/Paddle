@@ -95,14 +95,20 @@ class TestEigOp(OpTest):
             np.array([np.abs(expect_out_w[i].imag) for i in range(length_w)]))
 
         for i in range(length_w):
-            self.assertTrue(
-                np.allclose(act_w_real[i], exp_w_real[i], 1e-6, 1e-5),
-                "The eigenvalues real part have diff: \nExpected " +
-                str(act_w_real[i]) + "\n" + "But got: " + str(exp_w_real[i]))
-            self.assertTrue(
-                np.allclose(act_w_imag[i], exp_w_imag[i], 1e-6, 1e-5),
-                "The eigenvalues image part have diff: \nExpected " +
-                str(act_w_imag[i]) + "\n" + "But got: " + str(exp_w_imag[i]))
+            np.testing.assert_allclose(
+                act_w_real[i],
+                exp_w_real[i],
+                rtol=1e-06,
+                atol=1e-05,
+                err_msg='The eigenvalues real part have diff: \nExpected ' +
+                str(act_w_real[i]) + '\n' + 'But got: ' + str(exp_w_real[i]))
+            np.testing.assert_allclose(
+                act_w_imag[i],
+                exp_w_imag[i],
+                rtol=1e-06,
+                atol=1e-05,
+                err_msg='The eigenvalues image part have diff: \nExpected ' +
+                str(act_w_imag[i]) + '\n' + 'But got: ' + str(exp_w_imag[i]))
 
         length_v = len(expect_out_v)
         act_v_real = np.sort(
@@ -115,14 +121,20 @@ class TestEigOp(OpTest):
             np.array([np.abs(expect_out_v[i].imag) for i in range(length_v)]))
 
         for i in range(length_v):
-            self.assertTrue(
-                np.allclose(act_v_real[i], exp_v_real[i], 1e-6, 1e-5),
-                "The eigenvectors real part have diff: \nExpected " +
-                str(act_v_real[i]) + "\n" + "But got: " + str(exp_v_real[i]))
-            self.assertTrue(
-                np.allclose(act_v_imag[i], exp_v_imag[i], 1e-6, 1e-5),
-                "The eigenvectors image part have diff: \nExpected " +
-                str(act_v_imag[i]) + "\n" + "But got: " + str(exp_v_imag[i]))
+            np.testing.assert_allclose(
+                act_v_real[i],
+                exp_v_real[i],
+                rtol=1e-06,
+                atol=1e-05,
+                err_msg='The eigenvectors real part have diff: \nExpected ' +
+                str(act_v_real[i]) + '\n' + 'But got: ' + str(exp_v_real[i]))
+            np.testing.assert_allclose(
+                act_v_imag[i],
+                exp_v_imag[i],
+                rtol=1e-06,
+                atol=1e-05,
+                err_msg='The eigenvectors image part have diff: \nExpected ' +
+                str(act_v_imag[i]) + '\n' + 'But got: ' + str(exp_v_imag[i]))
 
     def set_dtype(self):
         self.dtype = np.complex64
@@ -216,15 +228,76 @@ class TestEigStatic(TestEigOp):
             fetch_val, fetch_vec = exe.run(fluid.default_main_program(),
                                            feed={"input": input_np},
                                            fetch_list=[act_val, act_vec])
-        self.assertTrue(
-            np.allclose(expect_val, fetch_val, 1e-6,
-                        1e-6), "The eigen values have diff: \nExpected " +
-            str(expect_val) + "\n" + "But got: " + str(fetch_val))
-        self.assertTrue(
-            np.allclose(np.abs(expect_vec), np.abs(fetch_vec), 1e-6,
-                        1e-6), "The eigen vectors have diff: \nExpected " +
-            str(np.abs(expect_vec)) + "\n" + "But got: " +
+        np.testing.assert_allclose(
+            expect_val,
+            fetch_val,
+            rtol=1e-06,
+            atol=1e-06,
+            err_msg='The eigen values have diff: \nExpected ' +
+            str(expect_val) + '\n' + 'But got: ' + str(fetch_val))
+        np.testing.assert_allclose(
+            np.abs(expect_vec),
+            np.abs(fetch_vec),
+            rtol=1e-06,
+            atol=1e-06,
+            err_msg='The eigen vectors have diff: \nExpected ' +
+            str(np.abs(expect_vec)) + '\n' + 'But got: ' +
             str(np.abs(fetch_vec)))
+
+
+class TestEigDyGraph(unittest.TestCase):
+
+    def test_check_output_with_place(self):
+        input_np = np.random.random([3, 3]).astype('complex')
+        expect_val, expect_vec = np.linalg.eig(input_np)
+
+        paddle.set_device("cpu")
+        paddle.disable_static()
+
+        input_tensor = paddle.to_tensor(input_np)
+        fetch_val, fetch_vec = paddle.linalg.eig(input_tensor)
+
+        np.testing.assert_allclose(
+            expect_val,
+            fetch_val.numpy(),
+            rtol=1e-06,
+            atol=1e-06,
+            err_msg='The eigen values have diff: \nExpected ' +
+            str(expect_val) + '\n' + 'But got: ' + str(fetch_val))
+        np.testing.assert_allclose(
+            np.abs(expect_vec),
+            np.abs(fetch_vec.numpy()),
+            rtol=1e-06,
+            atol=1e-06,
+            err_msg='The eigen vectors have diff: \nExpected ' +
+            str(np.abs(expect_vec)) + '\n' + 'But got: ' +
+            str(np.abs(fetch_vec.numpy())))
+
+    def test_check_grad(self):
+        test_shape = [3, 3]
+        test_type = 'float64'
+        paddle.set_device("cpu")
+
+        input_np = np.random.random(test_shape).astype(test_type)
+        real_w, real_v = np.linalg.eig(input_np)
+
+        grad_w = np.ones(real_w.shape, test_type)
+        grad_v = np.ones(real_v.shape, test_type)
+        grad_x = eig_backward(real_w, real_v, grad_w, grad_v)
+
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(input_np)
+            x.stop_gradient = False
+            w, v = paddle.linalg.eig(x)
+            (w.sum() + v.sum()).backward()
+
+        np.testing.assert_allclose(np.abs(x.grad.numpy()),
+                                   np.abs(grad_x),
+                                   rtol=1e-05,
+                                   atol=1e-05,
+                                   err_msg='The grad x have diff: \nExpected ' +
+                                   str(np.abs(grad_x)) + '\n' + 'But got: ' +
+                                   str(np.abs(x.grad.numpy())))
 
 
 class TestEigWrongDimsError(unittest.TestCase):
@@ -254,7 +327,7 @@ class TestEigUnsupportedDtypeError(unittest.TestCase):
         paddle.disable_static()
         a = (np.random.random((3, 3)) * 10).astype('int64')
         x = paddle.to_tensor(a)
-        self.assertRaises(ValueError, paddle.linalg.eig, x)
+        self.assertRaises(RuntimeError, paddle.linalg.eig, x)
 
 
 if __name__ == "__main__":

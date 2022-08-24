@@ -51,9 +51,11 @@ class TestFleetExecutor(unittest.TestCase):
         task_node = TaskNode(
             # must clone, if copies, there will be two fetches and two feeds
             program=empty_program.clone(),
-            cur_rank=0,
+            rank=0,
+            node_type="Compute",
             max_run_times=1,
-            max_slot_times=1)
+            max_slot_times=1,
+            lazy_initialize=True)
         empty_program._pipeline_opt = {
             "fleet_opt": {
                 'tasks': [task_node],
@@ -79,8 +81,8 @@ class TestFleetExecutor(unittest.TestCase):
             z_data = x_data + y_data
             a_data = 2 * x_data + 3 * y_data
             res = self.run_fleet_executor(fluid.CUDAPlace(0), x_data, y_data)
-            self.assertTrue(np.allclose(res[0], z_data))
-            self.assertTrue(np.allclose(res[1], a_data))
+            np.testing.assert_allclose(res[0], z_data, rtol=1e-05)
+            np.testing.assert_allclose(res[1], a_data, rtol=1e-05)
 
 
 if __name__ == "__main__":

@@ -52,7 +52,7 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
         platform::dynload::cudnnCreateTensorDescriptor(&out_desc));
     cudnnDataType_t cudnn_dtype = CudnnDataType<T>::type;
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto handle = dev_ctx.cudnn_handle();
 
     T* odata = out->data<T>();
@@ -94,9 +94,13 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
           out_desc, cudnn_dtype, max_dim, dims_y.data(), stride_y.data()));
 
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnTransformTensor(
-          handle, CudnnDataType<T>::kOne(), in_desc,
+          handle,
+          CudnnDataType<T>::kOne(),
+          in_desc,
           static_cast<const void*>(ins[k]->data<T>()),
-          CudnnDataType<T>::kZero(), out_desc, static_cast<void*>(odata)));
+          CudnnDataType<T>::kZero(),
+          out_desc,
+          static_cast<void*>(odata)));
       if (concat_axis == 0) {
         odata += osize;
       } else {

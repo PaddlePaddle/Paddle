@@ -5,6 +5,13 @@ if(WITH_ASCEND_CL)
     DEPS npu_op_runner)
 endif()
 
+if(WITH_XPU)
+  cc_library(
+    beam_search_xpu
+    SRCS beam_search_xpu.cc
+    DEPS xpu_op_list)
+endif()
+
 # please add new math_library in alphabetical order
 if(WITH_ASCEND_CL)
   math_library(concat_and_split DEPS concat_and_split_functor npu_op_runner)
@@ -44,6 +51,8 @@ math_library(sequence_scale)
 math_library(softmax DEPS math_function jit_kernel_helper)
 if(WITH_ASCEND_CL)
   math_library(beam_search DEPS math_function beam_search_npu)
+elseif(WITH_XPU)
+  math_library(beam_search DEPS math_function beam_search_xpu)
 else()
   math_library(beam_search DEPS math_function)
 endif()
@@ -54,7 +63,6 @@ math_library(vol2col)
 math_library(prelu)
 math_library(bert_encoder_functor)
 math_library(tree2col DEPS math_function)
-math_library(matrix_solve)
 
 cc_test(
   selected_rows_functor_test
@@ -96,17 +104,6 @@ cc_test(
   concat_test
   SRCS concat_test.cc
   DEPS concat_and_split)
-
-if(WITH_GPU AND (NOT WITH_ROCM))
-  #currenty not yet support ROCM
-  #the generic conversion APIs of dense and sparse are only supported after cuda11.2
-  if((NOT ${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.2))
-    cc_test(
-      cusparse_conversion_api_test
-      SRCS cusparse_conversion_api_test.cc
-      DEPS tensor)
-  endif()
-endif()
 
 if(WITH_TESTING AND TEST im2col_test)
   set_tests_properties(im2col_test PROPERTIES TIMEOUT 120)

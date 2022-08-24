@@ -29,7 +29,8 @@ class OpKernelType;
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
 void TransDataType(const OpKernelType& kernel_type_for_var,
-                   const OpKernelType& expected_kernel_type, const Tensor& in,
+                   const OpKernelType& expected_kernel_type,
+                   const Tensor& in,
                    Tensor* out);
 void TransDataType(const Tensor& in,
                    const paddle::framework::proto::VarType::Type& type,
@@ -47,7 +48,8 @@ void TransDataType(const Tensor& in,
  * src_type is complex
  */
 void TransComplexToReal(const proto::VarType::Type& dst_type,
-                        const proto::VarType::Type& src_type, const Tensor& in,
+                        const proto::VarType::Type& src_type,
+                        const Tensor& in,
                         Tensor* out);
 
 }  // namespace framework

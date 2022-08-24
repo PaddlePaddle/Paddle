@@ -20,8 +20,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestWeightSharing(IPUOpTest):
 
     def setUp(self):
@@ -104,8 +102,10 @@ class TestWeightSharing(IPUOpTest):
         res0 = self.run_model(False)
         res1 = self.run_model(True)
 
-        self.assertTrue(
-            np.allclose(res0.flatten(), res1[0].flatten(), atol=self.atol))
+        np.testing.assert_allclose(res0.flatten(),
+                                   res1[0].flatten(),
+                                   rtol=1e-05,
+                                   atol=self.atol)
 
 
 if __name__ == "__main__":

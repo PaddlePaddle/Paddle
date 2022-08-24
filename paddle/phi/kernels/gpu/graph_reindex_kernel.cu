@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/graph_reindex_kernel.h"
+
 #include <thrust/copy.h>
 #include <thrust/device_vector.h>
 #include <thrust/reduce.h>
@@ -21,7 +23,6 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
-#include "paddle/phi/kernels/graph_reindex_kernel.h"
 
 namespace phi {
 

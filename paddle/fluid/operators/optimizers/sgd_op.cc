@@ -49,7 +49,8 @@ class SGDOp : public framework::OperatorWithKernel {
                                   grad_var->IsType<framework::LoDTensor>();
 
       if (dense_param_sparse_grad || dense_param_and_grad)
-        return framework::OpKernelType(data_type, ctx.GetPlace(),
+        return framework::OpKernelType(data_type,
+                                       ctx.GetPlace(),
                                        framework::DataLayout::kMKLDNN,
                                        framework::LibraryType::kMKLDNN);
     }
@@ -58,15 +59,17 @@ class SGDOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (var_name == "LearningRate") {
       return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
           tensor.layout());
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -126,10 +129,14 @@ $$param\_out = param - learning\_rate * grad$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(sgd, SGDInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(sgd,
+                            SGDInferShapeFunctor,
                             PD_INFER_META(phi::SgdInferMeta));
 REGISTER_OPERATOR(
-    sgd, ops::SGDOp, ops::SGDOpMaker,
+    sgd,
+    ops::SGDOp,
+    ops::SGDOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::SGDOpInferVarType, SGDInferShapeFunctor);
+    ops::SGDOpInferVarType,
+    SGDInferShapeFunctor);

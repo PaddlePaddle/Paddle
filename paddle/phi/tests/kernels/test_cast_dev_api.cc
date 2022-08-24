@@ -52,7 +52,6 @@ TEST(DEV_API, cast) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
-  dev_ctx.Init();
 
   phi::DataType out_dtype = phi::DataType::FLOAT64;
   // 2. test API

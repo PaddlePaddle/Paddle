@@ -65,9 +65,13 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
 
 template <typename DeviceContext, typename T>
 void MaxOutGradFunctor<DeviceContext, T>::operator()(
-    const DeviceContext& context, const framework::Tensor& input,
-    framework::Tensor* input_grad, const framework::Tensor& output,
-    const framework::Tensor& output_grad, const int groups, const int axis) {
+    const DeviceContext& context,
+    const framework::Tensor& input,
+    framework::Tensor* input_grad,
+    const framework::Tensor& output,
+    const framework::Tensor& output_grad,
+    const int groups,
+    const int axis) {
   const int batch_size = input.dims()[0];
   const int input_height = (axis == 1 ? input.dims()[2] : input.dims()[1]);
   const int input_width = (axis == 1 ? input.dims()[3] : input.dims()[2]);
@@ -104,11 +108,6 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
     }
   }
 }
-
-template class MaxOutGradFunctor<platform::CPUDeviceContext, float>;
-template class MaxOutGradFunctor<platform::CPUDeviceContext, double>;
-template class MaxOutFunctor<platform::CPUDeviceContext, float>;
-template class MaxOutFunctor<platform::CPUDeviceContext, double>;
 
 template class MaxOutGradFunctor<phi::CPUContext, float>;
 template class MaxOutGradFunctor<phi::CPUContext, double>;

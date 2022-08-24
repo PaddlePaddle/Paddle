@@ -12,15 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/unsqueeze_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/unsqueeze_kernel_impl.h"
-#include "paddle/phi/kernels/unsqueeze_kernel.h"
 
 PD_REGISTER_KERNEL(unsqueeze,
                    GPU,
                    ALL_LAYOUT,
                    phi::UnsqueezeKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   bool,
+                   int,
+                   int16_t,
+                   uint8_t,
+                   int8_t,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(unsqueeze_with_xshape,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::UnsqueezeWithXShapeKernel,
                    float,
                    double,
                    phi::dtype::float16,

@@ -76,14 +76,15 @@ TEST(ThreadLocalAllocator, cross_scope_release) {
 
   for (auto &addresses : allocator_addresses) {
     std::sort(addresses.begin(), addresses.end());
-    ASSERT_EQ(std::adjacent_find(addresses.begin(), addresses.end(),
-                                 std::equal_to<void *>()),
+    ASSERT_EQ(std::adjacent_find(
+                  addresses.begin(), addresses.end(), std::equal_to<void *>()),
               addresses.end());
   }
 
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   ASSERT_EXIT(([&]() { thread_allocations.clear(); }(), exit(0)),
-              ::testing::ExitedWithCode(0), ".*");
+              ::testing::ExitedWithCode(0),
+              ".*");
 }
 
 }  // namespace allocation

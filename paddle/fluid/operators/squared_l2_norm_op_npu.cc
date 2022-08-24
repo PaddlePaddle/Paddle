@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/squared_l2_norm_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -37,8 +37,8 @@ class SquaredL2NormNPUKernel : public framework::OpKernel<T> {
       axis.push_back(i);
     }
     out->mutable_data<T>(place);
-    const auto &runner = NpuOpRunner("SquareSumV1", {*x}, {*out},
-                                     {{"axis", axis}, {"keep_dims", false}});
+    const auto &runner = NpuOpRunner(
+        "SquareSumV1", {*x}, {*out}, {{"axis", axis}, {"keep_dims", false}});
     runner.Run(stream);
   }
 };
@@ -52,7 +52,8 @@ class SquaredL2NormGradNPUKernel : public framework::OpKernel<T> {
     auto *out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_EQ(
-        out_grad->numel(), 1,
+        out_grad->numel(),
+        1,
         platform::errors::InvalidArgument(
             "Input(GRAD@Out) of SquaredL2NormGradOP should be a scalar."));
 
@@ -65,7 +66,9 @@ class SquaredL2NormGradNPUKernel : public framework::OpKernel<T> {
     Tensor broadcasted_out_grad;
     broadcasted_out_grad.mutable_data<T>(x_grad->dims(), place);
     const auto &broadcast_runner =
-        NpuOpRunner("BroadcastToD", {*out_grad}, {broadcasted_out_grad},
+        NpuOpRunner("BroadcastToD",
+                    {*out_grad},
+                    {broadcasted_out_grad},
                     {{"shape", phi::vectorize(x_grad->dims())}});
     broadcast_runner.Run(stream);
     // mul x

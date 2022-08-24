@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// clang-format off
 #include "paddle/phi/kernels/gelu_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -21,7 +20,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
-// clang-format on
 
 DECLARE_bool(use_fast_math);
 

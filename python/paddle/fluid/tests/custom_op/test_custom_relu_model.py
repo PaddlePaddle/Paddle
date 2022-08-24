@@ -15,6 +15,7 @@
 import os
 import unittest
 import numpy as np
+import tempfile
 
 import paddle
 from paddle import nn
@@ -73,6 +74,9 @@ class Net(nn.Layer):
 
 class TestDygraphModel(unittest.TestCase):
 
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def setUp(self):
 
         self.seed = 2021
@@ -93,8 +97,12 @@ class TestDygraphModel(unittest.TestCase):
         self.devices = ['cpu', 'gpu'] if not IS_MAC else ['cpu']
 
         # for saving model
-        self.model_path_template = "infer_model/custom_relu_dygaph_model_{}.pdparams"
-        self.model_dy2stat_path = "infer_model/custom_relu_model_dy2sta"
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_save_dir = os.path.join(self.temp_dir.name, 'infer_model')
+        self.model_path_template = os.path.join(
+            self.model_save_dir, 'custom_relu_dygaph_model_{}.pdparams')
+        self.model_dy2stat_path = os.path.join(
+            self.model_save_dir, 'infer_model/custom_relu_model_dy2sta')
 
         # for dy2stat
         self.x_spec = paddle.static.InputSpec(shape=[None, self.in_dim],
@@ -113,12 +121,11 @@ class TestDygraphModel(unittest.TestCase):
             if _in_legacy_dygraph():
                 custom_relu_dy2stat_train_out = self.train_model(
                     use_custom_op=True, dy2stat=True)  # for to_static
-                self.assertTrue(
-                    np.array_equal(origin_relu_train_out,
-                                   custom_relu_dy2stat_train_out))
+                np.testing.assert_array_equal(origin_relu_train_out,
+                                              custom_relu_dy2stat_train_out)
 
-            self.assertTrue(
-                np.array_equal(origin_relu_train_out, custom_relu_train_out))
+            np.testing.assert_array_equal(origin_relu_train_out,
+                                          custom_relu_train_out)
 
             # for eval
             origin_relu_eval_out = self.eval_model(use_custom_op=False)
@@ -126,12 +133,11 @@ class TestDygraphModel(unittest.TestCase):
             if _in_legacy_dygraph():
                 custom_relu_dy2stat_eval_out = self.eval_model(
                     use_custom_op=True, dy2stat=True)  # for to_static
-                self.assertTrue(
-                    np.array_equal(origin_relu_eval_out,
-                                   custom_relu_dy2stat_eval_out))
+                np.testing.assert_array_equal(origin_relu_eval_out,
+                                              custom_relu_dy2stat_eval_out)
 
-            self.assertTrue(
-                np.array_equal(origin_relu_eval_out, custom_relu_eval_out))
+            np.testing.assert_array_equal(origin_relu_eval_out,
+                                          custom_relu_eval_out)
 
     def test_train_eval(self):
         with _test_eager_guard():
@@ -210,12 +216,16 @@ class TestStaticModel(unittest.TestCase):
         self.devices = ['cpu', 'gpu'] if not IS_MAC else ['cpu']
 
         # for saving model
-        self.model_path_template = "infer_model/custom_relu_static_model_{}_{}"
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_save_dir = os.path.join(self.temp_dir.name, 'infer_model')
+        self.model_path_template = os.path.join(
+            self.model_save_dir, 'custom_relu_static_model_{}_{}')
 
         paddle.enable_static()
 
     def tearDown(self):
         paddle.disable_static()
+        self.temp_dir.cleanup()
 
     def test_train_eval(self):
         for device in self.devices:
@@ -231,11 +241,10 @@ class TestStaticModel(unittest.TestCase):
                                                         use_custom_op=True,
                                                         use_pe=True)
 
-            self.assertTrue(
-                np.array_equal(original_relu_train_out, custom_relu_train_out))
-            self.assertTrue(
-                np.array_equal(original_relu_train_pe_out,
-                               custom_relu_train_pe_out))
+            np.testing.assert_array_equal(original_relu_train_out,
+                                          custom_relu_train_out)
+            np.testing.assert_array_equal(original_relu_train_pe_out,
+                                          custom_relu_train_pe_out)
 
             # for eval
             original_relu_eval_out = self.eval_model(device,
@@ -249,11 +258,10 @@ class TestStaticModel(unittest.TestCase):
                                                       use_custom_op=True,
                                                       use_pe=True)
 
-            self.assertTrue(
-                np.array_equal(original_relu_eval_out, custom_relu_eval_out))
-            self.assertTrue(
-                np.array_equal(original_relu_eval_pe_out,
-                               custom_relu_eval_pe_out))
+            np.testing.assert_array_equal(original_relu_eval_out,
+                                          custom_relu_eval_out)
+            np.testing.assert_array_equal(original_relu_eval_pe_out,
+                                          custom_relu_eval_pe_out)
 
     def train_model(self, device, use_custom_op=False, use_pe=False):
         # reset random seed

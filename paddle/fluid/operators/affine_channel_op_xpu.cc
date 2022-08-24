@@ -67,18 +67,22 @@ class AffineChannelXPUKernel : public framework::OpKernel<T> {
       b_shape.push_back(C);
     }
     int r = 0;
-    r = xpu::broadcast_mul(dev_ctx.x_context(), x_d, scale_d, y_d, x_shape,
-                           b_shape);
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+    r = xpu::broadcast_mul(
+        dev_ctx.x_context(), x_d, scale_d, y_d, x_shape, b_shape);
+    PADDLE_ENFORCE_EQ(r,
+                      xpu::Error_t::SUCCESS,
                       platform::errors::External(
                           "The broadcast_mul XPU OP return wrong value[%d %s]",
-                          r, XPUAPIErrorMsg[r]));
-    r = xpu::broadcast_add(dev_ctx.x_context(), y_d, bias_d, y_d, x_shape,
-                           b_shape);
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                          r,
+                          XPUAPIErrorMsg[r]));
+    r = xpu::broadcast_add(
+        dev_ctx.x_context(), y_d, bias_d, y_d, x_shape, b_shape);
+    PADDLE_ENFORCE_EQ(r,
+                      xpu::Error_t::SUCCESS,
                       platform::errors::External(
                           "The broadcast_add XPU OP return wrong value[%d %s]",
-                          r, XPUAPIErrorMsg[r]));
+                          r,
+                          XPUAPIErrorMsg[r]));
   }
 };
 
@@ -134,41 +138,50 @@ class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
 
     int r = 0;
     if (dscale_d && dbias_d) {
-      r = xpu::reduce_sum<T>(dev_ctx.x_context(), dy_d, dbias_d, x_shape,
-                             rdims);
-      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+      r = xpu::reduce_sum<T>(
+          dev_ctx.x_context(), dy_d, dbias_d, x_shape, rdims);
+      PADDLE_ENFORCE_EQ(r,
+                        xpu::Error_t::SUCCESS,
                         platform::errors::External(
                             "The reduce_sum XPU OP return wrong value[%d %s]",
-                            r, XPUAPIErrorMsg[r]));
+                            r,
+                            XPUAPIErrorMsg[r]));
       T* tmp = nullptr;
       r = xpu_malloc(reinterpret_cast<void**>(&tmp), dy->numel() * sizeof(T));
-      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+      PADDLE_ENFORCE_EQ(r,
+                        xpu::Error_t::SUCCESS,
                         platform::errors::External("no enough memory in xpu"));
 
-      r = xpu::mul<T>(dev_ctx.x_context(), dy_d, x->data<T>(), tmp,
-                      dy->numel());
+      r = xpu::mul<T>(
+          dev_ctx.x_context(), dy_d, x->data<T>(), tmp, dy->numel());
       PADDLE_ENFORCE_EQ(
-          r, xpu::Error_t::SUCCESS,
+          r,
+          xpu::Error_t::SUCCESS,
           platform::errors::External("The mul XPU OP return wrong value[%d %s]",
-                                     r, XPUAPIErrorMsg[r]));
-      r = xpu::reduce_sum<T>(dev_ctx.x_context(), tmp, dscale_d, x_shape,
-                             rdims);
-      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                                     r,
+                                     XPUAPIErrorMsg[r]));
+      r = xpu::reduce_sum<T>(
+          dev_ctx.x_context(), tmp, dscale_d, x_shape, rdims);
+      PADDLE_ENFORCE_EQ(r,
+                        xpu::Error_t::SUCCESS,
                         platform::errors::External(
                             "The reduce_sum XPU OP return wrong value[%d %s]",
-                            r, XPUAPIErrorMsg[r]));
+                            r,
+                            XPUAPIErrorMsg[r]));
       if (dev_ctx.x_context()->xpu_stream) {
         dev_ctx.Wait();
       }
       xpu_free(tmp);
     }
     if (dx_d) {
-      r = xpu::broadcast_mul(dev_ctx.x_context(), dy_d, scale_d, dx_d, x_shape,
-                             b_shape);
+      r = xpu::broadcast_mul(
+          dev_ctx.x_context(), dy_d, scale_d, dx_d, x_shape, b_shape);
       PADDLE_ENFORCE_EQ(
-          r, xpu::Error_t::SUCCESS,
+          r,
+          xpu::Error_t::SUCCESS,
           platform::errors::External(
-              "The broadcast_mul XPU OP return wrong value[%d %s]", r,
+              "The broadcast_mul XPU OP return wrong value[%d %s]",
+              r,
               XPUAPIErrorMsg[r]));
     }
   }

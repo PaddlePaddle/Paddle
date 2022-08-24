@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/nanmedian_kernel.h"
+
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -19,7 +21,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/nanmedian_kernel_impl.h"
-#include "paddle/phi/kernels/nanmedian_kernel.h"
 #include "paddle/phi/kernels/top_k_kernel.h"
 
 namespace phi {

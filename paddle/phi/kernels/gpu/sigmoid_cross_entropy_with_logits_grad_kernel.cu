@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/gpu/sigmoid_cross_entropy_with_logits.h"
 #include "paddle/phi/kernels/sigmoid_cross_entropy_with_logits_grad_kernel.h"
+
+#include "paddle/phi/kernels/gpu/sigmoid_cross_entropy_with_logits.h"
 
 namespace phi {
 

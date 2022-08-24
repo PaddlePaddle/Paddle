@@ -38,11 +38,13 @@ struct BNStatsFinalizeArgs {
 
   void Set(const std::vector<int> &param_shape) {
     PADDLE_ENFORCE_EQ(
-        param_shape.size(), 4U,
+        param_shape.size(),
+        4U,
         platform::errors::InvalidArgument(
             "The size of param_shape is expected to 4. But received "
             "param_shape's size is %d, param_shape is [%s].",
-            param_shape.size(), phi::make_ddim(param_shape)));
+            param_shape.size(),
+            phi::make_ddim(param_shape)));
 
     in_desc.set(param_shape, format, param_dtype);
     out_desc.set(param_shape, format, dtype);
@@ -59,7 +61,7 @@ struct BNStatsFinalizeArgs {
 template <typename T>
 class CudnnBNStatsFinalize {
  public:
-  CudnnBNStatsFinalize(const platform::CUDADeviceContext &ctx,
+  CudnnBNStatsFinalize(const phi::GPUContext &ctx,
                        const std::vector<int> &param_shape)
       : train_op_(CUDNN_FUSED_BN_FINALIZE_STATISTICS_TRAINING),
         inference_op_(CUDNN_FUSED_BN_FINALIZE_STATISTICS_INFERENCE) {
@@ -67,12 +69,21 @@ class CudnnBNStatsFinalize {
   }
   ~CudnnBNStatsFinalize() {}
 
-  void Forward(const platform::CUDADeviceContext &ctx, const Tensor &sum,
-               const Tensor &sum_of_squares, const Tensor &scale,
-               const Tensor &bias, Tensor *saved_mean, Tensor *saved_invstd,
-               Tensor *running_mean, Tensor *running_var, Tensor *equiv_scale,
-               Tensor *equiv_bias, double eps, float momentum,
-               int64_t ele_count, bool is_train) {
+  void Forward(const phi::GPUContext &ctx,
+               const Tensor &sum,
+               const Tensor &sum_of_squares,
+               const Tensor &scale,
+               const Tensor &bias,
+               Tensor *saved_mean,
+               Tensor *saved_invstd,
+               Tensor *running_mean,
+               Tensor *running_var,
+               Tensor *equiv_scale,
+               Tensor *equiv_bias,
+               double eps,
+               float momentum,
+               int64_t ele_count,
+               bool is_train) {
     auto place = ctx.GetPlace();
     if (is_train) {
       TrainInit(ctx);
@@ -119,17 +130,19 @@ class CudnnBNStatsFinalize {
   }
 
  private:
-  void TrainInit(const platform::CUDADeviceContext &ctx) {
+  void TrainInit(const phi::GPUContext &ctx) {
     // Set constant_param for train op
-    train_op_.SetOpConstParamAttr(
-        {CUDNN_PARAM_YSUM_PLACEHOLDER, CUDNN_PARAM_YSQSUM_PLACEHOLDER,
-         CUDNN_PARAM_BN_SCALE_PLACEHOLDER, CUDNN_PARAM_BN_BIAS_PLACEHOLDER,
-         CUDNN_PARAM_BN_SAVED_MEAN_PLACEHOLDER,
-         CUDNN_PARAM_BN_SAVED_INVSTD_PLACEHOLDER,
-         CUDNN_PARAM_BN_RUNNING_MEAN_PLACEHOLDER,
-         CUDNN_PARAM_BN_RUNNING_VAR_PLACEHOLDER,
-         CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER, CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER},
-        CUDNN_PTR_16B_ALIGNED);
+    train_op_.SetOpConstParamAttr({CUDNN_PARAM_YSUM_PLACEHOLDER,
+                                   CUDNN_PARAM_YSQSUM_PLACEHOLDER,
+                                   CUDNN_PARAM_BN_SCALE_PLACEHOLDER,
+                                   CUDNN_PARAM_BN_BIAS_PLACEHOLDER,
+                                   CUDNN_PARAM_BN_SAVED_MEAN_PLACEHOLDER,
+                                   CUDNN_PARAM_BN_SAVED_INVSTD_PLACEHOLDER,
+                                   CUDNN_PARAM_BN_RUNNING_MEAN_PLACEHOLDER,
+                                   CUDNN_PARAM_BN_RUNNING_VAR_PLACEHOLDER,
+                                   CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
+                                   CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER},
+                                  CUDNN_PTR_16B_ALIGNED);
     // Set input and output desc for train op
     train_op_.SetOpConstParamDesc(
         {CUDNN_PARAM_YSTATS_DESC, CUDNN_PARAM_BN_SCALEBIAS_MEANVAR_DESC},
@@ -143,7 +156,8 @@ class CudnnBNStatsFinalize {
                                   CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
     // Check workspace size, also creates plan.
     size_t workspace_size_bytes = train_op_.GetWorkspaceSizeInBytes(handle);
-    PADDLE_ENFORCE_EQ(workspace_size_bytes, 0U,
+    PADDLE_ENFORCE_EQ(workspace_size_bytes,
+                      0U,
                       platform::errors::InvalidArgument(
                           "Unexpected non-zero workspace size for "
                           "CudnnBNStatsFinalize."));
@@ -153,14 +167,15 @@ class CudnnBNStatsFinalize {
                                        &workspace_size_bytes);
   }
 
-  void InferenceInit(const platform::CUDADeviceContext &ctx) {
+  void InferenceInit(const phi::GPUContext &ctx) {
     // Set constant_param for inference op
-    inference_op_.SetOpConstParamAttr(
-        {CUDNN_PARAM_BN_SCALE_PLACEHOLDER, CUDNN_PARAM_BN_BIAS_PLACEHOLDER,
-         CUDNN_PARAM_BN_RUNNING_MEAN_PLACEHOLDER,
-         CUDNN_PARAM_BN_RUNNING_VAR_PLACEHOLDER,
-         CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER, CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER},
-        CUDNN_PTR_16B_ALIGNED);
+    inference_op_.SetOpConstParamAttr({CUDNN_PARAM_BN_SCALE_PLACEHOLDER,
+                                       CUDNN_PARAM_BN_BIAS_PLACEHOLDER,
+                                       CUDNN_PARAM_BN_RUNNING_MEAN_PLACEHOLDER,
+                                       CUDNN_PARAM_BN_RUNNING_VAR_PLACEHOLDER,
+                                       CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
+                                       CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER},
+                                      CUDNN_PTR_16B_ALIGNED);
     // Set input and output desc for inference op
     inference_op_.SetOpConstParamDesc(CUDNN_PARAM_BN_SCALEBIAS_MEANVAR_DESC,
                                       args_.in_desc.desc());
@@ -173,7 +188,8 @@ class CudnnBNStatsFinalize {
                                       CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
     // Check workspace size, also creates plan.
     size_t workspace_size_bytes = inference_op_.GetWorkspaceSizeInBytes(handle);
-    PADDLE_ENFORCE_EQ(workspace_size_bytes, 0U,
+    PADDLE_ENFORCE_EQ(workspace_size_bytes,
+                      0U,
                       platform::errors::InvalidArgument(
                           "Unexpected non-zero workspace size for "
                           "CudnnBNStatsFinalize."));

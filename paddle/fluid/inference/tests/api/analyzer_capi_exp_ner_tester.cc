@@ -29,7 +29,8 @@ namespace analysis {
 TEST(PD_PredictorRun, predictor_run) {
   auto model_dir = FLAGS_infer_model;
   PD_Config *config = PD_ConfigCreate();
-  PD_ConfigSetModel(config, (model_dir + "/__model__").c_str(),
+  PD_ConfigSetModel(config,
+                    (model_dir + "/__model__").c_str(),
                     (model_dir + "/param").c_str());
   PD_ConfigDisableGpu(config);
 

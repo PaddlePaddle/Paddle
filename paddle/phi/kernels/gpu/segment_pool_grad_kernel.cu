@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/segment_pool_grad_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/segment_pool_grad_kernel_impl.h"
-#include "paddle/phi/kernels/segment_pool_grad_kernel.h"
 
 PD_REGISTER_KERNEL(segment_pool_grad,
                    GPU,

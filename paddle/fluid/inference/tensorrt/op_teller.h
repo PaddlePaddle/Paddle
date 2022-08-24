@@ -66,7 +66,8 @@ class OpTeller {
     return *x;
   }
 
-  bool Tell(const framework::ir::Node* node, bool use_no_calib_int8 = false,
+  bool Tell(const framework::ir::Node* node,
+            bool use_no_calib_int8 = false,
             bool with_dynamic_shape = false);
 
  private:

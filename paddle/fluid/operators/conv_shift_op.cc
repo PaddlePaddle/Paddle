@@ -22,7 +22,8 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
@@ -38,42 +39,56 @@ class ConvShiftOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), 2,
+        x_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Input(X)'s dimensions of ConvShiftOp should be 2. "
             "But received X's shape = [%s] and the dimension is %d.",
-            x_dims, x_dims.size()));
+            x_dims,
+            x_dims.size()));
     PADDLE_ENFORCE_EQ(
-        y_dims.size(), 2,
+        y_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Input(Y)'s dimensions of ConvShiftOp should be 2. "
             "But received Y's shape = [%s] and the dimension is %d.",
-            y_dims, y_dims.size()));
+            y_dims,
+            y_dims.size()));
     if (ctx->IsRuntime() || (x_dims[0] > 0 && y_dims[0] > 0))
       PADDLE_ENFORCE_EQ(
-          x_dims[0], y_dims[0],
+          x_dims[0],
+          y_dims[0],
           platform::errors::InvalidArgument(
               "The first dimension of Input(X) and Input(Y) of ConvShiftOp "
               "should be equal. "
               "But received X's shape = [%s], Y's shape = [%s], "
               "and the first dimensions are %d and %d respectively.",
-              x_dims, y_dims, x_dims[0], y_dims[0]));
+              x_dims,
+              y_dims,
+              x_dims[0],
+              y_dims[0]));
     if (ctx->IsRuntime() || y_dims[1] > 0)
       PADDLE_ENFORCE_EQ(
-          y_dims[1] % 2, 1,
+          y_dims[1] % 2,
+          1,
           platform::errors::InvalidArgument(
               "The second dimension of Input(Y) of ConvShiftOp should be odd."
               "But received Y's shape = [%s] and the second dimension is %d.",
-              y_dims, y_dims[1]));
+              y_dims,
+              y_dims[1]));
     if (ctx->IsRuntime() || (x_dims[1] > 0 && y_dims[1] > 0))
       PADDLE_ENFORCE_LE(
-          y_dims[1], x_dims[1],
+          y_dims[1],
+          x_dims[1],
           platform::errors::InvalidArgument(
               "The second dimension of Input(Y) of ConvShiftOp should be less "
               "than or equal to the 2nd dimension of Input(X)."
               "But received X's shape = [%s], Y's shape = [%s], "
               "and the second dimensions are %d and %d respectively.",
-              x_dims, y_dims, x_dims[1], y_dims[1]));
+              x_dims,
+              y_dims,
+              x_dims[1],
+              y_dims[1]));
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -86,8 +101,10 @@ class ConvShiftGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ConvShiftGradOp");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ConvShiftGradOp");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "ConvShiftGradOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "ConvShiftGradOp");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -240,7 +257,9 @@ class ConvShiftGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(conv_shift, ops::ConvShiftOp, ops::ConvShiftOpMaker,
+REGISTER_OPERATOR(conv_shift,
+                  ops::ConvShiftOp,
+                  ops::ConvShiftOpMaker,
                   ops::ConvShiftGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConvShiftGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv_shift_grad, ops::ConvShiftGradOp);

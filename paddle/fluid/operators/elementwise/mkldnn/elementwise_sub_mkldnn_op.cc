@@ -17,7 +17,9 @@
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(
-    elementwise_sub, MKLDNN, paddle::platform::CPUPlace,
+    elementwise_sub,
+    MKLDNN,
+    paddle::platform::CPUPlace,
     ops::EltwiseMKLDNNKernel<float, dnnl::algorithm::binary_sub>,
     ops::EltwiseMKLDNNKernel<paddle::platform::bfloat16,
                              dnnl::algorithm::binary_sub>,
@@ -25,7 +27,9 @@ REGISTER_OP_KERNEL(
     ops::EltwiseMKLDNNKernel<uint8_t, dnnl::algorithm::binary_sub>)
 
 REGISTER_OP_KERNEL(
-    elementwise_sub_grad, MKLDNN, ::paddle::platform::CPUPlace,
+    elementwise_sub_grad,
+    MKLDNN,
+    ::paddle::platform::CPUPlace,
     ops::EltwiseMKLDNNGradKernel<paddle::platform::bfloat16,
                                  dnnl::algorithm::binary_sub>,
     ops::EltwiseMKLDNNGradKernel<float, dnnl::algorithm::binary_sub>)

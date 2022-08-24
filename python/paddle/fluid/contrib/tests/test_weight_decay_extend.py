@@ -87,7 +87,7 @@ def bow_net(data,
     fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
     prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    avg_cost = paddle.mean(x=cost)
 
     return avg_cost
 
@@ -185,9 +185,12 @@ class TestWeightDecay(unittest.TestCase):
             param_sum2 = self.check_weight_decay2(place, model)
 
             for i in range(len(param_sum1)):
-                self.assertTrue(
-                    np.allclose(param_sum1[i], param_sum2[i]),
-                    "Current place: {}, i: {}, sum1: {}, sum2: {}".format(
+                np.testing.assert_allclose(
+                    param_sum1[i],
+                    param_sum2[i],
+                    rtol=1e-05,
+                    err_msg='Current place: {}, i: {}, sum1: {}, sum2: {}'.
+                    format(
                         place, i, param_sum1[i]
                         [~np.isclose(param_sum1[i], param_sum2[i])],
                         param_sum2[i]

@@ -54,10 +54,15 @@ class OneHotV2MLUKernel : public framework::OpKernel<T> {
     if (framework::TransToProtoVarType(in->dtype()) ==
         framework::proto::VarType::INT32) {
       MLUCnnlTensorDesc desc_indices(*in);
-      MLUCnnl::OneHot(ctx, desc_indices.get(), GetBasePtr(in), depth,
+      MLUCnnl::OneHot(ctx,
+                      desc_indices.get(),
+                      GetBasePtr(in),
+                      depth,
                       GetBasePtr(&on_value_tensor),
-                      GetBasePtr(&off_value_tensor), -1,
-                      ToCnnlDataType(out->dtype()), GetBasePtr(out));
+                      GetBasePtr(&off_value_tensor),
+                      -1,
+                      ToCnnlDataType(out->dtype()),
+                      GetBasePtr(out));
     } else {
       Tensor transformed_in;
       transformed_in.mutable_data<int32_t>(in->dims(), dev_ctx.GetPlace());
@@ -67,12 +72,21 @@ class OneHotV2MLUKernel : public framework::OpKernel<T> {
       cnnlCastDataType_t cast_type = GetCastDataType(
           framework::TransToProtoVarType(in->dtype()),
           framework::TransToProtoVarType(transformed_in.dtype()));
-      MLUCnnl::Cast(ctx, cast_type, in_desc.get(), GetBasePtr(in),
-                    transformed_in_desc.get(), GetBasePtr(&transformed_in));
-      MLUCnnl::OneHot(
-          ctx, transformed_in_desc.get(), GetBasePtr(&transformed_in), depth,
-          GetBasePtr(&on_value_tensor), GetBasePtr(&off_value_tensor), -1,
-          ToCnnlDataType(out->dtype()), GetBasePtr(out));
+      MLUCnnl::Cast(ctx,
+                    cast_type,
+                    in_desc.get(),
+                    GetBasePtr(in),
+                    transformed_in_desc.get(),
+                    GetBasePtr(&transformed_in));
+      MLUCnnl::OneHot(ctx,
+                      transformed_in_desc.get(),
+                      GetBasePtr(&transformed_in),
+                      depth,
+                      GetBasePtr(&on_value_tensor),
+                      GetBasePtr(&off_value_tensor),
+                      -1,
+                      ToCnnlDataType(out->dtype()),
+                      GetBasePtr(out));
     }
   }
 };

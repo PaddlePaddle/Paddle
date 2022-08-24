@@ -38,7 +38,7 @@ static DDim CheckAndGetOutputDim(const DDim& dim_x) {
 }
 }  // namespace detail
 
-class MatrixRankeOp : public framework::OperatorWithKernel {
+class MatrixRankOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -46,7 +46,8 @@ class MatrixRankeOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "MatrixRank");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "MatrixRank");
     auto dim_x = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(dim_x.size(), 2,
+    PADDLE_ENFORCE_GE(dim_x.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The dims of input must be greater than 2"));
 
@@ -54,7 +55,8 @@ class MatrixRankeOp : public framework::OperatorWithKernel {
     if (hermitian) {
       int rows = dim_x[dim_x.size() - 2];
       int cols = dim_x[dim_x.size() - 1];
-      PADDLE_ENFORCE_EQ(rows, cols,
+      PADDLE_ENFORCE_EQ(rows,
+                        cols,
                         platform::errors::InvalidArgument(
                             "if hermitian == true, matrix should be n*n"));
     }
@@ -70,9 +72,13 @@ class MatrixRankeOp : public framework::OperatorWithKernel {
         std::vector<int> x_batch_dims_array(max_dim);
         std::vector<int> tol_dims_array(max_dim);
         std::vector<int> out_dims_array(max_dim);
-        phi::funcs::GetBroadcastDimsArrays(
-            dim_x_batch, dim_tol, x_batch_dims_array.data(),
-            tol_dims_array.data(), out_dims_array.data(), max_dim, axis);
+        phi::funcs::GetBroadcastDimsArrays(dim_x_batch,
+                                           dim_tol,
+                                           x_batch_dims_array.data(),
+                                           tol_dims_array.data(),
+                                           out_dims_array.data(),
+                                           max_dim,
+                                           axis);
         ctx->SetOutputDim("Out", phi::make_ddim(out_dims_array));
       }
     } else {
@@ -91,7 +97,7 @@ class MatrixRankeOp : public framework::OperatorWithKernel {
   }
 };
 
-class MatrixRankeOpMaker : public framework::OpProtoAndCheckerMaker {
+class MatrixRankOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor), The input tensor of matrix_rank op.");
@@ -120,4 +126,4 @@ class MatrixRankeOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(matrix_rank, ops::MatrixRankeOp, ops::MatrixRankeOpMaker);
+REGISTER_OPERATOR(matrix_rank, ops::MatrixRankOp, ops::MatrixRankOpMaker);

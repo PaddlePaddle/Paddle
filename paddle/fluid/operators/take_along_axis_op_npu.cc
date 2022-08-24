@@ -37,8 +37,8 @@ class NPUTakeAlongAxisKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    const auto& runner = NpuOpRunner("GatherElements", {*input, *index},
-                                     {*result}, {{"dim", axis}});
+    const auto& runner = NpuOpRunner(
+        "GatherElements", {*input, *index}, {*result}, {{"dim", axis}});
     runner.Run(stream);
   }
 };
@@ -57,9 +57,10 @@ class NPUTakeAlongAxisGradKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    const auto& runner =
-        NpuOpRunner("ScatterAddWithAxis", {*input_grad, *index, *result_grad},
-                    {*input_grad}, {{"axis", axis}});
+    const auto& runner = NpuOpRunner("ScatterAddWithAxis",
+                                     {*input_grad, *index, *result_grad},
+                                     {*input_grad},
+                                     {{"axis", axis}});
     runner.Run(stream);
   }
 };

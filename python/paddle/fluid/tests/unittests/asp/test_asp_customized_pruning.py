@@ -224,17 +224,25 @@ class TestASPStaticCustomerizedPruneFunc(unittest.TestCase):
                     self.assertLessEqual(
                         np.sum(mat.flatten() - static_tensor.flatten()), 1e-4)
                 else:
-                    self.assertTrue(
-                        sparsity.check_sparsity(
-                            mat.T,
-                            func_name=sparsity.CheckMethod.CHECK_1D,
-                            n=2,
-                            m=4))
+                    if (len(param.shape) == 4
+                            and param.shape[1] < 4) or (len(param.shape) == 2
+                                                        and param.shape[0] < 4):
+                        self.assertFalse(
+                            paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                         n=2,
+                                                                         m=4))
+                    else:
+                        self.assertTrue(
+                            sparsity.check_sparsity(
+                                mat.T,
+                                func_name=sparsity.CheckMethod.CHECK_1D,
+                                n=2,
+                                m=4))
         self.assertEqual(supported_layer_count, self.supported_layer_count_ref)
 
     def test_training_pruning(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            loss = fluid.layers.mean(
+            loss = paddle.mean(
                 fluid.layers.cross_entropy(input=self.predict,
                                            label=self.label))
             optimizer = sparsity.decorate(
@@ -264,18 +272,26 @@ class TestASPStaticCustomerizedPruneFunc(unittest.TestCase):
                         np.sum(mat_mask.flatten() -
                                static_tensor_mask.flatten()), 1e-4)
                 else:
-                    self.assertTrue(
-                        sparsity.check_sparsity(
-                            mat.T,
-                            func_name=sparsity.CheckMethod.CHECK_1D,
-                            n=2,
-                            m=4))
-                    self.assertTrue(
-                        sparsity.check_sparsity(
-                            mat_mask.T,
-                            func_name=sparsity.CheckMethod.CHECK_1D,
-                            n=2,
-                            m=4))
+                    if (len(param.shape) == 4
+                            and param.shape[1] < 4) or (len(param.shape) == 2
+                                                        and param.shape[0] < 4):
+                        self.assertFalse(
+                            sparsity.check_sparsity(mat.T, n=2, m=4))
+                        self.assertFalse(
+                            sparsity.check_sparsity(mat_mask.T, n=2, m=4))
+                    else:
+                        self.assertTrue(
+                            sparsity.check_sparsity(
+                                mat.T,
+                                func_name=sparsity.CheckMethod.CHECK_1D,
+                                n=2,
+                                m=4))
+                        self.assertTrue(
+                            sparsity.check_sparsity(
+                                mat_mask.T,
+                                func_name=sparsity.CheckMethod.CHECK_1D,
+                                n=2,
+                                m=4))
         self.assertEqual(supported_layer_count, self.supported_layer_count_ref)
 
 

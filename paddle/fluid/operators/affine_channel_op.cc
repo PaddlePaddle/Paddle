@@ -78,31 +78,37 @@ class AffineChannelOp : public framework::OperatorWithKernel {
                            : x_dims[x_dims.size() - 1]);
 
     PADDLE_ENFORCE_EQ(
-        scale_dims.size(), 1UL,
+        scale_dims.size(),
+        1UL,
         platform::errors::InvalidArgument(
             "The dimensions of Input(Scale) must be 1,"
             "But received the dimensions of Input(Scale) is [%d] ",
             scale_dims.size()));
-    PADDLE_ENFORCE_EQ(b_dims.size(), 1UL,
+    PADDLE_ENFORCE_EQ(b_dims.size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "The dimensions of Input(Bias) must be 1,"
                           "But received the dimensions of Input(Bias) is [%d] ",
                           scale_dims.size()));
     if (ctx->IsRuntime() || scale_dims[0] > 0) {
       PADDLE_ENFORCE_EQ(
-          scale_dims[0], C,
+          scale_dims[0],
+          C,
           platform::errors::InvalidArgument(
               "The first dimension value of Input(Scale) must be [%d],"
               "But received [%d].",
-              C, scale_dims[0]));
+              C,
+              scale_dims[0]));
     }
     if (ctx->IsRuntime() || b_dims[0] > 0) {
       PADDLE_ENFORCE_EQ(
-          b_dims[0], C,
+          b_dims[0],
+          C,
           platform::errors::InvalidArgument(
               "The first dimension value of Input(Bias) must be [%d],"
               "But received [%d].",
-              C, b_dims[0]));
+              C,
+              b_dims[0]));
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -114,18 +120,22 @@ class AffineChannelOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "AffineChannelGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "AffineChannelGrad");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
-      OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale",
-                     "AffineChannelGrad");
+      OP_INOUT_CHECK(
+          ctx->HasInput("Scale"), "Input", "Scale", "AffineChannelGrad");
       ctx->SetOutputDim(framework::GradVarName("X"),
                         ctx->GetInputDim(framework::GradVarName("Out")));
     }
     if (ctx->HasOutput(framework::GradVarName("Scale"))) {
       // Scale@GRAD and Bias@GRAD must exist at the same time.
-      OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Bias")), "Output",
-                     framework::GradVarName("Bias"), "AffineChannelGrad");
+      OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Bias")),
+                     "Output",
+                     framework::GradVarName("Bias"),
+                     "AffineChannelGrad");
       OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AffineChannelGrad");
       ctx->SetOutputDim(framework::GradVarName("Scale"),
                         ctx->GetInputDim("Scale"));
@@ -332,18 +342,21 @@ DECLARE_INPLACE_OP_INFERER(AffineChannelGradInplaceInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
-REGISTER_OPERATOR(affine_channel, ops::AffineChannelOp,
+REGISTER_OPERATOR(affine_channel,
+                  ops::AffineChannelOp,
                   ops::AffineChannelOpMaker,
                   ops::AffineChannelGradMaker<paddle::framework::OpDesc>,
                   ops::AffineChannelGradMaker<paddle::imperative::OpBase>,
                   ops::AffineChannelInplaceInferer);
-REGISTER_OPERATOR(affine_channel_grad, ops::AffineChannelOpGrad,
+REGISTER_OPERATOR(affine_channel_grad,
+                  ops::AffineChannelOpGrad,
                   ops::AffineChannelNoNeedBufferVarsInference,
                   ops::AffineChannelGradInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(affine_channel, ops::AffineChannelKernel<CPU, float>,
+REGISTER_OP_CPU_KERNEL(affine_channel,
+                       ops::AffineChannelKernel<CPU, float>,
                        ops::AffineChannelKernel<CPU, double>);
 REGISTER_OP_CPU_KERNEL(affine_channel_grad,
                        ops::AffineChannelGradKernel<CPU, float>,

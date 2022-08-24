@@ -45,8 +45,13 @@ static void PullGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
   }
 #ifdef PADDLE_WITH_HETERPS
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
-  gpu_ps_ptr->PullSparse(ctx.GetPlace(), 0, all_keys, all_values, slot_lengths,
-                         embedding_size_vec, 0);
+  gpu_ps_ptr->PullSparse(ctx.GetPlace(),
+                         0,
+                         all_keys,
+                         all_values,
+                         slot_lengths,
+                         embedding_size_vec,
+                         0);
 #endif
 }
 
@@ -71,7 +76,8 @@ static void PushGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
     if (batch_size == -1) {
       batch_size = cur_batch_size;
     } else {
-      PADDLE_ENFORCE_EQ(batch_size, cur_batch_size,
+      PADDLE_ENFORCE_EQ(batch_size,
+                        cur_batch_size,
                         platform::errors::PreconditionNotMet(
                             "The batch size of all input slots should be same, "
                             "please cheack"));
@@ -81,8 +87,13 @@ static void PushGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
   }
 #ifdef PADDLE_WITH_HETERPS
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
-  gpu_ps_ptr->PushSparseGrad(ctx.GetPlace(), 0, all_keys, all_grad_values,
-                             slot_lengths, 0, batch_size);
+  gpu_ps_ptr->PushSparseGrad(ctx.GetPlace(),
+                             0,
+                             all_keys,
+                             all_grad_values,
+                             slot_lengths,
+                             0,
+                             batch_size);
 #endif
 }
 

@@ -25,10 +25,6 @@ cc_test(
   SRCS test_op_utils.cc
   DEPS op_compat_infos)
 cc_test(
-  test_phi_device_context
-  SRCS test_device_context.cc
-  DEPS phi_context cpu_context)
-cc_test(
   test_meta_fn_utils
   SRCS test_meta_fn_utils.cc
   DEPS dense_tensor wrapped_infermeta infermeta infermeta_utils)

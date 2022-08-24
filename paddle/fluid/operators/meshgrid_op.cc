@@ -86,7 +86,8 @@ class MeshgridGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_GT(ctx->Inputs(framework::GradVarName("Out")).size(), 1,
+    PADDLE_ENFORCE_GT(ctx->Inputs(framework::GradVarName("Out")).size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "Number of Inputs(Out@Grad) should be larger than 1."
                           "But received Inputs(Out@Grad)' size = %d .",
@@ -121,9 +122,12 @@ class MeshgridGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(meshgrid, MeshgridInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(meshgrid,
+                            MeshgridInferShapeFunctor,
                             PD_INFER_META(phi::MeshgridInferMeta));
-REGISTER_OPERATOR(meshgrid, ops::MeshgridOp, ops::MeshgridOpMaker,
+REGISTER_OPERATOR(meshgrid,
+                  ops::MeshgridOp,
+                  ops::MeshgridOpMaker,
                   ops::MeshgridGradOpMaker<paddle::framework::OpDesc>,
                   ops::MeshgridGradOpMaker<paddle::imperative::OpBase>,
                   MeshgridInferShapeFunctor);

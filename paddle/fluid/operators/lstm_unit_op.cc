@@ -33,22 +33,27 @@ class LstmUnitOp : public framework::OperatorWithKernel {
     auto c_prev_dims = ctx->GetInputDim("C_prev");
 
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), 2,
+        x_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Input(X)'s rank must be 2. Received %d instead.", x_dims.size()));
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(x_dims[0], c_prev_dims[0],
+      PADDLE_ENFORCE_EQ(x_dims[0],
+                        c_prev_dims[0],
                         platform::errors::InvalidArgument(
                             "Batch size of inputs and states must be equal, "
                             "but received %d (inputs)"
                             "vs %d (states).",
-                            x_dims[0], c_prev_dims[0]));
-      PADDLE_ENFORCE_EQ(x_dims[1], c_prev_dims[1] * 4,
+                            x_dims[0],
+                            c_prev_dims[0]));
+      PADDLE_ENFORCE_EQ(x_dims[1],
+                        c_prev_dims[1] * 4,
                         platform::errors::InvalidArgument(
                             "Dimension of FC should equal to prev state * 4, "
                             "but received %d (dimension of FC)"
                             "vs %d (prev state * 4).",
-                            x_dims[1], c_prev_dims[1] * 4));
+                            x_dims[1],
+                            c_prev_dims[1] * 4));
     }
 
     int b_size = c_prev_dims[0];  // batch size
@@ -94,10 +99,14 @@ class LstmUnitGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("C")), "Input",
-                   framework::GradVarName("C"), "lstm_unit");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("H")), "Input",
-                   framework::GradVarName("H"), "lstm_unit");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("C")),
+                   "Input",
+                   framework::GradVarName("C"),
+                   "lstm_unit");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("H")),
+                   "Input",
+                   framework::GradVarName("H"),
+                   "lstm_unit");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     ctx->SetOutputDim(framework::GradVarName("C_prev"),
                       ctx->GetInputDim("C_prev"));
@@ -127,7 +136,9 @@ class LstmUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lstm_unit, ops::LstmUnitOp, ops::LstmUnitOpMaker,
+REGISTER_OPERATOR(lstm_unit,
+                  ops::LstmUnitOp,
+                  ops::LstmUnitOpMaker,
                   ops::LstmUnitGradOpMaker<paddle::framework::OpDesc>,
                   ops::LstmUnitGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstm_unit_grad, ops::LstmUnitGradOp);
@@ -135,5 +146,6 @@ REGISTER_OP_CPU_KERNEL(lstm_unit,
                        ops::LstmUnitKernel<paddle::platform::CPUPlace, float>,
                        ops::LstmUnitKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
-    lstm_unit_grad, ops::LstmUnitGradKernel<paddle::platform::CPUPlace, float>,
+    lstm_unit_grad,
+    ops::LstmUnitGradKernel<paddle::platform::CPUPlace, float>,
     ops::LstmUnitGradKernel<paddle::platform::CPUPlace, double>);

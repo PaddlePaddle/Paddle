@@ -44,9 +44,11 @@ size_t AppendPythonCallableObjectAndReturnId(const py::object &py_obj) {
 // but without GIL, reference count in Python may not be safe
 static py::object *GetPythonCallableObject(size_t i) {
   PADDLE_ENFORCE_LT(
-      i, g_py_callables.size(),
+      i,
+      g_py_callables.size(),
       platform::errors::InvalidArgument(
-          "Invalid python callable id %d, which should be less than %d.", i,
+          "Invalid python callable id %d, which should be less than %d.",
+          i,
           g_py_callables.size()));
   return &g_py_callables[i];
 }
@@ -76,7 +78,8 @@ static void CallPythonFunc(py::object *callable,
     // Python function has no return values or returns None
     // In this case, ret_num = 1 && ret[0] == None && out_num should be 0
     // Otherwise, ret_num must be equal to out_num
-    PADDLE_ENFORCE_EQ(ret_num == 1, true,
+    PADDLE_ENFORCE_EQ(ret_num == 1,
+                      true,
                       platform::errors::InvalidArgument(
                           "Python function has no return values or returns "
                           "None. In this case, ret_num = 1 && ret[0] == None "
@@ -84,7 +87,8 @@ static void CallPythonFunc(py::object *callable,
                           ret_num));
 
     PADDLE_ENFORCE_EQ(
-        out_num == 0, true,
+        out_num == 0,
+        true,
         platform::errors::InvalidArgument(
             "Python function has no return values or returns None. In "
             "this case, ret_num = 1 && ret[0] == None && out_num should "
@@ -92,7 +96,8 @@ static void CallPythonFunc(py::object *callable,
             out_num));
 
     PADDLE_ENFORCE_EQ(
-        py::cast<framework::LoDTensor *>(ret_tuple[0]) == nullptr, true,
+        py::cast<framework::LoDTensor *>(ret_tuple[0]) == nullptr,
+        true,
         platform::errors::InvalidArgument(
             "Python function has no return values or returns None. In "
             "this case, ret_num = 1 && ret[0] == None && out_num should "
@@ -131,16 +136,19 @@ class PyFuncOpVarTypeInference : public framework::StaticGraphVarTypeInference {
      * to support Python functions with no input or no output
      */
     PADDLE_ENFORCE_EQ(
-        has_in || has_out, true,
+        has_in || has_out,
+        true,
         platform::errors::InvalidArgument("Input(X) or Output(Out) must exist, "
                                           "but has_in is %d, has_out is %d.",
-                                          has_in, has_out));
+                                          has_in,
+                                          has_out));
 
     PADDLE_ENFORCE_GE(
-        BOOST_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId)), 0,
+        PADDLE_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId)),
+        0,
         platform::errors::InvalidArgument(
             "Function id cannot be less than 0, but received value is %d.",
-            BOOST_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId))));
+            PADDLE_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId))));
 
     if (!has_out) return;
 
@@ -160,10 +168,10 @@ class PyFuncOpVarTypeInference : public framework::StaticGraphVarTypeInference {
       size_t len = out_var_name.size() - kGradVarSuffix.size();
       if (out_var_name.substr(len) == kGradVarSuffix) {
         auto fwd_var_name = out_var_name.substr(0, len);
-        OP_INOUT_CHECK(HasVar(ctx, out_var_name), "Var", out_var_name,
-                       "py_func");
-        OP_INOUT_CHECK(HasVar(ctx, fwd_var_name), "Var", fwd_var_name,
-                       "py_func");
+        OP_INOUT_CHECK(
+            HasVar(ctx, out_var_name), "Var", out_var_name, "py_func");
+        OP_INOUT_CHECK(
+            HasVar(ctx, fwd_var_name), "Var", fwd_var_name, "py_func");
         VLOG(10) << "Infer var_desc of Output(" << out_var_name << ") as Input("
                  << fwd_var_name << ")";
 
@@ -180,7 +188,8 @@ class PyFuncOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        !ctx->IsRuntime(), true,
+        !ctx->IsRuntime(),
+        true,
         platform::errors::InvalidArgument("Shape inference cannot be called at "
                                           "run time in 'py_func' operator."));
   }
@@ -232,7 +241,7 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
   std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
     auto &fwd_attrs = Attrs();
     // no backward op when backward_id is less than 0
-    if (BOOST_GET_CONST(int, fwd_attrs.at(kBackwardPythonCallableId)) < 0) {
+    if (PADDLE_GET_CONST(int, fwd_attrs.at(kBackwardPythonCallableId)) < 0) {
       return {};
     }
 
@@ -252,7 +261,7 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
 
     // For memory reused, some inputs/output in forward part may be not needed
     // in backward part. Skipping these vars helps to save memory
-    auto &backward_skip_var_list = BOOST_GET_CONST(
+    auto &backward_skip_var_list = PADDLE_GET_CONST(
         std::vector<std::string>, fwd_attrs.at(kPyFuncBackwardSkipVars));
     std::unordered_set<std::string> backward_skip_var_set(
         backward_skip_var_list.begin(), backward_skip_var_list.end());
@@ -341,6 +350,9 @@ class PyFuncOp : public framework::OperatorBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(py_func, ops::PyFuncOp, ops::PyFuncOpMaker,
-                  ops::PyFuncOpVarTypeInference, ops::PyFuncOpShapeInference,
+REGISTER_OPERATOR(py_func,
+                  ops::PyFuncOp,
+                  ops::PyFuncOpMaker,
+                  ops::PyFuncOpVarTypeInference,
+                  ops::PyFuncOpShapeInference,
                   ops::PyFuncOpGradDescMaker);

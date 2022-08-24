@@ -55,7 +55,9 @@ int GraphBrpcClient::get_server_index_by_id(int64_t id) {
 }
 
 std::future<int32_t> GraphBrpcClient::get_node_feat(
-    const uint32_t &table_id, int idx_, const std::vector<int64_t> &node_ids,
+    const uint32_t &table_id,
+    int idx_,
+    const std::vector<int64_t> &node_ids,
     const std::vector<std::string> &feature_names,
     std::vector<std::vector<std::string>> &res) {
   std::vector<int> request2server;
@@ -141,15 +143,18 @@ std::future<int32_t> GraphBrpcClient::get_node_feat(
 
     GraphPsService_Stub rpc_stub = getServiceStub(GetCmdChannel(server_index));
     closure->cntl(request_idx)->set_log_id(butil::gettimeofday_ms());
-    rpc_stub.service(closure->cntl(request_idx), closure->request(request_idx),
-                     closure->response(request_idx), closure);
+    rpc_stub.service(closure->cntl(request_idx),
+                     closure->request(request_idx),
+                     closure->response(request_idx),
+                     closure);
   }
 
   return fut;
 }
 
 std::future<int32_t> GraphBrpcClient::clear_nodes(uint32_t table_id,
-                                                  int type_id, int idx_) {
+                                                  int type_id,
+                                                  int idx_) {
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       server_size, [&, server_size = this->server_size](void *done) {
         int ret = 0;
@@ -178,12 +183,15 @@ std::future<int32_t> GraphBrpcClient::clear_nodes(uint32_t table_id,
     closure->cntl(server_index)->set_log_id(butil::gettimeofday_ms());
     rpc_stub.service(closure->cntl(server_index),
                      closure->request(server_index),
-                     closure->response(server_index), closure);
+                     closure->response(server_index),
+                     closure);
   }
   return fut;
 }
 std::future<int32_t> GraphBrpcClient::add_graph_node(
-    uint32_t table_id, int idx_, std::vector<int64_t> &node_id_list,
+    uint32_t table_id,
+    int idx_,
+    std::vector<int64_t> &node_id_list,
     std::vector<bool> &is_weighted_list) {
   std::vector<std::vector<int64_t>> request_bucket;
   std::vector<std::vector<bool>> is_weighted_bucket;
@@ -246,8 +254,10 @@ std::future<int32_t> GraphBrpcClient::add_graph_node(
     // PsService_Stub rpc_stub(GetCmdChannel(server_index));
     GraphPsService_Stub rpc_stub = getServiceStub(GetCmdChannel(server_index));
     closure->cntl(request_idx)->set_log_id(butil::gettimeofday_ms());
-    rpc_stub.service(closure->cntl(request_idx), closure->request(request_idx),
-                     closure->response(request_idx), closure);
+    rpc_stub.service(closure->cntl(request_idx),
+                     closure->request(request_idx),
+                     closure->response(request_idx),
+                     closure);
   }
   return fut;
 }
@@ -300,17 +310,23 @@ std::future<int32_t> GraphBrpcClient::remove_graph_node(
     // PsService_Stub rpc_stub(GetCmdChannel(server_index));
     GraphPsService_Stub rpc_stub = getServiceStub(GetCmdChannel(server_index));
     closure->cntl(request_idx)->set_log_id(butil::gettimeofday_ms());
-    rpc_stub.service(closure->cntl(request_idx), closure->request(request_idx),
-                     closure->response(request_idx), closure);
+    rpc_stub.service(closure->cntl(request_idx),
+                     closure->request(request_idx),
+                     closure->response(request_idx),
+                     closure);
   }
   return fut;
 }
 // char* &buffer,int &actual_size
 std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
-    uint32_t table_id, int idx_, std::vector<int64_t> node_ids, int sample_size,
+    uint32_t table_id,
+    int idx_,
+    std::vector<int64_t> node_ids,
+    int sample_size,
     // std::vector<std::vector<std::pair<int64_t, float>>> &res,
     std::vector<std::vector<int64_t>> &res,
-    std::vector<std::vector<float>> &res_weight, bool need_weight,
+    std::vector<std::vector<float>> &res_weight,
+    bool need_weight,
     int server_index) {
   if (server_index != -1) {
     res.resize(node_ids.size());
@@ -370,8 +386,8 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
     // PsService_Stub rpc_stub(GetCmdChannel(server_index));
     GraphPsService_Stub rpc_stub = getServiceStub(GetCmdChannel(server_index));
     closure->cntl(0)->set_log_id(butil::gettimeofday_ms());
-    rpc_stub.service(closure->cntl(0), closure->request(0),
-                     closure->response(0), closure);
+    rpc_stub.service(
+        closure->cntl(0), closure->request(0), closure->response(0), closure);
     return fut;
   }
   std::vector<int> request2server;
@@ -472,14 +488,20 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
     // PsService_Stub rpc_stub(GetCmdChannel(server_index));
     GraphPsService_Stub rpc_stub = getServiceStub(GetCmdChannel(server_index));
     closure->cntl(request_idx)->set_log_id(butil::gettimeofday_ms());
-    rpc_stub.service(closure->cntl(request_idx), closure->request(request_idx),
-                     closure->response(request_idx), closure);
+    rpc_stub.service(closure->cntl(request_idx),
+                     closure->request(request_idx),
+                     closure->response(request_idx),
+                     closure);
   }
 
   return fut;
 }
 std::future<int32_t> GraphBrpcClient::random_sample_nodes(
-    uint32_t table_id, int type_id, int idx_, int server_index, int sample_size,
+    uint32_t table_id,
+    int type_id,
+    int idx_,
+    int server_index,
+    int sample_size,
     std::vector<int64_t> &ids) {
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [&](void *done) {
     int ret = 0;
@@ -491,7 +513,6 @@ std::future<int32_t> GraphBrpcClient::random_sample_nodes(
       butil::IOBufBytesIterator io_buffer_itr(res_io_buffer);
       size_t bytes_size = io_buffer_itr.bytes_left();
       char *buffer = new char[bytes_size];
-      auto size = io_buffer_itr.copy_and_forward((void *)(buffer), bytes_size);
       size_t index = 0;
       while (index < bytes_size) {
         ids.push_back(*(int64_t *)(buffer + index));
@@ -515,14 +536,20 @@ std::future<int32_t> GraphBrpcClient::random_sample_nodes(
   // PsService_Stub rpc_stub(GetCmdChannel(server_index));
   GraphPsService_Stub rpc_stub = getServiceStub(GetCmdChannel(server_index));
   closure->cntl(0)->set_log_id(butil::gettimeofday_ms());
-  rpc_stub.service(closure->cntl(0), closure->request(0), closure->response(0),
-                   closure);
+  rpc_stub.service(
+      closure->cntl(0), closure->request(0), closure->response(0), closure);
   return fut;
 }
 
 std::future<int32_t> GraphBrpcClient::pull_graph_list(
-    uint32_t table_id, int type_id, int idx_, int server_index, int start,
-    int size, int step, std::vector<FeatureNode> &res) {
+    uint32_t table_id,
+    int type_id,
+    int idx_,
+    int server_index,
+    int start,
+    int size,
+    int step,
+    std::vector<FeatureNode> &res) {
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [&](void *done) {
     int ret = 0;
     auto *closure = (DownpourBrpcClosure *)done;
@@ -559,13 +586,15 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
   // PsService_Stub rpc_stub(GetCmdChannel(server_index));
   GraphPsService_Stub rpc_stub = getServiceStub(GetCmdChannel(server_index));
   closure->cntl(0)->set_log_id(butil::gettimeofday_ms());
-  rpc_stub.service(closure->cntl(0), closure->request(0), closure->response(0),
-                   closure);
+  rpc_stub.service(
+      closure->cntl(0), closure->request(0), closure->response(0), closure);
   return fut;
 }
 
 std::future<int32_t> GraphBrpcClient::set_node_feat(
-    const uint32_t &table_id, int idx_, const std::vector<int64_t> &node_ids,
+    const uint32_t &table_id,
+    int idx_,
+    const std::vector<int64_t> &node_ids,
     const std::vector<std::string> &feature_names,
     const std::vector<std::vector<std::string>> &features) {
   std::vector<int> request2server;
@@ -652,8 +681,10 @@ std::future<int32_t> GraphBrpcClient::set_node_feat(
 
     GraphPsService_Stub rpc_stub = getServiceStub(GetCmdChannel(server_index));
     closure->cntl(request_idx)->set_log_id(butil::gettimeofday_ms());
-    rpc_stub.service(closure->cntl(request_idx), closure->request(request_idx),
-                     closure->response(request_idx), closure);
+    rpc_stub.service(closure->cntl(request_idx),
+                     closure->request(request_idx),
+                     closure->response(request_idx),
+                     closure);
   }
 
   return fut;

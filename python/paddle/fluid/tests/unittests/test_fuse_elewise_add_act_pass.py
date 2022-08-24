@@ -42,7 +42,7 @@ class TestMNIST(TestParallelExecutorBase):
         # FIXME (liuwei12)
         # the new memory optimize strategy will crash this unittest
         # add enable_inplace=False here to force pass the unittest
-        not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
+        not_fuse_op_first_loss, not_fuse_op_last_loss, _ = self.check_network_convergence(
             model,
             feed_dict={
                 "image": img,
@@ -53,7 +53,7 @@ class TestMNIST(TestParallelExecutorBase):
             use_ir_memory_optimize=False,
             enable_inplace=False,
             optimizer=_optimizer)
-        fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
+        fuse_op_first_loss, fuse_op_last_loss, _ = self.check_network_convergence(
             model,
             feed_dict={
                 "image": img,

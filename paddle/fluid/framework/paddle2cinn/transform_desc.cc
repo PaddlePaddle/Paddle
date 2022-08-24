@@ -190,7 +190,7 @@ void OpAttrsToCinn(framework::OpDesc *pb_desc, cpp::OpDesc *cpp_desc) {
       IMPL_ONE(LONG, int64_t);
       IMPL_ONE(LONGS, std::vector<int64_t>);
       case AttrType::BLOCK: {
-        auto i = pb_desc->GetAttrIfExists<int16_t>(name);
+        auto i = pb_desc->GetAttrIfExists<int32_t>(name);
         cpp_desc->SetAttr<int32_t>(name, i);
         break;
       }

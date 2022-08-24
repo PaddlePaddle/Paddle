@@ -33,7 +33,8 @@ class SequenceScatterOpKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<Tensor>("Out");
 
     auto& ids_lod = ids->lod();
-    PADDLE_ENFORCE_EQ(ids_lod.empty(), false,
+    PADDLE_ENFORCE_EQ(ids_lod.empty(),
+                      false,
                       platform::errors::InvalidArgument(
                           "Input(Ids) Tensor of SequenceScatter operator does "
                           "not contain LoD information."));
@@ -46,12 +47,14 @@ class SequenceScatterOpKernel : public framework::OpKernel<T> {
     auto out_dims = out->dims();
 
     for (int i = 0; i < x_dims.size(); ++i)
-      PADDLE_ENFORCE_EQ(x_dims[i], out_dims[i],
+      PADDLE_ENFORCE_EQ(x_dims[i],
+                        out_dims[i],
                         platform::errors::InvalidArgument(
                             "Input(X) and output(Out) shape of SequenceScatter "
                             "operator do not match. Received input(X)'s shape "
                             "is [%s], output(Out)'s shape is [%s].",
-                            x_dims, out_dims));
+                            x_dims,
+                            out_dims));
 
     size_t slice_size = 1;
     for (int i = 1; i < x_dims.size(); ++i) slice_size *= x_dims[i];
@@ -60,12 +63,14 @@ class SequenceScatterOpKernel : public framework::OpKernel<T> {
     unsigned int seg = 0;
     for (int i = 0; i < ids->dims()[0]; ++i) {
       PADDLE_ENFORCE_LT(
-          seg, lod_vec.size() - 1,
+          seg,
+          lod_vec.size() - 1,
           platform::errors::OutOfRange("The segment index is out of bound in "
                                        "SequenceScatter operator, it must be "
                                        "less than batch size. The segment "
                                        "index is %d, the batch size is %d.",
-                                       seg, lod_vec.size()));
+                                       seg,
+                                       lod_vec.size()));
       int lower_bound = lod_vec[seg];
       int upper_bound = lod_vec[seg + 1];
       if (i >= lower_bound && i < upper_bound) {
@@ -86,7 +91,8 @@ class SequenceScatterGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_cpu_place(ctx.GetPlace()), true,
+        platform::is_cpu_place(ctx.GetPlace()),
+        true,
         platform::errors::Unimplemented("Device dose not match. The "
                                         "SequenceScatterGradientOpKernel can "
                                         "only run on CPU device."));
@@ -105,13 +111,15 @@ class SequenceScatterGradientOpKernel : public framework::OpKernel<T> {
     auto dout_dims = dOut->dims();
 
     for (int i = 0; i < dx_dims.size(); ++i)
-      PADDLE_ENFORCE_EQ(dx_dims[i], dout_dims[i],
+      PADDLE_ENFORCE_EQ(dx_dims[i],
+                        dout_dims[i],
                         platform::errors::InvalidArgument(
                             "Input(Out@GRAD) and output(X@GRAD) shape of "
                             "SequenceScatterGradient operator do not match. "
                             "Received input(Out@GRAD)'s shape is [%s], "
                             "output(X@GRAD)'s shape is [%s].",
-                            dout_dims, dx_dims));
+                            dout_dims,
+                            dx_dims));
 
     size_t slice_size = 1;
     for (int i = 1; i < dx_dims.size(); ++i) slice_size *= dx_dims[i];
@@ -121,12 +129,14 @@ class SequenceScatterGradientOpKernel : public framework::OpKernel<T> {
 
     for (int i = 0; i < ids->dims()[0]; ++i) {
       PADDLE_ENFORCE_LT(
-          seg, lod_vec.size() - 1,
+          seg,
+          lod_vec.size() - 1,
           platform::errors::OutOfRange(
               "The segment index is out of bound in SequenceScatterGradient "
               "operator, it must be less than batch size. The segment index is "
               "%d, the batch size is %d.",
-              seg, lod_vec.size()));
+              seg,
+              lod_vec.size()));
       int lower_bound = lod_vec[seg];
       int upper_bound = lod_vec[seg + 1];
       if (i >= lower_bound && i < upper_bound) {

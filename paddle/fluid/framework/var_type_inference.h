@@ -87,10 +87,10 @@ class InferVarTypeContext {
     PADDLE_ENFORCE_NOT_NULL(
         op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     auto& inputs = op_->Input(name);
-    return std::any_of(inputs.begin(), inputs.end(),
-                       [this, &type](const std::string& name) {
-                         return this->GetVarType(name) == type;
-                       });
+    return std::any_of(
+        inputs.begin(), inputs.end(), [this, &type](const std::string& name) {
+          return this->GetVarType(name) == type;
+        });
   }
 
   virtual bool InputTypeAllOf(const std::string& name,
@@ -98,10 +98,10 @@ class InferVarTypeContext {
     PADDLE_ENFORCE_NOT_NULL(
         op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     auto& inputs = op_->Input(name);
-    return std::all_of(inputs.begin(), inputs.end(),
-                       [this, &type](const std::string& name) {
-                         return this->GetVarType(name) == type;
-                       });
+    return std::all_of(
+        inputs.begin(), inputs.end(), [this, &type](const std::string& name) {
+          return this->GetVarType(name) == type;
+        });
   }
 
   virtual void SyncTypeAndDataType(const std::string& input_name,
@@ -118,7 +118,8 @@ class InferVarTypeContext {
     }
   }
 
-  virtual void SetOutputType(const std::string& name, proto::VarType::Type type,
+  virtual void SetOutputType(const std::string& name,
+                             proto::VarType::Type type,
                              int index = 0) {
     PADDLE_ENFORCE_NOT_NULL(
         op_, platform::errors::PreconditionNotMet("op_ should not be null"));
@@ -154,7 +155,8 @@ class InferVarTypeContext {
   }
 
   virtual void SetOutputDataType(const std::string& name,
-                                 proto::VarType::Type type, int index = 0) {
+                                 proto::VarType::Type type,
+                                 int index = 0) {
     PADDLE_ENFORCE_NOT_NULL(
         op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     if (ALL_ELEMENTS == index) {
@@ -209,7 +211,8 @@ class InferVarTypeContext {
     return this->GetVarLoDLevel(var_name);
   }
 
-  virtual void SetOutputLoDLevel(const std::string& name, int32_t lod_level,
+  virtual void SetOutputLoDLevel(const std::string& name,
+                                 int32_t lod_level,
                                  const int& index = 0) {
     PADDLE_ENFORCE_NOT_NULL(
         op_, platform::errors::PreconditionNotMet("op_ should not be null"));
@@ -228,8 +231,9 @@ class InferVarTypeContext {
 
  protected:
   virtual bool HasVar(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
-                                        "block_ should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        block_,
+        platform::errors::PreconditionNotMet("block_ should not be null"));
     return block_->FindVarRecursive(name) != nullptr;
   }
 
@@ -248,8 +252,9 @@ class InferVarTypeContext {
   }
 
   virtual proto::VarType::Type GetVarType(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
-                                        "block_ should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        block_,
+        platform::errors::PreconditionNotMet("block_ should not be null"));
     return block_->FindRecursiveOrCreateVar(name).GetType();
   }
 
@@ -260,55 +265,63 @@ class InferVarTypeContext {
   }
 
   virtual proto::VarType::Type GetVarDataType(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
-                                        "block_ should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        block_,
+        platform::errors::PreconditionNotMet("block_ should not be null"));
     return block_->FindRecursiveOrCreateVar(name).GetDataType();
   }
 
   virtual void SetVarDataType(const std::string& name,
                               proto::VarType::Type type) {
-    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
-                                        "block_ should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        block_,
+        platform::errors::PreconditionNotMet("block_ should not be null"));
     block_->FindRecursiveOrCreateVar(name).SetDataType(type);
   }
 
   virtual std::vector<proto::VarType::Type> GetVarDataTypes(
       const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
-                                        "block_ should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        block_,
+        platform::errors::PreconditionNotMet("block_ should not be null"));
     return block_->FindRecursiveOrCreateVar(name).GetDataTypes();
   }
 
   virtual void SetVarDataTypes(
       const std::string& name,
       const std::vector<proto::VarType::Type>& multiple_data_type) {
-    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
-                                        "block_ should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        block_,
+        platform::errors::PreconditionNotMet("block_ should not be null"));
     block_->FindRecursiveOrCreateVar(name).SetDataTypes(multiple_data_type);
   }
 
   virtual std::vector<int64_t> GetVarShape(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
-                                        "block_ should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        block_,
+        platform::errors::PreconditionNotMet("block_ should not be null"));
     return block_->FindRecursiveOrCreateVar(name).GetShape();
   }
 
   virtual void SetVarShape(const std::string& name,
                            const std::vector<int64_t>& dims) {
-    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
-                                        "block_ should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        block_,
+        platform::errors::PreconditionNotMet("block_ should not be null"));
     block_->FindRecursiveOrCreateVar(name).SetShape(dims);
   }
 
   virtual int32_t GetVarLoDLevel(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
-                                        "block_ should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        block_,
+        platform::errors::PreconditionNotMet("block_ should not be null"));
     return block_->FindRecursiveOrCreateVar(name).GetLoDLevel();
   }
 
   virtual void SetVarLoDLevel(const std::string& name, int32_t lod_level) {
-    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
-                                        "block_ should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        block_,
+        platform::errors::PreconditionNotMet("block_ should not be null"));
     block_->FindRecursiveOrCreateVar(name).SetLoDLevel(lod_level);
   }
 
@@ -344,7 +357,8 @@ class StaticGraphVarTypeInference : public VarTypeInference {
     return ctx->GetVarType(name);
   }
 
-  void SetType(InferVarTypeContext* ctx, const std::string& name,
+  void SetType(InferVarTypeContext* ctx,
+               const std::string& name,
                proto::VarType::Type type) const {
     ctx->SetVarType(name, type);
   }
@@ -354,7 +368,8 @@ class StaticGraphVarTypeInference : public VarTypeInference {
     return ctx->GetVarDataType(name);
   }
 
-  void SetDataType(InferVarTypeContext* ctx, const std::string& name,
+  void SetDataType(InferVarTypeContext* ctx,
+                   const std::string& name,
                    proto::VarType::Type type) const {
     ctx->SetVarDataType(name, type);
   }
@@ -365,7 +380,8 @@ class StaticGraphVarTypeInference : public VarTypeInference {
   }
 
   void SetDataTypes(
-      InferVarTypeContext* ctx, const std::string& name,
+      InferVarTypeContext* ctx,
+      const std::string& name,
       const std::vector<proto::VarType::Type>& multiple_data_type) {
     return ctx->SetVarDataTypes(name, multiple_data_type);
   }
@@ -375,7 +391,8 @@ class StaticGraphVarTypeInference : public VarTypeInference {
     return ctx->GetVarShape(name);
   }
 
-  void SetShape(InferVarTypeContext* ctx, const std::string& name,
+  void SetShape(InferVarTypeContext* ctx,
+                const std::string& name,
                 const std::vector<int64_t>& dims) const {
     ctx->SetVarShape(name, dims);
   }
@@ -384,7 +401,8 @@ class StaticGraphVarTypeInference : public VarTypeInference {
     return ctx->GetVarLoDLevel(name);
   }
 
-  void SetLoDLevel(InferVarTypeContext* ctx, const std::string& name,
+  void SetLoDLevel(InferVarTypeContext* ctx,
+                   const std::string& name,
                    int32_t lod_level) const {
     ctx->SetVarLoDLevel(name, lod_level);
   }

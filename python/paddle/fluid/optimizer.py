@@ -44,7 +44,7 @@ from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 import warnings
 from paddle import _C_ops
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _current_expected_place
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
@@ -443,7 +443,13 @@ class Optimizer(object):
             self._learning_rate = value
             current_lr = self._global_learning_rate()
             if current_lr is not None:
-                if framework._non_static_mode():
+                if in_dygraph_mode():
+                    place = _current_expected_place()
+                    _C_ops.final_state_full_(current_lr, list(current_lr.shape),
+                                             float(value), current_lr.dtype,
+                                             place)
+
+                elif _in_legacy_dygraph():
                     _C_ops.fill_constant(current_lr, 'value', float(value),
                                          'dtype', current_lr.dtype, 'shape',
                                          list(current_lr.shape))
@@ -913,7 +919,7 @@ class Optimizer(object):
             program = loss.block.program
             assert len(loss.shape) == 1 and loss.shape[0] == 1, \
                 "The loss.shape should be (1L,), but the current loss.shape is {}. " \
-                "Maybe that you should call fluid.layers.mean to process the current loss.".format(
+                "Maybe that you should call paddle.mean to process the current loss.".format(
                     loss.shape)
             parameter_list = parameter_list if parameter_list \
                 else self._parameter_list
@@ -1370,8 +1376,8 @@ class SGDOptimizer(Optimizer):
 
         lr = self._create_param_lr(param_and_grad)
         if in_dygraph_mode():
-            _C_ops.final_state_sgd(param_and_grad[0], lr, param_and_grad[1],
-                                   master_weight, find_master)
+            _C_ops.final_state_sgd_(param_and_grad[0], lr, param_and_grad[1],
+                                    master_weight, find_master)
             return None
         if _in_legacy_dygraph():
             _C_ops.sgd(param_and_grad[0], lr, param_and_grad[1], master_weight,
@@ -2279,11 +2285,18 @@ class AdagradOptimizer(Optimizer):
 
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
-        if framework._non_static_mode():
+        if in_dygraph_mode():
+            _C_ops.final_state_adagrad_(param_and_grad[0], param_and_grad[1],
+                                        moment_acc,
+                                        self._create_param_lr(param_and_grad),
+                                        self._epsilon)
+            return None
+        elif _in_legacy_dygraph():
             _C_ops.adagrad(param_and_grad[0], param_and_grad[1], moment_acc,
                            self._create_param_lr(param_and_grad),
                            param_and_grad[0], moment_acc, "epsilon",
                            self._epsilon)
+            return None
         else:
             # Create the adagrad optimizer op
             adagrad_op = block.append_op(
@@ -2798,7 +2811,13 @@ class AdamaxOptimizer(Optimizer):
                                          param_and_grad[0])
         beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                               param_and_grad[0])
-        if framework._non_static_mode():
+
+        if framework.in_dygraph_mode():
+            _C_ops.final_state_adamax_(param_and_grad[0], param_and_grad[1],
+                                       self._create_param_lr(param_and_grad),
+                                       moment, inf_norm, beta1_pow_acc,
+                                       self._beta1, self._beta2, self._epsilon)
+        elif framework._in_legacy_dygraph():
             _C_ops.adamax(param_and_grad[0], param_and_grad[1],
                           self._create_param_lr(param_and_grad), moment,
                           inf_norm, beta1_pow_acc, param_and_grad[0], moment,
@@ -3178,7 +3197,12 @@ class AdadeltaOptimizer(Optimizer):
         avg_squared_update_acc = self._get_accumulator(
             self._avg_squared_update_acc_str, param_and_grad[0])
 
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
+            _C_ops.final_state_adadelta_(param_and_grad[0], param_and_grad[1],
+                                         avg_squared_grad_acc,
+                                         avg_squared_update_acc, self._rho,
+                                         self._epsilon)
+        elif framework._in_legacy_dygraph():
             _C_ops.adadelta(param_and_grad[0], param_and_grad[1],
                             avg_squared_grad_acc, avg_squared_update_acc,
                             param_and_grad[0], avg_squared_grad_acc,
@@ -3374,7 +3398,14 @@ class RMSPropOptimizer(Optimizer):
                                                 param_and_grad[0])
         mean_grad_acc = self._get_accumulator(self._mean_grad_acc_str,
                                               param_and_grad[0])
-        if framework._non_static_mode():
+        if in_dygraph_mode():
+            _C_ops.final_state_rmsprop_(param_and_grad[0], mean_square_acc,
+                                        param_and_grad[1], momentum_acc,
+                                        self._create_param_lr(param_and_grad),
+                                        mean_grad_acc, self._epsilon, self._rho,
+                                        self._momentum, self._centered)
+            return None
+        elif _in_legacy_dygraph():
             _C_ops.rmsprop(param_and_grad[0], mean_square_acc,
                            self._create_param_lr(param_and_grad),
                            param_and_grad[1], momentum_acc, param_and_grad[0],
@@ -3382,6 +3413,7 @@ class RMSPropOptimizer(Optimizer):
                            "epsilon", self._epsilon, "decay", self._rho,
                            "momentum", self._momentum, "centered",
                            self._centered)
+            return None
         else:
             rmsprop_op = block.append_op(
                 type=self.type,
@@ -6834,7 +6866,7 @@ class LookaheadOptimizer(object):
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
             y = fluid.layers.fc(input=[x], size=2, act="softmax")
             loss = fluid.layers.cross_entropy(input=y, label=label)
-            loss = fluid.layers.mean(x=loss)
+            loss = paddle.mean(x=loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
                                                 alpha=0.5,

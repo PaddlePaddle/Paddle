@@ -50,7 +50,8 @@ Call communication stream synchronization.
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_sync_comm_stream, ops::CSyncCommStreamOp,
+REGISTER_OP_WITHOUT_GRADIENT(c_sync_comm_stream,
+                             ops::CSyncCommStreamOp,
                              ops::CSyncCommStreamOpMaker);
 
 REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);

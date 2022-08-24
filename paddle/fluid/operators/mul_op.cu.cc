@@ -17,15 +17,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(mul, ops::MulKernel<plat::CUDADeviceContext, float>,
-                        ops::MulKernel<plat::CUDADeviceContext, double>,
-                        ops::MulKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    mul_grad, ops::MulGradKernel<plat::CUDADeviceContext, float>,
-    ops::MulGradKernel<plat::CUDADeviceContext, double>,
-    ops::MulGradKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    mul_grad_grad,
-    ops::MulDoubleGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MulDoubleGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(mul,
+                        ops::MulKernel<phi::GPUContext, float>,
+                        ops::MulKernel<phi::GPUContext, double>,
+                        ops::MulKernel<phi::GPUContext, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(mul_grad,
+                        ops::MulGradKernel<phi::GPUContext, float>,
+                        ops::MulGradKernel<phi::GPUContext, double>,
+                        ops::MulGradKernel<phi::GPUContext, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(mul_grad_grad,
+                        ops::MulDoubleGradKernel<phi::GPUContext, float>,
+                        ops::MulDoubleGradKernel<phi::GPUContext, double>);

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-
 #include "paddle/phi/kernels/norm_grad_kernel.h"
+
+#include <algorithm>
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif

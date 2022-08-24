@@ -232,7 +232,8 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     for (int index = 0; index < len; ++index) {
       if (use_cvm_ || no_cvm_) {
         if (ids[index] == 0u) {
-          memcpy(ptr + table.emb_dim() * index, init_value.data(),
+          memcpy(ptr + table.emb_dim() * index,
+                 init_value.data(),
                  sizeof(float) * table.emb_dim());
           if (is_nid) {
             nid_show_.push_back(-1);
@@ -240,7 +241,8 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
           }
           continue;
         }
-        memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data(),
+        memcpy(ptr + table.emb_dim() * index,
+               fea_value[fea_idx].data(),
                sizeof(float) * table.emb_dim());
         if (is_nid &&
             static_cast<size_t>(index) == tensor->lod()[0][nid_ins_index]) {
@@ -250,7 +252,8 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
         fea_idx++;
       } else {
         if (ids[index] == 0u) {
-          memcpy(ptr + table.emb_dim() * index, init_value.data() + 2,
+          memcpy(ptr + table.emb_dim() * index,
+                 init_value.data() + 2,
                  sizeof(float) * table.emb_dim());
           if (is_nid) {
             nid_show_.push_back(-1);
@@ -258,7 +261,8 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
           }
           continue;
         }
-        memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data() + 2,
+        memcpy(ptr + table.emb_dim() * index,
+               fea_value[fea_idx].data() + 2,
                sizeof(float) * table.emb_dim());
         if (is_nid &&
             static_cast<size_t>(index) == tensor->lod()[0][nid_ins_index]) {
@@ -392,9 +396,11 @@ void DownpourWorker::CopyDenseTable() {
     if (copy_table_config_.dense_pull_after_copy()) {
       VLOG(3) << "dense pull after copy, table=" << dest_table;
       pull_dense_status.resize(0);
-      fleet_ptr_->PullDenseVarsAsync(*root_scope_, dest_table,
+      fleet_ptr_->PullDenseVarsAsync(*root_scope_,
+                                     dest_table,
                                      dense_value_names_[dest_table],
-                                     &pull_dense_status, true);
+                                     &pull_dense_status,
+                                     true);
       for (auto& t : pull_dense_status) {
         t.wait();
         auto status = t.get();
@@ -511,9 +517,13 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
       }
       timeline.Start();
-      fleet_ptr_->PullSparseVarsSync(
-          *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-          &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
+      fleet_ptr_->PullSparseVarsSync(*thread_scope_,
+                                     tid,
+                                     sparse_key_names_[tid],
+                                     &features_[tid],
+                                     &feature_values_[tid],
+                                     table.fea_dim(),
+                                     sparse_value_names_[tid]);
       timeline.Pause();
       pull_sparse_time += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
@@ -570,10 +580,12 @@ void DownpourWorker::TrainFilesWithProfiler() {
       if (tensor == nullptr) {
         continue;
       }
-      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
+      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
+                        false,
                         platform::errors::InvalidArgument(
                             "Tensor %s contains Inf.", var_name));
-      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
+      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
+                        false,
                         platform::errors::InvalidArgument(
                             "Tensor %s contains NAN.", var_name));
     }
@@ -592,10 +604,20 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
         timeline.Start();
         fleet_ptr_->PushSparseVarsWithLabelAsync(
-            *thread_scope_, tid, features_[tid], feature_labels_[tid],
-            sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_,
+            *thread_scope_,
+            tid,
+            features_[tid],
+            feature_labels_[tid],
+            sparse_key_names_[tid],
+            sparse_grad_names_[tid],
+            table.emb_dim(),
+            &feature_grads_[tid],
+            &push_sparse_status_,
+            cur_batch,
+            use_cvm_,
+            dump_slot_,
+            &sparse_push_keys_[tid],
+            no_cvm_,
             scale_sparse_gradient_with_batch_size_);
         timeline.Pause();
         push_sparse_time += timeline.ElapsedSec();
@@ -621,9 +643,12 @@ void DownpourWorker::TrainFilesWithProfiler() {
            ++i) {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
-        fleet_ptr_->PushDenseVarsAsync(
-            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
-            scale_datanorm_, cur_batch);
+        fleet_ptr_->PushDenseVarsAsync(*thread_scope_,
+                                       tid,
+                                       dense_grad_names_[tid],
+                                       &push_sparse_status_,
+                                       scale_datanorm_,
+                                       cur_batch);
       }
       timeline.Pause();
       push_dense_time += timeline.ElapsedSec();
@@ -684,8 +709,11 @@ void DownpourWorker::TrainFilesWithProfiler() {
         double op_sum_time = 0;
         std::unordered_map<std::string, double> op_to_time;
         for (size_t i = 0; i < op_total_time.size(); ++i) {
-          fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
-                  op_name[i].c_str(), op_total_time[i] / batch_cnt);
+          fprintf(stderr,
+                  "op_name:[%zu][%s], op_mean_time:[%fs]\n",
+                  i,
+                  op_name[i].c_str(),
+                  op_total_time[i] / batch_cnt);
           if (op_to_time.find(op_name[i]) == op_to_time.end()) {
             op_to_time[op_name[i]] = 0.0;
           }
@@ -693,39 +721,50 @@ void DownpourWorker::TrainFilesWithProfiler() {
           op_sum_time += op_total_time[i];
         }
         for (auto& i : op_to_time) {
-          fprintf(stderr, "op [%s] run total time: [%f]ms\n", i.first.c_str(),
+          fprintf(stderr,
+                  "op [%s] run total time: [%f]ms\n",
+                  i.first.c_str(),
                   i.second / batch_cnt);
         }
         fprintf(stderr, "op run total time: %fs\n", op_sum_time / batch_cnt);
         fprintf(stderr, "train total time: %fs\n", total_time / batch_cnt);
-        fprintf(stderr, "pull sparse time: %fs\n",
-                pull_sparse_time / batch_cnt);
-        fprintf(stderr, "fill sparse time: %fs\n",
-                fill_sparse_time / batch_cnt);
-        fprintf(stderr, "push sparse time: %fs\n",
-                push_sparse_time / batch_cnt);
+        fprintf(
+            stderr, "pull sparse time: %fs\n", pull_sparse_time / batch_cnt);
+        fprintf(
+            stderr, "fill sparse time: %fs\n", fill_sparse_time / batch_cnt);
+        fprintf(
+            stderr, "push sparse time: %fs\n", push_sparse_time / batch_cnt);
         fprintf(stderr, "push dense time: %fs\n", push_dense_time / batch_cnt);
-        fprintf(stderr, "collect label time: %fs\n",
+        fprintf(stderr,
+                "collect label time: %fs\n",
                 collect_label_time / batch_cnt);
-        fprintf(stderr, "adjust ins weight time: %fs\n",
+        fprintf(stderr,
+                "adjust ins weight time: %fs\n",
                 adjust_ins_weight_time / batch_cnt);
         fprintf(stderr, "copy table time: %fs\n", copy_table_time / batch_cnt);
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
         fprintf(stderr, "op run percent: %f\n", op_sum_time / total_time * 100);
-        fprintf(stderr, "pull sparse time percent: %f\n",
+        fprintf(stderr,
+                "pull sparse time percent: %f\n",
                 pull_sparse_time / total_time * 100);
-        fprintf(stderr, "adjust ins weight time percent: %f\n",
+        fprintf(stderr,
+                "adjust ins weight time percent: %f\n",
                 adjust_ins_weight_time / total_time * 100);
-        fprintf(stderr, "copy table time percent: %f\n",
+        fprintf(stderr,
+                "copy table time percent: %f\n",
                 copy_table_time / total_time * 100);
-        fprintf(stderr, "collect label time percent: %f\n",
+        fprintf(stderr,
+                "collect label time percent: %f\n",
                 collect_label_time / total_time * 100);
-        fprintf(stderr, "fill sparse time percent: %f\n",
+        fprintf(stderr,
+                "fill sparse time percent: %f\n",
                 fill_sparse_time / total_time * 100);
-        fprintf(stderr, "push sparse time percent: %f\n",
+        fprintf(stderr,
+                "push sparse time percent: %f\n",
                 push_sparse_time / total_time * 100);
-        fprintf(stderr, "push dense time percent: %f\n",
+        fprintf(stderr,
+                "push dense time percent: %f\n",
                 push_dense_time / total_time * 100);
         fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
       }
@@ -782,9 +821,13 @@ void DownpourWorker::TrainFiles() {
           break;
         }
       }
-      fleet_ptr_->PullSparseVarsSync(
-          *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-          &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
+      fleet_ptr_->PullSparseVarsSync(*thread_scope_,
+                                     tid,
+                                     sparse_key_names_[tid],
+                                     &features_[tid],
+                                     &feature_values_[tid],
+                                     table.fea_dim(),
+                                     sparse_value_names_[tid]);
       CollectLabelInfo(i);
       FillSparseValue(i);
       auto nid_iter = std::find(sparse_value_names_[tid].begin(),
@@ -818,7 +861,9 @@ void DownpourWorker::TrainFiles() {
             if (s != "") s += ",";
             s += ins_id;
           }
-          fprintf(stderr, "batch_size: %zu, ins_ids_vec: %s\n", batch_size,
+          fprintf(stderr,
+                  "batch_size: %zu, ins_ids_vec: %s\n",
+                  batch_size,
                   s.c_str());
           s = "";
           for (auto& param : all_param_) {
@@ -870,10 +915,12 @@ void DownpourWorker::TrainFiles() {
       if (tensor == nullptr) {
         continue;
       }
-      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
+      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
+                        false,
                         platform::errors::InvalidArgument(
                             "Tensor %s contains Inf.", var_name));
-      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
+      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
+                        false,
                         platform::errors::InvalidArgument(
                             "Tensor %s contains NAN.", var_name));
     }
@@ -892,10 +939,20 @@ void DownpourWorker::TrainFiles() {
           }
         }
         fleet_ptr_->PushSparseVarsWithLabelAsync(
-            *thread_scope_, tid, features_[tid], feature_labels_[tid],
-            sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_,
+            *thread_scope_,
+            tid,
+            features_[tid],
+            feature_labels_[tid],
+            sparse_key_names_[tid],
+            sparse_grad_names_[tid],
+            table.emb_dim(),
+            &feature_grads_[tid],
+            &push_sparse_status_,
+            cur_batch,
+            use_cvm_,
+            dump_slot_,
+            &sparse_push_keys_[tid],
+            no_cvm_,
             scale_sparse_gradient_with_batch_size_);
       }
     }
@@ -932,9 +989,12 @@ void DownpourWorker::TrainFiles() {
           }
 
           VLOG(3) << "push multitask dense gradient " << tid;
-          fleet_ptr_->PushDenseVarsAsync(
-              *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
-              scale_datanorm_, cur_batch);
+          fleet_ptr_->PushDenseVarsAsync(*thread_scope_,
+                                         tid,
+                                         dense_grad_names_[tid],
+                                         &push_sparse_status_,
+                                         scale_datanorm_,
+                                         cur_batch);
         }
 
       } else {
@@ -943,9 +1003,12 @@ void DownpourWorker::TrainFiles() {
           uint64_t tid = static_cast<uint64_t>(
               param_.program_config(0).push_dense_table_id(i));
 
-          fleet_ptr_->PushDenseVarsAsync(
-              *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
-              scale_datanorm_, cur_batch);
+          fleet_ptr_->PushDenseVarsAsync(*thread_scope_,
+                                         tid,
+                                         dense_grad_names_[tid],
+                                         &push_sparse_status_,
+                                         scale_datanorm_,
+                                         cur_batch);
         }
       }
 

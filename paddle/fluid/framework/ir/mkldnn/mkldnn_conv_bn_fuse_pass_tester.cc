@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <boost/logic/tribool.hpp>
 #include <random>
 #include <string>
 #include <unordered_set>
+#include "paddle/utils/tribool.h"
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
@@ -47,15 +47,17 @@ namespace ir {
 
 class MKLDNNConvBatchNormPassTest {
  private:
-  void SetOp(ProgramDesc* prog, const std::string& type,
-             const std::string& name, const std::vector<std::string>& inputs,
+  void SetOp(ProgramDesc* prog,
+             const std::string& type,
+             const std::string& name,
+             const std::vector<std::string>& inputs,
              const std::vector<std::string>& outputs,
-             boost::tribool use_mkldnn) {
+             paddle::tribool use_mkldnn) {
     auto* op = prog->MutableBlock(0)->AppendOp();
 
     op->SetType(type);
 
-    if (!boost::indeterminate(use_mkldnn))
+    if (!paddle::indeterminate(use_mkldnn))
       op->SetAttr("use_mkldnn", use_mkldnn);
 
     if (type == "conv2d_transpose") {
@@ -65,8 +67,8 @@ class MKLDNNConvBatchNormPassTest {
       op->SetOutput("Output", {outputs[0]});
       op->SetAttr("is_test", true);
       op->SetAttr("strides", std::vector<int>(2, 2));
-    } else if (std::unordered_set<std::string>{"gelu", "leaky_relu", "relu",
-                                               "tanh"}
+    } else if (std::unordered_set<std::string>{
+                   "gelu", "leaky_relu", "relu", "tanh"}
                    .count(type)) {
       op->SetInput("X", inputs);
       op->SetOutput("Out", {outputs[0]});
@@ -97,10 +99,20 @@ class MKLDNNConvBatchNormPassTest {
     ProgramDesc prog;
 
     // params
-    for (auto& v : std::vector<std::string>(
-             {"weights", "weights2", "bias_bn", "scale", "mean", "variance",
-              "saved_mean", "saved_variance", "bias_bn2", "scale2", "mean2",
-              "variance2", "saved_mean2", "saved_variance2"})) {
+    for (auto& v : std::vector<std::string>({"weights",
+                                             "weights2",
+                                             "bias_bn",
+                                             "scale",
+                                             "mean",
+                                             "variance",
+                                             "saved_mean",
+                                             "saved_variance",
+                                             "bias_bn2",
+                                             "scale2",
+                                             "mean2",
+                                             "variance2",
+                                             "saved_mean2",
+                                             "saved_variance2"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::LOD_TENSOR);
       var->SetPersistable(true);
@@ -113,49 +125,76 @@ class MKLDNNConvBatchNormPassTest {
       var->SetType(proto::VarType::LOD_TENSOR);
     }
 
-    SetOp(&prog, "conv2d_transpose", "conv1",
+    SetOp(&prog,
+          "conv2d_transpose",
+          "conv1",
           std::vector<std::string>({"a", "weights"}),
-          std::vector<std::string>({"f"}), true);
+          std::vector<std::string>({"f"}),
+          true);
     if (is_elementwise_add == true) {
-      SetOp(&prog, "conv2d_transpose", "conv2",
+      SetOp(&prog,
+            "conv2d_transpose",
+            "conv2",
             std::vector<std::string>({"b", "weights2"}),
-            std::vector<std::string>({"e"}), true);
-      SetOp(&prog, "elementwise_add", "elementwise_add1",
+            std::vector<std::string>({"e"}),
+            true);
+      SetOp(&prog,
+            "elementwise_add",
+            "elementwise_add1",
             std::vector<std::string>({"f", "g"}),
-            std::vector<std::string>({"h"}), true);
-      SetOp(&prog, "elementwise_add", "elementwise_add2",
+            std::vector<std::string>({"h"}),
+            true);
+      SetOp(&prog,
+            "elementwise_add",
+            "elementwise_add2",
             std::vector<std::string>({"e", "g"}),
-            std::vector<std::string>({"j"}), true);
-      SetOp(&prog, "batch_norm", "batch_norm1",
+            std::vector<std::string>({"j"}),
+            true);
+      SetOp(&prog,
+            "batch_norm",
+            "batch_norm1",
             std::vector<std::string>(
                 {"h", "scale", "bias_bn", "mean", "variance"}),
             std::vector<std::string>(
                 {"i", "mean", "variance", "saved_mean", "saved_variance"}),
             true);
-      SetOp(&prog, "batch_norm", "batch_norm2",
+      SetOp(&prog,
+            "batch_norm",
+            "batch_norm2",
             std::vector<std::string>(
                 {"j", "scale2", "bias_bn2", "mean2", "variance2"}),
             std::vector<std::string>(
                 {"k", "mean2", "variance2", "saved_mean2", "saved_variance2"}),
             true);
-      SetOp(&prog, "elementwise_add", "elementwise_add3",
+      SetOp(&prog,
+            "elementwise_add",
+            "elementwise_add3",
             std::vector<std::string>({"i", "k"}),
-            std::vector<std::string>({"l"}), true);
+            std::vector<std::string>({"l"}),
+            true);
     } else {
-      SetOp(&prog, "batch_norm", "batch_norm1",
+      SetOp(&prog,
+            "batch_norm",
+            "batch_norm1",
             std::vector<std::string>(
                 {"f", "scale", "bias_bn", "mean", "variance"}),
             std::vector<std::string>(
                 {"l", "mean", "variance", "saved_mean", "saved_variance"}),
             true);
     }
-    SetOp(&prog, "gelu", "gelu1", std::vector<std::string>({"l"}),
-          std::vector<std::string>({"m"}), true);
+    SetOp(&prog,
+          "gelu",
+          "gelu1",
+          std::vector<std::string>({"l"}),
+          std::vector<std::string>({"m"}),
+          true);
 
     return prog;
   }
 
-  void FillTensorWithRandomData(Tensor* tnsr, float lowb, float upb,
+  void FillTensorWithRandomData(Tensor* tnsr,
+                                float lowb,
+                                float upb,
                                 platform::CPUPlace place) {
     float* ptr = tnsr->mutable_data<float>(place);
     // Initialize input data

@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/tril_indices_kernel.h"
+
 #include <algorithm>
 #include <tuple>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/tril_indices_kernel.h"
 
 namespace phi {
 

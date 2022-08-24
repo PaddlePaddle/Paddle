@@ -103,22 +103,22 @@ class TestLogcumsumexp(unittest.TestCase):
 
         y = paddle.logcumsumexp(data)
         z = np_logcumsumexp(data_np)
-        self.assertTrue(np.allclose(z, y.numpy()))
+        np.testing.assert_allclose(z, y.numpy(), rtol=1e-05)
 
         y = paddle.logcumsumexp(data, axis=0)
         z = np_logcumsumexp(data_np, axis=0)
-        self.assertTrue(np.allclose(z, y.numpy()))
+        np.testing.assert_allclose(z, y.numpy(), rtol=1e-05)
 
         y = paddle.logcumsumexp(data, axis=-1)
         z = np_logcumsumexp(data_np, axis=-1)
-        self.assertTrue(np.allclose(z, y.numpy()))
+        np.testing.assert_allclose(z, y.numpy(), rtol=1e-05)
 
         y = paddle.logcumsumexp(data, dtype='float32')
         self.assertTrue(y.dtype == core.VarDesc.VarType.FP32)
 
         y = paddle.logcumsumexp(data, axis=-2)
         z = np_logcumsumexp(data_np, axis=-2)
-        self.assertTrue(np.allclose(z, y.numpy()))
+        np.testing.assert_allclose(z, y.numpy(), rtol=1e-05)
 
         with self.assertRaises(IndexError):
             y = paddle.logcumsumexp(data, axis=-3)
@@ -135,7 +135,7 @@ class TestLogcumsumexp(unittest.TestCase):
         z = np_logcumsumexp(data_np)
         # check that our algorithm doesn't overflow
         self.assertTrue(all(z != np.inf))
-        self.assertTrue(np.allclose(z, y.numpy()))
+        np.testing.assert_allclose(z, y.numpy(), rtol=1e-05)
 
     def run_static(self, use_gpu=False):
         with fluid.program_guard(fluid.Program()):
@@ -160,14 +160,14 @@ class TestLogcumsumexp(unittest.TestCase):
                           ])
 
             z = np_logcumsumexp(data_np)
-            self.assertTrue(np.allclose(z, out[0]))
+            np.testing.assert_allclose(z, out[0], rtol=1e-05)
             z = np_logcumsumexp(data_np, axis=0)
-            self.assertTrue(np.allclose(z, out[1]))
+            np.testing.assert_allclose(z, out[1], rtol=1e-05)
             z = np_logcumsumexp(data_np, axis=-1)
-            self.assertTrue(np.allclose(z, out[2]))
+            np.testing.assert_allclose(z, out[2], rtol=1e-05)
             self.assertTrue(out[3].dtype == np.float64)
             z = np_logcumsumexp(data_np, axis=-2)
-            self.assertTrue(np.allclose(z, out[4]))
+            np.testing.assert_allclose(z, out[4], rtol=1e-05)
 
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())

@@ -15,16 +15,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/sequence_ops/sequence_unpad_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    sequence_unpad,
-    ops::SequenceUnpadOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceUnpadOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SequenceUnpadOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SequenceUnpadOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(sequence_unpad,
+                        ops::SequenceUnpadOpKernel<phi::GPUContext, float>,
+                        ops::SequenceUnpadOpKernel<phi::GPUContext, double>,
+                        ops::SequenceUnpadOpKernel<phi::GPUContext, int>,
+                        ops::SequenceUnpadOpKernel<phi::GPUContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     sequence_unpad_grad,
-    ops::SequenceUnpadGradOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceUnpadGradOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SequenceUnpadGradOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SequenceUnpadGradOpKernel<paddle::platform::CUDADeviceContext,
-                                   int64_t>);
+    ops::SequenceUnpadGradOpKernel<phi::GPUContext, float>,
+    ops::SequenceUnpadGradOpKernel<phi::GPUContext, double>,
+    ops::SequenceUnpadGradOpKernel<phi::GPUContext, int>,
+    ops::SequenceUnpadGradOpKernel<phi::GPUContext, int64_t>);

@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,14 +15,18 @@
 from __future__ import print_function
 
 import math
+import functools
 from . import framework
 from . import core
 from .framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph, default_main_program, _current_expected_place
+from .lazy_init import lazy_guard
+from .framework import program_guard
 import numpy as np
 from .core import VarDesc
 from . import unique_name
 from .data_feeder import check_variable_and_dtype, check_type, check_dtype
 from paddle import _C_ops
+import paddle
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
@@ -48,9 +52,31 @@ class Initializer(object):
         pass
 
     def __call__(self, param, block=None):
+        if not lazy_guard().state:
+            return self.forward(param, block)
+
+        return self._lazy_init(param, block)
+
+    def forward(self, param, block=None):
         """Add corresponding initialization operations to the network
         """
         raise NotImplementedError()
+
+    def _lazy_init(self, param, block=None):
+        # Apply lazy initialization
+        assert in_dygraph_mode()
+        new_block = lazy_guard().startup_program.global_block()
+        new_var = param._to_static_var(True, block=new_block)
+
+        # Record initializer operator
+        with lazy_guard():
+            self.forward(new_var, new_block)
+        lazy_guard().enable(clear_cache=False)
+        # Add hook function for initializing param in dygraph mode
+        func = functools.partial(self.forward, param, block)
+        param.set_init_func(func)
+
+        return param
 
     def _check_block(self, block):
         if block is None:
@@ -120,7 +146,7 @@ class ConstantInitializer(Initializer):
         self._value = value
         self._force_cpu = force_cpu
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with constant.
 
         Args:
@@ -137,14 +163,20 @@ class ConstantInitializer(Initializer):
                 or isinstance(var, framework.EagerParamBase))
         assert isinstance(block, framework.Block)
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
+            place = _current_expected_place()
+            if self._force_cpu:
+                place = core.CPUPlace()
+            _C_ops.final_state_full_(var, var.shape, str(float(self._value)),
+                                     var.dtype, place)
+            return None
+        elif _in_legacy_dygraph():
             _C_ops.fill_constant(var, 'value', float(self._value),
                                  'force_cpu', self._force_cpu, 'dtype',
                                  int(var.dtype), 'str_value',
                                  str(float(self._value)), 'shape', var.shape)
             return None
         else:
-            # fill constant should set the "str_value" to preserve precision
             op = block.append_op(type="fill_constant",
                                  outputs={"Out": var},
                                  attrs={
@@ -207,7 +239,7 @@ class UniformInitializer(Initializer):
         self._diag_step = diag_step
         self._diag_val = diag_val
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with Uniform distribution.
 
         Args:
@@ -309,7 +341,7 @@ class NormalInitializer(Initializer):
         self._std_dev = scale
         self._seed = seed
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with Normal distribution.
 
         Args:
@@ -421,7 +453,7 @@ class TruncatedNormalInitializer(Initializer):
         self._std_dev = scale
         self._seed = seed
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with TruncatedNormal distribution.
 
         Args:
@@ -555,7 +587,7 @@ class XavierInitializer(Initializer):
         self._fan_out = fan_out
         self._seed = seed
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with Xavier initialization.
 
         Args:
@@ -599,9 +631,15 @@ class XavierInitializer(Initializer):
         if framework._non_static_mode():
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
-                out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
-                                                -limit, 'max', limit, 'seed',
-                                                self._seed, 'dtype', out_dtype)
+                if in_dygraph_mode():
+                    out_var = _C_ops.final_state_uniform_random(
+                        out_var.shape, out_dtype, -limit, limit, self._seed,
+                        _current_expected_place())
+                elif _in_legacy_dygraph():
+                    out_var = _C_ops.uniform_random('shape', out_var.shape,
+                                                    'min', -limit, 'max', limit,
+                                                    'seed', self._seed, 'dtype',
+                                                    out_dtype)
             else:
                 std = math.sqrt(2.0 / float(fan_in + fan_out))
 
@@ -617,8 +655,11 @@ class XavierInitializer(Initializer):
 
             if var.dtype == VarDesc.VarType.FP16 or (
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
-                var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                      'out_dtype', var.dtype)
+                if in_dygraph_mode():
+                    var_tmp = _C_ops.final_state_cast(out_var, var.dtype)
+                elif _in_legacy_dygraph():
+                    var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
+                                          'out_dtype', var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -676,20 +717,21 @@ class MSRAInitializer(Initializer):
 
     .. math::
 
-        x = \sqrt{\\frac{6.0}{fan\_in}}
+        x = gain \times \sqrt{\frac{3}{fan\_in}}
 
     In case of Normal distribution, the mean is 0 and the standard deviation
     is
 
     .. math::
 
-        \sqrt{\\frac{2.0}{fan\_in}}
+        \frac{gain}{\sqrt{{fan\_in}}}
 
     Args:
-        uniform (bool): whether to use uniform or normal distribution
-        fan_in (float32|None): fan_in for MSRAInitializer. If None, it is\
-        inferred from the variable. default is None.
-        seed (int32): random seed
+        uniform (bool, optional): whether to use uniform or normal distribution
+        fan_in (float32|None, optional): fan_in (in_features) of trainable Tensor, If None, it will be infered automaticly. If you don't want to use in_features of the Tensor, you can set the value of 'fan_in' smartly by yourself. default is None.
+        seed (int32, optional): random seed.
+        negative_slope (float, optional): negative_slope (only used with leaky_relu). default is 0.0.
+        nonlinearity(str, optional): the non-linear function. default is relu.
 
     Note:
         It is recommended to set fan_in to None for most cases.
@@ -706,7 +748,12 @@ class MSRAInitializer(Initializer):
 
     """
 
-    def __init__(self, uniform=True, fan_in=None, seed=0):
+    def __init__(self,
+                 uniform=True,
+                 fan_in=None,
+                 seed=0,
+                 negative_slope=0,
+                 nonlinearity='relu'):
         """Constructor for MSRAInitializer
         """
         assert uniform is not None
@@ -715,8 +762,10 @@ class MSRAInitializer(Initializer):
         self._uniform = uniform
         self._fan_in = fan_in
         self._seed = seed
+        self._negative_slope = negative_slope
+        self._nonlinearity = nonlinearity
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with MSRA initialization.
 
         Args:
@@ -755,13 +804,16 @@ class MSRAInitializer(Initializer):
 
         if framework._non_static_mode():
             if self._uniform:
-                limit = math.sqrt(6.0 / float(fan_in))
+                gain = calculate_gain(self._nonlinearity, self._negative_slope)
+                limit = gain * math.sqrt(3.0 / float(fan_in))
+
                 out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
                                                 -limit, 'max', limit, 'seed',
                                                 self._seed, 'dtype',
                                                 int(out_dtype))
             else:
-                std = math.sqrt(2.0 / float(fan_in))
+                gain = calculate_gain(self._nonlinearity, self._negative_slope)
+                std = gain / math.sqrt(float(fan_in))
                 if in_dygraph_mode():
                     place = _current_expected_place()
                     out_var = _C_ops.final_state_gaussian_random(
@@ -783,7 +835,8 @@ class MSRAInitializer(Initializer):
             return None
         else:
             if self._uniform:
-                limit = math.sqrt(6.0 / float(fan_in))
+                gain = calculate_gain(self._nonlinearity, self._negative_slope)
+                limit = gain * math.sqrt(3.0 / float(fan_in))
                 op = block.append_op(type="uniform_random",
                                      inputs={},
                                      outputs={"Out": out_var},
@@ -797,7 +850,8 @@ class MSRAInitializer(Initializer):
                                      stop_gradient=True)
 
             else:
-                std = math.sqrt(2.0 / float(fan_in))
+                gain = calculate_gain(self._nonlinearity, self._negative_slope)
+                std = gain / math.sqrt(float(fan_in))
                 op = block.append_op(type="gaussian_random",
                                      outputs={"Out": out_var},
                                      attrs={
@@ -872,7 +926,7 @@ class BilinearInitializer(Initializer):
         """
         super(BilinearInitializer, self).__init__()
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with Bilinear initialization.
 
         Args:
@@ -997,7 +1051,7 @@ class NumpyArrayInitializer(Initializer):
         super(NumpyArrayInitializer, self).__init__()
         self._value = value
 
-    def __call__(self, var, block=None):
+    def forward(self, var, block=None):
         """Initialize the input tensor with Numpy array.
 
         Args:
@@ -1164,7 +1218,7 @@ def calculate_gain(nonlinearity, param=None):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
+
             import paddle
             gain = paddle.nn.initializer.calculate_gain('tanh') # 5.0 / 3
             gain = paddle.nn.initializer.calculate_gain('leaky_relu', param=1.0) # 1.0 = math.sqrt(2.0 / (1+param^2))

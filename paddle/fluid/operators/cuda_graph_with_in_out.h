@@ -26,9 +26,11 @@ namespace operators {
 class CUDAGraphWithInOuts {
  public:
   template <typename Callable>
-  CUDAGraphWithInOuts(Callable &&callable, platform::CUDAPlace place,
+  CUDAGraphWithInOuts(Callable &&callable,
+                      platform::CUDAPlace place,
                       const std::vector<const framework::Tensor *> &in_ptrs,
-                      cudaStreamCaptureMode mode, int64_t pool_id) {
+                      cudaStreamCaptureMode mode,
+                      int64_t pool_id) {
     in_indices_.resize(in_ptrs.size());
     ins_.reserve(in_ptrs.size());
     int64_t valid_in_idx = 0;
@@ -61,7 +63,8 @@ class CUDAGraphWithInOuts {
 
   void Run(const std::vector<const framework::Tensor *> &ins) {
     PADDLE_ENFORCE_EQ(
-        ins.size(), in_indices_.size(),
+        ins.size(),
+        in_indices_.size(),
         phi::errors::InvalidArgument("The input number does not match."));
     for (size_t i = 0; i < in_indices_.size(); ++i) {
       if (in_indices_[i] >= 0) {
@@ -94,9 +97,11 @@ class CUDAGraphWithInOuts {
 
 template <typename Callable>
 static std::unique_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph(
-    Callable &&callable, const framework::ExecutionContext &ctx,
+    Callable &&callable,
+    const framework::ExecutionContext &ctx,
     const std::vector<std::string> &input_names,
-    const std::vector<std::string> &output_names, cudaStreamCaptureMode mode,
+    const std::vector<std::string> &output_names,
+    cudaStreamCaptureMode mode,
     int64_t pool_id) {
   std::vector<const framework::Tensor *> inputs;
   for (const auto &name : input_names) {
@@ -109,14 +114,14 @@ static std::unique_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph(
     std::vector<framework::Tensor *> outputs;
     for (const auto &name : output_names) {
       auto output_tensors = ctx.MultiOutput<framework::Tensor>(name);
-      outputs.insert(outputs.end(), output_tensors.begin(),
-                     output_tensors.end());
+      outputs.insert(
+          outputs.end(), output_tensors.begin(), output_tensors.end());
     }
     return outputs;
   };
 
-  return std::make_unique<CUDAGraphWithInOuts>(func, ctx.GetPlace(), inputs,
-                                               mode, pool_id);
+  return std::make_unique<CUDAGraphWithInOuts>(
+      func, ctx.GetPlace(), inputs, mode, pool_id);
 }
 
 static void ExecuteCUDAGraph(const framework::ExecutionContext &ctx,
@@ -140,7 +145,8 @@ static void ExecuteCUDAGraph(const framework::ExecutionContext &ctx,
         *out_t = *outputs[idx];
       } else {
         PADDLE_ENFORCE_EQ(
-            out_t, nullptr,
+            out_t,
+            nullptr,
             phi::errors::InvalidArgument(
                 "The %d-th output variable should be nullptr.", idx));
       }

@@ -132,13 +132,17 @@ class PadOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(pad, PadInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(pad,
+                            PadInferShapeFunctor,
                             PD_INFER_META(phi::PadInferMeta));
 
-REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker,
+REGISTER_OPERATOR(pad,
+                  ops::PadOp,
+                  ops::PadOpMaker,
                   ops::PadOpGradMaker<paddle::framework::OpDesc>,
                   ops::PadOpGradMaker<paddle::imperative::OpBase>,
                   PadInferShapeFunctor);
-REGISTER_OPERATOR(pad_grad, ops::PadOpGrad,
+REGISTER_OPERATOR(pad_grad,
+                  ops::PadOpGrad,
                   ops::PadOpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::PadOpDoubleGradMaker<paddle::imperative::OpBase>);

@@ -1468,6 +1468,10 @@ class TestDistBase(unittest.TestCase):
                 "grpc_server=10,request_handler_impl=10,section_worker=10"
             required_envs["GLOG_logtostderr"] = "1"
 
+        if os.getenv('NVIDIA_TF32_OVERRIDE', '') is not None:
+            required_envs['NVIDIA_TF32_OVERRIDE'] = os.getenv(
+                'NVIDIA_TF32_OVERRIDE', '')
+
         required_envs.update(need_envs)
         return required_envs
 

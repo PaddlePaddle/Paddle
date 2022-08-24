@@ -30,43 +30,61 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
         def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
             if dims == 1:
-                return np.ones([32]).astype(np.float32)
+                return np.random.random([32]).astype(np.float32)
             elif dims == 2:
-                return np.ones([3, 32]).astype(np.float32)
+                return np.random.random([3, 32]).astype(np.float32)
             elif dims == 3:
-                return np.ones([3, 32, 32]).astype(np.float32)
+                return np.random.random([3, 32, 32]).astype(np.float32)
             else:
-                return np.ones([batch, 3, 32, 32]).astype(np.float32)
+                return np.random.random([batch, 3, 32, 32]).astype(np.float32)
 
         for dims in [1, 2, 3, 4]:
             for batch in [1, 4]:
-                for op_type in ["relu", "sigmoid", "tanh", "relu6"]:
-                    self.dims = dims
-                    dics = [{}]
+                for op_type in [
+                        "relu", "sigmoid", "tanh", "relu6", "elu", "selu",
+                        "softsign", "stanh", "thresholded_relu", "softplus"
+                ]:
+                    # few samples to reduce time
+                    #for beta in [-0.2, 0.5, 0.67, 3]:
+                    #    for alpha in [-0.2, 0.5, 0.67, 3]:
+                    for beta in [0.67]:
+                        for alpha in [0.67]:
+                            self.dims = dims
+                            dics = [{}]
+                            if op_type == "elu":
+                                dics = [{"alpha": alpha}]
+                            if op_type == "selu":
+                                dics = [{"alpha": beta, "scale": alpha}]
+                            if op_type == "stanh":
+                                dics = [{"scale_a": beta, "scale_b": alpha}]
+                            if op_type == "thresholded_relu":
+                                dics = [{"threshold": alpha}]
+                            if op_type == "softplus":
+                                dics = [{"beta": beta}]
 
-                    ops_config = [{
-                        "op_type": op_type,
-                        "op_inputs": {
-                            "X": ["input_data"]
-                        },
-                        "op_outputs": {
-                            "Out": ["output_data"]
-                        },
-                        "op_attrs": dics[0]
-                    }]
-                    ops = self.generate_op_config(ops_config)
+                            ops_config = [{
+                                "op_type": op_type,
+                                "op_inputs": {
+                                    "X": ["input_data"]
+                                },
+                                "op_outputs": {
+                                    "Out": ["output_data"]
+                                },
+                                "op_attrs": dics[0]
+                            }]
+                            ops = self.generate_op_config(ops_config)
 
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "input_data":
-                            TensorConfig(data_gen=partial(
-                                generate_input1, dims, batch, dics))
-                        },
-                        outputs=["output_data"])
+                            program_config = ProgramConfig(
+                                ops=ops,
+                                weights={},
+                                inputs={
+                                    "input_data":
+                                    TensorConfig(data_gen=partial(
+                                        generate_input1, dims, batch, dics))
+                                },
+                                outputs=["output_data"])
 
-                    yield program_config
+                            yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):

@@ -53,7 +53,7 @@ class FleetCollectiveTest(unittest.TestCase):
 
         data = fluid.layers.data(name='X', shape=[1], dtype='float32')
         hidden = fluid.layers.fc(input=data, size=10)
-        loss = fluid.layers.mean(hidden)
+        loss = paddle.mean(hidden)
 
         optimizer = fluid.optimizer.AdamOptimizer()
 

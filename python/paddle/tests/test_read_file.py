@@ -16,6 +16,7 @@ import os
 import cv2
 import shutil
 import unittest
+import tempfile
 import numpy as np
 
 import paddle
@@ -26,23 +27,25 @@ class TestReadFile(unittest.TestCase):
 
     def setUp(self):
         fake_img = (np.random.random((400, 300, 3)) * 255).astype('uint8')
-        cv2.imwrite('fake.jpg', fake_img)
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.img_path = os.path.join(self.temp_dir.name, 'fake.jpg')
+        cv2.imwrite(self.img_path, fake_img)
 
     def tearDown(self):
-        os.remove('fake.jpg')
+        self.temp_dir.cleanup()
 
     def read_file_decode_jpeg(self):
         if not paddle.is_compiled_with_cuda():
             return
 
-        img_bytes = read_file('fake.jpg')
+        img_bytes = read_file(self.img_path)
 
         img = decode_jpeg(img_bytes, mode='gray')
         img = decode_jpeg(img_bytes, mode='rgb')
 
         img = decode_jpeg(img_bytes)
 
-        img_cv2 = cv2.imread('fake.jpg')
+        img_cv2 = cv2.imread(self.img_path)
         if paddle.in_dynamic_mode():
             np.testing.assert_equal(img.shape, img_cv2.transpose(2, 0, 1).shape)
         else:

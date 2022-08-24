@@ -76,15 +76,20 @@ class MakeFire(nn.Layer):
 class SqueezeNet(nn.Layer):
     """SqueezeNet model from
     `"SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and <0.5MB model size"
-    <https://arxiv.org/pdf/1602.07360.pdf>`_
+    <https://arxiv.org/pdf/1602.07360.pdf>`_.
 
     Args:
-        version (str): version of squeezenet, which can be "1.0" or "1.1".
-        num_classes (int): output dim of last fc layer. Default: 1000.
-        with_pool (bool): use pool before the last fc layer or not. Default: True.
+        version (str): Version of SqueezeNet, which can be "1.0" or "1.1".
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+                            will not be defined. Default: 1000.
+        with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of SqueezeNet model.
 
     Examples:
         .. code-block:: python
+
             import paddle
             from paddle.vision.models import SqueezeNet
 
@@ -98,7 +103,7 @@ class SqueezeNet(nn.Layer):
             out = model(x)
 
             print(out.shape)
-
+            # [1, 1000]
     """
 
     def __init__(self, version, num_classes=1000, with_pool=True):
@@ -205,14 +210,22 @@ def _squeezenet(arch, version, pretrained, **kwargs):
 
 
 def squeezenet1_0(pretrained=False, **kwargs):
-    """SqueezeNet v1.0 model
+    """SqueezeNet v1.0 model from
+    `"SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and <0.5MB model size"
+    <https://arxiv.org/pdf/1602.07360.pdf>`_.
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_SqueezeNet>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of SqueezeNet v1.0 model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import squeezenet1_0
 
             # build model
@@ -220,19 +233,33 @@ def squeezenet1_0(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = squeezenet1_0(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _squeezenet('squeezenet1_0', '1.0', pretrained, **kwargs)
 
 
 def squeezenet1_1(pretrained=False, **kwargs):
-    """SqueezeNet v1.1 model
+    """SqueezeNet v1.1 model from
+    `"SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and <0.5MB model size"
+    <https://arxiv.org/pdf/1602.07360.pdf>`_.
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`SqueezeNet <api_paddle_vision_SqueezeNet>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of SqueezeNet v1.1 model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import squeezenet1_1
 
             # build model
@@ -240,5 +267,11 @@ def squeezenet1_1(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = squeezenet1_1(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _squeezenet('squeezenet1_1', '1.1', pretrained, **kwargs)

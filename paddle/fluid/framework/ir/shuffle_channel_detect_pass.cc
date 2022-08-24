@@ -90,7 +90,8 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
     PADDLE_ENFORCE_GT(
-        subgraph.count(x), 0,
+        subgraph.count(x),
+        0,
         platform::errors::NotFound("Detector did not find input X."));
     auto* input_node = subgraph.at(x);
     auto reshape1_desc = reshape1_op->Op();
@@ -100,11 +101,11 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
     std::string output_name = reshape2_out->Name();
 
     auto reshape1_shape =
-        BOOST_GET_CONST(std::vector<int>, reshape1_desc->GetAttr("shape"));
+        PADDLE_GET_CONST(std::vector<int>, reshape1_desc->GetAttr("shape"));
     auto reshape2_shape =
-        BOOST_GET_CONST(std::vector<int>, reshape2_desc->GetAttr("shape"));
+        PADDLE_GET_CONST(std::vector<int>, reshape2_desc->GetAttr("shape"));
     auto trans_axis =
-        BOOST_GET_CONST(std::vector<int>, trans_desc->GetAttr("axis"));
+        PADDLE_GET_CONST(std::vector<int>, trans_desc->GetAttr("axis"));
     auto* block1 = reshape1_desc->Block();
     auto* block2 = reshape2_desc->Block();
     if (block1 && block2) {
@@ -133,38 +134,40 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
         }
       }
       constexpr int64_t unk_dim_idx = -1;
-      bool all_positive = std::all_of(x_shape1.cbegin(), x_shape1.cend(),
-                                      [](int64_t i) { return i > 0; });
+      bool all_positive = std::all_of(
+          x_shape1.cbegin(), x_shape1.cend(), [](int64_t i) { return i > 0; });
       for (size_t i = 0; i < reshape1_shape.size(); ++i) {
         // if -1 is not in batch dim, try to calculate number
         if ((reshape1_shape[i] == unk_dim_idx) && (i != 0)) {
           // there is no sufficient info
           if (!all_positive) return;
-          reshape1_shape[i] =
-              std::accumulate(x_shape1.begin(), x_shape1.end(),
-                              static_cast<int64_t>(1),
-                              std::multiplies<int64_t>()) /
-              std::accumulate(reshape1_shape.begin(), reshape1_shape.end(),
-                              static_cast<int64_t>(-1),
-                              std::multiplies<int64_t>());
+          reshape1_shape[i] = std::accumulate(x_shape1.begin(),
+                                              x_shape1.end(),
+                                              static_cast<int64_t>(1),
+                                              std::multiplies<int64_t>()) /
+                              std::accumulate(reshape1_shape.begin(),
+                                              reshape1_shape.end(),
+                                              static_cast<int64_t>(-1),
+                                              std::multiplies<int64_t>());
           break;
         }
       }
 
-      all_positive = std::all_of(x_shape2.cbegin(), x_shape2.cend(),
-                                 [](int64_t i) { return i > 0; });
+      all_positive = std::all_of(
+          x_shape2.cbegin(), x_shape2.cend(), [](int64_t i) { return i > 0; });
       for (size_t i = 0; i < reshape2_shape.size(); ++i) {
         // if -1 is not in batch dim, try to calculate number
         if ((reshape2_shape[i] == unk_dim_idx) && (i != 0)) {
           // there is no sufficient info
           if (!all_positive) return;
-          reshape2_shape[i] =
-              std::accumulate(x_shape2.begin(), x_shape2.end(),
-                              static_cast<int64_t>(1),
-                              std::multiplies<int64_t>()) /
-              std::accumulate(reshape2_shape.begin(), reshape2_shape.end(),
-                              static_cast<int64_t>(-1),
-                              std::multiplies<int64_t>());
+          reshape2_shape[i] = std::accumulate(x_shape2.begin(),
+                                              x_shape2.end(),
+                                              static_cast<int64_t>(1),
+                                              std::multiplies<int64_t>()) /
+                              std::accumulate(reshape2_shape.begin(),
+                                              reshape2_shape.end(),
+                                              static_cast<int64_t>(-1),
+                                              std::multiplies<int64_t>());
           break;
         }
       }
@@ -214,8 +217,9 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
     IR_NODE_LINK_TO(new_op, reshape2_out);
 
     // Delete the unneeded nodes.
-    GraphSafeRemoveNodes(graph, {reshape1_op, reshape1_out, transpose_op,
-                                 transpose_out, reshape2_op});
+    GraphSafeRemoveNodes(
+        graph,
+        {reshape1_op, reshape1_out, transpose_op, transpose_out, reshape2_op});
     LOG_FIRST_N(WARNING, 1)
         << "There is fluid.layers.shuffle_channel API already, maybe you can "
            "use it instead of (reshape + transpose + reshape)";

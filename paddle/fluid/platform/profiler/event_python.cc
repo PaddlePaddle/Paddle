@@ -56,7 +56,8 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
   }
   // copy its CudaRuntimeTraceEventNode
   for (auto runtimenode = root->GetRuntimeTraceEventNodes().begin();
-       runtimenode != root->GetRuntimeTraceEventNodes().end(); ++runtimenode) {
+       runtimenode != root->GetRuntimeTraceEventNodes().end();
+       ++runtimenode) {
     HostPythonNode* runtime_python_node = new HostPythonNode();
     runtime_python_node->name = (*runtimenode)->Name();
     runtime_python_node->type = (*runtimenode)->Type();
@@ -82,7 +83,8 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
   }
   // copy MemTraceEventNode
   for (auto memnode = root->GetMemTraceEventNodes().begin();
-       memnode != root->GetMemTraceEventNodes().end(); memnode++) {
+       memnode != root->GetMemTraceEventNodes().end();
+       memnode++) {
     MemPythonNode* mem_python_node = new MemPythonNode();
     mem_python_node->timestamp_ns = (*memnode)->TimeStampNs();
     mem_python_node->addr = (*memnode)->Addr();
@@ -93,6 +95,8 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
     mem_python_node->place = (*memnode)->Place();
     mem_python_node->current_allocated = (*memnode)->CurrentAllocated();
     mem_python_node->current_reserved = (*memnode)->CurrentReserved();
+    mem_python_node->peak_allocated = (*memnode)->PeakAllocated();
+    mem_python_node->peak_reserved = (*memnode)->PeakReserved();
     host_python_node->mem_node_ptrs.push_back(mem_python_node);
   }
   // copy OperatorSupplementEventNode's information if exists
@@ -120,7 +124,8 @@ ProfilerResult::ProfilerResult(std::unique_ptr<NodeTrees> tree,
 ProfilerResult::~ProfilerResult() {
   // delete all root nodes
   for (auto it = thread_event_trees_map_.begin();
-       it != thread_event_trees_map_.end(); ++it) {
+       it != thread_event_trees_map_.end();
+       ++it) {
     delete it->second;
   }
 }

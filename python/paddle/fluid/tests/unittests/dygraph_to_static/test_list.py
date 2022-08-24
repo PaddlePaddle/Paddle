@@ -177,7 +177,6 @@ def test_list_pop_in_for_loop(x, iter_num):
     one = fluid.layers.ones(shape=[1], dtype="int32")
     for i in range(one.numpy()[0]):
         item = a.pop()
-
     return a[0], item, b[1]
 
 
@@ -250,9 +249,11 @@ class TestListWithoutControlFlow(unittest.TestCase):
 
             self.assertEqual(len(static_res_list), len(dygraph_res_list))
             for stat_res, dy_res in zip(static_res_list, dygraph_res_list):
-                self.assertTrue(
-                    np.allclose(stat_res, dy_res),
-                    msg='dygraph_res is {}\nstatic_res is {}'.format(
+                np.testing.assert_allclose(
+                    stat_res,
+                    dy_res,
+                    rtol=1e-05,
+                    err_msg='dygraph_res is {}\nstatic_res is {}'.format(
                         stat_res, dy_res))
 
 
@@ -277,6 +278,7 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
 
         with fluid.dygraph.guard():
             if to_static:
+                print(declarative(self.dygraph_func).code)
                 res = declarative(self.dygraph_func)(self.input, self.iter_num)
             else:
                 res = self.dygraph_func(self.input, self.iter_num)

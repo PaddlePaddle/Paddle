@@ -25,9 +25,6 @@ class OpDesc;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -35,7 +32,8 @@ namespace operators {
 
 class IncrementOp : public framework::OperatorWithKernel {
  public:
-  IncrementOp(const std::string &type, const framework::VariableNameMap &inputs,
+  IncrementOp(const std::string &type,
+              const framework::VariableNameMap &inputs,
               const framework::VariableNameMap &outputs,
               const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
@@ -79,7 +77,7 @@ class IncrementGradOpMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetType("increment");
     grad_op->SetInput("X", this->Output("Out"));
     grad_op->SetOutput("Out", this->Input("X"));
-    grad_op->SetAttr("step", -BOOST_GET_CONST(float, this->GetAttr("step")));
+    grad_op->SetAttr("step", -PADDLE_GET_CONST(float, this->GetAttr("step")));
   }
 };
 
@@ -87,9 +85,12 @@ class IncrementGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(increment, IncrementInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(increment,
+                            IncrementInferShapeFunctor,
                             PD_INFER_META(phi::IncrementInferMeta));
-REGISTER_OPERATOR(increment, ops::IncrementOp, ops::IncrementOpMaker,
+REGISTER_OPERATOR(increment,
+                  ops::IncrementOp,
+                  ops::IncrementOpMaker,
                   ops::IncrementGradOpMaker<paddle::framework::OpDesc>,
                   ops::IncrementGradOpMaker<paddle::imperative::OpBase>,
                   IncrementInferShapeFunctor);

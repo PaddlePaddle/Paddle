@@ -20,7 +20,7 @@ import logging
 import paddle.fluid as fluid
 
 from ....log_helper import get_logger
-from .utils import load_variable_data, set_variable_data, stable_sigmoid, quant_tensor, dequant_tensor, _channelwise_quant_axis1_ops, calculate_quant_cos_error
+from .utils import load_variable_data, set_variable_data, stable_sigmoid, quant_tensor, dequant_tensor, _channelwise_quant_axis1_ops, calculate_quant_cos_error, bias_correction_w
 
 _logger = get_logger(__name__,
                      logging.INFO,
@@ -209,6 +209,7 @@ def run_adaround(data_loader,
                  scale_dict,
                  num_iterations=1000,
                  lr=0.001,
+                 bias_correction=False,
                  fast_mode=True):
     fetch_op_name = fetch_list[0].name
     final_weight_tensor_quant_dict = {}
@@ -307,6 +308,15 @@ def run_adaround(data_loader,
                 break
         final_weight_tensor_quant_dict[
             weight_var_name] = adaround.update_final_weights()
+
+        if bias_correction:
+            final_weight_tensor_quant_dict[weight_var_name] = bias_correction_w(
+                weight_var_tensor,
+                final_weight_tensor_quant_dict[weight_var_name],
+                scale,
+                adaround.quant_axis,
+                weight_bits=adaround.weight_bits)
+
         del adaround
 
     # update adarounded calibrated weights

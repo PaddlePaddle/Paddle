@@ -124,8 +124,8 @@ class FusedFFN {
 template <typename T>
 class FusedTransformerEncoderLayer {
  public:
-  FusedTransformerEncoderLayer(int, int, int, int, int, float, float, float,
-                               std::string, bool);
+  FusedTransformerEncoderLayer(
+      int, int, int, int, int, float, float, float, std::string, bool);
   ~FusedTransformerEncoderLayer();
 
   void ComputeForward(T* src, T* output);

@@ -112,15 +112,21 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   bool use_varseqlen = Get<bool>("use_varseqlen");
   bool with_interleaved = Get<bool>("with_interleaved");
   bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
+  std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
+  std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
   if (!(enable_int8 && use_varseqlen && with_interleaved &&
-        with_dynamic_shape)) {
-    VLOG(4) << "preln_skip_layernorm_fuse_pass need: use_trt, enable_int8, "
-               "use_varseqlen, "
-               "with_interleaved, with_dynamic_shape. Stop this pass, please "
-               "reconfig. ";
+        graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass) &&
+        graph->Has(framework::ir::kMultiheadMatmulPass) && pos_id != "" &&
+        mask_id != "" && with_dynamic_shape)) {
+    VLOG(3) << "preln_skip_layernorm_fuse_pass need: use_trt, enable_int8, "
+               "with_interleaved"
+               "use_varseqlen, preln_embedding_eltwise_layernorm_fuse_pass, "
+               "trt_multihead_matmul_fuse_pass"
+               "set pos_id, set mask_id, with_dynamic_shape. Stop this pass, "
+               "please "
+               "reconfig.";
     return;
   }
-
   int found_subgraph_count = 0;
 
   GraphPatternDetector gpd;
@@ -155,17 +161,17 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_bias, layer_norm_bias, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_scale, layer_norm_scale,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_scale, layer_norm_scale, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_out, layer_norm_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_variance, layer_norm_variance, fused_pattern);
 
     std::unordered_set<const Node *> del_node_set;
 
     // Create an PrelnSkipLayerNorm op node
-    OpDesc new_desc;
+    OpDesc new_desc(elementwise->Op()->Block());
     new_desc.SetType("preln_skip_layernorm");
 
     // inputs
@@ -209,8 +215,8 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
     found_subgraph_count++;
   };
-
   gpd(graph, handler);
+
   AddStatis(found_subgraph_count);
 }
 

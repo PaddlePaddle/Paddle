@@ -159,8 +159,10 @@ FCGRUFusePass::FCGRUFusePass() {
       .End();
 }
 
-int FCGRUFusePass::BuildFusion(Graph* graph, const std::string& name_scope,
-                               Scope* scope, bool with_fc_bias) const {
+int FCGRUFusePass::BuildFusion(Graph* graph,
+                               const std::string& name_scope,
+                               Scope* scope,
+                               bool with_fc_bias) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
@@ -176,8 +178,13 @@ int FCGRUFusePass::BuildFusion(Graph* graph, const std::string& name_scope,
   gru_pattern(fc_out);
 
   // Create New OpDesc
-  auto gru_creator = [&](Node* gru, Node* x, Node* weight_x, Node* weight_h,
-                         Node* bias, Node* hidden, Node* fc_bias,
+  auto gru_creator = [&](Node* gru,
+                         Node* x,
+                         Node* weight_x,
+                         Node* weight_h,
+                         Node* bias,
+                         Node* hidden,
+                         Node* fc_bias,
                          const bool use_mkldnn) {
     OpDesc op_desc;
     op_desc.SetType("fusion_gru");
@@ -213,16 +220,19 @@ int FCGRUFusePass::BuildFusion(Graph* graph, const std::string& name_scope,
       auto* gru_bias_var = scope->FindVar(bias->Name());
       auto* fc_bias_var = scope->FindVar(fc_bias->Name());
       PADDLE_ENFORCE_NE(
-          gru_bias_var, nullptr,
+          gru_bias_var,
+          nullptr,
           platform::errors::NotFound("GRU bias var has not been found."));
       PADDLE_ENFORCE_NE(
-          fc_bias_var, nullptr,
+          fc_bias_var,
+          nullptr,
           platform::errors::NotFound("FC bias var has not been found."));
 
       auto* gru_bias_tensor = gru_bias_var->GetMutable<LoDTensor>();
       auto* fc_bias_tensor = fc_bias_var->GetMutable<LoDTensor>();
       PADDLE_ENFORCE_EQ(
-          gru_bias_tensor->numel(), fc_bias_tensor->numel(),
+          gru_bias_tensor->numel(),
+          fc_bias_tensor->numel(),
           platform::errors::PreconditionNotMet(
               "GRU and FC biases have to have equal number of elements."));
 
@@ -275,8 +285,8 @@ int FCGRUFusePass::BuildFusion(Graph* graph, const std::string& name_scope,
     GET_IR_NODE_FROM_SUBGRAPH(Hidden, Hidden, gru_pattern);
     // nodes need be removed
     GET_IR_NODE_FROM_SUBGRAPH(BatchGate, BatchGate, gru_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(BatchResetHiddenPrev, BatchResetHiddenPrev,
-                              gru_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        BatchResetHiddenPrev, BatchResetHiddenPrev, gru_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(BatchHidden, BatchHidden, gru_pattern);
 
     // TODO(wilber): Support origin_mode=True.
@@ -298,9 +308,14 @@ int FCGRUFusePass::BuildFusion(Graph* graph, const std::string& name_scope,
 
       gru_creator(gru, x_n, w, Weight, Bias, Hidden, fc_bias, use_mkldnn);
       // Remove unneeded nodes.
-      std::unordered_set<const Node*> marked_nodes(
-          {mul, gru, elementwise_add, fc_out, mul_out, BatchGate,
-           BatchResetHiddenPrev, BatchHidden});
+      std::unordered_set<const Node*> marked_nodes({mul,
+                                                    gru,
+                                                    elementwise_add,
+                                                    fc_out,
+                                                    mul_out,
+                                                    BatchGate,
+                                                    BatchResetHiddenPrev,
+                                                    BatchHidden});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
       gru_creator(gru, x_n, w, Weight, Bias, Hidden, nullptr, use_mkldnn);

@@ -41,7 +41,8 @@ extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                                size_t size,
                                                const phi::Stream& stream);
 
-extern AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
+extern AllocationPtr Alloc(const platform::CUDAPlace& place,
+                           size_t size,
                            const phi::Stream& stream);
 
 extern bool InSameStream(const std::shared_ptr<Allocation>& allocation,
