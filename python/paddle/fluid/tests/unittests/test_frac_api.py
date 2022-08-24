@@ -48,16 +48,16 @@ class TestFracAPI(unittest.TestCase):
             if fluid.core.is_compiled_with_cuda():
                 place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+            res, = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_frac(self.x_np)
-        self.assertTrue(np.allclose(out_ref, res))
+        np.testing.assert_allclose(out_ref, res, rtol=1e-05)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
         out = paddle.frac(x)
         out_ref = ref_frac(self.x_np)
-        self.assertTrue(np.allclose(out_ref, out.numpy()))
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
     def test_api_eager(self):
         paddle.disable_static(self.place)
@@ -65,7 +65,7 @@ class TestFracAPI(unittest.TestCase):
             x_tensor = paddle.to_tensor(self.x_np)
             out = paddle.frac(x_tensor)
         out_ref = ref_frac(self.x_np)
-        self.assertTrue(np.allclose(out_ref, out.numpy()))
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_api_eager_dygraph(self):

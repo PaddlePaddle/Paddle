@@ -19,7 +19,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.layers.control_flow import lod_rank_table
 from paddle.fluid import Program, program_guard
-import numpy
+import numpy as np
 import functools
 
 
@@ -80,12 +80,12 @@ class TestReorderLoDTensor(unittest.TestCase):
             data_lod_level = desc[2]
             data_lod = []
             for i in range(data_lod_level):
-                lod_level_i = numpy.random.randint(
+                lod_level_i = np.random.randint(
                     low=1,
                     high=5,
                     size=self.num_seq if i == 0 else sum(lod_level_i)).tolist()
                 data_lod.append(lod_level_i)
-            data_value = numpy.random.random(
+            data_value = np.random.random(
                 size=[sum(data_lod[-1]) if data_lod else self.num_seq] +
                 data_shape).astype('float32')
             self.data[data_name] = (data_value, data_lod)
@@ -132,7 +132,7 @@ class TestReorderLoDTensor(unittest.TestCase):
             input_table = [(i, 1, []) for i in range(len(rank_table))]
 
         # reorder by rank_table
-        output_value = numpy.zeros_like(input_value)
+        output_value = np.zeros_like(input_value)
         output_lod = []
         offset = 0
         for index, length in rank_table:
@@ -157,20 +157,20 @@ class TestReorderLoDTensor(unittest.TestCase):
         # check output
         expect_output, expect_output_lod = self.reorder()
         for actual_output in self.actual_outputs:
-            self.assertTrue(
-                numpy.allclose(numpy.array(actual_output),
-                               expect_output,
-                               atol=0.001))
+            np.testing.assert_allclose(np.array(actual_output),
+                                       expect_output,
+                                       rtol=1e-05,
+                                       atol=0.001)
             self.assertEqual(expect_output_lod,
                              actual_output.recursive_sequence_lengths())
         # check gradient
-        expect_grad = numpy.ones_like(self.data[self.data_desc[0][0]][0])
+        expect_grad = np.ones_like(self.data[self.data_desc[0][0]][0])
         expect_grad_lod = self.data[self.data_desc[0][0]][1]
         for actual_grad in self.actual_grads:
-            self.assertTrue(
-                numpy.allclose(numpy.array(actual_grad),
-                               expect_grad,
-                               atol=0.001))
+            np.testing.assert_allclose(np.array(actual_grad),
+                                       expect_grad,
+                                       rtol=1e-05,
+                                       atol=0.001)
             self.assertEqual(expect_grad_lod,
                              actual_grad.recursive_sequence_lengths())
 
@@ -181,20 +181,20 @@ class TestReorderLoDTensor(unittest.TestCase):
         # check output
         expect_output, expect_output_lod = self.reorder()
         for actual_output in self.actual_outputs:
-            self.assertTrue(
-                numpy.allclose(numpy.array(actual_output),
-                               expect_output,
-                               atol=0.001))
+            np.testing.assert_allclose(np.array(actual_output),
+                                       expect_output,
+                                       rtol=1e-05,
+                                       atol=0.001)
             self.assertEqual(expect_output_lod,
                              actual_output.recursive_sequence_lengths())
         # check gradient
-        expect_grad = numpy.ones_like(self.data[self.data_desc[0][0]][0])
+        expect_grad = np.ones_like(self.data[self.data_desc[0][0]][0])
         expect_grad_lod = self.data[self.data_desc[0][0]][1]
         for actual_grad in self.actual_grads:
-            self.assertTrue(
-                numpy.allclose(numpy.array(actual_grad),
-                               expect_grad,
-                               atol=0.001))
+            np.testing.assert_allclose(np.array(actual_grad),
+                                       expect_grad,
+                                       rtol=1e-05,
+                                       atol=0.001)
             self.assertEqual(expect_grad_lod,
                              actual_grad.recursive_sequence_lengths())
 
@@ -204,15 +204,16 @@ class TestReorderLoDTensor(unittest.TestCase):
         self.inputs[self.data_desc[0][0]].set_recursive_sequence_lengths(
             input_lod)
         # preserve the output of LodTensor with implicit lod to compare
-        expect_output = [
-            numpy.array(actual_output) for actual_output in self.actual_outputs
+        expect_outputs = [
+            np.array(actual_output) for actual_output in self.actual_outputs
         ]
         self.run_program()
-        for actual_output in self.actual_outputs:
-            self.assertTrue(
-                numpy.allclose(numpy.array(actual_output),
-                               expect_output,
-                               atol=0.001))
+        for actual_output, expect_output in zip(self.actual_outputs,
+                                                expect_outputs):
+            np.testing.assert_allclose(np.array(actual_output),
+                                       expect_output,
+                                       rtol=1e-05,
+                                       atol=0.001)
 
 
 class TestReorderLoDTensorError(unittest.TestCase):
@@ -222,9 +223,8 @@ class TestReorderLoDTensorError(unittest.TestCase):
 
             def test_Variable():
                 # The input must be Variable.
-                x1 = numpy.array([0.9383, 0.1983, 3.2, 1.2]).astype("float64")
-                table1 = numpy.array([0.9383, 0.1983, 3.2,
-                                      1.2]).astype("float64")
+                x1 = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float64")
+                table1 = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float64")
                 new_dat = fluid.layers.reorder_lod_tensor_by_rank(
                     x=x1, rank_table=table1)
 
