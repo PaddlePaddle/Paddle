@@ -89,6 +89,7 @@ GradNodeAccumulation::operator()(
                          kSlotSmallVectorSize>& grads,  // NOLINT
     bool create_graph,
     bool is_new_grad) {
+  VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(
                      "GradNodeAccumulation should take exactly 1 grad tensor"
@@ -110,8 +111,7 @@ GradNodeAccumulation::operator()(
   } else {
     grad_out = grads[0][0];
   }
-  VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation "
-          << grad_out.dims() << " " << weak_grad_.lock()->dims();
+
   if (!weak_grad_.expired() && !is_new_grad) {
     auto grad = weak_grad_.lock();
     CopyOrAddTensor(grad.get(), grad_out, is_fake_empty_);
