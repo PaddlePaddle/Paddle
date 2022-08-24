@@ -622,6 +622,9 @@ int QkvToContextPluginDynamic::enqueue(
     // cudaDeviceSynchronize();
 
     // fengshuai's padding
+    //     int *padding_offset = nullptr;
+    // half *padding_input = nullptr;
+
     // framework::Tensor padding_offset_tensor;
     // framework::Tensor padding_input_tensor;
     //  if (real_seq_len != seq_len) {
