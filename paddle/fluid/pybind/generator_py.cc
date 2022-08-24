@@ -49,7 +49,9 @@ void BindGenerator(py::module* m_ptr) {
           },
           [](py::tuple s) {  // __setstate__
             if (s.size() != 3)
-              throw std::runtime_error("Invalid Random state!");
+              throw std::runtime_error(
+                  "Invalid Random state. Please check the format(device, "
+                  "current_seed, thread_offset).");
 
             phi::Generator::GeneratorState state;
             state.device = s[0].cast<std::int64_t>();
