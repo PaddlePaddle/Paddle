@@ -479,12 +479,11 @@ def recompute(function, *args, **kwargs):
         check_recompute_necessary(args)
 
     fleet_env = fleet.fleet
-    strategy = fleet_env._user_defined_strategy
     #NOTE: when in hybrid parallel, recompute supports offload and partition function, config it in DistributedStrategy firstly.
     if hasattr(
-            fleet_env,
-            "_hcg") and strategy.recompute and fleet_env._hcg.get_parallel_mode(
-            ) in [ParallelMode.TENSOR_PARALLEL, ParallelMode.PIPELINE_PARALLEL]:
+            fleet_env, "_hcg"
+    ) and fleet_env._user_defined_strategy.recompute and fleet_env._hcg.get_parallel_mode(
+    ) in [ParallelMode.TENSOR_PARALLEL, ParallelMode.PIPELINE_PARALLEL]:
         return _hp_recompute(function, *args)
     else:
         # when in pure data parallel or non-parallel training or strategy.recompute is False, use simple recompute.

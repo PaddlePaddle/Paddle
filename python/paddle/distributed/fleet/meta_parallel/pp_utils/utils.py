@@ -19,7 +19,6 @@ from paddle.fluid import core
 from paddle import _C_ops
 from paddle.autograd import PyLayer
 from paddle.fluid import framework
-from ...recompute.recompute import check_recompute_necessary, detach_variable, swith_rng_state_tracker
 from ..parallel_layers.random import get_rng_state_tracker
 from paddle.fluid.framework import in_dygraph_mode
 
@@ -162,7 +161,7 @@ class _HPRecomputeFunction(PyLayer):
 
     @staticmethod
     def forward(ctx, run_function, all_outputs, *args):
-        check_recompute_necessary(args)
+        paddle.distributed.fleet.recompute.check_recompute_necessary(args)
 
         # store for recomputing
         ctx.run_function = run_function
@@ -247,13 +246,14 @@ class _HPRecomputeFunction(PyLayer):
             tracer._has_grad = True
 
             # need restore auto_cast state as well as w/b list
-            with swith_rng_state_tracker(ctx.fwd_cuda_rng_state,
-                                         ctx.fwd_cuda_rng_state_tracker):
+            with paddle.distributed.fleet.recompute.swith_rng_state_tracker(
+                    ctx.fwd_cuda_rng_state, ctx.fwd_cuda_rng_state_tracker):
                 with paddle.amp.auto_cast(enable=ctx.is_fw_autocast,
                                           custom_white_list=ctx.amp_white_list,
                                           custom_black_list=ctx.amp_black_list,
                                           level=ctx.amp_level):
-                    detached_inputs = detach_variable(tuple(inputs))
+                    detached_inputs = paddle.distributed.fleet.recompute.detach_variable(
+                        tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs)
 
             if isinstance(outputs, (core.VarBase, core.eager.Tensor)):
