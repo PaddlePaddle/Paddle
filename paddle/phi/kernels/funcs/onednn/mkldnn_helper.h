@@ -90,7 +90,7 @@ inline void MatchShapeToLayout(DenseTensor* tensor_in,
   // at last nhwC, so for dim==2 these layouts are the same and nothing should
   // be done. Similarly for dim==1 when you have just one possible combination.
   if (tensor_in->dims().size() < 3) {
-    VLOG(3) << "Keeping kMKLDNN/kNHWC/kNDHWC output_shape"
+    VLOG(3) << "Keeping MKLDNN/NHWC/NDHWC output_shape"
             << print_dims(phi::vectorize<int>(tensor_in->dims()));
     return;
   }
@@ -101,7 +101,7 @@ inline void MatchShapeToLayout(DenseTensor* tensor_in,
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
         tensor_in->Resize(phi::make_ddim(dims));
-        VLOG(3) << "Rotating Shape from: kMKLDNN to: kNHWC/kNDHWC output_shape"
+        VLOG(3) << "Rotating Shape from: MKLDNN to: NHWC/NDHWC output_shape"
                 << print_dims(dims);
       }
       break;
@@ -111,7 +111,7 @@ inline void MatchShapeToLayout(DenseTensor* tensor_in,
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
         tensor_in->Resize(phi::make_ddim(dims));
-        VLOG(3) << "Rotating Shape from: kNHWC/kNDHWC to: kMKLDNN output_shape"
+        VLOG(3) << "Rotating Shape from: NHWC/NDHWC to: MKLDNN output_shape"
                 << print_dims(dims);
       }
       break;

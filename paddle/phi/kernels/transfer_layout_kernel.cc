@@ -92,36 +92,55 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
 
     return oss.str();
   };
-  VLOG(10) << " x: " << print_tensor_meta(x);
-  VLOG(10) << " out: " << print_tensor_meta(*out) << " " << out;
+  VLOG(0) << " x: " << print_tensor_meta(x);
+  VLOG(0) << " out: " << print_tensor_meta(*out) << " " << out;
+
+  // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
+  // data_transfer.cc
+  if (!x.IsInitialized() && src_layout == DataLayout::MKLDNN &&
+      dst_layout == DataLayout::NHWC) {
+    VLOG(4) << src_layout << "->" << dst_layout << " " << x.layout();
+    out->Resize(x.dims());
+    out->set_layout(dst_layout);
+    funcs::MatchShapeToLayout(out, src_layout, dst_layout);
+    return;
+  }
 
   if (src_layout != DataLayout::MKLDNN && dst_layout == DataLayout::MKLDNN) {
-    VLOG(4) << "hhhh";
     // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
     // Just set layout/format. No real transform occur
+    VLOG(4) << "test0";
     auto out_format = funcs::MKLDNNFormatForSize(
         x.dims().size(), funcs::ToMKLDNNFormat(src_layout));
+
+    VLOG(4) << "test1";
     out->ShareDataWith(x);
-    VLOG(4) << "hhhh1";
+    VLOG(4) << "test2";
     // For NHWC data we need reshape of tensors as MKL-DNN
     // is expecting NHWC dims description order
     if (src_layout == DataLayout::NHWC) {
       VLOG(4) << "NHWC";
       funcs::MatchShapeToLayout(out, src_layout, dst_layout);
-      VLOG(4) << "hhhh1";
       OneDNNContext::tls().set_cur_paddle_data_layout(src_layout);
     }
+    VLOG(4) << "test3";
     out->set_layout(DataLayout::MKLDNN);
+    VLOG(4) << "test4";
     out->set_format(out_format);
+    VLOG(4) << "test5";
   } else if (src_layout == DataLayout::MKLDNN &&
              dst_layout != DataLayout::MKLDNN) {
-    auto target_layout = OneDNNContext::tls().get_cur_paddle_data_layout();
-    VLOG(4) << "innerTransDataLayoutFromMKLDNN: " << src_layout << "->"
-            << target_layout;
     // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
     // Do transform via MKLDNN lib
     funcs::innerTransDataLayoutFromMKLDNN(
-        src_layout, target_layout, x, out, dev_ctx.GetPlace());
+        src_layout, dst_layout, x, out, dev_ctx.GetPlace());
+  } else if (src_layout == DataLayout::MKLDNN &&
+             dst_layout == DataLayout::MKLDNN) {
+    PADDLE_ENFORCE_NE(
+        src_layout,
+        dst_layout,
+        errors::PreconditionNotMet(
+            "No layout transform needed between two MKLDNN OPKernels."));
   } else {
     TransferLayoutGeneral<Context>(dev_ctx, x, dst_layout, out);
   }

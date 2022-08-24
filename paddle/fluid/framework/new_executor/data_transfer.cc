@@ -18,6 +18,10 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/phi/backends/onednn/onednn_context.h"
+#endif
+
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -200,9 +204,23 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
                                              framework::Scope* local_scope,
                                              bool is_fetch_v2) {
 #ifdef PADDLE_WITH_MKLDNN
-  // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in fetch_op.cc
-  if (in_layout == framework::DataLayout::kMKLDNN &&
-      var_name == framework::GradVarName("Filter") && is_fetch_v2) {
+
+  if (in_layout == framework::DataLayout::MKLDNN &&
+      out_layout != framework::DataLayout::MKLDNN) {
+    auto target_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
+    VLOG(4) << "TransDataLayoutFromMKLDNN: " << in_layout << "->"
+            << target_layout;
+
+    if (out_layout == DataLayout::kNCHW &&
+        var_name == framework::GradVarName("Filter")) {
+      target_layout = out_layout;
+    }
+    out_layout = target_layout;
+
+    // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in fetch_op.cc
+  } else if (in_layout == framework::DataLayout::kMKLDNN &&
+             var_name == framework::GradVarName("Filter") && is_fetch_v2) {
+    VLOG(4) << "Match special case(Filter && fetch_v2)";
     out_layout = framework::DataLayout::kNCHW;
   }
 #endif
