@@ -4795,7 +4795,7 @@ def take(x, index, mode='raise', name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: Tensor with the same shape as index, the data type is the same with input.
+        Tensor, Tensor with the same shape as index, the data type is the same with input.
 
     Examples:
         .. code-block:: python
