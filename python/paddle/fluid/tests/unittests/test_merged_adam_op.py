@@ -16,7 +16,7 @@ import unittest
 import paddle
 import numpy as np
 from paddle import _C_ops
-from framework import in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 
 def run_adam_op(params,
