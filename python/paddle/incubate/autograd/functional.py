@@ -633,7 +633,7 @@ def _single_separate(x):
     if x is None:  # x maybe none because grad input's v defaults to none.
         return x
     if not x.stop_gradient:
-        return paddle.clone(x)
+        return paddle.assign(x)
     else:  # use detach to share memory when no need gradients.
         x = x.detach()
         x.stop_gradient = False

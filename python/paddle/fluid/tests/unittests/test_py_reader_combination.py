@@ -46,8 +46,8 @@ class TestPyReaderCombination(unittest.TestCase):
 
         image2 = np.array(py_reader_dict_data[0]['image'])
         label2 = np.array(py_reader_dict_data[0]['label'])
-        self.assertTrue(np.array_equal(image1, image2))
-        self.assertTrue(np.array_equal(label1, label2))
+        np.testing.assert_array_equal(image1, image2)
+        np.testing.assert_array_equal(label1, label2)
 
     # FIXME(zjl): do not know why Python 35 would raise SIGABRT if not reset reader
     # manually.
