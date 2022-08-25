@@ -155,12 +155,12 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
         eps_(eps),
         mean_shape_(mean_shape),
         variance_shape_(variance_shape) {
-    // printf("@@@ in layernorm plugin call LayerNormPluginDynamic\r\n");
     bias_.resize(bias_num);
     scale_.resize(scale_num);
     std::copy(bias, bias + bias_num, bias_.data());
     std::copy(scale, scale + scale_num, scale_.data());
   }
+
   //for clone
   LayerNormPluginDynamic(const float* bias,
                          const int bias_num,
@@ -178,7 +178,6 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
         variance_shape_(variance_shape),
         bias_d_init_(bias_d_init),
         scale_d_init_(scale_d_init) {
-    // printf("@@@ in layernorm plugin call LayerNormPluginDynamic for clone \r\n");
 
     bias_.resize(bias_num);
     scale_.resize(scale_num);
@@ -224,11 +223,7 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
     long feature_size = scale_.size();
     scale_t.Resize({feature_size});
     bias_t.Resize({feature_size});
-    // todo wangbojun with fp16
-    // printf("@@@ in layernorm plugin init, feature_size: %ld\r\n",
-    //       feature_size);
-    // printf("@@@ scale[0]: %f, bias[0]: %f \r\n",
-    //       scale_[0],bias_[0]);
+    // for now, layernorm trt plugin only support fp32
     scale_d_init_ = reinterpret_cast<void *>(scale_t.mutable_data<float>(platform::CUDAPlace(device_id)));
     bias_d_init_ = reinterpret_cast<void *>(bias_t.mutable_data<float>(platform::CUDAPlace(device_id)));
     cudaMemcpyAsync(scale_d_init_,
