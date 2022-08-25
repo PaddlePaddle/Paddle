@@ -17,8 +17,10 @@
 #include <sstream>
 #include <vector>
 
+#include "paddle/fluid/platform/device_memory_aligment.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -53,30 +55,20 @@ struct FillConstantVisitor {
 };
 
 void GetMemSizeAndDtype(const std::vector<const DenseTensor *> &lod_tensors,
-                        const std::vector<std::string> var_names,
                         size_t *numel,
                         const size_t &size_of_dtype,
                         const phi::Place &place,
                         const bool use_align = true,
                         const int align_size = -1) const {
-  PADDLE_ENFORCE_EQ(
-      lod_tensors.size(),
-      var_names.size(),
-      errors::InvalidArgument(
-          "The number of input tensor and variable does not match, the "
-          "number of input tensor is %u, the number of input variable is %u.",
-          lod_tensors.size(),
-          var_names.size()));
   *numel = 0;
   std::stringstream ss;
   ss << "alloc_space_for_vars: ";
-  for (size_t i = 0; i < var_names.size(); ++i) {
+  for (size_t i = 0; i < lod_tensors.size(); ++i) {
     auto size = lod_tensors[i]->numel();
-    PADDLE_ENFORCE_GT(
-        size,
-        0,
-        errors::InvalidArgument("The number of tensor `%s`'s elements is 0.",
-                                var_names[i]));
+    PADDLE_ENFORCE_GT(size,
+                      0,
+                      errors::InvalidArgument(
+                          "The number of `%d`-th tensor's elements is 0.", i));
     auto len = use_align ? platform::Alignment(  // ? platform::Alignment
                                static_cast<size_t>(size) * size_of_dtype,
                                place,
@@ -86,8 +78,7 @@ void GetMemSizeAndDtype(const std::vector<const DenseTensor *> &lod_tensors,
     const void *ptr =
         lod_tensors[i]->IsInitialized() ? lod_tensors[i]->data() : nullptr;
     VLOG(4) << size << " " << len;
-    ss << "input(" << var_names[i] << ") dim:(" << lod_tensors[i]->dims()
-       << ") "
+    ss << "input(" << i << "-th tensor) dim:(" << lod_tensors[i]->dims() << ") "
        << " addres:" << ptr << " len: " << len << ", ";
     *numel += len;
   }
@@ -95,40 +86,32 @@ void GetMemSizeAndDtype(const std::vector<const DenseTensor *> &lod_tensors,
 }
 
 template <typename T, typename Context>
-void CoalesceTensorKernel(
-    const Context &dev_ctx,
-    const std::vector<const DenseTensor *>
-        &input,           // Input -> in_tensors -> input
-    DataType dtype,       // equal
-    bool copy_data,       // equal
-    bool set_constant,    // equal
-    bool persist_output,  // equal
-    float constant,       // equal
-    bool check_name,      // equal
-    bool use_align,       // equal
-    int align_size,       // equal
-    int size_of_dtype,  // user_defined_size_of_dtype(OpMaker) -> size_of_dtype
-    const std::vector<int64_t> &concated_shapes,  // equal
-    const std::vector<int64_t> &concated_ranks,   // equal
-    std::vector<const DenseTensor *>
-        &output,                  // Output -> out_tensors -> output
-    DenseTensor *fused_output) {  // FusedOutput -> fused_tensor -> fused_output
-
-  auto in_var_names = context.InputNames("Input");  // ? no var names?
-  auto out_var_names = context.OutputNames("Output");
-
+void CoalesceTensorKernel(const Context &dev_ctx,
+                          const std::vector<const DenseTensor *> &input,
+                          DataType dtype,
+                          bool copy_data,
+                          bool set_constant,
+                          bool persist_output,
+                          float constant,
+                          bool use_align,
+                          int align_size,
+                          int size_of_dtype,
+                          const std::vector<int64_t> &concated_shapes,
+                          const std::vector<int64_t> &concated_ranks,
+                          std::vector<const DenseTensor *> output,
+                          DenseTensor *fused_output) {
   PADDLE_ENFORCE_GT(
-      in_var_names.size(),
+      input.size(),
       static_cast<size_t>(0),
       errors::InvalidArgument("The CoalesceTensor operator has no input."));
-  PADDLE_ENFORCE_EQ(in_var_names.size(),
-                    out_var_names.size(),
+  PADDLE_ENFORCE_EQ(input.size(),
+                    output.size(),
                     errors::InvalidArgument(
                         "The number of CoalesceTensor operator's input and "
                         "output is not match, "
                         "input number is %u, output number is %u.",
-                        in_var_names.size(),
-                        out_var_names.size()));
+                        input.size(),
+                        output.size()));
 
   // Input & Output check: only support LoDTensor
   bool has_not_init_in_vars = false;
@@ -190,24 +173,9 @@ void CoalesceTensorKernel(
                                 "attribute(concated_ranks) do not match."));
   }
 
-  if (check_name) {  // ? name check
-    for (size_t i = 0; i < in_var_names.size(); ++i) {
-      PADDLE_ENFORCE_EQ(
-          in_var_names[i],
-          out_var_names[i],
-          errors::InvalidArgument(
-              "The input and output variable of CoalesceTensor operator is "
-              "different, %dth input is %s, %dth output is %s.",
-              i,
-              in_var_names[i],
-              i,
-              out_var_names[i]));
-    }
-  } else {
-    // Init the output as input
-    for (size_t i = 0; i < input.size(); ++i) {
-      output[i]->Resize(input[i]->dims());
-    }
+  // Init the output as input
+  for (size_t i = 0; i < input.size(); ++i) {
+    output[i]->Resize(input[i]->dims());
   }
 
   // Get numel and dtype
@@ -216,21 +184,10 @@ void CoalesceTensorKernel(
   if (size_of_dtype == -1) {
     size_of_dtype = paddle::experimental::SizeOf(dtype);
   }
-  GetMemSizeAndDtype(input,
-                     in_var_names,
-                     &numel,
-                     size_of_dtype,
-                     dev_ctx.GetPlace(),
-                     use_align,
-                     align_size);
+  GetMemSizeAndDtype(
+      input, &numel, size_of_dtype, dev_ctx.GetPlace(), use_align, align_size);
 
   // Alloc the continuous space
-  // out->mutbale_data(place, dtype)->dev_ctx.Alloc(out, dtype)
-  // void *fused_tensor_ptr =
-  //     fused_output->Resize(phi::make_ddim({static_cast<int64_t>(numel)})) //
-  //     ? mutable_data
-  //         .mutable_data(context.GetPlace(),
-  //                       framework::TransToPhiDataType(dtype));
   void *fused_tensor_ptr = dev_ctx.Alloc(
       &fused_output->Resize(phi::make_ddim({static_cast<int64_t>(numel)})),
       dtype);
@@ -255,7 +212,7 @@ void CoalesceTensorKernel(
     phi::VisitDataType(
         dtype, FillConstantVisitor<Context>(dev_ctx, fused_output, constant));
   } else if (persist_output) {
-    for (size_t i = 0; i < out_var_names.size(); ++i) {
+    for (size_t i = 0; i < output.size(); ++i) {
       size_t len = static_cast<size_t>(output[i]->numel());
       auto sub_tensor = fused_output->Slice(static_cast<int64_t>(offset),
                                             static_cast<int64_t>(offset + len));
@@ -288,7 +245,7 @@ void CoalesceTensorKernel(
                           len * size_of_dtype, dev_ctx.GetPlace(), align_size) /
                           size_of_dtype
                     : len;
-    ss << "output(" << out_var_names[i] << ")  dim:(" << dim << ")"
+    ss << "output(" << i << "-th tensor) dim:(" << dim << ")"
        << " address: " << output[i]->data() << " len: " << len << ", ";
     offset += len;
   }
