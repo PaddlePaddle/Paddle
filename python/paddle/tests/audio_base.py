@@ -1,5 +1,19 @@
-# this code is from:
-# https://github.com/pytorch/audio/blob/main/test/torchaudio_unittest/backend/soundfile/info_test.py
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# this code modify from:
+# https://github.com/pytorch/audio/blob/main/test/torchaudio_unittest/common_utils/wav_utils.py
 
 import paddle
 import os.path
@@ -13,7 +27,7 @@ from typing import Optional
 def normalize_wav(tensor: paddle.Tensor) -> paddle.Tensor:
     """Normalize wav
     Args:
-        paddle.Tensor with different dtypes
+        tensor : paddle.Tensor with different dtypes
     
     Returns:
         paddle.Tensor: resulting normalized Tensor.
@@ -44,7 +58,14 @@ def get_wav_data(
     channels_first: bool = True,
 ):
     """Generate linear signal of the given dtype and num_channels
-
+    args:
+        dtype: str,
+        num_channels: int,
+        *,
+        num_frames: Optional[int] = None,
+        normalize: bool = True,
+        channels_first: bool = True 
+    Returns: paddle.Tensor
     Data range is
         [-1.0, 1.0] for float32,
         [-2147483648, 2147483647] for int32
