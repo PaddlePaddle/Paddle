@@ -342,8 +342,8 @@ def pow(x, y, name=None):
     .. math::
         out = x^{y} 
 
-    **Note**:
-    ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
 
     Args:
@@ -669,8 +669,8 @@ def divide(x, y, name=None):
     .. math::
         out = x / y
 
-    **Note**:
-    ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -712,8 +712,8 @@ def floor_divide(x, y, name=None):
     .. math::
         out = x // y
 
-    **Note**:
-    ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be int32, int64.
@@ -752,8 +752,8 @@ def remainder(x, y, name=None):
 
         out = x \% y
 
-    **Note**:
-    ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -795,8 +795,8 @@ def multiply(x, y, name=None):
     .. math::
         out = x * y
 
-    **Note**:
-    ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
         x (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
@@ -848,8 +848,8 @@ def maximum(x, y, name=None):
     .. math::
         out = max(x, y)
 
-    **Note**:
-    ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -907,8 +907,8 @@ def minimum(x, y, name=None):
     .. math::
         out = min(x, y)
 
-    **Note**:
-    ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -968,8 +968,8 @@ def fmax(x, y, name=None):
     .. math::
         out = fmax(x, y)
 
-    **Note**:
-    ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -1031,8 +1031,8 @@ def fmin(x, y, name=None):
     .. math::
         out = fmin(x, y)
 
-    **Note**:
-    ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -1084,25 +1084,6 @@ def fmin(x, y, name=None):
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
-
-for func in [
-        multiply
-]:
-    proto_dict = {'multiply': 'elementwise_mul'}
-    op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
-
-    additional_args_lines = [
-        "name (string, optional): Name of the output. \
-        Default is None. It's used to print debug info for developers. Details: \
-        :ref:`api_guide_Name` "
-    ]
-
-    func.__doc__ = _generate_doc_string_(
-        op_proto,
-        additional_args_lines=additional_args_lines,
-        skip_attrs_set={"x_data_format", "y_data_format", "axis",
-            "use_quantizer", "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
-        }) + """\n""" + str(func.__doc__)
 
 
 def sum(x, axis=None, dtype=None, keepdim=False, name=None):
@@ -2832,7 +2813,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2) # data2.shape = [3]
             data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1) # data2.shape = [3, 5]
     """
-    def __check_input(input, offset, dim1, dim2):
+    def __check_input(x, offset, axis1, axis2):
         check_dtype(x.dtype, 'Input',
                     ['int32', 'int64', 'float16', 'float32', 'float64'],
                     'trace')
@@ -2859,17 +2840,15 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
                "axis1 and axis2 cannot be the same axis." \
                 "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
 
-    __check_input(input, offset, axis1, axis2)
     if in_dygraph_mode():
         return _C_ops.trace( x, offset, axis1, axis2 )
 
     if _in_legacy_dygraph():
         return _legacy_C_ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
 
-    inputs = {'Input': [x]}
-    attrs = {'offset': offset, 'axis1': axis1, 'axis2': axis2}
-    helper = LayerHelper('trace', **locals())
+    __check_input(x, offset, axis1, axis2)
 
+    helper = LayerHelper('trace', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
@@ -2952,7 +2931,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
         if _in_legacy_dygraph():
             return _legacy_C_ops.diagonal(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
 
-    def __check_input(input, offset, dim1, dim2):
+    def __check_input(x, offset, axis1, axis2):
         check_dtype(x.dtype, 'Input',
                     ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
                     'diagonal')
@@ -2978,7 +2957,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
                "axis1 and axis2 cannot be the same axis." \
                 "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
 
-    __check_input(input, offset, axis1, axis2)
+    __check_input(x, offset, axis1, axis2)
     helper = LayerHelper('diagonal', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
@@ -3038,8 +3017,8 @@ def cumsum(x, axis=None, dtype=None, name=None):
     """
     The cumulative sum of the elements along a given axis. 
     
-    **Note**:
-    The first element of the result is the same as the first element of the input. 
+    Note:
+        The first element of the result is the same as the first element of the input. 
 
     Args:
         x (Tensor): The input tensor needed to be cumsumed.
@@ -3177,8 +3156,8 @@ def cumprod(x, dim=None, dtype=None, name=None):
     """
     Compute the cumulative product of the input tensor x along a given dimension dim.
 
-    **Note**:
-    The first element of the result is the same as the first element of the input.
+    Note:
+        The first element of the result is the same as the first element of the input.
 
     Args:
         x (Tensor): the input tensor need to be cumproded.
@@ -3513,7 +3492,7 @@ def tanh_(x, name=None):
 
 def increment(x, value=1.0, name=None):
     """
-    The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
+    The API is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
     Notice that the number of elements in :attr:`x` must be equal to 1.
 
     Args:
@@ -3535,7 +3514,7 @@ def increment(x, value=1.0, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.increment( x, value)
+        return _C_ops.increment_(x, value)
 
     if _in_legacy_dygraph():
         return _legacy_C_ops.increment(x, 'step', value)
@@ -4497,7 +4476,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         if x.dtype == paddle.bool:
             return _C_ops.logical_xor(input_back, input_front)
         else:
-            return elementwise_sub(input_back, input_front, axis=axis)
+            return _C_ops.final_state_subtract(input_back, input_front)
     elif _in_legacy_dygraph():
         has_pend = False
         input_list = []
@@ -4661,7 +4640,7 @@ def heaviside(x, y, name=None):
                 \end{array}
             \\right.
 
-    Notes:
+    Note:
         ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:

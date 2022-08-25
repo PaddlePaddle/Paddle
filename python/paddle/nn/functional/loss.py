@@ -1327,8 +1327,8 @@ def nll_loss(input,
              to each class. If given, it has to be a 1D Tensor whose size is `[C, ]`. Otherwise,
              it treated as if having all ones. the data type is
              float32, float64, Default is ``'None'``.
-         ignore_index (int64, optional): Specifies a target value that is ignored
-             and does not contribute to the input gradient.
+         ignore_index (int, optional): Specifies a target value that is ignored
+             and does not contribute to the input gradient. Default is -100.
          reduction (str, optional): Indicate how to average the loss,
              the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
              If `reduction` is ``'mean'``, the reduced mean loss is returned;

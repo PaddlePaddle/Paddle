@@ -231,7 +231,10 @@ def hardshrink(x, threshold=0.5, name=None):
             out = F.hardshrink(x) # [-1., 0., 2.5]
 
     """
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.hard_shrink(x, threshold)
+
+    if _in_legacy_dygraph():
         return _legacy_C_ops.hard_shrink(x, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -281,7 +284,10 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
             out = F.hardtanh(x) # [-1., 0.3, 1.]
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.brelu(x, min, max)
+
+    if _in_legacy_dygraph():
         return _legacy_C_ops.brelu(x, 't_min', min, 't_max', max)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -337,7 +343,10 @@ def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
             out = F.hardsigmoid(x) # [0., 1., 0.666667]
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.hard_sigmoid(x, slope, offset)
+
+    if _in_legacy_dygraph():
         return _legacy_C_ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -745,7 +754,10 @@ def log_sigmoid(x, name=None):
             out = F.log_sigmoid(x) # [-0.313262 -0.126928 -0.0485874 -0.0181499]
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.logsigmoid(x)
+
+    if _in_legacy_dygraph():
         return _legacy_C_ops.logsigmoid(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -1100,7 +1112,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
     if in_dygraph_mode():
         outs_cast = x if dtype is None \
-            else _legacy_C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+            else _C_ops.cast(x, dtype)
         return _C_ops.softmax(outs_cast, axis)
 
     if _in_legacy_dygraph():
@@ -1416,7 +1428,10 @@ def tanhshrink(x, name=None):
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.tanhshrink(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
     """
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.tanh_shrink(x)
+
+    if _in_legacy_dygraph():
         return _legacy_C_ops.tanh_shrink(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -1462,7 +1477,10 @@ def thresholded_relu(x, threshold=1.0, name=None):
             out = F.thresholded_relu(x) # [2., 0., 0.]
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.thresholded_relu(x, threshold)
+
+    if _in_legacy_dygraph():
         return _legacy_C_ops.thresholded_relu(x, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -1535,12 +1553,15 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         if dtype is not None:
-            x = _legacy_C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.log_softmax(x, 'axis', axis)
+            x = _C_ops.cast(x, dtype)
         return _C_ops.log_softmax(x, axis)
+
+    if _in_legacy_dygraph():
+        if dtype is not None:
+            x = _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        return _C_ops.log_softmax(x, 'axis', axis)
 
     if dtype is None:
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],

@@ -189,9 +189,8 @@ class Engine:
             serial_main_prog = self._orig_main_prog.clone()
             serial_startup_prog = self._orig_startup_prog.clone()
             # FIXME to support grad clip
-            # with static.program_guard(serial_main_prog, serial_startup_prog), \
-            #     utils.unique_name.guard():
-            with static.program_guard(serial_main_prog, serial_startup_prog):
+            with static.program_guard(serial_main_prog, serial_startup_prog), \
+                utils.unique_name.guard():
                 inputs_spec = self.inputs_spec
                 labels_spec = self.labels_spec if self.labels_spec else []
                 inputs = [s._create_feed_layer() for s in inputs_spec]

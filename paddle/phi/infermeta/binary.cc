@@ -210,16 +210,9 @@ void BCELossInferMeta(const MetaTensor& input,
 
 void BincountInferMeta(const MetaTensor& x,
                        const MetaTensor& weights,
-                       int minlength,
+                       const Scalar& minlength,
                        MetaTensor* out) {
   auto input_dim = x.dims();
-
-  PADDLE_ENFORCE_GE(minlength,
-                    0,
-                    phi::errors::InvalidArgument(
-                        "The minlength should be greater than or equal to 0."
-                        "But received minlength is %d",
-                        minlength));
 
   PADDLE_ENFORCE_EQ(
       input_dim.size(),

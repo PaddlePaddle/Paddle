@@ -16,7 +16,7 @@ from __future__ import print_function
 import logging
 
 from . import framework
-from .framework import _non_static_mode, _varbase_creator
+from .framework import _non_static_mode, _varbase_creator, in_dygraph_mode
 from . import core
 from paddle import _C_ops, _legacy_C_ops
 
@@ -252,6 +252,10 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             decay = block.create_var(dtype=param.dtype,
                                      shape=param.shape,
                                      lod_level=param.lod_level)
+        if in_dygraph_mode():
+            sign = _C_ops.final_state_sign(param)
+            return _C_ops.final_state_scale(sign, self._regularization_coeff,
+                                            0.0, True)
 
         # Append sign op
         block.append_op(type='sign', inputs={"X": param}, outputs={"Out": sign})
