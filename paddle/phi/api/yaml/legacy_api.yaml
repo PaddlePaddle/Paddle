@@ -513,6 +513,15 @@
   kernel :
     func : clip_by_norm
 
+- api : coalesce_tensor
+  args : (Tensor[] input, DataType dtype, bool copy_data, bool set_constant, bool persist_output, float constant, bool use_align, int align_size, int size_of_dtype, int64_t[] concated_shapes, int64_t[] concated_ranks)
+  output : Tensor[](output){input.size()}, Tensor(fused_output)
+  infer_meta :
+    func : CoalesceTensorInferMeta
+  kernel :
+    func : coalesce_tensor
+    data_type : input
+
 - api : complex
   args : (Tensor x, Tensor y)
   output : Tensor
