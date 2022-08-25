@@ -43,10 +43,25 @@ class QuantDequantMkldnnPass : public FusePassBase {
       std::unordered_map<std::string, std::vector<float>>* weight_thresholds)
       const;
 
+  void CollectInfoFromONNXFormatDequantize(
+      ir::Graph* graph,
+      Scope* scope,
+      const std::unordered_set<std::string>& onnx_format_dequantize_types,
+      std::unordered_map<std::string, std::vector<float>>* weight_thresholds,
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
+      bool* onnx_format_quantize_model) const;
+
   void CollectInputScalesFromFake(
       ir::Graph* graph,
       Scope* scope,
       const std::unordered_set<std::string>& fake_quantize_types,
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
+      const;
+
+  void CollectInputScalesFromONNXFormatQuantize(
+      ir::Graph* graph,
+      Scope* scope,
+      const std::unordered_set<std::string>& onnx_format_quantize_types,
       std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
       const;
 
@@ -64,12 +79,18 @@ class QuantDequantMkldnnPass : public FusePassBase {
       Node* op_node,
       std::unordered_set<const Node*>* nodes2rm) const;
 
+  void CollectONNXFormatQuantizeDequantizeOps(
+      ir::Graph* graph,
+      Node* op_node,
+      std::unordered_set<const Node*>* nodes2rm) const;
+
   void RemoveFakeOps(
       ir::Graph* graph,
       const std::unordered_set<std::string>& fake_quantize_types,
       const std::unordered_set<std::string>& fake_dequantize_types,
-      const std::unordered_set<std::string>& fake_quantize_dequantize_types)
-      const;
+      const std::unordered_set<std::string>& fake_quantize_dequantize_types,
+      const std::unordered_set<std::string>&
+          onnx_format_quantize_dequantize_types) const;
 
   bool IsInt8Weight(Node* op_node,
                     Scope* scope,
@@ -85,11 +106,19 @@ class QuantDequantMkldnnPass : public FusePassBase {
       const std::unordered_map<std::string, std::vector<float>>&
           weight_thresholds) const;
 
+  void DequantizeOpWeightsForONNXFromat(
+      Node* op_node,
+      Scope* scope,
+      const std::string& weight_name,
+      const std::unordered_map<std::string, std::vector<float>>&
+          weight_thresholds) const;
+
   void DequantizeWeights(
       ir::Graph* graph,
       Scope* scope,
       const std::unordered_map<std::string, std::vector<float>>&
-          weight_thresholds) const;
+          weight_thresholds,
+      const bool& onnx_format_quantize_model) const;
 
   void UpdateActivations(ir::Graph* graph) const;
 

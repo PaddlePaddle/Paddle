@@ -1177,6 +1177,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetQuantizeEnabledOpTypes(config_.quantize_enabled_op_types_);
     argument_.SetQuantizeExcludedOpIds(config_.quantize_excluded_op_ids_);
     argument_.SetQuantVarScales({});
+    argument_.SetScaleFilePath(config_.scale_file_path_);
   }
 #endif
 
