@@ -811,11 +811,6 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
     //     stream);
 
     half beta_half = static_cast<half>(1.0f);
-    framework::Tensor qk_gemm_tensor;
-    qk_gemm_tensor.Resize({batch_size,head_num,seq_len,seq_len});
-    half * qk_gemm_data = reinterpret_cast<half *>(
-      qk_gemm_tensor.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
-
     cublasStatus_t cublasltMatmul_reslut = platform::dynload::cublasLtMatmul(
         lt_handle,
         operation_desc,
@@ -827,7 +822,7 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
         (&beta_half),
         (bias_qk),
         qk_bias_desc,
-        (qk_gemm_data),
+        (qk_buf_),
         qk_desc,
         algo,
         workspace->ptr(),
@@ -884,14 +879,12 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
     // debug print
 
     // call cudnn softmax
-    int rank = qk_gemm_tensor.dims().size();
+    int rank = 4;
     int axis = phi::funcs::CanonicalAxis(-1, rank);
-    std::vector<int> tensor_dims = phi::GetSoftmaxTensorDims(qk_gemm_tensor.dims(), axis);
+    std::vector<int> tensor_dims = phi::GetSoftmaxTensorDims(phi::make_ddim({batch_size,head_num,seq_len,seq_len}), axis);
     int N = tensor_dims[0];
     int dim = tensor_dims[1];
     int D = tensor_dims[2];
-
-
 
     int dim_log2 = static_cast<int>(phi::Log2Ceil(dim));
     int dim_ceil = 1 << dim_log2;
@@ -911,7 +904,7 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
                                                         threads,
                                                         context,
                                                         reinterpret_cast<run_type*>(qk_buf_),
-                                                        reinterpret_cast<run_type*>(qk_gemm_data),
+                                                        reinterpret_cast<run_type*>(qk_buf_),
                                                         N,
                                                         dim,
                                                         dim,
