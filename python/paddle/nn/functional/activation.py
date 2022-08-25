@@ -1560,8 +1560,8 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
 
     if _in_legacy_dygraph():
         if dtype is not None:
-            x = _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
-        return _C_ops.log_softmax(x, 'axis', axis)
+            x = _legacy_C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        return _legacy_C_ops.log_softmax(x, 'axis', axis)
 
     if dtype is None:
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
