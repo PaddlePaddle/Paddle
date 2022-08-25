@@ -250,9 +250,13 @@ class PipelineLayer(Layer):
             self._stage_id = self._topo.get_coord(self.global_rank).pipe
             self._num_stages = self._topo.get_dim_size("pipe")
 
+        self._total_stages_with_virtual_stages = self._num_stages * self._num_virtual_pipeline_stages
+
         # initialize segment
         self._layers_desc = list(self.layers)
         self._num_layers = len(self._layers_desc)
+        self.shared_layers = paddle.nn.LayerDict()
+        self.shared_weight_attrs = {}
 
         if self._num_virtual_pipeline_stages > 1:
             # interleaving pipeline segmentation
@@ -270,17 +274,18 @@ class PipelineLayer(Layer):
             self.run_function = []
             self._build_layer()
 
-        self.shared_layers = paddle.nn.LayerDict()
-        self.shared_weight_attrs = {}
         self.shared_comm = self._construct_shared_comm()
         self._synchronize_shared_weights()
 
     def get_stage_from_index(self, layer_idx):
         assert 0 <= layer_idx < self._num_layers, "layer_idx is out of bound"
-        for stage in range(self._topo.get_dim('pipe')):
-            if self.segment_parts[stage] <= layer_idx < self.segment_parts[stage
-                                                                           + 1]:
-                return stage
+        for stage in range(self._num_stages):
+            for i in range(stage, self._total_stages_with_virtual_stages,
+                           self._num_virtual_pipeline_stages):
+                # mapping the virtual pipeline stage to the real pipeline stage
+                if self.segment_parts[i] <= layer_idx < self.segment_parts[i +
+                                                                           1]:
+                    return stage
 
     def _construct_shared_comm(self):
         shared_comm = {}
@@ -373,8 +378,7 @@ class PipelineLayer(Layer):
         logger.info("segment result:" +
                     ", ".join(str(arg) for arg in self.segment_parts))
 
-        for i in range(self._stage_id,
-                       self._num_stages * self._num_virtual_pipeline_stages,
+        for i in range(self._stage_id, self._total_stages_with_virtual_stages,
                        self._num_virtual_pipeline_stages):
             assert self.segment_parts[i] <= self.segment_parts[i + 1]
             self._start_poss.append(self.segment_parts[i])
@@ -414,10 +418,8 @@ class PipelineLayer(Layer):
             for stage in range(self._num_stages):
                 stage_to_virtual_stage_info = "stage {} contains virtual stages: ".format(
                     stage)
-                for i in range(
-                        stage,
-                        self._num_stages * self._num_virtual_pipeline_stages,
-                        self._num_virtual_pipeline_stages):
+                for i in range(stage, self._total_stages_with_virtual_stages,
+                               self._num_virtual_pipeline_stages):
                     stage_to_virtual_stage_info += " {},".format(i)
                 logger.info(stage_to_virtual_stage_info)
 
