@@ -92,7 +92,7 @@ __device__ __forceinline__ void PrintNanInfKernel(const T* value,
            nan_count, inf_count, num_count);
 #endif
     // PADDLE_ENFORCE(false, "===ERROR: in %s find nan or inf===", debug_info);
-    printf("===ERROR: in %s find nan or inf===", debug_info);
+    printf("===ERROR: in %s find nan or inf===\n", debug_info);
   }
 }
 

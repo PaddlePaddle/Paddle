@@ -31,6 +31,12 @@ __global__ void GpuUpdateLossScaling(
   Update<T>(found_inf_data, pre_loss_scaling_data, good_in_data, bad_in_data,
             incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
             updated_loss_scaling_data, good_out_data, bad_out_data);
+  printf(
+      "[Update Loss Scaling] found_infinite: %d, loss_scaling: %f, "
+      "num_good_steps: %d, num_bad_steps: %d\n",
+      static_cast<int>(*found_inf_data),
+      static_cast<float>(*updated_loss_scaling_data), *good_out_data,
+      *bad_out_data);
 }
 
 template <typename T>
