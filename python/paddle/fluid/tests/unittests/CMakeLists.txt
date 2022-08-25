@@ -61,6 +61,8 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_no_sync)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_no_sync_gradient_check)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_pipeline_parallel)
+list(APPEND DIST_TEST_OPS
+     test_parallel_dygraph_pipeline_parallel_with_virtual_stage)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_tensor_parallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sharding_parallel)
 list(APPEND DIST_TEST_OPS test_dygraph_sharding_optimizer_stage2)
@@ -311,6 +313,8 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_no_sync_gradient_check)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_pipeline_parallel)
+  list(REMOVE_ITEM TEST_OPS
+       test_parallel_dygraph_pipeline_parallel_with_virtual_stage)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_tensor_parallel)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sharding_parallel)
   list(REMOVE_ITEM TEST_OPS test_dygraph_sharding_optimizer_stage2)
@@ -1577,6 +1581,9 @@ if(WITH_DISTRIBUTE
                        PROPERTIES TIMEOUT 60)
   set_tests_properties(test_parallel_dygraph_pipeline_parallel
                        PROPERTIES TIMEOUT 500)
+  set_tests_properties(
+    test_parallel_dygraph_pipeline_parallel_with_virtual_stage
+    PROPERTIES TIMEOUT 500)
   set_tests_properties(test_parallel_dygraph_tensor_parallel PROPERTIES TIMEOUT
                                                                         200)
   set_tests_properties(test_parallel_dygraph_sharding_parallel
