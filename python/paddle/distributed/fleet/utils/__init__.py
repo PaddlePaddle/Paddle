@@ -15,6 +15,7 @@
 from .fs import LocalFS  # noqa: F401
 from .fs import HDFSClient  # noqa: F401
 from .ps_util import DistributedInfer  # noqa: F401
+from paddle.distributed import fleet
 from ..recompute.recompute import recompute, recompute_sequential  # noqa: F401
 
 from . import log_util  # noqa: F401
