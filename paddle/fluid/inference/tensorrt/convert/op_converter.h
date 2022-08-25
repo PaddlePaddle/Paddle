@@ -237,18 +237,21 @@ class OpConverter {
       framework::Variable* X_v = nullptr;
       std::string X_name;
 
-      std::vector<std::string> black_op{
-          "conv2d",
-          "conv2d_fusion",
-          "conv2d_transpose",
-          "depthwise_conv2d",
-          "depthwise_conv2d_transpose",
-          "conv3d",
-          "conv3d_transpose",
-          "fc",
-          "batch_norm",
-      };
-
+      // for these ops, we only allow valid_name converted to weight tensor
+      std::vector<std::string> black_op{"conv2d",
+                                        "conv2d_fusion",
+                                        "conv2d_transpose",
+                                        "depthwise_conv2d",
+                                        "depthwise_conv2d_transpose",
+                                        "conv3d",
+                                        "conv3d_transpose",
+                                        "fc",
+                                        "batch_norm",
+                                        "elementwise_add",
+                                        "elementwise_mul",
+                                        "elementwise_sub",
+                                        "elementwise_div",
+                                        "elementwise_pow"};
       std::vector<std::string> valid_name{"X", "Input"};
 
       // inputs : string -> std::vector<string>
@@ -261,8 +264,8 @@ class OpConverter {
           // Not need convert this to Itensor, it is used as nvinfer1::Weights
           if ((std::find(black_op.begin(), black_op.end(), op.type()) !=
                black_op.end()) &&
-              (std::find(black_name.begin(), black_name.end(), iter.first) ==
-               black_name.end()))
+              (std::find(valid_name.begin(), valid_name.end(), iter.first) ==
+               valid_name.end()))
             continue;
 
           // If this weight is shared between ops, it needn't to be convtered to
