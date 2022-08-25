@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
 
 namespace phi {
@@ -41,10 +42,11 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataLayout layout,
                          MetaTensor* out);
 
-void EyeInferMeta(int64_t num_rows,
-                  int64_t num_columns,
+void EyeInferMeta(const Scalar& num_rows,
+                  const Scalar& num_columns,
                   DataType dtype,
-                  MetaTensor* out);
+                  MetaTensor* out,
+                  MetaConfig config = MetaConfig());
 
 void GaussianRandomInferMeta(const IntArray& shape,
                              float mean,
