@@ -279,12 +279,13 @@ class PipelineLayer(Layer):
 
     def get_stage_from_index(self, layer_idx):
         assert 0 <= layer_idx < self._num_layers, "layer_idx is out of bound"
-        for stage in range(self._num_stages):
-            for i in range(stage, self._total_stages_with_virtual_stages,
-                           self._num_virtual_pipeline_stages):
+        for virtual_pp_offset in range(self._num_virtual_pipeline_stages):
+            start_idx = virtual_pp_offset * self._num_virtual_pipeline_stages
+            for stage in range(self._num_stages):
                 # mapping the virtual pipeline stage to the real pipeline stage
-                if self.segment_parts[i] <= layer_idx < self.segment_parts[i +
-                                                                           1]:
+                if self.segment_parts[start_idx +
+                                      stage] <= layer_idx < self.segment_parts[
+                                          start_idx + stage + 1]:
                     return stage
 
     def _construct_shared_comm(self):
