@@ -195,7 +195,6 @@ class TestMLP(unittest.TestCase):
 
     def test_completer(self):
         train_program, start_program, dataloader, i, loss = get_program()
-        print(train_program)
         dist_context = DistributedContext()
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
