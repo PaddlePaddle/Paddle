@@ -260,6 +260,17 @@ class TestReverseAxisListTensor(TestReverseAxisTensor):
         out = paddle.fluid.layers.reverse(x, axes)
         return out
 
+    def test_api(self):
+        paddle.disable_static()
+        x = paddle.randn([4, 10])
+        y = paddle.randn([4, 10])
+
+        out = paddle._C_ops.final_state_reverse_array([x, y], [0])
+        np.testing.assert_allclose(x.numpy(), out[1].numpy())
+        np.testing.assert_allclose(y.numpy(), out[0].numpy())
+
+        paddle.enable_static()
+
 
 class TestReverseTensorArrayAxisTensor(UnittestBase):
 
