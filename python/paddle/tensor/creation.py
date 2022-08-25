@@ -368,12 +368,7 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
                         'float16', 'float32', 'float64', 'complex64',
                         'complex128'
                 ]:
-                    target_dtype = paddle.get_default_dtype()
-                    if np.iscomplexobj(data):
-                        target_dtype = 'complex64' if target_dtype in [
-                            'float16', 'float32'
-                        ] else 'complex128'
-                    data = data.astype(target_dtype)
+                    data = data.astype(paddle.get_default_dtype())
                 elif data.dtype in ['int32']:
                     data = data.astype('int64')
 
