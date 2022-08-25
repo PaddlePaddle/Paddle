@@ -15767,6 +15767,8 @@ def uniform_random(shape,
     check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random/rand')
     check_dtype(dtype, 'dtype', ('float32', 'float64', 'uint16'),
                 'uniform_random/rand')
+    check_type(min, 'min', (float, int, Variable), 'uniform_random/rand')
+    check_type(max, 'max', (float, int, Variable), 'uniform_random/rand')
 
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
