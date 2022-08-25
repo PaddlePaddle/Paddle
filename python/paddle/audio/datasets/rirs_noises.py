@@ -43,12 +43,12 @@ class OpenRIRNoise(Dataset):
     subsets = ['rir', 'noise']
 
     def __init__(self,
-                 subset: str='rir',
-                 feat_type: str='raw',
+                 subset: str = 'rir',
+                 feat_type: str = 'raw',
                  target_dir=None,
-                 random_chunk: bool=True,
-                 chunk_duration: float=3.0,
-                 seed: int=0,
+                 random_chunk: bool = True,
+                 chunk_duration: float = 3.0,
+                 seed: int = 0,
                  **kwargs):
 
         assert subset in self.subsets, \
@@ -73,8 +73,9 @@ class OpenRIRNoise(Dataset):
         # Download audio files.
         print(f"rirs noises base path: {self.base_path}")
         if not os.path.isdir(self.base_path):
-            download_and_decompress(
-                self.archieves, self.base_path, decompress=True)
+            download_and_decompress(self.archieves,
+                                    self.base_path,
+                                    decompress=True)
         else:
             print(
                 f"{self.base_path} already exists, we will not download and decompress again"
@@ -108,8 +109,8 @@ class OpenRIRNoise(Dataset):
         assert self.feat_type in feat_funcs.keys(), \
             f"Unknown feat_type: {self.feat_type}, it must be one in {list(feat_funcs.keys())}"
         feat_func = feat_funcs[self.feat_type]
-        feat = feat_func(
-            waveform, sr=sr, **self.feat_config) if feat_func else waveform
+        feat = feat_func(waveform, sr=sr, **
+                         self.feat_config) if feat_func else waveform
 
         record.update({'feat': feat})
         return record
@@ -152,23 +153,24 @@ class OpenRIRNoise(Dataset):
     def generate_csv(self,
                      wav_files: List[str],
                      output_file: str,
-                     split_chunks: bool=True):
+                     split_chunks: bool = True):
         print(f'Generating csv: {output_file}')
         header = ["id", "duration", "wav"]
 
         infos = list(
-            tqdm(
-                map(self._get_audio_info, wav_files, [split_chunks] * len(
-                    wav_files)),
-                total=len(wav_files)))
+            tqdm(map(self._get_audio_info, wav_files,
+                     [split_chunks] * len(wav_files)),
+                 total=len(wav_files)))
 
         csv_lines = []
         for info in infos:
             csv_lines.extend(info)
 
         with open(output_file, mode="w") as csv_f:
-            csv_writer = csv.writer(
-                csv_f, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            csv_writer = csv.writer(csv_f,
+                                    delimiter=",",
+                                    quotechar='"',
+                                    quoting=csv.QUOTE_MINIMAL)
             csv_writer.writerow(header)
             for line in csv_lines:
                 csv_writer.writerow(line)

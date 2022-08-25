@@ -45,10 +45,12 @@ def _safe_cast(y: np.ndarray, dtype: Union[type, str]) -> np.ndarray:
         np.ndarray: `y` after safe casting.
     """
     if 'float' in str(y.dtype):
-        return np.clip(y, np.finfo(dtype).min,
+        return np.clip(y,
+                       np.finfo(dtype).min,
                        np.finfo(dtype).max).astype(dtype)
     else:
-        return np.clip(y, np.iinfo(dtype).min,
+        return np.clip(y,
+                       np.iinfo(dtype).min,
                        np.iinfo(dtype).max).astype(dtype)
 
 
@@ -87,7 +89,8 @@ def depth_convert(y: np.ndarray, dtype: Union[type, str]) -> np.ndarray:
     if dtype == 'int16' or dtype == 'int8':
         if y.dtype in ['float64', 'float32']:
             factor = np.iinfo(dtype).max
-            y = np.clip(y * factor, np.iinfo(dtype).min,
+            y = np.clip(y * factor,
+                        np.iinfo(dtype).min,
                         np.iinfo(dtype).max).astype(dtype)
             y = y.astype(dtype)
         else:

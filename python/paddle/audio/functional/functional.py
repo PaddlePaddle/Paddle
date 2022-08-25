@@ -31,7 +31,7 @@ __all__ = [
 
 
 def hz_to_mel(freq: Union[Tensor, float],
-              htk: bool=False) -> Union[Tensor, float]:
+              htk: bool = False) -> Union[Tensor, float]:
     """Convert Hz to Mels.
 
     Args:
@@ -74,7 +74,7 @@ def hz_to_mel(freq: Union[Tensor, float],
 
 
 def mel_to_hz(mel: Union[float, Tensor],
-              htk: bool=False) -> Union[float, Tensor]:
+              htk: bool = False) -> Union[float, Tensor]:
     """Convert mel bin numbers to frequencies.
 
     Args:
@@ -102,15 +102,14 @@ def mel_to_hz(mel: Union[float, Tensor],
     else:
         if mel >= min_log_mel:
             freqs = min_log_hz * math.exp(logstep * (mel - min_log_mel))
-
     return freqs
 
 
-def mel_frequencies(n_mels: int=64,
-                    f_min: float=0.0,
-                    f_max: float=11025.0,
-                    htk: bool=False,
-                    dtype: str='float32') -> Tensor:
+def mel_frequencies(n_mels: int = 64,
+                    f_min: float = 0.0,
+                    f_max: float = 11025.0,
+                    htk: bool = False,
+                    dtype: str = 'float32') -> Tensor:
     """Compute mel frequencies.
 
     Args:
@@ -131,7 +130,7 @@ def mel_frequencies(n_mels: int=64,
     return freqs
 
 
-def fft_frequencies(sr: int, n_fft: int, dtype: str='float32') -> Tensor:
+def fft_frequencies(sr: int, n_fft: int, dtype: str = 'float32') -> Tensor:
     """Compute fourier frequencies.
 
     Args:
@@ -147,12 +146,12 @@ def fft_frequencies(sr: int, n_fft: int, dtype: str='float32') -> Tensor:
 
 def compute_fbank_matrix(sr: int,
                          n_fft: int,
-                         n_mels: int=64,
-                         f_min: float=0.0,
-                         f_max: Optional[float]=None,
-                         htk: bool=False,
-                         norm: Union[str, float]='slaney',
-                         dtype: str='float32') -> Tensor:
+                         n_mels: int = 64,
+                         f_min: float = 0.0,
+                         f_max: Optional[float] = None,
+                         htk: bool = False,
+                         norm: Union[str, float] = 'slaney',
+                         dtype: str = 'float32') -> Tensor:
     """Compute fbank matrix.
 
     Args:
@@ -179,8 +178,11 @@ def compute_fbank_matrix(sr: int,
     fftfreqs = fft_frequencies(sr=sr, n_fft=n_fft, dtype=dtype)
 
     # 'Center freqs' of mel bands - uniformly spaced between limits
-    mel_f = mel_frequencies(
-        n_mels + 2, f_min=f_min, f_max=f_max, htk=htk, dtype=dtype)
+    mel_f = mel_frequencies(n_mels + 2,
+                            f_min=f_min,
+                            f_max=f_max,
+                            htk=htk,
+                            dtype=dtype)
 
     fdiff = mel_f[1:] - mel_f[:-1]  #np.diff(mel_f)
     ramps = mel_f.unsqueeze(1) - fftfreqs.unsqueeze(0)
@@ -192,8 +194,8 @@ def compute_fbank_matrix(sr: int,
         upper = ramps[i + 2] / fdiff[i + 1]
 
         # .. then intersect them with each other and zero
-        weights[i] = paddle.maximum(
-            paddle.zeros_like(lower), paddle.minimum(lower, upper))
+        weights[i] = paddle.maximum(paddle.zeros_like(lower),
+                                    paddle.minimum(lower, upper))
 
     # Slaney-style mel is scaled to be approx constant energy per channel
     if norm == 'slaney':
@@ -206,9 +208,9 @@ def compute_fbank_matrix(sr: int,
 
 
 def power_to_db(spect: Tensor,
-                ref_value: float=1.0,
-                amin: float=1e-10,
-                top_db: Optional[float]=None) -> Tensor:
+                ref_value: float = 1.0,
+                amin: float = 1e-10,
+                top_db: Optional[float] = None) -> Tensor:
     """Convert a power spectrogram (amplitude squared) to decibel (dB) units. The function computes the scaling `10 * log10(x / ref)` in a numerically stable way.
 
     Args:
@@ -240,8 +242,8 @@ def power_to_db(spect: Tensor,
 
 def create_dct(n_mfcc: int,
                n_mels: int,
-               norm: Optional[str]='ortho',
-               dtype: str='float32') -> Tensor:
+               norm: Optional[str] = 'ortho',
+               dtype: str = 'float32') -> Tensor:
     """Create a discrete cosine transform(DCT) matrix.
 
     Args:

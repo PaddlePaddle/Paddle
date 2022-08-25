@@ -48,7 +48,9 @@ __all__ = [
 ]
 
 
-def _pad_center(data: np.ndarray, size: int, axis: int=-1,
+def _pad_center(data: np.ndarray,
+                size: int,
+                axis: int = -1,
                 **kwargs) -> np.ndarray:
     """Pad an array to a target length along a target axis.
 
@@ -72,7 +74,7 @@ def _pad_center(data: np.ndarray, size: int, axis: int=-1,
 def _split_frames(x: np.ndarray,
                   frame_length: int,
                   hop_length: int,
-                  axis: int=-1) -> np.ndarray:
+                  axis: int = -1) -> np.ndarray:
     """Slice a data array into (overlapping) frames.
 
     This function is aligned with librosa.frame
@@ -145,7 +147,7 @@ def _check_audio(y, mono=True) -> bool:
 
 
 def hz_to_mel(frequencies: Union[float, List[float], np.ndarray],
-              htk: bool=False) -> np.ndarray:
+              htk: bool = False) -> np.ndarray:
     """Convert Hz to Mels.
 
     Args:
@@ -185,7 +187,7 @@ def hz_to_mel(frequencies: Union[float, List[float], np.ndarray],
 
 
 def mel_to_hz(mels: Union[float, List[float], np.ndarray],
-              htk: int=False) -> np.ndarray:
+              htk: int = False) -> np.ndarray:
     """Convert mel bin numbers to frequencies.
 
     Args:
@@ -222,10 +224,10 @@ def mel_to_hz(mels: Union[float, List[float], np.ndarray],
     return freqs
 
 
-def mel_frequencies(n_mels: int=128,
-                    fmin: float=0.0,
-                    fmax: float=11025.0,
-                    htk: bool=False) -> np.ndarray:
+def mel_frequencies(n_mels: int = 128,
+                    fmin: float = 0.0,
+                    fmax: float = 11025.0,
+                    htk: bool = False) -> np.ndarray:
     """Compute mel frequencies.
 
     Args:
@@ -261,12 +263,12 @@ def fft_frequencies(sr: int, n_fft: int) -> np.ndarray:
 
 def compute_fbank_matrix(sr: int,
                          n_fft: int,
-                         n_mels: int=128,
-                         fmin: float=0.0,
-                         fmax: Optional[float]=None,
-                         htk: bool=False,
-                         norm: str="slaney",
-                         dtype: type=np.float32) -> np.ndarray:
+                         n_mels: int = 128,
+                         fmin: float = 0.0,
+                         fmax: Optional[float] = None,
+                         htk: bool = False,
+                         norm: str = "slaney",
+                         dtype: type = np.float32) -> np.ndarray:
     """Compute fbank matrix.
 
     Args:
@@ -327,13 +329,13 @@ def compute_fbank_matrix(sr: int,
 
 
 def stft(x: np.ndarray,
-         n_fft: int=2048,
-         hop_length: Optional[int]=None,
-         win_length: Optional[int]=None,
-         window: str="hann",
-         center: bool=True,
-         dtype: type=np.complex64,
-         pad_mode: str="reflect") -> np.ndarray:
+         n_fft: int = 2048,
+         hop_length: Optional[int] = None,
+         win_length: Optional[int] = None,
+         window: str = "hann",
+         center: bool = True,
+         dtype: type = np.complex64,
+         pad_mode: str = "reflect") -> np.ndarray:
     """Short-time Fourier transform (STFT).
 
     Args:
@@ -383,8 +385,9 @@ def stft(x: np.ndarray,
     # Window the time series.
     x_frames = _split_frames(x, frame_length=n_fft, hop_length=hop_length)
     # Pre-allocate the STFT matrix
-    stft_matrix = np.empty(
-        (int(1 + n_fft // 2), x_frames.shape[1]), dtype=dtype, order="F")
+    stft_matrix = np.empty((int(1 + n_fft // 2), x_frames.shape[1]),
+                           dtype=dtype,
+                           order="F")
     fft = np.fft  # use numpy fft as default
     # Constrain STFT block sizes to 256 KB
     MAX_MEM_BLOCK = 2**8 * 2**10
@@ -394,16 +397,17 @@ def stft(x: np.ndarray,
 
     for bl_s in range(0, stft_matrix.shape[1], n_columns):
         bl_t = min(bl_s + n_columns, stft_matrix.shape[1])
-        stft_matrix[:, bl_s:bl_t] = fft.rfft(
-            fft_window * x_frames[:, bl_s:bl_t], axis=0)
+        stft_matrix[:,
+                    bl_s:bl_t] = fft.rfft(fft_window * x_frames[:, bl_s:bl_t],
+                                          axis=0)
 
     return stft_matrix
 
 
 def power_to_db(spect: np.ndarray,
-                ref: float=1.0,
-                amin: float=1e-10,
-                top_db: Optional[float]=80.0) -> np.ndarray:
+                ref: float = 1.0,
+                amin: float = 1e-10,
+                top_db: Optional[float] = 80.0) -> np.ndarray:
     """Convert a power spectrogram (amplitude squared) to decibel (dB) units. The function computes the scaling `10 * log10(x / ref)` in a numerically stable way.
 
     Args:
@@ -447,12 +451,12 @@ def power_to_db(spect: np.ndarray,
 
 
 def mfcc(x: np.ndarray,
-         sr: int=16000,
-         spect: Optional[np.ndarray]=None,
-         n_mfcc: int=20,
-         dct_type: int=2,
-         norm: str="ortho",
-         lifter: int=0,
+         sr: int = 16000,
+         spect: Optional[np.ndarray] = None,
+         n_mfcc: int = 20,
+         dct_type: int = 2,
+         norm: str = "ortho",
+         lifter: int = 0,
          **kwargs) -> np.ndarray:
     """Mel-frequency cepstral coefficients (MFCCs)
 
@@ -485,20 +489,20 @@ def mfcc(x: np.ndarray,
 
 
 def melspectrogram(x: np.ndarray,
-                   sr: int=16000,
-                   window_size: int=512,
-                   hop_length: int=320,
-                   n_mels: int=64,
-                   fmin: float=50.0,
-                   fmax: Optional[float]=None,
-                   window: str='hann',
-                   center: bool=True,
-                   pad_mode: str='reflect',
-                   power: float=2.0,
-                   to_db: bool=True,
-                   ref: float=1.0,
-                   amin: float=1e-10,
-                   top_db: Optional[float]=None) -> np.ndarray:
+                   sr: int = 16000,
+                   window_size: int = 512,
+                   hop_length: int = 320,
+                   n_mels: int = 64,
+                   fmin: float = 50.0,
+                   fmax: Optional[float] = None,
+                   window: str = 'hann',
+                   center: bool = True,
+                   pad_mode: str = 'reflect',
+                   power: float = 2.0,
+                   to_db: bool = True,
+                   ref: float = 1.0,
+                   amin: float = 1e-10,
+                   top_db: Optional[float] = None) -> np.ndarray:
     """Compute mel-spectrogram.
 
     Args:
@@ -530,18 +534,20 @@ def melspectrogram(x: np.ndarray,
     if fmin < 0 or fmin >= fmax:
         raise ParameterError('fmin and fmax must statisfy 0<fmin<fmax')
 
-    s = stft(
-        x,
-        n_fft=window_size,
-        hop_length=hop_length,
-        win_length=window_size,
-        window=window,
-        center=center,
-        pad_mode=pad_mode)
+    s = stft(x,
+             n_fft=window_size,
+             hop_length=hop_length,
+             win_length=window_size,
+             window=window,
+             center=center,
+             pad_mode=pad_mode)
 
     spect_power = np.abs(s)**power
-    fb_matrix = compute_fbank_matrix(
-        sr=sr, n_fft=window_size, n_mels=n_mels, fmin=fmin, fmax=fmax)
+    fb_matrix = compute_fbank_matrix(sr=sr,
+                                     n_fft=window_size,
+                                     n_mels=n_mels,
+                                     fmin=fmin,
+                                     fmax=fmax)
     mel_spect = np.matmul(fb_matrix, spect_power)
     if to_db:
         return power_to_db(mel_spect, ref=ref, amin=amin, top_db=top_db)
@@ -550,13 +556,13 @@ def melspectrogram(x: np.ndarray,
 
 
 def spectrogram(x: np.ndarray,
-                sr: int=16000,
-                window_size: int=512,
-                hop_length: int=320,
-                window: str='hann',
-                center: bool=True,
-                pad_mode: str='reflect',
-                power: float=2.0) -> np.ndarray:
+                sr: int = 16000,
+                window_size: int = 512,
+                hop_length: int = 320,
+                window: str = 'hann',
+                center: bool = True,
+                pad_mode: str = 'reflect',
+                power: float = 2.0) -> np.ndarray:
     """Compute spectrogram.
 
     Args:
@@ -573,19 +579,20 @@ def spectrogram(x: np.ndarray,
         np.ndarray: The STFT spectrogram in power scale `(n_fft//2 + 1, num_frames)`.
     """
 
-    s = stft(
-        x,
-        n_fft=window_size,
-        hop_length=hop_length,
-        win_length=window_size,
-        window=window,
-        center=center,
-        pad_mode=pad_mode)
+    s = stft(x,
+             n_fft=window_size,
+             hop_length=hop_length,
+             win_length=window_size,
+             window=window,
+             center=center,
+             pad_mode=pad_mode)
 
     return np.abs(s)**power
 
 
-def mu_encode(x: np.ndarray, mu: int=255, quantized: bool=True) -> np.ndarray:
+def mu_encode(x: np.ndarray,
+              mu: int = 255,
+              quantized: bool = True) -> np.ndarray:
     """Mu-law encoding. Encode waveform based on mu-law companding. When quantized is True, the result will be converted to integer in range `[0,mu-1]`. Otherwise, the resulting waveform is in range `[-1,1]`.
 
     Args:
@@ -603,7 +610,9 @@ def mu_encode(x: np.ndarray, mu: int=255, quantized: bool=True) -> np.ndarray:
     return y
 
 
-def mu_decode(y: np.ndarray, mu: int=255, quantized: bool=True) -> np.ndarray:
+def mu_decode(y: np.ndarray,
+              mu: int = 255,
+              quantized: bool = True) -> np.ndarray:
     """Mu-law decoding. Compute the mu-law decoding given an input code. It assumes that the input `y` is in range `[0,mu-1]` when quantize is True and `[-1,1]` otherwise.
 
     Args:
@@ -633,8 +642,8 @@ def _randint(high: int) -> int:
 
 
 def depth_augment(y: np.ndarray,
-                  choices: List=['int8', 'int16'],
-                  probs: List[float]=[0.5, 0.5]) -> np.ndarray:
+                  choices: List = ['int8', 'int16'],
+                  probs: List[float] = [0.5, 0.5]) -> np.ndarray:
     """ Audio depth augmentation. Do audio depth augmentation to simulate the distortion brought by quantization.
 
     Args:
@@ -658,8 +667,8 @@ def depth_augment(y: np.ndarray,
 
 
 def adaptive_spect_augment(spect: np.ndarray,
-                           tempo_axis: int=0,
-                           level: float=0.1) -> np.ndarray:
+                           tempo_axis: int = 0,
+                           level: float = 0.1) -> np.ndarray:
     """Do adpative spectrogram augmentation. The level of the augmentation is gowern by the paramter level, ranging from 0 to 1, with 0 represents no augmentation.
 
     Args:
@@ -701,11 +710,11 @@ def adaptive_spect_augment(spect: np.ndarray,
 
 
 def spect_augment(spect: np.ndarray,
-                  tempo_axis: int=0,
-                  max_time_mask: int=3,
-                  max_freq_mask: int=3,
-                  max_time_mask_width: int=30,
-                  max_freq_mask_width: int=20) -> np.ndarray:
+                  tempo_axis: int = 0,
+                  max_time_mask: int = 3,
+                  max_freq_mask: int = 3,
+                  max_time_mask_width: int = 30,
+                  max_freq_mask_width: int = 20) -> np.ndarray:
     """Do spectrogram augmentation in both time and freq axis.
 
     Args:
@@ -766,8 +775,9 @@ def random_crop1d(y: np.ndarray, crop_len: int) -> np.ndarray:
     return y[idx:idx + crop_len]
 
 
-def random_crop2d(s: np.ndarray, crop_len: int,
-                  tempo_axis: int=0) -> np.ndarray:
+def random_crop2d(s: np.ndarray,
+                  crop_len: int,
+                  tempo_axis: int = 0) -> np.ndarray:
     """ Random cropping on a spectrogram.
 
     Args:

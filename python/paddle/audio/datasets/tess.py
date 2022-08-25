@@ -41,8 +41,7 @@ class TESS(AudioClassificationDataset):
         {
             'url':
             'https://bj.bcebos.com/paddleaudio/datasets/TESS_Toronto_emotional_speech_set.zip',
-            'md5':
-            '1465311b24d1de704c4c63e4ccc470c7',
+            'md5': '1465311b24d1de704c4c63e4ccc470c7',
         },
     ]
     label_list = [
@@ -80,8 +79,10 @@ class TESS(AudioClassificationDataset):
         """
         assert split <= n_folds, f'The selected split should not be larger than n_fold, but got {split} > {n_folds}'
         files, labels = self._get_data(mode, seed, n_folds, split)
-        super(TESS, self).__init__(
-            files=files, labels=labels, feat_type=feat_type, **kwargs)
+        super(TESS, self).__init__(files=files,
+                                   labels=labels,
+                                   feat_type=feat_type,
+                                   **kwargs)
 
     def _get_meta_info(self, files) -> List[collections.namedtuple]:
         ret = []

@@ -63,7 +63,7 @@ class Logger(object):
         name(str) : Logger name, default is 'PaddleAudio'
     '''
 
-    def __init__(self, name: str=None):
+    def __init__(self, name: str = None):
         name = 'PaddleAudio' if not name else name
         self.name = name
         self.logger = logging.getLogger(name)
@@ -71,8 +71,8 @@ class Logger(object):
         for key, conf in log_config.items():
             logging.addLevelName(conf['level'], key)
             self.__dict__[key] = functools.partial(self.__call__, conf['level'])
-            self.__dict__[key.lower()] = functools.partial(self.__call__,
-                                                           conf['level'])
+            self.__dict__[key.lower()] = functools.partial(
+                self.__call__, conf['level'])
 
         self.format = colorlog.ColoredFormatter(
             '%(log_color)s[%(asctime)-15s] [%(levelname)8s]%(reset)s - %(message)s',
@@ -112,7 +112,7 @@ class Logger(object):
         self.handler.terminator = old_terminator
 
     @contextlib.contextmanager
-    def processing(self, msg: str, interval: float=0.1):
+    def processing(self, msg: str, interval: float = 0.1):
         '''
         Continuously print a progress bar with rotating special effects.
         Args:

@@ -58,8 +58,11 @@ def _truncate(w: Tensor, needed: bool) -> Tensor:
         return w
 
 
-def _general_gaussian(M: int, p, sig, sym: bool=True,
-                      dtype: str='float64') -> Tensor:
+def _general_gaussian(M: int,
+                      p,
+                      sig,
+                      sym: bool = True,
+                      dtype: str = 'float64') -> Tensor:
     """Compute a window with a generalized Gaussian shape.
     This function is consistent with scipy.signal.windows.general_gaussian().
     """
@@ -73,8 +76,10 @@ def _general_gaussian(M: int, p, sig, sym: bool=True,
     return _truncate(w, needs_trunc)
 
 
-def _general_cosine(M: int, a: float, sym: bool=True,
-                    dtype: str='float64') -> Tensor:
+def _general_cosine(M: int,
+                    a: float,
+                    sym: bool = True,
+                    dtype: str = 'float64') -> Tensor:
     """Compute a generic weighted sum of cosine terms window.
     This function is consistent with scipy.signal.windows.general_cosine().
     """
@@ -88,8 +93,10 @@ def _general_cosine(M: int, a: float, sym: bool=True,
     return _truncate(w, needs_trunc)
 
 
-def _general_hamming(M: int, alpha: float, sym: bool=True,
-                     dtype: str='float64') -> Tensor:
+def _general_hamming(M: int,
+                     alpha: float,
+                     sym: bool = True,
+                     dtype: str = 'float64') -> Tensor:
     """Compute a generalized Hamming window.
     This function is consistent with scipy.signal.windows.general_hamming()
     """
@@ -100,8 +107,8 @@ def _taylor(M: int,
             nbar=4,
             sll=30,
             norm=True,
-            sym: bool=True,
-            dtype: str='float64') -> Tensor:
+            sym: bool = True,
+            dtype: str = 'float64') -> Tensor:
     """Compute a Taylor window.
     The Taylor window taper function approximates the Dolph-Chebyshev window's
     constant sidelobe level for a parameterized number of near-in sidelobes.
@@ -123,15 +130,15 @@ def _taylor(M: int,
     signs[1::2] = -1
     m2 = ma * ma
     for mi in range(len(ma)):
-        numer = signs[mi] * paddle.prod(1 - m2[mi] / s2 / (A**2 + (ma - 0.5)**2
-                                                           ))
+        numer = signs[mi] * paddle.prod(1 - m2[mi] / s2 / (A**2 +
+                                                           (ma - 0.5)**2))
         if mi == 0:
             denom = 2 * paddle.prod(1 - m2[mi] / m2[mi + 1:])
         elif mi == len(ma) - 1:
             denom = 2 * paddle.prod(1 - m2[mi] / m2[:mi])
         else:
-            denom = 2 * paddle.prod(1 - m2[mi] / m2[:mi]) * paddle.prod(1 - m2[
-                mi] / m2[mi + 1:])
+            denom = 2 * paddle.prod(1 - m2[mi] / m2[:mi]) * paddle.prod(
+                1 - m2[mi] / m2[mi + 1:])
 
         Fm[mi] = numer / denom
 
@@ -150,7 +157,7 @@ def _taylor(M: int,
     return _truncate(w, needs_trunc)
 
 
-def _hamming(M: int, sym: bool=True, dtype: str='float64') -> Tensor:
+def _hamming(M: int, sym: bool = True, dtype: str = 'float64') -> Tensor:
     """Compute a Hamming window.
     The Hamming window is a taper formed by using a raised cosine with
     non-zero endpoints, optimized to minimize the nearest side lobe.
@@ -158,7 +165,7 @@ def _hamming(M: int, sym: bool=True, dtype: str='float64') -> Tensor:
     return _general_hamming(M, 0.54, sym, dtype=dtype)
 
 
-def _hann(M: int, sym: bool=True, dtype: str='float64') -> Tensor:
+def _hann(M: int, sym: bool = True, dtype: str = 'float64') -> Tensor:
     """Compute a Hann window.
     The Hann window is a taper formed by using a raised cosine or sine-squared
     with ends that touch zero.
@@ -166,7 +173,10 @@ def _hann(M: int, sym: bool=True, dtype: str='float64') -> Tensor:
     return _general_hamming(M, 0.5, sym, dtype=dtype)
 
 
-def _tukey(M: int, alpha=0.5, sym: bool=True, dtype: str='float64') -> Tensor:
+def _tukey(M: int,
+           alpha=0.5,
+           sym: bool = True,
+           dtype: str = 'float64') -> Tensor:
     """Compute a Tukey window.
     The Tukey window is also known as a tapered cosine window.
     """
@@ -195,16 +205,20 @@ def _tukey(M: int, alpha=0.5, sym: bool=True, dtype: str='float64') -> Tensor:
     return _truncate(w, needs_trunc)
 
 
-def _kaiser(M: int, beta: float, sym: bool=True,
-            dtype: str='float64') -> Tensor:
+def _kaiser(M: int,
+            beta: float,
+            sym: bool = True,
+            dtype: str = 'float64') -> Tensor:
     """Compute a Kaiser window.
     The Kaiser window is a taper formed by using a Bessel function.
     """
     raise NotImplementedError()
 
 
-def _gaussian(M: int, std: float, sym: bool=True,
-              dtype: str='float64') -> Tensor:
+def _gaussian(M: int,
+              std: float,
+              sym: bool = True,
+              dtype: str = 'float64') -> Tensor:
     """Compute a Gaussian window.
     The Gaussian widows has a Gaussian shape defined by the standard deviation(std).
     """
@@ -222,8 +236,8 @@ def _gaussian(M: int, std: float, sym: bool=True,
 def _exponential(M: int,
                  center=None,
                  tau=1.,
-                 sym: bool=True,
-                 dtype: str='float64') -> Tensor:
+                 sym: bool = True,
+                 dtype: str = 'float64') -> Tensor:
     """Compute an exponential (or Poisson) window. """
     if sym and center is not None:
         raise ValueError("If sym==True, center must be None.")
@@ -240,7 +254,7 @@ def _exponential(M: int,
     return _truncate(w, needs_trunc)
 
 
-def _triang(M: int, sym: bool=True, dtype: str='float64') -> Tensor:
+def _triang(M: int, sym: bool = True, dtype: str = 'float64') -> Tensor:
     """Compute a triangular window.
     """
     if _len_guards(M):
@@ -258,7 +272,7 @@ def _triang(M: int, sym: bool=True, dtype: str='float64') -> Tensor:
     return _truncate(w, needs_trunc)
 
 
-def _bohman(M: int, sym: bool=True, dtype: str='float64') -> Tensor:
+def _bohman(M: int, sym: bool = True, dtype: str = 'float64') -> Tensor:
     """Compute a Bohman window.
     The Bohman window is the autocorrelation of a cosine window.
     """
@@ -274,7 +288,7 @@ def _bohman(M: int, sym: bool=True, dtype: str='float64') -> Tensor:
     return _truncate(w, needs_trunc)
 
 
-def _blackman(M: int, sym: bool=True, dtype: str='float64') -> Tensor:
+def _blackman(M: int, sym: bool = True, dtype: str = 'float64') -> Tensor:
     """Compute a Blackman window.
     The Blackman window is a taper formed by using the first three terms of
     a summation of cosines. It was designed to have close to the minimal
@@ -284,7 +298,7 @@ def _blackman(M: int, sym: bool=True, dtype: str='float64') -> Tensor:
     return _general_cosine(M, [0.42, 0.50, 0.08], sym, dtype=dtype)
 
 
-def _cosine(M: int, sym: bool=True, dtype: str='float64') -> Tensor:
+def _cosine(M: int, sym: bool = True, dtype: str = 'float64') -> Tensor:
     """Compute a window with a simple cosine shape.
     """
     if _len_guards(M):
@@ -297,8 +311,8 @@ def _cosine(M: int, sym: bool=True, dtype: str='float64') -> Tensor:
 
 def get_window(window: Union[str, Tuple[str, float]],
                win_length: int,
-               fftbins: bool=True,
-               dtype: str='float64') -> Tensor:
+               fftbins: bool = True,
+               dtype: str = 'float64') -> Tensor:
     """Return a window of a given length and type.
 
     Args:

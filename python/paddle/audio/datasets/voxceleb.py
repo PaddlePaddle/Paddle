@@ -61,8 +61,7 @@ class VoxCeleb(Dataset):
         {
             'url':
             'https://www.robots.ox.ac.uk/~vgg/data/voxceleb/meta/veri_test2.txt',
-            'md5':
-            'b73110731c9223c1461fe49cb48dddfc',
+            'md5': 'b73110731c9223c1461fe49cb48dddfc',
         },
     ]
 
@@ -79,13 +78,13 @@ class VoxCeleb(Dataset):
 
     def __init__(
             self,
-            subset: str='train',
-            feat_type: str='raw',
-            random_chunk: bool=True,
-            chunk_duration: float=3.0,  # seconds
-            split_ratio: float=0.9,  # train split ratio
-            seed: int=0,
-            target_dir: str=None,
+            subset: str = 'train',
+            feat_type: str = 'raw',
+            random_chunk: bool = True,
+            chunk_duration: float = 3.0,  # seconds
+            split_ratio: float = 0.9,  # train split ratio
+            seed: int = 0,
+            target_dir: str = None,
             vox2_base_path=None,
             **kwargs):
         """VoxCeleb data prepare and get the specific dataset audio info
@@ -155,8 +154,9 @@ class VoxCeleb(Dataset):
         # Download meta files.
         if not os.path.isdir(self.meta_path):
             print("prepare the meta data")
-            download_and_decompress(
-                self.archieves_meta, self.meta_path, decompress=False)
+            download_and_decompress(self.archieves_meta,
+                                    self.meta_path,
+                                    decompress=False)
 
         # Data preparation.
         if not os.path.isdir(self.csv_path):
@@ -172,9 +172,8 @@ class VoxCeleb(Dataset):
                 audio_id, duration, wav, start, stop, spk_id = line.strip(
                 ).split(',')
                 data.append(
-                    self.meta_info(audio_id,
-                                   float(duration), wav,
-                                   int(start), int(stop), spk_id))
+                    self.meta_info(audio_id, float(duration), wav, int(start),
+                                   int(stop), spk_id))
 
         with open(os.path.join(self.meta_path, 'spk_id2label.txt'), 'r') as f:
             for line in f.readlines():
@@ -208,8 +207,8 @@ class VoxCeleb(Dataset):
         assert self.feat_type in feat_funcs.keys(), \
             f"Unknown feat_type: {self.feat_type}, it must be one in {list(feat_funcs.keys())}"
         feat_func = feat_funcs[self.feat_type]
-        feat = feat_func(
-            waveform, sr=sr, **self.feat_config) if feat_func else waveform
+        feat = feat_func(waveform, sr=sr, **
+                         self.feat_config) if feat_func else waveform
 
         record.update({'feat': feat})
         if self.subset in ['train',
@@ -258,25 +257,26 @@ class VoxCeleb(Dataset):
     def generate_csv(self,
                      wav_files: List[str],
                      output_file: str,
-                     split_chunks: bool=True):
+                     split_chunks: bool = True):
         print(f'Generating csv: {output_file}')
         header = ["id", "duration", "wav", "start", "stop", "spk_id"]
         # Note: this may occurs c++ execption, but the program will execute fine
-        # so we can ignore the execption 
+        # so we can ignore the execption
         with Pool(cpu_count()) as p:
             infos = list(
-                tqdm(
-                    p.imap(lambda x: self._get_audio_info(x, split_chunks),
-                           wav_files),
-                    total=len(wav_files)))
+                tqdm(p.imap(lambda x: self._get_audio_info(x, split_chunks),
+                            wav_files),
+                     total=len(wav_files)))
 
         csv_lines = []
         for info in infos:
             csv_lines.extend(info)
 
         with open(output_file, mode="w") as csv_f:
-            csv_writer = csv.writer(
-                csv_f, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            csv_writer = csv.writer(csv_f,
+                                    delimiter=",",
+                                    quotechar='"',
+                                    quoting=csv.QUOTE_MINIMAL)
             csv_writer.writerow(header)
             for line in csv_lines:
                 csv_writer.writerow(line)
@@ -306,14 +306,14 @@ class VoxCeleb(Dataset):
         speakers = set()
         print("Getting file list...")
         for path in [self.wav_path, self.vox2_base_path]:
-            # if vox2 directory is not set and vox2 is not a directory 
+            # if vox2 directory is not set and vox2 is not a directory
             # we will not process this directory
             if not path or not os.path.exists(path):
                 print(f"{path} is an invalid path, please check again, "
                       "and we will ignore the vox2 base path")
                 continue
-            for file in glob.glob(
-                    os.path.join(path, "**", "*.wav"), recursive=True):
+            for file in glob.glob(os.path.join(path, "**", "*.wav"),
+                                  recursive=True):
                 spk = file.split('/wav/')[1].split('/')[0]
                 if spk in test_spks:
                     continue
@@ -339,14 +339,12 @@ class VoxCeleb(Dataset):
         self.generate_csv(train_files, os.path.join(self.csv_path, 'train.csv'))
         self.generate_csv(dev_files, os.path.join(self.csv_path, 'dev.csv'))
 
-        self.generate_csv(
-            enroll_files,
-            os.path.join(self.csv_path, 'enroll.csv'),
-            split_chunks=False)
-        self.generate_csv(
-            test_files,
-            os.path.join(self.csv_path, 'test.csv'),
-            split_chunks=False)
+        self.generate_csv(enroll_files,
+                          os.path.join(self.csv_path, 'enroll.csv'),
+                          split_chunks=False)
+        self.generate_csv(test_files,
+                          os.path.join(self.csv_path, 'test.csv'),
+                          split_chunks=False)
 
     def __getitem__(self, idx):
         return self._convert_to_record(idx)

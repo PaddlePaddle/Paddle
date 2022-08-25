@@ -28,18 +28,17 @@ class HeySnips(AudioClassificationDataset):
 
     def __init__(self,
                  data_dir: os.PathLike,
-                 mode: str='train',
-                 feat_type: str='kaldi_fbank',
-                 sample_rate: int=16000,
+                 mode: str = 'train',
+                 feat_type: str = 'kaldi_fbank',
+                 sample_rate: int = 16000,
                  **kwargs):
         self.data_dir = data_dir
         files, labels = self._get_data(mode)
-        super(HeySnips, self).__init__(
-            files=files,
-            labels=labels,
-            feat_type=feat_type,
-            sample_rate=sample_rate,
-            **kwargs)
+        super(HeySnips, self).__init__(files=files,
+                                       labels=labels,
+                                       feat_type=feat_type,
+                                       sample_rate=sample_rate,
+                                       **kwargs)
 
     def _get_meta_info(self, mode) -> List[collections.namedtuple]:
         ret = []
