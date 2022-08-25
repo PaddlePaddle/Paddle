@@ -236,23 +236,43 @@ class OpConverter {
       framework::OpDesc op_desc(op, nullptr);
       framework::Variable* X_v = nullptr;
       std::string X_name;
+
+      std::vector<std::string> black_op{
+          "conv2d",
+          "conv2d_fusion",
+          "conv2d_transpose",
+          "depthwise_conv2d",
+          "depthwise_conv2d_transpose",
+          "conv3d",
+          "conv3d_transpose",
+          "fc",
+      };
+
+      std::vector<std::string> black_name{"Filter", "Bias", "W"};
+
       // inputs : string -> std::vector<string>
       auto inputs = op_desc.Inputs();
-      if (inputs.count("X")) {
-        X_name = op_desc.Input("X")[0];
-      } else if (inputs.count("Input")) {
-        X_name = op_desc.Input("Input")[0];
-      } else if (inputs.count("Y")) {
-        X_name = op_desc.Input("Y")[0];
-      }
-      X_v = scope.FindVar(X_name);
-      // If this weight is shared between ops, it needn't to be convtered to
-      // itensor once again
-      if (engine->GetITensorMap()->count(X_name)) {
-        continue;
-      }
-      if (X_v) {
-        ConvertWeight2ITensor(scope, X_name);
+      for (auto iter : inputs) {
+        for (auto name : iter.second) {
+          X_name = name;
+          X_v = scope.FindVar(X_name);
+
+          // Not need convert this to Itensor, it is used as nvinfer1::Weights
+          if ((std::find(black_op.begin(), black_op.end(), op.type()) !=
+               black_op.end()) &&
+              (std::find(black_name.begin(), black_name.end(), iter.first) !=
+               black_name.end()))
+            continue;
+
+          // If this weight is shared between ops, it needn't to be convtered to
+          // itensor once again
+          if (engine->GetITensorMap()->count(X_name)) {
+            continue;
+          }
+          if (X_v) {
+            ConvertWeight2ITensor(scope, X_name);
+          }
+        }
       }
     }
     for (int i = 0; i < block.ops_size(); i++) {
