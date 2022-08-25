@@ -267,7 +267,7 @@ class ClipGradByValue(ClipGradBase):
             if getattr(p, 'need_clip', True) is False:
                 params_and_grads.append((p, g))
                 continue
-            new_grad = layers.clip(x=g, min=self.min, max=self.max)
+            new_grad = paddle.clip(x=g, min=self.min, max=self.max)
             params_and_grads.append((p, new_grad))
         return params_and_grads
 

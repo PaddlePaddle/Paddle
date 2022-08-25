@@ -53,7 +53,7 @@ wmic process where name="cl.exe" call terminate 2>NUL
 wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 
-rem ------initialize common variable------
+rem variable to control building process
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
 if not defined WITH_TENSORRT set WITH_TENSORRT=ON
 if not defined TENSORRT_ROOT set TENSORRT_ROOT=D:/TensorRT
@@ -67,10 +67,15 @@ if not defined ON_INFER set ON_INFER=ON
 if not defined WITH_ONNXRUNTIME set WITH_ONNXRUNTIME=OFF
 if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
 if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
+if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
+if not defined NEW_RELEASE_ALL set NEW_RELEASE_ALL=ON
+if not defined NEW_RELEASE_PYPI set NEW_RELEASE_PYPI=OFF
+if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
+
+rem variable to control pipeline process
 if not defined WITH_TPCACHE set WITH_TPCACHE=OFF
 if not defined WITH_CACHE set WITH_CACHE=OFF
 if not defined WITH_SCCACHE set WITH_SCCACHE=OFF
-if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
 if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
@@ -78,9 +83,7 @@ if not defined NIGHTLY_MODE set NIGHTLY_MODE=OFF
 if not defined retry_times set retry_times=1
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 if not defined BUILD_DIR set BUILD_DIR=build
-if not defined NEW_RELEASE_ALL set NEW_RELEASE_ALL=ON
-if not defined NEW_RELEASE_PYPI set NEW_RELEASE_PYPI=OFF
-if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
+if not defined TEST_INFERENCE set TEST_INFERENCE=ON
 
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
@@ -308,9 +311,9 @@ if %errorlevel% NEQ 0 exit /b 1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :test_inference
+if "%TEST_INFERENCE%"=="ON" call :test_inference
 if %errorlevel% NEQ 0 set error_code=%errorlevel%
-call :test_inference_ut
+if "%TEST_INFERENCE%"=="ON" call :test_inference_ut
 if %errorlevel% NEQ 0 set error_code=%errorlevel%
 
 call :zip_cc_file || goto zip_cc_file_error

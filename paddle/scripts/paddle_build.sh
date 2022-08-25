@@ -1041,6 +1041,10 @@ function generate_api_spec() {
     op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_TYPE_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/check_op_register_type.py > $op_type_path
 
+    # used to log op_register data_type
+    op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_KERNEL_DTYPE_${spec_kind}.spec
+    python ${PADDLE_ROOT}/tools/check_op_kernel_same_dtypes.py > $op_type_path
+
     # print all ops desc in dict to op_desc_path
     op_desc_path=${PADDLE_ROOT}/paddle/fluid/OP_DESC_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_op_desc.py > $op_desc_path

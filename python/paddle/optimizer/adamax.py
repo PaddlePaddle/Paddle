@@ -17,6 +17,7 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable, name_scope
 from paddle import _C_ops
+from ..fluid.dygraph import no_grad
 
 __all__ = []
 
@@ -190,7 +191,12 @@ class Adamax(Optimizer):
         beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                               param_and_grad[0])
 
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
+            _C_ops.final_state_adamax_(param_and_grad[0], param_and_grad[1],
+                                       self._create_param_lr(param_and_grad),
+                                       moment, inf_norm, beta1_pow_acc,
+                                       self._beta1, self._beta2, self._epsilon)
+        elif framework._in_legacy_dygraph():
             _C_ops.adamax(param_and_grad[0], param_and_grad[1],
                           self._create_param_lr(param_and_grad), moment,
                           inf_norm, beta1_pow_acc, param_and_grad[0], moment,
@@ -230,6 +236,14 @@ class Adamax(Optimizer):
             for param, grad in parameters_and_grads:
                 if grad is None or param.stop_gradient is True:
                     continue
+                if framework.in_dygraph_mode():
+                    beta1_pow_acc = self._get_accumulator(
+                        self._beta1_pow_acc_str, param)
+                    with no_grad():
+                        tmp = _C_ops.final_state_scale(beta1_pow_acc,
+                                                       self._beta1, 0.0, True)
+                        beta1_pow_acc.copy_(tmp, False)
+                    continue
                 with param.block.program._optimized_guard(
                     [param, grad]), name_scope('adamax'):
                     beta1_pow_acc = self._get_accumulator(
@@ -243,6 +257,17 @@ class Adamax(Optimizer):
             for param, grad in parameters_and_grads['params']:
                 if grad is None or param.stop_gradient is True:
                     continue
+                if framework.in_dygraph_mode():
+                    beta1_pow_acc = self._get_accumulator(
+                        self._beta1_pow_acc_str, param)
+                    self._beta1 = parameters_and_grads.get(
+                        'beta1', self._default_dict['beta1'])
+                    with no_grad():
+                        tmp = _C_ops.final_state_scale(beta1_pow_acc,
+                                                       self._beta1, 0.0, True)
+                        beta1_pow_acc.copy_(tmp, False)
+                    continue
+
                 with param.block.program._optimized_guard(
                     [param, grad]), name_scope('adamax'):
                     beta1_pow_acc = self._get_accumulator(

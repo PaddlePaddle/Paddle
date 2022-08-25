@@ -405,6 +405,15 @@ void CumInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void CumScalarAxisInferMeta(const MetaTensor& x,
+                            const Scalar& axis,
+                            bool flatten,
+                            bool exclusive,
+                            bool reverse,
+                            MetaTensor* out) {
+  CumInferMeta(x, axis.to<int>(), flatten, exclusive, reverse, out);
+}
+
 void CropTensorInferMeta(const MetaTensor& x,
                          const IntArray& shape,
                          const IntArray& offsets,
@@ -3872,6 +3881,7 @@ void UnfoldInferMeta(const MetaTensor& x,
                                                 paddings[1],
                                                 paddings[3],
                                                 strides[1]);
+  int output_col_length = output_height * output_width;
   if (config.is_runtime) {
     // only check output height and width in runtime
     PADDLE_ENFORCE_GT(
@@ -3910,8 +3920,10 @@ void UnfoldInferMeta(const MetaTensor& x,
             dilations[1],
             output_height,
             output_width));
+  } else {
+    output_col_length =
+        output_height == -1 || output_width == -1 ? -1 : output_col_length;
   }
-  int output_col_length = output_height * output_width;
   out_dims.push_back(output_col_length);
   out->set_dims(phi::make_ddim(out_dims));
 }
