@@ -1246,6 +1246,7 @@
     func : IncrementInferMeta
   kernel :
     func : increment
+  inplace : (x -> out)
 
 - api : index_sample
   args : (Tensor x, Tensor index)
