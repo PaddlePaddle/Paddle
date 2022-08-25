@@ -18,8 +18,25 @@ import unittest
 import numpy as np
 from op_test import OpTest
 from paddle.fluid import core
+import paddle
 
 alignment = 256
+
+
+def coalesce_tensor_eager_api(Input,
+                              dtype,
+                              copy_data=False,
+                              set_constant=False,
+                              persist_output=False,
+                              constant=0.0,
+                              use_align=True,
+                              align_size=-1,
+                              user_defined_size_of_dtype=-1,
+                              concated_shapes=[],
+                              concated_ranks=[]):
+    return paddle._C_ops.final_state_coalesce_tensor(
+        Input, copy_data, set_constant, persist_output, constant, use_align,
+        align_size, user_defined_size_of_dtype, concated_shapes, concated_ranks)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -27,6 +44,7 @@ alignment = 256
 class TestAllocContinuousSpace(OpTest):
 
     def setUp(self):
+        self.python_api = coalesce_tensor_eager_api
         self.op_type = "coalesce_tensor"
         self.dtype, self.fluid_dtype = self.init_dtype()
         attrs = self.init_attr()
@@ -83,7 +101,8 @@ class TestAllocContinuousSpace(OpTest):
     def test_check_output(self):
         self.check_output_with_place(place=core.CUDAPlace(0),
                                      no_check_set=["FusedOutput"],
-                                     atol=1e-5)
+                                     atol=1e-5,
+                                     check_eager=True)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -102,7 +121,8 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
     def test_check_output(self):
         self.check_output_with_place(place=core.CUDAPlace(0),
                                      no_check_set=["FusedOutput"],
-                                     atol=1e-5)
+                                     atol=1e-5,
+                                     check_eager=True)
 
 
 if __name__ == '__main__':
