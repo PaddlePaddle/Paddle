@@ -16,7 +16,7 @@ from .fs import LocalFS  # noqa: F401
 from .fs import HDFSClient  # noqa: F401
 from .ps_util import DistributedInfer  # noqa: F401
 from paddle.distributed import fleet
-from ..recompute.recompute import recompute, recompute_sequential  # noqa: F401
+import paddle.utils.deprecated as deprecated
 
 from . import log_util  # noqa: F401
 from . import hybrid_parallel_util  # noqa: F401
@@ -25,3 +25,21 @@ __all__ = [  #noqa
     "LocalFS", "recompute", "recompute_sequential", "DistributedInfer",
     "HDFSClient"
 ]
+
+
+@deprecated(
+    since="2.4.0",
+    update_to="paddle.distributed.fleet.recompute_sequential",
+    level=1,
+    reason="Please use new recompute_sequential API(fleet.recompute_sequential) "
+)
+def recompute_sequential(functions, segments, input, **kwargs):
+    return fleet.recompute_sequential(functions, segments, input, **kwargs)
+
+
+@deprecated(since="2.4.0",
+            update_to="paddle.distributed.fleet.recompute",
+            level=1,
+            reason="Please use new recompute API(fleet.recompute) ")
+def recompute(function, *args, **kwargs):
+    return fleet.recompute(function, *args, **kwargs)
