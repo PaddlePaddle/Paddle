@@ -172,6 +172,11 @@ class PipelineLayerChunk(Layer):
 
     def __init__(self):
         super(PipelineLayerChunk, self).__init__()
+        self.functions = []
+
+    def append(self, sublayer):
+        self.add_sublayer(str(len(self.functions)), sublayer)
+        self.functions.append(sublayer)
 
 
 class PipelineLayer(Layer):
@@ -252,23 +257,22 @@ class PipelineLayer(Layer):
             # interleaving pipeline segmentation
             self._start_poss = []
             self._end_poss = []
-            self._model_chunks = []  # list of PipelineLayerChunk
-            # TODO: add the model chunks to sub layer
             self._segment_network_for_interleave(seg_method)
+            self._model_chunks = []  # list of PipelineLayerChunk
+            self._build_layer_with_interleave()
         else:
             # 1f1b pipeline segmentation
             self._start_pos = 0
             self._end_pos = self._num_layers - 1
             self._segment_network(seg_method)
-            self.shared_layers = paddle.nn.LayerDict()
-            self.shared_weight_attrs = {}
-
             # construct layer
             self.run_function = []
             self._build_layer()
 
-            self.shared_comm = self._construct_shared_comm()
-            self._synchronize_shared_weights()
+        self.shared_layers = paddle.nn.LayerDict()
+        self.shared_weight_attrs = {}
+        self.shared_comm = self._construct_shared_comm()
+        self._synchronize_shared_weights()
 
     def get_stage_from_index(self, layer_idx):
         assert 0 <= layer_idx < self._num_layers, "layer_idx is out of bound"
@@ -422,14 +426,28 @@ class PipelineLayer(Layer):
             except AttributeError:
                 logger.info("loss: {}".format(self._loss_fn.__class__.__name__))
 
+    def _build_layer_with_interleave(self):
+        for i in range(len(self._start_poss)):
+            start = self._start_poss[i]
+            end = self._end_poss[i]
+            chunk = self._build_layer_impl(start, end)
+            self._model_chunks.append(chunk)
+
     def _build_layer(self):
         start = self._start_pos
         end = self._end_pos
+        self.run_function = self._build_layer_impl(start, end)
+
+    def _build_layer_impl(self, start, end):
+        run_function = self.run_function if self._num_virtual_pipeline_stages == 1 else PipelineLayerChunk(
+        )
+
         for index, layer in enumerate(self._layers_desc[start:end]):
             layer_index = start + index
             if isinstance(layer, Layer):
-                self.run_function.append(layer)
-                self.add_sublayer(str(layer_index), layer)
+                run_function.append(layer)
+                if self._num_virtual_pipeline_stages == 1:
+                    self.add_sublayer(str(layer_index), layer)
             elif isinstance(layer, SharedLayerDesc):
                 if layer.layer_name not in self.shared_layers:
                     self.shared_layers[layer.layer_name] = layer.build_layer()
@@ -440,20 +458,22 @@ class PipelineLayer(Layer):
                         setattr(param, "is_firstly_shared", True)
 
                 if layer.forward_func is None:
-                    self.run_function.append(
-                        self.shared_layers[layer.layer_name])
+                    run_function.append(self.shared_layers[layer.layer_name])
 
                 else:
-                    self.run_function.append(
+                    run_function.append(
                         partial(layer.forward_func,
                                 self.shared_layers[layer.layer_name]))
 
             elif isinstance(layer, LayerDesc):
                 model = layer.build_layer()
-                self.run_function.append(model)
-                self.add_sublayer(str(layer_index), model)
+                run_function.append(model)
+                if self._num_virtual_pipeline_stages == 1:
+                    self.add_sublayer(str(layer_index), model)
             else:
-                self.run_function.append(layer)
+                run_function.append(layer)
+
+        return run_function
 
     def forward_function(self, start, end):
 
