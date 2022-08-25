@@ -428,7 +428,7 @@ def gradient_synchronization(dist_ctx, op, act_grad_names, out_grad_names,
         rank (int): global ranks index for current process.
     """
 
-    if not dist_ctx.dist_op_context.in_backward_phase():
+    if not is_in_backward_phase(dist_ctx):
         return
 
     if is_optimize_op(op) or len(act_grad_names) == 0 or len(
@@ -451,3 +451,12 @@ def is_data_parallel_scale_op(op):
 def is_data_parallel_reduce_op(op):
     return op.type in ["c_reduce_sum", "c_allreduce_sum"] and op.desc.has_attr("op_namescope") \
             and ParallelMode.DataParallel in op.desc.attr("op_namescope")
+
+
+def is_in_backward_phase(dist_ctx):
+    # NOTE currently high-order differential in Paddle dose NOT distinguish gradient computation operators
+    # in Forward phase and operators in Backward phase (both with op_role=1), which will mislead
+    # auto parallel to add gradient synchronization for gradient computation operators in Forward phase.
+    # we use this FLAG to distinguish these two phases temporarily.
+
+    return dist_ctx.dist_op_context.in_backward_phase()

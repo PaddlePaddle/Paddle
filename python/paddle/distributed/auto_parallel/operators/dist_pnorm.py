@@ -42,29 +42,6 @@ class DistributedPNorm(DistributedOperatorImplContainer):
 register_distributed_operator_impl_container(DistributedPNorm("p_norm"))
 
 
-def _insert_fill_constant_op(block, op_role):
-    """Insert fill constant op into block at the given index."""
-    helper = LayerHelper("fill_constant", **locals())
-    with paddle.static.program_guard(block.program):
-        out = helper.create_variable_for_type_inference(dtype="int32")
-    inputs = {}
-    attrs = {'force_cpu': False}
-    attrs['str_value'] = str(int("1"))
-    attrs['value'] = int("1")
-    attrs['dtype'] = out.dtype
-    attrs['op_role'] = op_role
-    utils.get_shape_tensor_inputs(inputs=inputs,
-                                  attrs=attrs,
-                                  shape=[0],
-                                  op_type='fill_constant')
-    fill_constant_op = block.append_op(type='fill_constant',
-                                       inputs=inputs,
-                                       outputs={'Out': [out]},
-                                       attrs=attrs)
-    out.stop_gradient = True
-    return out, fill_constant_op
-
-
 # Row Parallel
 class DistributedPNormImpl(DistributedOperatorImpl):
 

@@ -897,10 +897,6 @@ class DistributedOperatorContext:
         self.varname_mapping = None
         self.rank_id = None
         # NOTE Support correct parallelism for high-order differential model.
-        # currently high-order differential in Paddle dose NOT distinguish gradient computation operators
-        # in Forward phase and operators in Backward phase (both with op_role=1), which will mislead
-        # auto parallel to add gradient synchronization for gradient computation operators in Forward phase.
-        # we use this FLAG to distinguish the two phases temporarily.
         # by default exceed_backward_init_op is False and it means we are in Forward phase; After exceed_backward_init_op = True,
         # it means we are in Backward phase.
         # And the final sulotion should be revise high-order differential logic for these two phases in future.
