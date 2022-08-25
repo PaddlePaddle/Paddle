@@ -364,10 +364,7 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
 
             if isinstance(data,
                           np.ndarray) and not dtype and data.dtype != 'object':
-                if data.dtype in [
-                        'float16', 'float32', 'float64', 'complex64',
-                        'complex128'
-                ]:
+                if data.dtype in ['float16', 'float32', 'float64']:
                     data = data.astype(paddle.get_default_dtype())
                 elif data.dtype in ['int32']:
                     data = data.astype('int64')
