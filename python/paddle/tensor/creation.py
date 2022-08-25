@@ -1976,13 +1976,13 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_triu_indices(row, col, offset, dtype,
-                                              _current_expected_place())
+        out = _C_ops.triu_indices(row, col, offset, dtype,
+                                  _current_expected_place())
         return out
 
     if _in_legacy_dygraph():
-        out = _C_ops.triu_indices('row', row, 'col', col, 'offset', offset,
-                                  "dtype", dtype)
+        out = _legacy_C_ops.triu_indices('row', row, 'col', col, 'offset',
+                                         offset, "dtype", dtype)
         return out
 
     else:
