@@ -490,17 +490,17 @@ def prelu(x, weight, data_format="NCHW", name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
+            data = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
                                [ 3.0, -4.0,  5.0, -6.0],
                                [-7.0, -8.0,  8.0,  9.0]],
                               [[ 1.0, -2.0, -3.0,  4.0],
                                [-5.0,  6.0,  7.0, -8.0],
-                               [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
-            x = paddle.to_tensor(data)
-            w = paddle.to_tensor(np.array([0.25]).astype('float32'))
-            out = F.prelu(x, w)
+                               [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
+
+            w = paddle.to_tensor([0.25], dtype='float32')
+            out = F.prelu(data, w)
+            out
             # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
             #    [ 3.  , -1.  ,  5.  , -1.5 ],
             #    [-1.75, -2.  ,  8.  ,  9.  ]],
