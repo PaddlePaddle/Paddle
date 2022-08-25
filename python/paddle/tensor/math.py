@@ -4476,7 +4476,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         if x.dtype == paddle.bool:
             return _C_ops.logical_xor(input_back, input_front)
         else:
-            return _C_ops.final_state_subtract(input_back, input_front)
+            return _C_ops.subtract(input_back, input_front)
     elif _in_legacy_dygraph():
         has_pend = False
         input_list = []

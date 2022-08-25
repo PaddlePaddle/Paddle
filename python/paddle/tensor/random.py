@@ -115,7 +115,7 @@ def poisson(x, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_poisson(x)
+        return _C_ops.poisson(x)
 
     if paddle.in_dynamic_mode():
         return _legacy_C_ops.poisson(x)

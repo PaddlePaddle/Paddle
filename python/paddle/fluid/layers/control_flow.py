@@ -1555,7 +1555,7 @@ def increment(x, value=1.0, in_place=True):
           fluid.layers.increment(counter) # [1.]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_increment_(x, value)
+        return _C_ops.increment_(x, value)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'increment')
@@ -1978,7 +1978,7 @@ def equal(x, y, cond=None, name=None):
     """
     if in_dygraph_mode():
         default_axis = -1
-        return _C_ops.final_state_equal(x, y, default_axis)
+        return _C_ops.equal(x, y, default_axis)
 
     check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
                              "equal")
