@@ -329,8 +329,7 @@ def concat(input, axis=0, name=None):
             axis = axis.item(0)
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
-        out = _varbase_creator()
-        _C_ops.concat(input, out, 'axis', axis)
+        out = _C_ops.final_state_concat(input, axis)
         return out
 
     if _in_legacy_dygraph():
@@ -1280,7 +1279,7 @@ def reverse(x, axis):
     check_variable_and_dtype(x, 'x',
                              ('float32', 'float64', 'int32', 'int64', 'uint8'),
                              'reverse')
-    check_type(axis, 'axis', (int, tuple, list), 'reverse')
+    check_type(axis, 'axis', (int, tuple, list, Variable), 'reverse')
     if isinstance(axis, int):
         axis = [axis]
     if in_dygraph_mode():
