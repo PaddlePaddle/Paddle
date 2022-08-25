@@ -1915,3 +1915,88 @@ def tril_indices(row, col, offset=0, dtype='int64'):
                              'dtype': dtype
                          })
     return out
+
+
+def triu_indices(row, col=None, offset=0, dtype='int64'):
+    """
+    Return the indices of the upper triangular part of the 2-D matrix
+    whose row and col is known. Indices are ordered based on row and then columns.
+    The upper triangular part of the matrix is defined as the elements on
+    and above the diagonal.
+
+    Args:
+        row (int): The input x which is a int number describe the number of row of the matrix.
+        col (int, optional): The input x which is a int number describe the number of col of the matrix.
+            default value for col is None, then it will be set equal to row, indicting a square matix.
+        offset (int, optional): The offset to consider, default value is 0.
+
+            - If offset = 0, all elements on and above the main diagonal are retained.
+            - If offset > 0, include just as few diagonals above the main diagonal.
+            - If offset < 0, excludes just as few diagonals below the main diagonal.
+
+        dtype (str|np.dtype|paddle.dtype, optional): the data type of the output tensor,
+            can be int32, int64, default value is int64.
+    Returns:
+        Tensor: Results of the indices of upper triangular part of a row * col matrix,
+        where the first row contains row coordinates of and the second row contains column coordinates.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            # example 1, default offset value
+            data1 = paddle.triu_indices(4,4,0)
+            print(data1)
+            # [[0, 0, 0, 0, 1, 1, 1, 2, 2, 3],
+            #  [0, 1, 2, 3, 1, 2, 3, 2, 3, 3]]
+            # example 2, positive offset value
+            data2 = paddle.triu_indices(4,4,2)
+            print(data2)
+            # [[0, 0, 1],
+            #  [2, 3, 3]]
+            # example 3, negative offset value
+            data3 = paddle.triu_indices(4,4,-1)
+            print(data3)
+            # [[0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3],
+            #  [0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 2, 3]]
+    """
+    if not isinstance(row, int) or row < 0:
+        raise TypeError("row should be a non-negative int")
+
+    if col is not None:
+        if not isinstance(col, int) or col < 0:
+            raise TypeError("col should be a non-negative int")
+    else:
+        col = row
+
+    if not isinstance(offset, int):
+        raise TypeError("offset should be a int")
+
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dygraph_mode():
+        out = _C_ops.final_state_triu_indices(row, col, offset, dtype,
+                                              _current_expected_place())
+        return out
+
+    if _in_legacy_dygraph():
+        out = _C_ops.triu_indices('row', row, 'col', col, 'offset', offset,
+                                  "dtype", dtype)
+        return out
+
+    else:
+        helper = LayerHelper("triu_indices", **locals())
+
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+
+        helper.append_op(type='triu_indices',
+                         inputs={},
+                         outputs={'out': [out]},
+                         attrs={
+                             'row': row,
+                             'col': col,
+                             'offset': offset,
+                             'dtype': dtype
+                         })
+    return out

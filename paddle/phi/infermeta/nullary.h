@@ -74,4 +74,7 @@ void UniformRandomInferMeta(const IntArray& shape,
 
 void TrilIndicesInferMeta(
     int rows, int cols, int offset, DataType dtype, MetaTensor* out);
+
+void TriuIndicesInferMeta(
+    int row, int col, int offset, DataType dtype, MetaTensor* out);
 }  // namespace phi
