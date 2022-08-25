@@ -22,7 +22,7 @@ from paddle import _C_ops
 __all__ = []
 
 
-def graph_reindex(x,
+def reindex_graph(x,
                   neighbors,
                   count,
                   value_buffer=None,
@@ -30,7 +30,7 @@ def graph_reindex(x,
                   has_buffer_hashtable=False,
                   name=None):
     """
-    Graph Reindex API.
+    Reindex Graph API.
 
     This API is mainly used in Graph Learning domain, which should be used
     in conjunction with `graph_sample_neighbors` API. And the main purpose
@@ -41,7 +41,7 @@ def graph_reindex(x,
         The number in x should be unique, otherwise it would cause potential errors.
     We will reindex all the nodes from 0. 
 
-    Take input nodes x = [0, 1, 2] as an example. 
+    Take input nodes x = [0, 1, 2] as an example.
     If we have neighbors = [8, 9, 0, 4, 7, 6, 7], and count = [2, 3, 2], 
     then we know that the neighbors of 0 is [8, 9], the neighbors of 1
     is [0, 4, 7], and the neighbors of 2 is [6, 7]. 
@@ -89,7 +89,7 @@ def graph_reindex(x,
         count = paddle.to_tensor(count, dtype="int32")
 
         reindex_src, reindex_dst, out_nodes = \
-             paddle.geometric.graph_reindex(x, neighbors, count)
+             paddle.geometric.reindex_graph(x, neighbors, count)
         # reindex_src: [3, 4, 0, 5, 6, 7, 6]
         # reindex_dst: [0, 0, 1, 1, 1, 2, 2]
         # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6]
@@ -117,7 +117,7 @@ def graph_reindex(x,
         check_variable_and_dtype(index_buffer, "HashTable_Index", ("int32"),
                                  "graph_reindex")
 
-    helper = LayerHelper("graph_reindex", **locals())
+    helper = LayerHelper("reindex_graph", **locals())
     reindex_src = helper.create_variable_for_type_inference(dtype=x.dtype)
     reindex_dst = helper.create_variable_for_type_inference(dtype=x.dtype)
     out_nodes = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -143,7 +143,7 @@ def graph_reindex(x,
     return reindex_src, reindex_dst, out_nodes
 
 
-def heter_graph_reindex(x,
+def reindex_heter_graph(x,
                         neighbors,
                         count,
                         value_buffer=None,
@@ -151,7 +151,7 @@ def heter_graph_reindex(x,
                         has_buffer_hashtable=False,
                         name=None):
     """
-    HeterGraph Reindex API.
+    Reindex HeterGraph API.
 
     This API is mainly used in Graph Learning domain, which should be used
     in conjunction with `graph_sample_neighbors` API. And the main purpose
@@ -160,7 +160,7 @@ def heter_graph_reindex(x,
 
     **Notes**:
         The number in x should be unique, otherwise it would cause potential errors.
-    We support multi-edge-types neighbors reindexing in heter_graph_reindex api. 
+    We support multi-edge-types neighbors reindexing in reindex_heter_graph api. 
     We will reindex all the nodes from 0.
 
     Take input nodes x = [0, 1, 2] as an example.
@@ -219,7 +219,7 @@ def heter_graph_reindex(x,
         neighbors = [neighbors_a, neighbors_b]
         count = [count_a, count_b]
         reindex_src, reindex_dst, out_nodes = \
-             paddle.geometric.heter_graph_reindex(x, neighbors, count)
+             paddle.geometric.reindex_heter_graph(x, neighbors, count)
         # reindex_src: [3, 4, 0, 5, 6, 7, 6, 0, 2, 8, 9, 1]
         # reindex_dst: [0, 0, 1, 1, 1, 2, 2, 0, 1, 1, 1, 2]
         # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5]
@@ -258,7 +258,7 @@ def heter_graph_reindex(x,
         check_variable_and_dtype(index_buffer, "HashTable_Index", ("int32"),
                                  "graph_reindex")
 
-    helper = LayerHelper("heter_graph_reindex", **locals())
+    helper = LayerHelper("reindex_heter_graph", **locals())
     reindex_src = helper.create_variable_for_type_inference(dtype=x.dtype)
     reindex_dst = helper.create_variable_for_type_inference(dtype=x.dtype)
     out_nodes = helper.create_variable_for_type_inference(dtype=x.dtype)

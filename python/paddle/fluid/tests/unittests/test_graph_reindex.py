@@ -213,13 +213,13 @@ class TestGeometricGraphReindex(unittest.TestCase):
         index_buffer = paddle.full([self.num_nodes], -1, dtype="int32")
 
         reindex_src, reindex_dst, out_nodes = \
-            paddle.geometric.graph_reindex(x, neighbors, count)
+            paddle.geometric.reindex_graph(x, neighbors, count)
         np.testing.assert_allclose(self.reindex_src, reindex_src, rtol=1e-05)
         np.testing.assert_allclose(self.reindex_dst, reindex_dst, rtol=1e-05)
         np.testing.assert_allclose(self.out_nodes, out_nodes, rtol=1e-05)
 
         reindex_src, reindex_dst, out_nodes = \
-            paddle.geometric.graph_reindex(x, neighbors, count,
+            paddle.geometric.reindex_graph(x, neighbors, count,
                                           value_buffer, index_buffer,
                                           has_buffer_hashtable=True)
         np.testing.assert_allclose(self.reindex_src, reindex_src, rtol=1e-05)
@@ -235,7 +235,7 @@ class TestGeometricGraphReindex(unittest.TestCase):
         count = paddle.concat([count, count])
 
         reindex_src, reindex_dst, out_nodes = \
-            paddle.geometric.graph_reindex(x, neighbors, count)
+            paddle.geometric.reindex_graph(x, neighbors, count)
         np.testing.assert_allclose(self.reindex_src,
                                    reindex_src[:self.neighbors.shape[0]],
                                    rtol=1e-05)
@@ -276,7 +276,7 @@ class TestGeometricGraphReindex(unittest.TestCase):
         reindex_dst = np.array(reindex_dst, dtype="int64")
 
         reindex_src_, reindex_dst_, out_nodes_ = \
-            paddle.geometric.graph_reindex(paddle.to_tensor(x),
+            paddle.geometric.reindex_graph(paddle.to_tensor(x),
                                           paddle.to_tensor(neighbors),
                                           paddle.to_tensor(counts))
         np.testing.assert_allclose(reindex_src, reindex_src_, rtol=1e-05)
@@ -311,7 +311,7 @@ class TestGeometricGraphReindex(unittest.TestCase):
         neighbors = [paddle.to_tensor(neighbors1), paddle.to_tensor(neighbors2)]
         count = [paddle.to_tensor(count1), paddle.to_tensor(count2)]
         reindex_src_, reindex_dst_, out_nodes_ = \
-            paddle.geometric.heter_graph_reindex(paddle.to_tensor(x),
+            paddle.geometric.reindex_heter_graph(paddle.to_tensor(x),
                                                  neighbors, count)
         np.testing.assert_allclose(reindex_src, reindex_src_, rtol=1e-05)
         np.testing.assert_allclose(reindex_dst, reindex_dst_, rtol=1e-05)
@@ -337,9 +337,9 @@ class TestGeometricGraphReindex(unittest.TestCase):
                                               dtype="int32")
 
             reindex_src_1, reindex_dst_1, out_nodes_1 = \
-                paddle.geometric.graph_reindex(x, neighbors, count)
+                paddle.geometric.reindex_graph(x, neighbors, count)
             reindex_src_2, reindex_dst_2, out_nodes_2 = \
-                paddle.geometric.graph_reindex(x, neighbors, count,
+                paddle.geometric.reindex_graph(x, neighbors, count,
                                               value_buffer, index_buffer,
                                               has_buffer_hashtable=True)
 
@@ -420,11 +420,11 @@ class TestGeometricGraphReindex(unittest.TestCase):
                                               dtype="int32")
 
             reindex_src_1, reindex_dst_1, out_nodes_1 = \
-                paddle.geometric.heter_graph_reindex(x,
+                paddle.geometric.reindex_heter_graph(x,
                                                      [neighbors1, neighbors2],
                                                      [count1, count2])
             reindex_src_2, reindex_dst_2, out_nodes_2 = \
-                paddle.geometric.heter_graph_reindex(x,
+                paddle.geometric.reindex_heter_graph(x,
                                                      [neighbors1, neighbors2],
                                                      [count1, count2],
                                                      value_buffer, index_buffer,

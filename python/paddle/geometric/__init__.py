@@ -19,8 +19,8 @@ from .math import segment_sum  # noqa: F401
 from .math import segment_mean  # noqa: F401
 from .math import segment_min  # noqa: F401
 from .math import segment_max  # noqa: F401
-from .sampling import graph_reindex  # noqa: F401
-from .sampling import heter_graph_reindex  # noqa: F401
+from .reindex import reindex_graph  # noqa: F401
+from .reindex import reindex_heter_graph  # noqa: F401
 from .sampling import sample_neighbors  # noqa: F401
 
 __all__ = [
@@ -31,7 +31,7 @@ __all__ = [
     'segment_mean',
     'segment_min',
     'segment_max',
-    'graph_reindex',
-    'heter_graph_reindex',
+    'reindex_graph',
+    'reindex_heter_graph',
     'sample_neighbors',
 ]

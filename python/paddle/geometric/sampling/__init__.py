@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .graph_reindex import graph_reindex  # noqa: F401
-from .graph_reindex import heter_graph_reindex  # noqa: F401
 from .neighbors import sample_neighbors  # noqa: F401
 
 __all__ = [
-    'graph_reindex',
-    'heter_graph_reindex',
     'sample_neighbors',
 ]
