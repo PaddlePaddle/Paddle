@@ -160,6 +160,18 @@ nvinfer1::DataType LayerNormPluginDynamic::getOutputDataType(
   return input_types[0];
 }
 
+// TODO wangbojun for debug
+template<typename T>
+__global__ void print_float(const T *src, int start_index, int end_index, int numPerRow=49, int stride=1){
+  printf("start print float \r\n");
+  for (int i=start_index;i<end_index;i+=stride){
+    printf("%f, ",static_cast<double>(src[i]));
+    if((i-start_index)/stride%numPerRow==numPerRow-1){
+      printf("\r\n");
+    }
+  }
+}
+
 int LayerNormPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc,
@@ -215,28 +227,45 @@ int LayerNormPluginDynamic::enqueue(
     VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp32";
     const float *input = reinterpret_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
-    scale_t.Resize(phi::make_ddim({feature_size}));
-    bias_t.Resize(phi::make_ddim({feature_size}));
-    mean_t.Resize(phi::make_ddim({batched_mean_shape}));
-    variance_t.Resize(phi::make_ddim({batched_variance_shape}));
+    // scale_t.Resize(phi::make_ddim({feature_size}));
+    // bias_t.Resize(phi::make_ddim({feature_size}));
+    mean_t.Resize(phi::make_ddim(mean_shape_));
+    variance_t.Resize(phi::make_ddim(variance_shape_));
 
-    float *scale_d =
-        scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
-    float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    // float *scale_d =
+    //     scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    // float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float * scale_d = reinterpret_cast<float *>(scale_d_init_);
+    float * bias_d = reinterpret_cast<float *>(bias_d_init_);
+
+    // printf("@@@ scale_d address : %X - %X , bias_d address :%X - %X \r\n",
+    //         scale_d,scale_d+feature_size,bias_d,bias_d+feature_size);
+    // printf("@@@ scale data \r\n");
+    // cudaDeviceSynchronize();
+    // print_float<<<1,1>>>(scale_d,0,5);
+    // cudaDeviceSynchronize();
+    // printf("\r\n");
+    // printf("@@@ bias data \r\n");
+
+    // cudaDeviceSynchronize();
+    // print_float<<<1,1>>>(bias_d,0,5);
+    // cudaDeviceSynchronize();
+    // printf("\r\n");
+
     float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
     float *variance_d =
         variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
 
-    cudaMemcpyAsync(scale_d,
-                    scale_.data(),
-                    sizeof(float) * feature_size,
-                    cudaMemcpyHostToDevice,
-                    stream);
-    cudaMemcpyAsync(bias_d,
-                    bias_.data(),
-                    sizeof(float) * feature_size,
-                    cudaMemcpyHostToDevice,
-                    stream);
+    // cudaMemcpyAsync(scale_d,
+    //                 scale_.data(),
+    //                 sizeof(float) * feature_size,
+    //                 cudaMemcpyHostToDevice,
+    //                 stream);
+    // cudaMemcpyAsync(bias_d,
+    //                 bias_.data(),
+    //                 sizeof(float) * feature_size,
+    //                 cudaMemcpyHostToDevice,
+    //                 stream);
 
     phi::LayerNormDirectCUDAFunctor<float> layer_norm;
     layer_norm(stream,

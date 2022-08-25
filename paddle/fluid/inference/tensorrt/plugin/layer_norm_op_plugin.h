@@ -155,6 +155,31 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
         eps_(eps),
         mean_shape_(mean_shape),
         variance_shape_(variance_shape) {
+    // printf("@@@ in layernorm plugin call LayerNormPluginDynamic\r\n");
+    bias_.resize(bias_num);
+    scale_.resize(scale_num);
+    std::copy(bias, bias + bias_num, bias_.data());
+    std::copy(scale, scale + scale_num, scale_.data());
+  }
+  //for clone
+  LayerNormPluginDynamic(const float* bias,
+                         const int bias_num,
+                         const float* scale,
+                         const int scale_num,
+                         int begin_norm_axis,
+                         float eps,
+                         std::vector<int64_t> mean_shape,
+                         std::vector<int64_t> variance_shape,
+                         void * bias_d_init,
+                         void * scale_d_init)
+      : begin_norm_axis_(begin_norm_axis),
+        eps_(eps),
+        mean_shape_(mean_shape),
+        variance_shape_(variance_shape),
+        bias_d_init_(bias_d_init),
+        scale_d_init_(scale_d_init) {
+    // printf("@@@ in layernorm plugin call LayerNormPluginDynamic for clone \r\n");
+
     bias_.resize(bias_num);
     scale_.resize(scale_num);
     std::copy(bias, bias + bias_num, bias_.data());
@@ -168,6 +193,8 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &eps_);
     DeserializeValue(&serialData, &serialLength, &mean_shape_);
     DeserializeValue(&serialData, &serialLength, &variance_shape_);
+    DeserializeValue(&serialData, &serialLength, &bias_d_init_);
+    DeserializeValue(&serialData, &serialLength, &scale_d_init_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
     return new LayerNormPluginDynamic(bias_.data(),
@@ -177,14 +204,46 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
                                       begin_norm_axis_,
                                       eps_,
                                       mean_shape_,
-                                      variance_shape_);
+                                      variance_shape_,
+                                      bias_d_init_,
+                                      scale_d_init_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
     return "layernorm_plugin_dynamic";
   }
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
-  int initialize() TRT_NOEXCEPT override { return 0; }
+  int initialize() TRT_NOEXCEPT override { 
+    int device_id;
+    cudaGetDevice(&device_id);
+    auto *device_ctx = static_cast<phi::GPUContext *>(
+        platform::DeviceContextPool::Instance().Get(
+            platform::CUDAPlace(device_id)));
+    const phi::GPUContext &dev_ctx = *device_ctx;
+    auto stream = dev_ctx.stream();
+    long feature_size = scale_.size();
+    scale_t.Resize({feature_size});
+    bias_t.Resize({feature_size});
+    // todo wangbojun with fp16
+    // printf("@@@ in layernorm plugin init, feature_size: %ld\r\n",
+    //       feature_size);
+    // printf("@@@ scale[0]: %f, bias[0]: %f \r\n",
+    //       scale_[0],bias_[0]);
+    scale_d_init_ = reinterpret_cast<void *>(scale_t.mutable_data<float>(platform::CUDAPlace(device_id)));
+    bias_d_init_ = reinterpret_cast<void *>(bias_t.mutable_data<float>(platform::CUDAPlace(device_id)));
+    cudaMemcpyAsync(scale_d_init_,
+                    scale_.data(),
+                    sizeof(float) * feature_size,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    cudaMemcpyAsync(bias_d_init_,
+                    bias_.data(),
+                    sizeof(float) * feature_size,
+                    cudaMemcpyHostToDevice,
+                    stream);
+
+    return 0; 
+  }
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return SerializedSize(bias_) + SerializedSize(scale_) +
@@ -248,6 +307,8 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
   float eps_;
   std::vector<int64_t> mean_shape_;
   std::vector<int64_t> variance_shape_;
+  void * bias_d_init_=nullptr;
+  void * scale_d_init_=nullptr;
 };
 
 class LayerNormPluginDynamicCreator : public TensorRTPluginCreator {
