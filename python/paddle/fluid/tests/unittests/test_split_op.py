@@ -433,7 +433,7 @@ class API_TestSplit5(unittest.TestCase):
                 input = paddle.to_tensor(input_1)
                 n = paddle.full([1], 5, dtype='int32')
                 out = paddle.split(input, [n])
-                exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                exe = paddle.static.Executor(place=place)
                 re = exe.run(fetch_list=[out])
                 re = re[0]
                 ex_out = np.split(input_1, [5])
