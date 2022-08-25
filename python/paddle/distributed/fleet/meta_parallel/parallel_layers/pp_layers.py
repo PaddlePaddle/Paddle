@@ -175,9 +175,14 @@ class PipelineLayerChunk(Layer):
         self.functions = []
 
     def append(self, sublayer):
+        # This method is used to unify codes in _build_layer_impl.
+        # For 1f1b scheduler, it will call append method of a List.
+        # For interleave scheduler, it will call append method of this class.
         if isinstance(sublayer, Layer):
             self.add_sublayer(str(len(self.functions)), sublayer)
         self.functions.append(sublayer)
+
+    # TODO (Yuang Liu) forward function implement
 
 
 class PipelineLayer(Layer):
@@ -263,7 +268,10 @@ class PipelineLayer(Layer):
             self._start_poss = []
             self._end_poss = []
             self._segment_network_for_interleave(seg_method)
-            self._model_chunks = []  # list of PipelineLayerChunk
+            # The _model_chunks is a list of PipelineLayerChunk,
+            # while PipelineLayerChunk is a list of Layers relating with one model chunk.
+            # Therefore, the _model_chunks is something like 'list of a list of layers'.
+            self._model_chunks = []
             self._build_layer_with_interleave()
         else:
             # 1f1b pipeline segmentation
@@ -279,10 +287,12 @@ class PipelineLayer(Layer):
 
     def get_stage_from_index(self, layer_idx):
         assert 0 <= layer_idx < self._num_layers, "layer_idx is out of bound"
-        for virtual_pp_offset in range(self._num_virtual_pipeline_stages):
-            start_idx = virtual_pp_offset * self._num_virtual_pipeline_stages
+        for virtual_pp_rank in range(self._num_virtual_pipeline_stages):
+            # Mapping the virtual pipeline stage to the real pipeline stage.
+            # start_idx marks the start of a new virtual pp stage.
+            start_idx = virtual_pp_rank * self._num_virtual_pipeline_stages
             for stage in range(self._num_stages):
-                # mapping the virtual pipeline stage to the real pipeline stage
+                # stage mark the real pp stage
                 if self.segment_parts[start_idx +
                                       stage] <= layer_idx < self.segment_parts[
                                           start_idx + stage + 1]:
@@ -381,6 +391,11 @@ class PipelineLayer(Layer):
 
         for i in range(self._stage_id, self._total_stages_with_virtual_stages,
                        self._num_virtual_pipeline_stages):
+            # If there are 2 real pp stages and 2 virtual pp stages, and the model has 8 layers.
+            # Layers [0, 1], [4, 5] will be assigned to the first real pp stage.
+            # Layers [2, 3], [6, 7] will be assigned to the second real pp stage.
+            # Layers [0, 1] and [2, 3] are the first virtual pp stage in each real pp stage.
+            # Layers [4, 5] and [6, 7] are the second virtual pp stage in each real pp stage.
             assert self.segment_parts[i] <= self.segment_parts[i + 1]
             self._start_poss.append(self.segment_parts[i])
             self._end_poss.append(self.segment_parts[i + 1])
@@ -434,7 +449,10 @@ class PipelineLayer(Layer):
         for i in range(len(self._start_poss)):
             start = self._start_poss[i]
             end = self._end_poss[i]
+            # Get a model chunk
             chunk = self._build_layer_impl(start, end)
+            assert isinstance(chunk, PipelineLayerChunk)
+            # Add the chunk to all chunks and add this chunk to the sublayer
             self._model_chunks.append(chunk)
             self.add_sublayer(str(start), chunk)
 
@@ -444,14 +462,18 @@ class PipelineLayer(Layer):
         self.run_function = self._build_layer_impl(start, end)
 
     def _build_layer_impl(self, start, end):
-        run_function = self.run_function if self._num_virtual_pipeline_stages == 1 else PipelineLayerChunk(
-        )
+        run_function = self.run_function
+        if self._num_virtual_pipeline_stages > 1:
+            # For interleave scheduler, all layers relating with one model chunk will be saved in PipelineLayerChunk
+            run_function = PipelineLayerChunk()
 
         for index, layer in enumerate(self._layers_desc[start:end]):
             layer_index = start + index
             if isinstance(layer, Layer):
                 run_function.append(layer)
                 if self._num_virtual_pipeline_stages == 1:
+                    # Only add sublayer for 1f1b scheduler,
+                    # for interleave, PipelineLayerChunk will do this
                     self.add_sublayer(str(layer_index), layer)
             elif isinstance(layer, SharedLayerDesc):
                 if layer.layer_name not in self.shared_layers:
@@ -474,6 +496,8 @@ class PipelineLayer(Layer):
                 model = layer.build_layer()
                 run_function.append(model)
                 if self._num_virtual_pipeline_stages == 1:
+                    # Only add sublayer for 1f1b scheduler,
+                    # for interleave, PipelineLayerChunk will do this
                     self.add_sublayer(str(layer_index), model)
             else:
                 run_function.append(layer)

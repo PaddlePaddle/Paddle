@@ -80,6 +80,7 @@ class TestPipeLayerAPI(unittest.TestCase):
                                          num_stages=self.pipeline_parallel_size,
                                          num_virtual_pipeline_stages=2)
         assert len(pipe_model.parameters()) > 0
+        dist_model = fleet.distributed_model(pipe_model)
 
 
 if __name__ == '__main__':
