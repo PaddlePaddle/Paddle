@@ -79,9 +79,6 @@ void RandpermInferMeta(int n, DataType dtype, MetaTensor* out) {
 
 void UniformRandomInferMeta(const IntArray& shape,
                             DataType dtype,
-                            float min,
-                            float max,
-                            int seed,
                             MetaTensor* out) {
   auto out_dims = phi::make_ddim(shape.GetData());
   out->set_dims(out_dims);
