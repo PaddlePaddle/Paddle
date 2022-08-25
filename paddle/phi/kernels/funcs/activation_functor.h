@@ -3381,7 +3381,7 @@ struct CudaHardSwishFunctor : public BaseActivationFunctor<T> {
     const MPType x_t = static_cast<MPType>(x);
     const MPType temp_max = std::max(x_t + static_cast<MPType>(offset), zero);
     const MPType temp_min = std::min(temp_max, static_cast<MPType>(threshold));
-    return  static_cast<T>(temp_min * x_t / static_cast<MPType>(scale));
+    return static_cast<T>(temp_min * x_t / static_cast<MPType>(scale));
   }
 };
 
@@ -3404,14 +3404,17 @@ struct CudaHardSwishGradFunctor : public BaseActivationFunctor<T> {
   //      dout * (2 * x / scale + offset / scale), otherwise
   // threshold = scale = 6, offset = 3 by default
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    const MPType dout_t =  static_cast<MPType>(dout);
+    const MPType dout_t = static_cast<MPType>(dout);
     const MPType x_t = static_cast<MPType>(x);
     const MPType offset_t = static_cast<MPType>(offset);
     const MPType scale_t = static_cast<MPType>(scale);
     const MPType temp1 = static_cast<MPType>(x_t + offset_t > zero);
-    const MPType temp2 = static_cast<MPType>(x_t + offset_t < static_cast<MPType>(threshold));
+    const MPType temp2 =
+        static_cast<MPType>(x_t + offset_t < static_cast<MPType>(threshold));
 
-    return static_cast<T>(dout_t * (temp1 * temp2 * (two * x_t + offset_t) / scale_t + one - temp2));
+    return static_cast<T>(
+        dout_t *
+        (temp1 * temp2 * (two * x_t + offset_t) / scale_t + one - temp2));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
