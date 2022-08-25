@@ -1663,8 +1663,12 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 forward_api_name,
                 forward_api_name + '_final_state_dygraph_function', 1)
             grad_function_call_str = f"""
-{indent}{autograd_api_out} api_output = {autograd_api};
-{out_assign_str}"""
+  if (trace_backward) {{            
+  {indent}{autograd_api_out} api_output = {autograd_api};
+  {out_assign_str}}} else {{
+  {indent}{autograd_api_out} api_output = paddle::experimental::{self.namespace}{self.grad_api_contents['invoke']};
+  }}
+  """
         else:
             grad_function_call_str = f"""
 {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"""
@@ -1676,7 +1680,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         # Prepare for Node Creation if Necessary
         outputs_autograd_meta_str = ""
         compute_require_next_grad_str = ""
-        if len(next_grad_node_creation_str) > 0:
+        if len(next_grad_node_creation_str) > 0 or is_invoke_forward_api:
             compute_require_next_grad_str = f"{indent}bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;\n"
 
         # 3. Get Output AutoGradMeta
