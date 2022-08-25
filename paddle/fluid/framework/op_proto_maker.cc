@@ -12,10 +12,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include <iostream>
 #include "paddle/fluid/operators/ops_extra_info.h"
-
-#include <string>
 
 #include "paddle/fluid/platform/enforce.h"
 
