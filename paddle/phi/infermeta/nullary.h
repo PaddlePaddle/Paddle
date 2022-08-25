@@ -67,9 +67,6 @@ void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
 
 void UniformRandomInferMeta(const IntArray& shape,
                             DataType dtype,
-                            float min,
-                            float max,
-                            int seed,
                             MetaTensor* out);
 
 void TrilIndicesInferMeta(

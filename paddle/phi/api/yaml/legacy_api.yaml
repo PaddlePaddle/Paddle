@@ -2754,11 +2754,11 @@
   backward : unfold_grad
 
 - api : uniform_random
-  args : (IntArray shape,  DataType dtype,  float min,  float max,  int seed, Place place={})
+  args : (IntArray shape,  DataType dtype,  Scalar min,  Scalar max,  int seed, Place place={})
   output : Tensor(out)
   infer_meta :
     func : UniformRandomInferMeta
-    param: [shape, dtype, min, max, seed]
+    param: [shape, dtype]
   kernel :
     func : uniform_random
     param: [shape, dtype, min, max, seed]
