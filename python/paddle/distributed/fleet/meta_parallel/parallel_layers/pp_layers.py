@@ -175,7 +175,8 @@ class PipelineLayerChunk(Layer):
         self.functions = []
 
     def append(self, sublayer):
-        self.add_sublayer(str(len(self.functions)), sublayer)
+        if isinstance(sublayer, Layer):
+            self.add_sublayer(str(len(self.functions)), sublayer)
         self.functions.append(sublayer)
 
 
@@ -432,6 +433,7 @@ class PipelineLayer(Layer):
             end = self._end_poss[i]
             chunk = self._build_layer_impl(start, end)
             self._model_chunks.append(chunk)
+            self.add_sublayer(str(start), chunk)
 
     def _build_layer(self):
         start = self._start_pos
@@ -487,6 +489,7 @@ class PipelineLayer(Layer):
         return execute_func
 
     def forward(self, input):
+        # TODO(Yuang Liu): forward function for interleave scheduler
         if self._recompute_interval == 0:
             input = self.forward_function(0, len(self.run_function))(input)
         else:

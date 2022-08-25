@@ -79,6 +79,7 @@ class TestPipeLayerAPI(unittest.TestCase):
         pipe_model = FakeAlexNetPipeDesc(seg_method="layer:Conv2D",
                                          num_stages=self.pipeline_parallel_size,
                                          num_virtual_pipeline_stages=2)
+        assert len(pipe_model.parameters()) > 0
 
 
 if __name__ == '__main__':
