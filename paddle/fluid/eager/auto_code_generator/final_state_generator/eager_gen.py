@@ -1675,7 +1675,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   {indent}{autograd_api_out} api_output = {autograd_api};
   {out_assign_str}}} else {{
   {indent}{autograd_api_out} api_output = paddle::experimental::{self.namespace}{self.grad_api_contents['invoke']};
-  }}
+  {out_assign_str}{indent}}}
   """
         else:
             grad_function_call_str = f"""
