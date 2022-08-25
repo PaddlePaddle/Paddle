@@ -63,7 +63,7 @@ __device__ __forceinline__ void PrintNanInfKernel(const T* value,
 
   __shared__ unsigned int nan_count, inf_count, num_count;
   if (threadIdx.x == 0) nan_count = inf_count = num_count = 0;
-  __syncthreads;
+  __syncthreads();
 
   for (size_t i = tid; i < numel; i += blockDim.x * gridDim.x) {
     unsigned int count = 0;
@@ -80,7 +80,7 @@ __device__ __forceinline__ void PrintNanInfKernel(const T* value,
              static_cast<uint64_t>(i), static_cast<float>(value[i]));
     }
   }
-  __syncthreads;
+  __syncthreads();
 
 #ifdef __HIPCC__
   if (true && hipThreadIdx_x == 0) {
@@ -91,7 +91,8 @@ __device__ __forceinline__ void PrintNanInfKernel(const T* value,
     printf("In block %d, there has %u,%u,%u nan,inf,num\n", blockIdx.x,
            nan_count, inf_count, num_count);
 #endif
-    PADDLE_ENFORCE(false, "===ERROR: in %s find nan or inf===", debug_info);
+    // PADDLE_ENFORCE(false, "===ERROR: in %s find nan or inf===", debug_info);
+    printf("===ERROR: in %s find nan or inf===", debug_info);
   }
 }
 

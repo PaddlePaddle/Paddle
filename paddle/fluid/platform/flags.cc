@@ -85,6 +85,21 @@ PADDLE_DEFINE_EXPORTED_bool(
     "(RNNs).");
 
 /**
+ * CUDA related related FLAG
+ * Name: FLAGS_gemm_use_half_precision_compute_type
+ * Since Version: 2.4
+ * Value Range: bool, default=true
+ * Example:
+ * Note: whether to use fp16 compute type when the input and output is fp16,
+ * faster but it may loss precision.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    gemm_use_half_precision_compute_type, true,
+    "Whether to use fp16 compute type when the input and output is fp16, "
+    "faster but it may loss precision in most case. If true, the compute "
+    "type will be set to fp32. Default is true.");
+
+/**
  * CUDA related FLAG
  * Name: FLAGS_selected_gpus
  * Since Version: 1.3.0

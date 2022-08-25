@@ -200,6 +200,13 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
   }
 }
 
+void SaveTensor(const platform::DeviceContext& dev_ctx, const LoDTensor& x,
+                const std::string& filename) {
+  std::ofstream fout(filename, std::ios::out | std::ios::binary);
+  SerializeToStream(fout, x, dev_ctx);
+  fout.close();
+}
+
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   try {
     VLOG(4) << place << " " << DebugStringEx(&scope);
@@ -246,6 +253,36 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     {
+      auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      auto* dev_ctx = pool.Get(place);
+      VLOG(3) << "[op_type=" << Type() << "] num inputs: " << inputs_.size()
+              << ", num outputs: " << outputs_.size();
+      std::string log_dir =
+          "/root/paddlejob/workspace/work/liuyiqun/"
+          "ernie_3.0_100b_no_distill_single_card/log/";
+      bool need_save = false;
+      if (Type() == "matmul_v2_grad") {
+        if (outputs_.find("Y@GRAD") != outputs_.end()) {
+          need_save = outputs_["Y@GRAD"].size() == 1 &&
+                      outputs_["Y@GRAD"][0] ==
+                          "server_nlg_mask_lm_out_fc_0.w_0.cast_fp16@GRAD";
+        }
+      }
+
+      if (need_save) {
+        for (auto it = inputs_.begin(); it != inputs_.end(); it++) {
+          std::string var_name = it->second[0];
+          std::string filename =
+              log_dir + std::to_string(dev_id) + "_" + var_name + ".dat";
+          VLOG(4) << "[op_type=" << Type() << "] Saving input " << it->first
+                  << " (" << var_name << ") to " << filename;
+          const LoDTensor& x = scope.FindVar(var_name)->Get<LoDTensor>();
+          SaveTensor(*dev_ctx, x, filename);
+        }
+      }
+
       // TODO(wangchaochaohu) : refine code to use only one RecordEvent)
       // in order to record different op type cost time
       // and different op name cost time,we set two event.
@@ -254,6 +291,18 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       platform::RecordEvent op_name_record_event(
           op_name, platform::EventRole::kUniqueOp);
       RunImpl(scope, place);
+
+      if (need_save) {
+        for (auto it = outputs_.begin(); it != outputs_.end(); it++) {
+          std::string var_name = it->second[0];
+          std::string filename =
+              log_dir + std::to_string(dev_id) + "_" + var_name + ".dat";
+          VLOG(4) << "[op_type=" << Type() << "] Saving output " << it->first
+                  << " (" << var_name << ") to " << filename;
+          const LoDTensor& x = scope.FindVar(var_name)->Get<LoDTensor>();
+          SaveTensor(*dev_ctx, x, filename);
+        }
+      }
     }
 
     VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope);

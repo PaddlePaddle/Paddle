@@ -20,6 +20,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 DECLARE_bool(enable_cublas_tensor_op_math);
+DECLARE_bool(gemm_use_half_precision_compute_type);
 
 namespace paddle {
 namespace operators {
@@ -261,6 +262,10 @@ struct CUBlas<platform::float16> {
     }
     VLOG(5) << "use_tensor_op_math: "
             << (use_tensor_op_math ? "True" : "False");
+    VLOG(4) << "use_half_precision_compute_type: "
+            << FLAGS_gemm_use_half_precision_compute_type
+            << ", compute_type: " << computeType;
+
 #endif  // CUDA_VERSION >= 9000
 
     dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
@@ -375,6 +380,10 @@ struct CUBlas<platform::complex<float>> {
     }
     VLOG(5) << "use_tensor_op_math: "
             << (use_tensor_op_math ? "True" : "False");
+    VLOG(4) << "use_half_precision_compute_type: "
+            << FLAGS_gemm_use_half_precision_compute_type
+            << ", compute_type: " << computeType;
+
 #endif  // CUDA_VERSION >= 9000
 
     dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
@@ -517,6 +526,10 @@ struct CUBlas<platform::complex<double>> {
     }
     VLOG(5) << "use_tensor_op_math: "
             << (use_tensor_op_math ? "True" : "False");
+    VLOG(4) << "use_half_precision_compute_type: "
+            << FLAGS_gemm_use_half_precision_compute_type
+            << ", compute_type: " << computeType;
+
 #endif  // CUDA_VERSION >= 9000
 
     dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
@@ -835,10 +848,30 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
             << (use_tensor_op_math ? "True" : "False");
 
     auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
+    cudaDataType_t compute_type = CUDA_R_32F;
+
+    float h_alpha = static_cast<float>(alpha);
+    float h_beta = static_cast<float>(beta);
+    void *a = static_cast<void *>(&h_alpha);
+    void *b = static_cast<void *>(&h_beta);
+    // set ComputeType as CUDA_R_32F for fp16, for better accuracy
+    if (FLAGS_gemm_use_half_precision_compute_type == true &&
+        std::is_same<T, paddle::platform::float16>::value) {
+      a = static_cast<void *>(&alpha);
+      b = static_cast<void *>(&beta);
+      compute_type = CUDA_R_16F;
+    }
+
+    VLOG(4) << "use_half_precision_compute_type: "
+            << FLAGS_gemm_use_half_precision_compute_type
+            << ", compute_type: " << compute_type;
+
+    // set ComputeType as CUDA_R_32F for fp16 and fp32, for better accuracy
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasGemmStridedBatchedEx(
-          handle, cuTransB, cuTransA, N, M, K, &alpha, B, fp, ldb, strideB, A,
-          fp, lda, strideA, &beta, C, fp, ldc, strideC, batchCount, fp, algo));
+          handle, cuTransB, cuTransA, N, M, K, a, B, fp, ldb, strideB, A, fp,
+          lda, strideA, b, C, fp, ldc, strideC, batchCount, compute_type,
+          algo));
     });
   } else {
 #endif  // CUDA_VERSION >= 9010
