@@ -22,7 +22,7 @@ import paddle.utils.deprecated as deprecated
 
 
 @deprecated(since="2.4.0",
-            update_to="paddle.geometric.graph_reindex",
+            update_to="paddle.geometric.reindex_graph",
             level=1,
             reason="paddle.incubate.graph_reindex will be removed in future")
 def graph_reindex(x,

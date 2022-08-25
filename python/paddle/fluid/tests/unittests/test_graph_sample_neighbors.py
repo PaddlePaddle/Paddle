@@ -288,8 +288,7 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
                 colptr,
                 nodes,
                 perm_buffer=perm_buffer,
-                sample_size=self.sample_size,
-                has_perm_buffer=True)
+                sample_size=self.sample_size)
             out_count_cumsum = paddle.cumsum(out_count)
             for i in range(len(out_count)):
                 if i == 0:
@@ -356,15 +355,7 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
                                               sample_size=self.sample_size,
                                               return_eids=True)
 
-        def check_perm_buffer_error():
-            paddle.geometric.sample_neighbors(row,
-                                              colptr,
-                                              nodes,
-                                              sample_size=self.sample_size,
-                                              has_perm_buffer=True)
-
         self.assertRaises(ValueError, check_eid_error)
-        self.assertRaises(ValueError, check_perm_buffer_error)
 
     def test_sample_result_with_eids(self):
         paddle.disable_static()
@@ -389,8 +380,7 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
             eids=eids,
             perm_buffer=perm_buffer,
             sample_size=self.sample_size,
-            return_eids=True,
-            has_perm_buffer=True)
+            return_eids=True)
 
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

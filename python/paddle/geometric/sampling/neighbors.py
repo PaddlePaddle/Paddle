@@ -28,7 +28,6 @@ def sample_neighbors(row,
                      eids=None,
                      return_eids=False,
                      perm_buffer=None,
-                     has_perm_buffer=False,
                      name=None):
     """
     Graph Sample Neighbors API.
@@ -51,17 +50,16 @@ def sample_neighbors(row,
                          The data type should be the same with `row`.
         input_nodes (Tensor): The input nodes we need to sample neighbors for, and the
                               data type should be the same with `row`.
-        sample_size (int): The number of neighbors we need to sample. Default value is
-                           -1, which means returning all the neighbors of the input nodes.
+        sample_size (int): The number of neighbors we need to sample. Default value is -1, 
+                           which means returning all the neighbors of the input nodes.
         eids (Tensor): The eid information of the input graph. If return_eids is True,
                             then `eids` should not be None. The data type should be the 
                             same with `row`. Default is None.
         return_eids (bool): Whether to return eid information of sample edges. Default is False.
-        perm_buffer (Tensor): Permutation buffer for fisher-yates sampling. If `has_perm_buffer`
+        perm_buffer (Tensor): Permutation buffer for fisher-yates sampling. If `use_perm_buffer`
                               is True, then `perm_buffer` should not be None. The data type should
-                              be the same with `row`. Default is None. 
-        has_perm_buffer (bool): Using the permutation for fisher-yates sampling in GPU. Default 
-                                 value is false, means not using it. 
+                              be the same with `row`. If not None, we will use fiser-yates sampling
+                              to speed up. Only useful for gpu version.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
@@ -95,17 +93,13 @@ def sample_neighbors(row,
             raise ValueError(
                 f"`eids` should not be None if `return_eids` is True.")
 
-    if has_perm_buffer:
-        if perm_buffer is None:
-            raise ValueError(
-                f"`perm_buffer` should not be None if `has_perm_buffer`"
-                "is True.")
+    use_perm_buffer = True if perm_buffer is not None else False
 
     if _non_static_mode():
         out_neighbors, out_count, out_eids = _C_ops.graph_sample_neighbors(
             row, colptr, input_nodes, eids, perm_buffer, "sample_size",
             sample_size, "return_eids", return_eids, "flag_perm_buffer",
-            has_perm_buffer)
+            use_perm_buffer)
         if return_eids:
             return out_neighbors, out_count, out_eids
         return out_neighbors, out_count
@@ -119,7 +113,7 @@ def sample_neighbors(row,
     if return_eids:
         check_variable_and_dtype(eids, "Eids", ("int32", "int64"),
                                  "graph_sample_neighbors")
-    if has_perm_buffer:
+    if use_perm_buffer:
         check_variable_and_dtype(perm_buffer, "Perm_Buffer", ("int32", "int64"),
                                  "graph_sample_neighbors")
 
@@ -133,7 +127,7 @@ def sample_neighbors(row,
                          "Col_Ptr": colptr,
                          "X": input_nodes,
                          "Eids": eids if return_eids else None,
-                         "Perm_Buffer": perm_buffer if has_perm_buffer else None
+                         "Perm_Buffer": perm_buffer if use_perm_buffer else None
                      },
                      outputs={
                          "Out": out_neighbors,
@@ -143,7 +137,7 @@ def sample_neighbors(row,
                      attrs={
                          "sample_size": sample_size,
                          "return_eids": return_eids,
-                         "flag_perm_buffer": has_perm_buffer
+                         "flag_perm_buffer": use_perm_buffer
                      })
     if return_eids:
         return out_neighbors, out_count, out_eids
