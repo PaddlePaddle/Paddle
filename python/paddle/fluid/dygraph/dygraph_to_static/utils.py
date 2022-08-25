@@ -156,7 +156,12 @@ def create_undefined_variable():
     from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
     var = data_layer_not_check(unique_name.generate("undefined_var"), [1],
                                "float64")
+    # the variable is created in block(0), we append assign in block(0) either.
+    helper = LayerHelper('create_undefined_variable', **locals())
+    saved_block_ids = helper.main_program.current_block_idx
+    helper.main_program.current_block_idx = 0
     assign(RETURN_NO_VALUE_MAGIC_NUM, var)
+    helper.main_program.current_block_idx = saved_block_ids
     return var
 
 
