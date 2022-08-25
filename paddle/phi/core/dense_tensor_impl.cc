@@ -53,7 +53,7 @@ void DenseTensor::check_memory_size() const {
           "Tensor's dimension is out of bound."
           "Tensor's dimension must be equal or less than the size of its "
           "memory."
-          "But received Tensor's dimension is d%, memory's size is %d.",
+          "But received Tensor's dimension is %d, memory's size is %d.",
           numel() * SizeOf(dtype()),
           memory_size()));
 }

@@ -1367,30 +1367,30 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     Parameters:
         x (Tensor): The input tensor with data type float32/double/int32/int64_t.
-        pad (Tensor | List[int] | Tuple[int]): The padding size with data type int.
+        pad (Tensor|list[int]|tuple[int]): The padding size with data type int.
             If mode is 'constant' and length of pad is twice as length of x dimension, then x will 
             be padded from the first  dimension to the last dimension.
             Else: 1. If input dimension is 3, then the pad has the form (pad_left,
             pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right, 
             pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form 
             (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
-            When in 'constant' mode, this op uses a constant value to pad the input tensor.
-            When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
-            When in 'replicate' mode, uses input boundaries to pad the input tensor.
-            When in 'circular' mode, uses circular input to pad the input tensor.
-            Default is 'constant'
-        value (float32, optional): The value to fill the padded areas in 'constant' mode . Default is 0.0
+        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'
+
+           - 'constant' mode, uses a constant value to pad the input tensor.
+           - 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+           - 'replicate' mode, uses input boundaries to pad the input tensor.
+           - 'circular' mode, uses circular input to pad the input tensor.
+
+        value (float, optional): The value to fill the padded areas in 'constant' mode . Default is :math:`0.0`，
         data_format (str, optional): An string from: "NCL", "NLC", NHWC", "NCHW", "NCDHW", "NDHWC". Specify the data format of
-           the input data.
-           Default is  "NCHW"
-        name (str, optional) : The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+           the input data. Default is "NCHW"，
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
                     
     Returns: 
         Tensor, a Tensor padded according to pad and mode and data type is same as input.
 
-    Examples:
+    Example:
+    
         .. code-block:: text
 
             x = [[[[[1., 2., 3.],
@@ -1438,30 +1438,29 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                           [5. 6. 4. 5. 6. 4. 5.]
                           [2. 3. 1. 2. 3. 1. 2.]]]]]
 
-    Code Examples:
+    Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
             import paddle.nn.functional as F
             
             # example 1
             x_shape = (1, 1, 3)
-            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            x = paddle.arange(paddle.prod(paddle.to_tensor(x_shape)), dtype="float32").reshape(x_shape) + 1
             y = F.pad(x, [0, 0, 0, 0, 2, 3], value=1, mode='constant', data_format="NCL")
             print(y)
             # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
             
             # example 2
             x_shape = (1, 1, 3)
-            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            x = paddle.arange(paddle.prod(paddle.to_tensor(x_shape)), dtype="float32").reshape(x_shape) + 1
             y = F.pad(x, [2, 3], value=1, mode='constant', data_format="NCL")
             print(y)
             # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
             
             # example 3
             x_shape = (1, 1, 2, 3)
-            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            x = paddle.arange(paddle.prod(paddle.to_tensor(x_shape)), dtype="float32").reshape(x_shape) + 1
             y = F.pad(x, [1, 2, 1, 1], value=1, mode='circular')
             print(y)
             # [[[[6. 4. 5. 6. 4. 5.]
@@ -1483,6 +1482,11 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             pad, (list, tuple)) and len(pad) == x_dim * 2:
         paddings = pad
         pad_value = value
+
+        if in_dygraph_mode():
+            out = _C_ops.final_state_pad(x, paddings, float(pad_value))
+            return out
+
         check_variable_and_dtype(x, 'x', [
             'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
             'complex128'

@@ -50,6 +50,10 @@ static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
       execution_strategy.num_threads_ = 1;
       break;
     }
+    case platform::DeviceType::NPU: {
+      execution_strategy.num_threads_ = 1;
+      break;
+    }
     default:
       PADDLE_THROW(platform::errors::Unavailable("Unsupported Device type %d.",
                                                  device_type));

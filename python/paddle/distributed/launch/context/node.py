@@ -78,19 +78,6 @@ class Node(object):
 
         return self._port_cur
 
-    '''
-    def get_free_port2(self):
-        # for loop to avoid port conflict
-        for _ in range(100):
-            port = self._get_free_port()
-            if port in self._allocated_ports:
-                continue
-            else:
-                self._allocated_ports.append(port)
-                return port
-        return port
-    '''
-
     @classmethod
     def is_server_ready(self, ip, port):
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
@@ -103,8 +90,3 @@ class Node(object):
                 return True
             else:
                 return False
-
-
-if __name__ == '__main__':
-    n = Node()
-    print(n.get_free_ports(10))
