@@ -27,6 +27,10 @@ class TestHybridPipeParallel(TestMultipleGpus):
         self.run_mnist_2gpu('hybrid_parallel_pp_layer.py')
         self.run_mnist_2gpu('hybrid_parallel_pp_layer.py', eager_mode=False)
 
+    def test_hybrid_parallel_pp_layer_with_virtual_stage(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_layer.py')
+        self.run_mnist_2gpu('hybrid_parallel_pp_layer.py', eager_mode=False)
+
     def test_hybrid_parallel_pp_tuple_inputs(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_embedding.py')
         self.run_mnist_2gpu('hybrid_parallel_pp_embedding.py', eager_mode=False)

@@ -91,11 +91,18 @@ class SharedLayerDesc(LayerDesc):
 
 class SegmentLayers(object):
 
-    def __init__(self, layers_desc, num_parts, method="uniform"):
+    def __init__(self,
+                 layers_desc,
+                 num_parts,
+                 method="uniform",
+                 num_virtual_pipeline_stage=None):
         self._layers_desc = layers_desc
         self.method = method
         self.num_parts = num_parts
         self.num_items = len(layers_desc)
+        self.num_virtual_pipeline_stage = num_virtual_pipeline_stage
+        if self.num_virtual_pipeline_stage is not None:
+            self.total_parts = num_parts * self.num_virtual_pipeline_stage
         assert self.num_items >= self.num_parts, "layer number should be greater than number of segments"
 
     def do_segment(self):
@@ -110,12 +117,14 @@ class SegmentLayers(object):
             for idx in weight_idxs:
                 weights[idx] = 1
 
+            actual_num_parts = self.num_parts if self.num_virtual_pipeline_stage is None else self.total_parts
+
             assert sum(
                 weights
-            ) % self.num_parts == 0, "number of layers ({}) should be divided by part number({})".format(
-                sum(weights), self.num_parts)
-            part_size = sum(weights) // self.num_parts
-            result = [0 for _ in range(self.num_parts + 1)]
+            ) % actual_num_parts == 0, "number of layers ({}) should be divided by part number({})".format(
+                sum(weights), actual_num_parts)
+            part_size = sum(weights) // actual_num_parts
+            result = [0 for _ in range(actual_num_parts + 1)]
 
             memory_counter = 0
             result_idx = 1
@@ -125,7 +134,7 @@ class SegmentLayers(object):
                     result[result_idx] = idx + 1
                     result_idx += 1
                     memory_counter = 0
-            result[self.num_parts] = len(weights)
+            result[actual_num_parts] = len(weights)
             return result
 
     def _gen_layer_weight(self, layername):
@@ -159,6 +168,12 @@ class SegmentLayers(object):
         return result
 
 
+class PipelineLayerChunk(Layer):
+
+    def __init__(self):
+        super(PipelineLayerChunk, self).__init__()
+
+
 class PipelineLayer(Layer):
 
     def __init__(self,
@@ -169,10 +184,25 @@ class PipelineLayer(Layer):
                  seg_method="uniform",
                  recompute_interval=0,
                  recompute_offload=False,
-                 recompute_partition=False):
+                 recompute_partition=False,
+                 num_virtual_pipeline_stages=None):
         super(PipelineLayer, self).__init__()
         if num_stages is None and topology is None:
             raise ValueError("should provide num_stages or topology")
+
+        if num_virtual_pipeline_stages:
+            assert isinstance(num_virtual_pipeline_stages, int), \
+                "virtual_pipeline_stage should be None or an int"
+            if num_virtual_pipeline_stages > 1:
+                logger.info(
+                    "set num_virtual_pipeline_stages > 1 means using interleave scheduler instead of 1f1b"
+                )
+                assert isinstance(seg_method, str), \
+                    "seg_method should be a str for interleave scheduler"
+                assert seg_method.startswith('layer:'), \
+                    "seg_method shoud be start with layer: for interleave scheduler"
+
+        self._num_virtual_pipeline_stages = 1 if num_virtual_pipeline_stages is None else num_virtual_pipeline_stages
 
         # lazy import
         import paddle.distributed as dist
@@ -214,21 +244,34 @@ class PipelineLayer(Layer):
             self._stage_id = self._topo.get_coord(self.global_rank).pipe
             self._num_stages = self._topo.get_dim_size("pipe")
 
+        assert self._num_layers % (self._num_stages * self._num_virtual_pipeline_stages) == 0, \
+            "num layers should be divided by num_pipeline_stages * num_virtual_pipeline_stages"
+
         # initialize segment
         self._layers_desc = list(self.layers)
         self._num_layers = len(self._layers_desc)
-        self._start_pos = 0
-        self._end_pos = self._num_layers - 1
-        self._segment_network(seg_method)
-        self.shared_layers = paddle.nn.LayerDict()
-        self.shared_weight_attrs = {}
 
-        # construct layer
-        self.run_function = []
-        self._build_layer()
+        if self._num_virtual_pipeline_stages > 1:
+            # interleaving pipeline segmentation
+            self._start_poss = [0]
+            self._end_poss = [self._num_layers - 1]
+            self._model_chunks = []  # list of PipelineLayerChunk
+            # TODO: add the model chunks to sub layer
+            self._segment_network_for_interleave(seg_method)
+        else:
+            # 1f1b pipeline segmentation
+            self._start_pos = 0
+            self._end_pos = self._num_layers - 1
+            self._segment_network(seg_method)
+            self.shared_layers = paddle.nn.LayerDict()
+            self.shared_weight_attrs = {}
 
-        self.shared_comm = self._construct_shared_comm()
-        self._synchronize_shared_weights()
+            # construct layer
+            self.run_function = []
+            self._build_layer()
+
+            self.shared_comm = self._construct_shared_comm()
+            self._synchronize_shared_weights()
 
     def get_stage_from_index(self, layer_idx):
         assert 0 <= layer_idx < self._num_layers, "layer_idx is out of bound"
@@ -315,6 +358,15 @@ class PipelineLayer(Layer):
                             'ring_id': comm['group'].id,
                             'use_calc_stream': True
                         })
+
+    def _segment_network_for_interleave(self, seg_method):
+        logger.info("start segment network for interleave scheduler")
+        seg = SegmentLayers(
+            self._layers_desc,
+            num_parts=self._num_stages,
+            method=seg_method,
+            num_virtual_pipeline_stage=self._num_virtual_pipeline_stages)
+        self.segment_parts = seg.do_segment()
 
     def _segment_network(self, seg_method):
         logger.info("start segment network..")
