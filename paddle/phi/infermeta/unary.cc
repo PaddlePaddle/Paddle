@@ -4538,4 +4538,3 @@ void FoldInferMeta(const MetaTensor& x,
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);
-PD_REGISTER_INFER_META_FN(split, phi::SplitInferMeta);
