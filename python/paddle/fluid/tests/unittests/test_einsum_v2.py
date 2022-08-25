@@ -351,10 +351,13 @@ class TestNumpyTests(unittest.TestCase):
 
     def check_output_equal(self, actual, expect, rtol=1.e-5, atol=1.e-8):
         error_msg = 'Output has diff at place:{}. \nExpect: {} \nBut Got: {} in class {}'
-        self.assertTrue(
-            np.allclose(actual, expect, rtol=rtol, atol=atol),
-            error_msg.format(paddle.get_device(), expect, actual,
-                             self.__class__.__name__))
+        np.testing.assert_allclose(actual,
+                                   expect,
+                                   rtol=rtol,
+                                   atol=atol,
+                                   err_msg=error_msg.format(
+                                       paddle.get_device(), expect, actual,
+                                       self.__class__.__name__))
 
     def check_output(self, eqn, *ops):
         expect = np.einsum(eqn, *ops)

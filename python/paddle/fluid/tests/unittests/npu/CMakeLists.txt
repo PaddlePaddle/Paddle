@@ -6,7 +6,8 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 if(WITH_ASCEND_CL)
   foreach(TEST_OP ${TEST_OPS})
-    py_test_modules(${TEST_OP} MODULES ${TEST_OP})
+    py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS
+                    FLAGS_USE_STANDALONE_EXECUTOR=0)
   endforeach()
 
   # NOTE: NPU `get_float_status` read the value from register, During the test,

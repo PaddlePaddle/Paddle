@@ -162,6 +162,8 @@ void SaveMixedModel(
     if (var->IsType<framework::LoDTensor>() ||
         var->IsType<framework::Tensor>()) {
       auto* t = var->GetMutable<framework::LoDTensor>();
+      if (t->dtype() != phi::DataType::FLOAT32) continue;
+
       framework::Tensor mixed_tensor;
       mixed_tensor.Resize(t->dims());
       auto* data = t->mutable_data<float>(platform::CPUPlace());
