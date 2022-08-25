@@ -181,9 +181,9 @@ int GroupNormPluginDynamic::enqueue(
 
   int C = input_shape[1];
   int image_size = input_shape[2] * input_shape[3];
-  int batchSize = input_shape[0];
-  std::vector<int64_t> batched_mean_shape = {batchSize * mean_shape_[0]};
-  std::vector<int64_t> batched_variance_shape = {batchSize *
+  int batch_size = input_shape[0];
+  std::vector<int64_t> batched_mean_shape = {batch_size * mean_shape_[0]};
+  std::vector<int64_t> batched_variance_shape = {batch_size *
                                                  variance_shape_[0]};
   PADDLE_ENFORCE_EQ(
       C,
@@ -208,14 +208,11 @@ int GroupNormPluginDynamic::enqueue(
   if (input_type == nvinfer1::DataType::kFLOAT) {
     const float *input = static_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
-    scale_t.Resize(phi::make_ddim({C}));
-    bias_t.Resize(phi::make_ddim({C}));
-
     mean_t.Resize(phi::make_ddim(batched_mean_shape));
     variance_t.Resize(phi::make_ddim(batched_variance_shape));
-    float *scale_d =
-        scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
-    float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *scale_d = reinterpret_cast<float *>(scale_d_init_);
+    float *bias_d = reinterpret_cast<float *>(bias_d_init_);
+
     float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
     float *variance_d =
         variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
@@ -224,16 +221,6 @@ int GroupNormPluginDynamic::enqueue(
     temp_variance_t.Resize(phi::make_ddim(batched_variance_shape));
     float *temp_variance_d =
         temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
-    cudaMemcpyAsync(scale_d,
-                    scale_.data(),
-                    sizeof(float) * C,
-                    cudaMemcpyHostToDevice,
-                    stream);
-    cudaMemcpyAsync(bias_d,
-                    bias_.data(),
-                    sizeof(float) * C,
-                    cudaMemcpyHostToDevice,
-                    stream);
 
     phi::GroupNormDirectCUDAFunctor<float> group_norm;
     group_norm(stream,

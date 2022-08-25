@@ -149,6 +149,28 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
     std::copy(bias, bias + bias_num, bias_.data());
   }
 
+  GroupNormPluginDynamic(const float* scale,
+                         const int scale_num,
+                         const float* bias,
+                         const int bias_num,
+                         float eps,
+                         int groups,
+                         std::vector<int64_t> mean_shape,
+                         std::vector<int64_t> variance_shape,
+                         void* scale_d_init,
+                         void* bias_d_init)
+      : groups_(groups),
+        eps_(eps),
+        mean_shape_(mean_shape),
+        variance_shape_(variance_shape),
+        scale_d_init_(scale_d_init),
+        bias_d_init_(bias_d_init) {
+    scale_.resize(scale_num);
+    bias_.resize(bias_num);
+    std::copy(scale, scale + scale_num, scale_.data());
+    std::copy(bias, bias + bias_num, bias_.data());
+  }
+
   GroupNormPluginDynamic(void const* serialData, size_t serialLength) {
     DeserializeValue(&serialData, &serialLength, &scale_);
     DeserializeValue(&serialData, &serialLength, &bias_);
@@ -165,14 +187,46 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
                                       eps_,
                                       groups_,
                                       mean_shape_,
-                                      variance_shape_);
+                                      variance_shape_,
+                                      scale_d_init_,
+                                      bias_d_init_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
     return "groupnorm_plugin_dynamic";
   }
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
-  int initialize() TRT_NOEXCEPT override { return 0; }
+  int initialize() TRT_NOEXCEPT override {
+    int device_id;
+    cudaGetDevice(&device_id);
+    auto* device_ctx = static_cast<phi::GPUContext*>(
+        platform::DeviceContextPool::Instance().Get(
+            platform::CUDAPlace(device_id)));
+    const phi::GPUContext& dev_ctx = *device_ctx;
+
+    auto stream = dev_ctx.stream();
+
+    int scale_data_size = scale_.size();
+    int bias_data_size = bias_.size();
+    scale_t.Resize({scale_data_size});
+    bias_t.Resize({bias_data_size});
+    scale_d_init_ = reinterpret_cast<void*>(
+        scale_t.mutable_data<float>(platform::CUDAPlace(device_id)));
+    bias_d_init_ = reinterpret_cast<void*>(
+        bias_t.mutable_data<float>(platform::CUDAPlace(device_id)));
+
+    cudaMemcpyAsync(scale_d_init_,
+                    scale_.data(),
+                    sizeof(float) * scale_data_size,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    cudaMemcpyAsync(bias_d_init_,
+                    bias_.data(),
+                    sizeof(float) * bias_data_size,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    return 0;
+  }
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return SerializedSize(scale_) + SerializedSize(bias_) +
@@ -234,6 +288,8 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
   float eps_;
   std::vector<int64_t> mean_shape_;
   std::vector<int64_t> variance_shape_;
+  void* scale_d_init_ = nullptr;
+  void* bias_d_init_ = nullptr;
 };
 class GroupNormPluginDynamicCreator : public TensorRTPluginCreator {
  public:
