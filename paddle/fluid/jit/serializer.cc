@@ -22,6 +22,7 @@
 
 #include "paddle/fluid/jit/engine/executor_engine.h"
 #include "paddle/fluid/jit/engine/pe_engine.h"
+#include "paddle/fluid/jit/engine/predictor_engine.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/property.h"
 #include "paddle/fluid/jit/serializer_utils.h"
@@ -69,19 +70,30 @@ Layer Deserializer::operator()(const std::string& path,
   for (auto it = info_map.begin(); it != info_map.end(); ++it) {
     const std::string& func_name = it->first;
     auto& info = it->second;
-    if (FLAGS_jit_engine_type == "Executor") {
-      VLOG(3) << "Add function type: ExecutorEngine. Function name: "
-              << func_name;
-      layer.SetEngine(
-          func_name,
-          utils::MakeEngine<ExecutorEngine>(info, params_dict, place));
-    } else if (FLAGS_jit_engine_type == "PE") {
-      VLOG(3) << "Add function type: PEEngine. Function name: " << func_name;
-      layer.SetEngine(func_name,
-                      utils::MakeEngine<PEEngine>(info, params_dict, place));
-    } else {
-      PD_THROW("Invalid JitLayer engine type.");
-    }
+    // if (FLAGS_jit_engine_type == "Executor") {
+    //   VLOG(3) << "Add function type: ExecutorEngine. Function name: "
+    //           << func_name;
+    //   layer.SetEngine(
+    //       func_name,
+    //       utils::MakeEngine<ExecutorEngine>(info, params_dict, place));
+    // } else if (FLAGS_jit_engine_type == "PE") {
+    //   VLOG(3) << "Add function type: PEEngine. Function name: " << func_name;
+    //   layer.SetEngine(func_name,
+    //                   utils::MakeEngine<PEEngine>(info, params_dict, place));
+    // } else if (FLAGS_jit_engine_type == "Predictor") {
+    //   VLOG(3) << "Add function type: PredictorEngine.";
+    //   layer.SetEngine(
+    //       info->FunctionName(),
+    //       utils::MakeEngine<PredictorEngine>(info, params_dict, place));
+    // } else {
+    //   PD_THROW("Invalid JitLayer engine type.");
+    // }
+
+    VLOG(3) << "Add function type: PredictorEngine. Function name: "
+            << func_name;
+    layer.SetEngine(
+        info->FunctionName(),
+        utils::MakeEngine<PredictorEngine>(info, params_dict, place));
   }
 
   return layer;
