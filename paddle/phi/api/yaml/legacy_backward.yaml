@@ -2468,7 +2468,7 @@
   kernel :
     func : sync_batch_norm_grad
     data_type : out_grad
-  optional : reserve_space, mean_out, variance_out
+  optional : mean_out, variance_out, reserve_space
 
 - backward_api : take_along_axis_grad
   forward : take_along_axis (Tensor x, Tensor index, int axis) -> Tensor(out)
