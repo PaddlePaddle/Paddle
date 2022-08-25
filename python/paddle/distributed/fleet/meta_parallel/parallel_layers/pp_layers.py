@@ -298,6 +298,9 @@ class PipelineLayer(Layer):
                                           start_idx + stage + 1]:
                     return stage
 
+    def get_model_chunks(self):
+        return None if self._num_virtual_pipeline_stages == 1 else self._model_chunks
+
     def _construct_shared_comm(self):
         shared_comm = {}
         if self._topo.get_dim("pipe") == 1:
@@ -462,10 +465,12 @@ class PipelineLayer(Layer):
         self.run_function = self._build_layer_impl(start, end)
 
     def _build_layer_impl(self, start, end):
-        run_function = self.run_function
         if self._num_virtual_pipeline_stages > 1:
             # For interleave scheduler, all layers relating with one model chunk will be saved in PipelineLayerChunk
             run_function = PipelineLayerChunk()
+        else:
+            # For 1f1b scheduler, just use run_function list
+            run_function = self.run_function
 
         for index, layer in enumerate(self._layers_desc[start:end]):
             layer_index = start + index

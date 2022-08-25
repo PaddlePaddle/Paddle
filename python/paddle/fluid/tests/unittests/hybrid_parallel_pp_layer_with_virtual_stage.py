@@ -80,6 +80,9 @@ class TestPipeLayerAPI(unittest.TestCase):
                                          num_stages=self.pipeline_parallel_size,
                                          num_virtual_pipeline_stages=2)
         assert len(pipe_model.parameters()) > 0
+        model_chunks = pipe_model.get_model_chunks()
+        assert model_chunks is not None
+        assert len(model_chunks) == 2
         dist_model = fleet.distributed_model(pipe_model)
 
 
