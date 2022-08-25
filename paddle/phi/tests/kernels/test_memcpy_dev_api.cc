@@ -16,16 +16,13 @@
 
 #include <memory>
 
-#include "glog/logging.h"
-
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
-#include "paddle/phi/kernels/memcpy_d2h_kernel.h"
-#include "paddle/phi/kernels/memcpy_h2d_kernel.h"
+#include "paddle/phi/kernels/memcpy_kernel.h"
 
 namespace phi {
 namespace tests {
@@ -57,9 +54,9 @@ TEST(DEV_API, memcpy_d2h) {
   auto place = phi::GPUPlace();
   auto* dev_ctx = static_cast<const phi::GPUContext*>(pool.GetByPlace(place));
 
-  phi::MemcpyH2DKernel<float, phi::GPUContext>(*dev_ctx, x_cpu, 1, &x);
+  phi::MemcpyH2DKernel<phi::GPUContext>(*dev_ctx, x_cpu, 1, &x);
   phi::DenseTensor out;
-  phi::MemcpyD2HKernel<float, phi::GPUContext>(*dev_ctx, x, 1, &out);
+  phi::MemcpyD2HKernel<phi::GPUContext>(*dev_ctx, x, 1, &out);
 
   // 3. check result
   std::vector<int64_t> expect_shape = {12, 3};

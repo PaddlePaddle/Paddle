@@ -131,6 +131,6 @@ elseif(WITH_ROCM)
 endif()
 
 cc_test(
-  test_memcpy_d2h
-  SRCS test_memcpy_d2h.cc
+  test_memcpy_dev_api
+  SRCS test_memcpy_dev_api.cc
   DEPS phi phi_api_utils)
