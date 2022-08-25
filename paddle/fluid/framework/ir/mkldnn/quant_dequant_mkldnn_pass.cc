@@ -96,7 +96,7 @@ void QuantDequantMkldnnPass::CollectInfoFromFake(
   }
 }
 
-void QuantDequantMkldnnPass::CollectInfoFromONNXFormatDequantize(
+void QuantDequantMkldnnPass::CollectWeightScalesInfoFromONNXFormatDequantize(
     ir::Graph* graph,
     Scope* scope,
     const std::unordered_set<std::string>& onnx_format_dequantize_types,
@@ -370,7 +370,7 @@ void QuantDequantMkldnnPass::CollectFakeDequantizeOps(
   nodes2rm->insert(fake_dequant_out);
 }
 
-void QuantDequantMkldnnPass::CollectONNXFormatQuantizeDequantizeOps(
+void QuantDequantMkldnnPass::CollectQuantizeDequantizeOpsFromONNXFormat(
     ir::Graph* graph,
     Node* op_node,
     std::unordered_set<const Node*>* nodes2rm) const {
@@ -441,7 +441,7 @@ void QuantDequantMkldnnPass::RemoveFakeOps(
     } else if (fake_quantize_dequantize_types.count(op_node->Name())) {
       CollectFakeDequantizeOps(graph, op_node, &nodes2rm);
     } else if (onnx_format_quantize_dequantize_types.count(op_node->Name())) {
-      CollectONNXFormatQuantizeDequantizeOps(graph, op_node, &nodes2rm);
+      CollectQuantizeDequantizeOpsFromONNXFormat(graph, op_node, &nodes2rm);
     }
   }
 
@@ -593,7 +593,7 @@ void QuantDequantMkldnnPass::DequantizeOpWeights(
   weight_tensor->Resize(weight_dims);
 }
 
-void QuantDequantMkldnnPass::DequantizeOpWeightsForONNXFromat(
+void QuantDequantMkldnnPass::DequantizeOpWeightsFromONNXFormat(
     Node* op_node,
     Scope* scope,
     const std::string& weight_name,
@@ -713,7 +713,7 @@ void QuantDequantMkldnnPass::DequantizeWeights(
     if (!op_node->IsOp()) continue;
     if (op_node->Name() == "conv2d" || op_node->Name() == "depthwise_conv2d") {
       if (onnx_format_quantize_model) {
-        DequantizeOpWeightsForONNXFromat(
+        DequantizeOpWeightsFromONNXFormat(
             op_node, scope, "Filter", weight_thresholds);
       } else if (IsInt8Weight(op_node, scope, "Filter")) {
         DequantizeOpWeights(
@@ -722,7 +722,7 @@ void QuantDequantMkldnnPass::DequantizeWeights(
     } else if (op_node->Name() == "mul" || op_node->Name() == "matmul" ||
                op_node->Name() == "matmul_v2") {
       if (onnx_format_quantize_model) {
-        DequantizeOpWeightsForONNXFromat(
+        DequantizeOpWeightsFromONNXFormat(
             op_node, scope, "Y", weight_thresholds);
       } else if (IsInt8Weight(op_node, scope, "Y")) {
         DequantizeOpWeights(op_node, scope, "Y", "Out", weight_thresholds);
@@ -801,12 +801,12 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
           << var_quant_scales.size();
   MarkSkipQuantizedOps(graph, skip_ops);
   CollectInfoFromFake(graph, scope, fake_dequantize_types, &weight_thresholds);
-  CollectInfoFromONNXFormatDequantize(graph,
-                                      scope,
-                                      onnx_format_dequantize_types,
-                                      &weight_thresholds,
-                                      &var_quant_scales,
-                                      &onnx_format_quantize_model);
+  CollectWeightScalesInfoFromONNXFormatDequantize(graph,
+                                                  scope,
+                                                  onnx_format_dequantize_types,
+                                                  &weight_thresholds,
+                                                  &var_quant_scales,
+                                                  &onnx_format_quantize_model);
   CollectInputScalesFromFake(
       graph, scope, fake_quantize_types, &var_quant_scales);
   CollectInputScalesFromONNXFormatQuantize(

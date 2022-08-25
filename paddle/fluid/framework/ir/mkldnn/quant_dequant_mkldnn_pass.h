@@ -43,7 +43,15 @@ class QuantDequantMkldnnPass : public FusePassBase {
       std::unordered_map<std::string, std::vector<float>>* weight_thresholds)
       const;
 
-  void CollectInfoFromONNXFormatDequantize(
+  ///
+  /// \brief collect scale info for weight from onnx_format dequantize_linear op
+  /// onnx_format_dequantize_types: the onnx_format dequantize op type
+  /// weight_thresholds: scale info for weight
+  /// var_quant_scales: scale info for act
+  /// onnx_format_quantize_model: recorder if the quantize model is a
+  /// onnx_format quantize model
+  ///
+  void CollectWeightScalesInfoFromONNXFormatDequantize(
       ir::Graph* graph,
       Scope* scope,
       const std::unordered_set<std::string>& onnx_format_dequantize_types,
@@ -58,6 +66,11 @@ class QuantDequantMkldnnPass : public FusePassBase {
       std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
       const;
 
+  ///
+  /// \brief collect scale info for act from onnx_format quantize_linear op
+  /// onnx_format_quantize_types: the onnx_format quantize op type
+  /// var_quant_scales: scale info for act
+  ///
   void CollectInputScalesFromONNXFormatQuantize(
       ir::Graph* graph,
       Scope* scope,
@@ -79,7 +92,11 @@ class QuantDequantMkldnnPass : public FusePassBase {
       Node* op_node,
       std::unordered_set<const Node*>* nodes2rm) const;
 
-  void CollectONNXFormatQuantizeDequantizeOps(
+  ///
+  /// \brief collect all the onnx_format quantize related ops to remove
+  /// nodes2rm: record all quantize related ops to remove
+  ///
+  void CollectQuantizeDequantizeOpsFromONNXFormat(
       ir::Graph* graph,
       Node* op_node,
       std::unordered_set<const Node*>* nodes2rm) const;
@@ -106,7 +123,11 @@ class QuantDequantMkldnnPass : public FusePassBase {
       const std::unordered_map<std::string, std::vector<float>>&
           weight_thresholds) const;
 
-  void DequantizeOpWeightsForONNXFromat(
+  ///
+  /// \brief Dequantize weight in conv or matmul
+  /// weight_thresholds: recorded scale info for weight
+  ///
+  void DequantizeOpWeightsFromONNXFormat(
       Node* op_node,
       Scope* scope,
       const std::string& weight_name,
