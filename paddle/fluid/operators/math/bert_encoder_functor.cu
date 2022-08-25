@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 #include "paddle/fluid/platform/dynload/cublasLt.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 
 #include "paddle/fluid/platform/dynload/nvtx.h"
@@ -539,7 +539,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge2(half2 *qk_buf_,
 
 // TODO wangbojun for debug
 template<typename T>
-__global__ void print_float(const T *src, int start_index, int end_index){
+__global__ void print_float(const T *src, long start_index, long end_index){
   for (int i=start_index;i<end_index;i++){
     printf("%f, ",static_cast<double>(src[i]));
     if(i%49==48){
@@ -550,7 +550,7 @@ __global__ void print_float(const T *src, int start_index, int end_index){
 
 // TODO wangbojun for debug
 template<typename T>
-__global__ void print_float(const T *src, int start_index, int end_index, int numPerRow=49, int stride=1){
+__global__ void print_float(const T *src, long start_index, long end_index, long numPerRow=49, long stride=1){
   printf("start print float \r\n");
   for (int i=start_index;i<end_index;i+=stride){
     printf("%f, ",static_cast<double>(src[i]));
@@ -581,14 +581,11 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
 
     auto stream = context.stream();
 
+    if(std::is_same<T,half>::value){
     // cublaslt call, batchGemm(d=a*b+c) + softmax
     int device_id;
     cudaGetDevice(&device_id);
-    framework::Tensor qk_gemm_tensor;
-    qk_gemm_tensor.Resize({batch_size,head_num,seq_len,seq_len});
-    half * qk_gemm_data = reinterpret_cast<half *>(
-      qk_gemm_tensor.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
-    
+
     int64_t strideq=seq_len*size_per_head;
     int64_t stridek=seq_len*size_per_head;
     int64_t strideqk=seq_len*seq_len;
@@ -622,7 +619,7 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
     //     cudaMalloc(&alpha_half, sizeof(half)));
     // cudaMemcpy(alpha_half, &alpha_tem, sizeof(half),
     //                 cudaMemcpyHostToDevice);
-    half beta_half = static_cast<half>(0.0f);
+
     // void * beta_half=nullptr;
     // PADDLE_ENFORCE_GPU_SUCCESS(
     //   cudaMalloc(&beta_half, sizeof(half)));
@@ -759,7 +756,7 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
       CUBLASLT_MATMUL_DESC_TRANSB,
       &transk,
       sizeof(transk)));
-    // 
+  
     // PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
     //     operation_desc, 
     //     CUBLASLT_MATMUL_DESC_POINTER_MODE, 
@@ -794,25 +791,7 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
     // platform::dynload::nvtxRangePushA("MatMulWithHeadQK gemm");
     
     // gemm with no bias
-    cublasStatus_t cublasltMatmul_reslut = platform::dynload::cublasLtMatmul(
-        lt_handle,
-        operation_desc,
-        (&alpha_half),
-        (q_buf_),
-        q_desc,
-        (k_buf_),
-        k_desc,
-        (&beta_half),
-        (qk_buf_),
-        qk_desc,
-        (qk_buf_),
-        qk_desc,
-        algo,
-        workspace->ptr(),
-        workspace_size,
-        stream);
-
-
+    // half beta_half = static_cast<half>(0.0f);
     // cublasStatus_t cublasltMatmul_reslut = platform::dynload::cublasLtMatmul(
     //     lt_handle,
     //     operation_desc,
@@ -822,14 +801,38 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
     //     (k_buf_),
     //     k_desc,
     //     (&beta_half),
-    //     (bias_qk),
-    //     qk_bias_desc,
-    //     (qk_gemm_data),
+    //     (qk_buf_),
+    //     qk_desc,
+    //     (qk_buf_),
     //     qk_desc,
     //     algo,
     //     workspace->ptr(),
     //     workspace_size,
     //     stream);
+
+    half beta_half = static_cast<half>(1.0f);
+    framework::Tensor qk_gemm_tensor;
+    qk_gemm_tensor.Resize({batch_size,head_num,seq_len,seq_len});
+    half * qk_gemm_data = reinterpret_cast<half *>(
+      qk_gemm_tensor.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
+
+    cublasStatus_t cublasltMatmul_reslut = platform::dynload::cublasLtMatmul(
+        lt_handle,
+        operation_desc,
+        (&alpha_half),
+        (q_buf_),
+        q_desc,
+        (k_buf_),
+        k_desc,
+        (&beta_half),
+        (bias_qk),
+        qk_bias_desc,
+        (qk_gemm_data),
+        qk_desc,
+        algo,
+        workspace->ptr(),
+        workspace_size,
+        stream);
 
     // platform::dynload::nvtxRangePop();
     VLOG(1)<<"@@@ cublasltMatmul_reslut:"<<cublasltMatmul_reslut;
@@ -845,35 +848,18 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
     PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cublasLtMatrixLayoutDestroy(qk_bias_desc));
 
-    platform::DataLayout cudnn_layout = platform::DataLayout::kNCHW;
-    std::vector<int> cudnn_tensor_dims = phi::vectorize<int>(qk_gemm_tensor.dims());
-
-    // platform::ScopedTensorDescriptor xDesc;
-    // platform::ScopedTensorDescriptor yDesc;
-    // cudnnTensorDescriptor_t cudnn_x_desc =
-    //   xDesc.descriptor<run_type>(cudnn_layout, cudnn_tensor_dims);
-    // cudnnTensorDescriptor_t cudnn_y_desc =
-    //   xDesc.descriptor<run_type>(cudnn_layout, cudnn_tensor_dims);
-    // PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxForward(
-    //   context.cudnn_handle(),
-    //   CUDNN_SOFTMAX_ACCURATE,
-    //   CUDNN_SOFTMAX_MODE_INSTANCE,
-    //   platform::CudnnDataType<run_type>::kOne(),
-    //   cudnn_x_desc,
-    //   qk_gemm_data,
-    //   platform::CudnnDataType<run_type>::kZero(),
-    //   cudnn_y_desc,
-    //   qk_buf_
-    //   ));
-
-    
     // printf("@@ cuda error before cudaDeviceSynchronize %s \r\n", cudaGetErrorString(cudaGetLastError()));
 
     // PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
     // printf("@@ cuda error after cudaDeviceSynchronize %s \r\n", cudaGetErrorString(cudaGetLastError()));
     // printf("@@ cublaslt done \r\n");
     // printf("@#@@@ cublaslt data qk \r\n");
-    // print_float<T><<<1,1,0,stream>>>(qk_buf_,0,q_M*k_N);
+    // print_float<run_type><<<1,1,0,stream>>>(reinterpret_cast<const run_type *>(qk_gemm_data),(long)0,q_M*k_K,(long)k_K,(long)1);
+    // cudaDeviceSynchronize();
+    // printf("\r\n");
+    // cudaDeviceSynchronize();
+    // printf("@#@@@ cublaslt qkbias \r\n");
+    // print_float<run_type><<<1,1,0,stream>>>(reinterpret_cast<const run_type *>(bias_qk),(long)0,q_M*k_K,(long)k_K,(long)1);
     // cudaDeviceSynchronize();
     // printf("\r\n");
 
@@ -896,92 +882,127 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
     //   // cudaDeviceSynchronize();
     //   // printf("\r\n");
     // debug print
-  
-  // original batched GEMM + softmaxElementAdd
-  // CBLAS_TRANSPOSE transA = !q_trans ? CblasNoTrans : CblasTrans;
-  // CBLAS_TRANSPOSE transB = !k_trans ? CblasNoTrans : CblasTrans;
 
-  // auto blas = phi::funcs::GetBlas<phi::GPUContext, run_type>(context);
-  // blas.BatchedGEMM(transA,
-  //                  transB,
-  //                  seq_len, //M
-  //                  seq_len, //N
-  //                  size_per_head, //K
-  //                  static_cast<run_type>(alpha),
-  //                  reinterpret_cast<run_type *>(q_buf_),
-  //                  reinterpret_cast<run_type *>(k_buf_),
-  //                  static_cast<run_type>(beta),
-  //                  reinterpret_cast<run_type *>(qk_buf_),
-  //                  batch_size * head_num,
-  //                  seq_len * size_per_head,
-  //                  seq_len * size_per_head);
+    // call cudnn softmax
+    int rank = qk_gemm_tensor.dims().size();
+    int axis = phi::funcs::CanonicalAxis(-1, rank);
+    std::vector<int> tensor_dims = phi::GetSoftmaxTensorDims(qk_gemm_tensor.dims(), axis);
+    int N = tensor_dims[0];
+    int dim = tensor_dims[1];
+    int D = tensor_dims[2];
 
 
-  // printf("@#@@ in functor, after qk gemm result: \r\n");
-  // cudaDeviceSynchronize();
-  // if(batch_size==64){
-  //   print_float<half><<<1,1>>>(reinterpret_cast<const half *>(qk_buf_),
-  //                                 0,
-  //                                 batch_size*head_num*seq_len*seq_len,seq_len,1);
-  // }cudaDeviceSynchronize();
-  // printf("\r\n");
 
-  if (seq_len <= 1024) {
-    int grid = batch_size * head_num * seq_len;
-    int block = seq_len;
+    int dim_log2 = static_cast<int>(phi::Log2Ceil(dim));
+    int dim_ceil = 1 << dim_log2;
+    int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
+    int batches_per_warp = (dim_ceil <= 32) ? 2 : 1;
 
-    // Align block to 32, also limit seq_len to max block size.
-    if (seq_len % 2 == 0) {
-      block = (seq_len <= 64) ? 32 : ((seq_len + 63) / 64) * 32;
-      if (std::is_same<T, float>::value) {
-        SoftmaxKernelWithEltadd2<float2><<<grid, block, 0, stream>>>(
-            reinterpret_cast<float2 *>(qk_buf_),
-            reinterpret_cast<const float2 *>(bias_qk),
-            batch_size,
-            head_num,
-            seq_len / 2,
-            FINAL_MASK);
-      } else {
-        SoftmaxKernelWithEltadd2<__half2><<<grid, block, 0, stream>>>(
-            reinterpret_cast<__half2 *>(qk_buf_),
-            reinterpret_cast<const __half2 *>(bias_qk),
-            batch_size,
-            head_num,
-            seq_len / 2,
-            FINAL_MASK);
-      }
+    // use 128 threads per block to maximimize gpu utilization
+    constexpr int threads_per_block = 128;
+
+    int warps_per_block = (threads_per_block / warp_size);
+    int batches_per_block = warps_per_block * batches_per_warp;
+    int blocks = (N + batches_per_block - 1) / batches_per_block;
+    dim3 threads(warp_size, warps_per_block, 1);
+
+
+    phi::SwitchWarpSoftmaxForward<run_type, run_type, false>(blocks,
+                                                        threads,
+                                                        context,
+                                                        reinterpret_cast<run_type*>(qk_buf_),
+                                                        reinterpret_cast<run_type*>(qk_gemm_data),
+                                                        N,
+                                                        dim,
+                                                        dim,
+                                                        dim_log2);
+
     } else {
-      block = (seq_len <= 32) ? 32 : ((seq_len + 31) / 32) * 32;
-      SoftmaxKernelWithEltadd<T><<<grid, block, 0, stream>>>(
-          qk_buf_, bias_qk, batch_size, head_num, seq_len, FINAL_MASK);
-    }
-  } else {
-    int grid = batch_size * head_num * seq_len;
-    int block = 512;
-    if (seq_len % 2 == 0) {
-      if (std::is_same<T, float>::value) {
-        SoftmaxKernelWithEltaddForLarge2<float2><<<grid, block, 0, stream>>>(
-            reinterpret_cast<float2 *>(qk_buf_),
-            reinterpret_cast<const float2 *>(bias_qk),
-            batch_size,
-            head_num,
-            seq_len / 2,
-            FINAL_MASK);
-      } else {
-        SoftmaxKernelWithEltaddForLarge2<__half2><<<grid, block, 0, stream>>>(
-            reinterpret_cast<__half2 *>(qk_buf_),
-            reinterpret_cast<const __half2 *>(bias_qk),
-            batch_size,
-            head_num,
-            seq_len / 2,
-            FINAL_MASK);
-      }
-    } else {
-      SoftmaxKernelWithEltaddForLarge<T><<<grid, block, 0, stream>>>(
-          qk_buf_, bias_qk, batch_size, head_num, seq_len, FINAL_MASK);
-    }
-  }
+      // original batched GEMM + softmaxElementAdd
+      CBLAS_TRANSPOSE transA = !q_trans ? CblasNoTrans : CblasTrans;
+      CBLAS_TRANSPOSE transB = !k_trans ? CblasNoTrans : CblasTrans;
 
+      auto blas = phi::funcs::GetBlas<phi::GPUContext, run_type>(context);
+      blas.BatchedGEMM(transA,
+                       transB,
+                       seq_len, //M
+                       seq_len, //N
+                       size_per_head, //K
+                       static_cast<run_type>(alpha),
+                       reinterpret_cast<run_type *>(q_buf_),
+                       reinterpret_cast<run_type *>(k_buf_),
+                       static_cast<run_type>(beta),
+                       reinterpret_cast<run_type *>(qk_buf_),
+                       batch_size * head_num,
+                       seq_len * size_per_head,
+                       seq_len * size_per_head);
+
+
+      // printf("@#@@ in functor, after qk gemm result: \r\n");
+      // cudaDeviceSynchronize();
+      // if(batch_size==64){
+      //   print_float<half><<<1,1>>>(reinterpret_cast<const half *>(qk_buf_),
+      //                                 0,
+      //                                 batch_size*head_num*seq_len*seq_len,seq_len,1);
+      // }cudaDeviceSynchronize();
+      // printf("\r\n");
+
+      if (seq_len <= 1024) {
+        int grid = batch_size * head_num * seq_len;
+        int block = seq_len;
+
+        // Align block to 32, also limit seq_len to max block size.
+        if (seq_len % 2 == 0) {
+          block = (seq_len <= 64) ? 32 : ((seq_len + 63) / 64) * 32;
+          if (std::is_same<T, float>::value) {
+            SoftmaxKernelWithEltadd2<float2><<<grid, block, 0, stream>>>(
+                reinterpret_cast<float2 *>(qk_buf_),
+                reinterpret_cast<const float2 *>(bias_qk),
+                batch_size,
+                head_num,
+                seq_len / 2,
+                FINAL_MASK);
+          } else {
+            SoftmaxKernelWithEltadd2<__half2><<<grid, block, 0, stream>>>(
+                reinterpret_cast<__half2 *>(qk_buf_),
+                reinterpret_cast<const __half2 *>(bias_qk),
+                batch_size,
+                head_num,
+                seq_len / 2,
+                FINAL_MASK);
+          }
+        } else {
+          block = (seq_len <= 32) ? 32 : ((seq_len + 31) / 32) * 32;
+          SoftmaxKernelWithEltadd<T><<<grid, block, 0, stream>>>(
+              qk_buf_, bias_qk, batch_size, head_num, seq_len, FINAL_MASK);
+        }
+      } else {
+        int grid = batch_size * head_num * seq_len;
+        int block = 512;
+        if (seq_len % 2 == 0) {
+          if (std::is_same<T, float>::value) {
+            SoftmaxKernelWithEltaddForLarge2<float2><<<grid, block, 0, stream>>>(
+                reinterpret_cast<float2 *>(qk_buf_),
+                reinterpret_cast<const float2 *>(bias_qk),
+                batch_size,
+                head_num,
+                seq_len / 2,
+                FINAL_MASK);
+          } else {
+            SoftmaxKernelWithEltaddForLarge2<__half2><<<grid, block, 0, stream>>>(
+                reinterpret_cast<__half2 *>(qk_buf_),
+                reinterpret_cast<const __half2 *>(bias_qk),
+                batch_size,
+                head_num,
+                seq_len / 2,
+                FINAL_MASK);
+          }
+        } else {
+          SoftmaxKernelWithEltaddForLarge<T><<<grid, block, 0, stream>>>(
+              qk_buf_, bias_qk, batch_size, head_num, seq_len, FINAL_MASK);
+        }
+      }
+    }
 
   // printf("@#@@ in functor, qk softmax result: \r\n");
   // cudaDeviceSynchronize();
