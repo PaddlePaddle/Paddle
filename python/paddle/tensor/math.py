@@ -4789,8 +4789,7 @@ def take(x, index, mode='raise', name=None):
 
             - ``'raise'``: raise an error (default);
             - ``'wrap'``: wrap around;
-            - ``'clip'``: clip to the range. ``'clip'`` mode means that all indices that are too large are replaced by
-            the index that addresses the last element. Note that this disables indexing with negative numbers.
+            - ``'clip'``: clip to the range. ``'clip'`` mode means that all indices that are too large are replaced by the index that addresses the last element. Note that this disables indexing with negative numbers.
 
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
