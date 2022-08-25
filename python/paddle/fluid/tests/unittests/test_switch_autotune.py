@@ -90,9 +90,9 @@ class TestAutoTune(unittest.TestCase):
         for key in status.keys():
             v = status[key]
             if key == "cache_hit_rate":
-                self.assertTrue(np.allclose(v, expected_res[key]))
+                np.testing.assert_allclose(v, expected_res[key])
             else:
-                self.assertEqual(v, expected_res[key])
+                np.testing.assert_array_equal(v, expected_res[key])
 
 
 class TestDygraphAutoTuneStatus(TestAutoTune):
