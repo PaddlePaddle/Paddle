@@ -215,13 +215,12 @@ int LayerNormPluginDynamic::enqueue(
     VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp32";
     const float *input = reinterpret_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
-    // scale_t.Resize(phi::make_ddim({feature_size}));
-    // bias_t.Resize(phi::make_ddim({feature_size}));
+
     mean_t.Resize(phi::make_ddim(mean_shape_));
     variance_t.Resize(phi::make_ddim(variance_shape_));
 
-    float * scale_d = reinterpret_cast<float *>(scale_d_init_);
-    float * bias_d = reinterpret_cast<float *>(bias_d_init_);
+    float *scale_d = reinterpret_cast<float *>(scale_d_init_);
+    float *bias_d = reinterpret_cast<float *>(bias_d_init_);
 
     float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
     float *variance_d =
