@@ -1191,7 +1191,7 @@ def assign_skip_lod_tensor_array(input, output):
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     """
 
-    def _shape_diff(x_var, y_var):
+    def has_shape_diff(x_var, y_var):
         if len(x_var.shape) != len(y_var.shape): return True
         for x_dim, y_dim in zip(x_var.shape, y_var.shape):
             if x_dim != y_dim and -1 not in [x_dim, y_dim]: return True
@@ -1213,7 +1213,7 @@ def assign_skip_lod_tensor_array(input, output):
             assign(input, output)
     else:
         if isinstance(output, Variable) and isinstance(
-                input, Variable) and _shape_diff(input, output):
+                input, Variable) and has_shape_diff(input, output):
             warnings.warn(
                 "In dy2static mode, we attemp to assign a variable with shape {} into a variable with shape{}, which is not always right."
                 .format(input.shape, output.shape))
