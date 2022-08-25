@@ -355,20 +355,25 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
     if isinstance(data, Variable) and (dtype is None or dtype == data.dtype):
         output = data
     else:
-        if dtype:
-            target_dtype = dtype
-        elif hasattr(data, 'dtype'):
-            target_dtype = data.dtype
-        else:
-            target_dtype = paddle.get_default_dtype()
-
-        target_dtype = convert_dtype(target_dtype)
 
         if not isinstance(data, np.ndarray):
             if np.isscalar(data) and not isinstance(data, str):
                 data = np.array([data])
             elif isinstance(data, (list, tuple)):
                 data = np.array(data)
+
+        if dtype:
+            target_dtype = dtype
+        elif hasattr(data, 'dtype') and data.dtype != 'object':
+            target_dtype = data.dtype
+            # Windows default type is 'int32', while Linux/Mac is 'int64'. Unify they.
+            if data.dtype in ['int32']:
+                default_type = "int64"
+                data = data.astype(default_type)
+        else:
+            target_dtype = paddle.get_default_dtype()
+
+        target_dtype = convert_dtype(target_dtype)
 
         if isinstance(data, np.ndarray) and len(data.shape) > 0 and any(
                 isinstance(x, Variable) for x in data):
