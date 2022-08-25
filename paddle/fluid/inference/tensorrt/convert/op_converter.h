@@ -246,9 +246,10 @@ class OpConverter {
           "conv3d",
           "conv3d_transpose",
           "fc",
+          "batch_norm",
       };
 
-      std::vector<std::string> black_name{"Filter", "Bias", "W"};
+      std::vector<std::string> valid_name{"X", "Input"};
 
       // inputs : string -> std::vector<string>
       auto inputs = op_desc.Inputs();
@@ -260,7 +261,7 @@ class OpConverter {
           // Not need convert this to Itensor, it is used as nvinfer1::Weights
           if ((std::find(black_op.begin(), black_op.end(), op.type()) !=
                black_op.end()) &&
-              (std::find(black_name.begin(), black_name.end(), iter.first) !=
+              (std::find(black_name.begin(), black_name.end(), iter.first) ==
                black_name.end()))
             continue;
 
