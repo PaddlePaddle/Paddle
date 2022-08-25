@@ -775,7 +775,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
 
     Reduce a tensor over all ranks so that all get the result.
-    As shown below, 4 GPUs each start 4 processes and the data on each GPU is represnted
+    As shown below, 4 GPUs each starts 4 processes and the data on each GPU is represented
     by the GPU number. The reduce operator is sum. Through all_reduce operator, 
     each GPU will have the sum of the data from all GPUs.
 
@@ -787,7 +787,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     Args:
         tensor (Tensor): The input Tensor. It also works as the output Tensor. Its data type
             should be float16, float32, float64, int32 or int64.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
             Default to True.
@@ -888,7 +888,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         tensor (Tensor): The output Tensor for the destination and the input Tensor otherwise. Its data type
             should be float16, float32, float64, int32 or int64.
         dst (int): The destination rank id.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
             Default to True.
@@ -984,7 +984,7 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     """
 
     Gather tensors from all participators and all get the result. As shown
-    below, 4 GPUs each start 4 processes and the data on each GPU is represnted
+    below, 4 GPUs each starts 4 processes and the data on each GPU is represented
     by the GPU number. Through the all_gather operator, each GPU will have data
     from all GPUs.
 
@@ -2581,7 +2581,7 @@ def reduce_scatter(tensor,
     Args:
         tensor (Tensor): Output tensor.
         tensor_list (list[Tensor]): List of tensors to reduce and scatter.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (Group, optional): The group instance return by new_group or None for global 
             default group. Default: None.
         use_calc_stream (bool, optional): Whether this op should be an async op.
@@ -2654,7 +2654,7 @@ def _reduce_scatter_base(output,
     Args:
         output (Tensor): Output tensor.
         input (Tensor): Input tensor that is of size output tensor size times world size
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (ProcessGroup, optional): The process group to work on. If None,
             the default process group will be used.
         use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream (False).
