@@ -2710,6 +2710,18 @@
     data_type : x
   backward : trilinear_interp_grad
 
+- api : triu_indices
+  args : (int row, int col, int offset, DataType dtype, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : TriuIndicesInferMeta
+    param : [row, col, offset, dtype]
+  kernel :
+    func : triu_indices
+    param : [row, col, offset, dtype]
+    data_type : dtype
+    backend : place
+
 # python API: paddle.nn.initializer.TruncatedNormal
 - api : truncated_gaussian_random
   args : (int[] shape, float mean, float std, int seed, DataType dtype=DataType::FLOAT32, Place place={})
