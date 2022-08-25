@@ -1715,6 +1715,7 @@ if($ENV{USE_STANDALONE_EXECUTOR})
                        PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
   set_tests_properties(
     test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
+    test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass_for_standalone_executor
     PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
   set_tests_properties(test_imperative_optimizer
                        PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
@@ -1758,16 +1759,12 @@ set_tests_properties(
   PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
 
 py_test_modules(
-  test_buffer_shared_memory_reuse_pass_for_standalone_executor MODULES
-  test_buffer_shared_memory_reuse_pass ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
-py_test_modules(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass_for_standalone_executor
   MODULES
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   ENVS
   FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
 set_tests_properties(
-  test_buffer_shared_memory_reuse_pass_for_standalone_executor
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass_for_standalone_executor
   PROPERTIES TIMEOUT 800)
 
