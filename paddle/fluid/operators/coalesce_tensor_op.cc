@@ -511,19 +511,6 @@ REGISTER_OPERATOR(coalesce_tensor,
                   paddle::operators::CoalesceTensorOpMaker);
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CPU_KERNEL(coalesce_tensor,
-                       ops::CoalesceTensorOpKernel<phi::CPUContext, int>,
-                       ops::CoalesceTensorOpKernel<phi::CPUContext, float>,
-                       ops::CoalesceTensorOpKernel<phi::CPUContext, double>);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL(
-    coalesce_tensor,
-    ops::CoalesceTensorOpKernel<phi::GPUContext, plat::float16>,
-    ops::CoalesceTensorOpKernel<phi::GPUContext, int>,
-    ops::CoalesceTensorOpKernel<phi::GPUContext, float>,
-    ops::CoalesceTensorOpKernel<phi::GPUContext, double>);
-#endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 REGISTER_OP_CUDA_KERNEL(
@@ -533,16 +520,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, int>,
     ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, float>,
     ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, double>);
-#endif
-
-#ifdef PADDLE_WITH_XPU
-REGISTER_OP_XPU_KERNEL(
-    coalesce_tensor,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext,
-                                plat::float16>,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, int>,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, double>);
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
