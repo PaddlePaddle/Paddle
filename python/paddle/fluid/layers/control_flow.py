@@ -1191,10 +1191,10 @@ def assign_skip_lod_tensor_array(input, output):
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     """
 
-    def _shape_diff(vara, varb):
-        if len(vara.shape) != len(varb.shape): return True
-        for sa, sb in zip(vara.shape, varb.shape):
-            if sa != sb and -1 not in [sa, sb]: return True
+    def _shape_diff(x_var, y_var):
+        if len(x_var.shape) != len(y_var.shape): return True
+        for x_dim, y_dim in zip(x_var.shape, y_var.shape):
+            if x_dim != y_dim and -1 not in [x_dim, y_dim]: return True
         return False
 
     if not isinstance(input, (Variable, core.VarBase)):
