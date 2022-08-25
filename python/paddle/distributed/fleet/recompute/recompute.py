@@ -508,25 +508,24 @@ def recompute_sequential(functions, segments, input, **kwargs):
         raise ValueError("Unexpected keyword arguments: " +
                          ",".join(arg for arg in kwargs))
 
-    def _run_func(begin, end, functions):
+    def _run_func(begin, end, funcs):
 
         def do_run(input):
-            for i in range(begin, end):
-                input = functions[i](input)
+            for i in range(begin, end + 1):
+                input = funcs[i](input)
             return input
 
         return do_run
 
-    assert isinstance(functions, paddle.nn.Sequential), (
-        "The functions must be of type paddle.nn.Sequential.")
+    if isinstance(functions, paddle.nn.Sequential):
+        functions = list(functions.children())
 
-    functions = list(functions.children())
     segment_size = len(functions) // segments
 
-    end = 0
+    end = -1
     for begin in range(0, segment_size * (segments - 1), segment_size):
-        end = begin + segment_size
-        input = recompute(_run_func(begin, end),
+        end = begin + segment_size - 1
+        input = recompute(_run_func(begin, end, functions),
                           input,
                           preserve_rng_state=preserve)
-    return _run_func(end, len(functions))(input)
+    return _run_func(end + 1, len(functions) - 1, functions)(input)

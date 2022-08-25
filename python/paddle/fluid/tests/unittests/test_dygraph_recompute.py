@@ -118,6 +118,9 @@ class Naive_fc_net(paddle.nn.Layer):
 
 def run_model(recompute_block=[],
               recompute_kwargs={},
+              use_fleet=False,
+              use_fleet_sq=False,
+              segments=1,
               enable_autocast=False,
               pure_fp16=False):
     gen = paddle.seed(10)
@@ -128,6 +131,9 @@ def run_model(recompute_block=[],
     batch_size, input_size = 1, 10
     model = Naive_fc_net(input_size,
                          recompute_blocks=recompute_block,
+                         use_fleet=use_fleet,
+                         use_fleet_sq=use_fleet_sq,
+                         segments=segments,
                          recompute_kwargs=recompute_kwargs)
     loss_fn = paddle.nn.MSELoss(reduction='mean')
     optimizer = paddle.optimizer.SGD(learning_rate=0.01,
@@ -219,14 +225,6 @@ class TestPyLayer(unittest.TestCase):
         # recompute using fleet.recompute_sequential, segments=1
         loss, param, grad = run_model(recompute_block=[],
                                       use_fleet_sq=True,
-                                      enable_autocast=enable_autocast,
-                                      pure_fp16=pure_fp16)
-        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
-
-        # recompute using fleet.recompute_sequential, segments=2
-        loss, param, grad = run_model(recompute_block=[],
-                                      use_fleet_sq=True,
-                                      segments=2,
                                       enable_autocast=enable_autocast,
                                       pure_fp16=pure_fp16)
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
