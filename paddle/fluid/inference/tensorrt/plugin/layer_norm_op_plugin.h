@@ -192,8 +192,6 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &eps_);
     DeserializeValue(&serialData, &serialLength, &mean_shape_);
     DeserializeValue(&serialData, &serialLength, &variance_shape_);
-    DeserializeValue(&serialData, &serialLength, &bias_d_init_);
-    DeserializeValue(&serialData, &serialLength, &scale_d_init_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
     return new LayerNormPluginDynamic(bias_.data(),
