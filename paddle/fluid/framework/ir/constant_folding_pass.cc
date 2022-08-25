@@ -33,6 +33,12 @@ class Node;
 }  // namespace framework
 }  // namespace paddle
 
+/*
+ * When a op's inputs and outputs is determined before executing the model, we
+ * can remove this op from the model. This ConstantFolding pass can remove all
+ * these like ops.
+ */
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -65,7 +71,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
 
     bool input_persis = true;
     // map is used to record how many time a name string occures in the whole
-    // model
+    // graph's nodes
     std::map<std::string, int> map;
     for (auto in_node : op_node->inputs) {
       map[in_node->Name()] = 0;
