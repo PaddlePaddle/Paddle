@@ -38,6 +38,7 @@ TEST(ProfilerTest, TestHostTracer) {
   ProfilerOptions options;
   options.trace_level = 2;
   options.trace_switch = 3;
+  EnableHostEventRecorder();
   auto profiler = Profiler::Create(options);
   EXPECT_TRUE(profiler);
   profiler->Prepare();
@@ -58,6 +59,7 @@ TEST(ProfilerTest, TestHostTracer) {
   }
   EXPECT_EQ(host_events.count("TestTraceLevel_record1"), 1u);
   EXPECT_EQ(host_events.count("TestTraceLevel_record2"), 0u);
+  profiler_result->Save("profilter.test.host");
 }
 
 TEST(ProfilerTest, TestCudaTracer) {
