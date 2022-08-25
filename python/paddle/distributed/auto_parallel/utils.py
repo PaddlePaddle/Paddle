@@ -1043,7 +1043,7 @@ def set_grad_var_shape(program, dist_context):
                     "fill_zeros_like"
             ]:
                 forward_var_name = op.input_arg_names[0]
-            elif op.type == "matmul_v2_grad":
+            elif op.type == "matmul_v2_grad" or op.type == "matmul_grad" or op.type == "mul_grad":
                 forward_var_name = None
                 for output_name in op.output_names:
                     if var_name in op.output(output_name):
@@ -1129,6 +1129,11 @@ def is_loss_grad_op(op):
         return False
     op_role = int(op.all_attrs()[OP_ROLE_KEY])
     return op_role & int(OpRole.Backward) and op_role & int(OpRole.Loss)
+
+
+def _is_gradient_clip_op(op):
+    return op.desc.has_attr("op_namescope") \
+        and op.desc.attr("op_namescope").startswith("/gradient_clip")
 
 
 def is_prim_op(op):

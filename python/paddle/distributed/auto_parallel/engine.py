@@ -16,7 +16,6 @@ import time
 import copy
 import logging
 from collections import defaultdict
-import socket
 
 import paddle
 import paddle.utils as utils
@@ -35,7 +34,6 @@ from paddle.fluid.framework import Operator, Parameter, _non_static_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed import fleet
-from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
 from .hepler import ProgramHelper
@@ -76,7 +74,18 @@ class Engine:
         self._cur_rank = paddle.distributed.get_rank()
         self._nranks = paddle.distributed.get_world_size()
         self._saver = DistributedSaver()
-        self._logger = get_logger(logging.INFO)
+
+        # TODO: add logger module
+        self._logger = logging.getLogger()
+        self._logger.propagate = False
+        if not self._logger.handlers:
+            self._logger.setLevel(logging.INFO)
+            log_handler = logging.StreamHandler()
+            log_format = logging.Formatter(
+                '[%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s'
+            )
+            log_handler.setFormatter(log_format)
+            self._logger.addHandler(log_handler)
 
         self._orig_main_prog = static.default_main_program()
         self._orig_startup_prog = static.default_startup_program()
@@ -307,7 +316,7 @@ class Engine:
             mode].dist_startup_programs
         self._feed_vars[mode] = self._dist_contexts[mode].serial_feed_vars
         self._fetch_vars[mode] = self._dist_contexts[mode].serial_fetch_vars
-        self._optimizer = self._dist_contexts[mode].serial_optimizer
+        self._lr_optimizer = self._dist_contexts[mode]._lr_optimizer
 
         if self._nranks > 1:
             # Traverse different rank programs and traverse each op of them,
@@ -429,25 +438,28 @@ class Engine:
         lr_scheduler = self.get_lr_scheduler(self.main_program)
 
         for epoch in range(epochs):
-            train_logs = {"epoch": epoch}
+            train_logs = {"epoch: {:d} ": epoch}
             for step, _ in enumerate(train_dataloader):
+
                 outs = self._executor.run(self.main_program,
                                           fetch_list=fetch_list,
                                           use_program_cache=use_cache,
                                           return_numpy=return_numpy)
+                train_logs["step: {:d} "] = step
                 if lr_scheduler is not None:
                     lr_scheduler.step()
-                    train_logs["lr"] = self._optimizer.get_lr()
-                train_logs["step"] = step
+                    train_logs["lr: {:5e} "] = self._lr_optimizer.get_lr()
                 # inner fetches
                 if fetch_loss:
-                    train_logs["train_loss"] = outs[0][0]
+                    train_logs["loss: {:9f} "] = outs[0][0]
                 # user fetches
                 user_outs = outs[len(fetch_loss):]
                 user_fetch_list = fetch_list[len(fetch_loss):]
                 for i, out in enumerate(user_outs):
-                    train_logs["train_" + fetch_map[user_fetch_list[i]]] = out
-                self._logger.info(train_logs)
+                    train_logs[fetch_map[user_fetch_list[i]] + ": {}"] = out
+                # logger
+                string = '[train] ' + ''.join(list(train_logs.keys()))
+                self._logger.info(string.format(*list(train_logs.values())))
 
     def evaluate(self,
                  eval_data,
@@ -473,14 +485,14 @@ class Engine:
         fetch_list, fetch_map = self._fetch_map(inner_fetch, usr_fetch)
 
         for step, _ in enumerate(eval_dataloader):
-            eval_logs = {"step": step}
+            eval_logs = {"step: {:d} ": step}
             outs = self._executor.run(self.main_program,
                                       fetch_list=fetch_list,
                                       use_program_cache=use_cache,
                                       return_numpy=return_numpy)
             # inner fetches
             if fetch_loss:
-                eval_logs["eval_loss"] = outs[0][0]
+                eval_logs["loss: {:9f} "] = outs[0][0]
             # Metric
             if fetch_metrics:
                 metric_out = outs[len(fetch_loss):len(inner_fetch)]
@@ -488,14 +500,15 @@ class Engine:
                     metric.update(*metric_out)
                     results = metric.accumulate()
                     for i, res in enumerate(to_list(results)):
-                        eval_logs["eval_" + metric.name()[i]] = res
+                        eval_logs[metric.name()[i] + ": {:9f} "] = res
             # usr fetches
             usr_outs = outs[len(inner_fetch):]
             usr_fetch_list = fetch_list[len(inner_fetch):]
             for i, out in enumerate(usr_outs):
-                eval_logs["eval_" + fetch_map[usr_fetch_list[i]]] = out
+                eval_logs[fetch_map[usr_fetch_list[i]] + ": {}"] = out
             # logger
-            self._logger.info(eval_logs)
+            string = '[eval] ' + ''.join(list(eval_logs.keys()))
+            self._logger.info(string.format(*list(eval_logs.values())))
 
     def predict(self,
                 test_data,
@@ -520,15 +533,17 @@ class Engine:
 
         outputs = []
         for step, _ in enumerate(test_dataloader):
-            predict_logs = {"step": step}
+            predict_logs = {"step: {:d} ": step}
             outs = self._executor.run(self.main_program,
                                       fetch_list=fetch_list,
                                       use_program_cache=use_cache,
                                       return_numpy=return_numpy)
             outputs.append(outs[:len(fetch_outputs)])
             for i, out in enumerate(outs):
-                predict_logs["pred_" + fetch_map[fetch_list[i]]] = out
-            self._logger.info(predict_logs)
+                predict_logs[fetch_map[fetch_list[i]] + ": {}"] = out
+            # logger
+            string = '[pred] ' + ''.join(list(predict_logs.keys()))
+            self._logger.info(string.format(*list(predict_logs.values())))
 
         return outputs
 

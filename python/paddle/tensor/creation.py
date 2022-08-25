@@ -15,6 +15,7 @@
 from __future__ import print_function
 import numpy as np
 import math
+import re
 from paddle.common_ops_import import fill_constant
 from ..fluid.layers import utils
 from ..static import Variable, device_guard
@@ -270,75 +271,7 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     return out
 
 
-@dygraph_only
-def to_tensor(data, dtype=None, place=None, stop_gradient=True):
-    r"""
-    Constructs a ``paddle.Tensor`` from ``data`` , 
-    which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor.
-
-    If the ``data`` is already a Tensor, copy will be performed and return a new tensor.
-    If you only want to change stop_gradient property, please call ``Tensor.stop_gradient = stop_gradient`` directly.
-
-    Args:
-        data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.
-            Can be a scalar, list, tuple, numpy\.ndarray, paddle\.Tensor.
-        dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' , 
-            'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
-            'complex64' , 'complex128'. Default: None, infers dtype from ``data`` 
-            except for python float number which gets dtype from ``get_default_type`` .
-        place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be  
-            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is 
-            string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs. 
-        stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
-
-    Returns:
-        Tensor: A Tensor constructed from ``data`` .
-
-    Examples:
-
-    .. code-block:: python
-
-        import paddle
-                
-        type(paddle.to_tensor(1))
-        # <class 'paddle.Tensor'>
-
-        paddle.to_tensor(1)
-        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
-        #        [1])
-
-        x = paddle.to_tensor(1, stop_gradient=False)
-        print(x)
-        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=False,
-        #        [1])
-
-        paddle.to_tensor(x)  # A new tensor will be created with default stop_gradient=True
-        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
-        #        [1])        
-
-        paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CPUPlace(), stop_gradient=False)
-        # Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=False,
-        #        [[0.10000000, 0.20000000],
-        #         [0.30000001, 0.40000001]])
-
-        type(paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64'))
-        # <class 'paddle.Tensor'>
-
-        paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64')
-        # Tensor(shape=[2, 2], dtype=complex64, place=CPUPlace, stop_gradient=True,
-        #        [[(1+1j), (2+0j)],
-        #         [(3+2j), (4+0j)]])
-    """
-    place = _get_paddle_place(place)
-    if place is None:
-        place = _current_expected_place()
-    elif not isinstance(
-            place,
-        (core.Place, core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace,
-         core.NPUPlace, core.XPUPlace, core.MLUPlace, core.CustomPlace)):
-        raise ValueError(
-            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace, paddle.MLUPlace, paddle.CustomPlace"
-        )
+def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
 
     if not isinstance(data, np.ndarray):
 
@@ -415,6 +348,125 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                              persistable=False,
                              zero_copy=False,
                              stop_gradient=stop_gradient)
+
+
+def _to_tensor_static(data, dtype=None, stop_gradient=None):
+
+    if isinstance(data, Variable) and (dtype is None or dtype == data.dtype):
+        output = data
+    else:
+        if dtype:
+            target_dtype = dtype
+        elif hasattr(data, 'dtype'):
+            target_dtype = data.dtype
+        else:
+            target_dtype = paddle.get_default_dtype()
+
+        target_dtype = convert_dtype(target_dtype)
+
+        if not isinstance(data, np.ndarray):
+            if np.isscalar(data) and not isinstance(data, str):
+                data = np.array([data])
+            elif isinstance(data, (list, tuple)):
+                data = np.array(data)
+
+        if isinstance(data, np.ndarray) and len(data.shape) > 0 and any(
+                isinstance(x, Variable) for x in data):
+            if not all(
+                [x.shape == (1, ) for x in data if isinstance(x, Variable)]):
+                raise TypeError(
+                    "Unsupport paddle.to_tensor([Variable, Variable...]) with non-scalar variable."
+                )
+            to_stack_list = [None] * data.shape[0]
+            for idx, d in enumerate(data):
+                to_stack_list[idx] = _to_tensor_static(d, dtype, stop_gradient)
+            data = paddle.stack(to_stack_list)
+            data = paddle.squeeze(data, -1)
+
+        if not isinstance(data, Variable):
+            output = assign(data)
+        else:
+            output = data
+        if convert_dtype(output.dtype) != target_dtype:
+            output = paddle.cast(output, target_dtype)
+
+    output.stop_gradient = stop_gradient
+
+    return output
+
+
+def to_tensor(data, dtype=None, place=None, stop_gradient=True):
+    r"""
+    Constructs a ``paddle.Tensor`` from ``data`` , 
+    which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor.
+
+    If the ``data`` is already a Tensor, copy will be performed and return a new tensor.
+    If you only want to change stop_gradient property, please call ``Tensor.stop_gradient = stop_gradient`` directly.
+
+    Args:
+        data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.
+            Can be a scalar, list, tuple, numpy\.ndarray, paddle\.Tensor.
+        dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' , 
+            'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
+            'complex64' , 'complex128'. Default: None, infers dtype from ``data`` 
+            except for python float number which gets dtype from ``get_default_type`` .
+        place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be  
+            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is 
+            string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs. 
+        stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
+
+    Returns:
+        Tensor: A Tensor constructed from ``data`` .
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+                
+        type(paddle.to_tensor(1))
+        # <class 'paddle.Tensor'>
+
+        paddle.to_tensor(1)
+        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #        [1])
+
+        x = paddle.to_tensor(1, stop_gradient=False)
+        print(x)
+        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=False,
+        #        [1])
+
+        paddle.to_tensor(x)  # A new tensor will be created with default stop_gradient=True
+        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #        [1])        
+
+        paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CPUPlace(), stop_gradient=False)
+        # Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=False,
+        #        [[0.10000000, 0.20000000],
+        #         [0.30000001, 0.40000001]])
+
+        type(paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64'))
+        # <class 'paddle.Tensor'>
+
+        paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64')
+        # Tensor(shape=[2, 2], dtype=complex64, place=CPUPlace, stop_gradient=True,
+        #        [[(1+1j), (2+0j)],
+        #         [(3+2j), (4+0j)]])
+    """
+    place = _get_paddle_place(place)
+    if place is None:
+        place = _current_expected_place()
+
+    if _non_static_mode():
+        return _to_tensor_non_static(data, dtype, place, stop_gradient)
+
+    # call assign for static graph
+    else:
+        re_exp = re.compile(r'[(](.+?)[)]', re.S)
+        place_str = re.findall(re_exp, str(place))[0]
+
+        with paddle.static.device_guard(place_str):
+            return _to_tensor_static(data, dtype, stop_gradient)
 
 
 def full_like(x, fill_value, dtype=None, name=None):
@@ -1537,7 +1589,7 @@ def assign(x, output=None):
     # but _non_static_mode()==False under @to_static, which means
     # isinstance(VarBase, Variable) == False. It will cause return None
     # after this api.
-    if isinstance(input, (Variable, core.VarBase)):
+    if isinstance(input, (Variable, core.VarBase, core.eager.Tensor)):
         if in_dygraph_mode():
             if output is None:
                 output = _C_ops.final_state_assign(input)
@@ -1562,14 +1614,16 @@ def assign(x, output=None):
         # We now support the form of [var, VAR...] if the Var.shape=[1,]
         if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
-            if not all(
-                [x.shape == (1, ) for x in input if isinstance(x, Variable)]):
+            if not all([
+                    x.shape == (1, ) for x in input
+                    if isinstance(x, (Variable, core.eager.Tensor))
+            ]):
                 raise TypeError(
                     "Unsupport paddle.assign([Variable, Variable...]) with non-scalar variable."
                 )
 
             def convert_scalar(x):
-                if not isinstance(x, Variable):
+                if not isinstance(x, (Variable, core.eager.Tensor)):
                     return assign(x)
                 return x
 
