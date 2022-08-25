@@ -315,7 +315,6 @@ class ExecutionContext {
     } else {
       return iter->second;
     }
-    return op_.Attrs().at(name);
   }
 
   virtual bool HasInput(const std::string& name) const;
