@@ -84,12 +84,11 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "identity_scale_op_clean_pass",             //
-      "adaptive_pool2d_convert_global_pass",  //
-      "shuffle_channel_detect_pass",          //
-      "quant_conv2d_dequant_fuse_pass",       //
-      "delete_fill_constant_op_pass",         //
-      "constant_folding_pass",
+  "identity_scale_op_clean_pass",              //
+      "adaptive_pool2d_convert_global_pass",   //
+      "shuffle_channel_detect_pass",           //
+      "quant_conv2d_dequant_fuse_pass",        //
+      "delete_fill_constant_op_pass",          //
       "delete_quant_dequant_op_pass",          //
       "delete_quant_dequant_filter_op_pass",   //
       "delete_weight_dequant_linear_op_pass",  //
@@ -122,8 +121,9 @@ const std::vector<std::string> kTRTSubgraphPasses({
       // "yolo_box_fuse_pass",      //
       "dense_fc_to_sparse_pass",                //
       "dense_multihead_matmul_to_sparse_pass",  //
-      "tensorrt_subgraph_pass",                 //
-      "conv_bn_fuse_pass",                      //
+      "constant_folding_pass",
+      "tensorrt_subgraph_pass",  //
+      "conv_bn_fuse_pass",       //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
@@ -198,12 +198,11 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "gpu_cpu_flatten2_matmul_fuse_pass",      //
         "gpu_cpu_map_matmul_v2_to_mul_pass",      //
         "gpu_cpu_map_matmul_v2_to_matmul_pass",   //
-        "constant_folding_pass",
-        "matmul_scale_fuse_pass",              //
-        "multihead_matmul_fuse_pass_v3",       //
-        "gpu_cpu_map_matmul_to_mul_pass",      //
-        "fc_fuse_pass",                        //
-        "fc_elementwise_layernorm_fuse_pass",  //
+        "matmul_scale_fuse_pass",                 //
+        "multihead_matmul_fuse_pass_v3",          //
+        "gpu_cpu_map_matmul_to_mul_pass",         //
+        "fc_fuse_pass",                           //
+        "fc_elementwise_layernorm_fuse_pass",     //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
@@ -215,6 +214,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",      //
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
+        "constant_folding_pass",
         // following pass should be located in the last, since it will
         // work on all fused ops.
         "runtime_context_cache_pass"
@@ -253,7 +253,6 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "layer_norm_fuse_pass",
                   "attention_lstm_fuse_pass",       //
                   "seqconv_eltadd_relu_fuse_pass",  //
-                  "constant_folding_pass",
                   // "seqpool_concat_fuse_pass",    //
                   "seqpool_cvm_concat_fuse_pass",  //
                   // "embedding_fc_lstm_fuse_pass", //
@@ -279,6 +278,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "conv_transpose_bn_fuse_pass",             //
                   "conv_transpose_eltwiseadd_bn_fuse_pass",  //
                   "is_test_pass",                            //
+                  "constant_folding_pass",
                   // following pass should be located in the last, since
                   // it will work on all fused ops.
                   "runtime_context_cache_pass"});
