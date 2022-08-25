@@ -13,11 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/split_kernel.h"
-#include "paddle/phi/kernels/impl/split_kernel_impl.h"
 
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/kernels/impl/split_kernel_impl.h"
 
 PD_REGISTER_KERNEL(split,
                    CPU,

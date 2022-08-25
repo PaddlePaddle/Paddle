@@ -13,20 +13,20 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/phi/kernels/split_kernel.h"
 
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 namespace phi {
 
-void SplitInferOutDims(const DenseTensor& x,
-                       const IntArray& sections,
-                       const Scalar& axis_scalar,
-                       std::vector<DenseTensor*>* outs) {
+static void SplitInferOutDims(const DenseTensor& x,
+                              const IntArray& sections,
+                              const Scalar& axis_scalar,
+                              std::vector<DenseTensor*>* outs) {
   if (sections.FromTensor() || axis_scalar.FromTensor()) {
     std::vector<MetaTensor> out_metas;
     out_metas.reserve(outs->size());
@@ -88,10 +88,10 @@ void SplitInferOutDims(const DenseTensor& x,
   }
 }
 
-void SplitWithNumInferOutDims(const DenseTensor& x,
-                              int num,
-                              const Scalar& axis_scalar,
-                              std::vector<DenseTensor*>* outs) {
+static void SplitWithNumInferOutDims(const DenseTensor& x,
+                                     int num,
+                                     const Scalar& axis_scalar,
+                                     std::vector<DenseTensor*>* outs) {
   if (axis_scalar.FromTensor()) {
     std::vector<MetaTensor> out_metas;
     out_metas.reserve(outs->size());
@@ -132,7 +132,6 @@ void SplitWithNumInferOutDims(const DenseTensor& x,
     }
   }
 }
-
 template <typename T, typename Context>
 void SplitKernel(const Context& dev_ctx,
                  const DenseTensor& x,
