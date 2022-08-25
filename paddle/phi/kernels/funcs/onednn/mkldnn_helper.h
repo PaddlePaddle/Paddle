@@ -17,7 +17,6 @@
 #include "dnnl.hpp"  // NOLINT
 #include "glog/logging.h"
 
-#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"

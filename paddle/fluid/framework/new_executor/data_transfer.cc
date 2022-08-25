@@ -526,11 +526,9 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
         }
         // NOTE(Aurelius84): avoid deepcopy twice if we already insert data
         // transfer op.
-        VLOG(4) << "2 ";
         if (op_base->Type() == "fetch_v2") {
           op_base->SetAttr("deepcopy", false);
         }
-        VLOG(4) << "1 ";
       } else {
         // record no need data transformer input var_id
         VLOG(3) << op_base->Type()

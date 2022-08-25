@@ -58,7 +58,7 @@ void TransferLayoutGeneral(const Context& dev_ctx,
                            DenseTensor* out) {
   auto src_dim = x.dims();
 
-  auto axis = GetAxis(x.layout(), static_cast<DataLayout>(dst_layout));
+  auto axis = GetAxis(x.layout(), dst_layout);
 
   std::vector<int64_t> dst_dim;
   dst_dim.resize(axis.size());
@@ -66,8 +66,8 @@ void TransferLayoutGeneral(const Context& dev_ctx,
     dst_dim[i] = src_dim[axis[i]];
   }
 
+  out->Resize(phi::make_ddim(dst_dim));
   dev_ctx.Alloc(out, x.dtype());
-  out->ResizeAndAllocate(phi::make_ddim(dst_dim));
 
   PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
                        CastDataLayout<data_t, Context>(dev_ctx, x, axis, out);
@@ -92,8 +92,8 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
 
     return oss.str();
   };
-  VLOG(0) << " x: " << print_tensor_meta(x);
-  VLOG(0) << " out: " << print_tensor_meta(*out) << " " << out;
+  VLOG(10) << " x: " << print_tensor_meta(x);
+  VLOG(10) << " out: " << print_tensor_meta(*out) << " " << out;
 
   // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
   // data_transfer.cc
