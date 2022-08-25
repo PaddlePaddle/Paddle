@@ -34,7 +34,7 @@ class Node;
 }  // namespace paddle
 
 /*
- * When a op's inputs and outputs is determined before executing the model, we
+ * When a op's inputs and outputs is determined before feeding data to the model, we
  * can remove this op from the model. This ConstantFolding pass can remove all
  * these like ops.
  */
