@@ -260,6 +260,9 @@ class TestReverseAxisListTensor(TestReverseAxisTensor):
         out = paddle.fluid.layers.reverse(x, axes)
         return out
 
+
+class TestAReverseEagerAPI(UnittestBase):
+
     def test_api(self):
         paddle.disable_static()
         x = paddle.randn([4, 10])
