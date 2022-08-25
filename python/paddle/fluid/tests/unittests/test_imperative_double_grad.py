@@ -61,7 +61,7 @@ class TestEagerGrad(TestCase):
 
         # stop_gradient = !create_graph, create_graph default false
         self.assertEqual(dx[0].stop_gradient, True)
-        self.assertTrue(np.allclose(dx[0].numpy(), expected_dx[0]))
+        np.testing.assert_allclose(dx[0].numpy(), expected_dx, rtol=1e-05)
 
     def test_simple_example_eager_grad(self):
         with _test_eager_guard():
@@ -83,7 +83,7 @@ class TestEagerGrad(TestCase):
         dx = fluid.dygraph.grad(out, [x, z], allow_unused=True)
         dout = np.ones_like(np_y)
         expected_dx = np.matmul(dout, np.transpose(np_y))
-        self.assertTrue(np.allclose(dx[0].numpy(), expected_dx[0]))
+        np.testing.assert_allclose(dx[0].numpy(), expected_dx, rtol=1e-05)
         # stop_gradient = !create_graph, create_graph default false
         self.assertEqual(dx[0].stop_gradient, True)
         # x is unused input in the graph

@@ -1026,7 +1026,11 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             else:
                 assert IsVectorTensorType(ttype)
                 if is_optional:
-                    arg_str = f"const paddle::optional<std::vector<paddle::experimental::Tensor>>& {name}"
+                    if self.is_forward_only and is_inplaced and forward_inplace_map and name in forward_inplace_map.keys(
+                    ):
+                        arg_str = f"paddle::optional<std::vector<paddle::experimental::Tensor>>& {name}"
+                    else:
+                        arg_str = f"const paddle::optional<std::vector<paddle::experimental::Tensor>>& {name}"
                     amp_tensors_vector_optional_list.append(
                         f"if ({name}) amp_tensors_vector.push_back( *{name} );\n"
                     )
@@ -1034,7 +1038,11 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
                 else:
-                    arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
+                    if is_inplaced and forward_inplace_map and name in forward_inplace_map.keys(
+                    ):
+                        arg_str = f"std::vector<paddle::experimental::Tensor>& {name}"
+                    else:
+                        arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
                     amp_tensors_vector_list.append(f"{name}")
                     amp_autocast_list.append(
                         f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"

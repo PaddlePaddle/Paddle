@@ -171,7 +171,7 @@ class Dirac(Initializer):
                 idx_list.append(offset)
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                tmp_out, _ = _C_ops.reshape2(out_var, None, 'shape', [-1])
+                tmp_out = _C_ops.final_state_reshape(out_var, [-1])
                 tmp_out._share_underline_tensor_to(out_var)
         else:
             x_shape = block.create_var(name=unique_name.generate(".".join(
@@ -239,15 +239,12 @@ class Dirac(Initializer):
                 tmp_out = _C_ops.final_state_scatter(out_var, index_tensor,
                                                      value_tensor, True)
                 tmp_out._share_underline_tensor_to(out_var)
-                tmp_reshape_out, _ = _C_ops.reshape2(out_var, None, 'shape',
-                                                     origin_shape)
+                tmp_reshape_out = _C_ops.final_state_reshape(
+                    out_var, origin_shape)
                 tmp_reshape_out._share_underline_tensor_to(out_var)
                 if var.dtype != VarDesc.VarType.FP32:
-                    tmp_cast_out = _C_ops.cast(out_var, 'in_dtype',
-                                               out_var.dtype, 'out_dtype',
-                                               var.dtype)
+                    tmp_cast_out = _C_ops.final_state_cast(out_var, var.dtype)
                     tmp_cast_out._share_underline_tensor_to(var)
-
         else:
             op = block.append_op(type="scatter",
                                  inputs={

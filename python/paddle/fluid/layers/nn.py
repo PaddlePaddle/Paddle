@@ -205,6 +205,7 @@ OP_NAMEMAPPING = {
     'elementwise_sub': 'final_state_subtract',
     'elementwise_mul': 'final_state_multiply',
     'elementwise_div': 'final_state_divide',
+    'elementwise_mod': 'final_state_modulo',
 }
 
 
@@ -1452,6 +1453,9 @@ def softmax(input, use_cudnn=True, name=None, axis=-1):
             #   [0.72747517, 0.72747517, 0.72747517, 0.72747517]]]
 
     """
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_softmax(input, axis)
 
     if _non_static_mode():
         return _C_ops.softmax(input, 'axis', axis, 'use_cudnn', use_cudnn)
@@ -4656,7 +4660,15 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        reduce_all = True if dim == None or dim == [] or len(dim) == len(
+            input.shape) else False
+        dim = dim if dim != None and dim != [] else [0]
+        if reduce_all:
+            return _C_ops.final_state_sum(input, [], None, keep_dim)
+        else:
+            return _C_ops.final_state_sum(input, dim, None, keep_dim)
+    elif _in_legacy_dygraph():
         reduce_all = True if dim == None or dim == [] or len(dim) == len(
             input.shape) else False
         dim = dim if dim != None and dim != [] else [0]
@@ -5003,11 +5015,11 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
     """
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
     check_variable_and_dtype(input, 'input', ('bool'), 'reduce_all')
     helper = LayerHelper('reduce_all', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
     helper.append_op(type='reduce_all',
                      inputs={'X': input},
                      outputs={'Out': out},
@@ -6446,7 +6458,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         elif isinstance(shape, tmp_tensor_type):
             # TODO: Tensor shape in final_state_reshape has not been tested
             shape.stop_gradient = True
-            out, _ = _C_ops.reshape2(x, shape)
+            out = _C_ops.final_state_reshape(x, shape)
         else:
             raise ValueError(
                 "shape must be an instance of `list`, `tuple` or `Variable`,"
@@ -15742,7 +15754,12 @@ def uniform_random(shape,
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        return _C_ops.final_state_uniform_random(shape, dtype, float(min),
+                                                 float(max), seed,
+                                                 _current_expected_place())
+    elif _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.uniform_random('shape', shape, 'min', float(min), 'max',
                                      float(max), 'seed', seed, 'dtype', dtype)

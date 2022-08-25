@@ -31,6 +31,7 @@ using SentenceVector = paddle::operators::SentenceVector<T>;
 namespace paddle {
 namespace test {
 
+template <typename T>
 void GenerateExample(const std::vector<size_t>& level_0,
                      const std::vector<size_t>& level_1,
                      const std::vector<int>& data,
@@ -72,19 +73,17 @@ void GenerateExample(const std::vector<size_t>& level_0,
   tensor_score.set_lod(lod);
   tensor_score.Resize({static_cast<int64_t>(data.size())});
   // malloc memory
-  float* score_ptr = tensor_score.mutable_data<float>(place);
+  T* score_ptr = tensor_score.mutable_data<T>(place);
   for (size_t i = 0; i < data.size(); ++i) {
-    score_ptr[i] = static_cast<float>(data.at(i));
+    score_ptr[i] = static_cast<T>(data.at(i));
   }
 
   ids->push_back(tensor_id);
   scores->push_back(tensor_score);
 }
 
-}  // namespace test
-}  // namespace paddle
-
-TEST(BeamSearchDecodeOp, Backtrace) {
+template <typename T>
+void BeamSearchDecodeTestFrame() {
   CPUPlace place;
 
   // Construct sample data with 5 steps and 2 source sentences
@@ -92,27 +91,27 @@ TEST(BeamSearchDecodeOp, Backtrace) {
   LoDTensorArray ids;
   LoDTensorArray scores;
 
-  paddle::test::GenerateExample(std::vector<size_t>{0, 1, 2},
-                                std::vector<size_t>{0, 1, 2},
-                                std::vector<int>{0, 0},
-                                &ids,
-                                &scores);  // start with start_id
-  paddle::test::GenerateExample(std::vector<size_t>{0, 1, 2},
-                                std::vector<size_t>{0, 2, 4},
-                                std::vector<int>{2, 3, 4, 5},
-                                &ids,
-                                &scores);
-  paddle::test::GenerateExample(std::vector<size_t>{0, 2, 4},
-                                std::vector<size_t>{0, 2, 2, 4, 4},
-                                std::vector<int>{3, 1, 5, 4},
-                                &ids,
-                                &scores);
-  paddle::test::GenerateExample(std::vector<size_t>{0, 2, 4},
-                                std::vector<size_t>{0, 1, 2, 3, 4},
-                                std::vector<int>{1, 1, 3, 5},
-                                &ids,
-                                &scores);
-  paddle::test::GenerateExample(
+  GenerateExample<T>(std::vector<size_t>{0, 1, 2},
+                     std::vector<size_t>{0, 1, 2},
+                     std::vector<int>{0, 0},
+                     &ids,
+                     &scores);  // start with start_id
+  GenerateExample<T>(std::vector<size_t>{0, 1, 2},
+                     std::vector<size_t>{0, 2, 4},
+                     std::vector<int>{2, 3, 4, 5},
+                     &ids,
+                     &scores);
+  GenerateExample<T>(std::vector<size_t>{0, 2, 4},
+                     std::vector<size_t>{0, 2, 2, 4, 4},
+                     std::vector<int>{3, 1, 5, 4},
+                     &ids,
+                     &scores);
+  GenerateExample<T>(std::vector<size_t>{0, 2, 4},
+                     std::vector<size_t>{0, 1, 2, 3, 4},
+                     std::vector<int>{1, 1, 3, 5},
+                     &ids,
+                     &scores);
+  GenerateExample<T>(
       std::vector<size_t>{0, 2, 4},
       std::vector<size_t>{0, 0, 0, 2, 2},  // the branchs of the first source
                                            // sentence are pruned since finished
@@ -123,7 +122,7 @@ TEST(BeamSearchDecodeOp, Backtrace) {
   ASSERT_EQ(ids.size(), 5UL);
   ASSERT_EQ(scores.size(), 5UL);
 
-  BeamSearchDecoder<float> helper(2, 1);  // beam_size = 2, end_id = 1
+  BeamSearchDecoder<T> helper(2, 1);  // beam_size = 2, end_id = 1
 
   LoDTensor id_tensor;
   LoDTensor score_tensor;
@@ -142,7 +141,30 @@ TEST(BeamSearchDecodeOp, Backtrace) {
               static_cast<int64_t>(expect_data[i]));
   }
   for (int64_t i = 0; i < id_tensor.dims()[0]; ++i) {
-    ASSERT_EQ(score_tensor.data<float>()[i],
-              static_cast<float>(id_tensor.data<int64_t>()[i]));
+    ASSERT_EQ(score_tensor.data<T>()[i],
+              static_cast<T>(id_tensor.data<int64_t>()[i]));
   }
+}
+
+}  // namespace test
+}  // namespace paddle
+
+TEST(BeamSearchDecodeOp, Backtrace_CPU_Float) {
+  paddle::test::BeamSearchDecodeTestFrame<float>();
+}
+
+TEST(BeamSearchDecodeOp, Backtrace_CPU_Float16) {
+  paddle::test::BeamSearchDecodeTestFrame<paddle::platform::float16>();
+}
+
+TEST(BeamSearchDecodeOp, Backtrace_CPU_Double) {
+  paddle::test::BeamSearchDecodeTestFrame<double>();
+}
+
+TEST(BeamSearchDecodeOp, Backtrace_CPU_Int) {
+  paddle::test::BeamSearchDecodeTestFrame<int>();
+}
+
+TEST(BeamSearchDecodeOp, Backtrace_CPU_Int64) {
+  paddle::test::BeamSearchDecodeTestFrame<int64_t>();
 }
