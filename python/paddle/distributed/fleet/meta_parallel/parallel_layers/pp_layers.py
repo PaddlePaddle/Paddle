@@ -195,7 +195,7 @@ class PipelineLayer(Layer):
                 "virtual_pipeline_stage should be None or an int"
             if num_virtual_pipeline_stages > 1:
                 logger.info(
-                    "set num_virtual_pipeline_stages > 1 means using interleave scheduler instead of 1f1b"
+                    "set num_virtual_pipeline_stages > 1 means using interleave scheduler instead of 1f1b scheduler"
                 )
                 assert isinstance(seg_method, str), \
                     "seg_method should be a str for interleave scheduler"
@@ -244,17 +244,14 @@ class PipelineLayer(Layer):
             self._stage_id = self._topo.get_coord(self.global_rank).pipe
             self._num_stages = self._topo.get_dim_size("pipe")
 
-        assert self._num_layers % (self._num_stages * self._num_virtual_pipeline_stages) == 0, \
-            "num layers should be divided by num_pipeline_stages * num_virtual_pipeline_stages"
-
         # initialize segment
         self._layers_desc = list(self.layers)
         self._num_layers = len(self._layers_desc)
 
         if self._num_virtual_pipeline_stages > 1:
             # interleaving pipeline segmentation
-            self._start_poss = [0]
-            self._end_poss = [self._num_layers - 1]
+            self._start_poss = []
+            self._end_poss = []
             self._model_chunks = []  # list of PipelineLayerChunk
             # TODO: add the model chunks to sub layer
             self._segment_network_for_interleave(seg_method)
@@ -368,6 +365,20 @@ class PipelineLayer(Layer):
             num_virtual_pipeline_stage=self._num_virtual_pipeline_stages)
         self.segment_parts = seg.do_segment()
 
+        logger.info("segment result:" +
+                    ", ".join(str(arg) for arg in self.segment_parts))
+
+        for i in range(self._stage_id,
+                       self._num_stages * self._num_virtual_pipeline_stages,
+                       self._num_virtual_pipeline_stages):
+            assert self.segment_parts[i] <= self.segment_parts[i + 1]
+            self._start_poss.append(self.segment_parts[i])
+            self._end_poss.append(self.segment_parts[i + 1])
+
+        assert len(self._start_poss) == len(self._end_poss)
+
+        self._print_segmentation_for_debug()
+
     def _segment_network(self, seg_method):
         logger.info("start segment network..")
         seg = SegmentLayers(self._layers_desc,
@@ -380,9 +391,12 @@ class PipelineLayer(Layer):
 
         self._start_pos = self.segment_parts[self._stage_id]
         self._end_pos = self.segment_parts[self._stage_id + 1]
+        self._print_segmentation_for_debug()
 
+    def _print_segmentation_for_debug(self):
         # print information for debug
-        for stage in range(self._num_stages):
+        for stage in range(self._num_stages *
+                           self._num_virtual_pipeline_stages):
             start = self.segment_parts[stage]
             end = self.segment_parts[stage + 1]
             logger.info("stage={}, global_rank={} ,layer_number={}".format(
@@ -390,6 +404,17 @@ class PipelineLayer(Layer):
 
             for index, layer in enumerate(self._layers_desc[start:end]):
                 logger.info("{}: {}".format(index + start, str(layer)))
+
+        if self._num_virtual_pipeline_stages > 1:
+            for stage in range(self._num_stages):
+                stage_to_virtual_stage_info = "stage {} contains virtual stages: ".format(
+                    stage)
+                for i in range(
+                        stage,
+                        self._num_stages * self._num_virtual_pipeline_stages,
+                        self._num_virtual_pipeline_stages):
+                    stage_to_virtual_stage_info += " {},".format(i)
+                logger.info(stage_to_virtual_stage_info)
 
         if self._loss_fn:
             try:
