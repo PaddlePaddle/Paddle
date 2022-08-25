@@ -70,9 +70,10 @@ class Criterion(nn.Layer):
 
 class RecomputeMatmulBlock(nn.Layer):
 
-    def __init__(self, mp, seed, m, n, k):
+    def __init__(self, mp, seed, m, n, k, use_fleet=False):
         super(RecomputeMatmulBlock, self).__init__()
         self.mp = mp
+        self.use_fleet = use_fleet
         if mp is not None and mp.nranks > 1:
             mp_linear_1 = fleet.meta_parallel.ColumnParallelLinear(
                 m,
@@ -99,7 +100,10 @@ class RecomputeMatmulBlock(nn.Layer):
 
     def forward(self, x):
         if self.mp:
-            return recompute(self.layers, x)
+            if self.use_fleet:
+                return fleet.recompute(self.layers, x)
+            else:
+                return recompute(self.layers, x)
         else:
             return self.layers(x)
 
@@ -139,7 +143,7 @@ class Model(nn.Layer):
         self.layers_pp.append(dp_linear)
         mp = hcg.get_model_parallel_group() if hcg else None
         for i in range(6):
-            mp_layer = RecomputeBlock(mp, 1024 + i, 64, 128, 64)
+            mp_layer = RecomputeBlock(mp, 1024 + i, 64, 128, 64, True)
             act = nn.ReLU6()
             layer_seq = nn.Sequential(mp_layer, act)
             self.layers_pp.append(layer_seq)

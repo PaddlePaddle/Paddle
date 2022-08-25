@@ -21,6 +21,7 @@ import paddle
 from paddle.autograd import PyLayer
 from paddle.distributed.fleet.utils import recompute
 import random
+from paddle.distributed import fleet
 
 import paddle.fluid.layers as layers
 
@@ -53,40 +54,62 @@ class Naive_fc_net(paddle.nn.Layer):
     def __init__(self,
                  input_size=10,
                  recompute_blocks=[1, 3],
+                 use_fleet=False,
+                 use_fleet_sq=False,
+                 segments=1,
                  recompute_kwargs={}):
         super(Naive_fc_net, self).__init__()
         self.recompute_blocks = recompute_blocks
         self.recompute_kwargs = recompute_kwargs
+        self.use_fleet = use_fleet
+        self.use_fleet_sq = use_fleet_sq
+        self.segments = segments
+
         self.runfunc0 = get_fc_block(0, input_size, is_last=False)
         self.runfunc1 = get_fc_block(1, input_size, is_last=False)
         self.runfunc2 = get_fc_block(2, input_size, is_last=False)
         self.runfunc3 = get_fc_block(3, input_size, is_last=False)
         self.runfunc4 = get_fc_block(4, input_size, is_last=True)
 
+        if self.use_fleet_sq:
+            self.runfuncs = paddle.nn.Sequential(self.runfunc0, self.runfunc1,
+                                                 self.runfunc2, self.runfunc3,
+                                                 self.runfunc4)
+
     def forward(self, inputs):
 
+        if self.use_fleet_sq:
+            return fleet.recompute_sequential(self.runfuncs, self.segments,
+                                              inputs)
+
         if 0 in self.recompute_blocks:
-            inputs = recompute(self.runfunc0, inputs)
+            recompute_func = fleet.recompute if self.use_fleet else recompute
+            inputs = recompute_func(self.runfunc0, inputs)
         else:
             inputs = self.runfunc0(inputs)
 
         if 1 in self.recompute_blocks:
-            inputs = recompute(self.runfunc1, inputs)
+            recompute_func = fleet.recompute if self.use_fleet else recompute
+            inputs = recompute_func(self.runfunc1, inputs)
         else:
             inputs = self.runfunc1(inputs)
 
         if 2 in self.recompute_blocks:
-            inputs = recompute(self.runfunc2, inputs, **self.recompute_kwargs)
+            recompute_func = fleet.recompute if self.use_fleet else recompute
+            inputs = recompute_func(self.runfunc2, inputs,
+                                    **self.recompute_kwargs)
         else:
             inputs = self.runfunc2(inputs)
 
         if 3 in self.recompute_blocks:
-            inputs = recompute(self.runfunc3, inputs)
+            recompute_func = fleet.recompute if self.use_fleet else recompute
+            inputs = recompute_func(self.runfunc3, inputs)
         else:
             inputs = self.runfunc3(inputs)
 
         if 4 in self.recompute_blocks:
-            inputs = recompute(self.runfunc4, inputs)
+            recompute_func = fleet.recompute if self.use_fleet else recompute
+            inputs = recompute_func(self.runfunc4, inputs)
         else:
             inputs = self.runfunc4(inputs)
 
@@ -175,6 +198,35 @@ class TestPyLayer(unittest.TestCase):
 
         # recompute second & fourth block
         loss, param, grad = run_model(recompute_block=[1, 3],
+                                      enable_autocast=enable_autocast,
+                                      pure_fp16=pure_fp16)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+        # recompute second block using fleet
+        loss, param, grad = run_model(recompute_block=[1],
+                                      use_fleet=True,
+                                      enable_autocast=enable_autocast,
+                                      pure_fp16=pure_fp16)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+        # recompute second & fourth block using fleet
+        loss, param, grad = run_model(recompute_block=[1, 3],
+                                      use_fleet=True,
+                                      enable_autocast=enable_autocast,
+                                      pure_fp16=pure_fp16)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+        # recompute using fleet.recompute_sequential, segments=1
+        loss, param, grad = run_model(recompute_block=[],
+                                      use_fleet_sq=True,
+                                      enable_autocast=enable_autocast,
+                                      pure_fp16=pure_fp16)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+        # recompute using fleet.recompute_sequential, segments=2
+        loss, param, grad = run_model(recompute_block=[],
+                                      use_fleet_sq=True,
+                                      segments=2,
                                       enable_autocast=enable_autocast,
                                       pure_fp16=pure_fp16)
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
