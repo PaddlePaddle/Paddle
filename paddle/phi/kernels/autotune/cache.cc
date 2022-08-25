@@ -21,25 +21,6 @@
 namespace phi {
 namespace autotune {
 
-// Define the cache key of operator
-size_t ConvKey(const std::vector<int64_t>& x_dims,
-               const std::vector<int64_t>& w_dims,
-               const std::vector<int>& strides,
-               const std::vector<int>& paddings,
-               const std::vector<int>& dilations,
-               phi::DataType dtype,
-               int group,
-               int64_t data_layout) {
-  return GetKey(x_dims,
-                w_dims,
-                strides,
-                paddings,
-                dilations,
-                static_cast<int64_t>(dtype),
-                group,
-                data_layout);
-}
-
 size_t TransposeKey(const std::vector<int64_t>& x_dims,
                     const std::vector<int32_t>& perm,
                     phi::DataType dtype) {

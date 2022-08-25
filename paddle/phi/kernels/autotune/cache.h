@@ -44,8 +44,7 @@ namespace std {
 template <typename T>
 struct hash<std::vector<T>> {
   std::size_t operator()(std::vector<T> const& vec) const noexcept {
-    // std::size_t seed = 0xcbf29ce484222325;
-    std::size_t seed = 0;
+    std::size_t seed = 0xcbf29ce484222325;
     for (auto val : vec) {
       HashCombine(&seed, val);
     }
@@ -71,16 +70,6 @@ size_t GetKey(Args&&... args) {
   HashCombine(&seed, std::forward<Args>(args)...);
   return seed;
 }
-
-// Define the cache key of operator
-size_t ConvKey(const std::vector<int64_t>& x_dims,
-               const std::vector<int64_t>& w_dims,
-               const std::vector<int>& strides,
-               const std::vector<int>& paddings,
-               const std::vector<int>& dilations,
-               phi::DataType dtype,
-               int groups,
-               int64_t data_layout);
 
 struct ConvCacheKey {
   ConvCacheKey() {}
