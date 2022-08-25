@@ -120,6 +120,10 @@ def monkey_patch_varbase():
         for attr in attr_keys:
             attr_kwargs[attr] = getattr(self, attr, None)
 
+        # If specify block, use it instead of self.block
+        if 'block' in kwargs:
+            attr_kwargs['block'] = kwargs['block']
+
         attr_kwargs.update(kwargs)
 
         if to_parameter or isinstance(self, (ParamBase, EagerParamBase)):
@@ -425,12 +429,14 @@ def monkey_patch_varbase():
         if device is not None:
             if isinstance(device, str):
                 device = paddle.device._convert_to_place(device)
-            elif isinstance(device, (core.CPUPlace, core.CUDAPlace,
-                                     core.CUDAPinnedPlace, core.XPUPlace)):
+            elif isinstance(
+                    device,
+                (core.CPUPlace, core.CUDAPlace, core.CUDAPinnedPlace,
+                 core.XPUPlace, core.CustomPlace)):
                 pass
             else:
                 raise ValueError(
-                    "device value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace() or paddle.XPUPlace(), but the type of device is "
+                    "device value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace(), paddle.XPUPlace() or paddle.CustomPlace(), but the type of device is "
                     + type(device).__name__)
 
         if blocking is None:

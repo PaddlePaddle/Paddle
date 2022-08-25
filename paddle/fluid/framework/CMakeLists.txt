@@ -78,52 +78,31 @@ cc_test(
   data_type_test
   SRCS data_type_test.cc
   DEPS data_type place tensor)
-if(WITH_GPU)
-  if(WIN32)
-    windows_symbolic(tensor_util SRCS tensor_util.cu)
-    nv_library(
-      tensor
-      SRCS .tensor_util.cu
-      DEPS place memory data_type device_context dense_tensor)
-    add_dependencies(tensor tensor_util)
-  else()
-    nv_library(
-      tensor
-      SRCS tensor_util.cu
-      DEPS place memory data_type device_context dense_tensor)
-  endif()
-elseif(WITH_ROCM)
-  hip_library(
-    tensor
-    SRCS tensor_util.cu
-    DEPS place memory data_type device_context dense_tensor)
-else()
-  cc_library(
-    tensor
-    SRCS tensor_util.cc
-    DEPS place memory data_type device_context dense_tensor)
-endif()
-# target_link(tensor profiler)
+
+cc_library(
+  tensor
+  SRCS tensor_util.cc
+  DEPS place memory data_type device_context dense_tensor)
 
 cc_test(
   tensor_test
   SRCS tensor_test.cc
-  DEPS tensor)
+  DEPS tensor isfinite_op)
 if(WITH_GPU)
   nv_test(
     tensor_util_test
     SRCS tensor_util_test.cc tensor_util_test.cu
-    DEPS tensor dlpack_tensor)
+    DEPS tensor dlpack_tensor isfinite_op)
 elseif(WITH_ROCM)
   hip_test(
     tensor_util_test
     SRCS tensor_util_test.cc tensor_util_test.cu
-    DEPS tensor dlpack_tensor)
+    DEPS tensor dlpack_tensor isfinite_op)
 else()
   cc_test(
     tensor_util_test
     SRCS tensor_util_test.cc
-    DEPS tensor dlpack_tensor)
+    DEPS tensor dlpack_tensor isfinite_op)
 endif()
 
 cc_test(
@@ -204,7 +183,7 @@ cc_test(
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS lod_tensor selected_rows_utils framework_proto scope)
+  DEPS selected_rows_utils framework_proto scope)
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
@@ -438,6 +417,7 @@ if(WITH_XPU)
     SRCS operator.cc
     DEPS xpu_op_list
          op_info
+         proto_desc
          device_context
          tensor
          scope
@@ -462,6 +442,7 @@ else()
     operator
     SRCS operator.cc
     DEPS op_info
+         proto_desc
          device_context
          tensor
          scope
@@ -500,8 +481,19 @@ cc_test(
 
 cc_library(
   proto_desc
-  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc process_mesh_desc.cc
-  DEPS attribute shape_inference op_info operator glog version)
+  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc
+  DEPS attribute
+       shape_inference
+       op_info
+       operator
+       glog
+       version
+       dist_attr)
+
+if(WITH_CRYPTO)
+  add_dependencies(proto_desc cryptopp)
+  target_link_libraries(proto_desc cryptopp)
+endif()
 
 cc_library(
   op_registry

@@ -63,9 +63,10 @@ class TestQueue(unittest.TestCase):
             0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_program)
-        ret = exe.run(main_program, fetch_list=[data_out.name])
-        self.assertTrue(
-            np.allclose(np.asarray(ret), np.full((2, 3), value, np.float32)))
+        ret, = exe.run(main_program, fetch_list=[data_out.name])
+        np.testing.assert_allclose(np.asarray(ret),
+                                   np.full((2, 3), value, np.float32),
+                                   rtol=1e-05)
 
 
 if __name__ == '__main__':

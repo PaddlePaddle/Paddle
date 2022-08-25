@@ -41,6 +41,42 @@ class MergedMomentumOpXPUKernel : public framework::OpKernel<T> {
         ctx.Attr<std::vector<std::string>>("regularization_method");
     auto regularization_coeff =
         ctx.Attr<std::vector<float>>("regularization_coeff");
+    PADDLE_ENFORCE_EQ(op_num,
+                      params_out.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of Output(ParamOut) must be equal to "
+                          "Input(Param), but got the size of Output(ParamOut) "
+                          "is %d, the size of Input(Param) is %d.",
+                          params_out.size(),
+                          op_num));
+    PADDLE_ENFORCE_EQ(op_num,
+                      velocity.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of Output(Velocity) must be equal to "
+                          "Input(Param), but got the size of Output(Velocity) "
+                          "is %d, the size of Input(Param) is %d.",
+                          velocity.size(),
+                          op_num));
+    PADDLE_ENFORCE_EQ(
+        op_num,
+        velocity_out.size(),
+        platform::errors::InvalidArgument(
+            "The size of Output(VelocityOut) must be equal to "
+            "Input(Param), but got the size of Output(VelocityOut) "
+            "is %d, the size of Input(Param) is %d.",
+            velocity_out.size(),
+            op_num));
+    PADDLE_ENFORCE_EQ(
+        op_num,
+        grad.size(),
+        platform::errors::InvalidArgument(
+            "The size of Input(Grad) must be equal to Input(Param), but got "
+            "the size of Input(Grad) is %d, the size of Input(Param) is %d.",
+            grad.size(),
+            op_num));
+    if (regularization_method.size() == 0) {
+      regularization_method.resize(op_num);
+    }
     std::vector<XPUType*> param_list(op_num);
     std::vector<XPUType*> velocity_list(op_num);
     std::vector<XPUType*> grad_list(op_num);
@@ -82,39 +118,6 @@ class MergedMomentumOpXPUKernel : public framework::OpKernel<T> {
       return;
     }
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    PADDLE_ENFORCE_EQ(op_num,
-                      params_out.size(),
-                      platform::errors::InvalidArgument(
-                          "The size of Output(ParamOut) must be equal to "
-                          "Input(Param), but got the size of Output(ParamOut) "
-                          "is %d, the size of Input(Param) is %d.",
-                          params_out.size(),
-                          op_num));
-    PADDLE_ENFORCE_EQ(op_num,
-                      velocity.size(),
-                      platform::errors::InvalidArgument(
-                          "The size of Output(Velocity) must be equal to "
-                          "Input(Param), but got the size of Output(Velocity) "
-                          "is %d, the size of Input(Param) is %d.",
-                          velocity.size(),
-                          op_num));
-    PADDLE_ENFORCE_EQ(
-        op_num,
-        velocity_out.size(),
-        platform::errors::InvalidArgument(
-            "The size of Output(VelocityOut) must be equal to "
-            "Input(Param), but got the size of Output(VelocityOut) "
-            "is %d, the size of Input(Param) is %d.",
-            velocity_out.size(),
-            op_num));
-    PADDLE_ENFORCE_EQ(
-        op_num,
-        grad.size(),
-        platform::errors::InvalidArgument(
-            "The size of Input(Grad) must be equal to Input(Param), but got "
-            "the size of Input(Grad) is %d, the size of Input(Param) is %d.",
-            grad.size(),
-            op_num));
     int r = xpu::merged_momentum(dev_ctx.x_context(),
                                  param_list,
                                  velocity_list,

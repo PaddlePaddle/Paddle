@@ -591,15 +591,65 @@ def interpolate(x,
         dy_attr = tuple(attr_list)
 
         if resample_type == "linear":
-            out = _C_ops.linear_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_linear_interp(
+                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                    inputs['Scale'] if 'Scale' in inputs else None,
+                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
+                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'], attrs['align_corners'],
+                    attrs['align_mode'])
+            else:
+                out = _C_ops.linear_interp_v2(x, *dy_attr)
         elif resample_type == "bilinear":
-            out = _C_ops.bilinear_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_bilinear_interp(
+                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                    inputs['Scale'] if 'Scale' in inputs else None,
+                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
+                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'], attrs['align_corners'],
+                    attrs['align_mode'])
+            else:
+                out = _C_ops.bilinear_interp_v2(x, *dy_attr)
         elif resample_type == "trilinear":
-            out = _C_ops.trilinear_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_trilinear_interp(
+                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                    inputs['Scale'] if 'Scale' in inputs else None,
+                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
+                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'], attrs['align_corners'],
+                    attrs['align_mode'])
+            else:
+                out = _C_ops.trilinear_interp_v2(x, *dy_attr)
         elif resample_type == "nearest":
-            out = _C_ops.nearest_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_nearest_interp(
+                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                    inputs['Scale'] if 'Scale' in inputs else None,
+                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
+                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'], attrs['align_corners'],
+                    attrs['align_mode'])
+            else:
+                out = _C_ops.nearest_interp_v2(x, *dy_attr)
         elif resample_type == "bicubic":
-            out = _C_ops.bicubic_interp_v2(x, *dy_attr)
+            if in_dygraph_mode():
+                out = _C_ops.final_state_bicubic_interp(
+                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                    inputs['Scale'] if 'Scale' in inputs else None,
+                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
+                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'], attrs['align_corners'],
+                    attrs['align_mode'])
+            else:
+                out = _C_ops.bicubic_interp_v2(x, *dy_attr)
         return out
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type='{}_interp_v2'.format(resample_type),
@@ -1004,14 +1054,14 @@ def dropout(x,
             print(y_01)
 
     """
-    # fast return for p == 0
-    if p == 0:
-        return x
+    if not isinstance(p, (float, int, Variable)):
+        raise TypeError("p argument should be a number or Variable")
 
-    if not isinstance(p, (float, int)):
-        raise TypeError("p argument should be a number")
-    if p < 0 or p > 1:
-        raise ValueError("p argument should between 0 and 1")
+    if isinstance(p, (int, float)):
+        # fast return for p == 0
+        if p == 0: return x
+        elif p < 0 or p > 1:
+            raise ValueError("p argument should between 0 and 1")
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
         raise ValueError(
             "mode argument should be 'downscale_in_infer' or 'upscale_in_train'"
@@ -1050,6 +1100,12 @@ def dropout(x,
         def get_attrs(prog, dropout_prob, is_test, seed):
             if (seed is None or seed == 0) and prog.random_seed != 0:
                 seed = prog.random_seed
+
+            if isinstance(dropout_prob,
+                          Variable) and not dropout_prob.shape != [1]:
+                raise TypeError(
+                    "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}"
+                    .format(p.shape))
             attrs = {
                 'dropout_prob': dropout_prob,
                 'is_test': is_test,
@@ -1311,30 +1367,30 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     Parameters:
         x (Tensor): The input tensor with data type float32/double/int32/int64_t.
-        pad (Tensor | List[int] | Tuple[int]): The padding size with data type int.
+        pad (Tensor|list[int]|tuple[int]): The padding size with data type int.
             If mode is 'constant' and length of pad is twice as length of x dimension, then x will 
             be padded from the first  dimension to the last dimension.
             Else: 1. If input dimension is 3, then the pad has the form (pad_left,
             pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right, 
             pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form 
             (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
-            When in 'constant' mode, this op uses a constant value to pad the input tensor.
-            When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
-            When in 'replicate' mode, uses input boundaries to pad the input tensor.
-            When in 'circular' mode, uses circular input to pad the input tensor.
-            Default is 'constant'
-        value (float32, optional): The value to fill the padded areas in 'constant' mode . Default is 0.0
+        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'
+
+           - 'constant' mode, uses a constant value to pad the input tensor.
+           - 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+           - 'replicate' mode, uses input boundaries to pad the input tensor.
+           - 'circular' mode, uses circular input to pad the input tensor.
+
+        value (float, optional): The value to fill the padded areas in 'constant' mode . Default is :math:`0.0`，
         data_format (str, optional): An string from: "NCL", "NLC", NHWC", "NCHW", "NCDHW", "NDHWC". Specify the data format of
-           the input data.
-           Default is  "NCHW"
-        name (str, optional) : The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+           the input data. Default is "NCHW"，
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
                     
     Returns: 
         Tensor, a Tensor padded according to pad and mode and data type is same as input.
 
-    Examples:
+    Example:
+    
         .. code-block:: text
 
             x = [[[[[1., 2., 3.],
@@ -1382,30 +1438,29 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                           [5. 6. 4. 5. 6. 4. 5.]
                           [2. 3. 1. 2. 3. 1. 2.]]]]]
 
-    Code Examples:
+    Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
             import paddle.nn.functional as F
             
             # example 1
             x_shape = (1, 1, 3)
-            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            x = paddle.arange(paddle.prod(paddle.to_tensor(x_shape)), dtype="float32").reshape(x_shape) + 1
             y = F.pad(x, [0, 0, 0, 0, 2, 3], value=1, mode='constant', data_format="NCL")
             print(y)
             # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
             
             # example 2
             x_shape = (1, 1, 3)
-            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            x = paddle.arange(paddle.prod(paddle.to_tensor(x_shape)), dtype="float32").reshape(x_shape) + 1
             y = F.pad(x, [2, 3], value=1, mode='constant', data_format="NCL")
             print(y)
             # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
             
             # example 3
             x_shape = (1, 1, 2, 3)
-            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            x = paddle.arange(paddle.prod(paddle.to_tensor(x_shape)), dtype="float32").reshape(x_shape) + 1
             y = F.pad(x, [1, 2, 1, 1], value=1, mode='circular')
             print(y)
             # [[[[6. 4. 5. 6. 4. 5.]
@@ -1427,6 +1482,11 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             pad, (list, tuple)) and len(pad) == x_dim * 2:
         paddings = pad
         pad_value = value
+
+        if in_dygraph_mode():
+            out = _C_ops.final_state_pad(x, paddings, float(pad_value))
+            return out
+
         check_variable_and_dtype(x, 'x', [
             'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
             'complex128'
@@ -1551,7 +1611,7 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
         name(str, optional): The default value is None. Normally there is no need for user
             to set this property.
 
-    Returns：
+    Returns: 
         Tensor, padded with 0 according to pad and data type is same as input.
 
     Examples:
@@ -1952,7 +2012,11 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
         seed = default_main_program().random_seed
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_class_center_sample(
+            label, num_classes, num_samples, ring_id, rank, nranks, seed
+            is not None, seed if seed is not None else 0)
+    elif paddle.in_dynamic_mode():
         remapped_label, sampled_class_center = _C_ops.class_center_sample(
             label, 'num_classes', num_classes, 'num_samples', num_samples,
             'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed', seed
