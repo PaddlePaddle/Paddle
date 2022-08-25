@@ -1524,9 +1524,9 @@ class Fold(Layer):
 
     .. math::
     
-        H_out &= output_size[0]
-        W_out &= output_size[1]
-        C_out &= C_in / kernel_sizes[0] / kernel_sizes[1]
+        H_{out} &= output\_size[0] \\
+        W_{out} &= output\_size[1] \\
+        C_{out} &= \frac{C_{in}}{kernel\_sizes[0]\times kernel\_sizes[1]} \\
 
     Parameters:
         output_sizes(list):       The size of output size, should be [output_size_h, output_size_w]
