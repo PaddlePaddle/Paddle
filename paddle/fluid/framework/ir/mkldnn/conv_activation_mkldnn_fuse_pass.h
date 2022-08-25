@@ -34,6 +34,8 @@ class ConvActivationMkldnnFusePass : public FusePassBase {
   void FuseConvAct(Graph *graph,
                    const std::string &conv_type,
                    std::string &act_type) const;
+
+  void FuseConvConcatAct(Graph *graph, std::string &act_type) const;
 };
 
 }  // namespace ir

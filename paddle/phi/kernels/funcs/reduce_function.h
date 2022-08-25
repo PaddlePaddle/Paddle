@@ -713,7 +713,6 @@ __global__ void ReduceAnyKernel(const Tx* x,
                           1,
                           REDUCE_VEC_SIZE,
                           1,
-                          1,
                           Calculator,
                           kps::IdentityFunctor<Tx>,
                           false>(&input_reg[0],
@@ -726,11 +725,10 @@ __global__ void ReduceAnyKernel(const Tx* x,
                                  stride,
                                  kps::IdentityFunctor<Tx>(),
                                  reduce_last_dim);
-      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
+      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, TransformOp>(
           &input_compute[0], &input_reg[0], transformer);
       kps::Reduce<MPType,
                   REDUCE_VEC_SIZE,
-                  1,
                   1,
                   ReduceOp,
                   kps::details::ReduceMode::kLocalMode>(
@@ -742,7 +740,6 @@ __global__ void ReduceAnyKernel(const Tx* x,
                         MPType,
                         1,
                         REDUCE_VEC_SIZE,
-                        1,
                         1,
                         Calculator,
                         TransformOp,
@@ -759,12 +756,11 @@ __global__ void ReduceAnyKernel(const Tx* x,
     kps::Reduce<MPType,
                 REDUCE_VEC_SIZE,
                 1,
-                1,
                 ReduceOp,
                 kps::details::ReduceMode::kLocalMode>(
         &reduce_var, &input_compute[0], reducer, reduce_last_dim);
 
-    kps::Reduce<MPType, 1, 1, 1, ReduceOp, kps::details::kGlobalMode>(
+    kps::Reduce<MPType, 1, 1, ReduceOp, kps::details::kGlobalMode>(
         &reduce_var, &reduce_var, reducer, reduce_last_dim);
     if (is_mean) {
       reduce_var = reduce_var / static_cast<MPType>(reduce_num);
@@ -808,27 +804,22 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
     MPType reduce_var = init;
     MPType reduce_compute = init;
     for (int loop_idx = 0; loop_idx < loop_size; ++loop_idx) {
-      kps::ReadData<Tx, Tx, 1, 1, 1, false>(&reduce_input,
-                                            input + loop_idx * left_num + idx,
-                                            block.BlockDimX(),
-                                            1,
-                                            1,
-                                            left_num);
-      kps::ElementwiseUnary<Tx, MPType, 1, 1, 1, TransformOp>(
+      kps::ReadData<Tx, Tx, 1, 1, false>(&reduce_input,
+                                         input + loop_idx * left_num + idx,
+                                         block.BlockDimX(),
+                                         1,
+                                         1,
+                                         left_num);
+      kps::ElementwiseUnary<Tx, MPType, 1, 1, TransformOp>(
           &reduce_compute, &reduce_input, transformer);
-      kps::Reduce<MPType,
-                  1,
-                  1,
-                  1,
-                  ReduceOp,
-                  kps::details::ReduceMode::kLocalMode>(
+      kps::Reduce<MPType, 1, 1, ReduceOp, kps::details::ReduceMode::kLocalMode>(
           &reduce_var, &reduce_compute, reducer, false);
     }
     if (is_mean) {
       reduce_var = reduce_var / static_cast<MPType>(mean_div);
     }
     Ty result = static_cast<Ty>(reduce_var);
-    kps::WriteData<Ty, 1, 1, 1, false>(
+    kps::WriteData<Ty, 1, 1, false>(
         y + store_offset + idx, &result, block.BlockDimX());
   }
 
@@ -836,20 +827,15 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
     MPType reduce_var = init;
     MPType reduce_compute = init;
     for (int loop_idx = 0; loop_idx < loop_size; ++loop_idx) {
-      kps::ReadData<Tx, Tx, 1, 1, 1, true>(&reduce_input,
-                                           input + loop_idx * left_num + idx,
-                                           dim.rem_x,
-                                           1,
-                                           1,
-                                           left_num);
-      kps::ElementwiseUnary<Tx, MPType, 1, 1, 1, TransformOp>(
+      kps::ReadData<Tx, Tx, 1, 1, true>(&reduce_input,
+                                        input + loop_idx * left_num + idx,
+                                        dim.rem_x,
+                                        1,
+                                        1,
+                                        left_num);
+      kps::ElementwiseUnary<Tx, MPType, 1, 1, TransformOp>(
           &reduce_compute, &reduce_input, transformer);
-      kps::Reduce<MPType,
-                  1,
-                  1,
-                  1,
-                  ReduceOp,
-                  kps::details::ReduceMode::kLocalMode>(
+      kps::Reduce<MPType, 1, 1, ReduceOp, kps::details::ReduceMode::kLocalMode>(
           &reduce_var, &reduce_compute, reducer, false);
     }
 
@@ -857,8 +843,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
       reduce_var = reduce_var / static_cast<MPType>(mean_div);
     }
     Ty result = static_cast<Ty>(reduce_var);
-    kps::WriteData<Ty, 1, 1, 1, true>(
-        y + store_offset + idx, &result, dim.rem_x);
+    kps::WriteData<Ty, 1, 1, true>(y + store_offset + idx, &result, dim.rem_x);
   }
 }
 

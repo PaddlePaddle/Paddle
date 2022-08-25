@@ -716,6 +716,9 @@ class Executor(object):
         self._executor_cache = _ExecutorCache(self.place)
 
         self._fleet_executor = None
+        # TODO(liyurui): This option will be removed and always true when the functionality
+        # of fleet executor with standalone executor is ready.
+        self._fleet_executor_with_standalone = False
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
@@ -1322,9 +1325,12 @@ class Executor(object):
                 # Move prepare here for port conflict with nccl in startup program
                 if self._fleet_executor is None:
                     self._fleet_executor = _prepare_fleet_executor()
-                return self._run_using_fleet_executor(program=program,
-                                                      feed=feed,
-                                                      fetch_list=fetch_list)
+                return self._run_using_fleet_executor(
+                    program=program,
+                    feed=feed,
+                    fetch_list=fetch_list,
+                    with_standalone_executor=self.
+                    _fleet_executor_with_standalone)
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
             else:
@@ -1460,7 +1466,9 @@ class Executor(object):
 
                 return use_standalone_executor_for_compiled_program
             else:
-                if isinstance(program._graph, compiler.CompiledProgram):
+                if isinstance(
+                        program._graph, compiler.CompiledProgram
+                ) and not use_standalone_executor_for_compiled_program:
                     warnings.warn("Standalone executor is not used for Graph",
                                   UserWarning)
                     return False
@@ -1509,16 +1517,22 @@ class Executor(object):
                 # while use program to geet _StandaloneExecutor
                 if key not in self._executor_cache._cached_executors:
                     # To apply IR pass, compile the Program to IrGraph and convert it back to Program
-                    if isinstance(program, compiler.CompiledProgram):
-                        build_strategy = program._build_strategy
+                    if isinstance(program,
+                                  compiler.CompiledProgram) or isinstance(
+                                      program._graph, compiler.CompiledProgram):
+                        compiled_program = program if isinstance(
+                            program,
+                            compiler.CompiledProgram) else program._graph
+                        build_strategy = compiled_program._build_strategy
                         # print(f"Program before convert:\n {inner_program}", flush=True)
-                        program._compile(scope, self.place)
-                        ir_graph = framework.IrGraph(program._graph)
-                        inner_program = ir_graph.to_program()
-                        if hasattr(program._program, 'lr_sheduler'):
-                            inner_program.lr_sheduler = program._program.lr_sheduler
+                        compiled_program._compile(scope, self.place)
+                        ir_graph = framework.IrGraph(compiled_program._graph)
+                        converted_program = ir_graph.to_program()
+                        if hasattr(inner_program, 'lr_sheduler'):
+                            converted_program.lr_sheduler = inner_program.lr_sheduler
+                        inner_program = converted_program
                         # print(f"Program after convert:\n {inner_program}", flush=True)
-                        logging.warning(
+                        warnings.warn(
                             "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
                         )
                     else:
@@ -1534,6 +1548,11 @@ class Executor(object):
                         feed_var_name=feed_var_name,
                         fetch_var_name=fetch_var_name,
                         use_fetch_v2=True)
+
+                    # If there are multiple blocks in the program, subblock will not be
+                    # executed with the new executor in temporary
+                    if program.num_blocks > 1:
+                        warnings.warn("There are more than 1 block in program.")
 
                     # standalone executor will apply buffer_shared_inplace_pass and
                     # inplace_addto_op_pass to program according to build_strategy
@@ -2122,7 +2141,8 @@ class Executor(object):
                                         carrier_id="",
                                         program=None,
                                         scope=None,
-                                        fleet_opt=None):
+                                        fleet_opt=None,
+                                        with_standalone_executor=False):
         num_micro_batches = fleet_opt[
             "num_micro_batches"] if "num_micro_batches" in fleet_opt else 1
         cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
@@ -2148,7 +2168,8 @@ class Executor(object):
                     warnings.warn("Using 1F1B scheduler with pp_degree == 1.")
                 tasks, task_id_to_rank = run1f1b(
                     program, cur_rank, fleet_opt.get('num_micro_batches', 1),
-                    fleet_opt.get('dist_strategy', {}), nrank)
+                    fleet_opt.get('dist_strategy', {}), nrank,
+                    with_standalone_executor)
             elif scheduler == 'Origin':
                 from paddle.distributed.fleet.fleet_executor_utils import origin
                 if "dist_strategy" in fleet_opt and \
@@ -2177,7 +2198,8 @@ class Executor(object):
                                   feed=None,
                                   feed_var_name="feed",
                                   fetch_var_name="fetch",
-                                  fetch_list=None):
+                                  fetch_list=None,
+                                  with_standalone_executor=False):
         cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
         cached_program = self._get_program_cache(cache_key)
         cached_scope = self._get_scope_cache(cache_key)
@@ -2240,10 +2262,12 @@ class Executor(object):
                             core.op_proto_and_checker_maker.OpRole.Optimize)
                 fetch_task.set_program(fetch_program)
 
-            self._prepare_fleet_executor_carrier(cache_key,
-                                                 program=cached_program,
-                                                 scope=cached_scope,
-                                                 fleet_opt=fleet_opt)
+            self._prepare_fleet_executor_carrier(
+                cache_key,
+                program=cached_program,
+                scope=cached_scope,
+                fleet_opt=fleet_opt,
+                with_standalone_executor=with_standalone_executor)
 
         if feed:
             # NOTE: don't have to traverse programs in task nodes,
