@@ -786,7 +786,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether to disable the MKLDNN Fc passes.
   ///
-  bool mkldnn_fc_passes_disabled() const { return disable_mkldnn_passes_; }
+  bool mkldnn_fc_passes_disabled() const { return disable_mkldnn_fc_passes_; }
 
 
   ///
@@ -1092,7 +1092,7 @@ struct PD_INFER_DECL AnalysisConfig {
       "multi_gru",
       "slice"};
   
-  bool disable_mkldnn_passes_{false};
+  bool disable_mkldnn_fc_passes_{false};
 
   // ipu related.
   bool use_ipu_{false};

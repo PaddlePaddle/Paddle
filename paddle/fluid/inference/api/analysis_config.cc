@@ -482,10 +482,10 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
 
 void AnalysisConfig::DisableMkldnnFcPasses() {
 #ifdef PADDLE_WITH_MKLDNN
-  disable_mkldnn_passes_ = true;
+  disable_mkldnn_fc_passes_ = true;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use DisableMkldnnFcPasses";
-  disable_mkldnn_passes_ = false;
+  disable_mkldnn_fc_passes_ = false;
 #endif
   Update();
 }
@@ -736,6 +736,12 @@ void AnalysisConfig::Update() {
     } else {
       pass_builder()->EnableMkldnnInt8();
     }
+#endif
+  }
+
+    if (disable_mkldnn_fc_passes_) {
+#ifdef PADDLE_WITH_MKLDNN
+    pass_builder()->DisableMkldnnFcPasses();
 #endif
   }
 
