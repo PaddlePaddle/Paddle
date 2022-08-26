@@ -197,7 +197,7 @@ class TestEyeRowsCol(UnittestBase):
                                                exe)
             # Test for Inference Predictor
             infer_outs = self.infer_prog()
-            np.testing.assert_allclose(infer_outs, gt)
+            np.testing.assert_allclose(infer_outs[0], gt)
 
     def path_prefix(self):
         return 'eye_rows_cols'
