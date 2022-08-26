@@ -425,14 +425,14 @@ int QkvToContextPluginDynamic::enqueue(
     VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp16";
     int *padding_offset = nullptr;
     half *padding_input = nullptr;
+    framework::Tensor padding_offset_tensor;
+    framework::Tensor padding_input_tensor;
     if (real_seq_len != seq_len) {
-      framework::Tensor padding_offset_tensor;
       padding_offset_tensor.Resize({batch, real_seq_len});
       padding_offset = padding_offset_tensor.mutable_data<int>(
           platform::CUDAPlace(device_id));
       cudaMemset(padding_offset, 0, sizeof(int) * batch * real_seq_len);
 
-      framework::Tensor padding_input_tensor;
       padding_input_tensor.Resize(
           {batch, seq_len, 3, head_number_, head_size_});  // BxSx3xNxH
       padding_input =
