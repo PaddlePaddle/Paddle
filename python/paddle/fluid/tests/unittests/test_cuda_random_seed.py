@@ -108,7 +108,6 @@ class TestGeneratorSeed(unittest.TestCase):
 
         if core.is_compiled_with_cuda():
             print(">>>>>>> randint dygraph >>>>>>>")
-            self.assertTrue(np.allclose(x1_np, x2_np))
             self.assertTrue(np.allclose(x_np, x3_np))
 
     def test_gen_TruncatedNormal_initializer(self):
