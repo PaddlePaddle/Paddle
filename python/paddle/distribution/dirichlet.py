@@ -158,9 +158,9 @@ def _dirichlet(concentration, name=None):
                              ['float32', 'float64'], op_type)
 
     if in_dygraph_mode():
-        return paddle._C_ops.final_state_dirichlet(concentration)
-    elif _in_legacy_dygraph():
         return paddle._C_ops.dirichlet(concentration)
+    elif _in_legacy_dygraph():
+        return paddle._legacy_C_ops.dirichlet(concentration)
     else:
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(

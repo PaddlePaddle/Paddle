@@ -13,6 +13,10 @@
 # limitations under the License.
 
 import re
+import os
+import argparse
+
+# port range (21200, 23000) is reserved for dist-ops
 
 
 # function to process pythonpath env
@@ -67,10 +71,10 @@ def process_conditions(conditions):
         Output: ""
     """
     if len(conditions.strip()) == 0:
-        conditions = ""
+        conditions = []
     else:
-        conditions = f" AND ({conditions})"
-    return conditions
+        conditions = conditions.strip().split(";")
+    return [c.strip() for c in conditions]
 
 
 def proccess_archs(arch):
@@ -90,8 +94,8 @@ def proccess_archs(arch):
     arch = arch.upper().strip()
     if len(arch) > 0:
         for a in arch.split(";"):
-            assert a in ["GPU", "ROCM", "ASCEND", "ASCEND_CL"], \
-                f"""Supported arhc options are "GPU", "ROCM", "ASCEND" and "ASCEND_CL", but the options is {a}"""
+            assert a in ["GPU", "ROCM", "ASCEND", "ASCEND_CL", "XPU"], \
+                f"""Supported arhc options are "GPU", "ROCM", "ASCEND" and "ASCEND_CL", "XPU", but the options is {a}"""
             archs += "WITH_" + a.upper() + " OR "
         arch = "(" + archs[:-4] + ")"
     else:
@@ -135,6 +139,34 @@ def process_run_serial(run_serial):
     return rs
 
 
+def file_with_extension(prefix, suffixes):
+    """
+    Desc:
+        check whether test file exists. 
+    """
+    for ext in suffixes:
+        if os.path.isfile(prefix + ext):
+            return True
+    return False
+
+
+def process_name(name, curdir):
+    """
+    Desc:
+        check whether name is with a legal format and check whther the test file exists.
+    """
+    name = name.strip()
+    assert re.compile("^test_[0-9a-zA-Z_]+").search(name), \
+        f"""If line is not the header of table, the test name must begin with "test_" """ \
+        f"""and the following substring must include at least one char of "0-9", "a-z", "A-Z" or "_"."""
+    filepath_prefix = os.path.join(curdir, name)
+    suffix = [".py", ".sh"]
+    assert file_with_extension(filepath_prefix, suffix), \
+        f""" Please ensure the test file with the prefix '{filepath_prefix}' and one of the suffix {suffix} exists, because you specified a unittest named '{name}'"""
+
+    return name
+
+
 def process_run_type(run_type):
     rt = run_type.strip()
     assert re.compile("^(NIGHTLY|EXCLUSIVE|CINN|DIST|GPUPS|INFER|EXCLUSIVE:NIGHTLY|DIST:NIGHTLY)$").search(rt), \
@@ -143,7 +175,18 @@ def process_run_type(run_type):
     return rt
 
 
-def parse_line(line):
+DIST_UT_PORT = 21200
+
+
+def process_dist_ut_port(port_num):
+    global DIST_UT_PORT
+    port = DIST_UT_PORT
+    assert port < 23000, "dist port is exahausted"
+    DIST_UT_PORT += int(port_num)
+    return port
+
+
+def parse_line(line, curdir):
     """
     Desc:
         Input a line in csv file and output a string in cmake grammer, adding the specified test and setting its properties.
@@ -161,24 +204,14 @@ def parse_line(line):
             endif()"
     """
 
-    # A line contains name, os_, archs, timeout, run_type, launcher, dist_ut_port, run_serial, envs, conditions, etc.
-    # Following are descriptions of each variable:
-    #
-    # * `name`: the test's name
-    # * `os`: The supported operator system, ignoring case. If the test run in multiple operator systems, use ";" to split systems, forexample, `apple;linux` means the test runs on both Apple and Linux. The supported values are `linux`,`win32` and `apple`. If the value is empty, this means the test runs on all opertaor systems.
-    # * `arch`: the device's architecture. similar to `os`, multiple valuse ars splited by ";" and ignoring case. The supported arhchetectures are `gpu`, `xpu`, `npu` and `rocm`.
-    # * `timeout`: timeout of a unittest, whose unit is second.
-    # * `run_type`: run_type of a unittest. Supported values are `NIGHTLY`, `EXCLUSIVE`, `CINN`, `DIST`, `GPUPS`, `INFER`, `EXCLUSIVE:NIGHTLY`, `DIST:NIGHTLY`，which are case-insensitive.
-    # * `launcher`: the test launcher.Supported values are test_runner.py, dist_test.sh and custom scripts' name.
-    # * `dist_ut_port`: the starting port used in a distributed unit test
-    # * `run_serial`: whether in serial mode. the value can be 1 or 0. Default(empty) is 0
-    # * `ENVS`: required environments. multiple envirenmonts are splited by ";".
-    # * `conditions`: extra required conditions for some tests. the value is a boolean expression in cmake programmer.
     name, os_, archs, timeout, run_type, launcher, dist_ut_port, run_serial, envs, conditions = line.strip(
     ).split(",")
 
+    # name == "name" means the line being parsed is the header of the table
+    # we should skip this line and return empty here.
     if name == "name":
         return ""
+    name = process_name(name, curdir)
 
     envs = process_envs(envs)
     conditions = process_conditions(conditions)
@@ -189,8 +222,13 @@ def parse_line(line):
 
     cmd = ""
 
+    for c in conditions:
+        cmd += f"if ({c})\n"
+
+    time_out_str = f'TIMEOUT "{timeout}"' if len(timeout.strip()) > 0 else ''
     if launcher[-3:] == ".sh":
-        cmd += f'''if({archs} AND {os_} {conditions})
+        dist_ut_port = process_dist_ut_port(2)
+        cmd += f'''if({archs} AND {os_})
     bash_test_modules(
     {name}
     START_BASH
@@ -199,27 +237,48 @@ def parse_line(line):
     "RUN_TYPE={run_type}"
     ENVS
     "PADDLE_DIST_UT_PORT={dist_ut_port};{envs}")
-    set_tests_properties({name} PROPERTIES  TIMEOUT "{timeout}" RUN_SERIAL {run_serial})
+    set_tests_properties({name} PROPERTIES  {time_out_str} RUN_SERIAL {run_serial})
 endif()
 '''
     else:
-        cmd += f'''if({archs} AND {os_} {conditions})
+        cmd += f'''if({archs} AND {os_})
     py_test_modules(
     {name}
     MODULES
     {name}
     ENVS
-    "PADDLE_DIST_UT_PORT={dist_ut_port};{envs}")
-    set_tests_properties({name} PROPERTIES  TIMEOUT "{timeout}" RUN_SERIAL {run_serial})
+    "{envs}")
+    set_tests_properties({name} PROPERTIES {time_out_str} RUN_SERIAL {run_serial})
 endif()
 '''
+    for _ in conditions:
+        cmd += f"endif()\n"
     return cmd
+
+
+PROCESSED_DIR = set()
 
 
 def gen_cmakelists(current_work_dir):
     print("procfessing dir:", current_work_dir)
     if current_work_dir == "":
         current_work_dir = "."
+
+    contents = os.listdir(current_work_dir)
+    sub_dirs = []
+    for c in contents:
+        c_path = os.path.join(current_work_dir, c)
+        if c_path in PROCESSED_DIR:
+            return
+        if os.path.isdir(c_path):
+            PROCESSED_DIR.add(c_path)
+            if os.path.isfile(os.path.join(current_work_dir, c, "testslist.csv")) \
+                or os.path.isfile(os.path.join(current_work_dir, c, "CMakeLists.txt")):
+                gen_cmakelists(os.path.join(current_work_dir, c))
+                sub_dirs.append(c)
+
+    if not os.path.isfile(os.path.join(current_work_dir, "testslist.csv")):
+        return
     cmds = """# This file is generated by ${PADDLE_ROOT}/tools/gen_ut_cmakelists.py.
 # Please don't modify this file manually.
 # If you need to change unittests in this file, please modify testslist.csv in the current directory 
@@ -229,7 +288,7 @@ set(LOCAL_ALL_PLAT ON)\n"""
     with open(f"{current_work_dir}/testslist.csv") as csv_file:
         for i, line in enumerate(csv_file.readlines()):
             try:
-                cmds += parse_line(line)
+                cmds += parse_line(line, current_work_dir)
             except Exception as e:
                 print("===============PARSE LINE ERRORS OCCUR==========")
                 print(e)
@@ -237,14 +296,14 @@ set(LOCAL_ALL_PLAT ON)\n"""
                 print(f"[ERROR LINE {i+1}]: {line.strip()}")
                 exit(1)
 
+    for sub in sub_dirs:
+        cmds += f"add_subdirectory({sub})\n"
     print(cmds, end="")
     with open(f"{current_work_dir}/CMakeLists.txt", "w") as cmake_file:
         print(cmds, end="", file=cmake_file)
 
 
 if __name__ == "__main__":
-    import os
-    import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--files",

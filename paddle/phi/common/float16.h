@@ -1028,6 +1028,10 @@ inline bool isnan(const phi::dtype::float16& a) { return phi::dtype::isnan(a); }
 
 inline bool isinf(const phi::dtype::float16& a) { return phi::dtype::isinf(a); }
 
+inline bool isfinite(const phi::dtype::float16& a) {
+  return phi::dtype::isfinite(a);
+}
+
 template <>
 struct numeric_limits<phi::dtype::float16> {
   static const bool is_specialized = true;

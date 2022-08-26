@@ -23,7 +23,7 @@ namespace phi {
 template <typename T, typename Context>
 void ReverseArrayKernel(const Context& dev_ctx,
                         const TensorArray& x,
-                        const std::vector<int>& axis,
+                        const IntArray& axis,
                         TensorArray* out) {
   PADDLE_ENFORCE_EQ(
       x.size(),

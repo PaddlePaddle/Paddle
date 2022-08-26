@@ -495,6 +495,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
     // Bind input tensor to TRT.
     for (const auto &x : runtime_input_names_) {
+#if IS_TRT_VERSION_LT(8000)
+      // trt may remove input tensor if it's unused or used only at compile-time
+      if (engine->engine()->getBindingIndex(x.c_str()) < 0) continue;
+#endif
+
       // convert input and copy to TRT engine's buffer
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);

@@ -16,7 +16,7 @@ import warnings
 import paddle
 from ...fluid.framework import default_main_program
 from paddle.fluid.layer_helper import LayerHelper
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
 
 
@@ -144,7 +144,7 @@ def sparse_attention(query,
             #       [1.99830270, 2.99830270]]]]
     """
     if in_dynamic_mode():
-        result_attention, result_sdd, result_softmax = _C_ops.sparse_attention(
+        result_attention, result_sdd, result_softmax = _legacy_C_ops.sparse_attention(
             query, key, value, sparse_csr_offset, sparse_csr_columns,
             key_padding_mask, attn_mask)
         return result_attention
