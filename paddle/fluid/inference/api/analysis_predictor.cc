@@ -907,6 +907,12 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     return false;
   }
 
+#ifdef PADDLE_WITH_TENSORRT
+  inference::tensorrt::TensorRTEngine::predictor_id_per_thread = predictor_id_;
+  VLOG(3) << "thread_local var predictor_id in TendorRTEngine is set to: "
+          << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+#endif
+
   // Run the inference program
   // if share variables, we need not create variables
   executor_->Run();
