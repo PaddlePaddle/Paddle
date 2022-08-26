@@ -581,9 +581,8 @@ class ReLU6(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
+            x = paddle.to_tensor([-1., 0.3, 6.5])
             m = paddle.nn.ReLU6()
             out = m(x) # [0, 0.3, 6]
     """
@@ -628,9 +627,8 @@ class SELU(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
+            x = paddle.to_tensor([[0.0, 1.0],[2.0, 3.0]])
             m = paddle.nn.SELU()
             out = m(x) # [[0, 1.050701],[2.101402, 3.152103]]
     """

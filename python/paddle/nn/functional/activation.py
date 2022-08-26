@@ -698,9 +698,8 @@ def relu(x, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+            x = paddle.to_tensor([-2, 0, 1], dtype='float32')
             out = F.relu(x) # [0., 0., 1.]
     """
 
@@ -867,9 +866,8 @@ def relu6(x, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
+            x = paddle.to_tensor([-1, 0.3, 6.5])
             out = F.relu6(x) # [0, 0.3, 6]
     """
     threshold = 6.0
@@ -920,9 +918,8 @@ def selu(x,
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
+            x = paddle.to_tensor([[0.0, 1.0],[2.0, 3.0]])
             out = F.selu(x) # [[0, 1.050701],[2.101402, 3.152103]]
     """
     if scale <= 1.0:
