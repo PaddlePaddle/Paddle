@@ -24,8 +24,11 @@ from test_parallel_dygraph_dataparallel import TestMultipleGpus
 class TestHybridPipeParallel(TestMultipleGpus):
 
     def test_hybrid_parallel_pp_layer(self):
-        self.run_mnist_2gpu('hybrid_parallel_pp_layer.py')
-        self.run_mnist_2gpu('hybrid_parallel_pp_layer.py', eager_mode=False)
+        self.run_mnist_2gpu(
+            os.path.abspath('../../hybrid_parallel_pp_layer.py'))
+        self.run_mnist_2gpu(
+            os.path.abspath('../../hybrid_parallel_pp_layer.py'),
+            eager_mode=False)
 
     def test_hybrid_parallel_pp_tuple_inputs(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_embedding.py')
