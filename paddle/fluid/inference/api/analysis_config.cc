@@ -480,6 +480,16 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
   Update();
 }
 
+void AnalysisConfig::DisableMkldnnFcPasses() {
+#ifdef PADDLE_WITH_MKLDNN
+  disable_mkldnn_passes_ = true;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use DisableMkldnnFcPasses";
+  disable_mkldnn_passes_ = false;
+#endif
+  Update();
+}
+
 void AnalysisConfig::EnableMkldnnInt8(
     const std::unordered_set<std::string> &op_list) {
 #ifdef PADDLE_WITH_MKLDNN
