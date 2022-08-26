@@ -86,7 +86,7 @@ void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
   if ((in.mem_desc() != out->mem_desc()) || always_copy) {
     void* in_data = GetDataFromTensor(in, in_type);
 
-    ReorderMKLDNNHandler handler(in_tz, in.dtype(), in_type, cpu_engine);
+    ReorderOneDNNHandler handler(in_tz, in.dtype(), in_type, cpu_engine);
 
     auto reorder_src_memory_p =
         handler.AcquireSrcMemory(in.mem_desc(), in_data);

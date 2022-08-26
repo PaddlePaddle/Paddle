@@ -147,7 +147,7 @@ inline void MatchShapeToLayout(DenseTensor* tensor_in,
   }
 }
 
-struct mkldnn_dummy_primitive {
+struct OneDNN_dummy_primitive {
   struct primitive_desc {};
   struct desc {};
 };

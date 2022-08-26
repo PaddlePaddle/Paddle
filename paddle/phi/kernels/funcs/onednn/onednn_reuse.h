@@ -39,8 +39,8 @@ using MKLDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T,
           typename TForward,
-          typename TBackward = mkldnn_dummy_primitive,
-          typename TBackward_params = mkldnn_dummy_primitive>
+          typename TBackward = OneDNN_dummy_primitive,
+          typename TBackward_params = OneDNN_dummy_primitive>
 class MKLDNNHandlerNoCachingT {
  public:
   MKLDNNHandlerNoCachingT(dnnl::engine engine, Place cpu_place)
@@ -251,12 +251,12 @@ class MKLDNNHandlerNoCachingT {
 };
 
 template <typename T>
-class ActivationMKLDNNHandler
+class ActivationOneDNNHandler
     : public MKLDNNHandlerNoCachingT<T,
                                      dnnl::eltwise_forward,
                                      dnnl::eltwise_backward> {
  public:
-  ActivationMKLDNNHandler(dnnl::algorithm algorithm,
+  ActivationOneDNNHandler(dnnl::algorithm algorithm,
                           float alpha,
                           float beta,
                           const dnnl::engine engine,
@@ -272,7 +272,7 @@ class ActivationMKLDNNHandler
                                             beta);
   }
 
-  ActivationMKLDNNHandler(dnnl::algorithm algorithm,
+  ActivationOneDNNHandler(dnnl::algorithm algorithm,
                           float alpha,
                           float beta,
                           const dnnl::engine engine,
@@ -299,9 +299,9 @@ class ActivationMKLDNNHandler
   }
 };
 
-class ReorderMKLDNNHandler {
+class ReorderOneDNNHandler {
  public:
-  ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
+  ReorderOneDNNHandler(std::vector<int64_t>& dims,  // NOLINT
                        DataType ptype,
                        dnnl::memory::data_type dtype,
                        dnnl::engine engine)
@@ -312,7 +312,7 @@ class ReorderMKLDNNHandler {
         dtype_dst_(dtype),
         engine_(engine) {}
 
-  ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
+  ReorderOneDNNHandler(std::vector<int64_t>& dims,  // NOLINT
                        DataType ptype,
                        dnnl::memory::data_type dtype,
                        DataType ptype_dst,
