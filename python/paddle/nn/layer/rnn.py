@@ -32,7 +32,7 @@ from paddle.nn import Layer, LayerList
 from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
 from paddle.fluid.data_feeder import convert_dtype
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
 from paddle.framework import core
 from paddle.static import default_startup_program
@@ -1018,7 +1018,7 @@ class RNNBase(LayerList):
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
 
         if in_dynamic_mode():
-            _, _, out, state = _C_ops.rnn(
+            _, _, out, state = _legacy_C_ops.rnn(
                 inputs, initial_states, self._all_weights, sequence_length,
                 self._dropout_state, self.state_components, 'dropout_prob',
                 self.dropout, 'is_bidirec', self.num_directions == 2,

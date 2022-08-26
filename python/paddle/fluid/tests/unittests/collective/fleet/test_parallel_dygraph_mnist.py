@@ -36,10 +36,11 @@ class TestParallelDygraphMnist(TestDistBase):
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("parallel_dygraph_mnist.py",
-                                  delta=1e-5,
-                                  check_error_log=True,
-                                  log_name=flag_name)
+            self.check_with_place(
+                os.path.abspath("../../parallel_dygraph_mnist.py"),
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
 
 
 #TODO(liuyuhui): Multi-Card Baidu Kunlun XPU training exist accuracy problems
@@ -55,10 +56,11 @@ class TestParallelDygraphMnistXPU(TestDistBase):
 
     def test_mnist_xpu(self):
         if fluid.core.is_compiled_with_xpu():
-            self.check_with_place("parallel_dygraph_mnist.py",
-                                  delta=1e-4,
-                                  check_error_log=True,
-                                  log_name=flag_name)
+            self.check_with_place(
+                os.path.abspath("../../parallel_dygraph_mnist.py"),
+                delta=1e-4,
+                check_error_log=True,
+                log_name=flag_name)
 
 
 class TestParallelDygraphMnistSpawn(TestDistSpawnRunner):
@@ -80,10 +82,11 @@ class TestParallelDygraphMnistAccGrad(TestDistBase):
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("parallel_dygraph_mnist.py",
-                                  delta=1e-5,
-                                  check_error_log=True,
-                                  log_name=flag_name)
+            self.check_with_place(
+                os.path.abspath("../../parallel_dygraph_mnist.py"),
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
 
 
 class TestFleetDygraphMnistXPU(TestDistBase):
@@ -97,10 +100,11 @@ class TestFleetDygraphMnistXPU(TestDistBase):
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_xpu():
-            self.check_with_place("parallel_dygraph_mnist.py",
-                                  delta=1e-4,
-                                  check_error_log=True,
-                                  log_name=flag_name)
+            self.check_with_place(
+                os.path.abspath("../../parallel_dygraph_mnist.py"),
+                delta=1e-4,
+                check_error_log=True,
+                log_name=flag_name)
 
 
 if __name__ == "__main__":

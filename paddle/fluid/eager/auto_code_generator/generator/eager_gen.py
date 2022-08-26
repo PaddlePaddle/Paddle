@@ -349,13 +349,13 @@ using CPUPlace = phi::CPUPlace;
 
 CORE_OPS_INFO_TEMPLATE = \
 """
-std::unordered_map<std::string, std::vector<std::string>> core_ops_final_state_args_info = {{
+std::unordered_map<std::string, std::vector<std::string>> core_ops_args_info = {{
     {}
 }};
-std::unordered_map<std::string, std::vector<std::string>> core_ops_final_state_args_type_info = {{
+std::unordered_map<std::string, std::vector<std::string>> core_ops_args_type_info = {{
     {}
 }};
-std::unordered_map<std::string, std::vector<std::string>> core_ops_final_state_returns_info = {{
+std::unordered_map<std::string, std::vector<std::string>> core_ops_returns_info = {{
     {}
 }};
 
@@ -363,9 +363,9 @@ std::unordered_map<std::string, std::vector<std::string>> core_ops_final_state_r
 
 CORE_OPS_DECLARATION_TEMPLATE = \
 """
-extern std::unordered_map<std::string, std::vector<std::string>> core_ops_final_state_args_info;
-extern std::unordered_map<std::string, std::vector<std::string>> core_ops_final_state_args_type_info;
-extern std::unordered_map<std::string, std::vector<std::string>> core_ops_final_state_returns_info;
+extern std::unordered_map<std::string, std::vector<std::string>> core_ops_args_info;
+extern std::unordered_map<std::string, std::vector<std::string>> core_ops_args_type_info;
+extern std::unordered_map<std::string, std::vector<std::string>> core_ops_returns_info;
 
 """
 
@@ -1007,7 +1007,11 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             else:
                 assert IsVectorTensorType(ttype)
                 if is_optional:
-                    arg_str = f"const paddle::optional<std::vector<paddle::experimental::Tensor>>& {name}"
+                    if self.is_forward_only and is_inplaced and forward_inplace_map and name in forward_inplace_map.keys(
+                    ):
+                        arg_str = f"paddle::optional<std::vector<paddle::experimental::Tensor>>& {name}"
+                    else:
+                        arg_str = f"const paddle::optional<std::vector<paddle::experimental::Tensor>>& {name}"
                     amp_tensors_vector_optional_list.append(
                         f"if ({name}) amp_tensors_vector.push_back( *{name} );\n"
                     )
@@ -1015,7 +1019,11 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
                 else:
-                    arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
+                    if is_inplaced and forward_inplace_map and name in forward_inplace_map.keys(
+                    ):
+                        arg_str = f"std::vector<paddle::experimental::Tensor>& {name}"
+                    else:
+                        arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
                     amp_tensors_vector_list.append(f"{name}")
                     amp_autocast_list.append(
                         f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
@@ -1252,31 +1260,24 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             forward_inputs_position_map.keys()) + len(forward_attrs_list)
         num_returns = len(forward_outputs_position_map.keys())
 
-        final_state_fwd_api_name = "final_state_" + forward_api_name
-        core_ops_returns_info[final_state_fwd_api_name] = [
-            "" for i in range(num_returns)
-        ]
-        core_ops_args_info[final_state_fwd_api_name] = [
-            "" for i in range(num_args)
-        ]
-        core_ops_args_type_info[final_state_fwd_api_name] = [
-            "" for i in range(num_args)
-        ]
+        fwd_api_name = "" + forward_api_name
+        core_ops_returns_info[fwd_api_name] = ["" for i in range(num_returns)]
+        core_ops_args_info[fwd_api_name] = ["" for i in range(num_args)]
+        core_ops_args_type_info[fwd_api_name] = ["" for i in range(num_args)]
 
         for name, (ttype, pos) in forward_inputs_position_map.items():
-            core_ops_args_info[final_state_fwd_api_name][pos] = name
+            core_ops_args_info[fwd_api_name][pos] = name
             if IsPlainTensorType(ttype):
-                core_ops_args_type_info[final_state_fwd_api_name][
-                    pos] = "tensor"
+                core_ops_args_type_info[fwd_api_name][pos] = "tensor"
             else:
                 assert IsVectorTensorType(ttype)
-                core_ops_args_type_info[final_state_fwd_api_name][pos] = "list"
+                core_ops_args_type_info[fwd_api_name][pos] = "list"
 
         for name, _, _, pos in forward_attrs_list:
-            core_ops_args_info[final_state_fwd_api_name][pos] = name
+            core_ops_args_info[fwd_api_name][pos] = name
 
         for name, (ttype, pos) in forward_outputs_position_map.items():
-            core_ops_returns_info[final_state_fwd_api_name][pos] = name
+            core_ops_returns_info[fwd_api_name][pos] = name
 
     def run(self):
         super().run()
