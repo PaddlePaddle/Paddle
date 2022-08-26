@@ -1412,10 +1412,9 @@ class Executor(object):
                     place, core.CustomPlace):
                 return False
 
-            use_standalone_executor_for_compiled_program = True
-            # os.environ.get(
-            #     'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
-            #     None) in [1, '1', True, 'True', 'true']
+            use_standalone_executor_for_compiled_program = os.environ.get(
+                'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
+                None) in [1, '1', True, 'True', 'true']
 
             # Only support fleet when 'FLAGS_CONVERT_GRAPH_TO_PROGRAM' is set to true
             from paddle.distributed.fleet import fleet
