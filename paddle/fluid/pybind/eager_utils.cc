@@ -441,6 +441,21 @@ framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
+framework::LoDTensorArray CastPyArg2FrameworkTensorArray(PyObject* obj,
+                                                         ssize_t arg_pos) {
+  if (PyObject_IsInstance(
+          obj,
+          reinterpret_cast<PyObject*>(g_framework_lodtensorarray_pytype))) {
+    return ::pybind11::handle(obj).cast<framework::LoDTensorArray>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "DenseTensor, but got %s",
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+}
+
 std::vector<framework::Tensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
                                                             ssize_t arg_pos) {
   std::vector<framework::LoDTensor> result;
@@ -480,10 +495,6 @@ std::vector<framework::Tensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
             i));
       }
     }
-  } else if (PyObject_IsInstance(obj,
-                                 reinterpret_cast<PyObject*>(
-                                     g_framework_lodtensorarray_pytype))) {
-    return ::pybind11::handle(obj).cast<framework::LoDTensorArray>();
   } else if (obj == Py_None) {
     return {};
   } else {

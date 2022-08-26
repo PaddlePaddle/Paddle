@@ -24,6 +24,7 @@ set(COMMON_KERNEL_DEPS
     dense_tensor
     sparse_coo_tensor
     sparse_csr_tensor
+    tensor_array
     kernel_context
     kernel_factory
     arg_map_context

@@ -22,29 +22,29 @@ namespace phi {
 
 template <typename T, typename Context>
 void ReverseArrayKernel(const Context& dev_ctx,
-                        const std::vector<const DenseTensor*>& x,
+                        const TensorArray& x,
                         const std::vector<int>& axis,
-                        std::vector<DenseTensor*> out) {
+                        TensorArray* out) {
   PADDLE_ENFORCE_EQ(
       x.size(),
-      out.size(),
+      out->size(),
       phi::errors::InvalidArgument("The input size(%d) and output size(%d) of "
                                    "ReverseArrayKernel is different.",
                                    x.size(),
-                                   out.size()));
+                                   out->size()));
   for (size_t offset = 0; offset < x.size(); ++offset) {
-    auto* x_tensor = x.at(offset);
+    auto& x_tensor = x.at(offset);
     PADDLE_ENFORCE_GT(
-        x_tensor->memory_size(),
+        x_tensor.memory_size(),
         0,
         phi::errors::PreconditionNotMet(
             "The input LoDTensorArray X[%d] holds no memory.", offset));
     auto out_offset = x.size() - offset - 1;
-    auto* out_tensor = out.at(out_offset);
+    auto& out_tensor = out->at(out_offset);
 
-    out_tensor->set_lod(x_tensor->lod());
+    out_tensor.set_lod(x_tensor.lod());
     phi::Copy<Context>(
-        dev_ctx, *x_tensor, dev_ctx.GetPlace(), false, out_tensor);
+        dev_ctx, x_tensor, dev_ctx.GetPlace(), false, &out_tensor);
   }
 }
 
