@@ -74,7 +74,8 @@ class TileOpMaker : public framework::OpProtoAndCheckerMaker {
               "the corresponding value given by Attr(repeat_times).");
     AddAttr<std::vector<int>>("repeat_times",
                               "The number of repeat times for each dimension.")
-        .SetDefault({});
+        .SetDefault({})
+        .SupportTensor();
     AddComment(R"DOC(
 Tile operator repeats the input by given times number. You should set times
 number for each dimension by providing attribute 'repeat_times'. The rank of X

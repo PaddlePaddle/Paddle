@@ -970,6 +970,71 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
   return result;
 }
 
+paddle::optional<std::vector<paddle::experimental::Tensor>>
+GetOptionalTensorListFromArgs(const std::string& op_type,
+                              const std::string& arg_name,
+                              PyObject* args,
+                              ssize_t arg_idx,
+                              bool dispensable) {
+  PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
+
+  if (list == nullptr || list == Py_None) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of Tensor, but got "
+          "None",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+    return paddle::none;
+  }
+
+  std::vector<paddle::experimental::Tensor> result;
+
+  if (PyList_Check(list)) {
+    Py_ssize_t len = PyList_Size(list);
+    result.reserve(static_cast<size_t>(len));
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "empty list",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(
+          reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor);
+    }
+  } else if (PyTuple_Check(list)) {
+    Py_ssize_t len = PyTuple_Size(list);
+    result.reserve(static_cast<size_t>(len));
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "empty list",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(
+          reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor);
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+        "%s",
+        op_type,
+        arg_name,
+        arg_idx,
+        (reinterpret_cast<PyTypeObject*>(list->ob_type))->tp_name));
+  }
+
+  return result;
+}
+
 paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
                                                    const std::string& arg_name,
                                                    PyObject* args,
@@ -1224,7 +1289,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
     int64_t value = CastPyArg2Long(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (PyFloat_Check(obj)) {
-    float value = CastPyArg2Float(obj, op_type, arg_pos);
+    double value = CastPyArg2Double(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (IsEagerTensor(obj)) {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(

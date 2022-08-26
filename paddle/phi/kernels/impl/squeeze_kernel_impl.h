@@ -21,20 +21,22 @@ namespace phi {
 template <typename T, typename Context>
 void SqueezeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
-                   const std::vector<int>& axes,
+                   const IntArray& axes,
                    DenseTensor* out) {
   auto x_dims = x.dims();
-  auto out_dims = funcs::GetOutputSqueezeShape(axes, x_dims, true);
+  std::vector<int32_t> tmp(axes.GetData().begin(), axes.GetData().end());
+  auto out_dims = funcs::GetOutputSqueezeShape(tmp, x_dims, true);
+  out->Resize(out_dims);
 
   dev_ctx.template Alloc<T>(out);
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-  out->Resize(out_dims);
+  out->Resize(out_dims);  // copy will reset the dims.
 }
 
 template <typename T, typename Context>
 void SqueezeWithXShapeKernel(const Context& dev_ctx,
                              const DenseTensor& x,
-                             const std::vector<int>& axes,
+                             const IntArray& axes,
                              DenseTensor* out,
                              DenseTensor* xshape) {
   SqueezeKernel<T, Context>(dev_ctx, x, axes, out);

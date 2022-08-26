@@ -637,7 +637,6 @@ class SparseTable(Table):
 
         check_embedding_dim(table_proto.accessor, self.common.table_name,
                             ctx.program_id(), self.context)
-
         self.common.parse_by_optimizer(ctx, self.context)
         self.common.parse_entry(self.common.table_name, ctx.program_id(),
                                 self.context)
@@ -769,12 +768,9 @@ class PsDescBuilder(object):
         self.is_heter_ps_mode = context['is_heter_ps_mode']
         self.use_ps_gpu = context['use_ps_gpu']
         self.barrier_table_id = None
-        print("is_heter_ps_mode in the_one_ps.py? {}".format(
-            self.is_heter_ps_mode))
+
         self.send_ctx = get_the_one_send_context(
-            self.context,
-            use_origin_program=True,
-            split_dense_table=self.is_heter_ps_mode)
+            self.context, split_dense_table=self.is_heter_ps_mode)
 
         self.tensor_table_dict = {}  # TODO
         self._server_sub_program = []
@@ -801,10 +797,17 @@ class PsDescBuilder(object):
     def _get_tables(self):
         tables = []
         for idx, (name, ctx) in enumerate(self.send_ctx.items()):
+            print("idx, name, ctx:", idx, name, ctx)
             if ctx.is_sparse():
                 if self.ps_mode == DistributedMode.GEO:
-                    tables.append(globals()['GeoSparseTable'](self.context,
-                                                              ctx))
+                    if (self.context['local_sparse']
+                            and name[:-5] in self.context['local_sparse']) or (
+                                not self.context['local_sparse']):
+                        tables.append(globals()['GeoSparseTable'](self.context,
+                                                                  ctx))
+                    else:
+                        tables.append(globals()['SparseTable'](self.context,
+                                                               ctx))
                 else:
                     tables.append(globals()['SparseTable'](self.context, ctx))
             else:
@@ -812,7 +815,6 @@ class PsDescBuilder(object):
         self.tensor_tables = self._get_tensor_tables()
         tables.extend(self.tensor_tables)
         tables.append(globals()['BarrierTable'](self.context, len(tables)))
-        print("test_fl_ps: tables len: {}".format(len(tables)))
         return tables
 
     def _get_service(self):
@@ -894,6 +896,14 @@ class TheOnePSRuntime(RuntimeBase):
             'ps_mode'] == DistributedMode.SYNC else False
         self.context['grad_name_to_param_name'] = {}
         self.context['tensor_table'] = {}
+        # FL
+        self.context['local_sparse'] = context[
+            "user_defined_strategy"].trainer_desc_configs["local_sparse"]
+        self.context['remote_sparse'] = context[
+            "user_defined_strategy"].trainer_desc_configs["remote_sparse"]
+        print("fl-ps > local_sparse: {}, remote_sparse: {}".format(
+            self.context['local_sparse'], self.context['remote_sparse']))
+
         build_var_distributed(self.context)
 
         self.trainer_endpoints = get_trainer_endpoints(self.role_maker)
@@ -998,7 +1008,6 @@ class TheOnePSRuntime(RuntimeBase):
         send_ctx = get_the_one_send_context(
             self.context,
             split_dense_table=self.is_heter_ps_mode,
-            use_origin_program=self.is_heter_ps_mode,
             ep_list=self.endpoints)
         self._send_ctx = send_ctx
         trainer_config = self.context['trainer']
@@ -1065,15 +1074,6 @@ class TheOnePSRuntime(RuntimeBase):
 
         is_test = bool(int(os.getenv("TEST_MODE", "0")))
 
-        # for GEO & heter_ps
-        init_params = dense_map
-
-        # if not is_test:
-        #     self._communicator.init_params(init_params)
-        #     fleet.util.barrier()
-        # self._communicator.pull_dense(init_params)
-        # fleet.util.barrier()
-
         if scopes is None:
             if len(self.origin_main_programs) > 1:
                 raise ValueError(
@@ -1087,7 +1087,7 @@ class TheOnePSRuntime(RuntimeBase):
         if not is_test:
             if self.context[
                     'ps_mode'] == DistributedMode.GEO or self.is_heter_ps_mode == True:
-                self._communicator.init_params(init_params)
+                self._communicator.init_params(dense_map)
             else:
                 if not self.context['use_ps_gpu']:
                     if self.role_id == 0:
@@ -1235,7 +1235,6 @@ class TheOnePSRuntime(RuntimeBase):
         send_ctx = get_the_one_send_context(
             self.context,
             split_dense_table=self.is_heter_ps_mode,
-            use_origin_program=self.is_heter_ps_mode,
             ep_list=self.endpoints)
         if program is None or len(self.origin_main_programs) == 1:
             program = self.origin_main_programs[0]
@@ -1356,8 +1355,7 @@ class TheOnePSRuntime(RuntimeBase):
         sparses = get_the_one_recv_context(
             self.context,
             is_dense=False,
-            split_dense_table=self.is_heter_ps_mode,
-            use_origin_program=True)
+            split_dense_table=self.is_heter_ps_mode)
         sparse_names = self._save_sparse_params(executor, dirname, sparses,
                                                 main_program, mode)
 
@@ -1366,7 +1364,6 @@ class TheOnePSRuntime(RuntimeBase):
         send_ctx = get_the_one_send_context(
             self.context,
             split_dense_table=self.is_heter_ps_mode,
-            use_origin_program=self.is_heter_ps_mode,
             ep_list=self.endpoints)
         self._pull_dense(program, scope, send_ctx, dense_map)
 
@@ -1444,8 +1441,7 @@ class TheOnePSRuntime(RuntimeBase):
         sparses = get_the_one_recv_context(
             self.context,
             is_dense=False,
-            split_dense_table=self.is_heter_ps_mode,
-            use_origin_program=True)
+            split_dense_table=self.is_heter_ps_mode)
 
         sparse_varnames = self._load_sparse_params(dirname, sparses,
                                                    main_program, mode)
@@ -1455,7 +1451,6 @@ class TheOnePSRuntime(RuntimeBase):
         send_ctx = get_the_one_send_context(
             self.context,
             split_dense_table=self.is_heter_ps_mode,
-            use_origin_program=self.is_heter_ps_mode,
             ep_list=self.endpoints)
 
         recv_dense_varnames = []
@@ -1527,8 +1522,7 @@ class TheOnePSRuntime(RuntimeBase):
                 self.context,
                 is_dense=False,
                 split_dense_table=self.role_maker.
-                _is_heter_parameter_server_mode,
-                use_origin_program=True)
+                _is_heter_parameter_server_mode)
 
             for id, names in sparses.items():
                 self._worker.shrink_sparse_table(id, threshold)

@@ -57,7 +57,7 @@ void BCELossInferMeta(const MetaTensor& input,
 
 void BincountInferMeta(const MetaTensor& x,
                        const MetaTensor& weights,
-                       int minlength,
+                       const Scalar& minlength,
                        MetaTensor* out);
 
 void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
@@ -138,6 +138,19 @@ void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    float p,
                    MetaTensor* out);
+
+void DistributeFpnProposalsInferMeta(
+    const MetaTensor& fpn_rois,
+    const MetaTensor& rois_num,
+    int min_level,
+    int max_level,
+    int refer_level,
+    int refer_scale,
+    bool pixel_offset,
+    std::vector<MetaTensor*> multi_fpn_rois,
+    std::vector<MetaTensor*> multi_level_rois_num,
+    MetaTensor* restore_index,
+    MetaConfig config = MetaConfig());
 
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 

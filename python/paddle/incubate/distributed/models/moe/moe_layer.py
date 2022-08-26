@@ -80,9 +80,9 @@ def _all_gather(tensor, group=None, use_calc_stream=True):
         ring_id = 0 if group is None else group.id
         nranks = paddle.distributed.collective._get_global_group(
         ).nranks if group is None else group.nranks
-        return paddle._C_ops.c_allgather(tensor, 'use_calc_stream',
-                                         use_calc_stream, 'ring_id', ring_id,
-                                         'nranks', nranks)
+        return paddle._legacy_C_ops.c_allgather(tensor, 'use_calc_stream',
+                                                use_calc_stream, 'ring_id',
+                                                ring_id, 'nranks', nranks)
 
 
 class MoEScatter(PyLayer):
