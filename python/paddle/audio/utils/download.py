@@ -18,10 +18,6 @@ from typing import List
 from paddle.framework import load as load_state_dict
 from paddle.utils import download
 
-from .log import logger
-
-download.logger = logger
-
 __all__ = [
     'decompress',
     'download_and_decompress',
