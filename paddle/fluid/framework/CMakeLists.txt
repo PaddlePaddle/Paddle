@@ -73,7 +73,8 @@ cc_library(
 cc_library(
   data_type
   SRCS data_type.cc
-  DEPS framework_proto ddim device_context)
+  DEPS framework_proto)
+
 cc_test(
   data_type_test
   SRCS data_type_test.cc
@@ -183,7 +184,7 @@ cc_test(
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS selected_rows_utils framework_proto scope)
+  DEPS framework_proto scope)
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
@@ -364,7 +365,7 @@ cc_library(
 cc_library(
   shape_inference
   SRCS shape_inference.cc
-  DEPS ddim attribute device_context)
+  DEPS ddim attribute)
 
 cc_test(
   no_need_buffer_vars_inference_test
