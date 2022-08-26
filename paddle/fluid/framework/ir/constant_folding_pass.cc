@@ -54,7 +54,6 @@ struct ConstantFolding : public PatternBase {
 ConstantFoldingPass::ConstantFoldingPass() {}
 
 void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
-  return;
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("constant_folding", graph);
