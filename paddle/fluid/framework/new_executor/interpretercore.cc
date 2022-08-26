@@ -262,20 +262,6 @@ void InterpreterCore::reset_scope(Scope* new_scope) {
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     BuildAndCacheInstructionCtx(&vec_instruction_[i]);
   }
-  bool inplaced = false;
-  for (auto inst : vec_instruction_) {
-    if (inst.OpBase()->Type() == "share_buffer" ||
-        inst.OpBase()->Type() == "share_data") {
-      VLOG(4) << "Already inplaced, skip inplace now.";
-      inplaced = true;
-    }
-  }
-  if (FLAGS_new_executor_use_inplace && !inplaced) {
-    for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-      vec_instruction_[i].ClearInplace();
-    }
-    BuildInplace();
-  }
 }
 
 void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {
