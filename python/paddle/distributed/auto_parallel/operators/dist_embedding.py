@@ -58,7 +58,7 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
         Ids_var.shape
     ) == 3, "input Ids to lookup_table should have 3 dimensions but got [{}] with shape [{}]".format(
         Ids_var.name, Ids_var.shape)
-    if Ids_var.stop_gradient:
+    if not Ids_var.stop_gradient:
         raise NotImplementedError(
             'Requiring the gradient of Ids of lookup_table(v1）dist op is not currently supported. Please open an issue with details on your use case so that we can prioritize adding this (for instance, adversarial training for language model).'
         )

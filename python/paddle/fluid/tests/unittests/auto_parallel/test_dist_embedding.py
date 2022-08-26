@@ -33,7 +33,7 @@ def make_program_lookup_table_v1_mp_dp():
         src_ids = paddle.static.data(name='src_ids',
                                      shape=[12, 512, 1],
                                      dtype='int64')
-        src_ids.stop_gradient = False
+        src_ids.stop_gradient = True
         emb_out = paddle.fluid.layers.embedding(
             input=src_ids,
             size=[64, 128],
