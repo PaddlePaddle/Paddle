@@ -1576,17 +1576,6 @@
   kernel :
     func : mode_grad
 
-- backward_api : modulo_grad
-  forward : modulo (Tensor x, Tensor y) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
-  kernel :
-    func : modulo_grad
-  no_need_buffer : x, y
-
 - backward_api : multi_dot_grad
   forward : multi_dot (Tensor[] x) -> Tensor(out)
   args : (Tensor[] x, Tensor out_grad)
