@@ -19,7 +19,7 @@ import functools
 from . import framework
 from . import core
 from .framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph, default_main_program, _current_expected_place
-from .lazy_init import lazy_guard
+from .lazy_init import lazy_init_helper
 from .framework import program_guard
 import numpy as np
 from .core import VarDesc
@@ -52,7 +52,7 @@ class Initializer(object):
         pass
 
     def __call__(self, param, block=None):
-        if not lazy_guard().state:
+        if not lazy_init_helper().state:
             return self.forward(param, block)
 
         return self._lazy_init(param, block)
@@ -63,18 +63,21 @@ class Initializer(object):
         raise NotImplementedError()
 
     def _lazy_init(self, param, block=None):
-        # Apply lazy initialization
+        """
+        Apply lazy initialization
+        """
         assert in_dygraph_mode()
-        new_block = lazy_guard().startup_program.global_block()
-        new_var = param._to_static_var(True, block=new_block)
 
-        # Record initializer operator
-        with lazy_guard():
-            self.forward(new_var, new_block)
-        lazy_guard().enable(clear_cache=False)
+        def init_op_creator(forward, param, block):
+            new_var = param._to_static_var(True, block=block)
+            # Record initializer operator
+            with lazy_init_helper():
+                forward(new_var, block)
+
         # Add hook function for initializing param in dygraph mode
-        func = functools.partial(self.forward, param, block)
-        param.set_init_func(func)
+        param.set_init_func(functools.partial(self.forward, param, block))
+        param._init_op_creator = functools.partial(init_op_creator,
+                                                   self.forward, param)
 
         return param
 
