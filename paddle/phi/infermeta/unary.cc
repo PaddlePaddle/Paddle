@@ -2641,6 +2641,33 @@ DDim ReduceInferDim(const MetaTensor& x,
   return out_dim;
 }
 
+DDim ReduceInferDimForIntArrayAxis(const MetaTensor& x,
+                                   const IntArray& axis,
+                                   bool keep_dim,
+                                   bool reduce_all) {
+  std::vector<int64_t> vec_axis = axis.GetData();
+  std::vector<int64_t> vec_dim;
+  if (reduce_all) {
+    if (keep_dim) {
+      vec_dim = std::vector<int64_t>(x.dims().size(), 1);
+    } else {
+      vec_dim = {1};
+    }
+  } else {
+    if (keep_dim) {
+      vec_dim = std::vector<int64_t>(x.dims().size(), -1);
+    } else {
+      auto x_rank = static_cast<size_t>(x.dims().size());
+      if (vec_axis.size() >= x_rank) {
+        vec_dim = {-1};
+      } else {
+        vec_dim = std::vector<int64_t>(x.dims().size() - vec_axis.size(), -1);
+      }
+    }
+  }
+  return phi::make_ddim(vec_dim);
+}
+
 void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,
@@ -2669,30 +2696,10 @@ void ReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
                                      bool reduce_all,
                                      MetaTensor* out,
                                      MetaConfig config) {
-  std::vector<int64_t> vec_axis = axis.GetData();
   if (config.is_runtime || !axis.FromTensor()) {
-    ReduceInferMetaBase(x, vec_axis, keep_dim, reduce_all, out);
+    ReduceInferMetaBase(x, axis.GetData(), keep_dim, reduce_all, out);
   } else {
-    std::vector<int64_t> vec_dim;
-    if (reduce_all) {
-      if (keep_dim) {
-        vec_dim = std::vector<int64_t>(x.dims().size(), 1);
-      } else {
-        vec_dim = {1};
-      }
-    } else {
-      if (keep_dim) {
-        vec_dim = std::vector<int64_t>(x.dims().size(), -1);
-      } else {
-        auto x_rank = static_cast<size_t>(x.dims().size());
-        if (vec_axis.size() >= x_rank) {
-          vec_dim = {-1};
-        } else {
-          vec_dim = std::vector<int64_t>(x.dims().size() - vec_axis.size(), -1);
-        }
-      }
-    }
-    DDim out_dim = phi::make_ddim(vec_dim);
+    DDim out_dim = ReduceInferDimForIntArrayAxis(x, axis, keep_dim, reduce_all);
     out->set_dims(out_dim);
     out->set_dtype(x.dtype());
     out->set_layout(x.layout());
@@ -3380,30 +3387,10 @@ void SumRawInferMeta(const MetaTensor& x,
                      MetaTensor* out,
                      MetaConfig config) {
   DDim out_dim;
-  std::vector<int64_t> vec_axis = axis.GetData();
   if (config.is_runtime || !axis.FromTensor()) {
-    out_dim = ReduceInferDim(x, vec_axis, keep_dim, reduce_all);
+    out_dim = ReduceInferDim(x, axis.GetData(), keep_dim, reduce_all);
   } else {
-    std::vector<int64_t> vec_dim;
-    if (reduce_all) {
-      if (keep_dim) {
-        vec_dim = std::vector<int64_t>(x.dims().size(), 1);
-      } else {
-        vec_dim = {1};
-      }
-    } else {
-      if (keep_dim) {
-        vec_dim = std::vector<int64_t>(x.dims().size(), -1);
-      } else {
-        auto x_rank = static_cast<size_t>(x.dims().size());
-        if (vec_axis.size() >= x_rank) {
-          vec_dim = {-1};
-        } else {
-          vec_dim = std::vector<int64_t>(x.dims().size() - vec_axis.size(), -1);
-        }
-      }
-    }
-    out_dim = phi::make_ddim(vec_dim);
+    out_dim = ReduceInferDimForIntArrayAxis(x, axis, keep_dim, reduce_all);
   }
 
   DataType out_dtype;

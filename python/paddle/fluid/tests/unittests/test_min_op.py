@@ -120,6 +120,7 @@ class TestMinWithTensorAxis2(TestReduceOPTensorAxisBase):
             paddle.to_tensor([1], 'int64'),
             paddle.to_tensor([2], 'int64')
         ]
+        self.keepdim = True
 
 
 if __name__ == '__main__':

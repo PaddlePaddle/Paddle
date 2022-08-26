@@ -496,6 +496,7 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
         self.save_path = os.path.join(self.temp_dir.name, 'reduce_tensor_axis')
         self.place = paddle.CUDAPlace(
             0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+        self.keepdim = False
         self.init_data()
 
     def tearDwon(self):
@@ -516,12 +517,6 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
             pd_out.numpy() if pd_out.size > 1 else pd_out.item(), np_out)
         pd_out.backward()
         self.assertEqual(self.x.gradient().shape, tuple(self.x.shape))
-
-    def test_dygraph_keepdim(self):
-        pd_out = self.pd_api(self.x, self.tensor_axis, keepdim=True)
-        np_out = self.np_api(self.x.numpy(), tuple(self.np_axis), keepdims=True)
-        np.testing.assert_allclose(
-            pd_out.numpy() if pd_out.size > 1 else pd_out.item(), np_out)
 
     def test_static_and_infer(self):
         paddle.enable_static()
@@ -544,7 +539,7 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
 
             linear = paddle.nn.Linear(x.shape[-1], 5)
             linear_out = linear(x)
-            out = self.pd_api(linear_out, axis)
+            out = self.pd_api(linear_out, axis, keepdim=self.keepdim)
             exe = paddle.static.Executor(self.place)
             exe.run(starup_prog)
             static_out = exe.run(feed={'x': self.x.numpy().astype('float32')},
