@@ -41,8 +41,8 @@ class PixelShuffle(Layer):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        - x: 4-D tensor with shape: (N, C, H, W) or (N, H, W, C).
-        - out: 4-D tensor with shape: (N, C/upscale_factor**2, H*upscale_factor, W*upscale_factor) or (N, H*upscale_factor, W*upscale_factor, C/upscale_factor^2).
+        - x: 4-D tensor with shape of :math:`(N, C, H, W)` or :math:`(N, H, W, C)`.
+        - out: 4-D tensor with shape of :math:`(N, C/upscale_factor**2, H*upscale_factor, W*upscale_factor)` or :math:`(N, H*upscale_factor, W*upscale_factor, C/upscale_factor^2)`.
 
 
     Examples:
