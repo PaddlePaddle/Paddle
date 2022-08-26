@@ -23,6 +23,29 @@ namespace phi {
 
 static constexpr size_t WAIT_THRESHOLD = 64 * 1024;
 
+template <>
+void MemcpyH2DKernel(const GPUContext& dev_ctx,
+                     const DenseTensor& x,
+                     int dst_place_type,
+                     DenseTensor* out) {
+  PADDLE_ENFORCE_GE(
+      dst_place_type,
+      0,
+      errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
+                         dst_place_type));
+  PADDLE_ENFORCE_LE(
+      dst_place_type,
+      3,
+      errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
+                         dst_place_type));
+
+  auto stream = static_cast<const phi::GPUContext*>(&dev_ctx)->stream();
+  out->mutable_data(dev_ctx.GetPlace(),
+                    x.dtype(),
+                    phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+}
+
 template <typename Context>
 void MemcpyH2DKernel(const Context& dev_ctx,
                      const DenseTensor& x,
@@ -39,7 +62,6 @@ void MemcpyH2DKernel(const Context& dev_ctx,
       errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
                          dst_place_type));
 
-  // Copy will set the stream of the tensor while setting blocking to false
   Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 }
 
@@ -48,9 +70,9 @@ void MemcpyD2HKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int dst_place_type,
                      DenseTensor* out) {
-  // Copy will set the stream of the tensor while setting blocking to false
   switch (dst_place_type) {
     case 0:
+      out->mutable_data(CPUPlace());
       Copy(dev_ctx, x, CPUPlace(), false, out);
       // NOTE(copy from Aurelius84): host <-> device memory copies of a memory
       // block of 64 KB or less are asynchronous. See
@@ -61,6 +83,7 @@ void MemcpyD2HKernel(const Context& dev_ctx,
       break;
 
     case 1:
+      out->mutable_data(GPUPinnedPlace());
       Copy(dev_ctx, x, GPUPinnedPlace(), false, out);
       // paddle::memory::Copy use async copy for GPUPinnedPlace
       dev_ctx.Wait();
