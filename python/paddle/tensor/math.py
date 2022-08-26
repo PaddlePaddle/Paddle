@@ -3522,7 +3522,7 @@ def increment(x, value=1.0, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_increment( x, value)
+        return _C_ops.final_state_increment_( x, value)
 
     if _in_legacy_dygraph():
         return _C_ops.increment(x, 'step', value)

@@ -1289,7 +1289,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
     int64_t value = CastPyArg2Long(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (PyFloat_Check(obj)) {
-    float value = CastPyArg2Float(obj, op_type, arg_pos);
+    double value = CastPyArg2Double(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (IsEagerTensor(obj)) {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
