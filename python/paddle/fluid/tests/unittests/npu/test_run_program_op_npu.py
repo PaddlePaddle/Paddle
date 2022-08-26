@@ -215,9 +215,9 @@ class RunProgramNPUOpTest(unittest.TestCase):
             inputs, input_param_list = self.prepare_dygraph_input(place, True)
             outputs = self.prepare_dygraph_output()
 
-            _C_ops.run_program(inputs['X'], inputs['Params'], outputs['Out'],
-                               outputs['OutScope'], outputs['DOut'], None,
-                               *self.attrs)
+            _legacy_C_ops.run_program(inputs['X'], inputs['Params'],
+                                      outputs['Out'], outputs['OutScope'],
+                                      outputs['DOut'], None, *self.attrs)
 
             for param in input_param_list:
                 var_type = self._get_grad_vartype(param.name)
