@@ -27,4 +27,5 @@ from ...fluid.contrib.slim.quantization.quant_int8_mkldnn_pass import QuantInt8M
 from ...fluid.contrib.slim.quantization.quant2_int8_mkldnn_pass import Quant2Int8MkldnnPass
 
 from ...fluid.contrib.slim.quantization.post_training_quantization import PostTrainingQuantization
+from ...fluid.contrib.slim.quantization.post_training_quantization import PostTrainingQuantizationProgram
 from ...fluid.contrib.slim.quantization.post_training_quantization import WeightQuantization

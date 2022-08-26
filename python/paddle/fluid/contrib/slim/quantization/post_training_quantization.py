@@ -37,8 +37,9 @@ from .adaround import run_adaround
 from . import utils
 
 __all__ = [
-    'PostTrainingQuantization', 'WeightQuantization',
-    'PostTrainingQuantizationProgram'
+    'PostTrainingQuantization',
+    'WeightQuantization',
+    'PostTrainingQuantizationProgram',
 ]
 
 _logger = get_logger(__name__,
