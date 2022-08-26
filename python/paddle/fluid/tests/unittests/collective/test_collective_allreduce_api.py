@@ -41,6 +41,76 @@ class TestCollectiveAllreduceAPI(TestDistBase):
         self.check_with_place("collective_allreduce_api.py", "allreduce",
                               "gloo", "2")
 
+    def test_allreduce_nccl_dygraph(self):
+        self.check_with_place("collective_allreduce_api_dygraph.py",
+                              "allreduce",
+                              "nccl",
+                              static_mode="0",
+                              dtype="float16")
+        self.check_with_place("collective_allreduce_api_dygraph.py",
+                              "allreduce",
+                              "nccl",
+                              static_mode="0",
+                              dtype="float32")
+        self.check_with_place("collective_allreduce_api_dygraph.py",
+                              "allreduce",
+                              "nccl",
+                              static_mode="0",
+                              dtype="float64")
+        self.check_with_place("collective_allreduce_api_dygraph.py",
+                              "allreduce",
+                              "nccl",
+                              static_mode="0",
+                              dtype="int32")
+        self.check_with_place("collective_allreduce_api_dygraph.py",
+                              "allreduce",
+                              "nccl",
+                              static_mode="0",
+                              dtype="int64")
+        self.check_with_place("collective_allreduce_api_dygraph.py",
+                              "allreduce",
+                              "nccl",
+                              static_mode="0",
+                              dtype="int8")
+
+    def test_allreduce_gloo_dygraph(self):
+        self.check_with_place("collective_allreduce_api_dygraph.py",
+                              "allreduce",
+                              "gloo",
+                              "2",
+                              static_mode="0",
+                              dtype="float16")
+        self.check_with_place("collective_allreduce_api_dygraph.py",
+                              "allreduce",
+                              "gloo",
+                              "2",
+                              static_mode="0",
+                              dtype="float32")
+        self.check_with_place("collective_allreduce_api_dygraph.py",
+                              "allreduce",
+                              "gloo",
+                              "2",
+                              static_mode="0",
+                              dtype="float64")
+        self.check_with_place("collective_allreduce_api_dygraph.py",
+                              "allreduce",
+                              "gloo",
+                              "2",
+                              static_mode="0",
+                              dtype="int32")
+        self.check_with_place("collective_allreduce_api_dygraph.py",
+                              "allreduce",
+                              "gloo",
+                              "2",
+                              static_mode="0",
+                              dtype="int64")
+        self.check_with_place("collective_allreduce_api_dygraph.py",
+                              "allreduce",
+                              "gloo",
+                              "2",
+                              static_mode="0",
+                              dtype="int8")
+
 
 if __name__ == '__main__':
     unittest.main()
