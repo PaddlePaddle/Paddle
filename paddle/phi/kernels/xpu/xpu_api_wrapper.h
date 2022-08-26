@@ -138,7 +138,7 @@ static void GetFCInfo(const phi::DDim& x_dims,
     PADDLE_ENFORCE_EQ(
         mat_dim_b.trans_,
         false,
-        PhiVisitDataTypeCallbackTiny::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "xpu not support this Shape in matmul_op xdims = %s ydims = %s "
             "x_trans = %d y_trans = %d",
             x_dims.to_str(),
