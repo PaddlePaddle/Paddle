@@ -4325,7 +4325,7 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
                                   reduce)
 
 
-def _index_add_params_check(x, index, add_value, input_axis):
+def _index_add_params_check(x, index, input_axis, add_value):
     dims = len(x.shape)
     add_value_dims = len(add_value.shape)
 
@@ -4355,16 +4355,16 @@ def _index_add_params_check(x, index, add_value, input_axis):
             )
 
 
-def index_add(x, index, add_value, axis=0, name=None):
+def index_add(x, index, axis, value, name=None):
     """
-    Adds the elements of the input tensor with add_value by selecting the indices in the order given in index.
+    Adds the elements of the input tensor with value tensor by selecting the indices in the order given in index.
 
     Args:
         x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
         index (Tensor): The 1-D Tensor containing the indices to index.
             The data type of ``index`` must be int32 or int64.
-        add_value (Tensor): The tensor used to add the elements along the target axis.
-        axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
+        axis (int): The dimension in which we index. 
+        value (Tensor): The tensor used to add the elements along the target axis.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -4378,22 +4378,22 @@ def index_add(x, index, add_value, axis=0, name=None):
 
             input_tensor = paddle.to_tensor(paddle.ones((3, 3)), dtype="float32")
             index = paddle.to_tensor([0, 2], dtype="int32")
-            add_value = paddle.to_tensor([[1, 1, 1], [1, 1, 1]], dtype="float32")
-            outplace_res = paddle.index_add(input_tensor, index, add_value, axis=0)
+            value = paddle.to_tensor([[1, 1, 1], [1, 1, 1]], dtype="float32")
+            outplace_res = paddle.index_add(input_tensor, index, 0, value)
             print(outplace_res.numpy())
             # [[2 2 2]
             #  [1 1 1]
             #  [2 2 2]]
     """
-    _index_add_params_check(x, index, add_value, axis)
+    _index_add_params_check(x, index, axis, value)
 
     if _non_static_mode():
         # todo(@limin29): add final_state_index_add support.
         # if in_dygraph_mode():
-        #     return _C_ops.final_state_index_add(x, index, add_value, axis)
+        #     return _C_ops.final_state_index_add(x, index, axis, value)
         # if _in_legacy_dygraph():
-        #     return _C_ops.index_add(x, index, add_value, "axis", axis)
-        return _C_ops.index_add(x, index, add_value, "axis", axis)
+        #     return _C_ops.index_add(x, index, value, "axis", axis)
+        return _C_ops.index_add(x, index, value, "axis", axis)
 
     helper = LayerHelper("index_add", **locals())
     check_variable_and_dtype(
@@ -4402,8 +4402,7 @@ def index_add(x, index, add_value, axis=0, name=None):
     check_variable_and_dtype(index, 'index', ['int32', 'int64'],
                              'paddle.tensor.manipulation.index_add')
     check_variable_and_dtype(
-        add_value, 'add_value',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        value, 'add_value', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'paddle.tensor.manipulation.index_add')
 
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -4412,7 +4411,7 @@ def index_add(x, index, add_value, axis=0, name=None):
                      inputs={
                          'X': x,
                          'Index': index,
-                         'AddValue': add_value,
+                         'AddValue': value,
                      },
                      outputs={'Out': out},
                      attrs={'axis': axis})
@@ -4420,7 +4419,7 @@ def index_add(x, index, add_value, axis=0, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def index_add_(x, index, add_value, axis=0, name=None):
+def index_add_(x, index, axis, value, name=None):
     """
     Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_index_add`.
@@ -4433,16 +4432,16 @@ def index_add_(x, index, add_value, axis=0, name=None):
 
             input_tensor = paddle.to_tensor(paddle.ones((3, 3)), dtype="float32")
             index = paddle.to_tensor([0, 2], dtype="int32")
-            add_value = paddle.to_tensor([[1, 1], [1, 1], [1, 1]], dtype="float32")
-            inplace_res = paddle.index_add_(input_tensor, index, add_value, axis=1)
+            value = paddle.to_tensor([[1, 1], [1, 1], [1, 1]], dtype="float32")
+            inplace_res = paddle.index_add_(input_tensor, index, 1, value)
             print(inplace_res.numpy())
             # [[2, 1, 2]
             #  [2, 1, 2]
             #  [2, 1, 2]]
     """
 
-    _index_add_params_check(x, index, add_value, axis)
-    return _C_ops.index_add_(x, index, add_value, "axis", axis)
+    _index_add_params_check(x, index, axis, value)
+    return _C_ops.index_add_(x, index, value, "axis", axis)
 
 
 # TODO(dev): We need avoid implementing it by this way.

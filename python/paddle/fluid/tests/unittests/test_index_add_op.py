@@ -56,7 +56,6 @@ def compute_index_add_ref(axis, x_shape, x_np, add_value_shape, add_value_np,
 class TestIndexAddOp(OpTest):
 
     def setUp(self):
-        self.python_api = paddle.index_add
         self.op_type = "index_add"
         self.init_dtype_type()
         index_np = np.random.randint(low=0,
@@ -82,10 +81,10 @@ class TestIndexAddOp(OpTest):
         self.add_value_shape = (3, 3)
 
     def test_check_output(self):
-        self.check_output(check_eager=True, atol=1e-2)
+        self.check_output(check_eager=False, atol=1e-2)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'AddValue'], 'Out', check_eager=True)
+        self.check_grad(['X', 'AddValue'], 'Out', check_eager=False)
 
 
 class TestIndexAddAPI(unittest.TestCase):
@@ -153,7 +152,7 @@ class TestIndexAddAPI(unittest.TestCase):
         index = paddle.to_tensor(self.index_np)
         add_value = paddle.to_tensor(self.add_value_np, stop_gradient=False)
 
-        out = paddle.index_add(input_tensor, index, add_value, axis=self.axis)
+        out = paddle.index_add(input_tensor, index, self.axis, add_value)
         ref_out = compute_index_add_ref(self.axis, self.x_shape, self.x_np,
                                         self.add_value_shape, self.add_value_np,
                                         self.index_size, self.index_np)
@@ -185,7 +184,7 @@ class TestIndexAddAPI(unittest.TestCase):
                                        shape=self.add_value_shape,
                                        dtype=self.x_type)
 
-        out = paddle.index_add(x, index, add_value, self.axis)
+        out = paddle.index_add(x, index, self.axis, add_value)
 
         if device == "cpu":
             place = paddle.CPUPlace()
@@ -289,7 +288,7 @@ class TestIndexAddAPIError(unittest.TestCase):
                 add_value = paddle.static.data(name='AddValue',
                                                shape=[4, 3],
                                                dtype="float64")
-                out = paddle.index_add(x, index, add_value, axis)
+                out = paddle.index_add(x, index, axis, add_value)
 
             self.assertRaises(ValueError, test_add_value_shape)
 
@@ -304,7 +303,7 @@ class TestIndexAddAPIError(unittest.TestCase):
                 add_value = paddle.static.data(name='AddValue1',
                                                shape=[4, 10],
                                                dtype="float64")
-                out = paddle.index_add(x, index, add_value, axis)
+                out = paddle.index_add(x, index, axis, add_value)
 
             self.assertRaises(TypeError, test_index_dtype)
 
@@ -319,7 +318,7 @@ class TestIndexAddAPIError(unittest.TestCase):
                 add_value = paddle.static.data(name='AddValue2',
                                                shape=[4, 10],
                                                dtype="float64")
-                out = paddle.index_add(x, index, add_value, axis)
+                out = paddle.index_add(x, index, axis, add_value)
 
             self.assertRaises(ValueError, test_index_shape)
 
@@ -334,7 +333,7 @@ class TestIndexAddAPIError(unittest.TestCase):
                 add_value = paddle.static.data(name='AddValue3',
                                                shape=[4, 10],
                                                dtype="float64")
-                out = paddle.index_add(x, index, add_value, axis)
+                out = paddle.index_add(x, index, axis, add_value)
 
             self.assertRaises(ValueError, test_axis_value)
 
@@ -349,7 +348,7 @@ class TestIndexAddAPIError(unittest.TestCase):
                 add_value = paddle.static.data(name='AddValue4',
                                                shape=[4],
                                                dtype="float64")
-                out = paddle.index_add(x, index, add_value, axis)
+                out = paddle.index_add(x, index, axis, add_value)
 
             self.assertRaises(ValueError, test_add_value_broadcast)
 
