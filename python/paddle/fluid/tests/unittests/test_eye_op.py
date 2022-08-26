@@ -211,6 +211,23 @@ class TestEyeRowsCol(UnittestBase):
         out = paddle.eye(rows, cols)
         return out
 
+    def test_error(self):
+        with self.assertRaises(TypeError):
+            paddle.eye(-1)
+
+
+class TestEyeRowsCol2(TestEyeRowsCol):
+
+    def call_func(self, x):
+        rows = paddle.assign(3)
+        cols = paddle.assign(10)
+        out = paddle.fluid.layers.eye(rows, cols)
+        return out
+
+    def test_error(self):
+        with self.assertRaises(TypeError):
+            paddle.fluid.layers.eye(-1)
+
 
 if __name__ == "__main__":
     paddle.enable_static()
