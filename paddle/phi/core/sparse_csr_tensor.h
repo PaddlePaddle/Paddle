@@ -74,15 +74,24 @@ class SparseCsrTensor : public TensorBase,
   /// dense tensor.
   /// \return The compressed row index of non zero elemetns in original dense
   /// tensor.
+  const DenseTensor& crows() const { return non_zero_crows_; }
+
+  /// Note: This function will removed soon. It is recommended to use crows()
   const DenseTensor& non_zero_crows() const { return non_zero_crows_; }
 
   /// \brief Returns the column index of non zero elemetns in original dense
   /// tensor.
   /// \return The column index of non zero elemetns in original dense tensor.
+  const DenseTensor& cols() const { return non_zero_cols_; }
+
+  /// Note: This function will removed soon. It is recommended to use cols()
   const DenseTensor& non_zero_cols() const { return non_zero_cols_; }
 
   /// \brief Returns the non zero elemetns in original dense tensor.
   /// \return The non zero elemetns in original dense tensor.
+  const DenseTensor& values() const { return non_zero_elements_; }
+
+  /// Note: This function will removed soon. It is recommended to use indices()
   const DenseTensor& non_zero_elements() const { return non_zero_elements_; }
 
   /// \brief Returns the total number of non zero elements in original dense
@@ -138,14 +147,26 @@ class SparseCsrTensor : public TensorBase,
 
   /// \brief Get a mutable pointer of non_zero_crows.
   /// return a mutable pointer of non_zero_crows.
+  DenseTensor* mutable_crows() { return &non_zero_crows_; }
+
+  /// Note: This function will removed soon. It is recommended to use
+  /// mutable_crows()
   DenseTensor* mutable_non_zero_crows() { return &non_zero_crows_; }
 
   /// \brief Get a mutable pointer of non_zero_cols.
   /// return a mutable pointer of non_zero_cols.
+  DenseTensor* mutable_cols() { return &non_zero_cols_; }
+
+  /// Note: This function will removed soon. It is recommended to use
+  /// mutable_cols()
   DenseTensor* mutable_non_zero_cols() { return &non_zero_cols_; }
 
   /// \brief Get a mutable pointer of non_zero_elements.
   /// return a mutable pointer of non_zero_elements.
+  DenseTensor* mutable_values() { return &non_zero_elements_; }
+
+  /// Note: This function will removed soon. It is recommended to use
+  /// mutable_values()
   DenseTensor* mutable_non_zero_elements() { return &non_zero_elements_; }
 
   /// \brief set the dims of original dense tensor

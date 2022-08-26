@@ -20,6 +20,12 @@
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
 
+namespace paddle {
+namespace platform {
+class TraceEventCollector;
+}  // namespace platform
+}  // namespace paddle
+
 namespace phi {
 
 class DeviceInterface {  // Driver / Runtime
@@ -195,6 +201,7 @@ class DeviceInterface {  // Driver / Runtime
                          size_t num,
                          ccl::CCLDataType data_type,
                          ccl::CCLReduceOp reduce_op,
+                         size_t root_id,
                          const ccl::CCLComm& ccl_comm,
                          const stream::Stream& stream);
   virtual void CCLAllGather(void* in_data,
@@ -234,6 +241,27 @@ class DeviceInterface {  // Driver / Runtime
                          void* x,
                          float beta,
                          void* y);
+
+  // profiler
+  virtual void ProfilerInitialize(
+      paddle::platform::TraceEventCollector* collector, void** user_data);
+
+  virtual void ProfilerFinalize(
+      paddle::platform::TraceEventCollector* collector, void* user_data);
+
+  virtual void ProfilerPrepareTracing(
+      paddle::platform::TraceEventCollector* collector, void* user_data);
+
+  virtual void ProfilerStartTracing(
+      paddle::platform::TraceEventCollector* collector, void* user_data);
+
+  virtual void ProfilerStopTracing(
+      paddle::platform::TraceEventCollector* collector, void* user_data);
+
+  virtual void ProfilerCollectTraceData(
+      paddle::platform::TraceEventCollector* collector,
+      uint64_t start_ns,
+      void* user_data);
 
  private:
   const std::string type_;

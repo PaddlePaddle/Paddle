@@ -26,7 +26,7 @@ import warnings
 
 import numpy as np
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid.data_feeder import (check_dtype, check_type,
                                       check_variable_and_dtype, convert_dtype)
@@ -221,8 +221,8 @@ class Distribution(object):
                 warnings.warn(
                     "dtype of input 'value' needs to be the same as parameters of distribution class. dtype of 'value' will be converted."
                 )
-                return _C_ops.cast(value, 'in_dtype', value.dtype, 'out_dtype',
-                                   param.dtype)
+                return _legacy_C_ops.cast(value, 'in_dtype', value.dtype,
+                                          'out_dtype', param.dtype)
             return value
 
         check_variable_and_dtype(value, 'value', ['float32', 'float64'],

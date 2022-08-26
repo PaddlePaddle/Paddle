@@ -17,7 +17,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 import paddle.utils.deprecated as deprecated
 
 
@@ -114,7 +114,7 @@ def graph_reindex(x,
 
     if _non_static_mode():
         reindex_src, reindex_dst, out_nodes = \
-            _C_ops.graph_reindex(x, neighbors, count, value_buffer, index_buffer,
+            _legacy_C_ops.graph_reindex(x, neighbors, count, value_buffer, index_buffer,
                                  "flag_buffer_hashtable", flag_buffer_hashtable)
         return reindex_src, reindex_dst, out_nodes
 

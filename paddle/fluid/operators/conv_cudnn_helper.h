@@ -191,32 +191,36 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     SetConvMathType(ctx, dtype, args.cdesc);
 
     if (deterministic) {
-      result = FindAlgoDeterministic();
+      result = FindAlgoDeterministic(args);
     } else {
       // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
       // 2. Once turning on auto-tune, runn heuristic search(default) before
       //    auto-tune process, run exhaustive_search during mentioned process.
       // 3. After auto-tune process, run cached algorithm if cached, run
       //    default mode for the rest.
-      size_t key = args.GetCacheKey<T>();
+      auto key = args.Convert2ConvCacheKey<T>();
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetConvForward();
       if (cache.Find(key)) {
-        result.algo = static_cast<AlgoT>(cache.Get(key));
+        auto t = cache.Get(key);
+        result.algo = static_cast<AlgoT>(t.algo);
+        result.workspace_size = t.workspace_size;
       } else {
         bool use_autotune =
             phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
           result = FindAlgoExhaustiveSearch<T>(args, ctx);
-          cache.Set(key, static_cast<int64_t>(result.algo));
         } else {
           result = FindAlgoHeuristic(args, ctx);
         }
+        phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
+                                    result.workspace_size);
+        cache.Set(key, node);
       }
     }
     VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
             << ", deterministic=" << deterministic
-            << ", choose algo=" << result.algo << ", workspace="
-            << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
+            << ", choose algo=" << result.algo
+            << ", workspace=" << ToMegaBytes(result.workspace_size) << " MB";
     return result;
   }
 
@@ -236,8 +240,9 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
   }
 
  private:
-  static SearchResult<AlgoT> FindAlgoDeterministic() {
-    return SearchResult<AlgoT>(static_cast<AlgoT>(1));
+  static SearchResult<AlgoT> FindAlgoDeterministic(const ConvArgs& args) {
+    auto workspace_size = GetWorkspaceSize(args, static_cast<AlgoT>(1));
+    return SearchResult<AlgoT>(static_cast<AlgoT>(1), -1.0, workspace_size);
   }
 
   // Heuristic search mode, calling the cudnnGetXxxAlgorithm.
@@ -298,6 +303,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
             workspace_size_limit,
             &(result.algo)));
 #endif
+    result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
   }
 
@@ -343,6 +349,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     ChooseAlgoByWorkspace<PerfT, AlgoT>(
         perf_results, workspace_size_limit, &result);
 
+    result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
   }
 
@@ -394,33 +401,37 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     SetConvMathType(ctx, dtype, args.cdesc);
 
     if (deterministic) {
-      result = FindAlgoDeterministic();
+      result = FindAlgoDeterministic(args);
     } else {
       // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
       // 2. Once turning on auto-tune, runn heuristic search(default) before
       //    auto-tune process, run exhaustive_search during mentioned process.
       // 3. After auto-tune process, run cached algorithm if cached, run
       //    default mode for the rest.
-      size_t key = args.GetCacheKey<T>();
+      auto key = args.Convert2ConvCacheKey<T>();
       auto& cache =
           phi::autotune::AutoTuneCache::Instance().GetConvBackwardData();
       if (cache.Find(key)) {
-        result.algo = static_cast<AlgoT>(cache.Get(key));
+        auto t = cache.Get(key);
+        result.algo = static_cast<AlgoT>(t.algo);
+        result.workspace_size = t.workspace_size;
       } else {
         bool use_autotune =
             phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
           result = FindAlgoExhaustiveSearch<T>(args, ctx);
-          cache.Set(key, static_cast<int64_t>(result.algo));
         } else {
           result = FindAlgoHeuristic(args, ctx);
         }
+        phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
+                                    result.workspace_size);
+        cache.Set(key, node);
       }
     }
     VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
             << ", deterministic=" << deterministic
-            << ", choose algo=" << result.algo << ", workspace="
-            << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
+            << ", choose algo=" << result.algo
+            << ", workspace=" << ToMegaBytes(result.workspace_size) << " MB";
     return result;
   }
 
@@ -440,8 +451,11 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
   }
 
  private:
-  static SearchResult<AlgoT> FindAlgoDeterministic() {
-    return SearchResult<AlgoT>(CUDNN_CONVOLUTION_BWD_DATA_ALGO_1);
+  static SearchResult<AlgoT> FindAlgoDeterministic(const ConvArgs& args) {
+    auto workspace_size =
+        GetWorkspaceSize(args, CUDNN_CONVOLUTION_BWD_DATA_ALGO_1);
+    return SearchResult<AlgoT>(
+        CUDNN_CONVOLUTION_BWD_DATA_ALGO_1, -1.0, workspace_size);
   }
 
   static SearchResult<AlgoT> FindAlgoHeuristic(const ConvArgs& args,
@@ -513,7 +527,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
             workspace_size_limit,
             &(result.algo)));
 #endif
-
+    result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
   }
 
@@ -559,6 +573,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     ChooseAlgoByWorkspace<PerfT, AlgoT>(
         perf_results, workspace_size_limit, &result);
 
+    result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
   }
 
@@ -609,33 +624,37 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     SetConvMathType(ctx, dtype, args.cdesc);
 
     if (deterministic) {
-      result = FindAlgoDeterministic();
+      result = FindAlgoDeterministic(args);
     } else {
       // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
       // 2. Once turning on auto-tune, runn heuristic search(default) before
       //    auto-tune process, run exhaustive_search during mentioned process.
       // 3. After auto-tune process, run cached algorithm if cached, run
       //    default mode for the rest.
-      size_t key = args.GetCacheKey<T>();
+      auto key = args.Convert2ConvCacheKey<T>();
       auto& cache =
           phi::autotune::AutoTuneCache::Instance().GetConvBackwardFilter();
       if (cache.Find(key)) {
-        result.algo = static_cast<AlgoT>(cache.Get(key));
+        auto t = cache.Get(key);
+        result.algo = static_cast<AlgoT>(t.algo);
+        result.workspace_size = t.workspace_size;
       } else {
         bool use_autotune =
             phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
           result = FindAlgoExhaustiveSearch<T>(args, ctx);
-          cache.Set(key, static_cast<int64_t>(result.algo));
         } else {
           result = FindAlgoHeuristic(args, ctx);
         }
+        phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
+                                    result.workspace_size);
+        cache.Set(key, node);
       }
     }
     VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
             << ", deterministic=" << deterministic
-            << ", choose algo=" << result.algo << ", workspace="
-            << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
+            << ", choose algo=" << result.algo
+            << ", workspace=" << ToMegaBytes(result.workspace_size) << " MB";
     return result;
   }
 
@@ -656,8 +675,11 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
   }
 
  private:
-  static SearchResult<AlgoT> FindAlgoDeterministic() {
-    return SearchResult<AlgoT>(CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1);
+  static SearchResult<AlgoT> FindAlgoDeterministic(const ConvArgs& args) {
+    auto workspace_size =
+        GetWorkspaceSize(args, CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1);
+    return SearchResult<AlgoT>(
+        CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1, -1.0, workspace_size);
   }
 
   static SearchResult<AlgoT> FindAlgoHeuristic(const ConvArgs& args,
@@ -718,6 +740,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
             &(result.algo)));
 #endif
 
+    result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
   }
 
@@ -786,6 +809,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       ChooseAlgo(perf_results, workspace_size_limit, &result);
     }
 
+    result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
   }
 

@@ -23,12 +23,9 @@ template <typename T, typename Context>
 void ShapeKernel(const Context& ctx,
                  const DenseTensor& input,
                  DenseTensor* out) {
-  auto in_var = &input;
-  phi::DDim in_dims;
-  in_dims = in_var->dims();
-  auto out_t = out;
-  out_t->Resize({in_dims.size()});
-  auto out_data = ctx.template HostAlloc<int32_t>(out_t);
+  auto& in_dims = input.dims();
+  out->Resize({in_dims.size()});
+  auto out_data = ctx.template HostAlloc<int32_t>(out);
   for (int i = 0; i < in_dims.size(); ++i) {
     out_data[i] = in_dims[i];
   }
