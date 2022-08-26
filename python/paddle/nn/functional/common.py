@@ -176,7 +176,7 @@ def interpolate(x,
                 name=None):
     """
 
-    This op resizes a batch of images.
+    This API resizes a batch of images.
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
@@ -341,46 +341,28 @@ def interpolate(x,
         A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
-    Raises:
-        TypeError: size should be a list or tuple or Tensor.
-        ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
-                    'trilinear', 'bicubic', 'area' or 'nearest' currently.
-        ValueError: 'linear' only support 3-D tensor.
-        ValueError: 'bilinear' and 'bicubic' only support 4-D tensor.
-        ValueError: 'nearest' only support 4-D or 5-D tensor.
-        ValueError: 'trilinear' only support 5-D tensor.
-        ValueError: One of size and scale_factor must not be None.
-        ValueError: size length should be 1 for input 3-D tensor.
-        ValueError: size length should be 2 for input 4-D tensor.
-        ValueError: size length should be 3 for input 5-D tensor.
-        ValueError: scale_factor should be greater than zero.
-        TypeError: align_corners should be a bool value
-        ValueError: align_mode can only be '0' or '1'
-        ValueError: data_format can only be 'NCW', 'NWC', 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
+
 
     Examples:
         .. code-block:: python
 
-	        import paddle
-	        import numpy as np
-            import paddle.nn.functional as F
-            
-            # given out size
-            input_data = np.random.rand(2,3,6,10).astype("float32")
-            x = paddle.to_tensor(input_data)
-            output_1 = F.interpolate(x=x, size=[12,12])
-    	    print(output_1.shape)
-	        # [2L, 3L, 12L, 12L]
-            
-            # given scale
-            output_2 = F.interpolate(x=x, scale_factor=[2,1])
-            print(output_2.shape)
-            # [2L, 3L, 12L, 10L]
-            
-            # bilinear interp
-            output_3 = F.interpolate(x=x, scale_factor=[2,1], mode="bilinear")
-            print(output_2.shape)
-            # [2L, 3L, 12L, 10L]
+		import paddle
+		import paddle.nn.functional as F
+
+		input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
+		output_1 = F.interpolate(x=input_data, size=[12,12])
+		print(output_1.shape)
+		    # [2L, 3L, 12L, 12L]
+
+		# given scale
+		output_2 = F.interpolate(x=input_data, scale_factor=[2,1])
+		print(output_2.shape)
+		# [2L, 3L, 12L, 10L]
+
+		# bilinear interp
+		output_3 = F.interpolate(x=input_data, scale_factor=[2,1], mode="bilinear")
+		print(output_2.shape)
+		# [2L, 3L, 12L, 10L]
     """
     data_format = data_format.upper()
     resample = mode.upper()
@@ -668,7 +650,7 @@ def upsample(x,
              data_format='NCHW',
              name=None):
     """
-    This op resizes a batch of images.
+    This API resizes a batch of images.
 
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
@@ -716,6 +698,7 @@ def upsample(x,
 
     Example:
     .. code-block:: text
+    
         For scale_factor:
             if align_corners = True && out_size > 1 :
               scale_factor = (in_size-1.0)/(out_size-1.0)
@@ -801,23 +784,23 @@ def upsample(x,
     Parameters:
         x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
-        size (list|tuple|Tensor|None): Output shape of image resize
+        size (list|tuple|Tensor|None, optional): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
              Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
              If a Tensor , its dimensions size should be a 1.
-        scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
+        scale_factor (float|Tensor|list|tuple|None, optional): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if 
              it is either a list or a tuple or a Tensor.
              Default: None.
-        mode (str): The resample method. It supports 'linear', 'nearest', 'bilinear',
+        mode (str, optional): The resample method. It supports 'linear', 'nearest', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
-        align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
+        align_corners(bool, optional) :  An optional bool, If True, the centers of the 4 corner pixels of the
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.
                                Default: False
-        align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
+        align_mode(int, optional)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
                             it can be \'0\' for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
@@ -832,32 +815,19 @@ def upsample(x,
         A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
-    Raises:
-        TypeError: size should be a list or tuple or Tensor.
-        ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
-                    'trilinear', 'bicubic', or 'nearest' currently.
-        ValueError: 'linear' only support 3-D tensor.
-        ValueError: 'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.
-        ValueError: 'trilinear' only support 5-D tensor.
-        ValueError: One of size and scale_factor must not be None.
-        ValueError: size length should be 1 for input 3-D tensor.
-        ValueError: size length should be 2 for input 4-D tensor.
-        ValueError: size length should be 3 for input 5-D tensor.
-        ValueError: scale_factor should be greater than zero.
-        TypeError: align_corners should be a bool value
-        ValueError: align_mode can only be '0' or '1'
-        ValueError: data_format can only be 'NCW', 'NWC', 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
+
         Examples:
         .. code-block:: python
-            import paddle
-            import numpy as np
-            import paddle.nn.functional as F
+	
+		import paddle
+		import paddle.nn as nn
 
-            input_data = np.random.rand(2,3,6,10).astype("float32")
-            input = paddle.to_tensor(input_data)
-            output = F.upsample(x=input, size=[12,12])
-            print(output.shape)
-            # [2L, 3L, 12L, 12L]
+		input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
+		upsample_out = paddle.nn.Upsample(size=[12,12])
+
+		output = upsample_out(x=input_data)
+		print(output.shape)
+		# [2L, 3L, 12L, 12L]
 
     """
     return interpolate(x, size, scale_factor, mode, align_corners, align_mode,
@@ -884,17 +854,17 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     Examples:
        .. code-block:: python
 
-        import paddle
-        import numpy
-        import paddle.nn.functional as F
+		import paddle
+		import paddle.nn.functional as F
 
-        x1 = numpy.random.random((5, 5)).astype('float32')
-        x2 = numpy.random.random((5, 4)).astype('float32')
-        w = numpy.random.random((1000, 5, 4)).astype('float32')
-        b = numpy.random.random((1, 1000)).astype('float32')
+		x1 = paddle.randn((5, 5)).astype(paddle.float32)
+		x2 = paddle.randn((5, 4)).astype(paddle.float32)
+		w = paddle.randn((1000, 5, 4)).astype(paddle.float32)
+		b = paddle.randn((1, 1000)).astype(paddle.float32)
 
-        result = F.bilinear(paddle.to_tensor(x1), paddle.to_tensor(x2), paddle.to_tensor(w), paddle.to_tensor(b))           # result shape [5, 1000]
-
+		result = F.bilinear(x1, x2, w, b)
+		print(result.shape)
+		# [5, 1000]
     """
 
     if in_dygraph_mode():
@@ -933,10 +903,10 @@ def dropout(x,
 
     Args:
         x (Tensor): The input tensor. The data type is float32 or float64.
-        p (float|int): Probability of setting units to zero. Default 0.5.
-        axis (int|list|tuple): The axis along which the dropout is performed. Default None.
-        training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        mode(str): ['upscale_in_train'(default) | 'downscale_in_infer'].
+        p (float|int, optional): Probability of setting units to zero. Default 0.5.
+        axis (int|list|tuple, optional): The axis along which the dropout is performed. Default None.
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default True.
+        mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer'].
 
                            1. upscale_in_train(default), upscale the output at training time
 
@@ -1036,22 +1006,38 @@ def dropout(x,
 
         .. code-block:: python
 
-            import paddle
-            import numpy as np
+		import paddle
 
-            x = np.array([[1,2,3], [4,5,6]]).astype('float32')
-            x = paddle.to_tensor(x)
-            y_train = paddle.nn.functional.dropout(x, 0.5)
-            y_test = paddle.nn.functional.dropout(x, 0.5, training=False) 
-            y_0 = paddle.nn.functional.dropout(x, axis=0)
-            y_1 = paddle.nn.functional.dropout(x, axis=1)
-            y_01 = paddle.nn.functional.dropout(x, axis=[0,1])
-            print(x)
-            print(y_train)
-            print(y_test)
-            print(y_0)
-            print(y_1)
-            print(y_01)
+		x = paddle.to_tensor([[1,2,3], [4,5,6]]).astype(paddle.float32)
+		y_train = paddle.nn.functional.dropout(x, 0.5)
+		y_test = paddle.nn.functional.dropout(x, 0.5, training=False)
+		y_0 = paddle.nn.functional.dropout(x, axis=0)
+		y_1 = paddle.nn.functional.dropout(x, axis=1)
+		y_01 = paddle.nn.functional.dropout(x, axis=[0,1])
+		print(x)
+		# Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+		#        [[1., 2., 3.],
+		#         [4., 5., 6.]])
+		print(y_train)
+		# Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+		#        [[2. , 0. , 6. ],
+		#         [8. , 0. , 12.]])
+		print(y_test)
+		# Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+		#        [[1., 2., 3.],
+		#         [4., 5., 6.]])
+		print(y_0)
+		# Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+		#        [[0. , 0. , 0. ],
+		#         [8. , 10., 12.]])
+		print(y_1)
+		# Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+		#        [[2. , 0. , 6. ],
+		#         [8. , 0. , 12.]])
+		print(y_01)
+		# Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+		#        [[0. , 0. , 0. ],
+		#         [8. , 0. , 12.]])
 
     """
     if not isinstance(p, (float, int, Variable)):
@@ -1199,17 +1185,16 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
-            x = paddle.to_tensor(x)
+            x = paddle.randn(shape=(2, 3, 4, 5)).astype(paddle.float32)
             y_train = paddle.nn.functional.dropout2d(x)  #train
             y_test = paddle.nn.functional.dropout2d(x, training=False) #test
             for i in range(2):
                 for j in range(3):
-                    print(x.numpy()[i,j,:,:])
-                    print(y_train.numpy()[i,j,:,:]) # may all 0
-                    print(y_test.numpy()[i,j,:,:])
+                    print(x[i,j,:,:])
+                    print(y_train[i,j,:,:]) # may all 0
+                    print(y_test[i,j,:,:])
+
     """
     input_shape = x.shape
     if len(input_shape) != 4:
@@ -1252,16 +1237,15 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import numpy as np
+		import paddle
 
-            x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
-            x = paddle.to_tensor(x)
-            y_train = paddle.nn.functional.dropout3d(x)  #train
-            y_test = paddle.nn.functional.dropout3d(x, training=False) #test
-            print(x.numpy()[0,0,:,:,:])
-            print(y_train.numpy()[0,0,:,:,:]) # may all 0
-            print(y_test.numpy()[0,0,:,:,:])
+		x = paddle.randn(shape=(2, 3, 4, 5, 6)).astype(paddle.float32)
+		y_train = paddle.nn.functional.dropout3d(x)  #train
+		y_test = paddle.nn.functional.dropout3d(x, training=False) #test
+		print(x[0,0,:,:,:])
+		print(y_train[0,0,:,:,:]) # may all 0
+		print(y_test[0,0,:,:,:])
+
     """
 
     input_shape = x.shape
@@ -1301,17 +1285,19 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import numpy as np
+		import paddle
 
-            x = np.array([[-1, 1], [-1, 1]]).astype('float32')
-            x = paddle.to_tensor(x)
-            y_train = paddle.nn.functional.alpha_dropout(x, 0.5)
-            y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False)
-            print(x)
-            print(y_train)
-            # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
-            print(y_test)
+		x = paddle.to_tensor([[-1, 1], [-1, 1]]).astype(paddle.float32)
+		y_train = paddle.nn.functional.alpha_dropout(x, 0.5)
+		y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False)
+		print(y_train)
+		# Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+		#        [[-0.10721093, -0.77919382],
+		#         [-0.10721093,  1.66559887]]) (randomly)
+		print(y_test)
+		# Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+		#        [[-1.,  1.],
+		#         [-1.,  1.]])
     """
     if not isinstance(p, (float, int)):
         raise TypeError("p argument should be a float or int")
@@ -2058,7 +2044,7 @@ def fold(x,
          name=None):
     r"""
     
-    This Op is used to combines an array of sliding local blocks into a large containing
+    Combines an array of sliding local blocks into a large containing
     tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each 
     combined value in the resulting large tensor by summing all values from all containing blocks. 
 
@@ -2067,9 +2053,10 @@ def fold(x,
     can be calculated as following.
 
     .. math::
-        H_out &= output_size[0]
-        W_out &= output_size[1]
-        C_out &= C_in / kernel\_sizes[0] / kernel\_sizes[1]
+    
+        H_{out} &= output\_size[0] \\
+        W_{out} &= output\_size[1] \\
+        C_{out} &= \frac{C_{in}}{kernel\_sizes[0]\times kernel\_sizes[1]} \\
 
     Parameters:
         x(Tensor):                3-D Tensor, input tensor of format [N, C, L],
@@ -2078,17 +2065,17 @@ def fold(x,
                                   or an interger o treated as [o, o].
         kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
-        strides(int|list|tuple):        The strides, should be [stride_h, stride_w]
+        strides(int|list|tuple, optional):        The strides, should be [stride_h, stride_w]
                                   or an integer stride treated as [sride, stride].
                                   For default, strides will be [1, 1].
-        paddings(int|list|tuple):       The paddings of each dimension, should be
+        paddings(int|list|tuple, optional):       The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
                                   or [padding_h, padding_w] or an integer padding.
                                   If [padding_h, padding_w] was given, it will expanded to
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
                                   be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list|tuple):      the dilations of convolution kernel, should be
+        dilations(int|list|tuple, optional):      the dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
         name(str, optional): The default value is None.
