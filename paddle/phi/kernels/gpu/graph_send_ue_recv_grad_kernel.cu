@@ -52,7 +52,7 @@ void CalculateXEGradForMinMax(const Context& ctx,
   const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
   const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
   const int nbx = (out_len + ntx - 1) / ntx;
-  const int nby = (index_size + nty - 1) / nty;
+  const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
   const dim3 grid(nbx, nby);
   const dim3 block(ntx, nty);
 
@@ -183,7 +183,7 @@ void CalculateXGrad(const Context& ctx,
       const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
       const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
       const int nbx = (out_len + ntx - 1) / ntx;
-      const int nby = (index_size + nty - 1) / nty;
+      const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
       const dim3 grid_(nbx, nby);
       const dim3 block_(ntx, nty);
       funcs::MultiplyFunctor<T> mul_functor;
@@ -306,7 +306,7 @@ void CalculateXGrad(const Context& ctx,
       const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
       const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
       const int nbx = (out_len + ntx - 1) / ntx;
-      const int nby = (index_size + nty - 1) / nty;
+      const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
       const dim3 grid_(nbx, nby);
       const dim3 block_(ntx, nty);
       if (!reduce) {
@@ -392,7 +392,7 @@ void CalculateEGrad(const Context& ctx,
   const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
   const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
   const int nbx = (out_len + ntx - 1) / ntx;
-  const int nby = (index_size + nty - 1) / nty;
+  const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
   const dim3 grid(nbx, nby);
   const dim3 block(ntx, nty);
   if (reduce_op == "SUM") {

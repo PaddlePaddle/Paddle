@@ -67,11 +67,11 @@ void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
 
 void UniformRandomInferMeta(const IntArray& shape,
                             DataType dtype,
-                            float min,
-                            float max,
-                            int seed,
                             MetaTensor* out);
 
 void TrilIndicesInferMeta(
     int rows, int cols, int offset, DataType dtype, MetaTensor* out);
+
+void TriuIndicesInferMeta(
+    int row, int col, int offset, DataType dtype, MetaTensor* out);
 }  // namespace phi

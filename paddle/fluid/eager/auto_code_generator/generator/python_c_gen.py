@@ -36,6 +36,7 @@ atype_to_parsing_function = {
     "long": "CastPyArg2Long",
     "int64_t": "CastPyArg2Long",
     "float": "CastPyArg2Float",
+    "double": "CastPyArg2Double",
     "std::string": "CastPyArg2String",
     "std::vector<bool>": "CastPyArg2Booleans",
     "std::vector<int>": "CastPyArg2Ints",
@@ -84,7 +85,7 @@ RETURN_INPLACE_PYOBJECT_TEMPLATE = \
 
 PYTHON_C_FUNCTION_TEMPLATE = \
 """
-static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
+static PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
   {}
 
   PyThreadState *tstate = nullptr;
@@ -145,7 +146,7 @@ FUNCTION_NAME_TEMPLATE = \
 
 PYTHON_C_FUNCTION_REG_TEMPLATE = \
 """
-{{\"final_state_{}{}\", (PyCFunction)(void(*)(void)) {}eager_final_state_api_{}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {} in dygraph.\"}}
+{{\"{}{}\", (PyCFunction)(void(*)(void)) {}eager_api_{}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {} in dygraph.\"}}
 
 """
 
@@ -161,7 +162,7 @@ PYTHON_C_WRAPPER_TEMPLATE = \
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include "paddle/fluid/pybind/eager_final_state_custom_python_api.h"
+#include "paddle/fluid/pybind/eager_custom_python_api.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
@@ -192,11 +193,11 @@ void BindFinalStateEagerOpFunctions(pybind11::module *module) {{
 
 CORE_OPS_INFO = \
 """
-static PyObject * eager_get_final_state_core_ops_args_info(PyObject *self) {
+static PyObject * eager_get_core_ops_args_info(PyObject *self) {
     PyThreadState *tstate = nullptr;
     try
     {
-      return ToPyObject(core_ops_final_state_args_info);
+      return ToPyObject(core_ops_args_info);
     }
     catch(...) {
       if (tstate) {
@@ -207,11 +208,11 @@ static PyObject * eager_get_final_state_core_ops_args_info(PyObject *self) {
     }
 }
 
-static PyObject * eager_get_final_state_core_ops_args_type_info(PyObject *self) {
+static PyObject * eager_get_core_ops_args_type_info(PyObject *self) {
     PyThreadState *tstate = nullptr;
     try
     {
-      return ToPyObject(core_ops_final_state_args_type_info);
+      return ToPyObject(core_ops_args_type_info);
     }
     catch(...) {
       if (tstate) {
@@ -222,11 +223,11 @@ static PyObject * eager_get_final_state_core_ops_args_type_info(PyObject *self) 
     }
 }
 
-static PyObject * eager_get_final_state_core_ops_returns_info(PyObject *self) {
+static PyObject * eager_get_core_ops_returns_info(PyObject *self) {
     PyThreadState *tstate = nullptr;
     try
     {
-      return ToPyObject(core_ops_final_state_returns_info);
+      return ToPyObject(core_ops_returns_info);
     }
     catch(...) {
       if (tstate) {
@@ -241,16 +242,16 @@ static PyObject * eager_get_final_state_core_ops_returns_info(PyObject *self) {
 
 CORE_OPS_INFO_REGISTRY = \
 """
-    {\"get_final_state_core_ops_args_info\",
-    (PyCFunction)(void(*)(void))eager_get_final_state_core_ops_args_info, METH_NOARGS,
-    \"C++ interface function for eager_get_final_state_core_ops_args_info.\"},
-    {\"get_final_state_core_ops_args_type_info\",
-    (PyCFunction)(void(*)(void))eager_get_final_state_core_ops_args_type_info,
+    {\"get_core_ops_args_info\",
+    (PyCFunction)(void(*)(void))eager_get_core_ops_args_info, METH_NOARGS,
+    \"C++ interface function for eager_get_core_ops_args_info.\"},
+    {\"get_core_ops_args_type_info\",
+    (PyCFunction)(void(*)(void))eager_get_core_ops_args_type_info,
     METH_NOARGS,
-    \"C++ interface function for eager_get_final_state_core_ops_args_type_info.\"},
-    {\"get_final_state_core_ops_returns_info\",
-    (PyCFunction)(void(*)(void))eager_get_final_state_core_ops_returns_info,
-    METH_NOARGS, \"C++ interface function for eager_get_final_state_core_ops_returns_info.\"},
+    \"C++ interface function for eager_get_core_ops_args_type_info.\"},
+    {\"get_core_ops_returns_info\",
+    (PyCFunction)(void(*)(void))eager_get_core_ops_returns_info,
+    METH_NOARGS, \"C++ interface function for eager_get_core_ops_returns_info.\"},
 """
 
 NAMESPACE_WRAPPER_TEMPLATE = \

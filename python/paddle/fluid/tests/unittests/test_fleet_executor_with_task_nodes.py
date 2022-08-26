@@ -51,9 +51,11 @@ class TestFleetExecutor(unittest.TestCase):
         task_node = TaskNode(
             # must clone, if copies, there will be two fetches and two feeds
             program=empty_program.clone(),
-            cur_rank=0,
+            rank=0,
+            node_type="Compute",
             max_run_times=1,
-            max_slot_times=1)
+            max_slot_times=1,
+            lazy_initialize=True)
         empty_program._pipeline_opt = {
             "fleet_opt": {
                 'tasks': [task_node],

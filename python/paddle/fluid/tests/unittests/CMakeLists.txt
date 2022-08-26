@@ -61,6 +61,8 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_no_sync)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_no_sync_gradient_check)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_pipeline_parallel)
+list(APPEND DIST_TEST_OPS
+     test_parallel_dygraph_pipeline_parallel_with_virtual_stage)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_tensor_parallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sharding_parallel)
 list(APPEND DIST_TEST_OPS test_dygraph_sharding_optimizer_stage2)
@@ -172,20 +174,14 @@ list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
-  list(REMOVE_ITEM TEST_OPS test_c_concat)
-  list(REMOVE_ITEM TEST_OPS test_c_split)
   list(REMOVE_ITEM TEST_OPS test_allgather)
-  list(REMOVE_ITEM TEST_OPS test_c_identity)
   list(REMOVE_ITEM TEST_OPS test_c_embedding_op)
-  list(REMOVE_ITEM TEST_OPS test_allreduce)
-  list(REMOVE_ITEM TEST_OPS test_broadcast)
   list(REMOVE_ITEM TEST_OPS test_collective_reduce)
   list(REMOVE_ITEM TEST_OPS test_pipeline_parallel)
   list(REMOVE_ITEM TEST_OPS test_collective_scatter)
   list(REMOVE_ITEM TEST_OPS test_collective_sendrecv)
   list(REMOVE_ITEM TEST_OPS test_reducescatter)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
-  list(REMOVE_ITEM TEST_OPS test_collective_split_embedding)
   list(REMOVE_ITEM TEST_OPS test_collective_split_embedding_none_divisible)
   list(REMOVE_ITEM TEST_OPS test_collective_split_row_linear)
   list(REMOVE_ITEM TEST_OPS test_collective_split_col_linear)
@@ -317,6 +313,8 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_no_sync_gradient_check)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_pipeline_parallel)
+  list(REMOVE_ITEM TEST_OPS
+       test_parallel_dygraph_pipeline_parallel_with_virtual_stage)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_tensor_parallel)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sharding_parallel)
   list(REMOVE_ITEM TEST_OPS test_dygraph_sharding_optimizer_stage2)
@@ -787,6 +785,7 @@ if(WITH_DISTRIBUTE)
   add_subdirectory(distributed_passes)
   add_subdirectory(ps)
   add_subdirectory(auto_parallel)
+  add_subdirectory(collective)
 
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -1582,6 +1581,9 @@ if(WITH_DISTRIBUTE
                        PROPERTIES TIMEOUT 60)
   set_tests_properties(test_parallel_dygraph_pipeline_parallel
                        PROPERTIES TIMEOUT 500)
+  set_tests_properties(
+    test_parallel_dygraph_pipeline_parallel_with_virtual_stage
+    PROPERTIES TIMEOUT 500)
   set_tests_properties(test_parallel_dygraph_tensor_parallel PROPERTIES TIMEOUT
                                                                         200)
   set_tests_properties(test_parallel_dygraph_sharding_parallel
@@ -1652,7 +1654,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_static_model_parallel_fused_multi_transformer
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(
-      test_collective_split_embedding
       test_collective_split_embedding_none_divisible
       test_collective_split_row_linear
       test_collective_split_col_linear
@@ -1672,16 +1673,11 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   endif()
   set_tests_properties(test_paddle_multiprocessing PROPERTIES TIMEOUT 120)
   set_tests_properties(test_reducescatter_api PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_broadcast PROPERTIES TIMEOUT 120)
   set_tests_properties(test_reducescatter PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_reduce_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_pipeline_parallel PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_reduce PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_allreduce PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_c_concat PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_c_split PROPERTIES TIMEOUT 120)
   set_tests_properties(test_allgather PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_c_identity PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_scatter_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_barrier_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_scatter PROPERTIES TIMEOUT 120)

@@ -27,7 +27,7 @@ from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (OpTest,
                                                   convert_float_to_uint16,
                                                   convert_uint16_to_float)
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard
 import paddle.inference as paddle_infer
 
@@ -361,7 +361,7 @@ class API_Test_Add_n(unittest.TestCase):
 
             self.assertEqual((sum_value.numpy() == expected_result).all(), True)
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with fluid.dygraph.guard():
             with _test_eager_guard():
                 input0 = paddle.ones(shape=[2, 3], dtype='float32')
@@ -473,11 +473,11 @@ class TestSumOpError(unittest.TestCase):
 
         def test_empty_list_input():
             with fluid.dygraph.guard():
-                fluid._C_ops.sum([])
+                fluid._legacy_C_ops.sum([])
 
         def test_list_of_none_input():
             with fluid.dygraph.guard():
-                fluid._C_ops.sum([None])
+                fluid._legacy_C_ops.sum([None])
 
         self.assertRaises(Exception, test_empty_list_input)
         self.assertRaises(Exception, test_list_of_none_input)

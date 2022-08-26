@@ -34,10 +34,10 @@ set(fwd_api_yaml_path
 
 message("Final State Eager CodeGen")
 add_custom_target(
-  eager_final_state_codegen
+  eager_codegen
   COMMAND
     "${PYTHON_EXECUTABLE}"
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/final_state_generator/eager_gen.py"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/generator/eager_gen.py"
     "--api_yaml_path=${api_yaml_path},${fwd_api_yaml_path}"
     "--backward_yaml_path=${backward_yaml_path}"
     "--forwards_cc_path=${tmp_forwards_cc_path}"
@@ -54,16 +54,15 @@ add_custom_target(
   VERBATIM)
 
 set(tmp_python_c_output_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_final_state_op_function.cc.tmp"
-)
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_op_function.cc.tmp")
 set(python_c_output_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_final_state_op_function.cc")
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_op_function.cc")
 
 add_custom_target(
-  eager_final_state_python_c_codegen
+  eager_python_c_codegen
   COMMAND
     "${PYTHON_EXECUTABLE}"
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/final_state_generator/python_c_gen.py"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/generator/python_c_gen.py"
     "--api_yaml_path=${api_yaml_path},${fwd_api_yaml_path}"
     "--output_path=${tmp_python_c_output_path}"
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_python_c_output_path}

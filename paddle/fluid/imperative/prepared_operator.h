@@ -412,6 +412,10 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
               kernel_ctx->EmplaceBackAttr(
                   std::move(phi::Scalar(PADDLE_GET_CONST(float, attr))));
               break;
+            case framework::proto::AttrType::FLOAT64:
+              kernel_ctx->EmplaceBackAttr(
+                  std::move(phi::Scalar(PADDLE_GET_CONST(double, attr))));
+              break;
             case framework::proto::AttrType::INT:
               kernel_ctx->EmplaceBackAttr(
                   std::move(phi::Scalar(PADDLE_GET_CONST(int, attr))));
@@ -548,6 +552,9 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         switch (attr_defs[i].type_index) {
           case phi::AttributeType::FLOAT32:
             kernel_ctx->EmplaceBackAttr(PADDLE_GET_CONST(float, attr));
+            break;
+          case phi::AttributeType::FLOAT64:
+            kernel_ctx->EmplaceBackAttr(PADDLE_GET_CONST(double, attr));
             break;
           case phi::AttributeType::INT32:
             kernel_ctx->EmplaceBackAttr(PADDLE_GET_CONST(int, attr));
