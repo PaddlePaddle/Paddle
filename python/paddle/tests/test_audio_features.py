@@ -13,7 +13,6 @@
 # limitations under the License.
 import unittest
 
-import librosa
 import numpy as np
 import paddle
 
