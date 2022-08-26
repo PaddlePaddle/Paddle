@@ -28,6 +28,8 @@
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #endif
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -506,9 +508,14 @@ value.
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(coalesce_tensor,
+                            CoalesceTensorInferShapeFunctor,
+                            PD_INFER_META(phi::CoalesceTensorInferMeta));
+
 REGISTER_OPERATOR(coalesce_tensor,
                   paddle::operators::CoalesceTensorOp,
-                  paddle::operators::CoalesceTensorOpMaker);
+                  paddle::operators::CoalesceTensorOpMaker,
+                  CoalesceTensorInferShapeFunctor);
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
