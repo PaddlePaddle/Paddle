@@ -36,7 +36,7 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
 
   auto x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto y_data = reinterpret_cast<const XPUType*>(y.data<T>());
-  auto out_data = out->data<bool>();
+  auto* out_data = dev_ctx.template Alloc<bool>(out);
 
   int ret =
       func(dev_ctx.x_context(), x_data, y_data, out_data, x_shape, y_shape);
