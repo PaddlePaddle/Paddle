@@ -170,7 +170,7 @@ void LayerNormPluginDynamic::configurePlugin(
     int nbOutputs) TRT_NOEXCEPT {
   const auto &input_dims = in[0].desc.dims;
   int statis_num = 1;
-  for (int i = 0; i < input_dims.nbDims; i++) {
+  for (int i = 0; i < begin_norm_axis_; i++) {
     statis_num *= input_dims.d[i];
   }
   mean_shape_[0] = statis_num;
