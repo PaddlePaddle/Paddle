@@ -49,23 +49,25 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
           XPUAPIErrorMsg[ret]));
 }
 
-#define DEFINE_XPU_COMPARE_KERNEL(compare_type, functor)                    \
-template <typename T, typename Context>                   \
-void compare_type##Kernonst Context& dev_ctx,                 \
-                              const DenseTensor& x,             \
-                              const DenseTensor& y,             \
-                              int axis,                         \
-                              DenseTensor* out) {                           \
+#define DEFINE_XPU_COMPARE_KERNEL(compare_kernel, functor)                  \
+  template <typename T, typename Context>                                   \
+  void compare_kernel(const Context& dev_ctx,                               \
+                      const DenseTensor& x,                                 \
+                      const DenseTensor& y,                                 \
+                      int axis,                                             \
+                      DenseTensor* out) {                                   \
     using XPUType = typename XPUTypeTrait<T>::Type;                         \
     XPUCompareKernelImpl<T, XPUType, Context>(dev_ctx, x, y, out, functor); \
   }
 
-DEFINE_XPU_COMPARE_KERNEL(Equal, xpu::broadcast_equal<XPUType>)
-DEFINE_XPU_COMPARE_KERNEL(NotEqual, xpu::broadcast_not_equal<XPUType>)
-DEFINE_XPU_COMPARE_KERNEL(LessThan, xpu::broadcast_less_than<XPUType>)
-DEFINE_XPU_COMPARE_KERNEL(LessEqual, xpu::broadcast_less_equal<XPUType>)
-DEFINE_XPU_COMPARE_KERNEL(GreaterThan, xpu::broadcast_greater_than<XPUType>)
-DEFINE_XPU_COMPARE_KERNEL(GreaterEqual, xpu::broadcast_greater_equal<XPUType>)
+DEFINE_XPU_COMPARE_KERNEL(EqualKernel, xpu::broadcast_equal<XPUType>)
+DEFINE_XPU_COMPARE_KERNEL(NotEqualKernel, xpu::broadcast_not_equal<XPUType>)
+DEFINE_XPU_COMPARE_KERNEL(LessThanKernel, xpu::broadcast_less_than<XPUType>)
+DEFINE_XPU_COMPARE_KERNEL(LessEqualKernel, xpu::broadcast_less_equal<XPUType>)
+DEFINE_XPU_COMPARE_KERNEL(GreaterThanKernel,
+                          xpu::broadcast_greater_than<XPUType>)
+DEFINE_XPU_COMPARE_KERNEL(GreaterEqualKernel,
+                          xpu::broadcast_greater_equal<XPUType>)
 #undef DEFINE_XPU_COMPARE_KERNEL
 
 }  // namespace phi
