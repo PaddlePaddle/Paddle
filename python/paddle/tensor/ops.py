@@ -20,7 +20,7 @@ from ..framework import convert_np_dtype_to_dtype_
 from ..static import Variable
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..fluid.framework import in_dygraph_mode
-from .. import _C_ops
+from .. import _C_ops, _legacy_C_ops
 
 __deprecated_func_name__ = {
     'tanh_shrink': 'tanhshrink',
@@ -513,7 +513,7 @@ _erf_ = generate_layer_fn('erf')
 
 def erf(x, name=None):
     if in_dygraph_mode():
-        return _C_ops.final_state_erf(x)
+        return _C_ops.erf(x)
 
     locals_var = locals().copy()
     kwargs = dict()

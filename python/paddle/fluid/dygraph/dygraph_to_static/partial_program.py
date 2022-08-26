@@ -32,7 +32,7 @@ from paddle.fluid.contrib.mixed_precision.decorator import AutoMixedPrecisionLis
 from paddle.fluid.contrib.mixed_precision.fp16_utils import rewrite_program, cast_model_to_fp16
 from paddle.fluid.dygraph.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 import paddle.compat as cpt
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 
 class NestSequence(object):
@@ -555,10 +555,11 @@ class PartialProgramLayer:
                 ('forward_global_block', self.forward_program.desc.block(0),
                  'backward_global_block', self.backward_program.desc.block(0)))
 
-        _C_ops.run_program(self._valid_vars(in_vars),
-                           self._valid_vars(self._params),
-                           self._valid_vars(out_vars), self._create_scope_vec(),
-                           self._double_grads, self._cuda_graph_vec, *attrs)
+        _legacy_C_ops.run_program(self._valid_vars(in_vars),
+                                  self._valid_vars(self._params),
+                                  self._valid_vars(out_vars),
+                                  self._create_scope_vec(), self._double_grads,
+                                  self._cuda_graph_vec, *attrs)
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 

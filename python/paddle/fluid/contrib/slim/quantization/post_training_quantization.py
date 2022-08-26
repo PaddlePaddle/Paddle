@@ -37,8 +37,9 @@ from .adaround import run_adaround
 from . import utils
 
 __all__ = [
-    'PostTrainingQuantization', 'WeightQuantization',
-    'PostTrainingQuantizationProgram'
+    'PostTrainingQuantization',
+    'WeightQuantization',
+    'PostTrainingQuantizationProgram',
 ]
 
 _logger = get_logger(__name__,
@@ -630,7 +631,6 @@ class PostTrainingQuantization(object):
             if var.name in self._quantized_act_var_name:
                 var.persistable = False
                 to_erase.append(var.name)
-        self._scope.erase(to_erase)
 
     def _sampling(self):
         '''
