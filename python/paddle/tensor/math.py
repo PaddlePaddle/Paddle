@@ -4812,7 +4812,6 @@ def frexp(x, dtype=paddle.float32):
     input_x = paddle.abs(x)
     exponent = paddle.floor(paddle.log2(input_x))
     exponent = paddle.where(paddle.isinf(exponent), paddle.full_like(exponent, 0), exponent)
-
     # 0填充
     mantissa = paddle.divide(input_x, 2 ** exponent)
     # 计算exponent
