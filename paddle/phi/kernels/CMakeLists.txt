@@ -66,7 +66,8 @@ set(COMMON_KERNEL_DEPS
     phi_dynload_warpctc
     sequence_padding
     sequence_scale
-    fft)
+    fft
+    phi_data_layout_transform)
 
 set(COMMON_KERNEL_DEPS
     ${COMMON_KERNEL_DEPS}
