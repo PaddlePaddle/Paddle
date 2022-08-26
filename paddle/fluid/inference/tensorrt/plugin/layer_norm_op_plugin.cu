@@ -222,13 +222,13 @@ int LayerNormPluginDynamic::enqueue(
   PADDLE_ENFORCE_GE(mean_shape_[0],
                     0,
                     platform::errors::InvalidArgument(
-                        "the size of mean vector should be positive,"
+                        "The size of mean vector should be positive,"
                         "but got:%d",
                         mean_shape_[0]));
   PADDLE_ENFORCE_GE(variance_shape_[0],
                     0,
                     platform::errors::InvalidArgument(
-                        "the size of mean vector should be positive,"
+                        "The size of mean vector should be positive,"
                         "but got:%d",
                         variance_shape_[0]));
 
