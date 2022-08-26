@@ -2054,9 +2054,9 @@ def fold(x,
 
     .. math::
     
-        H_{out} &= output_size[0] \\
-        W_{out} &= output_size[1] \\
-        C_{out} &= \frac{C_{in}}{kernel_sizes[0]\times kernel_sizes[1]} \\
+        H_{out} &= output\_size[0] \\
+        W_{out} &= output\_size[1] \\
+        C_{out} &= \frac{C_{in}}{kernel\_sizes[0]\times kernel\_sizes[1]} \\
 
     Parameters:
         x(Tensor):                3-D Tensor, input tensor of format [N, C, L],
