@@ -20,7 +20,6 @@
 #include "paddle/fluid/platform/device_memory_aligment.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -59,7 +58,7 @@ void GetMemSizeAndDtype(const std::vector<const DenseTensor *> &lod_tensors,
                         const size_t &size_of_dtype,
                         const phi::Place &place,
                         const bool use_align = true,
-                        const int align_size = -1) const {
+                        const int align_size = -1) {
   *numel = 0;
   std::stringstream ss;
   ss << "alloc_space_for_vars: ";
@@ -69,7 +68,7 @@ void GetMemSizeAndDtype(const std::vector<const DenseTensor *> &lod_tensors,
                       0,
                       errors::InvalidArgument(
                           "The number of `%d`-th tensor's elements is 0.", i));
-    auto len = use_align ? platform::Alignment(  // ? platform::Alignment
+    auto len = use_align ? paddle::platform::Alignment(
                                static_cast<size_t>(size) * size_of_dtype,
                                place,
                                align_size) /
@@ -98,7 +97,7 @@ void CoalesceTensorKernel(const Context &dev_ctx,
                           int size_of_dtype,
                           const std::vector<int64_t> &concated_shapes,
                           const std::vector<int64_t> &concated_ranks,
-                          std::vector<const DenseTensor *> output,
+                          std::vector<DenseTensor *> output,
                           DenseTensor *fused_output) {
   PADDLE_ENFORCE_GT(
       input.size(),
@@ -132,7 +131,7 @@ void CoalesceTensorKernel(const Context &dev_ctx,
   if (has_not_init_in_vars) {
     PADDLE_ENFORCE_EQ(
         concated_ranks.size(),
-        out_tensors.size(),
+        output.size(),
         errors::InvalidArgument("The attribute(concated_ranks) length must be "
                                 "equal to the output tensor number."));
     int64_t accumulated_ranks = 0;
@@ -200,10 +199,10 @@ void CoalesceTensorKernel(const Context &dev_ctx,
       size_t len = static_cast<size_t>(input[i]->numel());
       auto sub_tensor = fused_output->Slice(static_cast<int64_t>(offset),
                                             static_cast<int64_t>(offset + len));
-      phi::Copy(*input[i], dev_ctx.GetPlace(), dev_ctx, false, &sub_tensor);
+      phi::Copy(dev_ctx, *input[i], dev_ctx.GetPlace(), false, &sub_tensor);
 
       offset += use_align
-                    ? platform::Alignment(
+                    ? paddle::platform::Alignment(
                           len * size_of_dtype, dev_ctx.GetPlace(), align_size) /
                           size_of_dtype
                     : len;
@@ -218,10 +217,10 @@ void CoalesceTensorKernel(const Context &dev_ctx,
                                             static_cast<int64_t>(offset + len));
       // some var may not persistable, or persistable var may not init
       if (output[i]->IsInitialized()) {
-        phi::Copy(*output[i], dev_ctx.GetPlace(), dev_ctx, false, &sub_tensor);
+        phi::Copy(dev_ctx, *output[i], dev_ctx.GetPlace(), false, &sub_tensor);
       }
       offset += use_align
-                    ? platform::Alignment(
+                    ? paddle::platform::Alignment(
                           len * size_of_dtype, dev_ctx.GetPlace(), align_size) /
                           size_of_dtype
                     : len;
@@ -241,7 +240,7 @@ void CoalesceTensorKernel(const Context &dev_ctx,
         ->ShareDataWith(fused_output->Slice(static_cast<int64_t>(offset),
                                             static_cast<int64_t>(offset + len)))
         .Resize(dim);
-    len = use_align ? platform::Alignment(
+    len = use_align ? paddle::platform::Alignment(
                           len * size_of_dtype, dev_ctx.GetPlace(), align_size) /
                           size_of_dtype
                     : len;
@@ -264,6 +263,7 @@ void CoalesceTensorKernel(const Context &dev_ctx,
 // ALL_LAYOUT 如何判断？
 // 是否要加：kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
 // 有GetKernelTypeVar
+
 PD_REGISTER_KERNEL(coalesce_tensor,
                    CPU,
                    ALL_LAYOUT,

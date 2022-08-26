@@ -31,7 +31,7 @@ void CoalesceTensorKernel(const Context& dev_ctx,
                           int size_of_dtype,
                           const std::vector<int64_t>& concated_shapes,
                           const std::vector<int64_t>& concated_ranks,
-                          std::vector<const DenseTensor*> output,
+                          std::vector<DenseTensor*> output,
                           DenseTensor* fused_output);
 
 }  // namespace phi
