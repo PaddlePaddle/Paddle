@@ -25,7 +25,8 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/funcs/onednn/mkldnn_helper.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
+#include "paddle/phi/kernels/funcs/onednn/onednn_helper.h"
 
 namespace phi {
 namespace funcs {
@@ -348,7 +349,7 @@ class ReorderMKLDNNHandler {
   std::shared_ptr<dnnl::memory> AcquireDstMemory(DenseTensor* output,
                                                  const MKLDNNMemoryFormat& fmt,
                                                  Place place) {
-    auto dst_md = MKLDNNMemDesc(dims_, dtype_dst_, fmt);
+    auto dst_md = OneDNNMemDesc(dims_, dtype_dst_, fmt);
     auto dst_data = output->mutable_data(place, ptype_dst_, dst_md.get_size());
     return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
   }
@@ -373,7 +374,7 @@ class ReorderMKLDNNHandler {
       const std::vector<int64_t>& dims,
       const MKLDNNMemoryFormat& fmt,
       Place place) {
-    auto dst_md = MKLDNNMemDesc(dims, dtype_dst_, fmt);
+    auto dst_md = OneDNNMemDesc(dims, dtype_dst_, fmt);
     auto dst_data = output->mutable_data(place, ptype_dst_, dst_md.get_size());
     return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
   }

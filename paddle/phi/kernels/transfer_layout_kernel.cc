@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/phi/kernels/funcs/onednn/mkldnn_helper.h"
+#include "paddle/phi/kernels/funcs/onednn/onednn_helper.h"
 #endif
 namespace phi {
 
@@ -109,7 +109,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
   if (src_layout != DataLayout::MKLDNN && dst_layout == DataLayout::MKLDNN) {
     // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
     // Just set layout/format. No real transform occur
-    auto out_format = funcs::MKLDNNFormatForSize(
+    auto out_format = funcs::OneDNNFormatForSize(
         x.dims().size(), funcs::ToMKLDNNFormat(src_layout));
 
     out->ShareDataWith(x);
@@ -127,7 +127,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
              dst_layout != DataLayout::MKLDNN) {
     // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
     // Do transform via MKLDNN lib
-    funcs::innerTransDataLayoutFromMKLDNN(
+    funcs::innerTransDataLayoutFromOneDNN(
         src_layout, dst_layout, x, out, dev_ctx.GetPlace());
   } else if (src_layout == DataLayout::MKLDNN &&
              dst_layout == DataLayout::MKLDNN) {

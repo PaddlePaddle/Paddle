@@ -28,19 +28,19 @@ namespace funcs {
 
 #ifdef PADDLE_WITH_MKLDNN
 
-using MKLDNNDataType = dnnl::memory::data_type;
-using MKLDNNMemoryFormat = dnnl::memory::format_tag;
+using OneDNNDataType = dnnl::memory::data_type;
+using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
-inline MKLDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
+inline OneDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
   switch (layout) {
     case DataLayout::NHWC:
-      return MKLDNNMemoryFormat::nhwc;
+      return OneDNNMemoryFormat::nhwc;
     case DataLayout::NCHW:
-      return MKLDNNMemoryFormat::nchw;
+      return OneDNNMemoryFormat::nchw;
     case DataLayout::NCDHW:
-      return MKLDNNMemoryFormat::ncdhw;
+      return OneDNNMemoryFormat::ncdhw;
     case DataLayout::NDHWC:
-      return MKLDNNMemoryFormat::ndhwc;
+      return OneDNNMemoryFormat::ndhwc;
     default:
       PADDLE_THROW(errors::InvalidArgument(
           "Fail to convert layout %s to MKLDNN format.",
@@ -49,25 +49,25 @@ inline MKLDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
 }
 
 // Caution: proto::VarType::Type -> phi::DataType after transfer
-inline MKLDNNDataType ToMKLDNNDataType(DataType type) {
-  static std::unordered_map<DataType, MKLDNNDataType> dict{
-      {DataType::FLOAT32, MKLDNNDataType::f32},
-      {DataType::INT8, MKLDNNDataType::s8},
-      {DataType::UINT8, MKLDNNDataType::u8},
-      {DataType::INT32, MKLDNNDataType::s32},
-      {DataType::BFLOAT16, MKLDNNDataType::bf16}};
+inline OneDNNDataType ToOneDNNDataType(DataType type) {
+  static std::unordered_map<DataType, OneDNNDataType> dict{
+      {DataType::FLOAT32, OneDNNDataType::f32},
+      {DataType::INT8, OneDNNDataType::s8},
+      {DataType::UINT8, OneDNNDataType::u8},
+      {DataType::INT32, OneDNNDataType::s32},
+      {DataType::BFLOAT16, OneDNNDataType::bf16}};
   auto iter = dict.find(type);
   if (iter != dict.end()) return iter->second;
-  return MKLDNNDataType::undef;
+  return OneDNNDataType::undef;
 }
 
-void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
+void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
                                     DataLayout out_layout,
                                     const DenseTensor& in,
                                     DenseTensor* out,
                                     Place place,
                                     bool always_copy = false);
-void* GetDataFromTensor(const DenseTensor& tensor, MKLDNNDataType type);
+void* GetDataFromTensor(const DenseTensor& tensor, OneDNNDataType type);
 
 #endif
 
