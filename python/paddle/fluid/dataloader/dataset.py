@@ -411,7 +411,7 @@ class Subset(Dataset):
         indices (sequence): Indices in the whole set selected for subset.
 
     Returns:
-        Dataset: A Dataset which is the subset of the original dataset.
+        List[Dataset]: A Dataset which is the subset of the original dataset.
     
     Examples:
 

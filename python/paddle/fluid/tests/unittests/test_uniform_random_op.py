@@ -178,7 +178,7 @@ class TestUniformRandomOp(OpTest):
         hist, prob = self.output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
-    def test_check_api(self):
+    def func_test_check_api(self):
         places = self._get_places()
         for place in places:
             with fluid.dygraph.base.guard(place=place):
@@ -188,7 +188,8 @@ class TestUniformRandomOp(OpTest):
 
     def test_check_api_eager(self):
         with _test_eager_guard():
-            self.test_check_api()
+            self.func_test_check_api()
+        self.func_test_check_api()
 
 
 class TestUniformRandomOpError(unittest.TestCase):

@@ -23,7 +23,7 @@ import paddle.fluid.core as core
 import sys
 import warnings
 import paddle.utils.deprecated as deprecated
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 LOWEST_WARNING_POSTION = 3
 ERROR_WARNING_POSTION = sys.maxsize
@@ -141,7 +141,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
         b = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
         x = paddle.to_tensor(a)
         y = paddle.to_tensor(b)
-        res = _C_ops.elementwise_mul(x, y)
+        res = _legacy_C_ops.elementwise_mul(x, y)
 
         # expected
         expected = LOWEST_WARNING_POSTION

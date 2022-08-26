@@ -165,7 +165,7 @@ def GetGradNodeName(string):
 
 
 def GetDygraphForwardFunctionName(string):
-    return f"{string}_final_state_dygraph_function"
+    return f"{string}_dygraph_function"
 
 
 def GetIntermediateAPIFunctionName(string):
@@ -198,7 +198,7 @@ def GetInplacedFunctionName(function_name):
 
 
 def GetForwardFunctionName(string):
-    return f"{string}_final_state_dygraph_function"
+    return f"{string}_dygraph_function"
 
 
 def GetIndent(num):
