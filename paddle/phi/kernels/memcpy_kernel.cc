@@ -16,8 +16,10 @@
 
 #include <vector>
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/stream.h"
 
 namespace phi {
 
