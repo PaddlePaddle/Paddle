@@ -668,6 +668,12 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
         this->attrs_[name] = std::vector<float>();
         break;
       }
+      case proto::AttrType::FLOAT64S: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to FLOAT64S";
+        this->attrs_[name] = std::vector<double>();
+        break;
+      }
       case proto::AttrType::STRINGS: {
         VLOG(11) << "SetAttr: " << Type() << ", " << name
                  << " from INTS to STRINGS";
@@ -838,6 +844,7 @@ struct SetAttrDescVisitor {
   mutable proto::OpDesc::Attr *attr_;
   void operator()(int v) const { attr_->set_i(v); }
   void operator()(float v) const { attr_->set_f(v); }
+  void operator()(double v) const { attr_->set_float64(v); }
   void operator()(const std::string &v) const { attr_->set_s(v); }
 
   // Please refer to https://github.com/PaddlePaddle/Paddle/issues/7162

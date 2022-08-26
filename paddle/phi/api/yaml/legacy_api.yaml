@@ -2161,7 +2161,7 @@
   backward: reshape_grad
 
 - api : reverse
-  args : (Tensor x, int[] axis)
+  args : (Tensor x, IntArray axis)
   output : Tensor
   infer_meta :
     func : ReverseInferMeta
@@ -2170,7 +2170,7 @@
   backward : reverse_grad
 
 - api : reverse_array
-  args : (Tensor[] x, int[] axis)
+  args : (Tensor[] x, IntArray axis)
   output : Tensor[]{x.size()}
   infer_meta :
     func : ReverseArrayInferMeta
@@ -2754,11 +2754,11 @@
   backward : unfold_grad
 
 - api : uniform_random
-  args : (IntArray shape,  DataType dtype,  float min,  float max,  int seed, Place place={})
+  args : (IntArray shape,  DataType dtype,  Scalar min,  Scalar max,  int seed, Place place={})
   output : Tensor(out)
   infer_meta :
     func : UniformRandomInferMeta
-    param: [shape, dtype, min, max, seed]
+    param: [shape, dtype]
   kernel :
     func : uniform_random
     param: [shape, dtype, min, max, seed]
