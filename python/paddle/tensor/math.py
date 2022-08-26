@@ -3522,7 +3522,7 @@ def increment(x, value=1.0, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_increment( x, value)
+        return _C_ops.final_state_increment_( x, value)
 
     if _in_legacy_dygraph():
         return _C_ops.increment(x, 'step', value)
@@ -4484,7 +4484,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         if x.dtype == paddle.bool:
             return _C_ops.final_state_logical_xor(input_back, input_front)
         else:
-            return elementwise_sub(input_back, input_front, axis=axis)
+            return _C_ops.final_state_subtract(input_back, input_front)
     elif _in_legacy_dygraph():
         has_pend = False
         input_list = []
