@@ -3501,6 +3501,10 @@ function main() {
       test)
         parallel_test
         ;;
+      test_and_coverage)
+        parallel_test
+        check_coverage
+        ;;
       single_test)
         single_test $2
         ;;
