@@ -116,6 +116,8 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
         xshape_var.name, [-1] + list(Ids_var_dist_attr.dims_mapping))
     ctx.set_op_dist_attr_for_program(reshape_op, new_op_dist_attr)
 
+    return intermediate_var_0
+
 
 # RowParallel
 class DistributedEmbeddingImpl(DistributedOperatorImpl):
@@ -323,7 +325,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
 
         # support lookup_table_v1
         if src_op.type == 'lookup_table':
-            adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var)
+            Ids_var = adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var)
 
         # got dist attribute info
         embedding_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
