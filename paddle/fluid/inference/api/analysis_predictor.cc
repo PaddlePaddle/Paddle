@@ -1630,6 +1630,13 @@ bool AnalysisPredictor::ZeroCopyRun() {
     MkldnnPreSet(shape_vector);
   }
 #endif
+
+#ifdef PADDLE_WITH_TENSORRT
+  inference::tensorrt::TensorRTEngine::predictor_id_per_thread = predictor_id_;
+  VLOG(3) << "thread_local var predictor_id in TendorRTEngine is set to: "
+          << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+#endif
+
   executor_->Run();
 
   if (config_.shape_range_info_collected()) {
