@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/gaussian_random_kernel.h"
 
+#include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
@@ -30,22 +32,22 @@ void GaussianRandomKernel(const Context& ctx,
                           DenseTensor* out) {
   std::normal_distribution<T> dist(mean, std);
   int64_t size = out->numel();
-  dev_ctx.template Alloc<T>(out);
+  ctx.template Alloc<T>(out);
   auto* data = out->data();
-  unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+  uint64_t seed_v = static_cast<uint64_t>(seed);
   // TODO(pangyoki): implement GetXPURandomEngine to set different seeds on
   // corresponding XPU device.
-  auto engine = framework::GetCPURandomEngine(seed);
+  auto engine = paddle::framework::GetCPURandomEngine(seed_v);
 
   std::unique_ptr<T[]> data_cpu(new T[size]);
   for (int64_t i = 0; i < size; ++i) {
     data_cpu[i] = dist(*engine);
   }
-  memory::Copy(context.GetPlace(),
-               data,
-               platform::CPUPlace(),
-               reinterpret_cast<void*>(data_cpu.get()),
-               size * sizeof(T));
+  paddle::memory::Copy(phi::XPUPlace(),
+                       data,
+                       phi::CPUPlace(),
+                       reinterpret_cast<void*>(data_cpu.get()),
+                       size * sizeof(T));
 }
 
 }  // namespace phi

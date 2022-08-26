@@ -25,13 +25,13 @@ void GatherNdKernel(const Context &ctx,
                     const DenseTensor &x,
                     const DenseTensor &index,
                     DenseTensor *out) {
-  dev_ctx.template Alloc<T>(out);
+  ctx.template Alloc<T>(out);
   const auto &index_type = index.dtype();
 
   if (x.numel() == 0) return;
 
   if (index.numel() == 0) {
-    phi::Copy(*x, ctx.GetPlace(), ctx.device_context(), out);
+    phi::Copy(ctx, x, phi::XPUPlace(), true, out);
     return;
   }
 
@@ -54,18 +54,16 @@ void GatherNdKernel(const Context &ctx,
   xpu::VectorParam<int> x_vec = {
       x_shape.data(), static_cast<int>(x_shape.size()), nullptr};
 
-  auto &dev_ctx =
-      ctx.template device_context<paddle::platform::XPUDeviceContext>();
   int ret = XPU_SUCCESS;
   if (index_type == DataType::INT32) {
-    ret = xpu::gather_nd<T, int>(dev_ctx.x_context(),
+    ret = xpu::gather_nd<T, int>(ctx.x_context(),
                                  x.data<T>(),
                                  index.data<int>(),
                                  out->data<T>(),
                                  x_vec,
                                  index_shape);
   } else {
-    ret = xpu::gather_nd<T, int64_t>(dev_ctx.x_context(),
+    ret = xpu::gather_nd<T, int64_t>(ctx.x_context(),
                                      x.data<T>(),
                                      index.data<int64_t>(),
                                      out->data<T>(),
