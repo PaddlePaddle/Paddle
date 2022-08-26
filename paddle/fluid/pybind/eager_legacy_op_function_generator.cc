@@ -320,10 +320,12 @@ std::string GenerateOpFunctionsBody(
       std::string inplace_arg_name = inplace_pair.second;
       std::string inplace_return_name = inplace_pair.first;
       const char* RETURN_INPLACE_TENSOR_TEMPLATE =
-          "    ssize_t arg_id = GetIdxFromCoreOpsInfoMap(core_ops_args_info, "
+          "    ssize_t arg_id = "
+          "GetIdxFromCoreOpsInfoMap(core_ops_legacy_args_info, "
           "\"%s\", \"%s\");\n"
           "    ssize_t return_id = "
-          "GetIdxFromCoreOpsInfoMap(core_ops_returns_info, \"%s\", \"%s\");\n"
+          "GetIdxFromCoreOpsInfoMap(core_ops_legacy_returns_info, \"%s\", "
+          "\"%s\");\n"
           "    inplace_var_idx_map[return_id] = arg_id;";
       return_str += paddle::string::Sprintf(RETURN_INPLACE_TENSOR_TEMPLATE,
                                             op_type,
@@ -361,7 +363,7 @@ static std::string GenerateCoreOpsInfoMap() {
       "  PyThreadState *tstate = nullptr;\n"
       "  try\n"
       "  {\n"
-      "    return ToPyObject(core_ops_args_info);\n"
+      "    return ToPyObject(core_ops_legacy_args_info);\n"
       "  }\n"
       "  catch(...) {\n"
       "    if (tstate) {\n"
@@ -376,7 +378,7 @@ static std::string GenerateCoreOpsInfoMap() {
       "  PyThreadState *tstate = nullptr;\n"
       "  try\n"
       "  {\n"
-      "    return ToPyObject(core_ops_args_type_info);\n"
+      "    return ToPyObject(core_ops_legacy_args_type_info);\n"
       "  }\n"
       "  catch(...) {\n"
       "    if (tstate) {\n"
@@ -391,7 +393,7 @@ static std::string GenerateCoreOpsInfoMap() {
       "  PyThreadState *tstate = nullptr;\n"
       "  try\n"
       "  {\n"
-      "    return ToPyObject(core_ops_returns_info);\n"
+      "    return ToPyObject(core_ops_legacy_returns_info);\n"
       "  }\n"
       "  catch(...) {\n"
       "    if (tstate) {\n"
@@ -429,7 +431,7 @@ GenerateOpFunctions() {
         !phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type)) {
       continue;
     }
-    std::string func_name = "eager_api_" + op_type;
+    std::string func_name = "eager_legacy_api_" + op_type;
     std::string op_function_str =
         GenerateOpFunctionsBody(op_proto, func_name, {});
 
@@ -461,7 +463,7 @@ GenerateOpFunctions() {
       }
 
       std::string inplace_op_type = op_type + "_";
-      std::string inplace_func_name = "eager_api_" + inplace_op_type;
+      std::string inplace_func_name = "eager_legacy_api_" + inplace_op_type;
       std::string inplace_op_function_str =
           GenerateOpFunctionsBody(op_proto, inplace_func_name, inplace_map);
 
@@ -500,7 +502,7 @@ int main(int argc, char* argv[]) {
       "\"paddle/fluid/platform/profiler/event_tracing.h\"",
       "\"paddle/fluid/pybind/exception.h\"",
       "\"paddle/fluid/pybind/op_function_common.h\"",
-      "\"paddle/fluid/pybind/eager_custom_python_api.h\"",
+      "\"paddle/fluid/pybind/eager_legacy_custom_python_api.h\"",
       "\"paddle/fluid/pybind/eager.h\""};
 
   std::ofstream out(argv[1], std::ios::out);
@@ -540,11 +542,12 @@ int main(int argc, char* argv[]) {
   out << "void BindEagerOpFunctions(pybind11::module *module) {\n"
       << "  InitOpsAttrTypeMap();\n"
       << "  auto m = module->def_submodule(\"ops\");\n"
-      << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
+      << "  auto legacy = m.def_submodule(\"legacy\");\n"
+      << "  if (PyModule_AddFunctions(legacy.ptr(), ExtestMethods) < 0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"
-      << "  if (PyModule_AddFunctions(m.ptr(), CustomEagerMethods) < "
+      << "  if (PyModule_AddFunctions(legacy.ptr(), CustomEagerMethods) < "
          "0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
