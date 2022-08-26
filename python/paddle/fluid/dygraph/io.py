@@ -338,7 +338,12 @@ class _ProgramHolder(object):
     # forward:
     @switch_to_static_graph
     def _create_forward_train_program(self):
-        return self._get_train_forward_program(self._infer_program_desc)
+        whole_program = _build_program_by_desc(self._train_program_desc)
+        end_op_index = self._infer_program_desc.block(0).op_size()
+        if end_op_index > 0:
+            return add_build_strategy_for(whole_program, 0, end_op_index)
+        else:
+            return whole_program
 
     @LazyInitialized
     def _forward_program_desc(self):
