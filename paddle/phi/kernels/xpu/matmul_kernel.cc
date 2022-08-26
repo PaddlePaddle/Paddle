@@ -30,11 +30,11 @@ void MatmulKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   dev_ctx.template Alloc<T>(out);
-  const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x->data<T>());
-  const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y->data<T>());
+  const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
+  const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
   XPUType* out_ptr = reinterpret_cast<XPUType*>(out->data<T>());
-  auto x_dims = x->dims();
-  auto y_dims = y->dims();
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
 
   XpuFcInfo fc_info;
   GetFCInfo(x_dims, y_dims, trans_x, trans_y, &fc_info);

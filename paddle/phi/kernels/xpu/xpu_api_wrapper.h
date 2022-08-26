@@ -378,7 +378,6 @@ static void MatMulXPUFunction(xpu::Context* xpu_ctx,
                               const XpuFcInfo& fcinfo,
                               float alpha) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  using float16 = typename XPUTypeTrait<paddle::platform::float16>::Type;
   int fccal_type = FCCalcType<XPUType>();
 
   decltype(&xpu_fc_wrapper<XPUType, int16_t>) fc_api_list[3] = {
