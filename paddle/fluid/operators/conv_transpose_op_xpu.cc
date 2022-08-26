@@ -24,106 +24,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-// target_len == 2 || target_len == 4
-inline std::vector<int> vector_extend(const std::vector<int>& src,
-                                      int target_len) {
-  if (target_len == 2 && src.size() == 1) {
-    return {src[0], src[0]};
-  }
-  if (target_len == 4 && src.size() == 1) {
-    return {src[0], src[0], src[0], src[0]};
-  }
-  if (target_len == 4 && src.size() == 2) {
-    return {src[0], src[0], src[1], src[1]};
-  }
-  return src;
-}
-
-template <typename DeviceContext, typename T>
-class Conv2DTransposeXPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* input = context.Input<Tensor>("Input");
-    // The filter will be reshaped in the calculations,
-    // so here use an assignment operation,
-    // that avoids modifying the variable in the Scope.
-    Tensor filter = *context.Input<Tensor>("Filter");
-    Tensor* output = context.Output<Tensor>("Output");
-    output->mutable_data<T>(context.GetPlace());
-    int groups = context.Attr<int>("groups");
-    std::vector<int> strides = context.Attr<std::vector<int>>("strides");
-    std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
-    std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
-    const std::string data_format = context.Attr<std::string>("data_format");
-    const std::string padding_algorithm =
-        context.Attr<std::string>("padding_algorithm");
-
-    PADDLE_ENFORCE_EQ(
-        data_format == "NHWC" || data_format == "NDHWC",
-        false,
-        platform::errors::InvalidArgument(
-            ("XPU do support data_format is NCHW in conv_transpose op.")));
-
-    framework::DDim in_data_dims =
-        phi::slice_ddim(input->dims(), 2, input->dims().size());
-    framework::DDim filter_data_dims =
-        phi::slice_ddim(filter.dims(), 2, filter.dims().size());
-    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-    phi::UpdatePaddingAndDilation(
-        &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
-
-    const int batch_size = static_cast<int>(input->dims()[0]);
-    const int img_yc = static_cast<int>(input->dims()[1]);
-    const int img_yh = static_cast<int>(input->dims()[2]);
-    const int img_yw = static_cast<int>(input->dims()[3]);
-    const int img_xc = static_cast<int>(output->dims()[1]);
-    const int img_xh = static_cast<int>(output->dims()[2]);
-    const int img_xw = static_cast<int>(output->dims()[3]);
-
-    {
-      std::vector<int> ksize_check = vector_extend(ksize, 2);
-      std::vector<int> stride_check = vector_extend(strides, 2);
-      std::vector<int> pad_check = vector_extend(paddings, 4);
-      std::vector<int> dilation_check = vector_extend(dilations, 2);
-
-      int xh_check = (img_yh - 1) * stride_check[0] - pad_check[0] -
-                     pad_check[1] +
-                     (dilation_check[0] * (ksize_check[0] - 1) + 1);
-      int xw_check = (img_yw - 1) * stride_check[1] - pad_check[2] -
-                     pad_check[3] +
-                     (dilation_check[1] * (ksize_check[1] - 1) + 1);
-
-      PADDLE_ENFORCE_EQ(
-          xh_check == img_xh && xw_check == img_xw,
-          true,
-          platform::errors::InvalidArgument(
-              ("XPU output size check error in conv_transpose op.")));
-    }
-
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    int r = xpu::conv2d_transpose<float, float, float, int16_t>(
-        dev_ctx.x_context(),
-        input->data<float>(),
-        filter.data<float>(),
-        output->data<float>(),
-        batch_size,
-        img_yc,
-        img_yh,
-        img_yw,
-        img_xc,
-        ksize,
-        strides,
-        paddings,
-        dilations,
-        groups,
-        nullptr,
-        nullptr,
-        nullptr,
-        true);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose");
-  }
-};
-
 template <typename DeviceContext, typename T>
 class Conv2DTransposeGradXPUKernel : public framework::OpKernel<T> {
  public:
@@ -209,9 +109,6 @@ class Conv2DTransposeGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(
-    conv2d_transpose,
-    ops::Conv2DTransposeXPUKernel<paddle::platform::XPUDeviceContext, float>);
 REGISTER_OP_XPU_KERNEL(
     conv2d_transpose_grad,
     ops::Conv2DTransposeGradXPUKernel<paddle::platform::XPUDeviceContext,
