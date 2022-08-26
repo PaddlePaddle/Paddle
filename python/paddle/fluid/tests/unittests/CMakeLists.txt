@@ -1581,9 +1581,6 @@ if(WITH_DISTRIBUTE
                        PROPERTIES TIMEOUT 60)
   set_tests_properties(test_parallel_dygraph_pipeline_parallel
                        PROPERTIES TIMEOUT 500)
-  set_tests_properties(
-    test_parallel_dygraph_pipeline_parallel_with_virtual_stage
-    PROPERTIES TIMEOUT 500)
   set_tests_properties(test_parallel_dygraph_tensor_parallel PROPERTIES TIMEOUT
                                                                         200)
   set_tests_properties(test_parallel_dygraph_sharding_parallel
