@@ -187,8 +187,8 @@ class PipelineLayerChunk(Layer):
 
     def forward(self, *args, **kwargs):
         raise NotImplementedError(
-            "The forward function of PipelineLayerChunk cannot be called directly."
-        )
+            "The forward function of PipelineLayerChunk cannot be called directly. "
+            "Please call forward function of PipelineLayer.")
 
 
 class PipelineLayer(Layer):
@@ -534,6 +534,7 @@ class PipelineLayer(Layer):
             assert chunk_id < len(self._model_chunks), \
                 "only {} chunks, but received chunk_id {}".format(len(self._model_chunks), chunk_id)
             model_chunk = self._model_chunks[chunk_id]
+            # update the self.run_function to the target run functions
             self.run_function = model_chunk.get_run_function()
 
         if self._recompute_interval == 0:

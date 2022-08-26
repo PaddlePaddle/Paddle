@@ -38,11 +38,14 @@ class MLPForVirtualStageLayerTest(PipelineLayer):
     def __init__(self, num_classes=10, **kwargs):
         self.num_classes = num_classes
         decs = [
-            LayerDesc(nn.Linear, 2, 10, self.num_classes),
-            LayerDesc(nn.ReLU),
-            LayerDesc(nn.Linear, 2, 10, self.num_classes), F.relu,
-            LayerDesc(nn.Linear, 2, 10, self.num_classes), F.relu,
-            LayerDesc(nn.Linear, 2, 10, self.num_classes), F.relu
+            LayerDesc(nn.Linear, 2, self.num_classes),
+            LayerDesc(nn.Linear, self.num_classes, 2),
+            LayerDesc(nn.Linear, 2, self.num_classes),
+            LayerDesc(nn.Linear, self.num_classes, 2),
+            LayerDesc(nn.Linear, 2, self.num_classes),
+            LayerDesc(nn.Linear, self.num_classes, 2),
+            LayerDesc(nn.Linear, 2, self.num_classes),
+            LayerDesc(nn.Linear, self.num_classes, 2),
         ]
         super(MLPForVirtualStageLayerTest,
               self).__init__(layers=decs,
@@ -68,20 +71,28 @@ class TestPipeLayerAPI(unittest.TestCase):
         pipe_model = MLPForVirtualStageLayerTest(
             seg_method="layer:Linear",
             num_stages=self.pipeline_parallel_size,
-            num_virtual_pipeline_stages=2)
+            num_virtual_pipeline_stages=2,
+            recompute_interval=1)
         assert len(pipe_model.parameters()) > 0
         model_chunks = pipe_model.get_model_chunks()
         assert model_chunks is not None
         assert len(model_chunks) == 2
+
+        optimizer = paddle.optimizer.SGD(parameters=pipe_model.parameters())
+
         try:
-            model_chunks[0](paddle.to_tensor([1, 2, 3]))
+            model_chunks[0](paddle.to_tensor([1., 2.]))
         except NotImplementedError:
             pass
 
         # fake call for the forward function of virtual pipeline layer
         for i in range(len(model_chunks)):
-            out = pipe_model(paddle.to_tensor([1, 2]), chunk_id=i)
-            print(list(out.shape))
+            out = pipe_model(paddle.to_tensor([1., 2.]), chunk_id=i)
+            assert list(out.shape) == [2]
+            loss = paddle.mean(out)
+            loss.backward()
+
+        optimizer.step()
 
         # just make sure the model can be wrapped with distributed model
         dist_model = fleet.distributed_model(pipe_model)
