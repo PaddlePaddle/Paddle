@@ -18,7 +18,7 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function_impl.h"
 
 #include "paddle/fluid/memory/memcpy.h"
 
@@ -412,5 +412,4 @@ PD_REGISTER_KERNEL(generate_proposals_v2,
                    XPU,
                    ALL_LAYOUT,
                    phi::GenerateProposalsV2Kernel,
-                   float,
-                   double) {}
+                   float) {}

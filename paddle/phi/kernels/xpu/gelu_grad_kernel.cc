@@ -46,5 +46,4 @@ PD_REGISTER_KERNEL(gelu_grad,
                    ALL_LAYOUT,
                    phi::GeluGradKernel,
                    float,
-                   double,
                    phi::dtype::float16) {}
