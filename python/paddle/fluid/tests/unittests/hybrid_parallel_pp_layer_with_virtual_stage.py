@@ -33,33 +33,24 @@ class ReshapeHelp(Layer):
         return x.reshape(shape=self.shape)
 
 
-class FakeAlexNetPipeDesc(PipelineLayer):
+class MLPForVirtualStageLayerTest(PipelineLayer):
 
     def __init__(self, num_classes=10, **kwargs):
         self.num_classes = num_classes
         decs = [
-            LayerDesc(nn.Conv2D, 1, 64, kernel_size=11, stride=4, padding=5),
-            LayerDesc(nn.Conv2D, 64, 64, kernel_size=11, stride=4, padding=5),
-            LayerDesc(nn.ReLU),
-            LayerDesc(nn.MaxPool2D, kernel_size=2, stride=2),
-            LayerDesc(nn.Conv2D, 64, 192, kernel_size=5, padding=2),
-            LayerDesc(nn.Conv2D, 192, 192, kernel_size=5, padding=2),
-            F.relu,
-            LayerDesc(nn.MaxPool2D, kernel_size=2, stride=2),
-            LayerDesc(nn.Conv2D, 192, 384, kernel_size=3, padding=1),
-            F.relu,
-            LayerDesc(nn.Conv2D, 384, 256, kernel_size=3, padding=1),
-            F.relu,
-            LayerDesc(nn.Conv2D, 256, 256, kernel_size=3, padding=1),
-            LayerDesc(nn.Conv2D, 256, 256, kernel_size=3, padding=1),
-            F.relu,
-            LayerDesc(nn.MaxPool2D, kernel_size=2, stride=2),
-            LayerDesc(ReshapeHelp, shape=[-1, 256]),
-            LayerDesc(nn.Linear, 256, self.num_classes),  # classifier
+            LayerDesc(nn.Linear, 2, self.num_classes),
+            LayerDesc(nn.Linear, self.num_classes, 2),
+            LayerDesc(nn.Linear, 2, self.num_classes),
+            LayerDesc(nn.Linear, self.num_classes, 2),
+            LayerDesc(nn.Linear, 2, self.num_classes),
+            LayerDesc(nn.Linear, self.num_classes, 2),
+            LayerDesc(nn.Linear, 2, self.num_classes),
+            LayerDesc(nn.Linear, self.num_classes, 2),
         ]
-        super(FakeAlexNetPipeDesc, self).__init__(layers=decs,
-                                                  loss_fn=nn.CrossEntropyLoss(),
-                                                  **kwargs)
+        super(MLPForVirtualStageLayerTest,
+              self).__init__(layers=decs,
+                             loss_fn=nn.CrossEntropyLoss(),
+                             **kwargs)
 
 
 class TestPipeLayerAPI(unittest.TestCase):
@@ -73,16 +64,38 @@ class TestPipeLayerAPI(unittest.TestCase):
             "pp_degree": self.pipeline_parallel_size
         }
         fleet.init(is_collective=True, strategy=strategy)
+        self.rank = fleet.worker_index()
         self.hcg = fleet.get_hybrid_communicate_group()
 
     def test_pipelayer_desc(self):
-        pipe_model = FakeAlexNetPipeDesc(seg_method="layer:Conv2D",
-                                         num_stages=self.pipeline_parallel_size,
-                                         num_virtual_pipeline_stages=2)
+        pipe_model = MLPForVirtualStageLayerTest(
+            seg_method="layer:Linear",
+            num_stages=self.pipeline_parallel_size,
+            num_virtual_pipeline_stages=2,
+            recompute_interval=1)
         assert len(pipe_model.parameters()) > 0
         model_chunks = pipe_model.get_model_chunks()
         assert model_chunks is not None
         assert len(model_chunks) == 2
+
+        optimizer = paddle.optimizer.SGD(parameters=pipe_model.parameters())
+
+        try:
+            model_chunks[0](paddle.to_tensor([1., 2.]))
+        except NotImplementedError:
+            pass
+
+        # fake call for the forward function of virtual pipeline layer
+        for i in range(len(model_chunks)):
+            out = pipe_model(paddle.to_tensor([1., 2.]), chunk_id=i)
+            assert list(out.shape) == [2]
+            out = F.relu(out)
+            loss = paddle.mean(out)
+            loss.backward()
+
+        optimizer.step()
+
+        # just make sure the model can be wrapped with distributed model
         dist_model = fleet.distributed_model(pipe_model)
 
 
