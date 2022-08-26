@@ -23,6 +23,7 @@
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace phi {
 template <typename T, typename Context>
@@ -44,17 +45,18 @@ void AddGradKernel(const Context& dev_ctx,
     T* dx_data = dev_ctx.template Alloc<T>(dx);
     if (dx->dims() == dz_dims) {
       if (dx_data != dz_data) {
-        Copy(dev_ctx, *dz, ctx.GetPlace(), false, dx);
+        Copy(dev_ctx, *dz, dev_ctx.GetPlace(), false, dx);
       }
     } else {
       // For inplace strategy, dx will be stored in addr of dz, which makes
       // the result of dy wrong.
       if (dx->IsSharedBufferWith(*dz)) {
         dx->clear();
-        dx->Resize(x->dims());
+        dx->Resize(x.dims());
         dev_ctx.template Alloc<T>(dx);
       }
-      std::vector<int> reduce_dims = GetReduceDim(dx->dims(), dz_dims, axis);
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(dx->dims(), dz_dims, axis);
       std::vector<int> dz_vector = phi::vectorize<int>(dz_dims);
 
       int ret =
@@ -68,17 +70,14 @@ void AddGradKernel(const Context& dev_ctx,
   }
 
   if (dy != nullptr) {
-    T* dy_data = dy->mutable_data<T>(ctx.GetPlace());
+    T* dy_data = dy->mutable_data<T>(dev_ctx.GetPlace());
     if (dy->dims() == dz_dims) {
       if (dy_data != dz_data) {
-        framework::TensorCopy(
-            *dz,
-            ctx.GetPlace(),
-            ctx.template device_context<platform::DeviceContext>(),
-            dy);
+        Copy(dev_ctx, *dz, dev_ctx.GetPlace(), false, dy);
       }
     } else {
-      std::vector<int> reduce_dims = GetReduceDim(dy->dims(), dz_dims, axis);
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(dy->dims(), dz_dims, axis);
       std::vector<int> dz_vector = phi::vectorize<int>(dz_dims);
       int ret =
           xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
