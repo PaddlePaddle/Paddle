@@ -98,11 +98,15 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
     op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
     Ids_var_dist_attr = op_dist_attr.get_input_dist_attr(Ids_var.name)
     assert Ids_var_dist_attr is not None
-    set_var_dist_attr(ctx, intermediate_var_0, Ids_var_dist_attr.dims_mapping,
-                      Ids_var_dist_attr.process_mesh)
+    intermediate_var_0_dist_attr = set_var_dist_attr(
+        ctx, intermediate_var_0, Ids_var_dist_attr.dims_mapping,
+        Ids_var_dist_attr.process_mesh)
     set_var_dist_attr(ctx, xshape_var,
                       [-1] + list(Ids_var_dist_attr.dims_mapping),
                       Ids_var_dist_attr.process_mesh)
+    op_dist_attr.del_input_dist_attr(Ids_var.name)
+    op_dist_attr.set_input_dist_attr(intermediate_var_0.name,
+                                     intermediate_var_0_dist_attr)
 
     new_op_dist_attr = OperatorDistributedAttribute()
     new_op_dist_attr.process_mesh = Ids_var_dist_attr.process_mesh
