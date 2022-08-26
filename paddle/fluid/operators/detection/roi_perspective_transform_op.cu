@@ -382,7 +382,7 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     T* out2in_w_data =
         out2in_w->mutable_data<T>({out->numel(), 4}, ctx.GetPlace());
 
-    phi::funcs::SetConstant<platform::CUDADeviceContext, int> init;
+    phi::funcs::SetConstant<phi::GPUContext, int> init;
     init(ctx.cuda_device_context(), out2in_idx, static_cast<int>(-1));
 
     auto transformed_height = ctx.Attr<int>("transformed_height");
@@ -519,7 +519,7 @@ class CUDAROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
 
     T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
 
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
     set_zero(ctx.cuda_device_context(), in_grad, static_cast<T>(0));
 
     const T* out_grad_data = out_grad->data<T>();

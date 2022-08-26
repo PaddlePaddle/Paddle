@@ -316,7 +316,7 @@ class SeResNeXt(fluid.dygraph.Layer):
         y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
         out = self.out(y)
 
-        softmax_out = fluid.layers.softmax(out, use_cudnn=False)
+        softmax_out = fluid.layers.softmax(out)
         loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
         avg_loss = paddle.mean(x=loss)
 
@@ -473,12 +473,17 @@ class TestSeResnet(unittest.TestCase):
         st_pre = self.predict_static(image)
         dy_jit_pre = self.predict_dygraph_jit(image)
         predictor_pre = self.predict_analysis_inference(image)
-        self.assertTrue(np.allclose(dy_pre, st_pre),
-                        msg="dy_pre:\n {}\n, st_pre: \n{}.".format(
-                            dy_pre, st_pre))
-        self.assertTrue(np.allclose(dy_jit_pre, st_pre),
-                        msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(
-                            dy_jit_pre, st_pre))
+        np.testing.assert_allclose(
+            dy_pre,
+            st_pre,
+            rtol=1e-05,
+            err_msg='dy_pre:\n {}\n, st_pre: \n{}.'.format(dy_pre, st_pre))
+        np.testing.assert_allclose(
+            dy_jit_pre,
+            st_pre,
+            rtol=1e-05,
+            err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
+                dy_jit_pre, st_pre))
 
         flat_st_pre = st_pre.flatten()
         flat_predictor_pre = np.array(predictor_pre).flatten()
@@ -497,18 +502,26 @@ class TestSeResnet(unittest.TestCase):
         pred_2, loss_2, acc1_2, acc5_2 = self.train(self.train_reader,
                                                     to_static=True)
 
-        self.assertTrue(np.allclose(pred_1, pred_2),
-                        msg="static pred: {} \ndygraph pred: {}".format(
-                            pred_1, pred_2))
-        self.assertTrue(np.allclose(loss_1, loss_2),
-                        msg="static loss: {} \ndygraph loss: {}".format(
-                            loss_1, loss_2))
-        self.assertTrue(np.allclose(acc1_1, acc1_2),
-                        msg="static acc1: {} \ndygraph acc1: {}".format(
-                            acc1_1, acc1_2))
-        self.assertTrue(np.allclose(acc5_1, acc5_2),
-                        msg="static acc5: {} \ndygraph acc5: {}".format(
-                            acc5_1, acc5_2))
+        np.testing.assert_allclose(
+            pred_1,
+            pred_2,
+            rtol=1e-05,
+            err_msg='static pred: {} \ndygraph pred: {}'.format(pred_1, pred_2))
+        np.testing.assert_allclose(
+            loss_1,
+            loss_2,
+            rtol=1e-05,
+            err_msg='static loss: {} \ndygraph loss: {}'.format(loss_1, loss_2))
+        np.testing.assert_allclose(
+            acc1_1,
+            acc1_2,
+            rtol=1e-05,
+            err_msg='static acc1: {} \ndygraph acc1: {}'.format(acc1_1, acc1_2))
+        np.testing.assert_allclose(
+            acc5_1,
+            acc5_2,
+            rtol=1e-05,
+            err_msg='static acc5: {} \ndygraph acc5: {}'.format(acc5_1, acc5_2))
 
         self.verify_predict()
 

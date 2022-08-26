@@ -24,6 +24,13 @@ namespace operators {
 class CumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class CumsumOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -34,7 +41,8 @@ class CumsumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "The dimension to accumulate along. -1 means the last "
                  "dimension [default -1].")
-        .SetDefault(-1);
+        .SetDefault(-1)
+        .SupportTensor();
     AddAttr<bool>("flatten",
                   "Whether to compute the cumsum over the flattened array. "
                   "[default false].")
@@ -64,13 +72,13 @@ class CumsumGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetType("cumsum");
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
-    grad_op->SetAttr("axis", BOOST_GET_CONST(int, this->GetAttr("axis")));
+    grad_op->SetAttr("axis", PADDLE_GET_CONST(int, this->GetAttr("axis")));
     grad_op->SetAttr("flatten",
-                     BOOST_GET_CONST(bool, this->GetAttr("flatten")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("flatten")));
     grad_op->SetAttr("reverse",
-                     !BOOST_GET_CONST(bool, this->GetAttr("reverse")));
+                     !PADDLE_GET_CONST(bool, this->GetAttr("reverse")));
     grad_op->SetAttr("exclusive",
-                     BOOST_GET_CONST(bool, this->GetAttr("exclusive")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("exclusive")));
   }
 };
 
@@ -131,13 +139,13 @@ class LogcumsumexpGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetInput("Out", this->Output("Out"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    grad_op->SetAttr("axis", BOOST_GET_CONST(int, this->GetAttr("axis")));
+    grad_op->SetAttr("axis", PADDLE_GET_CONST(int, this->GetAttr("axis")));
     grad_op->SetAttr("flatten",
-                     BOOST_GET_CONST(bool, this->GetAttr("flatten")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("flatten")));
     grad_op->SetAttr("exclusive",
-                     BOOST_GET_CONST(bool, this->GetAttr("exclusive")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("exclusive")));
     grad_op->SetAttr("reverse",
-                     BOOST_GET_CONST(bool, this->GetAttr("reverse")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("reverse")));
   }
 };
 
@@ -148,7 +156,7 @@ namespace ops = paddle::operators;
 using CPU = phi::CPUContext;
 DECLARE_INFER_SHAPE_FUNCTOR(cumsum,
                             CumsumInferShapeFunctor,
-                            PD_INFER_META(phi::CumInferMeta));
+                            PD_INFER_META(phi::CumScalarAxisInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(logcumsumexp,
                             LogcumsumexpInferShapeFunctor,
                             PD_INFER_META(phi::CumInferMeta));

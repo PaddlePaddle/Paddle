@@ -15,6 +15,8 @@
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -110,33 +112,63 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   runtime_context.inputs["X"] = {scope_->FindVar(var_name)};
   runtime_context.outputs["Out"] = {scope_->Var(new_var_name)};
   InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
-
-  // 2. Execute infer shape and choose kernel
-  auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
   op.get()->Info().infer_shape_(&infer_shape_ctx);
-  auto kernels_iter = all_op_kernels.find(op_type);
-  PADDLE_ENFORCE_NE(kernels_iter,
-                    all_op_kernels.end(),
-                    platform::errors::Unavailable(
-                        "There are no kernels which are registered in "
-                        "the %s operator.",
-                        op_type));
-  OpKernelMap& kernels = kernels_iter->second;
+
+  // 2. choose kernel
+
+  // prepare a ptr to OperatorWithKernel
+  OperatorBase* op_ptr = op.get();
+  if (dynamic_cast<framework::OperatorWithKernel*>(op_ptr) == nullptr) {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "%s should be OperatorWithKernel type.", op_ptr->Type()));
+  }
+  auto op_with_kernel = static_cast<framework::OperatorWithKernel*>(op_ptr);
+
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place_);
-  Scope scope;
-  auto exec_ctx = ExecutionContext(*op, scope, *dev_ctx, runtime_context);
-  auto expected_kernel_key =
-      dynamic_cast<const framework::OperatorWithKernel*>(op.get())
-          ->GetExpectedKernelType(exec_ctx);
-  auto kernel_iter = kernels.find(expected_kernel_key);
+  auto exec_ctx = ExecutionContext(*op, Scope(), *dev_ctx, runtime_context);
+  auto expected_kernel_key = op_with_kernel->GetExpectedKernelType(exec_ctx);
+
+  VLOG(6) << "expected_kernel_key " << expected_kernel_key << "\n";
+  VLOG(6) << "op_with_kernel Type() " << op_with_kernel->Type() << "\n";
+
+  bool run_phi_kernel = false;
+
+  // check if phi kernel exists
+  if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
+          op_with_kernel->Type())) {
+    auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
+    VLOG(6) << "phi_kernel_key " << phi_kernel_key << "\n";
+
+    if (op_with_kernel->PhiKernel()->IsValid()) {
+      run_phi_kernel = true;
+    }
+  }
 
   // 3. Execute transfer op and construct OpFuncNode
   OpFuncNode new_op_func_node;
   new_op_func_node.input_index["X"] = {var_scope_->VarId(var_name)};
   new_op_func_node.output_index["Out"] = {var_scope_->VarId(new_var_name)};
-  new_op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
-  new_op_func_node.kernel_func_(exec_ctx);
+
+  if (!run_phi_kernel) {
+    op_with_kernel->ChooseKernel(exec_ctx);
+    new_op_func_node.kernel_func_ = *op_with_kernel->kernel_func();
+    new_op_func_node.kernel_func_(exec_ctx);
+  } else {
+    new_op_func_node.phi_kernel_ = op_with_kernel->PhiKernel();
+    phi::KernelContext phi_kernel_context;
+    op_with_kernel->BuildPhiKernelContext(
+        runtime_context, dev_ctx, &phi_kernel_context);
+    (*new_op_func_node.phi_kernel_)(&phi_kernel_context);
+  }
+
+  // NOTE(winter-wang): in npu device, D2H kernel is asynchronous. need to
+  // explicit synchronization.
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (op_type == kMemcpyD2H) {
+    dev_ctx->Wait();
+  }
+#endif
   // NOTE(Aurelius84): data_transform_op is expensive operation, so we tag them
   // as kQueueSync and execute them in thread pool.
   new_op_func_node.type_ = OpFuncType::kQueueSync;
@@ -308,6 +340,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
     op_type = kMemcpyH2D;
     int dst_place_type = platform::is_gpu_place(dst_place)   ? 0
                          : platform::is_npu_place(dst_place) ? 1
+                         : platform::is_ipu_place(dst_place) ? 3
                          : platform::is_xpu_place(dst_place) ? 2
                                                              : -1;
     attr_map = {{"dst_place_type", dst_place_type}};

@@ -89,9 +89,9 @@ def select_input(inputs, mask):
     check_type(inputs, 'inputs', (list, tuple), 'select_input')
     check_variable_and_dtype(mask, 'mask', ['int32'], 'select_input')
 
-    input_dtype = inputs[0].dtype
-    input_shape = inputs[0].shape
-    input_type = inputs[0].type
+    input_dtype = inputs[1].dtype
+    input_shape = inputs[1].shape
+    input_type = inputs[1].type
 
     out = helper.create_variable(dtype=input_dtype,
                                  shape=input_shape,
@@ -108,7 +108,6 @@ def select_input(inputs, mask):
 def select_input_with_buildin_type(inputs, mask):
     from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
     from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, create_undefined_var_like
-    support_ret_buildin_type = (bool, float, six.integer_types)
     false_var, true_var = inputs
 
     if isinstance(false_var, UndefinedVar) and isinstance(
@@ -1162,6 +1161,8 @@ class While(object):
             if inner_var:
                 out_vars.append(inner_var)
 
+        x_name_list |= set(map(lambda x: x.name, out_vars))
+
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
 
@@ -1182,12 +1183,23 @@ class While(object):
             })
 
 
+support_ret_buildin_type = (bool, float, six.integer_types)
+
+
 def assign_skip_lod_tensor_array(input, output):
     """
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     """
+
+    def has_shape_diff(x_var, y_var):
+        if len(x_var.shape) != len(y_var.shape): return True
+        for x_dim, y_dim in zip(x_var.shape, y_var.shape):
+            if x_dim != y_dim and -1 not in [x_dim, y_dim]: return True
+        return False
+
     if not isinstance(input, (Variable, core.VarBase)):
-        if isinstance(output, Variable):
+        if isinstance(output, Variable) and isinstance(
+                input, support_ret_buildin_type):
             assign(input, output)
         else:
             output = input
@@ -1200,6 +1212,11 @@ def assign_skip_lod_tensor_array(input, output):
         if parent_block and not parent_block._find_var_recursive(input.name):
             assign(input, output)
     else:
+        if isinstance(output, Variable) and isinstance(
+                input, Variable) and has_shape_diff(input, output):
+            warnings.warn(
+                "In dy2static mode, we attemp to assign a variable with shape {} into a variable with shape{}, which is not always right."
+                .format(input.shape, output.shape))
         assign(input, output)
 
 
@@ -1297,6 +1314,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         if not isinstance(output_vars, (list, tuple)):
             output_vars = [output_vars]
         try:
+            loop_vars = _deal_with_undefined_var(output_vars, loop_vars)
             assert_same_structure(output_vars, loop_vars, check_types=False)
         except ValueError as e:
             raise ValueError(
@@ -1306,6 +1324,39 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         assign(now_cond, pre_cond)
     return loop_vars
+
+
+def _deal_with_undefined_var(output_vars, loop_vars):
+    """ Deal with undefined var cases, We create undefined variable based on the results of body().
+        In Dy2Static, we use undefined var to represent the var created in control flow. This function
+        expand the loop_vars and replace original loop_vars.
+        1. UndefinedVar = Variable      # create a variable
+        2. UndefinedVar = None          # create a undefined var with RETURN_NO_VALUE_MAGIC_NUM
+        3. UndefinedVar = List(int)     # create a list of variable
+        4. UndefinedVar = value         # create a variable
+    """
+    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, create_undefined_variable
+
+    def create_var_like(o_var):
+        if isinstance(o_var,
+                      (Variable, ) + support_ret_buildin_type) or o_var is None:
+            return create_undefined_variable()
+        if is_sequence(o_var):
+            """ 
+            Create a complex container class inside the body of while, including Python list and python Dict
+            """
+            return map_structure(lambda x: create_undefined_variable(), o_var)
+
+    if len(output_vars) != len(loop_vars):
+        raise ValueError("The length of loop_vars should be the same.")
+
+    results = []
+    for o_var, l_var in zip(output_vars, loop_vars):
+        if isinstance(l_var, UndefinedVar) or l_var is None:
+            results.append(create_var_like(o_var))
+        else:
+            results.append(l_var)
+    return results
 
 
 def lod_rank_table(x, level=0):
@@ -1515,6 +1566,9 @@ def increment(x, value=1.0, in_place=True):
           counter = fluid.layers.zeros(shape=[1], dtype='float32') # [0.]
           fluid.layers.increment(counter) # [1.]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_increment_(x, value)
+
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'increment')
     helper = LayerHelper("increment", **locals())
@@ -1934,6 +1988,10 @@ def equal(x, y, cond=None, name=None):
           out1 = fluid.layers.equal(x=label,y=limit) #out1=[True, False]
           out2 = fluid.layers.equal(x=label_cond,y=limit, cond=out_cond) #out2=[False, True] out_cond=[False, True]
     """
+    if in_dygraph_mode():
+        default_axis = -1
+        return _C_ops.final_state_equal(x, y, default_axis)
+
     check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
                              "equal")
     check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
@@ -2454,10 +2512,13 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             true. The default value is ``None`` .
         false_fn(callable, optional): A callable to be performed if ``pred`` is
             false. The default value is ``None`` .
-        return_names: A list of strings to represents the name of returned vars. useful to debug.
         name(str, optional): The default value is ``None`` . Normally users
              don't have to set this parameter. For more information, please
              refer to :ref:`api_guide_Name` .
+        return_names(sequence of string, optional): The default value is ``None`` . 
+             Normally users don't have to set this parameters.  A sequence of strings 
+             to represents the name of returned vars.  The structure of sequence must 
+             be same with return values of true_fn and false_fn.
 
     Returns:
         Tensor|list(Tensor)|tuple(Tensor): returns ``true_fn()`` if the
@@ -2613,6 +2674,11 @@ def change_none_to_undefinedvar(nest1, nest2):
 
 
 def expand_undefined_var(nest1, nest2, names):
+    """ TODO: make this function recursively.
+        nest1: Var1, (UndefinedVar, [1,2,3])
+        nest2: Var2, ([1,2,3,4], UndefinedVar)
+        In this case, we should not expand recursively.
+    """
     from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
     from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_VALUE_PREFIX
 

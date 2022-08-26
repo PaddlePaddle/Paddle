@@ -38,7 +38,6 @@ _act_supported_quantizable_op_type = [
     "mean",
     "not_equal",
     "reshape",
-    "reshape2",
     "dropout",
     "bilinear_interp",
     "nearest_interp",
@@ -109,6 +108,7 @@ _act_supported_quantizable_op_type = [
     "square",
     "softplus",
     "shuffle_channel",
+    "reduce_max",
 ]
 
 _out_scale_op_list = list(
@@ -213,6 +213,7 @@ _op_real_in_out_name = {
     "square": [["X"], ["Out"]],
     "softplus": [["X"], ["Out"]],
     "shuffle_channel": [["X"], ["Out"]],
+    "reduce_max": [["X"], ["Out"]],
 }
 
 

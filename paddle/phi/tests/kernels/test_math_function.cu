@@ -37,9 +37,9 @@ void fill_fp16_data(phi::dtype::float16* in_ptr,
 }
 
 template <typename T>
-inline phi::funcs::BlasT<paddle::platform::CUDADeviceContext, T> GetBlas(
-    const paddle::platform::CUDADeviceContext& context) {
-  return phi::funcs::GetBlas<paddle::platform::CUDADeviceContext, T>(context);
+inline phi::funcs::BlasT<phi::GPUContext, T> GetBlas(
+    const phi::GPUContext& context) {
+  return phi::funcs::GetBlas<phi::GPUContext, T>(context);
 }
 
 TEST(math_function, notrans_mul_trans_fp32) {
@@ -51,7 +51,7 @@ TEST(math_function, notrans_mul_trans_fp32) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -87,7 +87,7 @@ TEST(math_function, notrans_mul_trans_fp16) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -134,7 +134,7 @@ TEST(math_function, trans_mul_notrans_fp32) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -176,7 +176,7 @@ TEST(math_function, trans_mul_notrans_fp16) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -229,7 +229,7 @@ TEST(math_function, gemm_notrans_cublas_fp32) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -287,7 +287,7 @@ TEST(math_function, gemm_notrans_cublas_fp16) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -364,7 +364,7 @@ TEST(math_function, gemm_trans_cublas_fp32) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -416,7 +416,7 @@ TEST(math_function, gemm_trans_cublas_fp16) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -485,7 +485,7 @@ void GemvTest(int m, int n, bool trans) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());

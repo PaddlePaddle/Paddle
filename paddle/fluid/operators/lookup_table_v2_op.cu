@@ -142,8 +142,7 @@ struct LookupTableV2GradCUDAFunctor {
 
   template <typename IdT>
   void apply() {
-    auto &dev_ctx =
-        context_.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = context_.template device_context<phi::GPUContext>();
     bool is_sparse = context_.Attr<bool>("is_sparse");
 
     // Since paddings are not trainable and fixed in forward, the gradient of

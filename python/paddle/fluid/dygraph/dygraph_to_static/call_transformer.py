@@ -40,7 +40,7 @@ class CallTransformer(BaseTransformer):
         Determines whether a function needs to be transformed by `convert_call`.
         It doesn't need to be transformed when a function satisfies the following conditions:
           1. It's a api of paddle
-          2. It's a python builtin function not include `len` and `zip`
+          2. It's a python builtin function not include `len`, `zip`, `range` and `enumerate`
         """
         assert isinstance(node, gast.Call)
         if is_paddle_api(node):
@@ -48,11 +48,16 @@ class CallTransformer(BaseTransformer):
 
         func_str = ast_to_source_code(node.func).strip()
         try:
-            from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import is_builtin_len, is_builtin, is_builtin_zip
+            from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import is_builtin
+            need_convert_builtin_func_list = {
+                'len',
+                'zip',
+                'range',
+                'enumerate',
+            }
             is_builtin = eval("is_builtin({})".format(func_str))
-            is_builtin_len = eval("is_builtin_len({})".format(func_str))
-            is_builtin_zip = eval("is_builtin_zip({})".format(func_str))
-            return is_builtin and not is_builtin_len and not is_builtin_zip
+            need_convert = func_str in need_convert_builtin_func_list
+            return is_builtin and not need_convert
         except Exception:
             return False
 

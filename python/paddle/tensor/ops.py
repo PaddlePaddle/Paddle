@@ -19,6 +19,8 @@ from ..framework import core
 from ..framework import convert_np_dtype_to_dtype_
 from ..static import Variable
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.framework import in_dygraph_mode
+from .. import _C_ops
 
 __deprecated_func_name__ = {
     'tanh_shrink': 'tanhshrink',
@@ -54,7 +56,6 @@ __unary_func__ = [
     'round',
     'reciprocal',
     'square',
-    'lgamma',
     'acosh',
     'asinh',
     'atanh',
@@ -476,20 +477,6 @@ Examples:
 """)
 
 add_sample_code(
-    globals()["lgamma"], r"""
-Examples:
-    .. code-block:: python
-
-        import paddle
-
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = paddle.lgamma(x)
-        print(out)
-        # [1.31452441, 1.76149750, 2.25271273, 1.09579802]
-
-""")
-
-add_sample_code(
     globals()["softplus"], r"""
 Examples:
     .. code-block:: python
@@ -525,6 +512,9 @@ _erf_ = generate_layer_fn('erf')
 
 
 def erf(x, name=None):
+    if in_dygraph_mode():
+        return _C_ops.final_state_erf(x)
+
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():

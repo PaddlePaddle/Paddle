@@ -303,12 +303,12 @@ fused_gate_attention_dygraph_function(
 
       bool merge_qkv = true;
       if (attrs.count("merge_qkv")) {
-        merge_qkv = BOOST_GET_CONST(bool, attrs.at("merge_qkv"));
+        merge_qkv = PADDLE_GET_CONST(bool, attrs.at("merge_qkv"));
       }
 
       bool has_gating = true;
       if (attrs.count("has_gating")) {
-        has_gating = BOOST_GET_CONST(bool, attrs.at("has_gating"));
+        has_gating = PADDLE_GET_CONST(bool, attrs.at("has_gating"));
       }
 
       // Set Attributes

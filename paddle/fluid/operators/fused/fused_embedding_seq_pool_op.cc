@@ -58,7 +58,7 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
     int64_t last_dim = FusedEmbeddingSeqPoolLastDim(table_dims, ids_dims);
     // in compile time, the lod level of ids must be 1
     framework::VarDesc* ids_desc =
-        BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Ids")[0]);
+        PADDLE_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Ids")[0]);
     PADDLE_ENFORCE_EQ(ids_desc->GetLoDLevel(),
                       1,
                       platform::errors::InvalidArgument(
@@ -154,7 +154,7 @@ class FusedEmbeddingSeqPoolOpGradVarTypeInference
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto out_var_name = framework::GradVarName("W");
     auto attr = ctx->GetAttr("is_sparse");
-    bool is_sparse = BOOST_GET(bool, attr);
+    bool is_sparse = PADDLE_GET(bool, attr);
     if (is_sparse) {
       VLOG(3) << "fused_embedding_seq_pool_grad op "
               << framework::GradVarName("W") << " is set to SelectedRows";

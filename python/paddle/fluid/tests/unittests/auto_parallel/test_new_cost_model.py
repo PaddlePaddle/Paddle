@@ -19,8 +19,9 @@ import tempfile
 
 import paddle
 import paddle.distributed.auto_parallel.cost as cost_model
-from paddle.distributed.auto_parallel.cost.base_cost import parse_to_desc
-from paddle.distributed.auto_parallel.cost.base_cost import parse_desc_to_str
+
+from paddle.distributed.auto_parallel.cost.base_cost import build_comp_desc_from_op
+from paddle.distributed.auto_parallel.cost.base_cost import build_comp_desc_str_for_predict
 from paddle.distributed.auto_parallel.cost.base_cost import calc_time_by_modeling
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.cost import CommContext
@@ -60,8 +61,8 @@ class TestCost(unittest.TestCase):
                 break
         matmul_v2_cost = cost_model._g_op_cost_factory["matmul_v2"](
             op=matmul_v2_op)
-        desc = parse_to_desc(op=matmul_v2_op)
-        desc_str = parse_desc_to_str(desc)
+        desc = build_comp_desc_from_op(op=matmul_v2_op)
+        desc_str = build_comp_desc_str_for_predict(desc)
         self.assertIsNotNone(desc_str)
         self.assertTrue(check_cost(matmul_v2_cost.cost))
         time = calc_time_by_modeling(op=matmul_v2_op)
@@ -92,10 +93,28 @@ class TestCost(unittest.TestCase):
             op_desc=desc, comm_context=CommContext(cluster))
         self.assertTrue(check_cost(allreduce_cost.cost))
 
+        # Remove unnecessary files
+        if os.path.exists(cluster_json_path):
+            os.remove(cluster_json_path)
+
     def test_cost_estimator(self):
+        # Build cluster
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster.json")
+        cluster_json_object = json.loads(cluster_json)
+        with open(cluster_json_path, "w") as cluster_json_file:
+            json.dump(cluster_json_object, cluster_json_file)
+        cluster = Cluster()
+        cluster.build_from_file(cluster_json_path)
+
         train_program = paddle.static.Program()
-        cost_estimator = cost_model.CostEstimator(train_program)
+        cost_estimator = cost_model.CostEstimator(train_program,
+                                                  cluster=cluster)
         self.assertIsNotNone(cost_estimator)
+
+        # Remove unnecessary files
+        if os.path.exists(cluster_json_path):
+            os.remove(cluster_json_path)
 
 
 if __name__ == "__main__":

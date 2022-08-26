@@ -79,10 +79,10 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
   // dropout_op is INT.
   if (dropout_op_desc->HasAttr("is_test")) {
     if (dropout_op_desc->GetAttrType("is_test") == proto::AttrType::BOOLEAN) {
-      is_test = BOOST_GET_CONST(bool, dropout_op_desc->GetAttr("is_test"));
+      is_test = PADDLE_GET_CONST(bool, dropout_op_desc->GetAttr("is_test"));
     } else if (dropout_op_desc->GetAttrType("is_test") ==
                proto::AttrType::INT) {
-      is_test = BOOST_GET_CONST(int, dropout_op_desc->GetAttr("is_test")) == 0
+      is_test = PADDLE_GET_CONST(int, dropout_op_desc->GetAttr("is_test")) == 0
                     ? false
                     : true;
     }
@@ -100,14 +100,14 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
   if (dropout_op_desc->HasAttr("dropout_implementation")) {
     if (dropout_op_desc->GetAttrType("dropout_implementation") ==
         proto::AttrType::BOOLEAN) {
-      upscale_in_train = BOOST_GET_CONST(
+      upscale_in_train = PADDLE_GET_CONST(
           bool, dropout_op_desc->GetAttr("dropout_implementation"));
     } else if (dropout_op_desc->GetAttrType("dropout_implementation") ==
                proto::AttrType::STRING) {
       upscale_in_train =
-          BOOST_GET_CONST(std::string,
-                          dropout_op_desc->GetAttr("dropout_implementation")) ==
-          "upscale_in_train";
+          PADDLE_GET_CONST(std::string,
+                           dropout_op_desc->GetAttr(
+                               "dropout_implementation")) == "upscale_in_train";
     }
   }
 
@@ -156,8 +156,8 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
     //   |
     //  \|/
     // dropout_x -> scale_op -> dropout_out -> next_op -> next_out
-    float scale =
-        1.0f - BOOST_GET_CONST(float, dropout_op_desc->GetAttr("dropout_prob"));
+    float scale = 1.0f - PADDLE_GET_CONST(
+                             float, dropout_op_desc->GetAttr("dropout_prob"));
 
     framework::OpDesc new_op_desc(dropout_op_desc->Block());
     new_op_desc.SetType("scale");

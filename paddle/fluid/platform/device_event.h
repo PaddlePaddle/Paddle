@@ -25,6 +25,7 @@
 
 using ::paddle::platform::kCPU;
 using ::paddle::platform::kCUDA;
+using ::paddle::platform::kNPU;
 using ::paddle::platform::kXPU;
 
 USE_EVENT(kCPU)
@@ -36,8 +37,8 @@ USE_EVENT_WAIT(kCUDA, kCUDA)
 USE_EVENT_WAIT(kCPU, kCUDA)
 #endif
 
-#ifdef PADDLE_WITH_XPU
-USE_EVENT(kXPU);
-USE_EVENT_WAIT(kXPU, kXPU)
-USE_EVENT_WAIT(kCPU, kXPU)
+#ifdef PADDLE_WITH_ASCEND_CL
+USE_EVENT(kNPU);
+USE_EVENT_WAIT(kNPU, kNPU)
+USE_EVENT_WAIT(kCPU, kNPU)
 #endif

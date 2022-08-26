@@ -43,21 +43,14 @@ __global__ void AttnSoftmaxGpuGradKernel(const int64_t* out_crows,
   int row_nnz = static_cast<int>(out_crows[crow_idx + 1] - out_crows[crow_idx]);
   if (row_nnz == 0) return;
 
-  int kIteration = (row_nnz + WARP_SIZE - 1) / WARP_SIZE;
-  T mul_result = 0;
-  for (int i = 0; i < kIteration; ++i) {
-    int idx = threadIdx.x + i * WARP_SIZE;
-    if (idx >= row_nnz) break;
-
-    mul_result += out_values[row_first + idx] * dout_values[row_first + idx];
+  T mul = 0;
+  for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
+    mul += out_values[row_first + idx] * dout_values[row_first + idx];
   }
-  T sum = phi::funcs::warpReduceSum<T>(mul_result, 0xFFFFFFFF);
+  T mul_sum = phi::funcs::warpReduceSum<T>(mul, 0xFFFFFFFF);
 
-  for (int i = 0; i < kIteration; ++i) {
-    int idx = threadIdx.x + i * WARP_SIZE;
-    if (idx >= row_nnz) break;
-
-    dx_values[row_first + idx] = (dout_values[row_first + idx] - sum) *
+  for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
+    dx_values[row_first + idx] = (dout_values[row_first + idx] - mul_sum) *
                                  out_values[row_first + idx] / scale;
   }
 }
@@ -75,7 +68,7 @@ void FusedAttentionCsrGradKernel(const Context& dev_ctx,
 #if CUDA_VERSION >= 11070
   /* Step1: Forward: softmax{CSR} * value{Dense} -> out{Dense}, reuse */
   SparseCsrTensor dsoftmax;
-  CsrDenseMatmulGradKernel<T, Context>(
+  MatmulCsrDenseGradKernel<T, Context>(
       dev_ctx, softmax, value, dout, &dsoftmax, dvalue);
 
   /* Step2: Calculate grad of sdd_result, manualy not reuse */
@@ -96,14 +89,14 @@ void FusedAttentionCsrGradKernel(const Context& dev_ctx,
   int N = q_dim[q_rank - 1];
   int batch_nnz = softmax.nnz() / batch_num;
 
-  dim3 grid((total_row_num + 3) / 4);
-  dim3 block(WARP_SIZE, 4);
+  dim3 grid((total_row_num + 7) / 8);
+  dim3 block(WARP_SIZE, 8);
 
   AttnSoftmaxGpuGradKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
-      softmax.non_zero_crows().data<int64_t>(),
-      softmax.non_zero_elements().data<T>(),
-      dsoftmax.mutable_non_zero_elements()->data<T>(),
-      d_sdd_result.mutable_non_zero_elements()->data<T>(),
+      softmax.crows().data<int64_t>(),
+      softmax.values().data<T>(),
+      dsoftmax.mutable_values()->data<T>(),
+      d_sdd_result.mutable_values()->data<T>(),
       M,
       total_row_num,
       std::sqrt(N),

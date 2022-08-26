@@ -150,8 +150,8 @@ class TestGeluNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred, atol=1e-3))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss, atol=1e-3))
+        np.testing.assert_allclose(npu_pred, cpu_pred, atol=1e-3)
+        np.testing.assert_allclose(npu_loss, cpu_loss, atol=1e-3)
 
 
 if __name__ == '__main__':

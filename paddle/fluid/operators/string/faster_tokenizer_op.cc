@@ -14,7 +14,6 @@ limitations under the License. */
 #include <utf8proc.h>
 
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
 #include <chrono>
 #include <codecvt>
 #include <fstream>

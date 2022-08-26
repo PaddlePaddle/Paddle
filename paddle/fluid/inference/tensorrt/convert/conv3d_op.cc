@@ -51,7 +51,7 @@ void ConvertConv3d(TensorRTEngine* engine,
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
   if (enable_int8) {
-    float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+    float in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
     engine->SetTensorDynamicRange(X, in_scale);
   }
 
@@ -66,22 +66,29 @@ void ConvertConv3d(TensorRTEngine* engine,
   const int filter_d = Y_t->dims()[2];
   const int filter_h = Y_t->dims()[3];
   const int filter_w = Y_t->dims()[4];
-  const int groups = BOOST_GET_CONST(int, op_desc.GetAttr("groups"));
+  const int groups = PADDLE_GET_CONST(int, op_desc.GetAttr("groups"));
   const std::vector<int> dilations =
-      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
   const std::vector<int> strides =
-      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
   const std::vector<int> paddings =
-      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
   std::string padding_algorithm = "EXPLICIT";
   if (op_desc.HasAttr("padding_algorithm"))
     padding_algorithm =
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
+
+  // for conv3d_transpose
+  std::vector<int> output_padding;
+  if (op_desc.HasAttr("output_padding")) {
+    output_padding =
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_padding"));
+  }
 
   nvinfer1::Dims3 nv_ksize(filter_d, filter_h, filter_w);
   nvinfer1::Dims3 nv_dilations(dilations[0], dilations[1], dilations[2]);
   nvinfer1::Dims3 nv_strides(strides[0], strides[1], strides[2]);
-  nvinfer1::Dims3 nv_paddings(paddings[0], paddings[1], paddings[2]);
+  nvinfer1::Dims3 nv_pre_paddings(paddings[0], paddings[1], paddings[2]);
 
   auto weight = engine->GetTrtWeight(op_desc.Input("Filter").front(), *Y_t);
   float* bias_data = nullptr;
@@ -99,7 +106,25 @@ void ConvertConv3d(TensorRTEngine* engine,
       platform::errors::Fatal("TensorRT create conv3d/conv3d_transpose"
                               " layer failed."));
   layer->setStrideNd(nv_strides);
-  layer->setPaddingNd(nv_paddings);
+  layer->setPrePadding(nv_pre_paddings);
+  nvinfer1::Dims3 nv_post_paddings = nv_pre_paddings;
+  if (output_padding.size() > 0) {
+// Here is consistent with op_teller.cc
+#if IS_TRT_VERSION_GE(8400)
+    nv_post_paddings.d[0] -= output_padding[0];
+    nv_post_paddings.d[1] -= output_padding[1];
+    nv_post_paddings.d[2] -= output_padding[2];
+
+    if (nv_post_paddings.d[0] < 0 || nv_post_paddings.d[1] < 0 ||
+        nv_post_paddings.d[2] < 0) {
+      PADDLE_THROW(platform::errors::Fatal(
+          "The value in conv3d_transpose's PostPadding should be >= 0."));
+    }
+
+#endif
+  }
+  layer->setPostPadding(nv_post_paddings);
+
   layer->setNbGroups(groups);
   if (padding_algorithm == "SAME") {
     layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);

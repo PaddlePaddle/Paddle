@@ -37,8 +37,8 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     const auto input_dim = input->getDimensions();
     const int dims = input_dim.nbDims;
-    int start_axis = BOOST_GET_CONST(int, op_desc.GetAttr("start_axis"));
-    int stop_axis = BOOST_GET_CONST(int, op_desc.GetAttr("stop_axis"));
+    int start_axis = PADDLE_GET_CONST(int, op_desc.GetAttr("start_axis"));
+    int stop_axis = PADDLE_GET_CONST(int, op_desc.GetAttr("stop_axis"));
 
     nvinfer1::IShuffleLayer* layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);

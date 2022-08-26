@@ -109,7 +109,7 @@ class GeneralGrad {
       needed_nodes_.emplace(target_nodes_inputmeta_pair.first);
     }
     std::unordered_set<GradNodeBase*> visited;
-    std::unordered_set<GradNodeBase*> input_target_nodes_passing_by;
+    std::unordered_set<GradNodeBase*> input_target_nodes_on_path;
     while (!queue.empty()) {
       auto* target_node = queue.front();
       queue.pop_front();
@@ -123,7 +123,7 @@ class GeneralGrad {
           queue.push_back(pre_nodes);
           needed_nodes_.emplace(pre_nodes);
           if (IsInputTargetNodes(pre_nodes)) {
-            input_target_nodes_passing_by.emplace(pre_nodes);
+            input_target_nodes_on_path.emplace(pre_nodes);
           }
         }
       } else {  // startup_ops have no precedding nodes
@@ -135,7 +135,7 @@ class GeneralGrad {
 
     for (auto& target_nodes_inputmeta_pair :
          input_target_nodes_inputmeta_map_) {
-      if (!input_target_nodes_passing_by.count(
+      if (!input_target_nodes_on_path.count(
               target_nodes_inputmeta_pair.first)) {
         endding_nodes_.emplace(target_nodes_inputmeta_pair.first);
       }
@@ -317,7 +317,7 @@ class GeneralGrad {
                 i));
 
         if (!IsEnddingNodes(target_node)) {
-          // Fetch grad for tensor in target_node passing by.
+          // Fetch grad for tensor in target_node on path.
           auto fetched_grad = FetchGradForTensor(inputs[i], target_node);
           results_map_[target_node] = fetched_grad;
         }

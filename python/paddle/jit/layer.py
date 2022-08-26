@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.fluid import core
 from paddle.fluid.core import Load
 
 
@@ -25,21 +26,22 @@ class Layer(object):
 
     def load(self, load_path, place):
         self.cpp_layer = Load(load_path, place)
-        function_dict = self.cpp_layer.function_dict()
 
-        for name, function in function_dict.items():
-            self.functions[name] = Function(function)
+        for name in self.cpp_layer.function_names():
+            function = self.cpp_layer.function(name)
+            info = self.cpp_layer.function_info(name)
+            self.functions[name] = Function(function, info)
             setattr(self, name, self.functions[name])
 
 
 class Function():
 
-    def __init__(self, function):
+    def __init__(self, function, info):
         self.function = function
-        self.info = FunctionInfo(function.info())
+        self.info = FunctionInfo(info)
 
     def __call__(self, *args):
-        return self.function(args)
+        return core.eager.jit_function_call(self.function, args)
 
 
 class FunctionInfo():

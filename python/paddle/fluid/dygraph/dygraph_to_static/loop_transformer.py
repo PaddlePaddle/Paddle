@@ -26,8 +26,8 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_nodes, create_get_args_node, create_set_args_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import FunctionNameLivenessAnalysis
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import ARGS_NAME
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import RenameTransformer
@@ -483,10 +483,10 @@ class LoopTransformer(BaseTransformer):
         ), "Input non-AstNodeWrapper node for the initialization of LoopTransformer."
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
+        FunctionNameLivenessAnalysis(self.root)
 
     def transform(self):
         ForLoopTuplePreTransformer(self.wrapper_root).transform()
-        self.name_visitor = NameVisitor(self.root)
         self.visit(self.root)
 
     def visit_While(self, node):
@@ -537,19 +537,19 @@ class LoopTransformer(BaseTransformer):
             return [node]
         init_stmts, cond_stmt, body_stmts = stmts_tuple
         # 2. get original loop vars
-        loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
-            node)
+        loop_var_names, create_var_names = node.pd_scope.modified_vars(
+        ), node.pd_scope.created_vars()
+        # TODO: Remove the bunch of code?  We have the unique format `for A in B:`
         # NOTE: in 'for x in var' or 'for i, x in enumerate(var)' cases,
         # we need append new loop var & remove useless loop var
         #   1. for x in var -> x is no need
         #   2. for i, x in enumerate(var) -> x is no need
-        if current_for_node_parser.is_for_iter(
-        ) or current_for_node_parser.is_for_enumerate_iter():
+        if current_for_node_parser.is_for_iter():
             iter_var_name = current_for_node_parser.iter_var_name
             iter_idx_name = current_for_node_parser.iter_idx_name
             loop_var_names.add(iter_idx_name)
-            if iter_var_name not in create_var_names:
-                loop_var_names.remove(iter_var_name)
+            if current_for_node_parser.enum_idx_name is not None:
+                loop_var_names.add(current_for_node_parser.enum_idx_name)
 
         # 3. prepare result statement list
         new_stmts = []
@@ -559,10 +559,8 @@ class LoopTransformer(BaseTransformer):
         #     y += x
         # print(x) # x = 10
         #
-        # We need to create static variable for those variables
-        for name in create_var_names:
-            if "." not in name:
-                new_stmts.append(create_undefined_var(name))
+        # We don't need to create static variable for them, because
+        # we do this in CreateUndefinedVarTransformer
 
         # create non-local statement for body and cond.
         nonlocal_names = list(loop_var_names | create_var_names)
@@ -581,10 +579,7 @@ class LoopTransformer(BaseTransformer):
             name=unique_name.generate(FOR_CONDITION_PREFIX),
             args=gast.arguments(args=[],
                                 posonlyargs=[],
-                                vararg=gast.Name(id=ARGS_NAME,
-                                                 ctx=gast.Param(),
-                                                 annotation=None,
-                                                 type_comment=None),
+                                vararg=None,
                                 kwonlyargs=[],
                                 kw_defaults=None,
                                 kwarg=None,
@@ -597,17 +592,11 @@ class LoopTransformer(BaseTransformer):
 
         # 6. create & append loop body function node
         # append return values for loop body
-        body_stmts.append(
-            gast.Return(value=generate_name_node(
-                nonlocal_names, ctx=gast.Load(), gen_tuple_if_single=True)))
         body_func_node = gast.FunctionDef(
             name=unique_name.generate(FOR_BODY_PREFIX),
             args=gast.arguments(args=[],
                                 posonlyargs=[],
-                                vararg=gast.Name(id=ARGS_NAME,
-                                                 ctx=gast.Param(),
-                                                 annotation=None,
-                                                 type_comment=None),
+                                vararg=None,
                                 kwonlyargs=[],
                                 kw_defaults=None,
                                 kwarg=None,
@@ -632,8 +621,8 @@ class LoopTransformer(BaseTransformer):
         return new_stmts
 
     def get_while_stmt_nodes(self, node):
-        loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
-            node)
+        loop_var_names, create_var_names = node.pd_scope.modified_vars(
+        ), node.pd_scope.created_vars()
         new_stmts = []
 
         # create non-local statement for body and cond.
@@ -652,19 +641,14 @@ class LoopTransformer(BaseTransformer):
         #     y = x
         # z = y
         #
-        # We need to create static variable for those variables
-        for name in create_var_names:
-            if "." not in name:
-                new_stmts.append(create_fill_constant_node(name))
+        # We don't need to create static variable for those variables, because
+        # we do this in CreateUndefinedVarTransformer
 
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(WHILE_CONDITION_PREFIX),
             args=gast.arguments(args=[],
                                 posonlyargs=[],
-                                vararg=gast.Name(id=ARGS_NAME,
-                                                 ctx=gast.Param(),
-                                                 annotation=None,
-                                                 type_comment=None),
+                                vararg=None,
                                 kwonlyargs=[],
                                 kw_defaults=None,
                                 kwarg=None,
@@ -677,17 +661,11 @@ class LoopTransformer(BaseTransformer):
         new_stmts.append(condition_func_node)
 
         new_body = node.body
-        new_body.append(
-            gast.Return(value=generate_name_node(
-                nonlocal_names, ctx=gast.Load(), gen_tuple_if_single=True)))
         body_func_node = gast.FunctionDef(
             name=unique_name.generate(WHILE_BODY_PREFIX),
             args=gast.arguments(args=[],
                                 posonlyargs=[],
-                                vararg=gast.Name(id=ARGS_NAME,
-                                                 ctx=gast.Param(),
-                                                 annotation=None,
-                                                 type_comment=None),
+                                vararg=None,
                                 kwonlyargs=[],
                                 kw_defaults=None,
                                 kwarg=None,

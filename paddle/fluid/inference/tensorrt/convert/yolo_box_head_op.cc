@@ -35,8 +35,8 @@ class YoloBoxHeadOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     auto* x_tensor = engine_->GetITensor(op_desc.Input("X").front());
     std::vector<int> anchors =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("anchors"));
-    int class_num = BOOST_GET_CONST(int, op_desc.GetAttr("class_num"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("anchors"));
+    int class_num = PADDLE_GET_CONST(int, op_desc.GetAttr("class_num"));
 
     auto* yolo_box_plugin = new plugin::YoloBoxHeadPlugin(anchors, class_num);
     std::vector<nvinfer1::ITensor*> yolo_box_inputs;

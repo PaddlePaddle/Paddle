@@ -15,7 +15,7 @@
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
+from .common import register_distributed_operator_impl, is_parameter_related
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -28,6 +28,11 @@ from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from .dist_default import DistributedDefaultImpl0
+from ..cost import build_comp_desc_from_dist_op, build_comp_costs_from_descs
+from ..cost import build_comm_costs_from_descs
+from ..cost import Reshape2OpCost
+from ..cost import Reshape2GradOpCost
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 
 class DistributedReshape2(DistributedOperatorImplContainer):
@@ -45,6 +50,84 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         super(DistributedReshapeImpl0, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = False
+
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Backward):
+            cost = self.calc_bwd_cost(dist_op, ctx, cluster)
+        else:
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        res = []
+        op = dist_op.serial_op
+        vars = op.block.vars
+        dist_attr = dist_op.dist_attr
+
+        shape_list = op.desc.attr("shape")
+        # got dist attribute info
+        dim_mapping = dist_attr.get_output_dims_mapping(op.output("Out")[0])
+        process_mesh_shape = dist_attr.process_mesh.topology
+
+        # modify target shape
+        for idx, axis in enumerate(dim_mapping):
+            if axis >= 0:
+                if len(shape_list) > idx:
+                    shape_list[
+                        idx] = shape_list[idx] // process_mesh_shape[axis]
+
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_attr.process_mesh.processes
+        for key in desc_mapping:
+            desc_mapping[key]["shape"] = shape_list
+
+        cost_mapping = build_comp_costs_from_descs(Reshape2OpCost, ctx,
+                                                   processes, desc_mapping,
+                                                   cluster)
+        res.append(cost_mapping)
+
+        return res
+
+    def calc_bwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        res = []
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        dist_attr = dist_op.dist_attr
+        process_mesh = dist_attr.process_mesh
+        processes = process_mesh.processes
+        op_type = dist_op.serial_op.type
+
+        cost_mapping = build_comp_costs_from_descs(Reshape2GradOpCost, ctx,
+                                                   processes, desc_mapping,
+                                                   cluster)
+        res.append(cost_mapping)
+
+        backward_op = dist_op.serial_op
+        main_block = backward_op.block
+        need_gradient_allreduce = False
+        vars = main_block.vars
+        for input_name in backward_op.desc.input_names():
+            for varname in backward_op.desc.input(input_name):
+                if "@GRAD" not in varname and is_parameter_related(
+                        varname, main_block):
+                    # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
+                    var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
+
+                    mesh_shape = process_mesh.topology
+                    batch_size_axis = var_dim_mapping[0]
+                    if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
+                        parallel_axis = batch_size_axis
+                        attrs = {"use_calc_stream": True}
+                        var_names = [varname + "@GRAD"]
+                        build_dp_costs(res, dist_op, ctx, var_names, attrs,
+                                       parallel_axis, cluster)
+
+        return res
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
@@ -177,7 +260,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
                         idx] = shape_list[idx] // process_mesh_shape[axis]
 
         # create op
-        new_op_desc = main_block.desc.append_op()
+        new_op_desc = main_block.append_op(type='nop').desc
         new_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
@@ -186,8 +269,6 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         new_op_desc.set_output('XShape', [XShape_var.name])
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
-
-        main_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -200,6 +281,84 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         super(DistributedReshapeImpl1, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = False
+
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Backward):
+            cost = self.calc_bwd_cost(dist_op, ctx, cluster)
+        else:
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        res = []
+        op = dist_op.serial_op
+        vars = op.block.vars
+        dist_attr = dist_op.dist_attr
+
+        shape_list = op.desc.attr("shape")
+        # got dist attribute info
+        dim_mapping = dist_attr.get_output_dims_mapping(op.output("Out")[0])
+        process_mesh_shape = dist_attr.process_mesh.topology
+
+        # modify target shape
+        for idx, axis in enumerate(dim_mapping):
+            if axis >= 0:
+                if len(shape_list) > idx:
+                    shape_list[
+                        idx] = shape_list[idx] // process_mesh_shape[axis]
+
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_attr.process_mesh.processes
+        for key in desc_mapping:
+            desc_mapping[key]["shape"] = shape_list
+
+        cost_mapping = build_comp_costs_from_descs(Reshape2OpCost, ctx,
+                                                   processes, desc_mapping,
+                                                   cluster)
+        res.append(cost_mapping)
+
+        return res
+
+    def calc_bwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        res = []
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        dist_attr = dist_op.dist_attr
+        process_mesh = dist_attr.process_mesh
+        processes = process_mesh.processes
+        op_type = dist_op.serial_op.type
+
+        cost_mapping = build_comp_costs_from_descs(Reshape2GradOpCost, ctx,
+                                                   processes, desc_mapping,
+                                                   cluster)
+        res.append(cost_mapping)
+
+        backward_op = dist_op.serial_op
+        main_block = backward_op.block
+        need_gradient_allreduce = False
+        vars = main_block.vars
+        for input_name in backward_op.desc.input_names():
+            for varname in backward_op.desc.input(input_name):
+                if "@GRAD" not in varname and not is_parameter_related(
+                        varname, main_block):
+                    # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
+                    var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
+
+                    mesh_shape = process_mesh.topology
+                    batch_size_axis = var_dim_mapping[0]
+                    if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
+                        parallel_axis = batch_size_axis
+                        attrs = {"use_calc_stream": True}
+                        var_names = [varname + "@GRAD"]
+                        build_dp_costs(res, dist_op, ctx, var_names, attrs,
+                                       parallel_axis, cluster)
+
+        return res
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
@@ -335,7 +494,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
                         idx] = shape_list[idx] // process_mesh_shape[axis]
 
         # create op
-        new_op_desc = main_block.desc.append_op()
+        new_op_desc = main_block.append_op(type='nop').desc
         new_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
@@ -344,8 +503,6 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         new_op_desc.set_output('XShape', [XShape_var.name])
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
-
-        main_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -358,6 +515,84 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         super(DistributedReshapeImpl2, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = False
+
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Backward):
+            cost = self.calc_bwd_cost(dist_op, ctx, cluster)
+        else:
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        res = []
+        op = dist_op.serial_op
+        vars = op.block.vars
+        dist_attr = dist_op.dist_attr
+
+        shape_list = op.desc.attr("shape")
+        # got dist attribute info
+        dim_mapping = dist_attr.get_output_dims_mapping(op.output("Out")[0])
+        process_mesh_shape = dist_attr.process_mesh.topology
+
+        # modify target shape
+        for idx, axis in enumerate(dim_mapping):
+            if axis >= 0:
+                if len(shape_list) > idx:
+                    shape_list[
+                        idx] = shape_list[idx] // process_mesh_shape[axis]
+
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_attr.process_mesh.processes
+        for key in desc_mapping:
+            desc_mapping[key]["shape"] = shape_list
+
+        cost_mapping = build_comp_costs_from_descs(Reshape2OpCost, ctx,
+                                                   processes, desc_mapping,
+                                                   cluster)
+        res.append(cost_mapping)
+
+        return res
+
+    def calc_bwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        res = []
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        dist_attr = dist_op.dist_attr
+        process_mesh = dist_attr.process_mesh
+        processes = process_mesh.processes
+        op_type = dist_op.serial_op.type
+
+        cost_mapping = build_comp_costs_from_descs(Reshape2GradOpCost, ctx,
+                                                   processes, desc_mapping,
+                                                   cluster)
+        res.append(cost_mapping)
+
+        backward_op = dist_op.serial_op
+        main_block = backward_op.block
+        need_gradient_allreduce = False
+        vars = main_block.vars
+        for input_name in backward_op.desc.input_names():
+            for varname in backward_op.desc.input(input_name):
+                if "@GRAD" not in varname and not is_parameter_related(
+                        varname, main_block):
+                    # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
+                    var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
+
+                    mesh_shape = process_mesh.topology
+                    batch_size_axis = var_dim_mapping[0]
+                    if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
+                        parallel_axis = batch_size_axis
+                        attrs = {"use_calc_stream": True}
+                        var_names = [varname + "@GRAD"]
+                        build_dp_costs(res, dist_op, ctx, var_names, attrs,
+                                       parallel_axis, cluster)
+
+        return res
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
@@ -486,7 +721,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
                         idx] = shape_list[idx] // process_mesh_shape[axis]
 
         # create op
-        new_op_desc = main_block.desc.append_op()
+        new_op_desc = main_block.append_op(type='nop').desc
         new_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
@@ -495,8 +730,6 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         new_op_desc.set_output('XShape', [XShape_var.name])
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
-
-        main_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):

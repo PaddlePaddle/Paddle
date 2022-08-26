@@ -142,9 +142,9 @@ void MainTest(bool convWithExistingBias) {
     if (node->IsOp() && node->Op()->Type() == "conv2d") {
       auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       // check if "conv" convolution is fused
-      auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
+      auto op_name = PADDLE_GET_CONST(std::string, op->GetAttr("name"));
       if (op_name == "conv") {
         auto input_names = op->InputNames();
         ASSERT_TRUE(std::find(input_names.begin(), input_names.end(), "Bias") !=

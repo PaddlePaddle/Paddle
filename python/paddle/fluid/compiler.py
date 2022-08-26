@@ -635,7 +635,7 @@ class IpuDynamicPatcher(object):
             if not isinstance(item, CacheKey):
                 raise ValueError(
                     'type(item) should be CacheKey, but received %s' %
-                    type_name(item))
+                    type(item).__name__)
             item_id = hash(item)
             self._recent_key = item_id
             if item_id not in self._caches or ipu_strategy.need_compile:

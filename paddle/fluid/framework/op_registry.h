@@ -408,6 +408,12 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
 
+#define REGISTER_OP_IPU_KERNEL_FUNCTOR(op_type, ...)                  \
+  REGISTER_OP_KERNEL_EX(                                              \
+      op_type, IPU, ::paddle::platform::IPUPlace, DEFAULT_TYPE,       \
+      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
+      __VA_ARGS__)
+
 /**
  * Macro to mark what Operator and Kernel
  * we will use and tell the compiler to

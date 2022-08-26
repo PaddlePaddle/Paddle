@@ -46,7 +46,7 @@ class SoftplusMKLDNNHandler
           1.0f, dnnl::algorithm::eltwise_linear, 1.0f / beta, 0.0f);
     }
 
-    AppendFusedActivationIfExists(ctx, &post_ops);
+    platform::AppendActivation(ctx, post_ops);
 
     dnnl::primitive_attr attrs;
     attrs.set_post_ops(post_ops);
@@ -62,41 +62,7 @@ class SoftplusMKLDNNHandler
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->src1_desc(), platform::to_void_cast<float>(beta));
   }
-
- private:
-  void AppendFusedActivationIfExists(const framework::ExecutionContext& ctx,
-                                     dnnl::post_ops* post_ops) {
-    const auto& fused_activation_type =
-        algo_map.find(ctx.Attr<std::string>("fuse_activation_type"));
-
-    if (fused_activation_type != algo_map.end()) {
-      auto scale_out =
-          ctx.Attr<float>("fuse_activation_scale");  // for future int8 support
-      post_ops->append_eltwise(scale_out,
-                               fused_activation_type->second,
-                               ctx.Attr<float>("fuse_activation_alpha"),
-                               ctx.Attr<float>("fuse_activation_beta"));
-    }
-  }
-
-  static const std::unordered_map<std::string, dnnl::algorithm> algo_map;
 };
-
-template <typename T>
-const std::unordered_map<std::string, dnnl::algorithm>
-    SoftplusMKLDNNHandler<T>::algo_map = {
-        {"relu", dnnl::algorithm::eltwise_relu},
-        {"tanh", dnnl::algorithm::eltwise_tanh},
-        {"leaky_relu", dnnl::algorithm::eltwise_relu},
-        {"swish", dnnl::algorithm::eltwise_swish},
-        {"hardswish", dnnl::algorithm::eltwise_hardswish},
-        {"sqrt", dnnl::algorithm::eltwise_sqrt},
-        {"abs", dnnl::algorithm::eltwise_abs},
-        {"clip", dnnl::algorithm::eltwise_clip},
-        {"gelu", dnnl::algorithm::eltwise_gelu_erf},
-        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
-        {"relu6", dnnl::algorithm::eltwise_bounded_relu},
-        {"sigmoid", dnnl::algorithm::eltwise_logistic}};
 
 template <typename T>
 void custom_softplus_eltwise_forward(const framework::ExecutionContext& ctx) {

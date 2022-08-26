@@ -285,6 +285,10 @@ void NPUEventQuery(aclrtEvent event, aclrtEventStatus *status) {
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtQueryEvent(event, status));
 }
 
+void NPUEventSynchronize(aclrtEvent event) {
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeEvent(event));
+}
+
 void NPUStreamWaitEvent(aclrtStream stream, aclrtEvent event) {
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtStreamWaitEvent(stream, event));
 }

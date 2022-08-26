@@ -32,7 +32,8 @@ ops_to_fill_zero_for_empty_grads = set([
     "square_double_grad", "celu_double_grad", "pad_double_grad",
     "pad3d_double_grad", "squeeze_double_grad", "unsqueeze_double_grad",
     "instance_norm_double_grad", "conv3d_double_grad",
-    "depthwise_conv2d_grad_grad"
+    "depthwise_conv2d_grad_grad", "concat_double_grad", "expand_grad",
+    "argsort_grad"
 ])
 
 # For API dispatch used at python-level
@@ -45,6 +46,7 @@ yaml_types_mapping = {
     'int' : 'int', 'int32_t' : 'int32_t', 'int64_t' : 'int64_t',  'size_t' : 'size_t', \
     'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
     'str' : 'std::string', \
+    'str[]' : 'std::vector<std::string>', 'float[]' : 'std::vector<float>', \
     'Place' : 'paddle::Place', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
     'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
@@ -55,6 +57,7 @@ yaml_types_mapping = {
     'Scalar(int64_t)' : 'paddle::experimental::Scalar',
     'Scalar(float)' : 'paddle::experimental::Scalar',
     'Scalar(double)' : 'paddle::experimental::Scalar',
+    'Scalar[]' : 'std::vector<phi::Scalar>',
     'IntArray' : 'paddle::experimental::IntArray'
 }
 
@@ -351,6 +354,9 @@ class FunctionGeneratorBase:
         self.forward_api_contents = forward_api_contents
         self.namespace = namespace
 
+        self.is_forward_only = False if 'backward' in forward_api_contents.keys(
+        ) else True
+
         self.forward_api_name = ""
 
         self.orig_forward_inputs_list = [
@@ -441,7 +447,13 @@ class FunctionGeneratorBase:
 
         for i in range(len(forward_returns_list)):
             forward_return = forward_returns_list[i]
-            return_name = forward_return[0]
+            if len(forward_return[0]) == 0:
+                if (len(forward_returns_list) == 1):
+                    return_name = "out"
+                else:
+                    return_name = "out_{}".format(i + 1)
+            else:
+                return_name = forward_return[0]
             return_type = forward_return[1]
             return_pos = forward_return[2]
 

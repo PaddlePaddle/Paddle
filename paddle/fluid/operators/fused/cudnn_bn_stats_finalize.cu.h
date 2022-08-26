@@ -61,7 +61,7 @@ struct BNStatsFinalizeArgs {
 template <typename T>
 class CudnnBNStatsFinalize {
  public:
-  CudnnBNStatsFinalize(const platform::CUDADeviceContext &ctx,
+  CudnnBNStatsFinalize(const phi::GPUContext &ctx,
                        const std::vector<int> &param_shape)
       : train_op_(CUDNN_FUSED_BN_FINALIZE_STATISTICS_TRAINING),
         inference_op_(CUDNN_FUSED_BN_FINALIZE_STATISTICS_INFERENCE) {
@@ -69,7 +69,7 @@ class CudnnBNStatsFinalize {
   }
   ~CudnnBNStatsFinalize() {}
 
-  void Forward(const platform::CUDADeviceContext &ctx,
+  void Forward(const phi::GPUContext &ctx,
                const Tensor &sum,
                const Tensor &sum_of_squares,
                const Tensor &scale,
@@ -130,7 +130,7 @@ class CudnnBNStatsFinalize {
   }
 
  private:
-  void TrainInit(const platform::CUDADeviceContext &ctx) {
+  void TrainInit(const phi::GPUContext &ctx) {
     // Set constant_param for train op
     train_op_.SetOpConstParamAttr({CUDNN_PARAM_YSUM_PLACEHOLDER,
                                    CUDNN_PARAM_YSQSUM_PLACEHOLDER,
@@ -167,7 +167,7 @@ class CudnnBNStatsFinalize {
                                        &workspace_size_bytes);
   }
 
-  void InferenceInit(const platform::CUDADeviceContext &ctx) {
+  void InferenceInit(const phi::GPUContext &ctx) {
     // Set constant_param for inference op
     inference_op_.SetOpConstParamAttr({CUDNN_PARAM_BN_SCALE_PLACEHOLDER,
                                        CUDNN_PARAM_BN_BIAS_PLACEHOLDER,

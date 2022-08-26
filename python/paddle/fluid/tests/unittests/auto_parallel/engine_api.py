@@ -31,6 +31,8 @@ from paddle.static import InputSpec
 from paddle.distributed import fleet
 import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.engine import Engine
+from paddle.optimizer.lr import CosineAnnealingDecay
+from paddle.fluid.dataloader.collate import default_collate_fn
 
 paddle.enable_static()
 global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
@@ -89,11 +91,11 @@ class MLPLayer(nn.Layer):
 
     def forward(self, input):
         out = auto.shard_op(self.norm, dist_attr={"process_mesh":
-                                                  PP_MESH_0})(input)[0]
+                                                  PP_MESH_0})(input)
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
         out = auto.shard_op(self.linear1, dist_attr={"process_mesh":
-                                                     PP_MESH_1})(out)[0]
+                                                     PP_MESH_1})(out)
         out = self.dropout(out)
         out = self.linear2(out)
         self.out = out
@@ -106,19 +108,16 @@ def train(fetch):
                    dropout_ratio=0.1,
                    initializer_range=0.02)
     loss = paddle.nn.CrossEntropyLoss()
-    optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
-                                                     beta1=0.9,
-                                                     beta2=0.999,
-                                                     epsilon=1e-08,
-                                                     grad_clip=None)
+    optimizer = paddle.optimizer.Adam(learning_rate=0.00001,
+                                      beta1=0.9,
+                                      beta2=0.999,
+                                      epsilon=1e-08,
+                                      grad_clip=None)
 
     inputs_spec = InputSpec([batch_size, hidden_size], 'float32', 'x')
     labels_spec = InputSpec([batch_size], 'int64', 'label')
 
     dist_strategy = fleet.DistributedStrategy()
-    dist_strategy.amp = False
-    dist_strategy.pipeline = False
-    dist_strategy.recompute = False
     dist_strategy.semi_auto = True
     fleet.init(is_collective=True, strategy=dist_strategy)
 

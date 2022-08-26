@@ -44,7 +44,7 @@ static bool IsSkippableVar(const std::string &name,
 
 static void ClearSkipVars(const OpVariant &op) {
   auto &attrs = const_cast<framework::AttributeMap &>(op.Attrs());
-  std::vector<std::string> &attr_skip_vars = BOOST_GET(
+  std::vector<std::string> &attr_skip_vars = PADDLE_GET(
       std::vector<std::string>, attrs[RecurrentBase::kSkipEagerDeletionVars]);
   attr_skip_vars.clear();
 }
@@ -55,7 +55,7 @@ static void AddSkipVars(const OpVariant &op, const Container &skip_vars) {
   auto &attrs = const_cast<framework::AttributeMap &>(op.Attrs());
   VLOG(2) << "Prepare to add " << skip_vars.size()
           << " skip var(s): " << paddle::string::join_strings(skip_vars, ' ');
-  std::vector<std::string> &attr_skip_vars = BOOST_GET(
+  std::vector<std::string> &attr_skip_vars = PADDLE_GET(
       std::vector<std::string>, attrs[RecurrentBase::kSkipEagerDeletionVars]);
   attr_skip_vars.insert(
       attr_skip_vars.end(), skip_vars.cbegin(), skip_vars.cend());

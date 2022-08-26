@@ -40,8 +40,7 @@ class MemcpyH2DFunctor {
   void operator()(const framework::LoDTensor &lod_tensor) const {
     auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto stream =
-        static_cast<const platform::CUDADeviceContext *>(&dev_ctx_)->stream();
+    auto stream = static_cast<const phi::GPUContext *>(&dev_ctx_)->stream();
 #else
     auto stream = nullptr;
 #endif
@@ -50,7 +49,7 @@ class MemcpyH2DFunctor {
         lod_tensor.dtype(),
         phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 
-    if (dst_place_type_ == 0 || dst_place_type_ == 1 || dst_place_type_ == 2) {
+    if (dst_place_type_ >= 0 && dst_place_type_ <= 3) {
       framework::TensorCopy(
           lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
     } else {

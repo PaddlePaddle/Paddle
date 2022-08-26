@@ -14,6 +14,7 @@
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/complex.h"
 
 #if !defined(_WIN32)
 #include <dirent.h>
@@ -23,6 +24,9 @@
 
 #include <functional>
 #include <regex>
+
+#include "glog/logging.h"
+#include "paddle/utils/string/split.h"
 
 namespace phi {
 
@@ -132,6 +136,80 @@ void Device::MemorySet(void* ptr, uint8_t value, size_t size) {
   impl_->MemorySet(dev_id_, ptr, value, size);
 }
 
+template <typename T>
+void Device::BlasAXPBY(const stream::Stream& stream,
+                       size_t numel,
+                       float alpha,
+                       const T* x,
+                       float beta,
+                       T* y) {
+  impl_->BlasAXPBY(dev_id_,
+                   stream,
+                   paddle::experimental::CppTypeToDataType<T>::Type(),
+                   numel,
+                   alpha,
+                   reinterpret_cast<void*>(const_cast<T*>(x)),
+                   beta,
+                   reinterpret_cast<void*>(y));
+}
+
+template void Device::BlasAXPBY<paddle::float16>(const stream::Stream& stream,
+                                                 size_t numel,
+                                                 float alpha,
+                                                 const paddle::float16* x,
+                                                 float beta,
+                                                 paddle::float16* y);
+template void Device::BlasAXPBY<float>(const stream::Stream& stream,
+                                       size_t numel,
+                                       float alpha,
+                                       const float* x,
+                                       float beta,
+                                       float* y);
+template void Device::BlasAXPBY<double>(const stream::Stream& stream,
+                                        size_t numel,
+                                        float alpha,
+                                        const double* x,
+                                        float beta,
+                                        double* y);
+template void Device::BlasAXPBY<int8_t>(const stream::Stream& stream,
+                                        size_t numel,
+                                        float alpha,
+                                        const int8_t* x,
+                                        float beta,
+                                        int8_t* y);
+template void Device::BlasAXPBY<int16_t>(const stream::Stream& stream,
+                                         size_t numel,
+                                         float alpha,
+                                         const int16_t* x,
+                                         float beta,
+                                         int16_t* y);
+template void Device::BlasAXPBY<int32_t>(const stream::Stream& stream,
+                                         size_t numel,
+                                         float alpha,
+                                         const int32_t* x,
+                                         float beta,
+                                         int32_t* y);
+template void Device::BlasAXPBY<int64_t>(const stream::Stream& stream,
+                                         size_t numel,
+                                         float alpha,
+                                         const int64_t* x,
+                                         float beta,
+                                         int64_t* y);
+template void Device::BlasAXPBY<phi::dtype::complex<float>>(
+    const stream::Stream& stream,
+    size_t numel,
+    float alpha,
+    const phi::dtype::complex<float>* x,
+    float beta,
+    phi::dtype::complex<float>* y);
+template void Device::BlasAXPBY<phi::dtype::complex<double>>(
+    const stream::Stream& stream,
+    size_t numel,
+    float alpha,
+    const phi::dtype::complex<double>* x,
+    float beta,
+    phi::dtype::complex<double>* y);
+
 std::string Device::Type() { return impl_->Type(); }
 
 static phi::RWLock _global_device_manager_rw_lock;
@@ -176,14 +254,11 @@ DeviceInterface* DeviceManager::GetDeviceInterfaceWithType(
   phi::AutoRDLock lock(&_global_device_manager_rw_lock);
 
   auto& dev_impl_map = Instance().device_impl_map_;
-  if (dev_impl_map.find(device_type) != dev_impl_map.end()) {
-    return dev_impl_map.at(device_type).get();
-  } else {
-    LOG(ERROR) << "GetDeviceInterfaceWithType - " << device_type << " Failed\n";
-    PADDLE_THROW(
-        phi::errors::Fatal("Unregistered device type %s.", device_type));
-    return nullptr;
-  }
+  PADDLE_ENFORCE_NE(
+      dev_impl_map.find(device_type),
+      dev_impl_map.end(),
+      phi::errors::NotFound("%s interface not found.", device_type));
+  return dev_impl_map.at(device_type).get();
 }
 
 Device* DeviceManager::GetDeviceWithPlace(const Place& place) {
@@ -386,6 +461,190 @@ std::vector<size_t> DeviceManager::GetDeviceList(
     const std::string& device_type) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   return dev_impl->GetDeviceList();
+}
+
+std::vector<size_t> DeviceManager::GetSelectedDeviceList(
+    const std::string& device_type) {
+  std::vector<size_t> devices;
+  std::string FLAGS = "FLAGS_selected_" + device_type + "s";
+  auto FLAGS_selected_devices = getenv(FLAGS.c_str());
+  if (FLAGS_selected_devices) {
+    auto devices_str = paddle::string::Split(FLAGS_selected_devices, ',');
+    for (auto id : devices_str) {
+      devices.push_back(atoi(id.c_str()));
+    }
+  } else {
+    int count = DeviceManager::GetDeviceCount(device_type);
+    for (int i = 0; i < count; ++i) {
+      devices.push_back(i);
+    }
+  }
+  return devices;
+}
+
+void DeviceManager::CCLDestroyComm(const std::string& device_type,
+                                   ccl::CCLComm ccl_comm) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLDestroyComm(ccl_comm);
+}
+
+void DeviceManager::CCLCommInitRank(const std::string& device_type,
+                                    size_t num_ranks,
+                                    ccl::CCLRootId* root_id,
+                                    size_t rank_id,
+                                    ccl::CCLComm* ccl_comm) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLCommInitRank(num_ranks, root_id, rank_id, ccl_comm);
+}
+
+void DeviceManager::CCLGetUniqueId(const std::string& device_type,
+                                   ccl::CCLRootId* root_id) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLGetUniqueId(root_id);
+}
+
+void DeviceManager::CCLBroadcast(const std::string& device_type,
+                                 void* data,
+                                 size_t num,
+                                 ccl::CCLDataType data_type,
+                                 size_t root_id,
+                                 const ccl::CCLComm& ccl_comm,
+                                 const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLBroadcast(data, num, data_type, root_id, ccl_comm, stream);
+}
+
+void DeviceManager::CCLAllReduce(const std::string& device_type,
+                                 void* in_data,
+                                 void* out_data,
+                                 size_t num,
+                                 ccl::CCLDataType data_type,
+                                 ccl::CCLReduceOp reduce_op,
+                                 const ccl::CCLComm& ccl_comm,
+                                 const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLAllReduce(
+      in_data, out_data, num, data_type, reduce_op, ccl_comm, stream);
+}
+
+void DeviceManager::CCLReduce(const std::string& device_type,
+                              void* in_data,
+                              void* out_data,
+                              size_t num,
+                              ccl::CCLDataType data_type,
+                              ccl::CCLReduceOp reduce_op,
+                              size_t root_id,
+                              const ccl::CCLComm& ccl_comm,
+                              const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLReduce(
+      in_data, out_data, num, data_type, reduce_op, root_id, ccl_comm, stream);
+}
+
+void DeviceManager::CCLAllGather(const std::string& device_type,
+                                 void* in_data,
+                                 void* out_data,
+                                 size_t num,
+                                 ccl::CCLDataType data_type,
+                                 const ccl::CCLComm& ccl_comm,
+                                 const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLAllGather(in_data, out_data, num, data_type, ccl_comm, stream);
+}
+
+void DeviceManager::CCLReduceScatter(const std::string& device_type,
+                                     void* in_data,
+                                     void* out_data,
+                                     size_t num,
+                                     ccl::CCLDataType data_type,
+                                     ccl::CCLReduceOp op,
+                                     const ccl::CCLComm& ccl_comm,
+                                     const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLReduceScatter(
+      in_data, out_data, num, data_type, op, ccl_comm, stream);
+}
+
+void DeviceManager::CCLGroupStart(const std::string& device_type) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLGroupStart();
+}
+
+void DeviceManager::CCLGroupEnd(const std::string& device_type) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLGroupEnd();
+}
+
+void DeviceManager::CCLSend(const std::string& device_type,
+                            void* sendbuf,
+                            size_t num,
+                            ccl::CCLDataType data_type,
+                            size_t dst_rank,
+                            const ccl::CCLComm& ccl_comm,
+                            const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLSend(sendbuf, num, data_type, dst_rank, ccl_comm, stream);
+}
+
+void DeviceManager::CCLRecv(const std::string& device_type,
+                            void* recvbuf,
+                            size_t num,
+                            ccl::CCLDataType data_type,
+                            size_t src_rank,
+                            const ccl::CCLComm& ccl_comm,
+                            const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLRecv(recvbuf, num, data_type, src_rank, ccl_comm, stream);
+}
+
+// profiler
+void DeviceManager::ProfilerInitialize(
+    const std::string& dev_type,
+    paddle::platform::TraceEventCollector* collector,
+    void** context) {
+  auto dev_impl = GetDeviceInterfaceWithType(dev_type);
+  dev_impl->ProfilerInitialize(collector, context);
+}
+
+void DeviceManager::ProfilerFinalize(
+    const std::string& dev_type,
+    paddle::platform::TraceEventCollector* collector,
+    void* context) {
+  auto dev_impl = GetDeviceInterfaceWithType(dev_type);
+  dev_impl->ProfilerFinalize(collector, context);
+}
+
+void DeviceManager::ProfilerPrepareTracing(
+    const std::string& dev_type,
+    paddle::platform::TraceEventCollector* collector,
+    void* context) {
+  auto dev_impl = GetDeviceInterfaceWithType(dev_type);
+  dev_impl->ProfilerPrepareTracing(collector, context);
+}
+
+void DeviceManager::ProfilerStartTracing(
+    const std::string& dev_type,
+    paddle::platform::TraceEventCollector* collector,
+    void* context) {
+  auto dev_impl = GetDeviceInterfaceWithType(dev_type);
+  dev_impl->ProfilerStartTracing(collector, context);
+}
+
+void DeviceManager::ProfilerStopTracing(
+    const std::string& dev_type,
+    paddle::platform::TraceEventCollector* collector,
+    void* context) {
+  auto dev_impl = GetDeviceInterfaceWithType(dev_type);
+  dev_impl->ProfilerStopTracing(collector, context);
+}
+
+void DeviceManager::ProfilerCollectTraceData(
+    const std::string& dev_type,
+    paddle::platform::TraceEventCollector* collector,
+    uint64_t start_ns,
+    void* context) {
+  auto dev_impl = GetDeviceInterfaceWithType(dev_type);
+  dev_impl->ProfilerCollectTraceData(collector, start_ns, context);
 }
 
 DeviceManager& DeviceManager::Instance() {

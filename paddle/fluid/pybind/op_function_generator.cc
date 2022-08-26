@@ -422,13 +422,17 @@ std::string GenerateOpFunctionsBody(
   return op_function_str;
 }
 
-static std::tuple<std::vector<std::string>, std::vector<std::string>>
-GenerateOpFunctions() {
+static std::vector<
+    std::tuple<std::vector<std::string>, std::vector<std::string>>>
+GenerateOpFunctions(int split_count) {
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
-
+  std::vector<std::tuple<std::vector<std::string>, std::vector<std::string>>>
+      result;
   std::vector<std::string> op_function_list, bind_function_list;
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
 
+  paddle::flat_hash_map<std::string, paddle::framework::OpInfo>
+      op_info_map_need_gen;
   for (auto& pair : op_info_map) {
     auto& op_info = pair.second;
     auto op_proto = op_info.proto_;
@@ -443,6 +447,22 @@ GenerateOpFunctions() {
         !phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type)) {
       continue;
     }
+
+    op_info_map_need_gen.emplace(pair);
+  }
+
+  int cc_file_api_size = op_info_map_need_gen.size() / split_count;
+  if (op_info_map_need_gen.size() % split_count != 0) {
+    cc_file_api_size++;
+  }
+  int api_index = 0;
+  int file_index = 0;
+
+  for (auto& pair : op_info_map_need_gen) {
+    auto& op_info = pair.second;
+    auto op_proto = op_info.proto_;
+
+    auto& op_type = op_proto->type();
 
     // NOTE(pangyoki): Inplace Strategy.
     // In this case, output will reuse input varbase.
@@ -489,13 +509,24 @@ GenerateOpFunctions() {
       op_function_list.emplace_back(std::move(inplace_op_function_str));
       bind_function_list.emplace_back(std::move(inplace_bind_function_str));
     }
+
+    api_index++;
+    if (api_index / cc_file_api_size > file_index) {
+      file_index++;
+      result.push_back(std::make_tuple(op_function_list, bind_function_list));
+      op_function_list.clear();
+      bind_function_list.clear();
+    }
   }
-  return std::make_tuple(op_function_list, bind_function_list);
+
+  result.push_back(std::make_tuple(op_function_list, bind_function_list));
+
+  return result;
 }
 
 int main(int argc, char* argv[]) {
-  if (argc != 2) {
-    std::cerr << "argc must be 2" << std::endl;
+  if (argc != 3) {
+    std::cerr << "argc must be 3" << std::endl;
     return -1;
   }
 
@@ -506,44 +537,57 @@ int main(int argc, char* argv[]) {
 
   std::vector<std::string> headers{"\"paddle/fluid/imperative/tracer.h\"",
                                    "\"paddle/fluid/platform/profiler.h\"",
+                                   "\"pybind11/numpy.h\"",
+                                   "\"pybind11/pybind11.h\"",
                                    "\"pybind11/detail/common.h\"",
+                                   "\"paddle/fluid/pybind/eager_utils.h\"",
+                                   "\"paddle/fluid/pybind/op_function.h\"",
                                    "<Python.h>"};
 
-  std::ofstream out(argv[1], std::ios::out);
+  std::string path = argv[1];
+  int split_count = atoi(argv[2]);
 
-  out << "#pragma once\n\n";
+  auto op_funcs = GenerateOpFunctions(split_count);
 
-  for (auto& header : headers) {
-    out << "#include  " + header + "\n";
+  for (size_t i = 0; i < op_funcs.size(); i++) {
+    std::ofstream out(path + "op_function" + std::to_string(i + 1) + ".cc.tmp",
+                      std::ios::out);
+
+    out << "#if defined(_MSC_VER)\n"
+        << "#include <BaseTsd.h>\n"
+        << "typedef SSIZE_T ssize_t;\n"
+        << "#endif\n";
+
+    for (auto& header : headers) {
+      out << "#include  " + header + "\n";
+    }
+
+    out << "\n\n";
+
+    out << "namespace paddle {\n"
+        << "namespace pybind {\n\n";
+    out << "extern std::atomic<int> VarBaseUniqueNameID;\n";
+    out << paddle::string::join_strings(std::get<0>(op_funcs[i]), '\n');
+    out << "\n\n";
+
+    out << "static PyMethodDef ExtestMethods[] = {\n"
+        << paddle::string::join_strings(std::get<1>(op_funcs[i]), '\n')
+        << "\n  {nullptr,nullptr,0,nullptr}"
+        << "};\n\n";
+
+    out << "void BindOpFunctions" << i + 1 << "(pybind11::module *module) {\n"
+        << "  auto m = module->def_submodule(\"ops\");\n"
+        << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
+        << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
+           "core.ops failed!\"));\n"
+        << "  }\n\n"
+        << "  InitOpsAttrTypeMap();"
+        << "}\n\n"
+        << "} // namespace pybind\n"
+        << "} // namespace paddle\n";
+
+    out.close();
   }
-
-  out << "\n\n";
-
-  auto op_funcs = GenerateOpFunctions();
-
-  out << "namespace paddle {\n"
-      << "namespace pybind {\n\n";
-  out << "std::atomic<int> VarBaseUniqueNameID{0};\n";
-  out << paddle::string::join_strings(std::get<0>(op_funcs), '\n');
-  out << "\n\n";
-
-  out << "static PyMethodDef ExtestMethods[] = {\n"
-      << paddle::string::join_strings(std::get<1>(op_funcs), '\n')
-      << "\n  {nullptr,nullptr,0,nullptr}"
-      << "};\n\n";
-
-  out << "inline void BindOpFunctions(pybind11::module *module) {\n"
-      << "  auto m = module->def_submodule(\"ops\");\n"
-      << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
-      << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
-         "core.ops failed!\"));\n"
-      << "  }\n\n"
-      << "  InitOpsAttrTypeMap();"
-      << "}\n\n"
-      << "} // namespace pybind\n"
-      << "} // namespace paddle\n";
-
-  out.close();
 
 #ifdef PADDLE_WITH_ASCEND_CL
   ge::GEFinalize();

@@ -53,7 +53,7 @@ class OpVariant {
         it,
         attrs.end(),
         platform::errors::NotFound("Cannot find attribute %s.", name));
-    return BOOST_GET_CONST(AttrType, it->second);
+    return PADDLE_GET_CONST(AttrType, it->second);
   }
 
   bool operator==(const OpVariant &other) const {

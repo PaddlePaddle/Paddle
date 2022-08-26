@@ -69,19 +69,19 @@ class TestSparseElementWiseAPI(unittest.TestCase):
             expect_res = op(dense_x, dense_y)
             expect_res.backward(expect_res)
 
-            self.assertTrue(
-                np.allclose(expect_res.numpy(),
-                            actual_res.to_dense().numpy(),
-                            equal_nan=True))
+            np.testing.assert_allclose(expect_res.numpy(),
+                                       actual_res.to_dense().numpy(),
+                                       rtol=1e-05,
+                                       equal_nan=True)
             if not (op == __truediv__ and dtype in ['int32', 'int64']):
-                self.assertTrue(
-                    np.allclose(dense_x.grad.numpy(),
-                                csr_x.grad.to_dense().numpy(),
-                                equal_nan=True))
-                self.assertTrue(
-                    np.allclose(dense_y.grad.numpy(),
-                                csr_y.grad.to_dense().numpy(),
-                                equal_nan=True))
+                np.testing.assert_allclose(dense_x.grad.numpy(),
+                                           csr_x.grad.to_dense().numpy(),
+                                           rtol=1e-05,
+                                           equal_nan=True)
+                np.testing.assert_allclose(dense_y.grad.numpy(),
+                                           csr_y.grad.to_dense().numpy(),
+                                           rtol=1e-05,
+                                           equal_nan=True)
 
     def func_test_coo(self, op):
         for sparse_dim in range(len(self.coo_shape) - 1, len(self.coo_shape)):
@@ -109,32 +109,30 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                 expect_res = op(dense_x, dense_y)
                 expect_res.backward(expect_res)
 
-                self.assertTrue(
-                    np.allclose(expect_res.numpy(),
-                                actual_res.to_dense().numpy(),
-                                equal_nan=True))
-                self.assertTrue(
-                    np.allclose(dense_x.grad.numpy(),
-                                coo_x.grad.to_dense().numpy(),
-                                equal_nan=True))
-                self.assertTrue(
-                    np.allclose(dense_y.grad.numpy(),
-                                coo_y.grad.to_dense().numpy(),
-                                equal_nan=True))
+                np.testing.assert_allclose(expect_res.numpy(),
+                                           actual_res.to_dense().numpy(),
+                                           rtol=1e-05,
+                                           equal_nan=True)
+                np.testing.assert_allclose(dense_x.grad.numpy(),
+                                           coo_x.grad.to_dense().numpy(),
+                                           rtol=1e-05,
+                                           equal_nan=True)
+                np.testing.assert_allclose(dense_y.grad.numpy(),
+                                           coo_y.grad.to_dense().numpy(),
+                                           rtol=1e-05,
+                                           equal_nan=True)
 
     def test_support_dtypes_csr(self):
         paddle.device.set_device('cpu')
         if paddle.device.get_device() == "cpu":
-            with _test_eager_guard():
-                for op in op_list:
-                    self.func_test_csr(op)
+            for op in op_list:
+                self.func_test_csr(op)
 
     def test_support_dtypes_coo(self):
         paddle.device.set_device('cpu')
         if paddle.device.get_device() == "cpu":
-            with _test_eager_guard():
-                for op in op_list:
-                    self.func_test_coo(op)
+            for op in op_list:
+                self.func_test_coo(op)
 
 
 if __name__ == "__main__":

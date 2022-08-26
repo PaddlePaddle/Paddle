@@ -4,7 +4,6 @@ if(WITH_IPU)
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "test_*.py")
   string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
-
   foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
     # set all UTs timeout to 200s
@@ -15,4 +14,8 @@ if(WITH_IPU)
   set_tests_properties(test_elemetwise_x_op_ipu PROPERTIES TIMEOUT 300)
   set_tests_properties(test_reduce_x_op_ipu PROPERTIES TIMEOUT 600)
   set_tests_properties(test_save_load_ipu PROPERTIES TIMEOUT 600)
+  set_tests_properties(test_activation_ops_ipu PROPERTIES TIMEOUT 600)
+
+  add_subdirectory(custom_ops)
+
 endif()

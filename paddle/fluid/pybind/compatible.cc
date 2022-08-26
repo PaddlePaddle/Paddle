@@ -18,7 +18,7 @@
 #include <string>
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
 
 namespace py = pybind11;
 

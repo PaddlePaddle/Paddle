@@ -66,6 +66,9 @@ def get_source_code(func):
 class StaticCode1():
 
     def dyfunc_with_if_else(x_v, label=None):
+        loss = _jst.UndefinedVar('loss')
+        __return_1 = _jst.UndefinedVar('__return_1')
+        __return_0 = _jst.UndefinedVar('__return_0')
         __return_value_0 = None
 
         def get_args_0():
@@ -89,9 +92,6 @@ class StaticCode1():
         _jst.IfElse(
             paddle.mean(x_v)[0] > 5, true_fn_0, false_fn_0, get_args_0,
             set_args_0, ('x_v', ))
-        __return_0 = _jst.UndefinedVar('__return_0')
-        __return_1 = _jst.UndefinedVar('__return_1')
-        loss = _jst.UndefinedVar('loss')
 
         def get_args_1():
             nonlocal __return_0, __return_1, __return_value_0, loss
@@ -123,6 +123,9 @@ class StaticCode1():
 class StaticCode2():
     # TODO: Transform return statement
     def dyfunc_with_if_else(x_v, label=None):
+        loss = _jst.UndefinedVar('loss')
+        __return_3 = _jst.UndefinedVar('__return_3')
+        __return_2 = _jst.UndefinedVar('__return_2')
         __return_value_1 = None
 
         def get_args_2():
@@ -146,9 +149,6 @@ class StaticCode2():
         _jst.IfElse(
             paddle.mean(x_v)[0] > 5, true_fn_2, false_fn_2, get_args_2,
             set_args_2, ('x_v', ))
-        __return_2 = _jst.UndefinedVar('__return_2')
-        __return_3 = _jst.UndefinedVar('__return_3')
-        loss = _jst.UndefinedVar('loss')
 
         def get_args_3():
             nonlocal __return_2, __return_3, __return_value_1, loss
@@ -234,10 +234,10 @@ class TestEnableDeclarative(unittest.TestCase):
         with fluid.dygraph.guard():
             dygraph_output = self.program_translator.get_output(
                 simple_func, self.x, self.weight)
-            self.assertTrue(
-                np.allclose(static_output.numpy(),
-                            dygraph_output.numpy(),
-                            atol=1e-4))
+            np.testing.assert_allclose(static_output.numpy(),
+                                       dygraph_output.numpy(),
+                                       rtol=1e-05,
+                                       atol=1e-4)
 
     def test_enable_disable_get_func(self):
 
@@ -290,10 +290,10 @@ class TestEnableDeclarative(unittest.TestCase):
         self.program_translator.enable(False)
         with fluid.dygraph.guard():
             dygraph_output = decorated_simple_func(self.x, self.weight)
-            self.assertTrue(
-                np.allclose(static_output.numpy(),
-                            dygraph_output.numpy(),
-                            atol=1e-4))
+            np.testing.assert_allclose(static_output.numpy(),
+                                       dygraph_output.numpy(),
+                                       rtol=1e-05,
+                                       atol=1e-4)
 
 
 class Net(fluid.dygraph.layers.Layer):
@@ -381,13 +381,13 @@ class TestIfElseEarlyReturn(unittest.TestCase):
         answer = np.zeros([2, 2]) + 1
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return1)
         out = static_func()
-        self.assertTrue(np.allclose(answer, out[0].numpy()))
+        np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
 
     def test_ifelse_early_return2(self):
         answer = np.zeros([2, 2]) + 3
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return2)
         out = static_func()
-        self.assertTrue(np.allclose(answer, out[0].numpy()))
+        np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
 
 
 class TestRemoveCommentInDy2St(unittest.TestCase):

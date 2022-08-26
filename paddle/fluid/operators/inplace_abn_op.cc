@@ -204,7 +204,7 @@ class InplaceABNOpGradMaker : public framework::SingleGradOpMaker<T> {
     }
 
     // used when setting use_global_stats True during training
-    if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
+    if (PADDLE_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
       op->SetInput("Mean", this->Output("MeanOut"));
       op->SetInput("Variance", this->Output("VarianceOut"));
     }

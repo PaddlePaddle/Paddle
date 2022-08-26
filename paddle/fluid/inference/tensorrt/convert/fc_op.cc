@@ -1,11 +1,8 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
 http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -158,26 +155,26 @@ class FcOpConverter : public OpConverter {
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")
-            ? BOOST_GET_CONST(int, op_desc.GetAttr("x_num_col_dims"))
+            ? PADDLE_GET_CONST(int, op_desc.GetAttr("x_num_col_dims"))
             : (op_desc.HasAttr("in_num_col_dims")
-                   ? BOOST_GET_CONST(int, op_desc.GetAttr("in_num_col_dims"))
+                   ? PADDLE_GET_CONST(int, op_desc.GetAttr("in_num_col_dims"))
                    : 1);
     const std::string activation_type =
         op_desc.HasAttr("activation_type")
-            ? BOOST_GET_CONST(std::string, op_desc.GetAttr("activation_type"))
+            ? PADDLE_GET_CONST(std::string, op_desc.GetAttr("activation_type"))
             : "";
 
     bool enable_int8 = op_desc.HasAttr("enable_int8");
     bool support_int8 = false;
     if (op_desc.HasAttr("support_int8")) {
-      support_int8 = BOOST_GET_CONST(bool, op_desc.GetAttr("support_int8"));
+      support_int8 = PADDLE_GET_CONST(bool, op_desc.GetAttr("support_int8"));
     }
     float in_scale = 0;
     if (enable_int8 || support_int8) {
       if (enable_int8) {
-        in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+        in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
       } else {
-        in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("X"));
+        in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("X"));
       }
       engine_->SetTensorDynamicRange(X, in_scale);
     }
@@ -204,9 +201,9 @@ class FcOpConverter : public OpConverter {
               true,
               platform::errors::InvalidArgument(
                   "must have out threshold in fc layers in int8 mode"));
-          out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
         } else {
-          out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Out"));
+          out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Out"));
         }
         nvinfer1::DimsHW nv_ksize(1, 1);
         auto* fc_layer_int8 = TRT_ENGINE_ADD_LAYER(engine_,
@@ -280,7 +277,7 @@ class FcOpConverter : public OpConverter {
 
     bool transpose_y = false;
     if (op_desc.HasAttr("transpose_Y")) {
-      transpose_y = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_Y"));
+      transpose_y = PADDLE_GET_CONST(bool, op_desc.GetAttr("transpose_Y"));
     }
     int weight_w, weight_h;
     auto weight = engine_->GetTrtWeight(op_desc.Input(w_name).front(), *Y_t);
@@ -358,9 +355,9 @@ class FcOpConverter : public OpConverter {
           float out_scale = 0;
           if (enable_int8) {
             out_scale =
-                BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+                PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
           } else {
-            out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Out"));
+            out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Out"));
           }
           engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0),
                                          out_scale);

@@ -371,6 +371,12 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     }
   }
 
+  VLOG(6) << "Run Backward Final hook size: "
+          << egr::Controller::Instance().FinalBackwardHooks().size();
+  for (auto& hook : egr::Controller::Instance().FinalBackwardHooks()) {
+    (*hook)();
+  }
+  egr::Controller::Instance().ClearFinalBackwardHooks();
   if (!is_general_grad) return {};
   return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
 }
@@ -381,7 +387,7 @@ void Backward(
     bool retain_graph) {
   VLOG(3) << "Run in Backward";
   paddle::platform::RecordEvent backward_record_event(
-      "backward", paddle::platform::TracerEventType::Operator, 1);
+      "backward", paddle::platform::TracerEventType::UserDefined, 1);
   RunBackward(tensors, grad_tensors, retain_graph);
   phi::autotune::AutoTuneStatus::Instance().Update();
 }

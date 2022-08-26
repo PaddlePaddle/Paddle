@@ -33,6 +33,7 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
     auto table_id = context.Attr<int>("table_id");
     auto emb_dim = context.Attr<int>("size");
     auto use_cvm_op = context.Attr<bool>("use_cvm_op");
+    auto slots = context.Attr<std::vector<int>>("slots");
 
     auto inputs = context.MultiInput<framework::LoDTensor>("Ids");
     auto shows = context.Input<framework::LoDTensor>("Shows");
@@ -47,6 +48,7 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
                                        static_cast<uint64_t>(padding_idx),
                                        context.GetPlace(),
                                        &inputs,
+                                       slots,
                                        shows,
                                        clks,
                                        &outputs,
@@ -103,6 +105,7 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
                                        static_cast<uint64_t>(padding_idx),
                                        context.GetPlace(),
                                        &tmp_input_vec,
+                                       slots,
                                        tmp_shows_tensor,
                                        tmp_clicks_tensor,
                                        &tmp_output_vec);

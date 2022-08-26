@@ -161,8 +161,14 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 #endif
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-      gc.reset(new framework::CustomDefaultStreamGarbageCollector(place, 0));
-      VLOG(10) << "Created GarbageCollector at " << place;
+      if (framework::IsFastEagerDeletionModeEnabled()) {
+        gc.reset(
+            new framework::CustomDeviceUnsafeFastGarbageCollector(place, 0));
+        VLOG(10) << "Created UnsafeFastGarbageCollector at " << place;
+      } else {
+        gc.reset(new framework::CustomDefaultStreamGarbageCollector(place, 0));
+        VLOG(10) << "Created GarbageCollector at " << place;
+      }
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Paddle can't use CustomDevice since it's not compiled with "

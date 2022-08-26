@@ -61,10 +61,8 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
           phi::make_ddim({1UL, end_pos - start_pos});
       x_i.Resize(dims_i);
       out_i.Resize(dims_i);
-      math::SoftmaxCUDNNFunctor<T, platform::CUDADeviceContext>()(
-          ctx.template device_context<platform::CUDADeviceContext>(),
-          &x_i,
-          &out_i);
+      math::SoftmaxCUDNNFunctor<T, phi::GPUContext>()(
+          ctx.template device_context<phi::GPUContext>(), &x_i, &out_i);
     }
   }
 };
@@ -97,8 +95,8 @@ class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
       out_i.Resize(dims_i);
       out_grad_i.Resize(dims_i);
       x_grad_i.Resize(dims_i);
-      math::SoftmaxGradCUDNNFunctor<T, platform::CUDADeviceContext>()(
-          ctx.template device_context<platform::CUDADeviceContext>(),
+      math::SoftmaxGradCUDNNFunctor<T, phi::GPUContext>()(
+          ctx.template device_context<phi::GPUContext>(),
           &out_i,
           &out_grad_i,
           &x_grad_i);

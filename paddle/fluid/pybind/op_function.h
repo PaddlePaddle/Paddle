@@ -126,45 +126,6 @@ CastPyHandleToVarBaseList(const std::string& op_type,
   return result;
 }  // namespace pybind
 
-static inline void ConstructAttrMapFromPyArgs(const std::string& op_type,
-                                              int start_idx,
-                                              framework::AttributeMap* attrs,
-                                              const py::args& args) {
-  PADDLE_ENFORCE_EQ(
-      args.size() % 2,
-      0,
-      platform::errors::InvalidArgument(
-          "The number of arguments for arributes should be even."));
-  for (size_t i = 0; i < args.size(); i += 2) {
-    std::string name;
-    framework::Attribute value;
-    try {
-      name = args[i].cast<std::string>();
-    } catch (std::exception& e) {
-      PyObject* py_obj = args[i].ptr();  // get underlying PyObject
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument (position %d) must be str, but got "
-          "%s",
-          op_type,
-          start_idx + i,
-          Py_TYPE(py_obj)->tp_name));
-    }
-    try {
-      value = args[i + 1].cast<framework::Attribute>();
-    } catch (std::exception& e) {
-      PyObject* py_obj = args[i + 1].ptr();  // get underlying PyObject
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument (position %d) must be "
-          "Attribute type (one of str, bool, int, int64, float, or list of "
-          "them), but got %s",
-          op_type,
-          start_idx + i + 1,
-          Py_TYPE(py_obj)->tp_name));
-    }
-    (*attrs)[name] = value;
-  }
-}
-
 static inline std::vector<std::shared_ptr<imperative::VarBase>>
 ConstructDuplicableOutput(const size_t num) {
   auto tracer = imperative::GetCurrentTracer();
@@ -257,8 +218,14 @@ PyObject* MakeReturnPyObject(const std::tuple<Args...>& out) {
   return result;
 }
 
+void BindOpFunctions1(pybind11::module* module);
+void BindOpFunctions2(pybind11::module* module);
+void BindOpFunctions3(pybind11::module* module);
+void BindOpFunctions4(pybind11::module* module);
+void BindOpFunctions5(pybind11::module* module);
+void BindOpFunctions6(pybind11::module* module);
+void BindOpFunctions7(pybind11::module* module);
+void BindOpFunctions8(pybind11::module* module);
+
 }  // namespace pybind
 }  // namespace paddle
-
-// This include must be the last line
-#include "paddle/fluid/pybind/op_function_impl.h"

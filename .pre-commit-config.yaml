@@ -24,7 +24,7 @@ repos:
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
     -   id: end-of-file-fixer
     -   id: sort-simple-yaml
-        files: (api|backward)\.yaml$
+        files: (api|backward|api_[a-z_]+)\.yaml$
 -   repo: local
     hooks:
     -   id: clang-format

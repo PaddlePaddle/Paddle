@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/merged_momentum_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,8 +25,6 @@ class MergedMomentumOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext *ctx) const override {}
-
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto param_dtype =
@@ -100,10 +101,11 @@ class MergedMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+DECLARE_INFER_SHAPE_FUNCTOR(merged_momentum,
+                            MergedMomentumInferShapeFunctor,
+                            PD_INFER_META(phi::MergedMomentumInferMeta));
+
 REGISTER_OP_WITHOUT_GRADIENT(merged_momentum,
                              ops::MergedMomentumOp,
-                             ops::MergedMomentumOpMaker);
-
-REGISTER_OP_CPU_KERNEL(merged_momentum,
-                       ops::MergedMomentumOpKernel<phi::CPUContext, float>,
-                       ops::MergedMomentumOpKernel<phi::CPUContext, double>);
+                             ops::MergedMomentumOpMaker,
+                             MergedMomentumInferShapeFunctor);

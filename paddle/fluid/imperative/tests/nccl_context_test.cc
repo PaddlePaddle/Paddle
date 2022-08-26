@@ -78,7 +78,7 @@ void Broadcast(int local_rank, int device_id) {
   int data_size = 4;
   float test_data = 7;
   const auto& place = platform::CUDAPlace(device_id);
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
 
   imperative::NCCLParallelContext npc(GetStrategy(local_rank), place);
 

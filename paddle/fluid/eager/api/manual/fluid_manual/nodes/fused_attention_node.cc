@@ -38,7 +38,7 @@ fused_attentionGradNodeCompat::operator()(
 
   bool pre_layer_norm = false;
   if (attr_map_.count("pre_layer_norm")) {
-    pre_layer_norm = BOOST_GET_CONST(bool, attr_map_.at("pre_layer_norm"));
+    pre_layer_norm = PADDLE_GET_CONST(bool, attr_map_.at("pre_layer_norm"));
   }
 
   std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> ins0 =

@@ -17,7 +17,6 @@ from .base.role_maker import Role  # noqa: F401
 from .base.role_maker import UserDefinedRoleMaker  # noqa: F401
 from .base.role_maker import PaddleCloudRoleMaker  # noqa: F401
 from .base.distributed_strategy import DistributedStrategy  # noqa: F401
-from .base.fleet_base import Fleet  # noqa: F401
 from .base.util_factory import UtilBase  # noqa: F401
 from .dataset import DatasetBase  # noqa: F401
 from .dataset import InMemoryDataset  # noqa: F401
@@ -29,6 +28,10 @@ from .data_generator.data_generator import MultiSlotStringDataGenerator  # noqa:
 from . import metrics  # noqa: F401
 from .base.topology import CommunicateTopology
 from .base.topology import HybridCommunicateGroup  # noqa: F401
+from .fleet import Fleet
+from .model import distributed_model
+from .optimizer import distributed_optimizer
+from .scaler import distributed_scaler
 
 __all__ = [  #noqa
     "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
@@ -57,6 +60,10 @@ world_device_ids = fleet.world_device_ids
 local_rank = fleet.local_rank
 rank_in_node = local_rank
 is_worker = fleet.is_worker
+is_coordinator = fleet.is_coordinator
+init_coordinator = fleet.init_coordinator
+make_fl_strategy = fleet.make_fl_strategy
+get_fl_client = fleet.get_fl_client
 worker_endpoints = fleet.worker_endpoints
 server_num = fleet.server_num
 server_index = fleet.server_index
@@ -68,19 +75,18 @@ init_worker = fleet.init_worker
 init_server = fleet.init_server
 run_server = fleet.run_server
 stop_worker = fleet.stop_worker
-distributed_optimizer = fleet.distributed_optimizer
+distributed_optimizer = distributed_optimizer
 save_inference_model = fleet.save_inference_model
 save_persistables = fleet.save_persistables
 save_cache_model = fleet.save_cache_model
+check_save_pre_patch_done = fleet.check_save_pre_patch_done
+save_one_table = fleet.save_one_table
+save_dense_params = fleet.save_dense_params
 load_model = fleet.load_model
+load_inference_model = fleet.load_inference_model
+load_one_table = fleet.load_one_table
 minimize = fleet.minimize
-distributed_model = fleet.distributed_model
-step = fleet.step
-clear_grad = fleet.clear_grad
-set_lr = fleet.set_lr
-get_lr = fleet.get_lr
-state_dict = fleet.state_dict
-set_state_dict = fleet.set_state_dict
+distributed_model = distributed_model
 shrink = fleet.shrink
 get_hybrid_communicate_group = fleet.get_hybrid_communicate_group
-distributed_scaler = fleet.distributed_scaler
+distributed_scaler = distributed_scaler

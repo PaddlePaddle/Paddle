@@ -8,6 +8,12 @@ set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1
 set(dist_ENVS http_proxy="" https_proxy="")
 
 file(
+  GLOB MULTINODE_DIST_TEST_OPS
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "test_multinode_*.py")
+string(REPLACE ".py" "" MULTINODE_DIST_TEST_OPS "${MULTINODE_DIST_TEST_OPS}")
+
+file(
   GLOB DIST_TEST_OPS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_dist_*.py")
@@ -55,6 +61,8 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_no_sync)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_no_sync_gradient_check)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_pipeline_parallel)
+list(APPEND DIST_TEST_OPS
+     test_parallel_dygraph_pipeline_parallel_with_virtual_stage)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_tensor_parallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sharding_parallel)
 list(APPEND DIST_TEST_OPS test_dygraph_sharding_optimizer_stage2)
@@ -72,9 +80,18 @@ list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
 list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
 list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
 list(APPEND DIST_TEST_OPS test_collective_process_group)
+list(APPEND DIST_TEST_OPS test_collective_alltoall_single)
 list(APPEND DIST_TEST_OPS test_eager_dist_api)
+list(APPEND DIST_TEST_OPS test_collective_batch_isend_irecv)
+list(APPEND DIST_TEST_OPS test_collective_reduce_scatter)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_qat)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
+
+foreach(TEST_OP ${MULTINODE_DIST_TEST_OPS})
+  list(APPEND MIXED_DIST_TEST_OPS ${TEST_OP})
+endforeach()
+
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_momentum_op)
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_optimizer)
@@ -132,6 +149,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model)
 list(APPEND MIXED_DIST_TEST_OPS test_tcp_store)
+list(APPEND MIXED_DIST_TEST_OPS test_dygraph_hybrid_dp)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -156,20 +174,14 @@ list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
-  list(REMOVE_ITEM TEST_OPS test_c_concat)
-  list(REMOVE_ITEM TEST_OPS test_c_split)
   list(REMOVE_ITEM TEST_OPS test_allgather)
-  list(REMOVE_ITEM TEST_OPS test_c_identity)
   list(REMOVE_ITEM TEST_OPS test_c_embedding_op)
-  list(REMOVE_ITEM TEST_OPS test_allreduce)
-  list(REMOVE_ITEM TEST_OPS test_broadcast)
   list(REMOVE_ITEM TEST_OPS test_collective_reduce)
   list(REMOVE_ITEM TEST_OPS test_pipeline_parallel)
   list(REMOVE_ITEM TEST_OPS test_collective_scatter)
   list(REMOVE_ITEM TEST_OPS test_collective_sendrecv)
   list(REMOVE_ITEM TEST_OPS test_reducescatter)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
-  list(REMOVE_ITEM TEST_OPS test_collective_split_embedding)
   list(REMOVE_ITEM TEST_OPS test_collective_split_embedding_none_divisible)
   list(REMOVE_ITEM TEST_OPS test_collective_split_row_linear)
   list(REMOVE_ITEM TEST_OPS test_collective_split_col_linear)
@@ -180,6 +192,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_new_group_api)
   list(REMOVE_ITEM TEST_OPS test_collective_broadcast_api)
   list(REMOVE_ITEM TEST_OPS test_collective_allgather_api)
+  list(REMOVE_ITEM TEST_OPS test_collective_allgather_object_api)
   list(REMOVE_ITEM TEST_OPS test_collective_alltoall_api)
   list(REMOVE_ITEM TEST_OPS test_collective_global_gather)
   list(REMOVE_ITEM TEST_OPS test_collective_global_scatter)
@@ -201,8 +214,6 @@ endif()
 
 # Temporally disable test_deprecated_decorator
 list(REMOVE_ITEM TEST_OPS test_deprecated_decorator)
-
-list(REMOVE_ITEM TEST_OPS test_tensordot)
 
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
@@ -302,6 +313,8 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_no_sync_gradient_check)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_pipeline_parallel)
+  list(REMOVE_ITEM TEST_OPS
+       test_parallel_dygraph_pipeline_parallel_with_virtual_stage)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_tensor_parallel)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sharding_parallel)
   list(REMOVE_ITEM TEST_OPS test_dygraph_sharding_optimizer_stage2)
@@ -334,7 +347,12 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_save_load)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_autoconvert)
   list(REMOVE_ITEM TEST_OPS test_collective_process_group)
+  list(REMOVE_ITEM TEST_OPS test_collective_alltoall_single)
   list(REMOVE_ITEM TEST_OPS test_eager_dist_api)
+  list(REMOVE_ITEM TEST_OPS test_collective_batch_isend_irecv)
+  list(REMOVE_ITEM TEST_OPS test_collective_reduce_scatter)
+  list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_qat)
+
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
     list(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
@@ -767,6 +785,7 @@ if(WITH_DISTRIBUTE)
   add_subdirectory(distributed_passes)
   add_subdirectory(ps)
   add_subdirectory(auto_parallel)
+  add_subdirectory(collective)
 
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -950,6 +969,21 @@ if(WITH_DISTRIBUTE)
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
       bash_test_modules(test_ascend_group START_BASH test_ascend_group.sh ENVS
                         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+    endif()
+
+    # add new dist test
+    if(WITH_DISTRIBUTE AND WITH_MULTINODE_TESTING)
+      foreach(TEST_OP ${MULTINODE_DIST_TEST_OPS})
+        bash_test_modules(
+          ${TEST_OP}
+          START_BASH
+          multinode_dist_test.sh
+          LABELS
+          "RUN_TYPE=EXCLUSIVE"
+          ENVS
+          "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+      endforeach()
+
     endif()
 
     # port range (20000, 23000) is reserved for dist-ops
@@ -1412,7 +1446,7 @@ set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_ssa_graph_inference_feed_partial_data
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_crf PROPERTIES TIMEOUT 120)
-#set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
+set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_save_load PROPERTIES TIMEOUT 120)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
@@ -1529,6 +1563,8 @@ set_tests_properties(test_reader_reset PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool3d_api PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program PROPERTIES TIMEOUT 120)
+set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
+set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)
@@ -1545,6 +1581,9 @@ if(WITH_DISTRIBUTE
                        PROPERTIES TIMEOUT 60)
   set_tests_properties(test_parallel_dygraph_pipeline_parallel
                        PROPERTIES TIMEOUT 500)
+  set_tests_properties(
+    test_parallel_dygraph_pipeline_parallel_with_virtual_stage
+    PROPERTIES TIMEOUT 500)
   set_tests_properties(test_parallel_dygraph_tensor_parallel PROPERTIES TIMEOUT
                                                                         200)
   set_tests_properties(test_parallel_dygraph_sharding_parallel
@@ -1569,8 +1608,11 @@ if(WITH_DISTRIBUTE
   set_tests_properties(test_auto_parallel_save_load PROPERTIES TIMEOUT 120)
   set_tests_properties(test_auto_parallel_autoconvert PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_process_group PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_collective_alltoall_single PROPERTIES TIMEOUT 60)
   set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT 100)
-
+  set_tests_properties(test_collective_batch_isend_irecv PROPERTIES TIMEOUT 100)
+  set_tests_properties(test_collective_reduce_scatter PROPERTIES TIMEOUT 100)
+  set_tests_properties(test_parallel_dygraph_qat PROPERTIES TIMEOUT 120)
   if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
     set_tests_properties(test_parallel_dygraph_sparse_embedding
                          PROPERTIES TIMEOUT 200)
@@ -1591,7 +1633,9 @@ if(APPLE)
 endif()
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
-  set_tests_properties(test_collective_allgather_api PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_collective_allgather_api PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_collective_allgather_object_api PROPERTIES TIMEOUT
+                                                                       120)
   set_tests_properties(test_collective_alltoall_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_global_gather PROPERTIES TIMEOUT 200)
   set_tests_properties(test_collective_global_scatter PROPERTIES TIMEOUT 200)
@@ -1610,7 +1654,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_static_model_parallel_fused_multi_transformer
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(
-      test_collective_split_embedding
       test_collective_split_embedding_none_divisible
       test_collective_split_row_linear
       test_collective_split_col_linear
@@ -1622,6 +1665,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
       test_new_group_api
       test_collective_broadcast_api
       test_collective_allgather_api
+      test_collective_allgather_object_api
       test_collective_alltoall_api
       test_collective_global_gather
       test_collective_global_scatter
@@ -1629,16 +1673,11 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   endif()
   set_tests_properties(test_paddle_multiprocessing PROPERTIES TIMEOUT 120)
   set_tests_properties(test_reducescatter_api PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_broadcast PROPERTIES TIMEOUT 120)
   set_tests_properties(test_reducescatter PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_reduce_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_pipeline_parallel PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_reduce PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_allreduce PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_c_concat PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_c_split PROPERTIES TIMEOUT 120)
   set_tests_properties(test_allgather PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_c_identity PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_scatter_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_barrier_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_scatter PROPERTIES TIMEOUT 120)
@@ -1706,3 +1745,24 @@ if(WITH_CINN AND WITH_TESTING)
       FLAGS_allow_cinn_ops="conv2d;conv2d_grad;elementwise_add;elementwise_add_grad;relu;relu_grad;sum"
   )
 endif()
+
+py_test_modules(
+  test_add_reader_dependency_for_interpretercore MODULES
+  test_add_reader_dependency ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+
+set_tests_properties(test_add_reader_dependency_for_interpretercore
+                     PROPERTIES TIMEOUT 120)
+
+py_test_modules(test_renorm_op_without_eager MODULES test_renorm_op ENVS
+                FLAGS_enable_eager_mode=0)
+
+set_tests_properties(test_renorm_op_without_eager PROPERTIES TIMEOUT 120)
+py_test_modules(
+  test_eager_deletion_padding_rnn_for_interpretercore MODULES
+  test_eager_deletion_padding_rnn ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+
+# ExecutionStrategy is deprecated in standalone executor
+set_tests_properties(test_parallel_executor_dry_run
+                     PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
+set_tests_properties(test_parallel_executor_drop_scope
+                     PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")

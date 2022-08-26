@@ -27,6 +27,9 @@ set(THIRD_PARTY_CACHE_PATH
 set(THIRD_PARTY_BUILD_TYPE Release)
 set(third_party_deps)
 
+include(ProcessorCount)
+ProcessorCount(NPROC)
+
 # cache funciton to avoid repeat download code of third_party.
 # This function has 4 parameters, URL / REPOSITOR / TAG / DIR:
 # 1. URL:           specify download url of 3rd party
@@ -246,7 +249,6 @@ endif()
 include(external/zlib) # download, build, install zlib
 include(external/gflags) # download, build, install gflags
 include(external/glog) # download, build, install glog
-include(external/boost) # download boost
 include(external/eigen) # download eigen3
 include(external/threadpool) # download threadpool
 include(external/dlpack) # download dlpack
@@ -254,14 +256,8 @@ include(external/xxhash) # download, build, install xxhash
 include(external/warpctc) # download, build, install warpctc
 include(external/utf8proc) # download, build, install utf8proc
 
-list(
-  APPEND
-  third_party_deps
-  extern_eigen3
-  extern_gflags
-  extern_glog
-  extern_boost
-  extern_xxhash)
+list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
+     extern_xxhash)
 list(
   APPEND
   third_party_deps
@@ -272,14 +268,8 @@ list(
   extern_utf8proc)
 include(external/lapack) # download, build, install lapack
 
-list(
-  APPEND
-  third_party_deps
-  extern_eigen3
-  extern_gflags
-  extern_glog
-  extern_boost
-  extern_xxhash)
+list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
+     extern_xxhash)
 list(
   APPEND
   third_party_deps

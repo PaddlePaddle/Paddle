@@ -1,2 +1,15 @@
-py_test(test_custom_kernel_dot SRCS test_custom_kernel_dot.py)
-py_test(test_custom_kernel_load SRCS test_custom_kernel_load.py)
+file(
+  GLOB TEST_OPS
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "test_*.py")
+string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
+
+set(CUSTOM_ENVS
+    PADDLE_SOURCE_DIR=${PADDLE_SOURCE_DIR}
+    PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR}
+    CUSTOM_DEVICE_ROOT=${CMAKE_BINARY_DIR}/python/paddle/fluid/tests/custom_kernel
+)
+
+foreach(TEST_OP ${TEST_OPS})
+  py_test(${TEST_OP} SRCS ${TEST_OP}.py ENVS ${CUSTOM_ENVS})
+endforeach()

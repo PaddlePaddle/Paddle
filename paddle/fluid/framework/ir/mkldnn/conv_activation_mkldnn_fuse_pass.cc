@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -24,91 +25,57 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
-  std::vector<std::string> act_types = {"relu",
-                                        "mish",
-                                        "swish",
-                                        "sqrt",
-                                        "hard_swish",
-                                        "sigmoid",
-                                        "abs",
-                                        "gelu",
-                                        "relu6",
-                                        "clip",
-                                        "tanh",
-                                        "hard_sigmoid",
-                                        "leaky_relu"};
-
+  auto act_types = paddle::platform::GetSupportedActivations();
   std::vector<std::string> conv_types = {"conv2d"};
 
-  for (const auto& conv_type : conv_types)
-    for (auto& act_type : act_types) {
-      std::unordered_map<std::string, std::string> attrs_map;
-
-      if (act_type == "swish")
-        attrs_map.emplace("beta", "fuse_alpha");
-      else if (act_type == "relu6")
-        attrs_map.emplace("threshold", "fuse_alpha");
-      else if (act_type == "hard_sigmoid") {
-        attrs_map.emplace("slope", "fuse_alpha");
-        attrs_map.emplace("offset", "fuse_beta");
-      } else if (act_type == "clip") {
-        attrs_map.emplace("min", "fuse_alpha");
-        attrs_map.emplace("max", "fuse_beta");
-      } else {
-        attrs_map.emplace("alpha", "fuse_alpha");
-        attrs_map.emplace("beta", "fuse_beta");
-      }
-      FuseConvAct(graph, conv_type, act_type, attrs_map);
+  for (auto& act_type : act_types) {
+    FuseConvConcatAct(graph, act_type);
+    for (const auto& conv_type : conv_types) {
+      FuseConvAct(graph, conv_type, act_type);
     }
+  }
 }
 
-void ConvActivationMkldnnFusePass::FuseConvAct(
-    Graph* graph,
-    const std::string& conv_type,
-    std::string& act_type,
-    const std::unordered_map<std::string, std::string>& attrs_map) const {
+void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
+                                               const std::string& conv_type,
+                                               std::string& act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(conv_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
-  auto* conv_input = gpd.mutable_pattern()
-                         ->NewNode("conv_activation_mkldnn_fuse/conv_input")
-                         ->AsInput()
-                         ->assert_is_op_input(conv_type, "Input");
-  patterns::ConvActivation conv_act_pattern(gpd.mutable_pattern(),
-                                            "conv_activation_mkldnn_fuse");
-  conv_act_pattern(conv_input, conv_type, act_type);
+  patterns::OperatorActivation conv_act_pattern(gpd.mutable_pattern(),
+                                                "conv_activation_mkldnn_fuse");
+  conv_act_pattern(conv_type, act_type);
 
   int found_conv_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "handle " + conv_type + "+" + act_type + " fuse";
-
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING) << "conv_activation_mkldnn_fuse_pass op compat failed.";
       return;
     }
 
-    GET_IR_NODE_FROM_SUBGRAPH(conv_weight, conv_weight, conv_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out, conv_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(conv, conv, conv_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out, conv_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(conv, preceding_op, conv_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(conv_out, preceding_op_out, conv_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(activation, activation, conv_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out, conv_act_pattern);
 
     OpDesc* conv_op = conv->Op();
     OpDesc* act_op = activation->Op();
 
-    for (const auto& attrs : attrs_map) {
+    auto attr_map = paddle::platform::GetAttributeMap(act_type);
+    for (const auto& attrs : attr_map) {
       if (act_op->HasAttr(attrs.first)) {
         conv_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));
       }
     }
 
     if (act_type == "gelu" && activation->Op()->HasAttr("approximate")) {
-      act_type = BOOST_GET_CONST(bool, activation->Op()->GetAttr("approximate"))
-                     ? "gelu_tanh"
-                     : "gelu_erf";
+      act_type =
+          PADDLE_GET_CONST(bool, activation->Op()->GetAttr("approximate"))
+              ? "gelu_tanh"
+              : "gelu_erf";
       conv_op->SetAttr("fuse_alpha", 0.0f);
       conv_op->SetAttr("fuse_beta", 0.0f);
     }
@@ -122,9 +89,91 @@ void ConvActivationMkldnnFusePass::FuseConvAct(
 
   gpd(graph, handler);
   AddStatis(found_conv_activation_count);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      found_conv_activation_count > 0) {
     PrettyLogDetail("---    fused %d conv with %s activation",
                     found_conv_activation_count,
+                    act_type);
+  }
+}
+
+void ConvActivationMkldnnFusePass::FuseConvConcatAct(
+    Graph* graph, std::string& act_type) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+  FusePassBase::Init("conv2d_concat_" + act_type + "_mkldnn_fuse_pass", graph);
+
+  GraphPatternDetector gpd;
+  auto pattern = gpd.mutable_pattern();
+  patterns::OperatorActivation conv_concat_act(
+      pattern, "conv2d_concat_" + act_type + "_mkldnn_fuse_pass");
+  conv_concat_act("concat", act_type);
+
+  int found_conv_concat_activation_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING)
+          << "conv_concat_activation_mkldnn_fuse_pass op compat failed.";
+      return;
+    }
+
+    GET_IR_NODE_FROM_SUBGRAPH(concat_op, preceding_op, conv_concat_act);
+    GET_IR_NODE_FROM_SUBGRAPH(concat_out, preceding_op_out, conv_concat_act);
+    GET_IR_NODE_FROM_SUBGRAPH(activation_op, activation, conv_concat_act);
+    GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out, conv_concat_act);
+
+    auto concat_inputs = concat_op->inputs;
+    for (auto node : concat_inputs) {
+      auto prev_op_nodes = node->inputs;
+      if (prev_op_nodes.size() != 1) {
+        LOG(WARNING)
+            << "Operator connected to concat can have only one output.";
+        return;
+      }
+
+      bool is_not_conv_mkldnn =
+          !(prev_op_nodes[0]->Op()->GetAttrIfExists<bool>("use_mkldnn"));
+      if (prev_op_nodes[0]->Op()->Type() != "conv2d" || is_not_conv_mkldnn) {
+        LOG(WARNING)
+            << "This fuse pass supports only conv2d (mkldnn) + activation.";
+        return;
+      }
+    }
+
+    for (auto node : concat_inputs) {
+      OpDesc* conv_op = node->inputs[0]->Op();
+      OpDesc* act_op = activation_op->Op();
+
+      auto attr_map = paddle::platform::GetAttributeMap(act_type);
+      for (const auto& attrs : attr_map) {
+        if (act_op->HasAttr(attrs.first)) {
+          conv_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));
+        }
+      }
+
+      if (act_type == "gelu" && act_op->HasAttr("approximate")) {
+        act_type = PADDLE_GET_CONST(bool, act_op->GetAttr("approximate"))
+                       ? "gelu_tanh"
+                       : "gelu_erf";
+        conv_op->SetAttr("fuse_alpha", 0.0f);
+        conv_op->SetAttr("fuse_beta", 0.0f);
+      }
+      conv_op->SetAttr("fuse_activation", act_type);
+    }
+
+    concat_op->Op()->SetOutput("Out", {activation_out->Name()});
+    GraphSafeRemoveNodes(graph, {activation_op, concat_out});
+    IR_NODE_LINK_TO(concat_op, activation_out);
+
+    found_conv_concat_activation_count++;
+  };
+  gpd(graph, handler);
+  AddStatis(found_conv_concat_activation_count);
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      found_conv_concat_activation_count > 0) {
+    PrettyLogDetail("---    fused %d conv_concat with %s activation",
+                    found_conv_concat_activation_count,
                     act_type);
   }
 }
@@ -167,6 +216,20 @@ ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
       .AddAttr("data_format")
       .IsOptional()
       .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("concat"))
+      .AddInput("X")
+      .End()
+      .AddInput("AxisTensor")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumGE(0)
       .End();
 
   AddOpCompat(OpCompat("relu"))
@@ -309,6 +372,7 @@ REGISTER_PASS_CAPABILITY(conv_activation_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
+            .EQ("concat", 0)
             .EQ("abs", 0)
             .LE("clip", 1)
             .EQ("gelu", 0)

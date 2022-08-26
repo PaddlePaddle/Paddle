@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/complex_op.h"
-
-#include <vector>
-
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -59,36 +59,6 @@ class ComplexOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "complex");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "complex");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "complex");
-
-    if (ctx->GetInputDim("X") == ctx->GetInputDim("Y")) {
-      ctx->ShareDim("X", /*->*/ "Out");
-      // NOTE(chenfeiyu): lod & broadcasting is intrinsically contradictory
-      // so tensors with lod are not supported here
-    } else {
-      auto x_dims = ctx->GetInputDim("X");
-      auto y_dims = ctx->GetInputDim("Y");
-      int max_dim = std::max(x_dims.size(), y_dims.size());
-
-      // start align axis
-      int axis = std::abs(x_dims.size() - y_dims.size());
-      std::vector<int> x_dims_array(max_dim);
-      std::vector<int> y_dims_array(max_dim);
-      std::vector<int> out_dims_array(max_dim);
-      GetBroadcastDimsArrays(x_dims,
-                             y_dims,
-                             x_dims_array.data(),
-                             y_dims_array.data(),
-                             out_dims_array.data(),
-                             max_dim,
-                             axis);
-      ctx->SetOutputDim("Out", phi::make_ddim(out_dims_array));
-    }
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -100,25 +70,6 @@ class ComplexOp : public framework::OperatorWithKernel {
 class ComplexGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "complex_grad");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "kron_complex_gradgrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   framework::GradVarName("Out"),
-                   "complex_grad");
-
-    auto x_grad_name = framework::GradVarName("X");
-    if (ctx->HasOutput(x_grad_name)) {
-      ctx->ShareDim("X", /*->*/ x_grad_name);
-    }
-
-    auto y_grad_name = framework::GradVarName("Y");
-    if (ctx->HasOutput(y_grad_name)) {
-      ctx->ShareDim("Y", /*->*/ y_grad_name);
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -135,18 +86,21 @@ class ComplexGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(complex,
+                            ComplexInferShapeFunctor,
+                            PD_INFER_META(phi::ComplexInferMeta));
+
 REGISTER_OPERATOR(complex,
                   ops::ComplexOp,
                   ops::ComplexOpMaker,
                   ops::ComplexGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ComplexGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ComplexGradOpMaker<paddle::imperative::OpBase>,
+                  ComplexInferShapeFunctor);
 
-REGISTER_OPERATOR(complex_grad, ops::ComplexGradOp);
+DECLARE_INFER_SHAPE_FUNCTOR(complex_grad,
+                            ComplexGradInferShapeFunctor,
+                            PD_INFER_META(phi::ComplexGradInferMeta));
 
-REGISTER_OP_CPU_KERNEL(complex,
-                       ops::ComplexKernel<phi::CPUContext, float>,
-                       ops::ComplexKernel<phi::CPUContext, double>);
-
-REGISTER_OP_CPU_KERNEL(complex_grad,
-                       ops::ComplexGradKernel<phi::CPUContext, float>,
-                       ops::ComplexGradKernel<phi::CPUContext, double>);
+REGISTER_OPERATOR(complex_grad,
+                  ops::ComplexGradOp,
+                  ComplexGradInferShapeFunctor);

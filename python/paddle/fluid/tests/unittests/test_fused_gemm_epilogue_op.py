@@ -22,6 +22,13 @@ import paddle.fluid.core as core
 from op_test import OpTest, skip_check_grad_ci, skip_check_inplace_ci
 
 
+def is_fused_gemm_epilogue_supported():
+    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
+        return hasattr(core.eager.ops, 'fused_gemm_epilogue')
+    else:
+        return False
+
+
 def gelu(x):
     y_ref = 0.5 * x * (
         1.0 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
@@ -478,6 +485,92 @@ class TestFuseGemmEpilogueOpNoneMMFP64(TestFuseGemmEpilogueOpNoneMMFP16):
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
+
+
+def matmul(x, y, bias, trans_x, trans_y):
+    x = np.array(x)
+    if trans_x:
+        x = np.ascontiguousarray(np.transpose(x))
+    if trans_y:
+        y = np.ascontiguousarray(np.transpose(y))
+    z = np.matmul(x, y)
+    if bias is None:
+        return z
+    else:
+        return z + bias
+
+
+def matmul_grad(x, y, bias, dz, trans_x, trans_y):
+    if trans_x:
+        if trans_y:
+            dx = matmul(y, dz, None, True, True)
+            dy = matmul(dz, x, None, True, True)
+        else:
+            dx = matmul(y, dz, None, False, True)
+            dy = matmul(x, dz, None, False, False)
+    else:
+        if trans_y:
+            dx = matmul(dz, y, None, False, False)
+            dy = matmul(dz, x, None, True, False)
+        else:
+            dx = matmul(dz, y, None, False, True)
+            dy = matmul(x, dz, None, True, False)
+    if bias is None:
+        dbias = None
+    else:
+        dbias = np.sum(dz, axis=0, keepdims=False)
+    return dx, dy, dbias
+
+
+@unittest.skipIf(
+    not is_fused_gemm_epilogue_supported(),
+    "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
+class TestEagerFusedGemmEpilogue(unittest.TestCase):
+
+    def setUp(self):
+        paddle.set_device('gpu')
+
+    def test_case_act(self):
+        paddle.disable_static()
+        x_np = np.random.random((8, 4)).astype(np.float64) - 0.5
+        y_np = np.random.random((4, 128)).astype(np.float64) - 0.5
+        bias_np = np.random.random((128, )).astype(np.float64) - 0.5
+        x = paddle.to_tensor(x_np)
+        y = paddle.to_tensor(y_np)
+        bias = paddle.to_tensor(bias_np)
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        out1 = core.eager.ops.fused_gemm_epilogue(x, y, bias, 'trans_x', False,
+                                                  'trans_y', False,
+                                                  'activation', 'none')
+        out2 = core.eager.ops.fused_gemm_epilogue(x, y, bias, 'trans_x', False,
+                                                  'trans_y', False,
+                                                  'activation', 'relu')
+        out3 = core.eager.ops.fused_gemm_epilogue(x, y, bias, 'trans_x', False,
+                                                  'trans_y', False,
+                                                  'activation', 'gelu')
+
+        out_np1 = get_output(x_np, y_np, bias_np, 'none')
+        out_np2 = get_output(x_np, y_np, bias_np, 'relu')
+        out_np3 = get_output(x_np, y_np, bias_np, 'gelu')
+
+        np.testing.assert_allclose(out1, out_np1, rtol=1e-05)
+        np.testing.assert_allclose(out2, out_np2, rtol=1e-05)
+        np.testing.assert_allclose(out3, out_np3, rtol=1e-05)
+
+        out_grad_np1 = np.random.randint(low=-20, high=20,
+                                         size=out_np1.shape).astype(np.float64)
+        paddle.autograd.backward(out1,
+                                 grad_tensors=[paddle.to_tensor(out_grad_np1)])
+
+        x_grad_np, y_grad_np, bias_grad_np = matmul_grad(
+            x_np, y_np, bias_np, out_grad_np1, False, False)
+        np.testing.assert_allclose(x.grad.numpy(), x_grad_np, rtol=1e-05)
+        self.assertEqual(y_grad_np.shape, y_np.shape)
+        np.testing.assert_allclose(y.grad.numpy(), y_grad_np, rtol=1e-05)
+
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

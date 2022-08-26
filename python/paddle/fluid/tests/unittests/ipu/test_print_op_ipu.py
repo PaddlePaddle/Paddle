@@ -17,11 +17,10 @@ import unittest
 import numpy as np
 import paddle
 import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+from paddle.jit import to_static
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, IPUD2STest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
@@ -106,6 +105,74 @@ class TestCase2(TestBase):
             "print_tensor_layout": True,
             "print_tensor_lod": True
         }
+
+
+class SimpleLayer(paddle.nn.Layer):
+
+    def __init__(self):
+        super(SimpleLayer, self).__init__()
+        self.conv = paddle.nn.Conv2D(in_channels=3,
+                                     out_channels=1,
+                                     kernel_size=2,
+                                     stride=1)
+
+    @to_static()
+    def forward(self, x, target=None):
+        x = self.conv(x)
+        print(x)
+        x = paddle.fluid.layers.flatten(x, axis=1)
+        if target is not None:
+            x = paddle.fluid.layers.softmax(x)
+            loss = paddle.fluid.layers.cross_entropy(x, target)
+            loss = paddle.incubate.identity_loss(loss, 1)
+            return x, loss
+        return x
+
+
+class TestD2S(IPUD2STest):
+
+    def setUp(self):
+        self.set_data_feed()
+
+    def set_data_feed(self):
+        self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')
+        self.label = paddle.randint(0, 10, shape=[8], dtype='int64')
+
+    def _test(self, use_ipu=False):
+        paddle.seed(self.SEED)
+        np.random.seed(self.SEED)
+        model = SimpleLayer()
+        optim = paddle.optimizer.Adam(learning_rate=0.01,
+                                      parameters=model.parameters())
+
+        if use_ipu:
+            paddle.set_device('ipu')
+            ipu_strategy = paddle.static.IpuStrategy()
+            ipu_strategy.set_graph_config(num_ipus=1,
+                                          is_training=True,
+                                          micro_batch_size=1,
+                                          enable_manual_shard=False)
+            ipu_strategy.set_optimizer(optim)
+
+        result = []
+        for _ in range(2):
+            # ipu only needs call model() to do forward/backward/grad_update
+            pred, loss = model(self.data, self.label)
+            if not use_ipu:
+                loss.backward()
+                optim.step()
+                optim.clear_grad()
+            result.append(loss)
+
+        if use_ipu:
+            ipu_strategy.release_patch()
+
+        return np.array(result)
+
+    def test_training(self):
+        ipu_loss = self._test(True).flatten()
+        cpu_loss = self._test(False).flatten()
+        np.testing.assert_allclose(ipu_loss, cpu_loss, rtol=1e-05, atol=1e-4)
 
 
 if __name__ == "__main__":

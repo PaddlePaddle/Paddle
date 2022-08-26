@@ -21,14 +21,25 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+VarDesc::VarDesc(const VarDesc &other)
+    : desc_(other.desc_),
+      attrs_(other.attrs_),
+      original_id_(other.original_id_) {
+  if (other.dist_attr_) {
+    dist_attr_.reset(new TensorDistAttr(*other.dist_attr_));
+  }
+}
+
 proto::VarType::Type VarDesc::GetType() const { return desc_.type().type(); }
 
 void VarDesc::SetType(proto::VarType::Type type) {
   desc_.mutable_type()->set_type(type);
+  need_updated_ = true;
 }
 
 void VarDesc::SetShape(const std::vector<int64_t> &dims) {
   VectorToRepeated(dims, mutable_tensor_desc()->mutable_dims());
+  need_updated_ = true;
 }
 
 void VarDesc::SetTensorDescNum(size_t num) {
@@ -48,6 +59,7 @@ void VarDesc::SetTensorDescNum(size_t num) {
                                         "supported by the %s type variable.",
                                         this->Name()));
   }
+  need_updated_ = true;
 }
 
 size_t VarDesc::GetTensorDescNum() const {
@@ -76,6 +88,7 @@ void VarDesc::SetShapes(
   for (size_t i = 0; i < multiple_dims.size(); ++i) {
     VectorToRepeated(multiple_dims[i], tensors[i]->mutable_dims());
   }
+  need_updated_ = true;
 }
 
 std::vector<int64_t> VarDesc::GetShape() const {
@@ -94,6 +107,7 @@ std::vector<std::vector<int64_t>> VarDesc::GetShapes() const {
 
 void VarDesc::SetDataType(proto::VarType::Type data_type) {
   mutable_tensor_desc()->set_data_type(data_type);
+  need_updated_ = true;
 }
 
 void VarDesc::SetDataTypes(
@@ -111,6 +125,7 @@ void VarDesc::SetDataTypes(
   for (size_t i = 0; i < multiple_data_type.size(); ++i) {
     tensor_descs[i]->set_data_type(multiple_data_type[i]);
   }
+  need_updated_ = true;
 }
 
 proto::VarType::Type VarDesc::GetDataType() const {
@@ -144,6 +159,7 @@ void VarDesc::SetLoDLevel(int32_t lod_level) {
           "Setting 'lod_level' is not supported by the %s type variable.",
           this->Name()));
   }
+  need_updated_ = true;
 }
 
 void VarDesc::SetLoDLevels(const std::vector<int32_t> &multiple_lod_level) {
@@ -168,6 +184,7 @@ void VarDesc::SetLoDLevels(const std::vector<int32_t> &multiple_lod_level) {
           "Setting 'lod_levels' is not supported by the %s type variable",
           this->Name()));
   }
+  need_updated_ = true;
 }
 
 int32_t VarDesc::GetLoDLevel() const {
@@ -204,11 +221,11 @@ const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
   PADDLE_ENFORCE_EQ(
       desc_.has_type(),
       true,
-      platform::errors::NotFound("The variable's type was not be set."));
+      platform::errors::NotFound("The variable's type was not set."));
   PADDLE_ENFORCE_EQ(
       desc_.type().has_type(),
       true,
-      platform::errors::NotFound("The variable's type was not be set."));
+      platform::errors::NotFound("The variable's type was not set."));
   switch (desc_.type().type()) {
     case proto::VarType::SELECTED_ROWS:
       return desc_.type().selected_rows();
@@ -273,6 +290,7 @@ proto::VarType::TensorDesc *VarDesc::mutable_tensor_desc() {
                                         "supported by the %s type variable.",
                                         this->Name()));
   }
+  need_updated_ = true;
 }
 
 std::vector<proto::VarType::TensorDesc *> VarDesc::mutable_tensor_descs() {
@@ -298,6 +316,7 @@ std::vector<proto::VarType::TensorDesc *> VarDesc::mutable_tensor_descs() {
           "Getting 'tensor_descs' is not supported by the %s type variable.",
           this->Name()));
   }
+  need_updated_ = true;
 }
 
 std::vector<std::string> VarDesc::AttrNames() const {
@@ -317,7 +336,7 @@ void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
   // here if we meet this issue
   proto::AttrType attr_type = static_cast<proto::AttrType>(v.index() - 1);
   if (attr_type == proto::AttrType::INTS &&
-      BOOST_GET_CONST(std::vector<int>, v).size() == 0u) {
+      PADDLE_GET_CONST(std::vector<int>, v).size() == 0u) {
     // Find current attr via attr name and set the correct attribute value
     this->attrs_[name] = std::vector<int>();
     return;
@@ -342,6 +361,22 @@ Attribute VarDesc::GetAttr(const std::string &name) const {
       attrs_.end(),
       platform::errors::NotFound("Attribute %s is not found.", name));
   return it->second;
+}
+
+TensorDistAttr *VarDesc::MutableDistAttr() {
+  // If dist_attr_ is nullptr, construct a new one and return.
+  if (dist_attr_) {
+    return dist_attr_.get();
+  } else {
+    dist_attr_.reset(new TensorDistAttr(*this));
+    return dist_attr_.get();
+  }
+}
+
+void VarDesc::SetDistAttr(const TensorDistAttr &dist_attr) {
+  // Make sure this dist attr be created
+  MutableDistAttr();
+  *dist_attr_ = dist_attr;
 }
 
 bool operator==(const VarDesc &left, const VarDesc &right) {

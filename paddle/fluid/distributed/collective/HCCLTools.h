@@ -94,7 +94,7 @@ class NPUEventManager {
       PADDLE_ENFORCE_EQ(device_index,
                         device_index_,
                         platform::errors::PreconditionNotMet(
-                            "CUDADeviceContext's device %d does not match"
+                            "phi::GPUContext's device %d does not match"
                             "Event's device %d",
                             device_index,
                             device_index_));

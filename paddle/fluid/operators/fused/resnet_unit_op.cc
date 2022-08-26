@@ -159,22 +159,28 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
                           bn_param_dims,
                           bn_param_dims.size()));
     auto data_format = ctx->Attrs().Get<std::string>("data_format");
-    PADDLE_ENFORCE_EQ(
-        data_format,
-        "NHWC",
-        platform::errors::InvalidArgument("The data format must equal to NHWC. "
-                                          "But received: the data format "
-                                          "= [%s]",
-                                          data_format));
+    bool is_nchw = (data_format == "NCHW");
     // Calculate the dims of outputs
     int batch = x_dims[0];
     int output_channel = w_dims[0];
     int filter_size = w_dims[2];
     int stride = ctx->Attrs().Get<int>("stride");
     int padding = ctx->Attrs().Get<int>("padding");
-    int out_h = (x_dims[1] + padding * 2 - filter_size) / stride + 1;
-    int out_w = (x_dims[2] + padding * 2 - filter_size) / stride + 1;
-    std::vector<int> out_shape = {batch, out_h, out_w, output_channel};
+    std::vector<int> out_shape;
+    out_shape.push_back(batch);
+    if (is_nchw) {
+      int out_h = (x_dims[2] + padding * 2 - filter_size) / stride + 1;
+      int out_w = (x_dims[3] + padding * 2 - filter_size) / stride + 1;
+      out_shape.push_back(output_channel);
+      out_shape.push_back(out_h);
+      out_shape.push_back(out_w);
+    } else {
+      int out_h = (x_dims[1] + padding * 2 - filter_size) / stride + 1;
+      int out_w = (x_dims[2] + padding * 2 - filter_size) / stride + 1;
+      out_shape.push_back(out_h);
+      out_shape.push_back(out_w);
+      out_shape.push_back(output_channel);
+    }
 
     auto y_dims = phi::make_ddim(out_shape);
     auto bitmask_dims = GetBitmaskDims(out_shape);
