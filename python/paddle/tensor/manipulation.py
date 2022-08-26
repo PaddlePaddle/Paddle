@@ -1524,9 +1524,14 @@ def flatten_(x, start_axis=0, stop_axis=-1, name=None):
     if start_axis > stop_axis:
         raise ValueError("The stop_axis should be larger than stat_axis")
 
-    dy_out, _ = _C_ops.flatten_contiguous_range_(x, 'start_axis', start_axis,
-                                                 'stop_axis', stop_axis)
-    return dy_out
+    if in_dygraph_mode():
+        return _C_ops.final_state_flatten_(x, start_axis, stop_axis)
+
+    if _in_legacy_dygraph():
+        dy_out, _ = _C_ops.flatten_contiguous_range_(x, 'start_axis',
+                                                     start_axis, 'stop_axis',
+                                                     stop_axis)
+        return dy_out
 
 
 def roll(x, shifts, axis=None, name=None):
@@ -2052,8 +2057,13 @@ def squeeze_(x, axis=None, name=None):
     elif isinstance(axis, tuple):
         axis = list(axis)
 
-    out, _ = _C_ops.squeeze2_(x, 'axes', axis)
-    return out
+    input = x
+    axes = axis
+    if in_dygraph_mode():
+        return _C_ops.final_state_squeeze_(input, axes)
+    if _in_legacy_dygraph():
+        out, _ = _C_ops.squeeze2_(input, 'axes', axes)
+        return out
 
 
 def unique_consecutive(x,
@@ -2412,16 +2422,20 @@ def unsqueeze_(x, axis, name=None):
     Inplace version of ``unsqueeze`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_unsqueeze`.
     """
-    if isinstance(axis, int):
-        axis = [axis]
-    elif isinstance(axis, Variable):
-        axis = axis.numpy().tolist()
-    elif isinstance(axis, (list, tuple)):
-        axis = [
+    input = x
+    axes = axis
+    if isinstance(axes, int):
+        axes = [axes]
+    elif isinstance(axes, Variable):
+        axes = axes.numpy().tolist()
+    elif isinstance(axes, (list, tuple)):
+        axes = [
             item.numpy().item(0) if isinstance(item, Variable) else item
-            for item in axis
+            for item in axes
         ]
-    out, _ = _C_ops.unsqueeze2_(x, 'axes', axis)
+    if in_dygraph_mode():
+        return _C_ops.final_state_unsqueeze_(input, axes)
+    out, _ = _C_ops.unsqueeze2_(input, 'axes', axes)
     return out
 
 
@@ -2679,6 +2693,8 @@ def scatter_(x, index, updates, overwrite=True, name=None):
     Inplace version of ``scatter`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_scatter`.
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_scatter_(x, index, updates, overwrite)
     return _C_ops.scatter_(x, index, updates, 'overwrite', overwrite)
 
 
@@ -3272,13 +3288,13 @@ def reshape(x, shape, name=None):
             )
         if isinstance(shape, (list, tuple)):
             shape = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
-                for item in shape
+                item.numpy().item(0)
+                if isinstance(item, tmp_tensor_type) else item for item in shape
             ]
             out = _C_ops.final_state_reshape(x, shape)
         elif isinstance(shape, tmp_tensor_type):
             shape.stop_gradient = True
-            out, _ = _C_ops.reshape2(x, shape)
+            out = _C_ops.final_state_reshape(x, shape)
         else:
             raise ValueError(
                 "shape must be an instance of `list`, `tuple` or `Variable`,"
@@ -3386,17 +3402,41 @@ def reshape_(x, shape, name=None):
     Inplace version of ``reshape`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_reshape`.
     """
-    if isinstance(shape, (list, tuple)):
-        shape = [
-            item.numpy().item(0) if isinstance(item, Variable) else item
-            for item in shape
-        ]
-        out, _ = _C_ops.reshape2_(x, None, 'shape', shape)
+    if in_dygraph_mode():
+        tmp_tensor_type = core.eager.Tensor
+        if isinstance(shape, (list, tuple)):
+            shape = [
+                item.numpy().item(0)
+                if isinstance(item, tmp_tensor_type) else item for item in shape
+            ]
+            out = _C_ops.final_state_reshape_(x, shape)
+        elif isinstance(shape, tmp_tensor_type):
+            shape.stop_gradient = True
+            out = _C_ops.final_state_reshape_(x, shape)
+        else:
+            raise ValueError(
+                "shape must be an instance of `list`, `tuple` or `Variable`,"
+                " got '{}.'".format(type(shape)))
+
         return out
-    elif isinstance(shape, Variable):
-        shape.stop_gradient = True
-        out, _ = _C_ops.reshape2_(x, shape)
-        return out
+    else:
+        if isinstance(shape, (list, tuple)):
+            shape = [
+                item.numpy().item(0) if isinstance(item, Variable) else item
+                for item in shape
+            ]
+            out, _ = _C_ops.reshape2_(x, None, 'shape', shape)
+            return out
+        elif isinstance(shape, Variable):
+            shape.stop_gradient = True
+            # NOTE(pangyoki): Cannot support the case where the shape Tensor
+            # is negative. In the infer_shape stage, the input's dim will
+            # be changed to a negative number.
+            # Thus, convert Shape Tensor to list firstly and then call
+            # reshape inplace op.
+            shape_list = shape.numpy().tolist()
+            out, _ = _C_ops.reshape2_(x, None, 'shape', shape_list)
+            return out
 
 
 def gather_nd(x, index, name=None):
@@ -3574,6 +3614,8 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             sliced_2 = paddle.strided_slice(x, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
             # sliced_2 is x[:, 1:3:1, 0:2:1, 2:4:2].
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_strided_slice(x, axes, starts, ends, strides)
 
     helper = LayerHelper('strided_slice', **locals())
 
@@ -3617,7 +3659,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
     attrs = {'axes': axes}
     infer_flags = list(1 for i in range(len(axes)))
 
-    if _non_static_mode():
+    if _in_legacy_dygraph():
         inputs = {'Input': x}
         attrs = {
             'axes': axes,
@@ -4340,6 +4382,9 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
     if broadcast_shape:
         indices = paddle.broadcast_to(indices, broadcast_shape)
     values = paddle.broadcast_to(values, indices.shape)
+    if in_dygraph_mode():
+        return _C_ops.final_state_put_along_axis_(arr, indices, values, axis,
+                                                  reduce)
     return _C_ops.put_along_axis_(arr, indices, values, "Axis", axis, "Reduce",
                                   reduce)
 

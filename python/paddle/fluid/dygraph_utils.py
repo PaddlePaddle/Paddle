@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from . import core
-from .framework import dygraph_only
+from .framework import dygraph_only, in_dygraph_mode
 from paddle import _C_ops
 
 

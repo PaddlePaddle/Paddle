@@ -108,10 +108,8 @@ class TestDistPNorm(unittest.TestCase):
                     for output_attr in op_dist_attr.outputs_dist_attrs.values():
                         assert output_attr.dims_mapping[0] == 0
                         assert set(output_attr.dims_mapping[1:]) == set([-1])
-
             assert op_types == [
-                "fill_constant", "barrier", "c_allgather", "p_norm",
-                "fill_constant", "p_norm_grad", "slice"
+                "c_allgather", "p_norm", "fill_constant", "p_norm_grad", "slice"
             ]
 
     def test_dist_pnorm_serial(self):

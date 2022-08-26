@@ -2811,7 +2811,13 @@ class AdamaxOptimizer(Optimizer):
                                          param_and_grad[0])
         beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                               param_and_grad[0])
-        if framework._non_static_mode():
+
+        if framework.in_dygraph_mode():
+            _C_ops.final_state_adamax_(param_and_grad[0], param_and_grad[1],
+                                       self._create_param_lr(param_and_grad),
+                                       moment, inf_norm, beta1_pow_acc,
+                                       self._beta1, self._beta2, self._epsilon)
+        elif framework._in_legacy_dygraph():
             _C_ops.adamax(param_and_grad[0], param_and_grad[1],
                           self._create_param_lr(param_and_grad), moment,
                           inf_norm, beta1_pow_acc, param_and_grad[0], moment,
@@ -3191,7 +3197,12 @@ class AdadeltaOptimizer(Optimizer):
         avg_squared_update_acc = self._get_accumulator(
             self._avg_squared_update_acc_str, param_and_grad[0])
 
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
+            _C_ops.final_state_adadelta_(param_and_grad[0], param_and_grad[1],
+                                         avg_squared_grad_acc,
+                                         avg_squared_update_acc, self._rho,
+                                         self._epsilon)
+        elif framework._in_legacy_dygraph():
             _C_ops.adadelta(param_and_grad[0], param_and_grad[1],
                             avg_squared_grad_acc, avg_squared_update_acc,
                             param_and_grad[0], avg_squared_grad_acc,

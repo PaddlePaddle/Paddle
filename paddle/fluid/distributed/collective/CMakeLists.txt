@@ -21,6 +21,11 @@ if(WITH_NCCL OR WITH_RCCL)
     DEPS processgroup place enforce collective_helper device_context
          dense_tensor)
   if(WITH_DISTRIBUTE AND WITH_PSCORE)
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+      set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+    endif()
+    set_source_files_properties(
+      ProcessGroupHeter.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     cc_library(
       processgroup_heter
       SRCS ProcessGroupHeter.cc NCCLTools.cc Common.cc
@@ -40,6 +45,11 @@ if(WITH_ASCEND_CL)
          phi_api
          eager_api)
   if(WITH_DISTRIBUTE AND WITH_PSCORE)
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+      set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+    endif()
+    set_source_files_properties(
+      ProcessGroupHeter.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     cc_library(
       processgroup_heter
       SRCS ProcessGroupHeter.cc HCCLTools.cc Common.cc

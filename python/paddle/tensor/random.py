@@ -114,6 +114,8 @@ def poisson(x, name=None):
             # [5., 1., 3.]]
 
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_poisson(x)
 
     if paddle.in_dynamic_mode():
         return _C_ops.poisson(x)
@@ -566,6 +568,8 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
     check_type(shape, 'shape', (list, tuple, Variable), 'uniform/rand')
     check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform/rand')
+    check_type(min, 'min', (float, int, Variable), 'uniform/rand')
+    check_type(max, 'max', (float, int, Variable), 'uniform/rand')
 
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
