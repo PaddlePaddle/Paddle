@@ -607,6 +607,9 @@ void QuantDequantMkldnnPass::DequantizeOpWeightsFromONNXFormat(
   if (iter != weight_thresholds.end()) {
     scales = iter->second;
   } else {
+    if (!IsInt8Weight(op_node, scope, weight_name)) {
+      return;
+    }
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Could not find threshold information for [%s] var, please check if "
         "the model is correct.",
