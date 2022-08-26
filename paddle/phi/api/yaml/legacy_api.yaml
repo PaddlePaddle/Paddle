@@ -466,6 +466,14 @@
     func : celu
   backward : celu_grad
 
+- api : check_finite_and_unscale
+  args : (Tensor[] xs, Tensor scale)
+  output : Tensor[](outs){xs.size()}, Tensor(found_infinite)
+  infer_meta :
+    func : CheckFiniteAndUnscaleInferMeta
+  kernel :
+    func : check_finite_and_unscale
+
 - api : class_center_sample
   args : (Tensor label, int num_classes, int num_samples, int ring_id, int rank, int nranks, bool fix_seed, int seed)
   output : Tensor(remapped_label), Tensor(sampled_local_class_center)
@@ -2804,6 +2812,15 @@
   kernel :
     func : unstack
   backward : unstack_grad
+
+- api : update_loss_scaling
+  args : (Tensor[] xs, Tensor found_infinite, Tensor prev_loss_scaling, Tensor in_good_steps, Tensor in_bad_steps, int incr_every_n_steps, int decr_every_n_nan_or_inf, float incr_ratio, float decr_ratio, Scalar stop_update)
+  output : Tensor[](outs){xs.size()}, Tensor(loss_scaling), Tensor(out_good_steps), Tensor(out_bad_steps)
+  infer_meta:
+    func : UpdateLossScalingInferMeta
+    param : [xs, found_infinite, prev_loss_scaling, in_good_steps, in_bad_steps]
+  kernel :
+    func : update_loss_scaling
 
 - api : viterbi_decode
   args : (Tensor input, Tensor transition, Tensor length, bool include_bos_eos_tag)
