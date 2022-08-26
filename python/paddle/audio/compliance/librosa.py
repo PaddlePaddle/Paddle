@@ -22,6 +22,7 @@ import numpy as np
 import scipy
 from numpy.lib.stride_tricks import as_strided
 from scipy import signal
+from scipy import fftpack
 
 from ..utils import depth_convert
 from ..utils import ParameterError
@@ -475,7 +476,7 @@ def mfcc(x: np.ndarray,
     if spect is None:
         spect = melspectrogram(x, sr=sr, **kwargs)
 
-    M = scipy.fftpack.dct(spect, axis=0, type=dct_type, norm=norm)[:n_mfcc]
+    M = fftpack.dct(spect, axis=0, type=dct_type, norm=norm)[:n_mfcc]
 
     if lifter > 0:
         factor = np.sin(np.pi * np.arange(1, 1 + n_mfcc, dtype=M.dtype) /

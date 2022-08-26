@@ -17,4 +17,3 @@ from .hey_snips import HeySnips
 from .rirs_noises import OpenRIRNoise
 from .tess import TESS
 from .urban_sound import UrbanSound8K
-from .voxceleb import VoxCeleb

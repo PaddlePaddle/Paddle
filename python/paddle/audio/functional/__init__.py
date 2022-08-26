@@ -18,3 +18,4 @@ from .functional import hz_to_mel
 from .functional import mel_frequencies
 from .functional import mel_to_hz
 from .functional import power_to_db
+from .window import get_window

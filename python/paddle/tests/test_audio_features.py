@@ -18,10 +18,9 @@ import paddle
 
 import paddle.audio
 from audio_base import get_wav_data
-from paddle.audio.functional.window import get_window
 
 
-class TestLibrosa(unittest.TestCase):
+class TestFeatures(unittest.TestCase):
 
     def setUp(self):
         self.initParmas()
@@ -47,7 +46,9 @@ class TestLibrosa(unittest.TestCase):
                 0)  # 1D input for librosa.feature.melspectrogram
         feature_librosa = np.load('testdata/librosa_stft.npy')
         x = paddle.to_tensor(self.waveform).unsqueeze(0)
-        window = get_window(self.window_str, self.n_fft, dtype=x.dtype)
+        window = paddle.audio.functional.get_window(self.window_str,
+                                                    self.n_fft,
+                                                    dtype=x.dtype)
         feature_paddle = paddle.signal.stft(
             x=x,
             n_fft=self.n_fft,
@@ -73,9 +74,10 @@ class TestLibrosa(unittest.TestCase):
         feature_librosa = np.loadtxt('testdata/librosa_istft.txt')
 
         x = paddle.to_tensor(stft_matrix).unsqueeze(0)
-        window = get_window(self.window_str,
-                            self.n_fft,
-                            dtype=paddle.to_tensor(self.waveform).dtype)
+        window = paddle.audio.functional.get_window(self.window_str,
+                                                    self.n_fft,
+                                                    dtype=paddle.to_tensor(
+                                                        self.waveform).dtype)
         feature_paddle = paddle.signal.istft(
             x=x,
             n_fft=self.n_fft,
