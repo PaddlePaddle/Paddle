@@ -17,7 +17,6 @@ def frexp(x, dtype=paddle.float32):
     exponent = paddle.where((mantissa >= 1), paddle.add(exponent, paddle.ones_like(exponent)), exponent)
     mantissa = paddle.where((mantissa <= -1), paddle.divide(mantissa, 2 ** paddle.ones_like(exponent)), mantissa)
     mantissa = paddle.where((mantissa >= -1), paddle.divide(mantissa, 2 ** paddle.ones_like(exponent)), mantissa)
-
     mantissa = paddle.where((x < 0), mantissa * -1, mantissa)
     return mantissa, exponent
 
