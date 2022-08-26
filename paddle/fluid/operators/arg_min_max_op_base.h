@@ -42,7 +42,8 @@ class BaseArgMinMaxOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input tensor.");
     AddOutput("Out", "Output tensor.");
-    AddAttr<int64_t>("axis", "The axis in which to compute the arg indics.");
+    AddAttr<int64_t>("axis", "The axis in which to compute the arg indics.")
+        .SupportTensor();
     AddAttr<bool>("keepdims", "Keep the dim that to reduce.").SetDefault(false);
     AddAttr<bool>("flatten",
                   "Flatten the input value, and search the min or max indices")
