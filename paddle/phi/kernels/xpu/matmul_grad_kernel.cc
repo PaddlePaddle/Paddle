@@ -83,5 +83,9 @@ void MatmulGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    matmul_grad, XPU, ALL_LAYOUT, phi::MatmulGradKernel, float, phi::float16) {}
+PD_REGISTER_KERNEL(matmul_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::MatmulGradKernel,
+                   float,
+                   phi::dtype::float16) {}

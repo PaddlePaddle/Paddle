@@ -37,7 +37,7 @@ void MatmulKernel(const Context& dev_ctx,
   auto y_dims = y.dims();
 
   XpuFcInfo fc_info;
-  GetFCInfo(x_dims, y_dims, trans_x, trans_y, &fc_info);
+  GetFCInfo(x_dims, y_dims, transpose_x, transpose_y, &fc_info);
   xpu::Context* xpu_ctx = dev_ctx.x_context();
   MatMulXPUFunction<XPUType>(xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, 1.0f);
 }
@@ -45,4 +45,4 @@ void MatmulKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    matmul, XPU, ALL_LAYOUT, phi::MatmulKernel, float, phi::float16) {}
+    matmul, XPU, ALL_LAYOUT, phi::MatmulKernel, float, phi::dtype::float16) {}
