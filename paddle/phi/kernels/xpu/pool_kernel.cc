@@ -85,7 +85,7 @@ void PoolKernel(const Context& ctx,
     paddings[3] += (in_w_ceil - in_w);
   }
 
-  out->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(out);
   int* index_data = nullptr;
   int r = xpu::Error_t::SUCCESS;
   if (!adaptive) {

@@ -91,7 +91,7 @@ void PoolGradKernel(const Context& ctx,
     paddings[3] += (in_w_ceil - in_w);
   }
 
-  in_x_grad->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(in_x_grad);
   const int* index_data = nullptr;
   int r = xpu::Error_t::SUCCESS;
   if (adaptive) {
