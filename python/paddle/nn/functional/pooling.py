@@ -192,23 +192,16 @@ def avg_pool1d(x,
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ValueError: If `padding` is a list or tuple but its length is greater than 1.
-        ShapeError: If the input is not a 3-D tensor.
-        ShapeError: If the output's shape calculated is not greater than 0.
-
     Examples:
         .. code-block:: python
           
             import paddle
-            import paddle.nn.functional as F
-            import numpy as np
+            import paddle.nn as nn
 
-            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
-            out = F.avg_pool1d(data, kernel_size=2, stride=2, padding=0)
-            # out shape: [1, 3, 16]
+            data = paddle.uniform([1, 3, 32], paddle.float32)
+            AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
+            pool_out = AvgPool1D(data)
+            # pool_out shape: [1, 3, 16]
     """
     """NCL to NCHW"""
     data_format = "NCHW"
@@ -318,20 +311,14 @@ def avg_pool2d(x,
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
     
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
-    
     Examples:
         .. code-block:: python
           
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
             
             # avg pool2d
-            x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+            x = paddle.uniform([1, 3, 32, 32], paddle.float32)
             out = F.avg_pool2d(x,
                             kernel_size=2,
                             stride=2, padding=0)
@@ -446,19 +433,13 @@ def avg_pool3d(x,
     
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
-    
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
-    
+
     Examples:
         .. code-block:: python
           
           import paddle
-          import numpy as np
 
-          x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
+          x = paddle.uniform([1, 3, 32, 32, 32], paddle.float32)
           # avg pool3d
           out = paddle.nn.functional.avg_pool3d(
                                             x,
@@ -581,9 +562,8 @@ def max_pool1d(x,
 
           import paddle
           import paddle.nn.functional as F
-          import numpy as np
 
-          data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+          data = paddle.uniform([1, 3, 32], paddle.float32)
           pool_out = F.max_pool1d(data, kernel_size=2, stride=2, padding=0)
           # pool_out shape: [1, 3, 16]
           pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
@@ -1350,8 +1330,10 @@ def adaptive_avg_pool1d(x, output_size, name=None):
         x (Tensor): The input Tensor of pooling, which is a 3-D tensor with shape :math:`[N, C, L]`, where :math:`N` is batch size, :math:`C` is the number of channels and :math:`L` is the length of the feature. The data type is float32 or float64.
         output_size (int): The target output size. Its data type must be int.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+    
     Returns:
         Tensor: The result of 1D adaptive average pooling. Its data type is same as input.
+    
     Examples:
         .. code-block:: python
 
@@ -1409,8 +1391,16 @@ def adaptive_avg_pool1d(x, output_size, name=None):
 
 def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
     """
-    This API implements adaptive average pooling 2d operation.
-    See more details in :ref:`api_nn_pooling_AdaptiveAvgPool2d` .
+    Applies 2D adaptive avg pooling on input tensor. The h and w dimensions
+    of the output tensor are determined by the parameter output_size.
+    
+    For avg adaptive pool2d:
+    ..  math::
+        hstart &= floor(i * H_{in} / H_{out})
+        hend &= ceil((i + 1) * H_{in} / H_{out})
+        wstart &= floor(j * W_{in} / W_{out})
+        wend &= ceil((j + 1) * W_{in} / W_{out})
+        Output(i ,j) &= \frac{\sum Input[hstart:hend, wstart:wend]}{(hend - hstart) * (wend - wstart)}
 
     Args:
         x (Tensor): The input tensor of adaptive avg pool2d operator, which is a 4-D tensor.
@@ -1426,8 +1416,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
                              None by default.
     Returns:
         Tensor: The output tensor of avg adaptive pool2d result. The data type is same as input tensor.
-    Raises:
-        ValueError: If `data_format` is not "NCHW" or "NHWC".
+
     Examples:
         .. code-block:: python
 
@@ -1515,8 +1504,19 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
 
 def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
     """
-    This API implements adaptive average pooling 3d operation.
-    See more details in :ref:`api_nn_pooling_AdaptiveAvgPool3d` .
+    This operation applies 3D adaptive avg pooling on input tensor. The h and w dimensions
+    of the output tensor are determined by the parameter output_size.
+    
+    For avg adaptive pool3d:
+    ..  math::
+        dstart &= floor(i * D_{in} / D_{out})
+        dend &= ceil((i + 1) * D_{in} / D_{out})
+        hstart &= floor(j * H_{in} / H_{out})
+        hend &= ceil((j + 1) * H_{in} / H_{out})
+        wstart &= floor(k * W_{in} / W_{out})
+        wend &= ceil((k + 1) * W_{in} / W_{out})
+        Output(i ,j, k) &= \frac{\sum Input[dstart:dend, hstart:hend, wstart:wend]}
+            {(dend - dstart) * (hend - hstart) * (wend - wstart)}
 
     Args:
         x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
@@ -1532,8 +1532,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
                              None by default.
     Returns:
         Tensor: The output tensor of avg adaptive pool3d result. The data type is same as input tensor.
-    Raises:
-        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
+
     Examples:
         .. code-block:: python
 
@@ -1556,12 +1555,10 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             #                 output[:, :, i, j, k] =
             #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
-            import numpy as np
-            input_data = np.random.rand(2, 3, 8, 32, 32)
-            x = paddle.to_tensor(input_data)
-            # x.shape is [2, 3, 8, 32, 32]
+
+            input_data = paddle.randn(shape=(2, 3, 8, 32, 32))
             out = paddle.nn.functional.adaptive_avg_pool3d(
-                            x = x,
+                            x = input_data,
                             output_size=[3, 3, 3])
             # out.shape is [2, 3, 3, 3, 3]
     """
@@ -1654,9 +1651,8 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
               #
               import paddle
               import paddle.nn.functional as F
-              import numpy as np
 
-              data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+              data = paddle.uniform([1, 3, 32], paddle.float32)
               pool_out = F.adaptive_max_pool1d(data, output_size=16)
               # pool_out shape: [1, 3, 16])
               pool_out, indices = F.adaptive_max_pool1d(data, output_size=16, return_mask=True)
@@ -1740,13 +1736,10 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
               #             output[:, :, i, j] = max(input[:, :, hstart: hend, wstart: wend])
               #
               import paddle
-              import numpy as np
 
-              input_data = np.random.rand(2, 3, 32, 32)
-              x = paddle.to_tensor(input_data)
-              # x.shape is [2, 3, 32, 32]
+              input_data = paddle.randn(shape=(2, 3, 32, 32))
               out = paddle.nn.functional.adaptive_max_pool2d(
-                            x = x,
+                            x = input_data,
                             output_size=[3, 3])
               # out.shape is [2, 3, 3, 3]
     """
@@ -1833,13 +1826,10 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
               #             output[:, :, i, j, k] = max(input[:, :, dstart: dend, hstart: hend, wstart: wend])
               #
               import paddle
-              import numpy as np
 
-              input_data = np.random.rand(2, 3, 8, 32, 32)
-              x = paddle.to_tensor(input_data)
-              # x.shape is [2, 3, 8, 32, 32]
+              input_data = paddle.randn(shape=(2, 3, 8, 32, 32))
               out = paddle.nn.functional.adaptive_max_pool3d(
-                            x = x,
+                            x = input_data,
                             output_size=[3, 3, 3])
               # out.shape is [2, 3, 3, 3, 3]
     """

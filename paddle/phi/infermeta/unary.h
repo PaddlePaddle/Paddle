@@ -388,12 +388,14 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaConfig config = MetaConfig());
 
 void ReverseInferMeta(const MetaTensor& x,
-                      const std::vector<int>& axis,
-                      MetaTensor* out);
+                      const IntArray& axis,
+                      MetaTensor* out,
+                      MetaConfig config = MetaConfig());
 
 void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
-                           const std::vector<int>& axis,
-                           std::vector<phi::MetaTensor*> out);
+                           const IntArray& axis,
+                           std::vector<phi::MetaTensor*> out,
+                           MetaConfig config = MetaConfig());
 
 void RollInferMeta(const MetaTensor& x,
                    const IntArray& shifts,
@@ -517,7 +519,8 @@ void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
 
 void TransferLayoutInferMeta(const MetaTensor& x,
-                             DataLayout layout,
+                             int src_layout,
+                             int dst_layout,
                              MetaTensor* out);
 
 void TransposeInferMeta(const MetaTensor& x,
