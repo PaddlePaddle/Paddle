@@ -29,99 +29,7 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
-    framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
-    int axis = ctx.Attr<int>("axis");
-    PADDLE_ENFORCE_NE(
-        ins[0],
-        nullptr,
-        platform::errors::InvalidArgument("The input should not be null."));
-    PADDLE_ENFORCE_NE(ctx.HasInput("AxisTensor"),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "XPU donot surpport AxisTensor for now"));
-    axis = ComputeAxis(static_cast<int64_t>(axis),
-                       static_cast<int64_t>(ins[0]->dims().size()));
-    PADDLE_ENFORCE_GE(axis,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "concat: axis should be larger than or "
-                          "equal to 0, but received axis is %d.",
-                          axis));
-    PADDLE_ENFORCE_LT(axis,
-                      ins[0]->dims().size(),
-                      platform::errors::InvalidArgument(
-                          "concat: axis should be less than ins[0]->dims()!"
-                          "But received axis is %d, while ins[0]->dims()"
-                          "size is %d.",
-                          axis,
-                          ins[0]->dims().size()));
-
-    // If axis is 0, the lod of the output is not the same as inputs.
-    if (axis == 0 && ins[0]->lod().size() > 0) {
-      size_t lod_size_0 = ins[0]->lod().size();
-      size_t lod_size = lod_size_0;
-      for (size_t i = 1; i < ins.size(); ++i) {
-        if (ins[i]->lod().size() > 0) {
-          PADDLE_ENFORCE_EQ(
-              ins[i]->lod().size(),
-              lod_size_0,
-              platform::errors::Unimplemented(
-                  "The lod level of all input LoDTensors should be same. "
-                  "Maybe different lod level of input LoDTensors can concat,"
-                  "it is not supported currently. The lod level of %dth input "
-                  "is %d and first input is %d.",
-                  i,
-                  ins[i]->lod().size(),
-                  lod_size_0));
-        } else {
-          lod_size = 0;
-          break;
-        }
-      }
-      if (lod_size) {
-        auto* out_lod = out->mutable_lod();
-        for (size_t i = 1; i < ins.size(); ++i) {
-          auto in_lod = phi::ConvertToLengthBasedLoD(ins[i]->lod());
-          phi::AppendLoD(out_lod, in_lod);
-        }
-      }
-    }
-    auto place = ctx.GetPlace();
-    out->mutable_data<T>(place);
-    std::vector<std::vector<int>> xdims_list;
-    std::vector<const XPUType*> ptrs;
-    for (unsigned int i = 0; i < ins.size(); ++i) {
-      if (ins[i] && ins[i]->numel() > 0) {
-        ptrs.push_back(reinterpret_cast<const XPUType*>(ins[i]->data<T>()));
-        int size = ins[i]->dims().size();
-        std::vector<int> tmp_dims(size);
-        for (int j = 0; j < size; ++j) {
-          tmp_dims[j] = ins[i]->dims()[j];
-        }
-        xdims_list.push_back(tmp_dims);
-      }
-    }
-
-    PADDLE_ENFORCE_GT(
-        xdims_list.size(),
-        0,
-        platform::errors::InvalidArgument("No tensor need concat"));
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-
-    int r = xpu::concat<XPUType>(dev_ctx.x_context(),
-                                 ptrs,
-                                 reinterpret_cast<XPUType*>(out->data<T>()),
-                                 xdims_list,
-                                 axis);
-    PADDLE_ENFORCE_EQ(r,
-                      XPU_SUCCESS,
-                      platform::errors::External(
-                          "XPU concat kernel return wrong value[%d %s]",
-                          r,
-                          XPUAPIErrorMsg[r]));
-  }
+  void Compute(const framework::ExecutionContext& ctx) const override {}
 };
 
 template <typename DeviceContext, typename T>
@@ -221,11 +129,6 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(
-    concat,
-    ops::ConcatXPUKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::ConcatXPUKernel<paddle::platform::XPUDeviceContext,
-                         paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
     concat_grad,
     ops::ConcatGradXPUKernel<paddle::platform::XPUDeviceContext, float>,
