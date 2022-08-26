@@ -24,7 +24,7 @@ sys.path.append("..")
 
 from op_test import OpTest
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 import paddle.fluid as fluid
 from paddle import compat as cpt
 from paddle.fluid import core, framework, executor
@@ -201,9 +201,9 @@ class RunProgramNPUOpTest(unittest.TestCase):
             inputs = self.prepare_dygraph_input(place)
             outputs = self.prepare_dygraph_output()
 
-            _C_ops.run_program(inputs['X'], inputs['Params'], outputs['Out'],
-                               outputs['OutScope'], outputs['DOut'], None,
-                               *self.attrs)
+            _legacy_C_ops.run_program(inputs['X'], inputs['Params'],
+                                      outputs['Out'], outputs['OutScope'],
+                                      outputs['DOut'], None, *self.attrs)
             return outputs['Out']
 
     def calc_dygraph_grad(self, place):
