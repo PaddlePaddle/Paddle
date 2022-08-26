@@ -89,6 +89,7 @@ class TestPipeLayerAPI(unittest.TestCase):
         for i in range(len(model_chunks)):
             out = pipe_model(paddle.to_tensor([1., 2.]), chunk_id=i)
             assert list(out.shape) == [2]
+            out = F.relu(out)
             loss = paddle.mean(out)
             loss.backward()
 
