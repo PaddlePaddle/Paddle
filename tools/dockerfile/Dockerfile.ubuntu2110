@@ -1,0 +1,12 @@
+# A image for building paddle binaries
+# Use cuda devel base image for both cpu and gpu environment
+# When you modify it, please be aware of cudnn-runtime version
+FROM ubuntu:21.10
+MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
+
+RUN sed -i -r 's/([a-z]{2}.)?archive.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list
+RUN sed -i -r 's/security.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list
+RUN apt update
+
+RUN apt install python3.9
+RUN apt install python3-pip
