@@ -186,6 +186,9 @@ class PipelineLayerChunk(Layer):
         return self.run_function
 
     def forward(self, *args, **kwargs):
+        # Users shouldn't call PipelineLayerChunk directly, since all logics relating with recompute
+        # are in the forward function of PipelineLayer. Any directly call will bring unexpected
+        # behavior under recompute circumstance.
         raise NotImplementedError(
             "The forward function of PipelineLayerChunk cannot be called directly. "
             "Please call forward function of PipelineLayer.")
@@ -532,9 +535,14 @@ class PipelineLayer(Layer):
             assert self._num_virtual_pipeline_stages > 1, \
                 "chunk_id is only valid when using virtual pipeline stage"
             assert chunk_id < len(self._model_chunks), \
-                "only {} chunks, but received chunk_id {}".format(len(self._model_chunks), chunk_id)
+                "The virtual pipeline only has {} chunks, " \
+                "but received chunk_id {}.".format(len(self._model_chunks), chunk_id)
+            # Get the target model chunk.
             model_chunk = self._model_chunks[chunk_id]
-            # update the self.run_function to the target run functions
+            # Update the self.run_function to the target run functions.
+            # Runs for 1f1b and interleave are similar, just handle all functions in self.run_function.
+            # The only different is that, for 1f1b, self.run_function has already been inited during build_layer.
+            # But for interleave, self.run_function will keep updating to the target functions at every run.
             self.run_function = model_chunk.get_run_function()
 
         if self._recompute_interval == 0:
