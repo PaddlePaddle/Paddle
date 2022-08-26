@@ -139,7 +139,7 @@ class TestRemainderOp(unittest.TestCase):
 class TestRemainderInplaceOp(unittest.TestCase):
 
     def _executed_api(self, x, y, name=None):
-        return x.subtract_(y, name)
+        return x.remainder_(y, name)
 
 
 class TestRemainderInplaceBroadcastSuccess(unittest.TestCase):
