@@ -786,7 +786,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 
     Args:
         tensor (Tensor): The input Tensor. It also works as the output Tensor. Its data type
-            should be float16, float32, float64, int32, int64 or int8.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
@@ -799,7 +799,6 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         .. code-block:: python
 
             # required: distributed
-            import numpy as np
             import paddle
             from paddle.distributed import ReduceOp
             from paddle.distributed import init_parallel_env
@@ -807,13 +806,10 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
-                np_data = np.array([[4, 5, 6], [4, 5, 6]])
+                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             else:
-                np_data = np.array([[1, 2, 3], [1, 2, 3]])
-            data = paddle.to_tensor(np_data)
+                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             paddle.distributed.all_reduce(data)
-            out = data.numpy()
-            # [[5, 7, 9], [5, 7, 9]]
     """
     if group is not None and not group.is_member():
         return
@@ -849,9 +845,10 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'all_reduce')
+    check_variable_and_dtype(tensor, 'tensor', [
+        'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
+        'bool'
+    ], 'all_reduce')
     if op == ReduceOp.SUM:
         op_type = 'c_allreduce_sum'
     elif op == ReduceOp.MAX:

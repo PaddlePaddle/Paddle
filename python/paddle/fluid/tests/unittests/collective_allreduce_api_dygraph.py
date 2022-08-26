@@ -29,7 +29,6 @@ class TestCollectiveAllreduceAPI(test_base.TestCollectiveAPIRunnerBase):
         with fluid.program_guard(main_prog, startup_program):
             tindata = paddle.to_tensor(indata)
             paddle.distributed.all_reduce(tindata)
-            # return tindata.numpy()
             return [tindata.numpy()]
 
 
