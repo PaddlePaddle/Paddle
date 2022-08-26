@@ -38,6 +38,13 @@ paddle::optional<phi::DenseTensor> TensorToDenseTensor(
 std::unique_ptr<std::vector<phi::DenseTensor*>> TensorToDenseTensor(
     const std::vector<Tensor>& tensors);
 
+std::vector<const phi::DenseTensor*> TensorToConstDenseTensorPtr(
+    const std::vector<Tensor>& tensors);
+
+paddle::optional<std::vector<const phi::DenseTensor*>>
+TensorToConstDenseTensorPtr(
+    const paddle::optional<std::vector<Tensor>>& tensors);
+
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(const Tensor& tensor);
 
 paddle::optional<phi::SelectedRows> TensorToSelectedRows(
@@ -71,6 +78,14 @@ phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out);
 std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
                                                Backend backend,
                                                std::vector<Tensor>* out);
+
+std::vector<phi::DenseTensor*> SetInplaceVectorKernelOutput(
+    size_t out_size, Backend backend, std::vector<Tensor>* out);
+
+std::vector<phi::DenseTensor*> SetInplaceOptionalVectorKernelOutput(
+    size_t out_size,
+    Backend backend,
+    const paddle::optional<std::vector<Tensor>>& out);
 
 // For backward api
 std::vector<phi::DenseTensor*> SetKernelOutput(std::vector<Tensor*>* out);

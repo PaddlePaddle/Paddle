@@ -1454,6 +1454,9 @@ def softmax(input, use_cudnn=True, name=None, axis=-1):
 
     """
 
+    if in_dygraph_mode():
+        return _C_ops.final_state_softmax(input, axis)
+
     if _non_static_mode():
         return _C_ops.softmax(input, 'axis', axis, 'use_cudnn', use_cudnn)
 
@@ -15764,6 +15767,8 @@ def uniform_random(shape,
     check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random/rand')
     check_dtype(dtype, 'dtype', ('float32', 'float64', 'uint16'),
                 'uniform_random/rand')
+    check_type(min, 'min', (float, int, Variable), 'uniform_random/rand')
+    check_type(max, 'max', (float, int, Variable), 'uniform_random/rand')
 
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
