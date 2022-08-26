@@ -73,6 +73,7 @@ class TestPipeLayerAPI(unittest.TestCase):
             "pp_degree": self.pipeline_parallel_size
         }
         fleet.init(is_collective=True, strategy=strategy)
+        self.rank = fleet.get_rank()
         self.hcg = fleet.get_hybrid_communicate_group()
 
     def test_pipelayer_desc(self):
@@ -83,6 +84,16 @@ class TestPipeLayerAPI(unittest.TestCase):
         model_chunks = pipe_model.get_model_chunks()
         assert model_chunks is not None
         assert len(model_chunks) == 2
+        try:
+            model_chunks[0](paddle.to_tensor([1, 2, 3]))
+        except NotImplementedError:
+            pass
+
+        # fake call for the forward function of virtual pipeline layer
+        for i in range(len(model_chunks)):
+            out = pipe_model([11, 2], chunk_id=i)
+
+        # just make sure the model can be wrapped with distributed model
         dist_model = fleet.distributed_model(pipe_model)
 
 

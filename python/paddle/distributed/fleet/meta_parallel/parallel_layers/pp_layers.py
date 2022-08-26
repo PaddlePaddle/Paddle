@@ -172,17 +172,23 @@ class PipelineLayerChunk(Layer):
 
     def __init__(self):
         super(PipelineLayerChunk, self).__init__()
-        self.functions = []
+        self.run_function = []
 
     def append(self, sublayer):
         # This method is used to unify codes in _build_layer_impl.
         # For 1f1b scheduler, it will call append method of a List.
         # For interleave scheduler, it will call append method of this class.
         if isinstance(sublayer, Layer):
-            self.add_sublayer(str(len(self.functions)), sublayer)
-        self.functions.append(sublayer)
+            self.add_sublayer(str(len(self.run_function)), sublayer)
+        self.run_function.append(sublayer)
 
-    # TODO (Yuang Liu) forward function implement
+    def get_run_function(self):
+        return self.run_function
+
+    def forward(self, *args, **kwargs):
+        raise NotImplementedError(
+            "The forward function of PipelineLayerChunk cannot be called directly."
+        )
 
 
 class PipelineLayer(Layer):
@@ -520,15 +526,25 @@ class PipelineLayer(Layer):
 
         return execute_func
 
-    def forward(self, input):
-        # TODO(Yuang Liu): forward function for interleave scheduler
-        if self._recompute_interval == 0:
-            input = self.forward_function(0, len(self.run_function))(input)
+    def forward(self, input, chunk_id=None):
+        if chunk_id is not None:
+            assert isinstance(chunk_id, int), "chunk_id should be an int"
+            assert self._num_virtual_pipeline_stages > 1, \
+                "chunk_id is only valid when using virtual pipeline stage"
+            assert chunk_id < len(self._model_chunks), \
+                "only {} chunks, but received chunk_id {}".format(len(self._model_chunks), chunk_id)
+            model_chunk = self._model_chunks[chunk_id]
+            run_function = model_chunk.get_run_function()
         else:
-            num_layers = len(self.run_function)
+            run_function = self.run_function
+
+        if self._recompute_interval == 0:
+            input = self.forward_function(0, len(run_function))(input)
+        else:
+            num_layers = len(run_function)
             for start_idx in range(0, num_layers, self._recompute_interval):
                 end_idx = min(start_idx + self._recompute_interval, num_layers)
-                funcs = self.run_function[start_idx:end_idx]
+                funcs = run_function[start_idx:end_idx]
 
                 if not isinstance(input, tuple):
                     input = (input, )
