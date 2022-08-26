@@ -73,7 +73,7 @@ class TestPipeLayerAPI(unittest.TestCase):
             "pp_degree": self.pipeline_parallel_size
         }
         fleet.init(is_collective=True, strategy=strategy)
-        self.rank = fleet.get_rank()
+        self.rank = fleet.worker_index()
         self.hcg = fleet.get_hybrid_communicate_group()
 
     def test_pipelayer_desc(self):

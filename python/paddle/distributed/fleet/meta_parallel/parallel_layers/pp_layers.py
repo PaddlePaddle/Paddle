@@ -534,17 +534,15 @@ class PipelineLayer(Layer):
             assert chunk_id < len(self._model_chunks), \
                 "only {} chunks, but received chunk_id {}".format(len(self._model_chunks), chunk_id)
             model_chunk = self._model_chunks[chunk_id]
-            run_function = model_chunk.get_run_function()
-        else:
-            run_function = self.run_function
+            self.run_function = model_chunk.get_run_function()
 
         if self._recompute_interval == 0:
-            input = self.forward_function(0, len(run_function))(input)
+            input = self.forward_function(0, len(self.run_function))(input)
         else:
-            num_layers = len(run_function)
+            num_layers = len(self.run_function)
             for start_idx in range(0, num_layers, self._recompute_interval):
                 end_idx = min(start_idx + self._recompute_interval, num_layers)
-                funcs = run_function[start_idx:end_idx]
+                funcs = self.run_function[start_idx:end_idx]
 
                 if not isinstance(input, tuple):
                     input = (input, )
