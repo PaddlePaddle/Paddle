@@ -31,6 +31,7 @@ from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.executor import _is_enable_standalone_executor, _is_dy2st_enable_standalone_executor
+from paddle.fluid.dygraph.dygraph_to_static.partial_program import add_build_strategy_for, LazyInitialized
 from paddle import _C_ops
 
 __all__ = ['TranslatedLayer']
@@ -303,20 +304,6 @@ def _change_is_test_status(program_desc, is_test):
                 op._set_attr('is_test', is_test)
 
 
-class LazyInitialized(object):
-    """
-    Descriptor to implement lazy initialization of property.
-    """
-
-    def __init__(self, function):
-        self.function = function
-
-    def __get__(self, instance, cls):
-        val = self.function(instance)
-        setattr(instance, self.function.__name__, val)
-        return val
-
-
 class _ProgramHolder(object):
     """
     Holds the execution information of a Program.
@@ -348,45 +335,14 @@ class _ProgramHolder(object):
         self._train_program_desc = self._append_backward_desc(
             self._infer_program_desc)
 
-    @switch_to_static_graph
-    def _add_build_strategy_for(self, input_program, start_op_index,
-                                end_op_index):
-        compiled_program = paddle.static.CompiledProgram(
-            core.Graph(input_program.desc, start_op_index, end_op_index),
-            build_strategy=paddle.static.BuildStrategy())
-        compiled_program._compile(core.Scope(),
-                                  framework._current_expected_place())
-        ir_graph = framework.IrGraph(compiled_program._graph)
-        builded_program = ir_graph.to_program()
-        return builded_program
-
     # forward:
     @switch_to_static_graph
     def _create_forward_train_program(self):
-        whole_program = _build_program_by_desc(self._train_program_desc)
-        end_op_index = self._infer_program_desc.block(0).op_size()
-        if end_op_index > 0:
-            return self._add_build_strategy_for(whole_program, 0, end_op_index)
-        else:
-            return whole_program
+        return self._get_train_forward_program(self._infer_program_desc)
 
     @LazyInitialized
     def _forward_program_desc(self):
         return self._create_forward_train_program().desc
-
-    # forward:
-    @switch_to_static_graph
-    def _create_forward_infer_program(self):
-        whole_program = _build_program_by_desc(self._infer_program_desc)
-        end_op_index = self._infer_program_desc.block(0).op_size()
-        if end_op_index > 0:
-            return self._add_build_strategy_for(whole_program, 0, end_op_index)
-        else:
-            return whole_program
-
-    @LazyInitialized
-    def _forward_infer_program_desc(self):
-        return self._create_forward_infer_program().desc
 
     # backward
     @switch_to_static_graph
@@ -396,8 +352,8 @@ class _ProgramHolder(object):
             self._output_descs)
         end_op_index = whole_program.desc.block(0).op_size()
         if (start_op_index < end_op_index):
-            return self._add_build_strategy_for(whole_program, start_op_index,
-                                                end_op_index)
+            return add_build_strategy_for(whole_program, start_op_index,
+                                          end_op_index)
         else:
             return paddle.static.Program()
 
@@ -416,10 +372,6 @@ class _ProgramHolder(object):
     @property
     def forward_program(self):
         return self._forward_program_desc
-
-    @property
-    def infer_forward_program(self):
-        return self._forward_infer_program_desc
 
     @property
     def backward_program(self):
@@ -544,7 +496,7 @@ class _ProgramHolder(object):
             self._output_descs[i] = var.desc
 
     @switch_to_static_graph
-    def _append_backward_desc(self, infer_program_desc):
+    def _get_train_forward_program(self, infer_program_desc):
         program_desc_copy = core.ProgramDesc(infer_program_desc)
 
         # 1. set all `is_test` attributes to False
@@ -572,6 +524,11 @@ class _ProgramHolder(object):
                             persistable=False,
                             stop_gradient=True)
                         op.desc.set_output("ReserveSpace", [reserve_space.name])
+        return program
+
+    @switch_to_static_graph
+    def _append_backward_desc(self, infer_program_desc):
+        program = self._get_train_forward_program(infer_program_desc)
 
         targets = []
         for out in self._output_descs:
@@ -945,7 +902,7 @@ def _run_dygraph(instance, input, program_holder):
 
     # 2. run program by op
     trace_program = program_holder.infer_program if instance._is_test else program_holder.train_program
-    forward_program = program_holder.infer_forward_program if instance._is_test else program_holder.forward_program
+    forward_program = program_holder._infer_program_desc if instance._is_test else program_holder.forward_program
     end_op_index = program_holder.infer_program.block(0).op_size()
 
     attrs = [

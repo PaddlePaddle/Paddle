@@ -220,23 +220,24 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_backward_train_program(self):
         whole_program = self._create_program()
-        forward_end_op_index = self._create_program(True).desc.block(
-            0).op_size()
-        return self._add_build_strategy_for(whole_program, forward_end_op_index)
+        forward_end_op_index = self._infer_program.desc.block(0).op_size()
+        return self._get_forward_backward_program_form(whole_program,
+                                                       forward_end_op_index)
 
     @switch_to_static_graph
     def _create_forward_backward_train_amp_program(self):
         whole_program = self._create_amp_program()
-        forward_end_op_index = self._create_amp_program(True).desc.block(
-            0).op_size()
-        return self._add_build_strategy_for(whole_program, forward_end_op_index)
+        forward_end_op_index = self._infer_amp_program.desc.block(0).op_size()
+        return self._get_forward_backward_program_form(whole_program,
+                                                       forward_end_op_index)
 
     @switch_to_static_graph
     def _create_forward_backward_train_pure_fp16_program(self):
         whole_program = self._create_pure_fp16_program()
-        forward_end_op_index = self._create_pure_fp16_program(True).desc.block(
+        forward_end_op_index = self._infer_pure_fp16_program.desc.block(
             0).op_size()
-        return self._add_build_strategy_for(whole_program, forward_end_op_index)
+        return self._get_forward_backward_program_form(whole_program,
+                                                       forward_end_op_index)
 
     @LazyInitialized
     def _train_program(self):
@@ -608,92 +609,62 @@ class PartialProgramLayer:
             return self._infer_program
 
     @switch_to_static_graph
-    def _add_build_strategy_for(self, whole_program, forward_end_op_index):
-        if (forward_end_op_index > 0):
-            forward_compiled_program = paddle.static.CompiledProgram(
-                core.Graph(whole_program.desc, 0, forward_end_op_index),
-                build_strategy=self._build_strategy)
-            forward_compiled_program._compile(
-                core.Scope(), framework._current_expected_place())
-            ir_graph = framework.IrGraph(forward_compiled_program._graph)
-            forward_builded_program = ir_graph.to_program()
-            if hasattr(forward_compiled_program._program, 'lr_sheduler'):
-                forward_builded_program.lr_sheduler = forward_compiled_program._program.lr_sheduler
-        else:
-            forward_builded_program = whole_program
-
-        start_op_index = forward_end_op_index + 2 * len(self._outputs.var_ids)
-        end_op_index = whole_program.desc.block(0).op_size()
-        if (start_op_index < end_op_index):
-            backward_compiled_program = paddle.static.CompiledProgram(
-                core.Graph(whole_program.desc, start_op_index, end_op_index),
-                build_strategy=self._build_strategy)
-            backward_compiled_program._compile(
-                core.Scope(), framework._current_expected_place())
-            ir_graph = framework.IrGraph(backward_compiled_program._graph)
-            backward_builded_program = ir_graph.to_program()
-            if hasattr(backward_compiled_program._program, 'lr_sheduler'):
-                backward_builded_program.lr_sheduler = backward_compiled_program._program.lr_sheduler
-        else:
-            backward_builded_program = paddle.static.Program()
-
+    def _get_forward_backward_program_form(self, whole_program,
+                                           forward_end_op_index):
+        forward_builded_program = add_build_strategy_for(
+            whole_program, 0, forward_end_op_index, self._build_strategy)
+        backward_start_op_index = forward_end_op_index + 2 * len(
+            self._outputs.var_ids)
+        backward_end_op_index = whole_program.desc.block(0).op_size()
+        backward_builded_program = add_build_strategy_for(
+            whole_program, backward_start_op_index, backward_end_op_index,
+            self._build_strategy)
         self._apply_inplace_pass(forward_builded_program,
-                                 backward_builded_program, True)
-
+                                 backward_builded_program)
         return [forward_builded_program, backward_builded_program]
 
-    def _apply_inplace_pass(self, forward_program, backward_program,
-                            enable_inplace):
-        if enable_inplace:
-            attr_types = {
-                "use_cuda": "bool",
-                "mem_opt_skip_vars": "list[str]",
-                "for_partial_block": "bool"
-            }
-            empty_startup_program = paddle.static.Program()
-            pass_name = "buffer_shared_inplace_pass"
-            use_cuda = True if core.is_compiled_with_cuda() else False
-            for_partial_block = True
-            # skip data var
-            forward_mem_opt_skip_vars = []
-            for var_name, var in forward_program.global_block().vars.items():
-                if var.is_data:
-                    forward_mem_opt_skip_vars.append(var_name)
-            for var in self._inputs:
-                if isinstance(var, paddle.fluid.framework.Variable):
-                    forward_mem_opt_skip_vars.append(var.desc.name())
-            for var in self._outputs:
-                if isinstance(var, paddle.fluid.framework.Variable):
-                    forward_mem_opt_skip_vars.append(var.desc.name())
-            for var_name in core.parse_safe_eager_deletion_skip_vars(
-                    backward_program.desc):
+    def _apply_inplace_pass(self, forward_program, backward_program):
+        attr_types = {
+            "use_cuda": "bool",
+            "mem_opt_skip_vars": "list[str]",
+            "for_partial_block": "bool"
+        }
+        empty_startup_program = paddle.static.Program()
+        use_cuda = True if core.is_compiled_with_cuda() else False
+        # skip data var
+        forward_mem_opt_skip_vars = []
+        backward_mem_opt_skip_vars = []
+        for var_name, var in forward_program.global_block().vars.items():
+            if var.is_data:
                 forward_mem_opt_skip_vars.append(var_name)
-
-            backward_mem_opt_skip_vars = []
-            for var_name, var in backward_program.global_block().vars.items():
-                if var.is_data:
-                    backward_mem_opt_skip_vars.append(var_name)
-            for var in self._inputs:
-                if isinstance(var, paddle.fluid.framework.Variable):
-                    backward_mem_opt_skip_vars.append(var.desc.name())
-            for var in self._outputs:
-                if isinstance(var, paddle.fluid.framework.Variable):
-                    backward_mem_opt_skip_vars.append(var.desc.name())
-
-            attrs = {
-                "use_cuda": use_cuda,
-                "mem_opt_skip_vars": forward_mem_opt_skip_vars,
-                "for_partial_block": for_partial_block
-            }
-            _apply_pass(forward_program, empty_startup_program, pass_name,
-                        attrs, attr_types)
-            attrs = {
-                "use_cuda": use_cuda,
-                "mem_opt_skip_vars": backward_mem_opt_skip_vars,
-                "for_partial_block": for_partial_block
-            }
-            _apply_pass(backward_program, empty_startup_program, pass_name,
-                        attrs, attr_types)
+        for var_name, var in backward_program.global_block().vars.items():
+            if var.is_data:
+                backward_mem_opt_skip_vars.append(var_name)
+        for var in self._inputs:
+            if isinstance(var, paddle.fluid.framework.Variable):
+                forward_mem_opt_skip_vars.append(var.desc.name())
+                backward_mem_opt_skip_vars.append(var.desc.name())
+        for var in self._outputs:
+            if isinstance(var, paddle.fluid.framework.Variable):
+                forward_mem_opt_skip_vars.append(var.desc.name())
+                backward_mem_opt_skip_vars.append(var.desc.name())
+        for var_name in core.parse_safe_eager_deletion_skip_vars(
+                backward_program.desc):
+            forward_mem_opt_skip_vars.append(var_name)
+        attrs = {
+            "use_cuda": use_cuda,
+            "mem_opt_skip_vars": forward_mem_opt_skip_vars,
+            "for_partial_block": True
+        }
+        _apply_pass(forward_program, empty_startup_program,
+                    "buffer_shared_inplace_pass", attrs, attr_types)
+        attrs = {
+            "use_cuda": use_cuda,
+            "mem_opt_skip_vars": backward_mem_opt_skip_vars,
+            "for_partial_block": True
+        }
+        _apply_pass(backward_program, empty_startup_program,
+                    "buffer_shared_inplace_pass", attrs, attr_types)
 
     def _prepare(self, inputs):
         """
@@ -932,3 +903,23 @@ def partial_program_from(concrete_program):
                                concrete_program.outputs,
                                concrete_program.parameters,
                                **concrete_program.kwargs)
+
+
+@switch_to_static_graph
+def add_build_strategy_for(program,
+                           start_op_index,
+                           end_op_index,
+                           build_strategy=None):
+    if (start_op_index < end_op_index):
+        compiled_program = paddle.static.CompiledProgram(
+            core.Graph(program.desc, start_op_index, end_op_index),
+            build_strategy=build_strategy)
+        compiled_program._compile(core.Scope(),
+                                  framework._current_expected_place())
+        ir_graph = framework.IrGraph(compiled_program._graph)
+        builded_program = ir_graph.to_program()
+        if hasattr(compiled_program._program, 'lr_sheduler'):
+            builded_program.lr_sheduler = compiled_program._program.lr_sheduler
+    else:
+        builded_program = program
+    return builded_program
