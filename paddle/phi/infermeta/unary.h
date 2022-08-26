@@ -93,7 +93,7 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
                              const std::vector<int64_t>& concated_ranks,
                              std::vector<MetaTensor*> output,
                              MetaTensor* fused_output,
-                             MetaConfig config);
+                             MetaConfig config = MetaConfig());
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
