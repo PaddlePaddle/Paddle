@@ -37,7 +37,7 @@ from ..fluid.dygraph.parallel import prepare_context
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 import paddle.fluid.dygraph_utils as dygraph_utils
 import contextlib
 
@@ -355,7 +355,7 @@ def barrier(group=None):
 
     temp = fill_constant([1], dtype="int32", value="1")
     if _non_static_mode():
-        return _C_ops.barrier(temp, temp, 'ring_id', ring_id)
+        return _legacy_C_ops.barrier(temp, temp, 'ring_id', ring_id)
 
     op_type = 'barrier'
 
@@ -657,7 +657,7 @@ def wait(tensor, group=None, use_calc_stream=True):
 def _sync_calc_stream(tensor):
 
     if _non_static_mode():
-        return _C_ops.c_sync_calc_stream(tensor, tensor)
+        return _legacy_C_ops.c_sync_calc_stream(tensor, tensor)
 
     op_type = 'c_sync_calc_stream'
 
@@ -672,7 +672,8 @@ def _sync_calc_stream(tensor):
 def _sync_comm_stream(tensor, ring_id=0):
 
     if _non_static_mode():
-        return _C_ops.c_sync_comm_stream([tensor], [tensor], 'ring_id', ring_id)
+        return _legacy_C_ops.c_sync_comm_stream([tensor], [tensor], 'ring_id',
+                                                ring_id)
 
     op_type = 'c_sync_comm_stream'
 
@@ -750,9 +751,9 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
     assert gsrc >= 0, ("src rank out of group, need global rank")
 
     if _non_static_mode():
-        return _C_ops.c_broadcast(tensor, tensor, 'root', gsrc,
-                                  'use_calc_stream', use_calc_stream, 'ring_id',
-                                  ring_id)
+        return _legacy_C_ops.c_broadcast(tensor, tensor, 'root', gsrc,
+                                         'use_calc_stream', use_calc_stream,
+                                         'ring_id', ring_id)
 
     op_type = 'c_broadcast'
     check_variable_and_dtype(
@@ -830,17 +831,21 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
     if _non_static_mode():
         if op == ReduceOp.SUM:
-            return _C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
-                                           use_calc_stream, 'ring_id', ring_id)
+            return _legacy_C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
+                                                  use_calc_stream, 'ring_id',
+                                                  ring_id)
         elif op == ReduceOp.MAX:
-            return _C_ops.c_allreduce_max_(tensor, 'use_calc_stream',
-                                           use_calc_stream, 'ring_id', ring_id)
+            return _legacy_C_ops.c_allreduce_max_(tensor, 'use_calc_stream',
+                                                  use_calc_stream, 'ring_id',
+                                                  ring_id)
         elif op == ReduceOp.MIN:
-            return _C_ops.c_allreduce_min_(tensor, 'use_calc_stream',
-                                           use_calc_stream, 'ring_id', ring_id)
+            return _legacy_C_ops.c_allreduce_min_(tensor, 'use_calc_stream',
+                                                  use_calc_stream, 'ring_id',
+                                                  ring_id)
         elif op == ReduceOp.PROD:
-            return _C_ops.c_allreduce_prod_(tensor, 'use_calc_stream',
-                                            use_calc_stream, 'ring_id', ring_id)
+            return _legacy_C_ops.c_allreduce_prod_(tensor, 'use_calc_stream',
+                                                   use_calc_stream, 'ring_id',
+                                                   ring_id)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 
@@ -931,21 +936,22 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 
     if _non_static_mode():
         if op == ReduceOp.SUM:
-            return _C_ops.c_reduce_sum(tensor, tensor, 'use_calc_stream',
-                                       use_calc_stream, 'ring_id', ring_id,
-                                       'root_id', gdst)
+            return _legacy_C_ops.c_reduce_sum(tensor, tensor, 'use_calc_stream',
+                                              use_calc_stream, 'ring_id',
+                                              ring_id, 'root_id', gdst)
         elif op == ReduceOp.MAX:
-            return _C_ops.c_reduce_max(tensor, tensor, 'use_calc_stream',
-                                       use_calc_stream, 'ring_id', ring_id,
-                                       'root_id', gdst)
+            return _legacy_C_ops.c_reduce_max(tensor, tensor, 'use_calc_stream',
+                                              use_calc_stream, 'ring_id',
+                                              ring_id, 'root_id', gdst)
         elif op == ReduceOp.MIN:
-            return _C_ops.c_reduce_min(tensor, tensor, 'use_calc_stream',
-                                       use_calc_stream, 'ring_id', ring_id,
-                                       'root_id', gdst)
+            return _legacy_C_ops.c_reduce_min(tensor, tensor, 'use_calc_stream',
+                                              use_calc_stream, 'ring_id',
+                                              ring_id, 'root_id', gdst)
         elif op == ReduceOp.PROD:
-            return _C_ops.c_reduce_prod(tensor, tensor, 'use_calc_stream',
-                                        use_calc_stream, 'ring_id', ring_id,
-                                        'root_id', gdst)
+            return _legacy_C_ops.c_reduce_prod(tensor, tensor,
+                                               'use_calc_stream',
+                                               use_calc_stream, 'ring_id',
+                                               ring_id, 'root_id', gdst)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 
@@ -1052,8 +1058,9 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     nranks = _get_global_group().nranks if group is None else group.nranks
 
     if _non_static_mode():
-        out = _C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
-                                 'ring_id', ring_id, 'nranks', nranks)
+        out = _legacy_C_ops.c_allgather(tensor, 'use_calc_stream',
+                                        use_calc_stream, 'ring_id', ring_id,
+                                        'nranks', nranks)
     else:
         op_type = 'c_allgather'
         helper = LayerHelper(op_type, **locals())
@@ -1237,9 +1244,9 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
             return task
 
     if _non_static_mode():
-        return _C_ops.c_scatter(temp, tensor, 'use_calc_stream',
-                                use_calc_stream, 'ring_id', ring_id, 'nranks',
-                                nranks, 'root', gsrc)
+        return _legacy_C_ops.c_scatter(temp, tensor, 'use_calc_stream',
+                                       use_calc_stream, 'ring_id', ring_id,
+                                       'nranks', nranks, 'root', gsrc)
     op_type = 'c_scatter'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -1273,8 +1280,9 @@ def _c_identity(tensor, group=None):
     ring_id = 0 if group is None else group.id
 
     if _non_static_mode():
-        return _C_ops.c_identity(tensor, 'use_calc_stream', True, 'ring_id',
-                                 ring_id, 'use_model_parallel', True)
+        return _legacy_C_ops.c_identity(tensor, 'use_calc_stream', True,
+                                        'ring_id', ring_id,
+                                        'use_model_parallel', True)
     op_type = 'c_identity'
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
@@ -1316,9 +1324,10 @@ def _c_concat(tensor, group=None):
     nranks = group.nranks
 
     if _non_static_mode():
-        return _C_ops.c_concat(tensor, 'ring_id', ring_id, 'use_calc_stream',
-                               True, 'rank', rank, 'nranks', nranks,
-                               'use_model_parallel', True)
+        return _legacy_C_ops.c_concat(tensor, 'ring_id', ring_id,
+                                      'use_calc_stream', True, 'rank', rank,
+                                      'nranks', nranks, 'use_model_parallel',
+                                      True)
 
     op_type = 'c_concat'
     helper = LayerHelper(op_type, **locals())
@@ -1363,9 +1372,9 @@ def _c_split(tensor, group=None):
     nranks = _get_global_env().world_size if group is None else group.nranks
 
     if _non_static_mode():
-        return _C_ops.c_split(tensor, 'use_calc_stream', True, 'ring_id',
-                              ring_id, 'rank', rank, 'nranks', nranks,
-                              'use_model_parallel', True)
+        return _legacy_C_ops.c_split(tensor, 'use_calc_stream', True, 'ring_id',
+                                     ring_id, 'rank', rank, 'nranks', nranks,
+                                     'use_model_parallel', True)
 
     op_type = 'c_split'
     helper = LayerHelper(op_type, **locals())
@@ -1410,26 +1419,27 @@ def _mp_allreduce(tensor,
             def forward(ctx, tensor, use_calc_stream, ring_id,
                         use_model_parallel):
                 ctx.ring_id = ring_id
-                return _C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
-                                               use_calc_stream, 'ring_id',
-                                               ring_id, "use_model_parallel",
-                                               use_model_parallel)
+                return _legacy_C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
+                                                      use_calc_stream,
+                                                      'ring_id', ring_id,
+                                                      "use_model_parallel",
+                                                      use_model_parallel)
 
             @staticmethod
             def backward(ctx, dy):
-                return _C_ops.c_identity(dy, 'use_calc_stream', True, 'ring_id',
-                                         ctx.ring_id, 'use_model_parallel',
-                                         True)
+                return _legacy_C_ops.c_identity(dy, 'use_calc_stream', True,
+                                                'ring_id', ctx.ring_id,
+                                                'use_model_parallel', True)
 
         return mp_allreduce_eager.apply(tensor, use_calc_stream, ring_id,
                                         use_model_parallel)
 
     elif _in_legacy_dygraph():
         if op == ReduceOp.SUM:
-            return _C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
-                                           use_calc_stream, 'ring_id', ring_id,
-                                           "use_model_parallel",
-                                           use_model_parallel)
+            return _legacy_C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
+                                                  use_calc_stream, 'ring_id',
+                                                  ring_id, "use_model_parallel",
+                                                  use_model_parallel)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 
@@ -1467,7 +1477,8 @@ def _c_lookup_table(table, index, start_index=0, name=None):
         Tensor.
     """
     if _non_static_mode():
-        return _C_ops.c_embedding(table, index, "start_index", start_index)
+        return _legacy_C_ops.c_embedding(table, index, "start_index",
+                                         start_index)
 
     op_type = 'c_embedding'
     helper = LayerHelper(op_type, **locals())
@@ -1543,7 +1554,7 @@ def _c_softmax_with_cross_entropy(logits,
         label = paddle.unsqueeze(label, axis=-1)
 
     if _non_static_mode():
-        softmax, loss = _C_ops.c_softmax_with_cross_entropy(
+        softmax, loss = _legacy_C_ops.c_softmax_with_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks)
         if not return_softmax:
             return loss
@@ -1581,8 +1592,8 @@ def _linear(x, weight, bias=None, name=None):
     """
     if _non_static_mode():
         pre_bias = _varbase_creator(dtype=x.dtype)
-        _C_ops.matmul(x, weight, pre_bias, 'transpose_X', False, 'transpose_Y',
-                      False, "alpha", 1)
+        _legacy_C_ops.matmul(x, weight, pre_bias, 'transpose_X', False,
+                             'transpose_Y', False, "alpha", 1)
         return dygraph_utils._append_bias_in_dygraph(pre_bias,
                                                      bias,
                                                      axis=len(x.shape) - 1)
@@ -2056,8 +2067,8 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
         return
 
     if _non_static_mode():
-        out = _C_ops.alltoall(temp, 'use_calc_stream', use_calc_stream,
-                              'ring_id', ring_id)
+        out = _legacy_C_ops.alltoall(temp, 'use_calc_stream', use_calc_stream,
+                                     'ring_id', ring_id)
     else:
         op_type = 'alltoall'
         helper = LayerHelper(op_type, **locals())
@@ -2225,8 +2236,8 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
 
     if _non_static_mode():
-        return _C_ops.send_v2(tensor, 'use_calc_stream', use_calc_stream,
-                              'ring_id', ring_id, 'peer', dst)
+        return _legacy_C_ops.send_v2(tensor, 'use_calc_stream', use_calc_stream,
+                                     'ring_id', ring_id, 'peer', dst)
     op_type = 'send_v2'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -2288,9 +2299,9 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
 
     if _non_static_mode():
-        return _C_ops.recv_v2(tensor, 'use_calc_stream', use_calc_stream,
-                              'ring_id', ring_id, 'peer', src, 'dtype',
-                              tensor.dtype, 'out_shape', tensor.shape)
+        return _legacy_C_ops.recv_v2(tensor, 'use_calc_stream', use_calc_stream,
+                                     'ring_id', ring_id, 'peer', src, 'dtype',
+                                     tensor.dtype, 'out_shape', tensor.shape)
     op_type = 'recv_v2'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],

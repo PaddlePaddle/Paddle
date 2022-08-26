@@ -31,7 +31,7 @@ from ...fluid.framework import _varbase_creator, _in_legacy_dygraph, in_dygraph_
 
 from ...fluid import dygraph_utils
 
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.framework import in_dynamic_mode
 from paddle.tensor.creation import full
 from paddle.framework import core
@@ -150,8 +150,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             "of 2 or 4 integers")
 
     if in_dygraph_mode():
-        return _C_ops.final_state_unfold(x, kernel_sizes, strides, paddings,
-                                         dilations)
+        return _C_ops.unfold(x, kernel_sizes, strides, paddings, dilations)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="unfold",
@@ -574,7 +573,7 @@ def interpolate(x,
 
         if resample_type == "linear":
             if in_dygraph_mode():
-                out = _C_ops.final_state_linear_interp(
+                out = _C_ops.linear_interp(
                     x, inputs['OutSize'] if 'OutSize' in inputs else None,
                     inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
                     inputs['Scale'] if 'Scale' in inputs else None,
@@ -583,10 +582,10 @@ def interpolate(x,
                     attrs['interp_method'], attrs['align_corners'],
                     attrs['align_mode'])
             else:
-                out = _C_ops.linear_interp_v2(x, *dy_attr)
+                out = _legacy_C_ops.linear_interp_v2(x, *dy_attr)
         elif resample_type == "bilinear":
             if in_dygraph_mode():
-                out = _C_ops.final_state_bilinear_interp(
+                out = _C_ops.bilinear_interp(
                     x, inputs['OutSize'] if 'OutSize' in inputs else None,
                     inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
                     inputs['Scale'] if 'Scale' in inputs else None,
@@ -595,10 +594,10 @@ def interpolate(x,
                     attrs['interp_method'], attrs['align_corners'],
                     attrs['align_mode'])
             else:
-                out = _C_ops.bilinear_interp_v2(x, *dy_attr)
+                out = _legacy_C_ops.bilinear_interp_v2(x, *dy_attr)
         elif resample_type == "trilinear":
             if in_dygraph_mode():
-                out = _C_ops.final_state_trilinear_interp(
+                out = _C_ops.trilinear_interp(
                     x, inputs['OutSize'] if 'OutSize' in inputs else None,
                     inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
                     inputs['Scale'] if 'Scale' in inputs else None,
@@ -607,10 +606,10 @@ def interpolate(x,
                     attrs['interp_method'], attrs['align_corners'],
                     attrs['align_mode'])
             else:
-                out = _C_ops.trilinear_interp_v2(x, *dy_attr)
+                out = _legacy_C_ops.trilinear_interp_v2(x, *dy_attr)
         elif resample_type == "nearest":
             if in_dygraph_mode():
-                out = _C_ops.final_state_nearest_interp(
+                out = _C_ops.nearest_interp(
                     x, inputs['OutSize'] if 'OutSize' in inputs else None,
                     inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
                     inputs['Scale'] if 'Scale' in inputs else None,
@@ -619,10 +618,10 @@ def interpolate(x,
                     attrs['interp_method'], attrs['align_corners'],
                     attrs['align_mode'])
             else:
-                out = _C_ops.nearest_interp_v2(x, *dy_attr)
+                out = _legacy_C_ops.nearest_interp_v2(x, *dy_attr)
         elif resample_type == "bicubic":
             if in_dygraph_mode():
-                out = _C_ops.final_state_bicubic_interp(
+                out = _C_ops.bicubic_interp(
                     x, inputs['OutSize'] if 'OutSize' in inputs else None,
                     inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
                     inputs['Scale'] if 'Scale' in inputs else None,
@@ -631,7 +630,7 @@ def interpolate(x,
                     attrs['interp_method'], attrs['align_corners'],
                     attrs['align_mode'])
             else:
-                out = _C_ops.bicubic_interp_v2(x, *dy_attr)
+                out = _legacy_C_ops.bicubic_interp_v2(x, *dy_attr)
         return out
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type='{}_interp_v2'.format(resample_type),
@@ -868,9 +867,9 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_bilinear_tensor_product(x1, x2, weight, bias)
-    elif _non_static_mode():
         return _C_ops.bilinear_tensor_product(x1, x2, weight, bias)
+    elif _non_static_mode():
+        return _legacy_C_ops.bilinear_tensor_product(x1, x2, weight, bias)
 
     check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
     check_variable_and_dtype(x2, 'x2', ['float32', 'float64'], 'bilinear')
@@ -1064,15 +1063,15 @@ def dropout(x,
                 seed = default_main_program().random_seed
 
             if in_dygraph_mode():
-                out, mask = _C_ops.final_state_dropout( x, None, p, not training, mode, \
+                out, mask = _C_ops.dropout( x, None, p, not training, mode, \
                     seed if seed is not None else 0, seed is not None)
 
                 return out
-            out, mask = _C_ops.dropout(x, 'dropout_prob', p, 'is_test',
-                                       not training, 'fix_seed', seed
-                                       is not None, 'seed',
-                                       seed if seed is not None else 0,
-                                       'dropout_implementation', mode)
+            out, mask = _legacy_C_ops.dropout(x, 'dropout_prob', p, 'is_test',
+                                              not training, 'fix_seed', seed
+                                              is not None, 'seed',
+                                              seed if seed is not None else 0,
+                                              'dropout_implementation', mode)
             return out
 
         helper = LayerHelper('dropout', **locals())
@@ -1470,7 +1469,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         pad_value = value
 
         if in_dygraph_mode():
-            out = _C_ops.final_state_pad(x, paddings, float(pad_value))
+            out = _C_ops.pad(x, paddings, float(pad_value))
             return out
 
         check_variable_and_dtype(x, 'x', [
@@ -1552,13 +1551,14 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     if in_dygraph_mode():
         if isinstance(pad, Variable):
             pad = pad.numpy().tolist()
-        out = _C_ops.final_state_pad3d(x, pad, mode, value, data_format)
+        out = _C_ops.pad3d(x, pad, mode, value, data_format)
     else:
         if _in_legacy_dygraph():
             if isinstance(pad, Variable):
                 pad = pad.numpy().tolist()
-            out = _C_ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
-                               "data_format", data_format, "name", name)
+            out = _legacy_C_ops.pad3d(x, "paddings", pad, "mode", mode, "value",
+                                      value, "data_format", data_format, "name",
+                                      name)
         else:
             attrs = {'mode': mode, 'value': value, 'data_format': data_format}
             inputs = {'X': [x]}
@@ -1729,16 +1729,16 @@ def linear(x, weight, bias=None, name=None):
     """
     if in_dygraph_mode():
         #TODO(jiabin): using addmm for fast forward route
-        return _C_ops.final_state_linear(x, weight, bias)
+        return _C_ops.linear(x, weight, bias)
     else:
         if _in_legacy_dygraph():
-            pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',
-                                        False)
+            pre_bias = _legacy_C_ops.matmul_v2(x, weight, 'trans_x', False,
+                                               'trans_y', False)
 
             if bias is None:
                 return pre_bias
 
-            return _C_ops.elementwise_add(pre_bias, bias)
+            return _legacy_C_ops.elementwise_add(pre_bias, bias)
         else:
             helper = LayerHelper('linear', **locals())
             dtype = x.dtype
@@ -1831,11 +1831,11 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
     if in_dygraph_mode():
-        return _C_ops.final_state_label_smooth(label, prior_dist,
-                                               float(epsilon))
+        return _C_ops.label_smooth(label, prior_dist, float(epsilon))
 
     elif paddle.in_dynamic_mode():
-        return _C_ops.label_smooth(label, prior_dist, 'epsilon', float(epsilon))
+        return _legacy_C_ops.label_smooth(label, prior_dist, 'epsilon',
+                                          float(epsilon))
 
     check_variable_and_dtype(label, 'label', ['float32', 'float64'],
                              'label_smooth')
@@ -1999,11 +1999,12 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         seed = default_main_program().random_seed
 
     if in_dygraph_mode():
-        return _C_ops.final_state_class_center_sample(
-            label, num_classes, num_samples, ring_id, rank, nranks, seed
-            is not None, seed if seed is not None else 0)
+        return _C_ops.class_center_sample(label, num_classes, num_samples,
+                                          ring_id, rank, nranks, seed
+                                          is not None,
+                                          seed if seed is not None else 0)
     elif paddle.in_dynamic_mode():
-        remapped_label, sampled_class_center = _C_ops.class_center_sample(
+        remapped_label, sampled_class_center = _legacy_C_ops.class_center_sample(
             label, 'num_classes', num_classes, 'num_samples', num_samples,
             'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed', seed
             is not None, 'seed', seed if seed is not None else 0)
@@ -2151,12 +2152,13 @@ def fold(x,
             "of 2 or 4 integers")
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_fold(x, output_sizes, kernel_sizes, strides,
-                                      paddings, dilations)
+        out = _C_ops.fold(x, output_sizes, kernel_sizes, strides, paddings,
+                          dilations)
     elif in_dynamic_mode():
-        out = _C_ops.fold(x, "output_sizes", output_sizes, "kernel_sizes",
-                          kernel_sizes, "strides", strides, "paddings",
-                          paddings, "dilations", dilations)
+        out = _legacy_C_ops.fold(x, "output_sizes", output_sizes,
+                                 "kernel_sizes", kernel_sizes, "strides",
+                                 strides, "paddings", paddings, "dilations",
+                                 dilations)
     else:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type="fold",

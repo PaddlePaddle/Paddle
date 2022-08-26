@@ -268,7 +268,7 @@ class TestAReverseEagerAPI(UnittestBase):
         x = paddle.randn([4, 10])
         y = paddle.randn([4, 10])
 
-        out = paddle._C_ops.final_state_reverse_array([x, y], [0])
+        out = paddle._C_ops.reverse_array([x, y], [0])
         np.testing.assert_allclose(x.numpy(), out[1].numpy())
         np.testing.assert_allclose(y.numpy(), out[0].numpy())
 
