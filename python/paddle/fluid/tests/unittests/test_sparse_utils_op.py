@@ -475,7 +475,7 @@ class TestStatic(unittest.TestCase):
         paddle.enable_static()
         indices = paddle.static.data(name='indices',
                                      shape=[2, 2],
-                                     dtype='float32')
+                                     dtype='int32')
         values = paddle.static.data(name='values',
                                     shape=[2, 1],
                                     dtype='float32')
