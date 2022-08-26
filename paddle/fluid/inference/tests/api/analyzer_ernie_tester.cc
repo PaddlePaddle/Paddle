@@ -18,7 +18,7 @@ namespace paddle {
 namespace inference {
 
 /*
- * this model is unreasonable, it set a middle-tensor to persistable, so
+ * this model is unreasonable, it set a middle-tensor persistable, so
  * ridiculous! so I disable constant_folding_pass
  */
 
