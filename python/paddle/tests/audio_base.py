@@ -58,14 +58,15 @@ def get_wav_data(
     channels_first: bool = True,
 ):
     """Generate linear signal of the given dtype and num_channels
-    args:
+    Args:
         dtype: str,
         num_channels: int,
         *,
         num_frames: Optional[int] = None,
         normalize: bool = True,
         channels_first: bool = True 
-    Returns: paddle.Tensor
+    Returns: 
+        paddle.Tensor
     Data range is
         [-1.0, 1.0] for float32,
         [-2147483648, 2147483647] for int32

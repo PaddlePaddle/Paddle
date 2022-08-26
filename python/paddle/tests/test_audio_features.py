@@ -36,33 +36,17 @@ class TestLibrosa(unittest.TestCase):
         self.window_str = 'hann'
         self.pad_mode = 'reflect'
         self.top_db = 80.0
-        self.duration = 1
+        self.duration = 0.5
         self.num_channels = 1
         self.sr = 16000
         self.dtype = "float32"
-        waveform_tensor = get_wav_data(self.dtype,
-                                       self.num_channels,
-                                       normalize=False,
-                                       num_frames=self.duration * self.sr)
-        self.waveform = waveform_tensor.numpy() * 0.1
-        print(self.waveform.shape)
-        print(self.waveform)
+        self.waveform = np.loadtxt('testdata/audio.txt')
 
     def test_stft(self):
         if len(self.waveform.shape) == 2:  # (C, T)
             self.waveform = self.waveform.squeeze(
                 0)  # 1D input for librosa.feature.melspectrogram
-
-        feature_librosa = librosa.core.stft(
-            y=self.waveform,
-            n_fft=self.n_fft,
-            hop_length=self.hop_length,
-            win_length=None,
-            window=self.window_str,
-            center=True,
-            dtype=None,
-            pad_mode=self.pad_mode,
-        )
+        feature_librosa = np.load('testdata/librosa_stft.npy')
         x = paddle.to_tensor(self.waveform).unsqueeze(0)
         window = get_window(self.window_str, self.n_fft, dtype=x.dtype)
         feature_paddle = paddle.signal.stft(
@@ -85,27 +69,9 @@ class TestLibrosa(unittest.TestCase):
         if len(self.waveform.shape) == 2:  # (C, T)
             self.waveform = self.waveform.squeeze(
                 0)  # 1D input for librosa.feature.melspectrogram
-
-        # Get stft result from librosa.
-        stft_matrix = librosa.core.stft(
-            y=self.waveform,
-            n_fft=self.n_fft,
-            hop_length=self.hop_length,
-            win_length=None,
-            window=self.window_str,
-            center=True,
-            pad_mode=self.pad_mode,
-        )
-
-        feature_librosa = librosa.core.istft(
-            stft_matrix=stft_matrix,
-            hop_length=self.hop_length,
-            win_length=None,
-            window=self.window_str,
-            center=True,
-            dtype=None,
-            length=None,
-        )
+        # librosa
+        stft_matrix = np.load('testdata/librosa_stft_matrix.npy')
+        feature_librosa = np.loadtxt('testdata/librosa_istft.txt')
 
         x = paddle.to_tensor(stft_matrix).unsqueeze(0)
         window = get_window(self.window_str,
@@ -129,16 +95,7 @@ class TestLibrosa(unittest.TestCase):
                                              decimal=5)
 
     def test_mel(self):
-        feature_librosa = librosa.filters.mel(
-            sr=self.sr,
-            n_fft=self.n_fft,
-            n_mels=self.n_mels,
-            fmin=self.fmin,
-            fmax=None,
-            htk=False,
-            norm='slaney',
-            dtype=self.waveform.dtype,
-        )
+        feature_librosa = np.loadtxt('testdata/librosa_filters_mel.txt')
         feature_compliance = paddle.audio.compliance.librosa.compute_fbank_matrix(
             sr=self.sr,
             n_fft=self.n_fft,
@@ -172,13 +129,7 @@ class TestLibrosa(unittest.TestCase):
                 0)  # 1D input for librosa.feature.melspectrogram
 
         # librosa:
-        feature_librosa = librosa.feature.melspectrogram(
-            y=self.waveform,
-            sr=self.sr,
-            n_fft=self.n_fft,
-            hop_length=self.hop_length,
-            n_mels=self.n_mels,
-            fmin=self.fmin)
+        feature_librosa = np.loadtxt('testdata/librosa_melspectrogram.txt')
 
         # paddle.audio.compliance.librosa:
         feature_compliance = paddle.audio.compliance.librosa.melspectrogram(
@@ -215,15 +166,7 @@ class TestLibrosa(unittest.TestCase):
                 0)  # 1D input for librosa.feature.melspectrogram
 
         # librosa:
-        feature_librosa = librosa.feature.melspectrogram(
-            y=self.waveform,
-            sr=self.sr,
-            n_fft=self.n_fft,
-            hop_length=self.hop_length,
-            n_mels=self.n_mels,
-            fmin=self.fmin)
-        feature_librosa = librosa.power_to_db(feature_librosa, top_db=None)
-
+        feature_librosa = np.loadtxt('testdata/librosa_logmelspect.txt')
         # paddle.audio.compliance.librosa:
         feature_compliance = paddle.audio.compliance.librosa.melspectrogram(
             x=self.waveform,
@@ -239,18 +182,7 @@ class TestLibrosa(unittest.TestCase):
                 0)  # 1D input for librosa.feature.melspectrogram
 
         # librosa:
-        feature_librosa = librosa.feature.mfcc(y=self.waveform,
-                                               sr=self.sr,
-                                               S=None,
-                                               n_mfcc=self.n_mfcc,
-                                               dct_type=2,
-                                               norm='ortho',
-                                               lifter=0,
-                                               n_fft=self.n_fft,
-                                               hop_length=self.hop_length,
-                                               n_mels=self.n_mels,
-                                               fmin=self.fmin)
-
+        feature_librosa = np.loadtxt('testdata/librosa_mfcc.txt')
         # paddle.audio.compliance.librosa:
         feature_compliance = paddle.audio.compliance.librosa.mfcc(
             x=self.waveform,
@@ -264,6 +196,26 @@ class TestLibrosa(unittest.TestCase):
             n_mels=self.n_mels,
             fmin=self.fmin,
             top_db=self.top_db)
+        # paddlespeech.audio.features.layer
+        x = paddle.to_tensor(self.waveform, dtype=paddle.float64).unsqueeze(
+            0)  # Add batch dim.
+        feature_extractor = paddle.audio.features.MFCC(
+            sr=self.sr,
+            n_mfcc=self.n_mfcc,
+            n_fft=self.n_fft,
+            hop_length=self.hop_length,
+            n_mels=self.n_mels,
+            f_min=self.fmin,
+            top_db=self.top_db,
+            dtype=x.dtype)
+        feature_layer = feature_extractor(x).squeeze(0).numpy()
+
+        np.testing.assert_array_almost_equal(feature_librosa,
+                                             feature_compliance,
+                                             decimal=4)
+        np.testing.assert_array_almost_equal(feature_librosa,
+                                             feature_layer,
+                                             decimal=4)
 
 
 if __name__ == '__main__':
