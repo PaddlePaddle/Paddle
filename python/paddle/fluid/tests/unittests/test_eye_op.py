@@ -24,7 +24,7 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 
 from paddle.fluid.framework import program_guard, Program
-from test_attribute_var import 
+from test_attribute_var import UnittestBase
 
 
 class TestEyeOp(OpTest):
@@ -181,8 +181,8 @@ class TestEyeRowsCol(UnittestBase):
             x.stop_gradient = False
             feat = fc(x)  # [2,3,10]
 
-            res = self.call_func(feat)
-            out = feat + res
+            tmp = self.call_func(feat)
+            out = feat + tmp
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
@@ -190,14 +190,14 @@ class TestEyeRowsCol(UnittestBase):
 
             exe = paddle.static.Executor()
             exe.run(starup_prog)
-            res = exe.run(fetch_list=[res, out])
+            res = exe.run(fetch_list=[tmp, out])
             gt = np.eye(3, 10)
             np.testing.assert_allclose(res[0], gt)
-            paddle.static.save_inference_model(self.save_path, [x], [res, out],
+            paddle.static.save_inference_model(self.save_path, [x], [tmp, out],
                                                exe)
             # Test for Inference Predictor
             infer_outs = self.infer_prog()
-            np.testing.assert_allclose(infer_outs[0], gt)
+            np.testing.assert_allclose(infer_outs, gt)
 
     def path_prefix(self):
         return 'eye_rows_cols'
@@ -213,4 +213,5 @@ class TestEyeRowsCol(UnittestBase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
