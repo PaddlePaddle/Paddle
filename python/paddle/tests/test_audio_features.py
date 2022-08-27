@@ -237,16 +237,18 @@ class TestFeatures(unittest.TestCase):
         waveform = np.expand_dims(self.waveform, axis=0)
         fbank = paddle.audio.compliance.kaldi.fbank(paddle.to_tensor(waveform))
         fbank_bg = np.loadtxt('testdata/kaldi_fbank.txt')
-        np.testing.assert_array_almost_equal(fbank, fbank_bg)
+        np.testing.assert_array_almost_equal(fbank, fbank_bg, decimal=4)
 
         mfcc = paddle.audio.compliance.kaldi.mfcc(paddle.to_tensor(waveform))
         mfcc_bg = np.loadtxt('testdata/kaldi_mfcc.txt')
-        np.testing.assert_array_almost_equal(mfcc, mfcc_bg)
+        np.testing.assert_array_almost_equal(mfcc, mfcc_bg, decimal=4)
 
         spectrogram = paddle.audio.compliance.kaldi.spectrogram(
             paddle.to_tensor(waveform))
         spectrogram_bg = np.loadtxt('testdata/kaldi_spectrogram.txt')
-        np.testing.assert_array_almost_equal(spectrogram, spectrogram_bg)
+        np.testing.assert_array_almost_equal(spectrogram,
+                                             spectrogram_bg,
+                                             decimal=4)
 
 
 if __name__ == '__main__':
