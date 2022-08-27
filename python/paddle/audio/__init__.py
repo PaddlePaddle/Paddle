@@ -13,14 +13,12 @@
 # limitations under the License.
 
 from . import compliance
-from . import datasets
 from . import features
 from . import functional
 from . import utils
 
 __all__ = [
     "compliance",
-    "datasets",
     "functional",
     "features",
     "utils",
