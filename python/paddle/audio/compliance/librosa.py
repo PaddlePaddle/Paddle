@@ -24,7 +24,6 @@ from numpy.lib.stride_tricks import as_strided
 from scipy import signal
 from scipy import fftpack
 
-from ..utils import depth_convert
 from ..utils import ParameterError
 
 __all__ = [
