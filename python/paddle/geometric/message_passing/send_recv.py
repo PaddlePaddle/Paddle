@@ -17,7 +17,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode, _in_legacy_dygraph, in_dygraph_mode
 from paddle.fluid.framework import Variable
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 from .utils import convert_out_size_to_list, get_out_size_tensor_inputs, reshape_lhs_rhs
 
@@ -120,15 +120,15 @@ def send_u_recv(x,
 
     if _in_legacy_dygraph():
         out_size = convert_out_size_to_list(out_size)
-        out, tmp = _C_ops.graph_send_recv(x, src_index,
-                                          dst_index, None, 'reduce_op',
-                                          reduce_op.upper(), 'out_size',
-                                          out_size)
+        out, tmp = _legacy_C_ops.graph_send_recv(x, src_index, dst_index,
+                                                 None, 'reduce_op',
+                                                 reduce_op.upper(), 'out_size',
+                                                 out_size)
         return out
     if in_dygraph_mode():
         out_size = convert_out_size_to_list(out_size)
-        return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
-                                                  reduce_op.upper(), out_size)
+        return _C_ops.graph_send_recv(x, src_index, dst_index,
+                                      reduce_op.upper(), out_size)
 
     check_variable_and_dtype(
         x, "X", ("float32", "float64", "int32", "int64", "float16"),
@@ -288,18 +288,18 @@ def send_ue_recv(x,
 
     if _in_legacy_dygraph():
         out_size = convert_out_size_to_list(out_size)
-        out, tmp = _C_ops.graph_send_ue_recv(x, y, src_index, dst_index,
-                                             None, 'message_op',
-                                             message_op.upper(), 'reduce_op',
-                                             reduce_op.upper(), 'out_size',
-                                             out_size)
+        out, tmp = _legacy_C_ops.graph_send_ue_recv(x, y, src_index, dst_index,
+                                                    None, 'message_op',
+                                                    message_op.upper(),
+                                                    'reduce_op',
+                                                    reduce_op.upper(),
+                                                    'out_size', out_size)
         return out
     if in_dygraph_mode():
         out_size = convert_out_size_to_list(out_size)
-        return _C_ops.final_state_graph_send_ue_recv(x, y, src_index, dst_index,
-                                                     message_op.upper(),
-                                                     reduce_op.upper(),
-                                                     out_size)
+        return _C_ops.graph_send_ue_recv(x, y, src_index, dst_index,
+                                         message_op.upper(), reduce_op.upper(),
+                                         out_size)
 
     check_variable_and_dtype(
         x, "X", ("float32", "float64", "int32", "int64", "float16"),
@@ -419,12 +419,12 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
         y = 1. / y
 
     if in_dygraph_mode():
-        return _C_ops.final_state_graph_send_uv(x, y, src_index, dst_index,
-                                                message_op.upper())
+        return _C_ops.graph_send_uv(x, y, src_index, dst_index,
+                                    message_op.upper())
     else:
         if _in_legacy_dygraph():
-            return _C_ops.graph_send_uv(x, y, src_index, dst_index,
-                                        "message_op", message_op.upper())
+            return _legacy_C_ops.graph_send_uv(x, y, src_index, dst_index,
+                                               "message_op", message_op.upper())
         else:
             helper = LayerHelper("send_uv", **locals())
             check_variable_and_dtype(

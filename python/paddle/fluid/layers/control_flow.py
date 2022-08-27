@@ -29,7 +29,7 @@ from functools import reduce, partial
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
@@ -89,9 +89,9 @@ def select_input(inputs, mask):
     check_type(inputs, 'inputs', (list, tuple), 'select_input')
     check_variable_and_dtype(mask, 'mask', ['int32'], 'select_input')
 
-    input_dtype = inputs[0].dtype
-    input_shape = inputs[0].shape
-    input_type = inputs[0].type
+    input_dtype = inputs[1].dtype
+    input_shape = inputs[1].shape
+    input_type = inputs[1].type
 
     out = helper.create_variable(dtype=input_dtype,
                                  shape=input_shape,
@@ -1190,6 +1190,13 @@ def assign_skip_lod_tensor_array(input, output):
     """
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     """
+
+    def has_shape_diff(x_var, y_var):
+        if len(x_var.shape) != len(y_var.shape): return True
+        for x_dim, y_dim in zip(x_var.shape, y_var.shape):
+            if x_dim != y_dim and -1 not in [x_dim, y_dim]: return True
+        return False
+
     if not isinstance(input, (Variable, core.VarBase)):
         if isinstance(output, Variable) and isinstance(
                 input, support_ret_buildin_type):
@@ -1205,6 +1212,11 @@ def assign_skip_lod_tensor_array(input, output):
         if parent_block and not parent_block._find_var_recursive(input.name):
             assign(input, output)
     else:
+        if isinstance(output, Variable) and isinstance(
+                input, Variable) and has_shape_diff(input, output):
+            warnings.warn(
+                "In dy2static mode, we attemp to assign a variable with shape {} into a variable with shape{}, which is not always right."
+                .format(input.shape, output.shape))
         assign(input, output)
 
 
@@ -1555,7 +1567,7 @@ def increment(x, value=1.0, in_place=True):
           fluid.layers.increment(counter) # [1.]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_increment_(x, value)
+        return _C_ops.increment_(x, value)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'increment')
@@ -1879,7 +1891,7 @@ def greater_than(x, y, cond=None, name=None):
     attrs = dict()
 
     if in_dygraph_mode():
-        return _C_ops.final_state_greater_than(x, y, -1)
+        return _C_ops.greater_than(x, y, -1)
     else:
         helper.append_op(type='greater_than',
                          inputs={
@@ -1978,7 +1990,7 @@ def equal(x, y, cond=None, name=None):
     """
     if in_dygraph_mode():
         default_axis = -1
-        return _C_ops.final_state_equal(x, y, default_axis)
+        return _C_ops.equal(x, y, default_axis)
 
     check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
                              "equal")
@@ -4038,9 +4050,9 @@ def is_empty(x, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_is_empty(x)
-    if _in_legacy_dygraph():
         return _C_ops.is_empty(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.is_empty(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'is_empty')

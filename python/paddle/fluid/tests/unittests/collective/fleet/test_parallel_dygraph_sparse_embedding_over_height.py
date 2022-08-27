@@ -35,11 +35,11 @@ class TestParallelDygraphSparseEmdeddingOverHeight(TestDistBase):
 
     def test_sparse_embedding(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(
-                "parallel_dygraph_sparse_embedding_over_height.py",
-                delta=1e-5,
-                check_error_log=True,
-                log_name=flag_name)
+            self.check_with_place(os.path.abspath(
+                "../../parallel_dygraph_sparse_embedding_over_height.py"),
+                                  delta=1e-5,
+                                  check_error_log=True,
+                                  log_name=flag_name)
 
 
 class TestParallelDygraphSparseEmdeddingOverHeightSpawn(TestDistSpawnRunner):
