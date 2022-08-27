@@ -38,6 +38,7 @@ class TestFeatures(unittest.TestCase):
         self.num_channels = 1
         self.sr = 16000
         self.dtype = "float32"
+        self.window_size = 1024
         self.waveform = np.loadtxt('testdata/audio.txt')
 
     def test_stft(self):
@@ -177,6 +178,20 @@ class TestFeatures(unittest.TestCase):
             n_mels=self.n_mels,
             fmin=self.fmin)
 
+    def test_spectrogram(self):
+        if len(self.waveform.shape) == 2:  # (C, T)
+            self.waveform = self.waveform.squeeze(
+                0)  # 1D input for librosa.feature.melspectrogram
+        feature_librosa = np.loadtxt('testdata/librosa_spectrogram.txt')
+        feature_compliance = paddle.audio.compliance.librosa.spectrogram(
+            x=self.waveform,
+            sr=self.sr,
+            window=self.window_str,
+            pad_mode=self.pad_mode)
+        np.testing.assert_array_almost_equal(feature_librosa,
+                                             feature_compliance,
+                                             decimal=5)
+
     def test_mfcc(self):
         if len(self.waveform.shape) == 2:  # (C, T)
             self.waveform = self.waveform.squeeze(
@@ -217,6 +232,21 @@ class TestFeatures(unittest.TestCase):
         np.testing.assert_array_almost_equal(feature_librosa,
                                              feature_layer,
                                              decimal=4)
+
+    def test_kaldi_feature(self):
+        waveform = np.expand_dims(self.waveform, axis=0)
+        fbank = paddle.audio.compliance.kaldi.fbank(paddle.to_tensor(waveform))
+        fbank_bg = np.loadtxt('testdata/kaldi_fbank.txt')
+        np.testing.assert_array_almost_equal(fbank, fbank_bg)
+
+        mfcc = paddle.audio.compliance.kaldi.mfcc(paddle.to_tensor(waveform))
+        mfcc_bg = np.loadtxt('testdata/kaldi_mfcc.txt')
+        np.testing.assert_array_almost_equal(mfcc, mfcc_bg)
+
+        spectrogram = paddle.audio.compliance.kaldi.spectrogram(
+            paddle.to_tensor(waveform))
+        spectrogram_bg = np.loadtxt('testdata/kaldi_spectrogram.txt')
+        np.testing.assert_array_almost_equal(spectrogram, spectrogram_bg)
 
 
 if __name__ == '__main__':

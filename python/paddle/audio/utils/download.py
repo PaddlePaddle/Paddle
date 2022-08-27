@@ -19,18 +19,9 @@ from paddle.framework import load as load_state_dict
 from paddle.utils import download
 
 __all__ = [
-    'decompress',
     'download_and_decompress',
     'load_state_dict_from_url',
 ]
-
-
-def decompress(file: str):
-    """
-    Extracts all files from a compressed file.
-    """
-    assert os.path.isfile(file), "File: {} not exists.".format(file)
-    download._decompress(file)
 
 
 def download_and_decompress(archives: List[Dict[str, str]],

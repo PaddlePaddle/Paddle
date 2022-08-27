@@ -13,11 +13,6 @@
 # limitations under the License.
 from .env import DATA_HOME
 from .env import MODEL_HOME
-from .download import decompress
 from .download import download_and_decompress
 from .download import load_state_dict_from_url
 from .error import ParameterError
-from .numeric import depth_convert
-from .numeric import pcm16to32
-from .time import seconds_to_hms
-from .time import Timer
