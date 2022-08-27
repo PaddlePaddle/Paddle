@@ -177,6 +177,7 @@ class Laplace(distribution.Distribution):
         loc, scale, value = self._validate_value(value)
         iterm = (0.5 * (value - loc).sign() *
                  paddle.expm1(-(value - loc).abs() / scale))
+
         return 0.5 - iterm
 
     def icdf(self, value):
@@ -298,4 +299,5 @@ class Laplace(distribution.Distribution):
         t = paddle.abs(self.loc - other.loc)
         term1 = ((self.scale * paddle.exp(-t / self.scale) + t) / other.scale)
         term2 = paddle.log(var_ratio)
+
         return term1 + term2 - 1
