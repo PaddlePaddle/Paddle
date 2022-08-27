@@ -709,7 +709,7 @@ class Sigmoid(Layer):
 
     .. math::
 
-        Sigmoid(x) = \\frac{1}{1 + e^{-x}}
+        sigmoid(x) = \frac{1}{1 + e^{-x}}
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -801,7 +801,7 @@ class Softplus(Layer):
 
     .. math::
 
-        Softplus(x) = \frac{1}{beta} * \log(1 + e^{beta * x}) \\
+        softplus(x) = \frac{1}{beta} * \log(1 + e^{beta * x}) \\
         \text{For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.}
 
     Parameters:
@@ -1104,7 +1104,7 @@ class Silu(Layer):
     Silu Activation.
     .. math::
 
-        Silu(x) = \frac{x}{1 + e^{-x}}
+        silu(x) = \frac{x}{1 + e^{-x}}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, or float64.

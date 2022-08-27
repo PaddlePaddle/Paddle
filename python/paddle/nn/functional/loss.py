@@ -1006,7 +1006,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
          loss(x,y) = \frac{1}{n}\sum_{i}z_i
 
 
-    where z_i is given by:
+    where :math:`z_i` is given by:
 
     .. math::
 
@@ -1049,6 +1049,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             label = paddle.to_tensor(label_data)
             output = paddle.nn.functional.smooth_l1_loss(input, label)
             print(output)
+            # [0.068004]
     """
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'smooth_l1_loss')

@@ -1152,7 +1152,7 @@ class SmoothL1Loss(Layer):
 
          loss(x,y) = \frac{1}{n}\sum_{i}z_i
 
-    where z_i is given by:
+    where :math:`z_i` is given by:
 
     .. math::
 
@@ -1199,6 +1199,7 @@ class SmoothL1Loss(Layer):
             loss = paddle.nn.SmoothL1Loss()
             output = loss(input, label)
             print(output)
+            # [0.049606]
     """
 
     def __init__(self, reduction='mean', delta=1.0, name=None):
