@@ -66,7 +66,7 @@ class TestLaplace(unittest.TestCase):
 
     def test_sample(self):
 
-        sample_shape = (1000, )
+        sample_shape = (100000, )
         samples = self._dist.sample(sample_shape)
         sample_values = samples.numpy()
 
