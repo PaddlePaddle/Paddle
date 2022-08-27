@@ -190,7 +190,7 @@ class TestFeatures(unittest.TestCase):
             pad_mode=self.pad_mode)
         np.testing.assert_array_almost_equal(feature_librosa,
                                              feature_compliance,
-                                             decimal=5)
+                                             decimal=4)
 
     def test_mfcc(self):
         if len(self.waveform.shape) == 2:  # (C, T)
