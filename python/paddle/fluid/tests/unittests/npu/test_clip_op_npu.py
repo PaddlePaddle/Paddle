@@ -173,14 +173,14 @@ class TestClipAPI(unittest.TestCase):
             },
             fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8])
 
-        self.assertTrue(np.allclose(res1, data.clip(0.2, 0.8)))
-        self.assertTrue(np.allclose(res2, data.clip(0.2, 0.9)))
-        self.assertTrue(np.allclose(res3, data.clip(min=0.3)))
-        self.assertTrue(np.allclose(res4, data.clip(max=0.7)))
-        self.assertTrue(np.allclose(res5, data.clip(min=0.2)))
-        self.assertTrue(np.allclose(res6, data.clip(max=0.8)))
-        self.assertTrue(np.allclose(res7, data.clip(max=-1)))
-        self.assertTrue(np.allclose(res8, data))
+        np.testing.assert_allclose(res1, data.clip(0.2, 0.8))
+        np.testing.assert_allclose(res2, data.clip(0.2, 0.9))
+        np.testing.assert_allclose(res3, data.clip(min=0.3))
+        np.testing.assert_allclose(res4, data.clip(max=0.7))
+        np.testing.assert_allclose(res5, data.clip(min=0.2))
+        np.testing.assert_allclose(res6, data.clip(max=0.8))
+        np.testing.assert_allclose(res7, data.clip(max=-1))
+        np.testing.assert_allclose(res8, data)
         paddle.disable_static()
 
     def test_clip_dygraph(self):
@@ -200,9 +200,9 @@ class TestClipAPI(unittest.TestCase):
         images = paddle.to_tensor(data, dtype='float32')
         out_3 = self._executed_api(images, min=v_min, max=v_max)
 
-        self.assertTrue(np.allclose(out_1.numpy(), data.clip(0.2, 0.8)))
-        self.assertTrue(np.allclose(out_2.numpy(), data.clip(0.2, 0.9)))
-        self.assertTrue(np.allclose(out_3.numpy(), data.clip(0.2, 0.8)))
+        np.testing.assert_allclose(out_1.numpy(), data.clip(0.2, 0.8))
+        np.testing.assert_allclose(out_2.numpy(), data.clip(0.2, 0.9))
+        np.testing.assert_allclose(out_3.numpy(), data.clip(0.2, 0.8))
 
     def test_errors(self):
         paddle.enable_static()

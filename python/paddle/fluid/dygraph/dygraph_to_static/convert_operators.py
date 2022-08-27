@@ -25,6 +25,7 @@ from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, lo
 from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_VAR_NAME
 from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, Dygraph2StaticException
+from paddle.fluid.layers.utils import copy_mutable_vars
 
 
 def indexable(x, code=None):
@@ -92,7 +93,10 @@ def _run_paddle_while(cond, body, getter, setter):
     # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Tensors.
     def new_body_fn(*args):
         """ wrap the body() and add return value for `while_loop`
+            the args may be differ from getter().
         """
+        mutable_loop_vars = args
+        setter(mutable_loop_vars)
         body()
         return getter()
 
@@ -110,7 +114,7 @@ def _run_paddle_while(cond, body, getter, setter):
     setter(loop_vars)  # change the non-local var to variable
     # variable maybe modified to inner var. change it into
     loop_vars = control_flow.while_loop(new_cond_fn, new_body_fn, loop_vars)
-    setter(loop_vars)  # change the non-local var to variable
+    setter(loop_vars)  # change back to loop_vars
     return loop_vars
 
 
@@ -287,7 +291,8 @@ def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
     init_args = get_args()
 
     def new_true_fn():
-        set_args(init_args)
+        #init args may contain mutable python container like [var, 2], we copy then like in while_loop
+        set_args(copy_mutable_vars(init_args))
         ret = true_fn()
         # IfExpr will return a non-None return value, so we just return ret.
         # We assume normal return has no return value.
@@ -295,7 +300,8 @@ def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
         else: return ret
 
     def new_false_fn():
-        set_args(init_args)
+        #init args may contain mutable python container like [var, 2], we copy then like in while_loop
+        set_args(copy_mutable_vars(init_args))
         ret = false_fn()
         if ret is None: return get_args()
         else: return ret

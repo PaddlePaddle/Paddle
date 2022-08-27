@@ -80,7 +80,7 @@ class TestExponentialMovingAverage(unittest.TestCase):
                     manu_ema = self._ema_decay * manu_ema + (
                         1 - self._ema_decay) * param
                 manu_ema = manu_ema / (1.0 - self._ema_decay**len(params))
-            self.assertTrue(np.allclose(manu_ema, final_ema))
+            np.testing.assert_allclose(manu_ema, final_ema, rtol=1e-05)
 
 
 if __name__ == '__main__':

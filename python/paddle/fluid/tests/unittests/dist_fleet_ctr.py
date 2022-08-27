@@ -236,7 +236,8 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         fleet.save_inference_model(exe, model_dir,
                                    [feed.name for feed in self.feeds],
                                    self.avg_cost)
-        self.check_model_right(model_dir)
+        if fleet.is_first_worker():
+            self.check_model_right(model_dir)
         shutil.rmtree(model_dir)
 
     def do_dataset_training_queuedataset(self, fleet):
@@ -277,7 +278,8 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             fleet.save_inference_model(exe, model_dir,
                                        [feed.name for feed in self.feeds],
                                        self.avg_cost)
-            self.check_model_right(model_dir)
+            if fleet.is_first_worker():
+                self.check_model_right(model_dir)
             shutil.rmtree(model_dir)
 
         dirname = os.getenv("SAVE_DIRNAME", None)
@@ -327,16 +329,35 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             fleet.save_inference_model(exe, model_dir,
                                        [feed.name for feed in self.feeds],
                                        self.avg_cost)
-            self.check_model_right(model_dir)
+            fleet.load_inference_model(model_dir, mode=0)
+            if fleet.is_first_worker():
+                self.check_model_right(model_dir)
             shutil.rmtree(model_dir)
 
         dirname = os.getenv("SAVE_DIRNAME", None)
         if dirname:
             fleet.save_persistables(exe, dirname=dirname)
+            fleet.load_model(dirname, mode=0)
 
         cache_dirname = os.getenv("SAVE_CACHE_DIRNAME", None)
         if cache_dirname:
             fleet.save_cache_model(cache_dirname)
+
+        dense_param_dirname = os.getenv("SAVE_DENSE_PARAM_DIRNAME", None)
+        if dense_param_dirname:
+            fleet.save_dense_params(exe, dense_param_dirname,
+                                    fluid.global_scope(),
+                                    fluid.default_main_program())
+
+        save_one_table_dirname = os.getenv("SAVE_ONE_TABLE_DIRNAME", None)
+        if save_one_table_dirname:
+            fleet.save_one_table(0, save_one_table_dirname, 0)
+            fleet.load_one_table(0, save_one_table_dirname, 0)
+
+        patch_dirname = os.getenv("SAVE_PATCH_DIRNAME", None)
+        if patch_dirname:
+            fleet.save_persistables(exe, patch_dirname, None, 5)
+            fleet.check_save_pre_patch_done()
 
 if __name__ == "__main__":
     runtime_main(TestDistCTR2x2)

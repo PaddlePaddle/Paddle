@@ -31,9 +31,9 @@ class TestMatmulActivationMkldnnFusePass(PassAutoScanTest):
         input_dim = draw(st.sampled_from([32]))
         activation_type = draw(
             st.sampled_from([
-                'relu', 'gelu', 'tanh', 'sigmoid', 'swish', 'mish', 'sqrt',
-                'hard_swish', 'sigmoid', 'abs', 'relu6', 'clip', 'tanh',
-                'hard_sigmoid', 'leaky_relu'
+                'relu', 'gelu', 'swish', 'mish', 'sqrt', 'hard_swish',
+                'sigmoid', 'abs', 'relu6', 'clip', 'tanh', 'hard_sigmoid',
+                'leaky_relu'
             ]))
 
         def generate_input(type):

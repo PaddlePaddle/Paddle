@@ -93,7 +93,7 @@ class TestCrossAPI(unittest.TestCase):
                            return_numpy=False)
         expect_out = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0],
                                [0.0, 0.0, 0.0]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 2:
         with program_guard(Program(), Program()):
@@ -109,7 +109,7 @@ class TestCrossAPI(unittest.TestCase):
                            return_numpy=False)
         expect_out = np.array([[-1.0, -1.0, -1.0], [2.0, 2.0, 2.0],
                                [-1.0, -1.0, -1.0]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 3:
         with program_guard(Program(), Program()):
@@ -129,7 +129,7 @@ class TestCrossAPI(unittest.TestCase):
         #     np_z = z.numpy()
         # expect_out = np.array([[-1.0, -1.0, -1.0], [2.0, 2.0, 2.0],
         #                        [-1.0, -1.0, -1.0]])
-        # self.assertTrue(np.allclose(expect_out, np_z))
+        # np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 2:
         with fluid.dygraph.guard():
@@ -139,7 +139,7 @@ class TestCrossAPI(unittest.TestCase):
             np_z = z.numpy()
         expect_out = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0],
                                [0.0, 0.0, 0.0]])
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
 
 if __name__ == '__main__':

@@ -72,9 +72,9 @@ SparseCsrTensor::SparseCsrTensor(const SparseCsrTensor& other)
 
 SparseCsrTensor& SparseCsrTensor::operator=(const SparseCsrTensor& other) {
   this->dims_ = other.dims();
-  this->non_zero_crows_ = other.non_zero_crows();
-  this->non_zero_cols_ = other.non_zero_cols();
-  this->non_zero_elements_ = other.non_zero_elements();
+  this->non_zero_crows_ = other.crows();
+  this->non_zero_cols_ = other.cols();
+  this->non_zero_elements_ = other.values();
   return *this;
 }
 

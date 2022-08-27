@@ -28,9 +28,10 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
-                            true,
+                            false,
                             "Use inplace in new executor");
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
                             true,
@@ -98,6 +99,11 @@ InterpreterCore::~InterpreterCore() {
 interpreter::CostInfo InterpreterCore::DryRun(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  if (platform::is_gpu_place(place_)) {
+    platform::SetDeviceId(place_.device);
+  }
+#endif
   Prepare(feed_names, feed_tensors, true);
   interpreter::CostInfo cost_info;
   {
@@ -107,6 +113,11 @@ interpreter::CostInfo InterpreterCore::DryRun(
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
     async_work_queue_ = GetWorkQueue();
+
+    // lazy initialization of gc, do not create gc is the program only run once
+    if (!gc_) {
+      gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+    }
 
     ExecuteInstructionList(vec_instruction_);
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
@@ -122,6 +133,11 @@ interpreter::CostInfo InterpreterCore::DryRun(
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  if (platform::is_gpu_place(place_)) {
+    platform::SetDeviceId(place_.device);
+  }
+#endif
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
@@ -133,6 +149,12 @@ paddle::framework::FetchList InterpreterCore::Run(
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
     async_work_queue_ = GetWorkQueue();
+
+    // lazy initialization of gc, do not create gc is the program only run once
+    if (!gc_) {
+      gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+    }
+
     ExecuteInstructionList(vec_instruction_);
 #ifdef PADDLE_WITH_ASCEND_CL
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
@@ -153,6 +175,11 @@ paddle::framework::FetchList InterpreterCore::Run(
 
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names) {
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  if (platform::is_gpu_place(place_)) {
+    platform::SetDeviceId(place_.device);
+  }
+#endif
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
@@ -176,6 +203,11 @@ paddle::framework::FetchList InterpreterCore::Run(
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
     async_work_queue_ = GetWorkQueue();
+
+    // lazy initialization of gc, do not create gc is the program only run once
+    if (!gc_) {
+      gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+    }
 
     ExecuteInstructionList(vec_instruction_);
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -479,7 +511,7 @@ void InterpreterCore::Convert(
   }
 
   BuildSkipShareLoDInfo();
-  gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+
   bool inplaced = false;
   for (auto inst : vec_instruction_) {
     if (inst.OpBase()->Type() == "share_buffer" ||
@@ -534,12 +566,16 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
                                            : var_scope_.GetMutableScope();
 
 #ifdef PADDLE_WITH_ASCEND_CL
-  // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
-  // values, but only through special `float_status` to checks whether
-  // the operation is overflow. More about `float_status`, see:
-  // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
-  if (FLAGS_check_nan_inf) {
-    framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
+  if (platform::is_npu_place(place)) {
+    auto dev_id = place.device;
+    platform::SetNPUDeviceId(dev_id);
+    // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
+    // values, but only through special `float_status` to checks whether
+    // the operation is overflow. More about `float_status`, see:
+    // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
+    if (FLAGS_check_nan_inf) {
+      framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
+    }
   }
 #endif
 

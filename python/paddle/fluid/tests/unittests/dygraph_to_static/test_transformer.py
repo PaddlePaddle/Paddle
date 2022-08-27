@@ -395,19 +395,17 @@ class TestTransformer(unittest.TestCase):
         args, batch_generator = self.prepare(mode='train')
         static_avg_loss = train_static(args, batch_generator)
         dygraph_avg_loss = train_dygraph(args, batch_generator)
-        self.assertTrue(np.allclose(static_avg_loss, dygraph_avg_loss))
+        np.testing.assert_allclose(static_avg_loss,
+                                   dygraph_avg_loss,
+                                   rtol=1e-05)
 
     def _test_predict(self):
         args, batch_generator = self.prepare(mode='test')
         static_seq_ids, static_scores = predict_static(args, batch_generator)
         dygraph_seq_ids, dygraph_scores = predict_dygraph(args, batch_generator)
 
-        self.assertTrue(np.allclose(static_seq_ids, static_seq_ids),
-                        msg="static_seq_ids: {} \n dygraph_seq_ids: {}".format(
-                            static_seq_ids, dygraph_seq_ids))
-        self.assertTrue(np.allclose(static_scores, dygraph_scores),
-                        msg="static_scores: {} \n dygraph_scores: {}".format(
-                            static_scores, dygraph_scores))
+        np.testing.assert_allclose(static_seq_ids, static_seq_ids, rtol=1e-05)
+        np.testing.assert_allclose(static_scores, dygraph_scores, rtol=1e-05)
 
     def test_check_result(self):
         self._test_train()
