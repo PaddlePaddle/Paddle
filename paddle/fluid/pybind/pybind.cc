@@ -391,44 +391,6 @@ struct iinfo {
     }
 };
 
-
-struct finfo {
-    int bits;
-    long double eps, max, min, smallest_normal, tiny;
-    double resolution;
-    std::string dtype;
-
-    finfo(const framework::proto::VarType::Type& type) { 
-        switch (type) {
-        case framework::proto::VarType::FP32:
-          bits = 32;
-          eps = std::numeric_limits<float>::epsilon();
-          max = std::numeric_limits<float>::max();
-          min = std::numeric_limits<float>::lowest();
-          smallest_normal = std::numeric_limits<float>::min();
-          tiny = smallest_normal;
-          resolution = std::pow(10, -std::numeric_limits<float>::digits10);
-          dtype = "float32";
-          break;
-        case framework::proto::VarType::FP64:
-          bits = 64;
-          eps = std::numeric_limits<double>::epsilon();
-          max = std::numeric_limits<double>::max();
-          min = std::numeric_limits<double>::lowest();
-          smallest_normal = std::numeric_limits<double>::min();
-          tiny = smallest_normal;
-          resolution = std::pow(10, -std::numeric_limits<double>::digits10);
-          dtype = "float64";
-          break;
-        default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
-             "the argument of paddle.finfo can only be "
-             "paddle.float32, paddle.float64"));
-          break;
-        }
-    }
-};
-
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
   // NOTE(zjl): PyObject_GetAttrString would return nullptr when attr_name
   // is not inside obj, but it would also set the error flag of Python.
@@ -644,18 +606,7 @@ PYBIND11_MODULE(core_noavx, m) {
       .def_readonly("max", &iinfo::max)
       .def_readonly("bits", &iinfo::bits)
       .def_readonly("dtype", &iinfo::dtype);
-
-  py::class_<finfo>(m, "finfo")
-      .def(py::init<const framework::proto::VarType::Type &>())
-      .def_readonly("bits", &finfo::bits)
-      .def_readonly("eps", &finfo::eps)
-      .def_readonly("max", &finfo::max)
-      .def_readonly("min", &finfo::min)
-      .def_readonly("smallest_normal", &finfo::smallest_normal)
-      .def_readonly("tiny", &finfo::tiny)
-      .def_readonly("resolution", &finfo::resolution)
-      .def_readonly("dtype", &finfo::dtype);
-      
+    
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);
