@@ -43,7 +43,7 @@ class TestLaplace(unittest.TestCase):
             scale = paddle.static.data('scale', self.scale.shape,
                                        self.scale.dtype)
             self._dist = paddle.distribution.Laplace(loc=loc, scale=scale)
-            self.sample_shape = (20000, )
+            self.sample_shape = (30000, )
             mean = self._dist.mean
             var = self._dist.variance
             stddev = self._dist.stddev
@@ -96,7 +96,7 @@ class TestLaplace(unittest.TestCase):
         np.testing.assert_allclose(self.samples.mean(axis=0),
                                    scipy.stats.laplace.mean(self.loc,
                                                             scale=self.scale),
-                                   rtol=0.1,
+                                   rtol=0.3,
                                    atol=0.)
         np.testing.assert_allclose(self.samples.var(axis=0),
                                    scipy.stats.laplace.var(self.loc,

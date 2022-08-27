@@ -66,7 +66,7 @@ class TestLaplace(unittest.TestCase):
 
     def test_sample(self):
 
-        sample_shape = (20000, )
+        sample_shape = (30000, )
         samples = self._dist.sample(sample_shape)
         sample_values = samples.numpy()
 
@@ -80,7 +80,7 @@ class TestLaplace(unittest.TestCase):
         np.testing.assert_allclose(sample_values.mean(axis=0),
                                    scipy.stats.laplace.mean(self.loc,
                                                             scale=self.scale),
-                                   rtol=0.1,
+                                   rtol=0.3,
                                    atol=0.)
         np.testing.assert_allclose(sample_values.var(axis=0),
                                    scipy.stats.laplace.var(self.loc,
