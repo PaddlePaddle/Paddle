@@ -125,7 +125,8 @@ PD_REGISTER_KERNEL(modulo_raw,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   float16) {}
 PD_REGISTER_KERNEL(floor_divide_raw,
                    KPS,
                    ALL_LAYOUT,

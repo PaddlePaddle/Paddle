@@ -95,6 +95,17 @@ class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
         self.dtype = np.float64
 
 
+class TestElementwiseModOpFp16(TestElementwiseModOp):
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def init_input_output(self):
+        self.x = np.random.uniform(-1000, 1000, [10, 10]).astype(self.dtype)
+        self.y = np.random.uniform(-100, 100, [10, 10]).astype(self.dtype)
+        self.out = np.mod(self.x, self.y)
+
+
 class TestRemainderOp(unittest.TestCase):
 
     def test_name(self):

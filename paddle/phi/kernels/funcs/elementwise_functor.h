@@ -510,6 +510,20 @@ struct ModuloFunctor {
   }
 };
 
+template <>
+struct ModuloFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float tmp_b = static_cast<float>(b);
+    float res = fmod(static_cast<float>(a), tmp_b);
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0.0f) && ((res < 0.0f) != (tmp_b < 0.0f))) res += tmp_b;
+    return static_cast<dtype::float16>(res);
+  }
+};
+
 template <typename T>
 struct ModuloFunctor<
     T,
