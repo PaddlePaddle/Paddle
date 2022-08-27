@@ -239,7 +239,7 @@ class Laplace(distribution.Distribution):
                             import paddle
 
                             m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-                            m.rsample([1])  # Laplace distributed with loc=0, scale=1
+                            m.rsample((1,))  # Laplace distributed with loc=0, scale=1
                             # Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
                             # [[0.04337667]])
         """
