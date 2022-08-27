@@ -745,7 +745,7 @@ def save(layer, path, input_spec=None, **configs):
 
                 def __getitem__(self, idx):
                     image = np.random.random([IMAGE_SIZE]).astype('float32')
-                    label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+                    label = np.random.randint(0, CLASS_NUM, (1, )).astype('int64')
                     return image, label
 
                 def __len__(self):
