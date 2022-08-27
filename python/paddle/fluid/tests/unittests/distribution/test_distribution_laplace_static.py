@@ -96,7 +96,7 @@ class TestLaplace(unittest.TestCase):
         np.testing.assert_allclose(self.samples.mean(axis=0),
                                    scipy.stats.laplace.mean(self.loc,
                                                             scale=self.scale),
-                                   rtol=0.3,
+                                   rtol=0.1,
                                    atol=0.)
         np.testing.assert_allclose(self.samples.var(axis=0),
                                    scipy.stats.laplace.var(self.loc,

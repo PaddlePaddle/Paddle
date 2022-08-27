@@ -14,6 +14,7 @@
 
 import paddle
 import numbers
+import numpy as np
 from paddle.distribution import distribution
 from paddle.fluid import framework as framework
 
@@ -247,7 +248,9 @@ class Laplace(distribution.Distribution):
 
         eps = self.get_eps()
         shape = self._extend_shape(shape) or (1, )
-        uniform = paddle.uniform(shape=shape, min=eps - 1, max=1)
+        uniform = paddle.uniform(shape=shape,
+                                 min=float(np.nextafter(-1, 1)) + eps / 2,
+                                 max=1.)
 
         if len(self.scale.shape) == 0 and len(self.loc.shape) == 0:
             loc, scale, uniform = paddle.broadcast_tensors(
