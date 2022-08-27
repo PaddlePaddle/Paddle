@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
@@ -763,6 +764,30 @@ struct PowGradDY {
     }
 #endif
     return dout * std::log(x) * std::pow(x, y);
+  }
+};
+
+template <>
+struct PowGradDX<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
+                                       dtype::float16 y,
+                                       dtype::float16 out,
+                                       dtype::float16 dout) const {
+    return static_cast<dtype::float16>(
+        static_cast<float>(dout) * static_cast<float>(y) *
+        std::pow(static_cast<float>(x), static_cast<float>(y) - 1));
+  }
+};
+
+template <>
+struct PowGradDY<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
+                                       dtype::float16 y,
+                                       dtype::float16 out,
+                                       dtype::float16 dout) const {
+    return static_cast<dtype::float16>(
+        static_cast<float>(dout) * std::log(static_cast<float>(x)) *
+        std::pow(static_cast<float>(x), static_cast<float>(y)));
   }
 };
 

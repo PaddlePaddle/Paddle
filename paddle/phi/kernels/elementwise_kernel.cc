@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/elementwise_kernel.h"
 
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -77,6 +78,7 @@ void ElementwiseHeavisideKernel(const Context& dev_ctx,
 
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
+using float16 = phi::dtype::float16;
 
 PD_REGISTER_KERNEL(maximum,
                    CPU,
@@ -158,5 +160,6 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   float16) {}
 #endif

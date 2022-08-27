@@ -145,4 +145,5 @@ PD_REGISTER_KERNEL(elementwise_pow_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16) {}

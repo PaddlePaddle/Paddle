@@ -21,7 +21,7 @@ limitations under the License. */
 #if defined(__xpu__)
 #include <xpu/runtime.h>
 
-#include "xpu/kernel/math_xpu2.h"  //pow()
+#include "xpu/kernel/math_xpu2.h"
 #endif
 
 namespace phi {
@@ -592,5 +592,16 @@ struct ElementwisePowFunctor {
     return std::pow(a, b);
   }
 };
+
+template <>
+struct ElementwisePowFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float f_a = static_cast<float>(a);
+    float f_b = static_cast<float>(b);
+    return static_cast<dtype::float16>(std::pow(f_a, f_b));
+  }
+};
+
 }  // namespace funcs
 }  // namespace phi

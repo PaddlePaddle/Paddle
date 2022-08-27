@@ -216,5 +216,17 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
+class TestElementwisePowOpFp16(TestElementwisePowOp):
+
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.inputs = {
+            'X': np.random.uniform(1, 2, [20, 5]).astype("float16"),
+            'Y': np.random.uniform(1, 2, [20, 5]).astype("float16")
+        }
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+
 if __name__ == '__main__':
     unittest.main()
