@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import paddle
+import numbers
 from paddle.distribution import distribution
+from paddle.fluid import framework as framework
+
 try:
     from collections.abc import Iterable
 except:
@@ -25,6 +27,10 @@ class Laplace(distribution.Distribution):
     r"""
     Creates a Laplace distribution parameterized by :attr:`loc` and :attr:`scale`.
 
+    Args:
+        loc (scalar|Tensor): mean of the distribution
+        scale (scalar|Tensor): scale of the distribution
+    
     Examples:
         .. code-block:: python
 
@@ -35,33 +41,29 @@ class Laplace(distribution.Distribution):
                         # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True, 
                         # [3.68546247])
 
-    Args:
-        loc (float or Tensor): mean of the distribution
-        scale (float or Tensor): scale of the distribution
     """
 
-    def __init__(self, loc, scale, name=None):
+    def __init__(self, loc, scale):
+        if not isinstance(loc, (numbers.Real, framework.Variable)):
+            raise TypeError(
+                f"Expected type of loc is Real|Variable, but got {type(loc)}")
 
-        if type(loc) != type(scale):
-            raise TypeError("type of loc and scale must be identical!")
+        if not isinstance(scale, (numbers.Real, framework.Variable)):
+            raise TypeError(
+                f"Expected type of scale is Real|Variable, but got {type(scale)}"
+            )
 
-        self.batch_size_unknown = False
-        self.name = name if name is not None else 'Laplace'
-        self.dtype = 'float32'
+        if isinstance(loc, numbers.Real):
+            loc = paddle.full(shape=(), fill_value=loc)
 
-        if self._validate_args(loc, scale):
-            # is_variable
-            if paddle.is_integer(loc):
-                loc = paddle.cast(loc, self.dtype)
-            if paddle.is_integer(scale):
-                scale = paddle.cast(scale, self.dtype)
+        if isinstance(scale, numbers.Real):
+            scale = paddle.full(shape=(), fill_value=scale)
+
+        if (len(scale.shape) > 0 or len(loc.shape) > 0) and (loc.dtype
+                                                             == scale.dtype):
+            self.loc, self.scale = paddle.broadcast_tensors([loc, scale])
         else:
-            # is_number
-            loc = paddle.to_tensor(loc, dtype=self.dtype)
-            scale = paddle.to_tensor(scale, dtype=self.dtype)
-            self.batch_size_unknown = True
-        self.loc = loc
-        self.scale = scale
+            self.loc, self.scale = loc, scale
 
         super(Laplace, self).__init__(self.loc.shape)
 
@@ -89,11 +91,34 @@ class Laplace(distribution.Distribution):
         """
         return self.stddev.pow(2)
 
+    def _validate_value(self, value):
+        """Argument dimension check for distribution methods such as `log_prob`,
+        `cdf` and `icdf`. 
+
+        Args:
+          value (Tensor|Scalar): The input value, can be a scalar or a tensor.
+        
+        Returns:
+          loc, scale, value: broadcasted loc, scale and value, with the same dimension and data type.
+        """
+        if isinstance(value, numbers.Real):
+            value = paddle.full(shape=(), fill_value=value)
+        if value.dtype != self.scale.dtype:
+            value = paddle.cast(value, self.scale.dtype)
+        if len(self.scale.shape) > 0 or len(self.loc.shape) > 0 or len(
+                value.shape) > 0:
+            loc, scale, value = paddle.broadcast_tensors(
+                [self.loc, self.scale, value])
+        else:
+            loc, scale = self.loc, self.scale
+
+        return loc, scale, value
+
     def log_prob(self, value):
         """Log probability density/mass function.
 
         Args:
-          value (Tensor): The input tensor.
+          value (Tensor|Scalar): The input value, can be a scalar or a tensor.
 
         Returns:
           Tensor: log probability. The data type is same with value.
@@ -109,11 +134,10 @@ class Laplace(distribution.Distribution):
                             # [-0.79314721])
 
         """
-        if value.dtype != self.scale.dtype:
-            value = paddle.cast(value, self.scale.dtype)
-        log_scale = -paddle.log(2 * self.scale)
+        loc, scale, value = self._validate_value(value)
+        log_scale = -paddle.log(2 * scale)
 
-        return (log_scale - paddle.abs(value - self.loc) / self.scale)
+        return (log_scale - paddle.abs(value - loc) / scale)
 
     def entropy(self):
         """Entropy of Laplace distribution.
@@ -150,10 +174,9 @@ class Laplace(distribution.Distribution):
                             # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                             # [0.54758132])
         """
-        if value.dtype != self.scale.dtype:
-            value = paddle.cast(value, self.scale.dtype)
-        iterm = (0.5 * (value - self.loc).sign() *
-                 paddle.expm1(-(value - self.loc).abs() / self.scale))
+        loc, scale, value = self._validate_value(value)
+        iterm = (0.5 * (value - loc).sign() *
+                 paddle.expm1(-(value - loc).abs() / scale))
         return 0.5 - iterm
 
     def icdf(self, value):
@@ -174,18 +197,16 @@ class Laplace(distribution.Distribution):
                             # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                             # [-1.60943794])
         """
-        if value.dtype != self.scale.dtype:
-            value = paddle.cast(value, self.scale.dtype)
+        loc, scale, value = self._validate_value(value)
         term = value - 0.5
-        return (self.loc - self.scale *
-                (term).sign() * paddle.log1p(-2 * term.abs()))
 
-    def sample(self, shape=(), seed=0):
+        return (loc - scale * (term).sign() * paddle.log1p(-2 * term.abs()))
+
+    def sample(self, shape=()):
         """Generate samples of the specified shape.
 
         Args:
-          shape (list): 1D `int32`. Shape of the generated samples.
-          seed (int): Python integer number.
+          shape (tuple): 1D `int32`. Shape of the generated samples.
 
         Returns:
           Tensor: A tensor with prepended dimensions shape.The data type is float32.
@@ -203,13 +224,12 @@ class Laplace(distribution.Distribution):
             raise TypeError('sample shape must be Iterable object.')
 
         with paddle.no_grad():
-            return self.rsample(shape, seed=seed)
+            return self.rsample(shape)
 
-    def rsample(self, shape, seed=0):
+    def rsample(self, shape):
         """reparameterized sample
         Args:
-          shape (list): 1D `int32`. Shape of the generated samples.
-          seed (int): Python integer number.
+          shape (tuple): 1D `int32`. Shape of the generated samples.
 
         Returns:
           Tensor: A tensor with prepended dimensions shape.The data type is float32.
@@ -225,12 +245,16 @@ class Laplace(distribution.Distribution):
         """
 
         eps = self.get_eps()
-        if self.batch_size_unknown and len(shape) == 0:
-            shape = (1, )
-        shape = self._extend_shape(shape)
-        u = paddle.uniform(shape=shape, min=eps - 1, max=1, seed=seed)
+        shape = self._extend_shape(shape) or (1, )
+        uniform = paddle.uniform(shape=shape, min=eps - 1, max=1)
 
-        return (self.loc - self.scale * u.sign() * paddle.log1p(-u.abs()))
+        if len(self.scale.shape) == 0 and len(self.loc.shape) == 0:
+            loc, scale, uniform = paddle.broadcast_tensors(
+                [self.loc, self.scale, uniform])
+        else:
+            loc, scale = self.loc, self.scale
+
+        return (loc - scale * uniform.sign() * paddle.log1p(-uniform.abs()))
 
     def get_eps(self):
         """
@@ -243,40 +267,12 @@ class Laplace(distribution.Distribution):
         Returns:
             Float: eps value by different data types.
         """
-        if (self.loc.dtype == paddle.float16 or self.loc.dtype == paddle.float32
-                or self.loc.dtype == paddle.complex64):
-            eps = 1.19209e-07
-        elif (self.loc.dtype == paddle.float64
-              or self.loc.dtype == paddle.complex128):
+        eps = 1.19209e-07
+        if (self.loc.dtype == paddle.float64
+                or self.loc.dtype == paddle.complex128):
             eps = 2.22045e-16
-        else:
-            raise TypeError("self.loc requires a floating point type")
 
         return eps
-
-    def _extend_shape(self, sample_shape):
-        """compute shape of the sample 
-
-        Args:
-            sample_shape (list or tuple): sample shape
-
-        Returns:
-            Tensor: generated sample data shape
-        
-        Examples:
-            .. code-block:: python
-                            import paddle
-
-                            m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-                            m._extend_shape([1, 2])
-                            # [1, 2, 1]
-        """
-
-        if self.batch_size_unknown:
-            self._batch_shape = ()
-
-        expanded_shape = super(Laplace, self)._extend_shape(tuple(sample_shape))
-        return expanded_shape
 
     def kl_divergence(self, other):
         """The KL-divergence between two laplace distributions.

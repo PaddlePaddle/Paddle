@@ -20,8 +20,6 @@ import scipy.stats
 import config
 import parameterize
 
-SEED = 2022
-
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
@@ -68,8 +66,8 @@ class TestLaplace(unittest.TestCase):
 
     def test_sample(self):
 
-        sample_shape = (30000, )
-        samples = self._dist.sample(sample_shape, seed=SEED)
+        sample_shape = (20000, )
+        samples = self._dist.sample(sample_shape)
         sample_values = samples.numpy()
 
         self.assertEqual(samples.numpy().dtype, self.scale.dtype)
@@ -90,14 +88,6 @@ class TestLaplace(unittest.TestCase):
                                    rtol=0.1,
                                    atol=0.)
 
-        # the input of ks test must be 1-D array
-        tmp_loc = 4.0
-        tmp_scale = 3.0
-        tmp_dist = paddle.distribution.Laplace(loc=tmp_loc, scale=tmp_scale)
-        samples = tmp_dist.sample(sample_shape, seed=SEED)
-        sample_values = samples.numpy()
-        self.assertTrue(self._kstest(tmp_loc, tmp_scale, sample_values))
-
     def _np_mean(self):
         return self.loc
 
@@ -110,6 +100,24 @@ class TestLaplace(unittest.TestCase):
 
     def _np_entropy(self):
         return scipy.stats.laplace.entropy(loc=self.loc, scale=self.scale)
+
+
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls((parameterize.TEST_CASE_NAME, 'loc', 'scale'), [
+    ('float', 1., 2.),
+    ('int', 3, 4),
+])
+class TestLaplaceKS(unittest.TestCase):
+
+    def setUp(self):
+        self._dist = paddle.distribution.Laplace(loc=self.loc, scale=self.scale)
+
+    def test_sample(self):
+
+        sample_shape = (20000, )
+        samples = self._dist.sample(sample_shape)
+        sample_values = samples.numpy()
+        self.assertTrue(self._kstest(self.loc, self.scale, sample_values))
 
     def _kstest(self, loc, scale, samples):
         # Uses the Kolmogorov-Smirnov test for goodness of fit.
@@ -124,10 +132,10 @@ class TestLaplace(unittest.TestCase):
     (parameterize.TEST_CASE_NAME, 'loc', 'scale', 'value'),
     [
         ('value-float', np.array([0.2, 0.3]),\
-             np.array([2, 3]), np.array([2., 5.])),
+             np.array([2., 3.]), np.array([2., 5.])),
         ('value-int', np.array([0.2, 0.3]),\
-             np.array([2, 3]), np.array([2, 5])),
-        ('value-multi-dim', np.array([0.2, 0.3]), np.array([2, 3]),\
+             np.array([2., 3.]), np.array([2, 5])),
+        ('value-multi-dim', np.array([0.2, 0.3]), np.array([2., 3.]),\
                          np.array([[4., 6], [8, 2]])),
     ])
 class TestLaplacePDF(unittest.TestCase):

@@ -23,8 +23,6 @@ import parameterize
 
 paddle.enable_static()
 
-SEED = 2022
-
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
@@ -45,12 +43,12 @@ class TestLaplace(unittest.TestCase):
             scale = paddle.static.data('scale', self.scale.shape,
                                        self.scale.dtype)
             self._dist = paddle.distribution.Laplace(loc=loc, scale=scale)
-            self.sample_shape = (30000, )
+            self.sample_shape = (20000, )
             mean = self._dist.mean
             var = self._dist.variance
             stddev = self._dist.stddev
             entropy = self._dist.entropy()
-            samples = self._dist.sample(self.sample_shape, seed=SEED)
+            samples = self._dist.sample(self.sample_shape)
         fetch_list = [mean, var, stddev, entropy, samples]
         self.feeds = {'loc': self.loc, 'scale': self.scale}
 
@@ -125,10 +123,10 @@ class TestLaplace(unittest.TestCase):
     (parameterize.TEST_CASE_NAME, 'loc', 'scale', 'value'),
     [
         ('value-float', np.array([0.2, 0.3]),\
-             np.array([2, 3]), np.array([2., 5.])),
+             np.array([2., 3.]), np.array([2., 5.])),
         ('value-int', np.array([0.2, 0.3]),\
-             np.array([2, 3]), np.array([2, 5])),
-        ('value-multi-dim', np.array([0.2, 0.3]), np.array([2, 3]),\
+             np.array([2., 3.]), np.array([2, 5])),
+        ('value-multi-dim', np.array([0.2, 0.3]), np.array([2., 3.]),\
                          np.array([[4., 6], [8, 2]])),
     ])
 class TestLaplacePDF(unittest.TestCase):
@@ -235,7 +233,8 @@ class TestLaplaceAndLaplaceKL(unittest.TestCase):
 
 
 """
-# TODO: ks test of static mode is not implemented successfully currently.
+# Note: Zero dimension of a Tensor is not supported by static mode of paddle;
+# therefore, ks test below cannot be conducted temporarily. 
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
@@ -259,7 +258,7 @@ class TestLaplaceKS(unittest.TestCase):
         with paddle.static.program_guard(self.program):
             [sample_values] = self.executor.run(self.program,
                               feed=self.feeds,
-                              fetch_list=self._dist.sample((3000,), seed=SEED))
+                              fetch_list=self._dist.sample((3000,)))
             self.assertTrue(self._kstest(self.loc, self.scale, sample_values))
 
     def _kstest(self, loc, scale, samples):
