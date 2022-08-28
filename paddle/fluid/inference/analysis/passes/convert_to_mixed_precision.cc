@@ -368,6 +368,7 @@ void ProcessInputNode(
         in_var_type == framework::proto::VarType::FP32) {
       if (WeightsShouldNotConvert(in_node)) return;
       in_var->SetDataType(to_type);
+      in_var_type = to_type;
     } else if (!in_var->Persistable() && IsFloatVarType(in_var_type) &&
                in_var_type != to_type) {
       AddCastOp(graph,
