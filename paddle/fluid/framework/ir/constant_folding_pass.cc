@@ -59,8 +59,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
   FusePassBase::Init("constant_folding", graph);
   auto *scope = param_scope();
   // Now, I don't want to fold fill_constant op in Paddle-TRT
-  std::vector<std::string> blacklist{"fill_constant", "feed", "fetch"};
-  // fetch : If not added, test_analyzer_small_dam failed , so strange
+  std::vector<std::string> blacklist{"fill_constant", "feed"};
 
   auto op_node_sorted = framework::ir::TopologyVarientSort(
       *graph, static_cast<framework::ir::SortKind>(0));
