@@ -1547,7 +1547,7 @@ static PyObject* tensor_method_is_sparse_coo(TensorObject* self,
 static PyObject* tensor_method_is_same_shape(TensorObject* self,
                                              PyObject* args,
                                              PyObject* kwargs) {
-  EAGER_TRY
+  EAGER_TRY                                               
   auto other = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
   return ToPyObject(self->tensor.shape() == other.shape());
   EAGER_CATCH_AND_THROW_RETURN_NULL
