@@ -911,7 +911,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
         predictor_id_;
-    VLOG(3) << "thread_local var predictor_id in TendorRTEngine is set to: "
+    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
             << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
   }
 #endif
@@ -1644,7 +1644,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
         predictor_id_;
-    VLOG(3) << "thread_local var predictor_id in TendorRTEngine is set to: "
+    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
             << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
   }
 #endif
