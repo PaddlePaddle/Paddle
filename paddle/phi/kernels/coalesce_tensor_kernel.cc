@@ -260,10 +260,6 @@ void CoalesceTensorKernel(const Context &dev_ctx,
 
 }  // namespace phi
 
-// ALL_LAYOUT 如何判断？
-// 是否要加：kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
-// 有GetKernelTypeVar
-
 PD_REGISTER_KERNEL(coalesce_tensor,
                    CPU,
                    ALL_LAYOUT,
