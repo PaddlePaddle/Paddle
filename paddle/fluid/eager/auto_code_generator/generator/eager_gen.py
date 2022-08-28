@@ -1661,8 +1661,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             forward_api_name = self.grad_api_contents['invoke'].split(
                 '(')[0].strip()
             autograd_api = self.grad_api_contents['invoke'].replace(
-                forward_api_name,
-                forward_api_name + '_final_state_dygraph_function', 1)
+                forward_api_name, forward_api_name + '_dygraph_function', 1)
             grad_function_call_str = f"""
   if (trace_backward) {{            
   {indent}{autograd_api_out} api_output = {autograd_api};
