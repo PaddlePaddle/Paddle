@@ -13,6 +13,4 @@
 # limitations under the License.
 from .env import DATA_HOME
 from .env import MODEL_HOME
-from .download import download_and_decompress
-from .download import load_state_dict_from_url
 from .error import ParameterError
