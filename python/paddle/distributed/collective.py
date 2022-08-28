@@ -775,8 +775,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
 
     Reduce a tensor over all ranks so that all get the result.
-    As shown below, 4 GPUs each starts 4 processes and the data on each GPU is represented
-    by the GPU number. The reduce operator is sum. Through all_reduce operator, 
+    As shown below, one process is started with a GPU and the data of this process is represented
+    by its group rank. The reduce operator is sum. Through all_reduce operator, 
     each GPU will have the sum of the data from all GPUs.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/allreduce.png
@@ -800,7 +800,6 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 
             # required: distributed
             import paddle
-            from paddle.distributed import ReduceOp
             from paddle.distributed import init_parallel_env
 
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
