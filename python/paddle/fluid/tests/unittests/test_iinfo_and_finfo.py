@@ -23,11 +23,9 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
                 _ = paddle.iinfo(dtype)
 
     def test_iinfo(self):
-        for dtype in [paddle.int64, paddle.int32, paddle.int16, paddle.int8, paddle.uint8]:
-            x = paddle.to_tensor([2, 3], dtype=dtype)
-            xinfo = paddle.iinfo(x.dtype)
-            xn = x.cpu().numpy()
-            xninfo = np.iinfo(xn.dtype)
+        for paddle_dtype, np_dtype in [(paddle.int64, np.int64), (paddle.int32, np.int32), (paddle.int16, np.int16), (paddle.int8, np.int8), (paddle.uint8, np.uint8)]:
+            xinfo = paddle.iinfo(paddle_dtype)
+            xninfo = np.iinfo(np_dtype)
             self.assertEqual(xinfo.bits, xninfo.bits)
             self.assertEqual(xinfo.max, xninfo.max)
             self.assertEqual(xinfo.min, xninfo.min)
