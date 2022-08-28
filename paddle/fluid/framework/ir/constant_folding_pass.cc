@@ -100,7 +100,6 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     std::unique_ptr<OperatorBase> op;
 
     if (input_persis) {
-      std::cout << op_node->Name() << std::endl;
       for (auto in_node : op_node->inputs) {
         local_scope->Var(in_node->Var()->Name());
         local_scope->FindVar(in_node->Var()->Name())->GetMutable<LoDTensor>();
