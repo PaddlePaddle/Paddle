@@ -35,10 +35,11 @@ def coalesce_tensor_eager_api(Input,
                               concated_ranks=[]):
     if datatype == int(core.VarDesc.VarType.FP32):
         datatype = core.VarDesc.VarType.FP32
-    return paddle._C_ops.final_state_coalesce_tensor(
-        Input, datatype, copy_data, set_constant, persist_output, constant,
-        use_align, align_size, user_defined_size_of_dtype, concated_shapes,
-        concated_ranks)
+    return paddle._C_ops.coalesce_tensor(Input, datatype, copy_data,
+                                         set_constant, persist_output, constant,
+                                         use_align, align_size,
+                                         user_defined_size_of_dtype,
+                                         concated_shapes, concated_ranks)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
