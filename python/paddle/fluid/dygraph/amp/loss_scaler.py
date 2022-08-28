@@ -20,7 +20,7 @@ from paddle.fluid.data_feeder import check_type
 from ...wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import warnings
 import numpy as np
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from collections import defaultdict
 from enum import Enum
 
@@ -286,26 +286,26 @@ class AmpScaler(object):
                 if param.dtype == core.VarDesc.VarType.FP32
             ]
         if core.is_compiled_with_npu():
-            float_status = _C_ops.alloc_float_status()
-            _C_ops.clear_float_status(float_status, float_status)
+            float_status = _legacy_C_ops.alloc_float_status()
+            _legacy_C_ops.clear_float_status(float_status, float_status)
 
             if len(param_grads_fp16):
-                _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
-                                                float_status, param_grads_fp16,
-                                                self._temp_found_inf_fp16)
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_fp16, self._scale, float_status,
+                    param_grads_fp16, self._temp_found_inf_fp16)
             if len(param_grads_fp32):
-                _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
-                                                float_status, param_grads_fp32,
-                                                self._temp_found_inf_fp32)
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_fp32, self._scale, float_status,
+                    param_grads_fp32, self._temp_found_inf_fp32)
         else:
             if len(param_grads_fp16):
-                _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
-                                                param_grads_fp16,
-                                                self._temp_found_inf_fp16)
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_fp16, self._scale, param_grads_fp16,
+                    self._temp_found_inf_fp16)
             if len(param_grads_fp32):
-                _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
-                                                param_grads_fp32,
-                                                self._temp_found_inf_fp32)
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_fp32, self._scale, param_grads_fp32,
+                    self._temp_found_inf_fp32)
 
         self._found_inf = self._temp_found_inf_fp16 or self._temp_found_inf_fp32
 

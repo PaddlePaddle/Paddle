@@ -62,6 +62,19 @@ def case3(x):
     return a
 
 
+def case4(x):
+    paddle.set_default_dtype("float64")
+    if core.is_compiled_with_cuda():
+        place = paddle.CUDAPlace(0)
+    else:
+        place = paddle.CPUPlace()
+    a = paddle.to_tensor([1.0], place=place, dtype="float64")
+    b = paddle.to_tensor([2], place=place, stop_gradient=False, dtype="int64")
+    c = paddle.to_tensor([a, b, [1]], dtype="float32")
+
+    return c
+
+
 class TestToTensorReturnVal(unittest.TestCase):
 
     def test_to_tensor_badreturn(self):
@@ -88,6 +101,12 @@ class TestToTensorReturnVal(unittest.TestCase):
 
         a = paddle.jit.to_static(case3)(x)
         b = case3(x)
+        self.assertTrue(a.dtype == b.dtype)
+        self.assertTrue(a.stop_gradient == b.stop_gradient)
+        self.assertTrue(a.place._equals(b.place))
+
+        a = paddle.jit.to_static(case4)(x)
+        b = case4(x)
         self.assertTrue(a.dtype == b.dtype)
         self.assertTrue(a.stop_gradient == b.stop_gradient)
         self.assertTrue(a.place._equals(b.place))

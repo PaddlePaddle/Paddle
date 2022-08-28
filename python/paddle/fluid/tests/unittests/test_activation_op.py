@@ -3117,7 +3117,7 @@ class TestSwishAPI(unittest.TestCase):
         for r in res:
             np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
-    def test_dygraph_api(self):
+    def func_test_dygraph_api(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
         out1 = F.swish(x)
@@ -3128,9 +3128,10 @@ class TestSwishAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with _test_eager_guard():
-            self.test_dygraph_api()
+            self.func_test_dygraph_api()
+        self.func_test_dygraph_api()
 
     def test_fluid_api(self):
         paddle.enable_static()
