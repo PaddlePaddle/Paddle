@@ -22,6 +22,7 @@ limitations under the License. */
 #include <memory>
 #include <mutex>  // NOLINT // for call_once
 #include <string>
+#include <sstream>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
@@ -606,11 +607,14 @@ PYBIND11_MODULE(core_noavx, m) {
       .def_readonly("max", &iinfo::max)
       .def_readonly("bits", &iinfo::bits)
       .def_readonly("dtype", &iinfo::dtype)
-      .def("__repr__",
-          [](const iinfo &i) {
-              return "paddle.iinfo(min=" + i.min + ", max=" + i.max + ", bits=" + i.bits + ", dtype=)";
-          }
-      );
+      .def("__repr__", [](const iinfo& a) {
+            std::ostringstream oss;
+            oss << "paddle.iinfo(min=" << a.min;
+            oss << ", max=" << a.max;
+            oss << ", bits=" << a.bits;
+            oss << ", dtype=" << a.dtype << ")";
+            return oss.str();
+      });
     
   m.def("set_num_threads", &platform::SetNumThreads);
 
