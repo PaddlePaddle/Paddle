@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from ..fluid.core import VarDesc
+from ..fluid.core import iinfo as core_iinfo
 
 dtype = VarDesc.VarType
 dtype.__qualname__ = "dtype"
@@ -34,4 +35,10 @@ complex128 = VarDesc.VarType.COMPLEX128
 
 bool = VarDesc.VarType.BOOL
 
+def iinfo(dtype):
+    """
+    
+    """
+    return core_iinfo(dtype)
+        
 __all__ = []

@@ -605,7 +605,12 @@ PYBIND11_MODULE(core_noavx, m) {
       .def_readonly("min", &iinfo::min)
       .def_readonly("max", &iinfo::max)
       .def_readonly("bits", &iinfo::bits)
-      .def_readonly("dtype", &iinfo::dtype);
+      .def_readonly("dtype", &iinfo::dtype)
+      .def("__repr__",
+          [](const iinfo &i) {
+              return "paddle.iinfo(min=" + i.min + ", max=" + i.max + ", bits=" + i.bits + ", dtype=)";
+          }
+      );
     
   m.def("set_num_threads", &platform::SetNumThreads);
 
