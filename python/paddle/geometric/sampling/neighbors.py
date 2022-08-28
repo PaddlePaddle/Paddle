@@ -16,7 +16,7 @@ import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = []
 
@@ -96,7 +96,7 @@ def sample_neighbors(row,
     use_perm_buffer = True if perm_buffer is not None else False
 
     if _non_static_mode():
-        out_neighbors, out_count, out_eids = _C_ops.graph_sample_neighbors(
+        out_neighbors, out_count, out_eids = _legacy_C_ops.graph_sample_neighbors(
             row, colptr, input_nodes, eids, perm_buffer, "sample_size",
             sample_size, "return_eids", return_eids, "flag_perm_buffer",
             use_perm_buffer)
