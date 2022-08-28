@@ -205,7 +205,11 @@ class TestEagerGrad(TestCase):
         np.testing.assert_array_equal(dout2.numpy(), egr_dout2.numpy())
         np.testing.assert_array_equal(dout3.numpy(), egr_dout3.numpy())
 
+
+class TestDygraphDoubleGrad(TestCase):
+
     def setUp(self):
+        self.sort_sum_gradient = False
         self.shape = [5, 10]
 
     def grad(self,
