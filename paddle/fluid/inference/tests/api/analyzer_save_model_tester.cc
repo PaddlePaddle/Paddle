@@ -31,10 +31,19 @@ int GetNumOps(const AnalysisConfig &cfg) {
   return num_ops;
 }
 
+/*
+ * this model is unreasonable, it set a output tensor persistable, so
+ * ridiculous! so I disable constant_folding_pass
+ */
+
 TEST(Analyzer, save_model) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   cfg.SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
+
+  auto pass_builder = cfg->pass_builder();
+  pass_builder->DeletePass("constant_folding_pass");
+
   //  ensure the path being unique
   std::string optimModelPath = FLAGS_infer_model + "/only_for_save_model_test";
   MKDIR(optimModelPath.c_str());
