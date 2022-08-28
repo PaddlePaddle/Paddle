@@ -42,96 +42,29 @@ class TestCollectiveAllreduceAPI(TestDistBase):
                               "gloo", "2")
 
     def test_allreduce_nccl_dygraph(self):
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "nccl",
-                              static_mode="0",
-                              dtype="float16")
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "nccl",
-                              static_mode="0",
-                              dtype="float32")
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "nccl",
-                              static_mode="0",
-                              dtype="float64")
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "nccl",
-                              static_mode="0",
-                              dtype="int32")
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "nccl",
-                              static_mode="0",
-                              dtype="int64")
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "nccl",
-                              static_mode="0",
-                              dtype="int8")
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "nccl",
-                              static_mode="0",
-                              dtype="uint8")
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "nccl",
-                              static_mode="0",
-                              dtype="bool")
+        dtypes_to_test = [
+            'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
+            'bool'
+        ]
+        for dtype in dtypes_to_test:
+            self.check_with_place("collective_allreduce_api_dygraph.py",
+                                  "allreduce",
+                                  "nccl",
+                                  static_mode="0",
+                                  dtype=dtype)
 
     def test_allreduce_gloo_dygraph(self):
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "gloo",
-                              "2",
-                              static_mode="0",
-                              dtype="float16")
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "gloo",
-                              "2",
-                              static_mode="0",
-                              dtype="float32")
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "gloo",
-                              "2",
-                              static_mode="0",
-                              dtype="float64")
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "gloo",
-                              "2",
-                              static_mode="0",
-                              dtype="int32")
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "gloo",
-                              "2",
-                              static_mode="0",
-                              dtype="int64")
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "gloo",
-                              "2",
-                              static_mode="0",
-                              dtype="int8")
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "gloo",
-                              "2",
-                              static_mode="0",
-                              dtype="uint8")
-        self.check_with_place("collective_allreduce_api_dygraph.py",
-                              "allreduce",
-                              "gloo",
-                              "2",
-                              static_mode="0",
-                              dtype="bool")
+        dtypes_to_test = [
+            'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
+            'bool'
+        ]
+        for dtype in dtypes_to_test:
+            self.check_with_place("collective_allreduce_api_dygraph.py",
+                                  "allreduce",
+                                  "gloo",
+                                  "2",
+                                  static_mode="0",
+                                  dtype=dtype)
 
 
 if __name__ == '__main__':
