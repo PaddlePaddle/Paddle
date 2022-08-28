@@ -47,11 +47,9 @@ def linear_interp_test(x,
         if not isinstance(SizeTensor, list) and not isinstance(
                 SizeTensor, tuple):
             SizeTensor = [SizeTensor]
-    return paddle._C_ops.final_state_linear_interp(x, OutSize, SizeTensor,
-                                                   Scale, data_layout, out_d,
-                                                   out_h, out_w, scale,
-                                                   interp_method, align_corners,
-                                                   align_mode)
+    return paddle._C_ops.linear_interp(x, OutSize, SizeTensor, Scale,
+                                       data_layout, out_d, out_h, out_w, scale,
+                                       interp_method, align_corners, align_mode)
 
 
 def linear_interp_np(input,

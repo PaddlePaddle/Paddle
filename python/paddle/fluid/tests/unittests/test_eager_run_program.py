@@ -14,7 +14,7 @@
 
 import paddle
 import numpy as np
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard, Variable, _in_legacy_dygraph
 from paddle.fluid import core
 from paddle.fluid.layers.utils import _hash_with_id
@@ -102,8 +102,8 @@ class TestRunProgram(unittest.TestCase):
                      'end_op_index', main_program.desc.block(0).op_size(),
                      'is_test', False, 'program_id', _hash_with_id(program))
 
-            _C_ops.run_program([x_t, y_t], [fake_var], [out_t], [scope],
-                               [fake_var], None, *attrs)
+            _legacy_C_ops.run_program([x_t, y_t], [fake_var], [out_t], [scope],
+                                      [fake_var], None, *attrs)
 
             loss = paddle.mean(out_t)
             loss.backward()

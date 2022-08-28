@@ -21,7 +21,7 @@ from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
 from ..fluid.initializer import Normal
 from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from paddle.common_ops_import import *
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [  #noqa
     'yolo_loss', 'yolo_box', 'deform_conv2d', 'DeformConv2D',
@@ -187,13 +187,14 @@ def yolo_loss(x,
     """
 
     if in_dygraph_mode():
-        loss, _, _ = _C_ops.final_state_yolov3_loss(
-            x, gt_box, gt_label, gt_score, anchors, anchor_mask, class_num,
-            ignore_thresh, downsample_ratio, use_label_smooth, scale_x_y)
+        loss, _, _ = _C_ops.yolov3_loss(x, gt_box, gt_label, gt_score, anchors,
+                                        anchor_mask, class_num, ignore_thresh,
+                                        downsample_ratio, use_label_smooth,
+                                        scale_x_y)
         return loss
 
     if _non_static_mode():
-        loss, _, _ = _C_ops.yolov3_loss(
+        loss, _, _ = _legacy_C_ops.yolov3_loss(
             x, gt_box, gt_label, gt_score, 'anchors', anchors, 'anchor_mask',
             anchor_mask, 'class_num', class_num, 'ignore_thresh', ignore_thresh,
             'downsample_ratio', downsample_ratio, 'use_label_smooth',
@@ -375,15 +376,14 @@ def yolo_box(x,
                                                    scale_x_y=1.)
     """
     if in_dygraph_mode():
-        boxes, scores = _C_ops.final_state_yolo_box(x, img_size, anchors,
-                                                    class_num, conf_thresh,
-                                                    downsample_ratio, clip_bbox,
-                                                    scale_x_y, iou_aware,
-                                                    iou_aware_factor)
+        boxes, scores = _C_ops.yolo_box(x, img_size, anchors, class_num,
+                                        conf_thresh, downsample_ratio,
+                                        clip_bbox, scale_x_y, iou_aware,
+                                        iou_aware_factor)
         return boxes, scores
 
     if _non_static_mode():
-        boxes, scores = _C_ops.yolo_box(
+        boxes, scores = _legacy_C_ops.yolo_box(
             x, img_size, 'anchors', anchors, 'class_num', class_num,
             'conf_thresh', conf_thresh, 'downsample_ratio', downsample_ratio,
             'clip_bbox', clip_bbox, 'scale_x_y', scale_x_y, 'iou_aware',
@@ -556,10 +556,9 @@ def deform_conv2d(x,
     use_deform_conv2d_v1 = True if mask is None else False
 
     if in_dygraph_mode():
-        pre_bias = _C_ops.final_state_deformable_conv(x, offset, weight, mask,
-                                                      stride, padding, dilation,
-                                                      deformable_groups, groups,
-                                                      1)
+        pre_bias = _C_ops.deformable_conv(x, offset, weight, mask, stride,
+                                          padding, dilation, deformable_groups,
+                                          groups, 1)
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=1)
         else:
@@ -570,10 +569,12 @@ def deform_conv2d(x,
                  'im2col_step', 1)
         if use_deform_conv2d_v1:
             op_type = 'deformable_conv_v1'
-            pre_bias = getattr(_C_ops, op_type)(x, offset, weight, *attrs)
+            pre_bias = getattr(_legacy_C_ops, op_type)(x, offset, weight,
+                                                       *attrs)
         else:
             op_type = 'deformable_conv'
-            pre_bias = getattr(_C_ops, op_type)(x, offset, mask, weight, *attrs)
+            pre_bias = getattr(_legacy_C_ops, op_type)(x, offset, mask, weight,
+                                                       *attrs)
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=1)
         else:
@@ -901,7 +902,7 @@ def distribute_fpn_proposals(fpn_rois,
 
     if in_dygraph_mode():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
-        multi_rois, rois_num_per_level, restore_ind = _C_ops.final_state_distribute_fpn_proposals(
+        multi_rois, rois_num_per_level, restore_ind = _C_ops.distribute_fpn_proposals(
             fpn_rois, rois_num, min_level, max_level, refer_level, refer_scale,
             pixel_offset)
         return multi_rois, restore_ind, rois_num_per_level
@@ -911,7 +912,7 @@ def distribute_fpn_proposals(fpn_rois,
         attrs = ('min_level', min_level, 'max_level', max_level, 'refer_level',
                  refer_level, 'refer_scale', refer_scale, 'pixel_offset',
                  pixel_offset)
-        multi_rois, restore_ind, rois_num_per_level = _C_ops.distribute_fpn_proposals(
+        multi_rois, restore_ind, rois_num_per_level = _legacy_C_ops.distribute_fpn_proposals(
             fpn_rois, rois_num, num_lvl, num_lvl, *attrs)
         return multi_rois, restore_ind, rois_num_per_level
 
@@ -987,7 +988,7 @@ def read_file(filename, name=None):
     """
 
     if _non_static_mode():
-        return _C_ops.read_file('filename', filename)
+        return _legacy_C_ops.read_file('filename', filename)
 
     inputs = dict()
     attrs = {'filename': filename}
@@ -1038,7 +1039,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
             print(img.shape)
     """
     if _non_static_mode():
-        return _C_ops.decode_jpeg(x, "mode", mode)
+        return _legacy_C_ops.decode_jpeg(x, "mode", mode)
 
     inputs = {'X': x}
     attrs = {"mode": mode}
@@ -1100,14 +1101,14 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
             "Input features with shape should be (N, C, H, W)"
     output_channels = int(x.shape[1] / (pooled_height * pooled_width))
     if in_dygraph_mode():
-        return _C_ops.final_state_psroi_pool(x, boxes, boxes_num, pooled_height,
-                                             pooled_width, output_channels,
-                                             spatial_scale)
+        return _C_ops.psroi_pool(x, boxes, boxes_num, pooled_height,
+                                 pooled_width, output_channels, spatial_scale)
     if _in_legacy_dygraph():
-        return _C_ops.psroi_pool(x, boxes, boxes_num, "output_channels",
-                                 output_channels, "spatial_scale",
-                                 spatial_scale, "pooled_height", pooled_height,
-                                 "pooled_width", pooled_width)
+        return _legacy_C_ops.psroi_pool(x, boxes, boxes_num, "output_channels",
+                                        output_channels, "spatial_scale",
+                                        spatial_scale, "pooled_height",
+                                        pooled_height, "pooled_width",
+                                        pooled_width)
 
     helper = LayerHelper('psroi_pool', **locals())
     dtype = helper.input_dtype()
@@ -1216,14 +1217,13 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     pooled_height, pooled_width = output_size
     if in_dygraph_mode():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
-        return _C_ops.final_state_roi_pool(x, boxes, boxes_num, pooled_height,
-                                           pooled_width, spatial_scale)
+        return _C_ops.roi_pool(x, boxes, boxes_num, pooled_height, pooled_width,
+                               spatial_scale)
     if _in_legacy_dygraph():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
-        pool_out, argmaxes = _C_ops.roi_pool(x, boxes, boxes_num,
-                                             "pooled_height", pooled_height,
-                                             "pooled_width", pooled_width,
-                                             "spatial_scale", spatial_scale)
+        pool_out, argmaxes = _legacy_C_ops.roi_pool(
+            x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
+            pooled_width, "spatial_scale", spatial_scale)
         return pool_out
 
     else:
@@ -1376,16 +1376,17 @@ def roi_align(x,
     pooled_height, pooled_width = output_size
     if in_dygraph_mode():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
-        return _C_ops.final_state_roi_align(x, boxes, boxes_num, pooled_height,
-                                            pooled_width, spatial_scale,
-                                            sampling_ratio, aligned)
+        return _C_ops.roi_align(x, boxes, boxes_num, pooled_height,
+                                pooled_width, spatial_scale, sampling_ratio,
+                                aligned)
     if _in_legacy_dygraph():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
-        align_out = _C_ops.roi_align(x, boxes, boxes_num, "pooled_height",
-                                     pooled_height, "pooled_width",
-                                     pooled_width, "spatial_scale",
-                                     spatial_scale, "sampling_ratio",
-                                     sampling_ratio, "aligned", aligned)
+        align_out = _legacy_C_ops.roi_align(x, boxes, boxes_num,
+                                            "pooled_height", pooled_height,
+                                            "pooled_width", pooled_width,
+                                            "spatial_scale", spatial_scale,
+                                            "sampling_ratio", sampling_ratio,
+                                            "aligned", aligned)
         return align_out
 
     else:
@@ -1591,10 +1592,10 @@ def nms(boxes,
 
     def _nms(boxes, iou_threshold):
         if in_dygraph_mode():
-            return _C_ops.final_state_nms(boxes, iou_threshold)
+            return _C_ops.nms(boxes, iou_threshold)
 
         if _non_static_mode():
-            return _C_ops.nms(boxes, 'iou_threshold', iou_threshold)
+            return _legacy_C_ops.nms(boxes, 'iou_threshold', iou_threshold)
 
         helper = LayerHelper('nms', **locals())
         out = helper.create_variable_for_type_inference('int64')
@@ -1750,7 +1751,7 @@ def generate_proposals(scores,
         assert return_rois_num, "return_rois_num should be True in dygraph mode."
         attrs = (pre_nms_top_n, post_nms_top_n, nms_thresh, min_size, eta,
                  pixel_offset)
-        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.final_state_generate_proposals_v2(
+        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals_v2(
             scores, bbox_deltas, img_size, anchors, variances, *attrs)
 
         return rpn_rois, rpn_roi_probs, rpn_rois_num
@@ -1759,7 +1760,7 @@ def generate_proposals(scores,
         attrs = ('pre_nms_topN', pre_nms_top_n, 'post_nms_topN', post_nms_top_n,
                  'nms_thresh', nms_thresh, 'min_size', min_size, 'eta', eta,
                  'pixel_offset', pixel_offset)
-        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals_v2(
+        rpn_rois, rpn_roi_probs, rpn_rois_num = _legacy_C_ops.generate_proposals_v2(
             scores, bbox_deltas, img_size, anchors, variances, *attrs)
 
         return rpn_rois, rpn_roi_probs, rpn_rois_num
@@ -1904,10 +1905,11 @@ def matrix_nms(bboxes,
     check_type(background_label, 'background_label', int, 'matrix_nms')
 
     if in_dygraph_mode():
-        out, index, rois_num = _C_ops.final_state_matrix_nms(
-            bboxes, scores, score_threshold, nms_top_k, keep_top_k,
-            post_threshold, use_gaussian, gaussian_sigma, background_label,
-            normalized)
+        out, index, rois_num = _C_ops.matrix_nms(bboxes, scores,
+                                                 score_threshold, nms_top_k,
+                                                 keep_top_k, post_threshold,
+                                                 use_gaussian, gaussian_sigma,
+                                                 background_label, normalized)
         if not return_index:
             index = None
         if not return_rois_num:
@@ -1919,7 +1921,7 @@ def matrix_nms(bboxes,
                  nms_top_k, 'gaussian_sigma', gaussian_sigma, 'use_gaussian',
                  use_gaussian, 'keep_top_k', keep_top_k, 'normalized',
                  normalized)
-        out, index, rois_num = _C_ops.matrix_nms(bboxes, scores, *attrs)
+        out, index, rois_num = _legacy_C_ops.matrix_nms(bboxes, scores, *attrs)
         if not return_index:
             index = None
         if not return_rois_num:

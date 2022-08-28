@@ -15,7 +15,7 @@
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 import unittest
 
 paddle.disable_static()
@@ -26,7 +26,7 @@ def clear_grad(w, a):
     @paddle.no_grad()
     def warp(*_):
         assert w.grad is not None
-        _C_ops.scale_(w.grad, 'scale', 0.5)
+        _legacy_C_ops.scale_(w.grad, 'scale', 0.5)
         w.clear_gradient(False)
 
     return warp
@@ -44,7 +44,7 @@ class TestInplaceAndClearGradient(unittest.TestCase):
         w._register_backward_hook(_clear_grad)
 
         for i in range(10):
-            out = _C_ops.scale(w, 'scale', 0.1)
+            out = _legacy_C_ops.scale(w, 'scale', 0.1)
             out.backward()
 
 
