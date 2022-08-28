@@ -23,7 +23,7 @@
 #pragma GCC diagnostic ignored "-Wunused-variable"
 DECLARE_bool(check_nan_inf);
 
-paddle::experimental::Tensor conv2d_final_state_dygraph_function(
+paddle::experimental::Tensor conv2d_dygraph_function(
     const paddle::experimental::Tensor& input,
     const paddle::experimental::Tensor& filter,
     std::vector<int> strides,
@@ -59,17 +59,17 @@ paddle::experimental::Tensor conv2d_final_state_dygraph_function(
       paddle::imperative::AutoCastGuard guard(
           egr::Controller::Instance().GetCurrentTracer(),
           paddle::imperative::AmpLevel::O0);
-      return conv2d_final_state_dygraph_function(NEW_input,
-                                                 NEW_filter,
-                                                 strides,
-                                                 paddings,
-                                                 paddding_algorithm,
-                                                 groups,
-                                                 dilations,
-                                                 data_format,
-                                                 use_addto,
-                                                 workspace_size_MB,
-                                                 exhaustive_search);
+      return conv2d_dygraph_function(NEW_input,
+                                     NEW_filter,
+                                     strides,
+                                     paddings,
+                                     paddding_algorithm,
+                                     groups,
+                                     dilations,
+                                     data_format,
+                                     use_addto,
+                                     workspace_size_MB,
+                                     exhaustive_search);
     }
   }
 
@@ -80,7 +80,7 @@ paddle::experimental::Tensor conv2d_final_state_dygraph_function(
       egr::EagerUtils::nullable_autograd_meta(filter);
   // Forward API Call
   VLOG(3) << "Final State Running: "
-          << "conv2d_final_state_dygraph_function";
+          << "conv2d_dygraph_function";
   auto api_result = paddle::experimental::conv2d(input,
                                                  filter,
                                                  strides,

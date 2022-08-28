@@ -16,7 +16,7 @@ import math
 import warnings
 
 import numpy as np
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
 from paddle.fluid import core
 from paddle.fluid.data_feeder import (check_dtype, check_type,
@@ -191,10 +191,10 @@ class Uniform(distribution.Distribution):
             lb_bool = self.low < value
             ub_bool = value < self.high
 
-            lb = _C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
-                             value.dtype)
-            ub = _C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
-                             value.dtype)
+            lb = _legacy_C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype,
+                                    'out_dtype', value.dtype)
+            ub = _legacy_C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype,
+                                    'out_dtype', value.dtype)
             return nn.log(lb * ub) - nn.log(self.high - self.low)
 
         name = self.name + '_log_prob'
@@ -221,10 +221,10 @@ class Uniform(distribution.Distribution):
             lb_bool = self.low < value
             ub_bool = value < self.high
 
-            lb = _C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
-                             value.dtype)
-            ub = _C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
-                             value.dtype)
+            lb = _legacy_C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype,
+                                    'out_dtype', value.dtype)
+            ub = _legacy_C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype,
+                                    'out_dtype', value.dtype)
             return (lb * ub) / (self.high - self.low)
 
         name = self.name + '_probs'
