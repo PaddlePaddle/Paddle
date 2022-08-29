@@ -42,7 +42,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
   // number of inf and nans
   int nums_inf_nans = 0;
   MPDType cpu_scale_data;
-  if (scale.place().GetType() == phi::AllocationType::PU) {
+  if (scale.place().GetType() == phi::AllocationType::XPU) {
     paddle::memory::Copy(phi::CPUPlace(),
                          static_cast<void*>(&cpu_scale_data),
                          scale.place(),
@@ -87,8 +87,8 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
     DenseTensor float_out;
     if (std::is_same<T, phi::dtype::float16>::value &&
         (version == phi::backends::xpu::XPUVersion::XPU1)) {
-      dev_ctx.template Alloc<MPDType>(float_x, x->numel() * sizeof(MPDType));
-      dev_ctx.template Alloc<MPDType>(float_out,
+      dev_ctx.template Alloc<MPDType>(&float_x, x->numel() * sizeof(MPDType));
+      dev_ctx.template Alloc<MPDType>(&float_out,
                                       out->numel() * sizeof(MPDType));
 
       int r = xpu::cast_v2(dev_ctx.x_context(),
