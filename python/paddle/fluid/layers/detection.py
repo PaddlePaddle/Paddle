@@ -36,7 +36,7 @@ import numpy as np
 from functools import reduce
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from paddle.utils import deprecated
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from ..framework import in_dygraph_mode
 
 __all__ = [
@@ -951,16 +951,13 @@ def box_coder(prior_box,
                              'box_coder')
     if in_dygraph_mode():
         if isinstance(prior_box_var, Variable):
-            box_coder_op = _C_ops.final_state_box_coder(prior_box,
-                                                        prior_box_var,
-                                                        target_box, code_type,
-                                                        box_normalized, axis,
-                                                        [])
+            box_coder_op = _C_ops.box_coder(prior_box, prior_box_var,
+                                            target_box, code_type,
+                                            box_normalized, axis, [])
         elif isinstance(prior_box_var, list):
-            box_coder_op = _C_ops.final_state_box_coder(prior_box, None,
-                                                        target_box, code_type,
-                                                        box_normalized, axis,
-                                                        prior_box_var)
+            box_coder_op = _C_ops.box_coder(prior_box, None, target_box,
+                                            code_type, box_normalized, axis,
+                                            prior_box_var)
         else:
             raise TypeError(
                 "Input variance of box_coder must be Variable or lisz")
@@ -1121,7 +1118,8 @@ def yolov3_loss(x,
                  class_num, "ignore_thresh", ignore_thresh, "downsample_ratio",
                  downsample_ratio, "use_label_smooth", use_label_smooth,
                  "scale_x_y", scale_x_y)
-        loss, _, _ = _C_ops.yolov3_loss(x, gt_box, gt_label, gt_score, *attrs)
+        loss, _, _ = _legacy_C_ops.yolov3_loss(x, gt_box, gt_label, gt_score,
+                                               *attrs)
         return loss
 
     helper = LayerHelper('yolov3_loss', **locals())
@@ -1912,10 +1910,9 @@ def prior_box(
         step_w, step_h = steps
         if max_sizes == None:
             max_sizes = []
-        return _C_ops.final_state_prior_box(input, image, min_sizes,
-                                            aspect_ratios, variance, max_sizes,
-                                            flip, clip, step_w, step_h, offset,
-                                            min_max_aspect_ratios_order)
+        return _C_ops.prior_box(input, image, min_sizes, aspect_ratios,
+                                variance, max_sizes, flip, clip, step_w, step_h,
+                                offset, min_max_aspect_ratios_order)
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
     check_variable_and_dtype(input, 'input',
@@ -3646,7 +3643,7 @@ def matrix_nms(bboxes,
         attrs = (score_threshold, nms_top_k, keep_top_k, post_threshold,
                  use_gaussian, gaussian_sigma, background_label, normalized)
 
-        out, index = _C_ops.final_state_matrix_nms(bboxes, scores, *attrs)
+        out, index = _C_ops.matrix_nms(bboxes, scores, *attrs)
         if return_index:
             return out, index
         else:
@@ -3930,7 +3927,7 @@ def collect_fpn_proposals(multi_rois,
     if _non_static_mode():
         assert rois_num_per_level is not None, "rois_num_per_level should not be None in dygraph mode."
         attrs = ('post_nms_topN', post_nms_top_n)
-        output_rois, rois_num = _C_ops.collect_fpn_proposals(
+        output_rois, rois_num = _legacy_C_ops.collect_fpn_proposals(
             input_rois, input_scores, rois_num_per_level, *attrs)
 
     check_type(multi_rois, 'multi_rois', list, 'collect_fpn_proposals')

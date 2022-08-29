@@ -83,6 +83,13 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(                                      \
       callback, ::paddle::platform::complex<double>, COMPLEX128);
 
+#define _ForEachDataTypeNormal_(callback)            \
+  _ForEachDataTypeHelper_(callback, float, FP32);    \
+  _ForEachDataTypeHelper_(callback, double, FP64);   \
+  _ForEachDataTypeHelper_(callback, int, INT32);     \
+  _ForEachDataTypeHelper_(callback, int64_t, INT64); \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::float16, FP16);
+
 // For the use of thrust, as index-type elements can be only integers.
 #define _ForEachDataTypeTiny_(callback)          \
   _ForEachDataTypeHelper_(callback, int, INT32); \
@@ -146,6 +153,21 @@ inline void VisitDataTypeSmall(proto::VarType::Type type, Visitor visitor) {
 
   _ForEachDataTypeSmall_(VisitDataTypeCallbackSmall);
 #undef VisitDataTypeCallbackSmall
+}
+
+// for normal dtype, int, int64, float, float64, float16
+template <typename Visitor>
+inline void VisitDataTypeNormal(proto::VarType::Type type, Visitor visitor) {
+#define VisitDataTypeCallbackNormal(cpp_type, proto_type) \
+  do {                                                    \
+    if (type == proto_type) {                             \
+      visitor.template apply<cpp_type>();                 \
+      return;                                             \
+    }                                                     \
+  } while (0)
+
+  _ForEachDataTypeNormal_(VisitDataTypeCallbackNormal);
+#undef VisitDataTypeCallbackNormal
 }
 
 template <typename Visitor>

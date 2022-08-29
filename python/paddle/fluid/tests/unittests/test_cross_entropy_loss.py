@@ -560,83 +560,90 @@ class CrossEntropyLoss(unittest.TestCase):
 
     ###soft_label test 5
     def test_cross_entropy_loss_soft_2d(self):
-        self.numeric_stable_mode = False
-        self.soft_label = True
-        self.dtype = 'float32' if fluid.core.is_compiled_with_rocm(
-        ) else 'float64'
-        self.axis = -1
-        self.ignore_index = -100  #should not be changed
-        self.N = 3
-        self.H = 2
-        self.W = 2
-        self.C = 5
-        self.shape = [self.N, self.H, self.W, self.C]
-        self.use_softmax = True
-        self.reduction = 'none'
-        self.weight = None
-        self.logits = getattr(
-            self, "logits",
-            np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype))
-        softmax = np.apply_along_axis(stable_softmax, self.axis, self.logits)
 
-        self.labels = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
-        self.labels /= np.sum(self.labels, axis=self.axis, keepdims=True)
+        def inner_cross_entropy_loss_soft_2d(soft_label):
+            self.numeric_stable_mode = False
+            self.soft_label = soft_label
+            self.dtype = 'float32' if fluid.core.is_compiled_with_rocm(
+            ) else 'float64'
+            self.axis = -1
+            self.ignore_index = -100  #should not be changed
+            self.N = 3
+            self.H = 2
+            self.W = 2
+            self.C = 5
+            self.shape = [self.N, self.H, self.W, self.C]
+            self.use_softmax = True
+            self.reduction = 'none'
+            self.weight = None
+            self.logits = getattr(
+                self, "logits",
+                np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype))
+            softmax = np.apply_along_axis(stable_softmax, self.axis,
+                                          self.logits)
 
-        #1. numpy
-        expected = cross_entropy_soft_2d(softmax,
-                                         self.labels,
-                                         self.axis,
-                                         self.N,
-                                         self.H,
-                                         self.W,
-                                         weight=self.weight,
-                                         reduction=self.reduction,
-                                         ignore_index=self.ignore_index)
+            self.labels = np.random.uniform(0.1, 1.0,
+                                            self.shape).astype(self.dtype)
+            self.labels /= np.sum(self.labels, axis=self.axis, keepdims=True)
 
-        paddle.set_device("cpu")
-        paddle.disable_static()
+            #1. numpy
+            expected = cross_entropy_soft_2d(softmax,
+                                             self.labels,
+                                             self.axis,
+                                             self.N,
+                                             self.H,
+                                             self.W,
+                                             weight=self.weight,
+                                             reduction=self.reduction,
+                                             ignore_index=self.ignore_index)
 
-        #2. dygraph
-        paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
-            fluid.dygraph.to_variable(self.logits),
-            fluid.dygraph.to_variable(self.labels),
-            soft_label=True,
-            axis=self.axis,
-            weight=fluid.dygraph.to_variable(self.weight)
-            if self.weight is not None else None,
-            reduction=self.reduction)
-        dy_ret_value = paddle_loss_none_weight.numpy()
+            paddle.set_device("cpu")
+            paddle.disable_static()
 
-        #3. static
-        paddle.enable_static()
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        place = fluid.CUDAPlace(
-            0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
-        with fluid.program_guard(prog, startup_prog):
-            input = fluid.data(name='input',
-                               shape=[self.N, self.H, self.W, self.C],
-                               dtype=self.dtype)
-            label = fluid.data(name='label',
-                               shape=[self.N, self.H, self.W, self.C],
-                               dtype=self.dtype)
+            #2. dygraph
+            paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
+                fluid.dygraph.to_variable(self.logits),
+                fluid.dygraph.to_variable(self.labels),
+                soft_label=True,
+                axis=self.axis,
+                weight=fluid.dygraph.to_variable(self.weight)
+                if self.weight is not None else None,
+                reduction=self.reduction)
+            dy_ret_value = paddle_loss_none_weight.numpy()
 
-            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                reduction=self.reduction, soft_label=True)
-            ret = cross_entropy_loss(input, label)
-            exe = fluid.Executor(place)
-            static_ret = exe.run(prog,
-                                 feed={
-                                     'input': self.logits,
-                                     'label': self.labels,
-                                 },
-                                 fetch_list=[ret])
-            self.assertIsNotNone(static_ret)
-        paddle.disable_static()
+            #3. static
+            paddle.enable_static()
+            prog = fluid.Program()
+            startup_prog = fluid.Program()
+            place = fluid.CUDAPlace(
+                0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+            with fluid.program_guard(prog, startup_prog):
+                input = fluid.data(name='input',
+                                   shape=[self.N, self.H, self.W, self.C],
+                                   dtype=self.dtype)
+                label = fluid.data(name='label',
+                                   shape=[self.N, self.H, self.W, self.C],
+                                   dtype=self.dtype)
 
-        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
-        np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
+                cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                    reduction=self.reduction, soft_label=True)
+                ret = cross_entropy_loss(input, label)
+                exe = fluid.Executor(place)
+                static_ret = exe.run(prog,
+                                     feed={
+                                         'input': self.logits,
+                                         'label': self.labels,
+                                     },
+                                     fetch_list=[ret])
+                self.assertIsNotNone(static_ret)
+            paddle.disable_static()
+
+            np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+            np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
+            np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
+
+        inner_cross_entropy_loss_soft_2d(True)
+        inner_cross_entropy_loss_soft_2d(False)
 
     ###soft_label test 6
     def test_cross_entropy_loss_soft_2d_weight_mean(self):
@@ -1463,7 +1470,7 @@ class CrossEntropyLoss(unittest.TestCase):
         np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
-    def test_soft_1d_dygraph_final_state_api(self):
+    def test_soft_1d_dygraph_api(self):
         with _test_eager_guard():
             self.test_cross_entropy_loss_soft_1d()
             self.test_cross_entropy_loss_soft_1d_weight()
@@ -1471,12 +1478,12 @@ class CrossEntropyLoss(unittest.TestCase):
             self.test_cross_entropy_loss_soft_1d_weight_mean()
 
     # put all testcases in one test will be failed
-    def test_soft_2d_dygraph_final_state_api(self):
+    def test_soft_2d_dygraph_api(self):
         with _test_eager_guard():
             self.test_cross_entropy_loss_soft_2d()
             self.test_cross_entropy_loss_soft_2d_weight_mean()
 
-    def test_other_dygraph_final_state_api(self):
+    def test_other_dygraph_api(self):
         with _test_eager_guard():
             self.test_cross_entropy_loss_1d_with_mean_ignore()
             self.test_cross_entropy_loss_1d_with_mean_ignore_negative()

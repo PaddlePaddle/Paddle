@@ -189,6 +189,14 @@ float CastPyArg2Float(PyObject* obj,
   return static_cast<float>(CastPyArg2Double(obj, op_type, arg_pos));
 }
 
+void CastPyArg2AttrFloat(PyObject* obj,
+                         paddle::framework::AttributeMap& attrs,  // NOLINT
+                         const std::string& key,
+                         const std::string& op_type,
+                         ssize_t arg_pos) {
+  attrs[key] = CastPyArg2Float(obj, op_type, arg_pos);
+}
+
 double CastPyArg2Double(PyObject* obj,
                         const std::string& op_type,
                         ssize_t arg_pos) {
@@ -197,7 +205,7 @@ double CastPyArg2Double(PyObject* obj,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
-        "float, but got %s",
+        "double, but got %s",
         op_type,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
@@ -206,12 +214,12 @@ double CastPyArg2Double(PyObject* obj,
   return 0.0;
 }
 
-void CastPyArg2AttrFloat(PyObject* obj,
-                         paddle::framework::AttributeMap& attrs,  // NOLINT
-                         const std::string& key,
-                         const std::string& op_type,
-                         ssize_t arg_pos) {
-  attrs[key] = CastPyArg2Float(obj, op_type, arg_pos);
+void CastPyArg2AttrDouble(PyObject* obj,
+                          paddle::framework::AttributeMap& attrs,  // NOLINT
+                          const std::string& key,
+                          const std::string& op_type,
+                          ssize_t arg_pos) {
+  attrs[key] = CastPyArg2Double(obj, op_type, arg_pos);
 }
 
 std::string CastPyArg2String(PyObject* obj,
@@ -735,6 +743,9 @@ void ConstructAttrMapFromPyArgs(
         break;
       case paddle::framework::proto::AttrType::FLOAT:
         CastPyArg2AttrFloat(obj, attrs, key, op_type, arg_pos);
+        break;
+      case paddle::framework::proto::AttrType::FLOAT64:
+        CastPyArg2AttrDouble(obj, attrs, key, op_type, arg_pos);
         break;
       case paddle::framework::proto::AttrType::STRING:
         CastPyArg2AttrString(obj, attrs, key, op_type, arg_pos);

@@ -8,5 +8,5 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     final_dygraph_function
     SRCS dygraph_functions.cc ${eager_manual_functions}
     DEPS ${eager_deps})
-  add_dependencies(final_dygraph_function eager_final_state_codegen)
+  add_dependencies(final_dygraph_function eager_codegen)
 endif()
