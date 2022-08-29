@@ -2753,7 +2753,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
               phi_kernel_context->EmplaceBackAttr(std::move(
                   phi::Scalar(PADDLE_GET_CONST(int, attr_iter->second))));
               break;
-            case framework::proto::AttrType::LONG:
+            case proto::AttrType::LONG:
               phi_kernel_context->EmplaceBackAttr(std::move(
                   phi::Scalar(PADDLE_GET_CONST(int64_t, attr_iter->second))));
               break;
