@@ -251,7 +251,7 @@ class TestArgMaxTensorAxis(UnittestBase):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([2, 3, 4])
             x.stop_gradient = False
-            feat = fc(x)  # [2,3,10]
+            feat = fc(x)
 
             out = self.call_func(feat)
 
@@ -293,8 +293,8 @@ class TestArgMinTensorAxis(TestArgMaxTensorAxis):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([2, 3, 4])
             x.stop_gradient = False
-            feat = fc(x)  # [2,3,10]
-
+            feat = fc(x)
+            feat = paddle.cast(feat, 'int32')
             out = self.call_func(feat)
 
             sgd = paddle.optimizer.SGD()
@@ -307,19 +307,19 @@ class TestArgMinTensorAxis(TestArgMaxTensorAxis):
             paddle.static.save_inference_model(self.save_path, [x], [feat, out],
                                                exe)
             gt = np.argmin(res[0], 1)
-            np.testing.assert_allclose(res[1], gt)
+            np.testing.assert_allclose(np.squeeze(res[1]), gt)
 
             # Test for Inference Predictor
             infer_outs = self.infer_prog()
             gt = np.argmin(infer_outs[0], 1)
-            np.testing.assert_allclose(infer_outs[1], gt)
+            np.testing.assert_allclose(np.squeeze(infer_outs[1]), gt)
 
     def path_prefix(self):
         return 'argmin_tensor_axis'
 
     def call_func(self, x):
         axis = paddle.assign(1)
-        out = paddle.argmin(x, axis)
+        out = paddle.argmin(x, axis, keepdim=True)
         return out
 
 
