@@ -338,7 +338,6 @@ def parse_assigned_dist_ut_ports(current_work_dir, ignores, depth=0):
         for c in contents:
             c_path = os.path.join(current_work_dir, c)
             if os.path.isdir(c_path):
-                print("parsed ", c_path)
                 parse_assigned_dist_ut_ports(c_path, ignores, depth + 1)
     if depth == 0:
         print("LAST_TEST_NAME:", LAST_TEST_NAME)
@@ -467,16 +466,13 @@ if __name__ == "__main__":
         current_work_dirs = current_work_dirs + [d for d in args.dirpaths]
 
     for c in current_work_dirs:
-        # c = os.path.abspath(c)
         while True:
-            print(c)
             dirpath = os.path.dirname(c)
             cmake = os.path.join(dirpath, "CMakeLists.txt")
             csv = os.path.join(dirpath, "testslist.csv.txt")
             if not (os.path.isfile(cmake) or os.path.isfile(csv)):
                 break
             c = os.path.abspath(dirpath)
-        print("=============>>>>>>", c)
         parse_assigned_dist_ut_ports(c, ignores=args.ignore_cmake_dirs, depth=0)
 
     PROCESSED_DIR.clear()
