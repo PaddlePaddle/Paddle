@@ -17,7 +17,7 @@ limitations under the License. */
 #include <limits>
 #include <random>
 
-#include "paddle/fluid/framework/generator.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -31,28 +31,14 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    int seed,
                                    DataType dtype,
                                    DenseTensor* out) {
-  T* data = dev_ctx.template Alloc<T>(out);
-
-  std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
-                                         1.0);
-  TruncatedNormal<T> truncated_normal(mean, std);
-  int64_t size = out->numel();
-
-  unsigned int seed = static_cast<unsigned int>(seed);
-  // TODO(pangyoki): implement GetXPURandomEngine to set different seeds on
-  // corresponding XPU device.
-  auto engine = framework::GetCPURandomEngine(seed);
-
-  std::unique_ptr<T[]> data_cpu(new T[size]);
-
-  for (int64_t i = 0; i < size; ++i) {
-    data_cpu[i] = truncated_normal(dist(*engine));
-  }
+  auto data = out;
+  TruncatedGaussianRandomKernel<T, CPUContext>(
+      dev_ctx, shape, mean, std, seed, dtype, data);
 
   paddle::memory::Copy(dev_ctx.GetPlace(),
-                       data,
+                       out,
                        phi::CPUPlace(),
-                       reinterpret_cast<void*>(data_cpu.get()),
+                       reinterpret_cast<void*>(data.get()),
                        size * sizeof(T));
 }
 
