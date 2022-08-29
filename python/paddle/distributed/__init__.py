@@ -51,6 +51,8 @@ from .collective import batch_isend_irecv  # noqa: F401
 from .collective import P2POp  # noqa: F401
 from .collective import reduce_scatter  # noqa: F401
 
+from .communication import *  # noqa: F401
+
 from .auto_parallel import shard_op  # noqa: F401
 from .auto_parallel import shard_tensor  # noqa: F401
 
