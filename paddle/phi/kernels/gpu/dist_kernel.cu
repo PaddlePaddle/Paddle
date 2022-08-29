@@ -48,14 +48,12 @@ struct OtherOrderFunctor {
 };
 
 template <typename T>
-struct UnsignedPowFunctor {
-  HOSTDEVICE explicit inline UnsignedPowFunctor(float porder) {
-    this->porder = porder;
-  }
+struct PowFunctor {
+  explicit PowFunctor(const T& p_order) : p_order_(p_order) {}
   HOSTDEVICE inline T operator()(const T x) const {
-    return static_cast<T>(pow(abs(x), porder));
+    return static_cast<T>(pow(x, p_order_));
   }
-  T porder;
+  T p_order_;
 };
 
 template <typename T, typename Functor>
@@ -166,8 +164,9 @@ void DistKernel(const Context& dev_ctx,
       const DenseTensor* tmp_norm = out;
       std::vector<const DenseTensor*> ins = {tmp_norm};
       std::vector<DenseTensor*> outs = {out};
+      T p_order_ = static_cast<T>(1. / p_order);
       phi::funcs::ElementwiseKernel<T>(
-          dev_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / p_order));
+          dev_ctx, ins, &outs, PowFunctor<T>(p_order_));
     }
 
   } else {
