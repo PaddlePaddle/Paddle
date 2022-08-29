@@ -214,7 +214,11 @@ class TestReverseAxisTensor(UnittestBase):
             x.stop_gradient = False
             feat = fc(x)  # [2,3,10]
 
-            out = self.call_func(feat)
+            axes, out = self.call_func(feat)
+
+            # check attrs
+            axis_attrs = main_prog.block(0).ops[-1].all_attrs()["axis"]
+            self.assertTrue(axis_attrs[0].name, axes.name)
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
@@ -243,7 +247,8 @@ class TestReverseAxisTensor(UnittestBase):
         # axes is a Variable
         axes = paddle.assign([0, 2])
         out = paddle.fluid.layers.reverse(x, axes)
-        return out
+        print(paddle.static.default_main_program().block(0).ops[-1])
+        return axes, out
 
 
 class TestReverseAxisListTensor(TestReverseAxisTensor):
