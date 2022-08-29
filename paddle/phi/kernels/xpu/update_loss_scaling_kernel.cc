@@ -18,166 +18,156 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/amp_kernel.h"
 
-// #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
-
-#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
-// #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
-template <typename T>
-class UpdateLossScalingXPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
-    using XPUTyp = typename XPUTypeTrait<T>::Type;
+template <typename T, typename Context>
+void UpdateLossScalingKernel(const Context& dev_ctx,
+                             const std::vector<const DenseTensor*>& xs,
+                             const DenseTensor& found_infinite,
+                             const DenseTensor& prev_loss_scaling,
+                             const DenseTensor& in_good_steps,
+                             const DenseTensor& in_bad_steps,
+                             int incr_every_n_steps,
+                             int decr_every_n_nan_or_inf,
+                             float incr_ratio,
+                             float decr_ratio,
+                             const Scalar& stop_update,
+                             std::vector<DenseTensor*> outs,
+                             DenseTensor* loss_scaling,
+                             DenseTensor* out_good_steps,
+                             DenseTensor* out_bad_steps) {
+  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using XPUTyp = typename XPUTypeTrait<T>::Type;
 
-    auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
-
-    const auto xs = ctx.MultiInput<framework::Tensor>("X");
-    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
-    const auto* found_inf = ctx.Input<Tensor>("FoundInfinite");
-    PADDLE_ENFORCE_EQ(found_inf->numel(),
-                      1,
-                      platform::errors::InvalidArgument(
-                          "FoundInfinite must has only one element."));
-    const bool* found_inf_data = found_inf->data<bool>();
-    bool cpu_found_inf_data = false;
-    if (platform::is_xpu_place(found_inf->place())) {
-      memory::Copy(platform::CPUPlace(),
-                   static_cast<void*>(&cpu_found_inf_data),
-                   found_inf->place(),
-                   static_cast<const void*>(found_inf_data),
-                   sizeof(bool));
-    } else {
-      cpu_found_inf_data = (*found_inf_data);
-    }
-
-    for (size_t i = 0; i < xs.size(); ++i) {
-      auto* out = outs[i];
-      T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
-      int num = out->numel();
-      if (cpu_found_inf_data) {
-        VLOG(1) << "-- UpdateLossScaling: Find infinite grads. --";
-        int r = 0;
-        r = xpu::constant(dev_ctx.x_context(),
-                          reinterpret_cast<XPUTyp*>(out_data),
-                          num,
-                          XPUTyp(0.0));
-        PADDLE_ENFORCE_EQ(
-            r,
-            XPU_SUCCESS,
-            platform::errors::External("XPU API(constant) return wrong "
-                                       "value[%d %s]",
-                                       r,
-                                       XPUAPIErrorMsg[r]));
-      }
-    }
-    const bool stop_update = ctx.Attr<bool>("stop_update");
-    if (stop_update) {
-      return;
-    }
-
-    const auto* pre_loss_scaling = ctx.Input<Tensor>("PrevLossScaling");
-    const auto* good_in = ctx.Input<Tensor>("InGoodSteps");
-    const auto* bad_in = ctx.Input<Tensor>("InBadSteps");
-    auto* updated_loss_scaling = ctx.Output<Tensor>("LossScaling");
-    auto* good_out = ctx.Output<Tensor>("OutGoodSteps");
-    auto* bad_out = ctx.Output<Tensor>("OutBadSteps");
-    const MPDType* pre_loss_scaling_data = pre_loss_scaling->data<MPDType>();
-    const int* good_in_data = good_in->data<int>();
-    const int* bad_in_data = bad_in->data<int>();
-
-    MPDType* updated_loss_scaling_data =
-        updated_loss_scaling->mutable_data<MPDType>(dev_ctx.GetPlace());
-    int* good_out_data = good_out->mutable_data<int>(dev_ctx.GetPlace());
-    int* bad_out_data = bad_out->mutable_data<int>(dev_ctx.GetPlace());
-
-    const int incr_every_n_steps = ctx.Attr<int>("incr_every_n_steps");
-    const int decr_every_n_nan_or_inf =
-        ctx.Attr<int>("decr_every_n_nan_or_inf");
-    const float incr_ratio = ctx.Attr<float>("incr_ratio");
-    const float decr_ratio = ctx.Attr<float>("decr_ratio");
-
-    int cpu_bad_in_data;
-    int cpu_good_in_data;
-    MPDType cpu_pre_loss_scaling_data;
-    if (platform::is_xpu_place(bad_in->place())) {
-      memory::Copy(platform::CPUPlace(),
-                   static_cast<void*>(&cpu_bad_in_data),
-                   bad_in->place(),
-                   static_cast<const void*>(bad_in_data),
-                   sizeof(int));
-    } else {
-      cpu_bad_in_data = (*bad_in_data);
-    }
-
-    if (platform::is_xpu_place(good_in->place())) {
-      memory::Copy(platform::CPUPlace(),
-                   static_cast<void*>(&cpu_good_in_data),
-                   good_in->place(),
-                   static_cast<const void*>(good_in_data),
-                   sizeof(int));
-    } else {
-      cpu_good_in_data = (*good_in_data);
-    }
-
-    if (platform::is_xpu_place(pre_loss_scaling->place())) {
-      memory::Copy(platform::CPUPlace(),
-                   static_cast<void*>(&cpu_pre_loss_scaling_data),
-                   pre_loss_scaling->place(),
-                   static_cast<const void*>(pre_loss_scaling_data),
-                   sizeof(MPDType));
-    } else {
-      cpu_pre_loss_scaling_data = (*pre_loss_scaling_data);
-    }
-    int cpu_good_out_data = 0;
-    int cpu_bad_out_data = 0;
-    MPDType cpu_updated_loss_scaling_data = cpu_pre_loss_scaling_data;
-
-    if (cpu_found_inf_data) {
-      cpu_good_out_data = 0;
-      cpu_bad_out_data = cpu_bad_in_data + 1;
-      if (cpu_bad_out_data == decr_every_n_nan_or_inf) {
-        MPDType new_loss_scaling = cpu_pre_loss_scaling_data * decr_ratio;
-        cpu_updated_loss_scaling_data =
-            (new_loss_scaling < static_cast<MPDType>(1))
-                ? (static_cast<MPDType>(1))
-                : (new_loss_scaling);
-        cpu_bad_out_data = 0;
-      }
-    } else {
-      cpu_bad_out_data = 0;
-      cpu_good_out_data = cpu_good_in_data + 1;
-      if (cpu_good_out_data == incr_every_n_steps) {
-        MPDType new_loss_scaling = cpu_pre_loss_scaling_data * incr_ratio;
-        cpu_updated_loss_scaling_data = (std::isfinite(new_loss_scaling))
-                                            ? new_loss_scaling
-                                            : cpu_pre_loss_scaling_data;
-        cpu_good_out_data = 0;
-      }
-    }
-    // copy to device
-    memory::Copy(dev_ctx.GetPlace(),
-                 bad_out_data,
-                 platform::CPUPlace(),
-                 &cpu_bad_out_data,
-                 sizeof(int));
-    memory::Copy(dev_ctx.GetPlace(),
-                 good_out_data,
-                 platform::CPUPlace(),
-                 &cpu_good_out_data,
-                 sizeof(int));
-    memory::Copy(dev_ctx.GetPlace(),
-                 updated_loss_scaling_data,
-                 platform::CPUPlace(),
-                 &cpu_updated_loss_scaling_data,
-                 sizeof(MPDType));
+  PADDLE_ENFORCE_EQ(
+      found_infinite->numel(),
+      1,
+      phi::errors::InvalidArgument("FoundInfinite must has only one element."));
+  const bool* found_inf_data = found_infinite.data<bool>();
+  bool cpu_found_inf_data = false;
+  if (platform::is_xpu_place(found_infinite.place())) {
+    memory::Copy(phi::CPUPlace(),
+                 static_cast<void*>(&cpu_found_inf_data),
+                 found_infinite.place(),
+                 static_cast<const void*>(found_inf_data),
+                 sizeof(bool));
+  } else {
+    cpu_found_inf_data = (*found_inf_data);
   }
-};
+
+  for (size_t i = 0; i < xs.size(); ++i) {
+    auto* out = outs[i];
+    T* out_data = dev_ctx.template Alloc<T>(out);
+    int num = out->numel();
+    if (cpu_found_inf_data) {
+      VLOG(1) << "-- UpdateLossScaling: Find infinite grads. --";
+      int r = 0;
+      r = xpu::constant(dev_ctx.x_context(),
+                        reinterpret_cast<XPUTyp*>(out_data),
+                        num,
+                        XPUTyp(0.0));
+      PADDLE_ENFORCE_EQ(r,
+                        XPU_SUCCESS,
+                        phi::errors::External("XPU API(constant) return wrong "
+                                              "value[%d %s]",
+                                              r,
+                                              XPUAPIErrorMsg[r]));
+    }
+  }
+  if (stop_update) {
+    return;
+  }
+
+  const MPDType* pre_loss_scaling_data = prev_loss_scaling.data<MPDType>();
+  const int* good_in_data = in_good_steps.data<int>();
+  const int* bad_in_data = in_bad_steps.data<int>();
+  MPDType* updated_loss_scaling_data =
+      dev_ctx.template Alloc<MPDType>(loss_scaling);
+
+  int* good_out_data = dev_ctx.template Alloc<int>(out_good_steps);
+  int* bad_out_data = dev_ctx.template Alloc<int>(out_bad_steps);
+
+  int cpu_bad_in_data;
+  int cpu_good_in_data;
+  MPDType cpu_pre_loss_scaling_data;
+  if (platform::is_xpu_place(in_bad_steps.place())) {
+    memory::Copy(phi::CPUPlace(),
+                 static_cast<void*>(&cpu_bad_in_data),
+                 in_bad_steps.place(),
+                 static_cast<const void*>(bad_in_data),
+                 sizeof(int));
+  } else {
+    cpu_bad_in_data = (*bad_in_data);
+  }
+
+  if (platform::is_xpu_place(in_good_steps.place())) {
+    memory::Copy(phi::CPUPlace(),
+                 static_cast<void*>(&cpu_good_in_data),
+                 in_good_steps.place(),
+                 static_cast<const void*>(good_in_data),
+                 sizeof(int));
+  } else {
+    cpu_good_in_data = (*good_in_data);
+  }
+
+  if (platform::is_xpu_place(prev_loss_scaling.place())) {
+    memory::Copy(phi::CPUPlace(),
+                 static_cast<void*>(&cpu_pre_loss_scaling_data),
+                 prev_loss_scaling.place(),
+                 static_cast<const void*>(pre_loss_scaling_data),
+                 sizeof(MPDType));
+  } else {
+    cpu_pre_loss_scaling_data = (*pre_loss_scaling_data);
+  }
+  int cpu_good_out_data = 0;
+  int cpu_bad_out_data = 0;
+  MPDType cpu_updated_loss_scaling_data = cpu_pre_loss_scaling_data;
+
+  if (cpu_found_inf_data) {
+    cpu_good_out_data = 0;
+    cpu_bad_out_data = cpu_bad_in_data + 1;
+    if (cpu_bad_out_data == decr_every_n_nan_or_inf) {
+      MPDType new_loss_scaling = cpu_pre_loss_scaling_data * decr_ratio;
+      cpu_updated_loss_scaling_data =
+          (new_loss_scaling < static_cast<MPDType>(1))
+              ? (static_cast<MPDType>(1))
+              : (new_loss_scaling);
+      cpu_bad_out_data = 0;
+    }
+  } else {
+    cpu_bad_out_data = 0;
+    cpu_good_out_data = cpu_good_in_data + 1;
+    if (cpu_good_out_data == incr_every_n_steps) {
+      MPDType new_loss_scaling = cpu_pre_loss_scaling_data * incr_ratio;
+      cpu_updated_loss_scaling_data = (std::isfinite(new_loss_scaling))
+                                          ? new_loss_scaling
+                                          : cpu_pre_loss_scaling_data;
+      cpu_good_out_data = 0;
+    }
+  }
+  // copy to device
+  memory::Copy(dev_ctx.GetPlace(),
+               bad_out_data,
+               phi::CPUPlace(),
+               &cpu_bad_out_data,
+               sizeof(int));
+  memory::Copy(dev_ctx.GetPlace(),
+               good_out_data,
+               phi::CPUPlace(),
+               &cpu_good_out_data,
+               sizeof(int));
+  memory::Copy(dev_ctx.GetPlace(),
+               updated_loss_scaling_data,
+               phi::CPUPlace(),
+               &cpu_updated_loss_scaling_data,
+               sizeof(MPDType));
+}
 
 }  // namespace phi
 
