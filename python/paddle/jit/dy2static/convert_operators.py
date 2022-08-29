@@ -26,6 +26,6 @@ from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_shape_c
 from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_var_dtype  # noqa: F401
 from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_shape  # noqa: F401
 from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_while_loop  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.convert_operators import unpack_by_structure, indexable  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import unpack_by_structure, indexable, convert_attr  # noqa: F401
 
 __all__ = []
