@@ -3739,6 +3739,8 @@ class Block(object):
         Returns:
             Operator: the append Operator.
         """
+        if in_dygraph_mode():
+            raise ValueError("call append_op in eager!")
         if _non_static_mode():
             attrs = kwargs.get("attrs", {})
             inplace_map = kwargs.get("inplace_map", None)
