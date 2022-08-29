@@ -687,11 +687,6 @@ if(WITH_DISTRIBUTE)
 
     endif()
   endif()
-  if(NOT WITH_DGC)
-    # if not with dgc, must close all dgc tests
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_se_resnext_dgc")
-  endif()
 
   if(NOT APPLE)
     if(WITH_GPU OR WITH_ROCM)
