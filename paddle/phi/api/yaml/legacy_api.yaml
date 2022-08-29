@@ -1940,7 +1940,7 @@
   backward : p_norm_grad
 
 - api : pad
-  args : (Tensor x, int[] paddings, float pad_value)
+  args : (Tensor x, int[] paddings, Scalar pad_value)
   output : Tensor
   infer_meta :
     func : PadInferMeta

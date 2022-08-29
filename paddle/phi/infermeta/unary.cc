@@ -2115,7 +2115,7 @@ void OverlapAddInferMeta(const MetaTensor& x,
 
 void PadInferMeta(const MetaTensor& input,
                   const std::vector<int>& paddings,
-                  float pad_value,
+                  const Scalar& padding_value,
                   MetaTensor* out,
                   MetaConfig config) {
   auto x_dim = input.dims();
