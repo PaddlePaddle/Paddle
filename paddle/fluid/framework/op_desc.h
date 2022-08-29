@@ -225,6 +225,11 @@ class OpDesc {
   VariableNameMap outputs_;
   // attribute name => all original attrs
   AttributeMap attrs_;
+  // runtime_attrs_ contains the attributes which used for dispatching kernel
+  // (use_mkldnn, use_cudnn, ...) or passing additional configuration for
+  // special heterogeneous kernel (workspace_size_MB, ...).
+  // The attributes in runtime_attrs_ are setted by framework (such as PASS),
+  // and not in the python api.
   AttributeMap runtime_attrs_;
 
   // need_update_ indicate there some local changes not be synchronized. If

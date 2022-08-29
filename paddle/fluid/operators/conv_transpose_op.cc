@@ -280,6 +280,15 @@ void Conv3DTransposeOpMaker::Make() {
                "(int default:1), the groups number of the convolution3d "
                "transpose operator. ")
       .SetDefault(1);
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false)
+      .AsExtra();
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -293,6 +302,14 @@ void Conv3DTransposeOpMaker::Make() {
       "\"SAME\",\"VALID\". Set to \"EXPLICIT\" for explicit padding. "
       "Set to \"SAME\" or \"VALID\" for algorithm of padding. ")
       .SetDefault("EXPLICIT");
+  AddAttr<int>("workspace_size_MB",
+               "Used in cudnn kernel only. workspace size for cudnn, in MB, "
+               "workspace is a section of GPU memory which will be "
+               "allocated/freed each time the operator runs, larger "
+               "workspace size can increase performance but also requires "
+               "better hardward. This size should be carefully set.")
+      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB())
+      .AsExtra();
   AddComment(R"DOC(
 Convolution3D Transpose Operator.
 
