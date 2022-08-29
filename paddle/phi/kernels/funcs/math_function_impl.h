@@ -39,6 +39,14 @@ void SetConstant<XPUContext, T>::operator()(const XPUContext& context,
   phi::VisitDataType(tensor->dtype(),
                      TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
 }
+template <typename T>
+void SetConstant<paddle::platform::XPUDeviceContext, T>::operator()(
+    const paddle::platform::XPUDeviceContext& context,
+    paddle::framework::Tensor* tensor,
+    T num) {
+  phi::VisitDataType(tensor->dtype(),
+                     TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
+}
 #endif
 
 template <typename DeviceContext, typename T, int Rank>
