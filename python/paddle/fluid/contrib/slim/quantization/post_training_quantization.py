@@ -37,8 +37,9 @@ from .adaround import run_adaround
 from . import utils
 
 __all__ = [
-    'PostTrainingQuantization', 'WeightQuantization',
-    'PostTrainingQuantizationProgram'
+    'PostTrainingQuantization',
+    'WeightQuantization',
+    'PostTrainingQuantizationProgram',
 ]
 
 _logger = get_logger(__name__,
@@ -325,6 +326,7 @@ class PostTrainingQuantization(object):
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
         self._onnx_format = onnx_format
+        self._clip_extra = True if self._onnx_format else False
         self._skip_tensor_list = skip_tensor_list
         self._is_full_quantize = is_full_quantize
         if is_full_quantize:
@@ -504,7 +506,6 @@ class PostTrainingQuantization(object):
         Returns:
             None
         '''
-        clip_extra = True if self._onnx_format else False
         io.save_inference_model(dirname=save_model_path,
                                 model_filename=model_filename,
                                 params_filename=params_filename,
@@ -512,7 +513,7 @@ class PostTrainingQuantization(object):
                                 target_vars=self._fetch_list,
                                 executor=self._executor,
                                 main_program=self._program,
-                                clip_extra=clip_extra)
+                                clip_extra=self._clip_extra)
         _logger.info("The quantized model is saved in " + save_model_path)
 
     def _load_model_data(self):
@@ -534,6 +535,8 @@ class PostTrainingQuantization(object):
             for var_name in self._feed_list]
 
         if self._data_loader is not None:
+            self._batch_nums = self._batch_nums if self._batch_nums else len(
+                self._data_loader)
             return
         self._data_loader = io.DataLoader.from_generator(feed_list=feed_vars,
                                                          capacity=3 *
@@ -547,6 +550,8 @@ class PostTrainingQuantization(object):
         elif self._batch_generator is not None:
             self._data_loader.set_batch_generator(self._batch_generator,
                                                   places=self._place)
+        self._batch_nums = self._batch_nums if self._batch_nums else len(
+            list(self._data_loader))
 
     def _optimize_fp32_model(self):
         '''
@@ -630,7 +635,6 @@ class PostTrainingQuantization(object):
             if var.name in self._quantized_act_var_name:
                 var.persistable = False
                 to_erase.append(var.name)
-        self._scope.erase(to_erase)
 
     def _sampling(self):
         '''

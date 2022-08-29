@@ -41,7 +41,7 @@ from ..fluid.wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 from .lr import LRScheduler
 import copy
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_check, _current_expected_place, in_dygraph_mode
 
 __all__ = []
@@ -475,13 +475,13 @@ class Optimizer(object):
         if current_lr is not None:
             if in_dygraph_mode():
                 place = _current_expected_place()
-                _C_ops.final_state_full_(current_lr, list(current_lr.shape),
-                                         float(value), current_lr.dtype, place)
+                _C_ops.full_(current_lr, list(current_lr.shape), float(value),
+                             current_lr.dtype, place)
 
             elif _in_legacy_dygraph():
-                _C_ops.fill_constant(current_lr, 'value', float(value), 'dtype',
-                                     current_lr.dtype, 'shape',
-                                     list(current_lr.shape))
+                _legacy_C_ops.fill_constant(current_lr, 'value', float(value),
+                                            'dtype', current_lr.dtype, 'shape',
+                                            list(current_lr.shape))
             else:
                 global_block = framework.default_main_program().global_block()
                 global_block.append_op(type='fill_constant',
@@ -1041,10 +1041,10 @@ class Optimizer(object):
 
         if framework.in_dygraph_mode():
             if grad.is_dense() and regularization_term.is_dense():
-                return _C_ops.final_state_add_n([grad, regularization_term])
-            return _C_ops.sum([grad, regularization_term])
+                return _C_ops.add_n([grad, regularization_term])
+            return _legacy_C_ops.sum([grad, regularization_term])
         elif framework._in_legacy_dygraph():
-            return _C_ops.sum([grad, regularization_term])
+            return _legacy_C_ops.sum([grad, regularization_term])
 
         new_grad = grad
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:

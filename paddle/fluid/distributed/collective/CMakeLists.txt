@@ -23,9 +23,10 @@ if(WITH_NCCL OR WITH_RCCL)
   if(WITH_DISTRIBUTE AND WITH_PSCORE)
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
       set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+      set_source_files_properties(
+        ProcessGroupHeter.cc PROPERTIES COMPILE_FLAGS
+                                        ${DISTRIBUTE_COMPILE_FLAGS})
     endif()
-    set_source_files_properties(
-      ProcessGroupHeter.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     cc_library(
       processgroup_heter
       SRCS ProcessGroupHeter.cc NCCLTools.cc Common.cc
@@ -47,9 +48,11 @@ if(WITH_ASCEND_CL)
   if(WITH_DISTRIBUTE AND WITH_PSCORE)
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
       set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+      set_source_files_properties(
+        ProcessGroupHeter.cc PROPERTIES COMPILE_FLAGS
+                                        ${DISTRIBUTE_COMPILE_FLAGS})
     endif()
-    set_source_files_properties(
-      ProcessGroupHeter.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+
     cc_library(
       processgroup_heter
       SRCS ProcessGroupHeter.cc HCCLTools.cc Common.cc
