@@ -490,6 +490,10 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               infer_meta_context.EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(int, attr)));
               break;
+            case framework::proto::AttrType::LONG:
+              infer_meta_context.EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(int64_t, attr)));
+              break;
             case framework::proto::AttrType::STRING:
               infer_meta_context.EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(std::string, attr)));
