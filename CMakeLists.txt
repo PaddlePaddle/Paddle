@@ -364,6 +364,18 @@ if(WIN32)
   endif()
 endif()
 
+if(NOT WITH_TESTING AND WITH_MULTINODE_TESTING)
+  message(
+    WARNING
+      "Disable WITH_MULTINODE_TESTING when compiling without TESTING. Force WITH_MULTINODE_TESTING=OFF."
+  )
+  set(WITH_MULTINODE_TESTING
+      OFF
+      CACHE STRING
+            "Disable WITH_MULTINODE_TESTING when compiling without TESTING"
+            FORCE)
+endif()
+
 if(NOT WITH_GPU AND WITH_NCCL)
   message(
     WARNING "Disable NCCL when compiling without GPU. Force WITH_NCCL=OFF.")

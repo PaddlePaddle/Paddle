@@ -59,13 +59,14 @@ class MulXPUKernel : public framework::OpKernel<T> {
     auto x_dims = x_matrix.dims();
     auto y_dims = y_matrix.dims();
 
-    XpuFcInfo fc_info;
-    GetFCInfo(x_dims, y_dims, trans_a, trans_b, &fc_info);
+    phi::XpuFcInfo fc_info;
+    phi::GetFCInfo(x_dims, y_dims, trans_a, trans_b, &fc_info);
     auto& dev_ctx =
         context.template device_context<paddle::platform::XPUDeviceContext>();
     xpu::Context* xpu_ctx = dev_ctx.x_context();
 
-    MatMulXPUFunction<XPUType>(xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, 1.0f);
+    phi::MatMulXPUFunction<XPUType>(
+        xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, 1.0f);
   }
 };
 
@@ -99,8 +100,9 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
     }
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    XpuFcInfo info_forward;
-    GetFCInfo(x_matrix.dims(), y_matrix.dims(), false, false, &info_forward);
+    phi::XpuFcInfo info_forward;
+    phi::GetFCInfo(
+        x_matrix.dims(), y_matrix.dims(), false, false, &info_forward);
 
     const XPUType* dout_ptr = reinterpret_cast<const XPUType*>(dout->data<T>());
     const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x->data<T>());
@@ -121,28 +123,28 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
         (dy == NULL)
             ? reinterpret_cast<XPUType*>(NULL)
             : reinterpret_cast<XPUType*>(dy->mutable_data<T>(ctx.GetPlace()));
-    XpuFcInfo info_dx;
-    XpuFcInfo info_dy;
-    std::tuple<XpuFcInfo,
-               XpuFcInfo,
+    phi::XpuFcInfo info_dx;
+    phi::XpuFcInfo info_dy;
+    std::tuple<phi::XpuFcInfo,
+               phi::XpuFcInfo,
                const XPUType*,
                const XPUType*,
                const XPUType*,
                const XPUType*>
-        fc_info = MatmulGradFcInfo(xpu_ctx,
-                                   &RAII_GUARD,
-                                   info_forward,
-                                   false,
-                                   false,
-                                   x_ptr,
-                                   y_ptr,
-                                   dout_ptr);
+        fc_info = phi::MatmulGradFcInfo(xpu_ctx,
+                                        &RAII_GUARD,
+                                        info_forward,
+                                        false,
+                                        false,
+                                        x_ptr,
+                                        y_ptr,
+                                        dout_ptr);
     std::tie(info_dx, info_dy, a_1, b_1, a_2, b_2) = fc_info;
     if (dx) {
-      MatMulXPUFunction<XPUType>(xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f);
+      phi::MatMulXPUFunction<XPUType>(xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f);
     }
     if (dy) {
-      MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f);
+      phi::MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f);
     }
   }
 };
