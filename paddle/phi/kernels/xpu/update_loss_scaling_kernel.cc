@@ -46,17 +46,17 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   using XPUTyp = typename XPUTypeTrait<T>::Type;
 
   PADDLE_ENFORCE_EQ(
-      found_infinite->numel(),
+      found_infinite.numel(),
       1,
       phi::errors::InvalidArgument("FoundInfinite must has only one element."));
   const bool* found_inf_data = found_infinite.data<bool>();
   bool cpu_found_inf_data = false;
-  if (platform::is_xpu_place(found_infinite.place())) {
-    memory::Copy(phi::CPUPlace(),
-                 static_cast<void*>(&cpu_found_inf_data),
-                 found_infinite.place(),
-                 static_cast<const void*>(found_inf_data),
-                 sizeof(bool));
+  if (paddle::platform::is_xpu_place(found_infinite.place())) {
+    paddle::memory::Copy(phi::CPUPlace(),
+                         static_cast<void*>(&cpu_found_inf_data),
+                         found_infinite.place(),
+                         static_cast<const void*>(found_inf_data),
+                         sizeof(bool));
   } else {
     cpu_found_inf_data = (*found_inf_data);
   }
@@ -80,7 +80,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
                                               XPUAPIErrorMsg[r]));
     }
   }
-  if (stop_update) {
+  if (stop_update.to<bool>()) {
     return;
   }
 
@@ -96,32 +96,32 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   int cpu_bad_in_data;
   int cpu_good_in_data;
   MPDType cpu_pre_loss_scaling_data;
-  if (platform::is_xpu_place(in_bad_steps.place())) {
-    memory::Copy(phi::CPUPlace(),
-                 static_cast<void*>(&cpu_bad_in_data),
-                 in_bad_steps.place(),
-                 static_cast<const void*>(bad_in_data),
-                 sizeof(int));
+  if (paddle::platform::is_xpu_place(in_bad_steps.place())) {
+    paddle::memory::Copy(phi::CPUPlace(),
+                         static_cast<void*>(&cpu_bad_in_data),
+                         in_bad_steps.place(),
+                         static_cast<const void*>(bad_in_data),
+                         sizeof(int));
   } else {
     cpu_bad_in_data = (*bad_in_data);
   }
 
-  if (platform::is_xpu_place(in_good_steps.place())) {
-    memory::Copy(phi::CPUPlace(),
-                 static_cast<void*>(&cpu_good_in_data),
-                 in_good_steps.place(),
-                 static_cast<const void*>(good_in_data),
-                 sizeof(int));
+  if (paddle::platform::is_xpu_place(in_good_steps.place())) {
+    paddle::memory::Copy(phi::CPUPlace(),
+                         static_cast<void*>(&cpu_good_in_data),
+                         in_good_steps.place(),
+                         static_cast<const void*>(good_in_data),
+                         sizeof(int));
   } else {
     cpu_good_in_data = (*good_in_data);
   }
 
-  if (platform::is_xpu_place(prev_loss_scaling.place())) {
-    memory::Copy(phi::CPUPlace(),
-                 static_cast<void*>(&cpu_pre_loss_scaling_data),
-                 prev_loss_scaling.place(),
-                 static_cast<const void*>(pre_loss_scaling_data),
-                 sizeof(MPDType));
+  if (paddle::platform::is_xpu_place(prev_loss_scaling.place())) {
+    paddle::memory::Copy(phi::CPUPlace(),
+                         static_cast<void*>(&cpu_pre_loss_scaling_data),
+                         prev_loss_scaling.place(),
+                         static_cast<const void*>(pre_loss_scaling_data),
+                         sizeof(MPDType));
   } else {
     cpu_pre_loss_scaling_data = (*pre_loss_scaling_data);
   }
@@ -152,21 +152,21 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
     }
   }
   // copy to device
-  memory::Copy(dev_ctx.GetPlace(),
-               bad_out_data,
-               phi::CPUPlace(),
-               &cpu_bad_out_data,
-               sizeof(int));
-  memory::Copy(dev_ctx.GetPlace(),
-               good_out_data,
-               phi::CPUPlace(),
-               &cpu_good_out_data,
-               sizeof(int));
-  memory::Copy(dev_ctx.GetPlace(),
-               updated_loss_scaling_data,
-               phi::CPUPlace(),
-               &cpu_updated_loss_scaling_data,
-               sizeof(MPDType));
+  paddle::memory::Copy(dev_ctx.GetPlace(),
+                       bad_out_data,
+                       phi::CPUPlace(),
+                       &cpu_bad_out_data,
+                       sizeof(int));
+  paddle::memory::Copy(dev_ctx.GetPlace(),
+                       good_out_data,
+                       phi::CPUPlace(),
+                       &cpu_good_out_data,
+                       sizeof(int));
+  paddle::memory::Copy(dev_ctx.GetPlace(),
+                       updated_loss_scaling_data,
+                       phi::CPUPlace(),
+                       &cpu_updated_loss_scaling_data,
+                       sizeof(MPDType));
 }
 
 }  // namespace phi
