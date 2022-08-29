@@ -96,6 +96,7 @@ template <typename T>
 using SwishOneDNNFunctor =
     OneDNNActivationFunc<T, dnnl::algorithm::eltwise_swish>;
 
+
 template <typename T>
 using HardSwishOneDNNFunctor =
     OneDNNActivationFunc<T, dnnl::algorithm::eltwise_hardswish>;
@@ -131,6 +132,7 @@ DEFINE_ONEDNN_ACTIVATION_KERNEL(Tanh, TanhOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Exp, ExpOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Sqrt, SqrtOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Sigmoid, SigmoidOneDNNFunctor)
+
 // round eltwise primitive doesn't support BF16, nor does it support grad
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Round, RoundOneDNNFunctor)
 
@@ -138,6 +140,7 @@ DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, ReluOneDNNFunctor, alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishOneDNNFunctor, threshold)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Elu, EluOneDNNFunctor, alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Swish, SwishOneDNNFunctor, beta)
+
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
@@ -158,13 +161,15 @@ PD_REGISTER_KERNEL(round, OneDNN, ALL_LAYOUT, phi::RoundKernel, float) {}
   PD_REGISTER_KERNEL(                             \
       name, OneDNN, ALL_LAYOUT, phi::func, float, phi::dtype::bfloat16) {}
 
+PD_REGISTER_ACTIVATION_KERNEL(abs, AbsKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_swish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu, ReluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
-PD_REGISTER_ACTIVATION_KERNEL(relu, ReluKernel)
