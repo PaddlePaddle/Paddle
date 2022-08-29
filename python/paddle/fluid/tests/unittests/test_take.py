@@ -141,8 +141,8 @@ class TestTakeTypeError(TestTakeAPI):
         self.assertRaises(TypeError, paddle.take, x, index, self.mode)
 
 
-class TestTakeModeRaise(unittest.TestCase):
-    """Test take index out of range error"""
+class TestTakeModeRaisePos(unittest.TestCase):
+    """Test positive index out of range error"""
 
     def set_mode(self):
         self.mode = 'raise'
@@ -153,11 +153,11 @@ class TestTakeModeRaise(unittest.TestCase):
 
     def set_input(self):
         self.input_shape = [3, 4]
-        self.index_shape = [5, 8]
+        self.index_shape = [5, 6]
         self.input_np = np.arange(0, 12).reshape(self.input_shape).astype(
             self.input_dtype)
-        self.index_np = np.arange(-20, 20).reshape(self.index_shape).astype(
-            self.index_dtype)  # Both ends of the index are out of bounds
+        self.index_np = np.arange(-10, 20).reshape(self.index_shape).astype(
+            self.index_dtype)  # positive indices are out of range
 
     def setUp(self):
         self.set_mode()
@@ -184,6 +184,32 @@ class TestTakeModeRaise(unittest.TestCase):
         x = paddle.to_tensor(self.input_np)
         index = paddle.to_tensor(self.index_np, dtype=self.index_dtype)
         self.assertRaises(ValueError, paddle.index_select, x, index)
+
+
+class TestTakeModeRaiseNeg(TestTakeModeRaisePos):
+    """Test negative index out of range error"""
+
+    def set_mode(self):
+        self.mode = 'raise'
+
+    def set_dtype(self):
+        self.input_dtype = 'float64'
+        self.index_dtype = 'int64'
+
+    def set_input(self):
+        self.input_shape = [3, 4]
+        self.index_shape = [5, 6]
+        self.input_np = np.arange(0, 12).reshape(self.input_shape).astype(
+            self.input_dtype)
+        self.index_np = np.arange(-20, 10).reshape(self.index_shape).astype(
+            self.index_dtype)  # negative indices are out of range
+
+    def setUp(self):
+        self.set_mode()
+        self.set_dtype()
+        self.set_input()
+        self.place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
 
 
 class TestTakeModeWrap(TestTakeAPI):
