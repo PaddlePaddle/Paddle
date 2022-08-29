@@ -32,7 +32,8 @@ class DistributedDataLoader(metaclass=abc.ABCMeta):
                  epochs=1,
                  data_parallel_world_size=None,
                  data_parallel_rank=None,
-                 drop_last=False):
+                 drop_last=False,
+                 split_data=True):
         if isinstance(dataset, IterableDataset):
             self.dataset_kind = _DatasetKind.ITER
         else:
@@ -43,7 +44,7 @@ class DistributedDataLoader(metaclass=abc.ABCMeta):
         self.drop_lost = drop_last
         self.data_parallel_world_size = data_parallel_world_size
         self.data_parallel_rank = data_parallel_rank
-        self.data_replicate = False
+        self.split_data = split_data
 
         if batch_size is None:
             self.batch_size = None
@@ -98,7 +99,8 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                  collate_fn=None,
                  data_parallel_world_size=None,
                  data_parallel_rank=None,
-                 drop_last=False):
+                 drop_last=False,
+                 split_data=True):
         self.feed_list = feed_list
         self.places = places
         self.steps_per_epoch = steps_per_epoch
@@ -106,7 +108,7 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
         super(NonIterableGeneratorLoader,
               self).__init__(dataset, batch_size, epochs,
                              data_parallel_world_size, data_parallel_rank,
-                             drop_last)
+                             drop_last, split_data)
 
         if self.auto_collate_batch:
             self.collate_fn = collate_fn or default_collate_fn
@@ -169,7 +171,7 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                 partial_data = []
                 for i, d in enumerate(batch[:len(self.feed_list)]):
                     array = np.array(d)
-                    if not self.data_replicate:
+                    if not self.split_data:
                         partial_data.append(array)
                     elif self.dp_world_sizes[i] is not None:
                         partial_data.append(
@@ -192,7 +194,7 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                 partial_data = []
                 for i, d in enumerate(batch[:len(self.feed_list)]):
                     array = np.array(d)
-                    if not self.data_replicate:
+                    if not self.split_data:
                         partial_data.append(array)
                     elif self.dp_world_sizes[i] is not None:
                         partial_data.append(

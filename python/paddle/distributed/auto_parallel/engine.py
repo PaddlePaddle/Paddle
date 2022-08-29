@@ -604,7 +604,8 @@ class Engine:
                 steps_per_epoch,
                 collate_fn,
                 data_parallel_world_size=self.dp_world_sizes,
-                data_parallel_rank=self.dp_ranks)
+                data_parallel_rank=self.dp_ranks,
+                split_data=self.strategy.split_data)
 
         # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)
