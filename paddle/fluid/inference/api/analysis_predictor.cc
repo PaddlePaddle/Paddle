@@ -2010,6 +2010,13 @@ AnalysisPredictor::~AnalysisPredictor() {
     memory::Release(place_);
   }
   device_contexts_.clear();
+
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled()) {
+    inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+        .releaseContextMemory(predictor_id_);
+  }
+#endif
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {

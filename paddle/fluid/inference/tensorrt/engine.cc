@@ -86,6 +86,20 @@ void TensorRTEngine::Execute(int batch_size,
                              cudaStream_t stream) {
   freshDeviceId();
   auto infer_context = context();
+  if (context_memory_shared_) {
+    void *context_memory{nullptr};
+    context_memory =
+        inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+            .getContextMemory(
+                this,
+                phi::GPUPlace(device_id_),
+                phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+    PADDLE_ENFORCE_NOT_NULL(context_memory,
+                            platform::errors::InvalidArgument(
+                                "The address of engine context_memory is null, "
+                                "we failed to set it."));
+    infer_context->setDeviceMemory(context_memory);
+  }
   if (!with_dynamic_shape()) {
     infer_context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
