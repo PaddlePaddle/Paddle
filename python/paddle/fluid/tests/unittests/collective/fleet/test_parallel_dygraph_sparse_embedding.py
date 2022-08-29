@@ -36,10 +36,11 @@ class TestParallelDygraphSparseEmdedding(TestDistBase):
 
     def test_sparse_embedding(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("parallel_dygraph_sparse_embedding.py",
-                                  delta=1e-5,
-                                  check_error_log=True,
-                                  log_name=flag_name)
+            self.check_with_place(
+                os.path.abspath("../../parallel_dygraph_sparse_embedding.py"),
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
 
 
 class TestParallelDygraphSparseEmdeddingFP64(TestDistBase):
@@ -51,7 +52,8 @@ class TestParallelDygraphSparseEmdeddingFP64(TestDistBase):
 
     def test_sparse_embedding_fp64(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("parallel_dygraph_sparse_embedding_fp64.py",
+            self.check_with_place(os.path.abspath(
+                "../../parallel_dygraph_sparse_embedding_fp64.py"),
                                   delta=1e-5,
                                   check_error_log=True,
                                   log_name=flag_name)
