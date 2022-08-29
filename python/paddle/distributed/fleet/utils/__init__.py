@@ -22,19 +22,8 @@ from . import log_util  # noqa: F401
 from . import hybrid_parallel_util  # noqa: F401
 
 __all__ = [  #noqa
-    "LocalFS", "recompute", "recompute_sequential", "DistributedInfer",
-    "HDFSClient"
+    "LocalFS", "recompute", "DistributedInfer", "HDFSClient"
 ]
-
-
-@deprecated(
-    since="2.4.0",
-    update_to="paddle.distributed.fleet.recompute_sequential",
-    level=1,
-    reason="Please use new recompute_sequential API(fleet.recompute_sequential) "
-)
-def recompute_sequential(functions, segments, input, **kwargs):
-    return fleet.recompute_sequential(functions, segments, input, **kwargs)
 
 
 @deprecated(since="2.4.0",

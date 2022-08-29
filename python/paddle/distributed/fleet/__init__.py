@@ -32,7 +32,7 @@ from .fleet import Fleet
 from .model import distributed_model
 from .optimizer import distributed_optimizer
 from .scaler import distributed_scaler
-from .recompute import recompute as R
+import paddle.distributed.fleet.recompute as Re
 
 __all__ = [  #noqa
     "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
@@ -91,6 +91,6 @@ distributed_model = distributed_model
 shrink = fleet.shrink
 get_hybrid_communicate_group = fleet.get_hybrid_communicate_group
 distributed_scaler = distributed_scaler
-recompute = R.recompute
-recompute_sequential = R.recompute_sequential
-recompute_hybrid = R.recompute_hybrid
+recompute = Re.recompute
+recompute_sequential = Re.recompute_sequential
+recompute_hybrid = Re.recompute_hybrid

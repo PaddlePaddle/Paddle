@@ -23,93 +23,15 @@ from ..meta_parallel.parallel_layers.random import get_rng_state_tracker
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.distributed import fleet
 from .recompute import check_recompute_necessary, detach_variable, swith_rng_state_tracker
+from ..meta_parallel.pp_utils import utils
 
-__all__ = [
-    "recompute_hybrid", "is_float_tensor", "get_tensor_dtype",
-    "paddle_2_number", "get_tensor_bytes"
-]
-
-FLOAT_TYPE_DICT = {
-    paddle.float16: "float16",
-    paddle.float32: "float32",
-    paddle.float64: "float64",
-}
-
-PADDLE_TO_NUMBER = {
-    paddle.float16: 0,
-    paddle.float32: 1,
-    paddle.float64: 2,
-    paddle.int32: 3,
-    paddle.int64: 4
-}
-
-NUMBER_TO_DTYPE = {
-    0: "float16",
-    1: "float32",
-    2: "float64",
-    3: "int32",
-    4: "int64"
-}
+__all__ = ["recompute_hybrid"]
 
 
-def is_float_tensor(tensor):
-    """Is a float tensor"""
-    return tensor.dtype in FLOAT_TYPE_DICT.keys()
+def _split_activation(tensor, mp_group):
 
-
-def get_tensor_dtype(dtype):
-    assert dtype in FLOAT_TYPE_DICT.keys()
-    return FLOAT_TYPE_DICT[dtype]
-
-
-def paddle_2_number(dtype):
-    assert dtype in PADDLE_TO_NUMBER.keys()
-    return PADDLE_TO_NUMBER[dtype]
-
-
-def number_2_dtype(number):
-    assert number in NUMBER_TO_DTYPE.keys()
-    return NUMBER_TO_DTYPE[number]
-
-
-def get_tensor_bytes(tensor):
-    """Get the bytes a tensor occupied."""
-    elem_size = None
-    if tensor.dtype == paddle.float32:
-        elem_size = 4
-    elif tensor.dtype == paddle.float64:
-        elem_size = 8
-    elif tensor.dtype == paddle.int64:
-        elem_size = 8
-    elif tensor.dtype == paddle.int32:
-        elem_size = 4
-    elif tensor.dtype == paddle.float16:
-        elem_size = 2
-    elif tensor.dtype == paddle.int8:
-        elem_size = 1
-    else:
-        raise ValueError("unknown data type: {}".format(tensor.dtype))
-    return tensor.numel() * elem_size
-
-
-def _all_gather(tensor, group=None, use_calc_stream=True):
-    """
-    The main difference with paddle.distributed.all_gather: 
-    no need to pass in tensor_list, the returned tensor is spliced
-    """
-    if group is not None and not group.is_member():
-        return
-    ring_id = 0 if group is None else group.id
-    nranks = paddle.distributed.collective._get_global_group(
-    ).nranks if group is None else group.nranks
-    return _legacy_C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
-                                     'ring_id', ring_id, 'nranks', nranks)
-
-
-def _split_activation(tensor):
-
-    mp_degree = fleet.fleet._hcg.get_model_parallel_world_size()
-    mp_rank = fleet.fleet._hcg.get_model_parallel_rank()
+    mp_degree = mp_group.nranks
+    mp_rank = mp_group.rank
     if mp_degree < 2:
         return tensor
 
@@ -127,13 +49,12 @@ def _split_activation(tensor):
     return data[start:end]
 
 
-def _merge_activation(tensor):
-    mp_degree = fleet.fleet._hcg.get_model_parallel_world_size()
-    mp_rank = fleet.fleet._hcg.get_model_parallel_rank()
-    mp_group = fleet.fleet._hcg.get_model_parallel_group()
+def _merge_activation(tensor, mp_group):
+    mp_degree = mp_degree.nranks
+    mp_rank = mp_degree.rank
     if mp_degree < 2:
         return tensor
-    return _all_gather(tensor, group=mp_group)
+    return utils._all_gather(tensor, group=mp_group)
 
 
 class _HPRecomputeFunction(PyLayer):
@@ -146,8 +67,8 @@ class _HPRecomputeFunction(PyLayer):
     """
 
     @staticmethod
-    def forward(ctx, run_function, all_outputs, offload, partition, *args,
-                **kwargs):
+    def forward(ctx, run_function, all_outputs, mp_group, offload, partition,
+                preserve_rng_state, *args, **kwargs):
         check_recompute_necessary(args)
 
         # store for recomputing
@@ -156,11 +77,13 @@ class _HPRecomputeFunction(PyLayer):
         ctx.kwargs = kwargs
 
         # store the rng states
+        assert preserve_rng_state, 'preserve_rng_state must be True in recompute_hybrid.'
         ctx.fwd_cuda_rng_state = paddle.get_cuda_rng_state()
         ctx.fwd_cuda_rng_state_tracker = get_rng_state_tracker(
         ).get_states_tracker()
 
         # save config info
+        ctx.mp_group = mp_group
         ctx.offload = offload
         ctx.partition = partition
 
@@ -195,7 +118,8 @@ class _HPRecomputeFunction(PyLayer):
                 state = arg.stop_gradient
                 if partition:
                     ctx.tensor_shapes.append(arg.shape)
-                    partition = _split_activation(arg.detach()).clone()
+                    partition = _split_activation(arg.detach(),
+                                                  mp_group).clone()
                     # TODO(shenliang03) not use calculate stream to D2H to speed
                     arg = partition.cpu() if offload else partition
                 else:
@@ -229,8 +153,9 @@ class _HPRecomputeFunction(PyLayer):
             for i, idx in enumerate(tensor_indices):
                 if ctx.partition:
                     state = tensors[i].stop_gradient
-                    tensors[i] = _merge_activation(
-                        tensors[i]).detach().reshape_(tensor_shapes[i])
+                    tensors[i] = _merge_activation(tensors[i],
+                                                   mp_group).detach().reshape_(
+                                                       tensor_shapes[i])
                     tensors[i].stop_gradient = state
                 inputs[idx] = tensors[i].cuda(
                     device_id) if ctx.offload else tensors[i]
@@ -275,7 +200,7 @@ class _HPRecomputeFunction(PyLayer):
             return grads
 
 
-def recompute_hybrid(function, *args, **kwargs):
+def recompute_hybrid(ctx, function, *args, **kwargs):
     """
     # NODTE(shenliang03)The current hybrid parallel recompute has limitations.
     # It cannot handle the following situations:
@@ -284,34 +209,37 @@ def recompute_hybrid(function, *args, **kwargs):
     # 3. Here, we only use float dtype to distinguish whether a gradient is needed in output tensor
 
     Parameters:
+        ctx(dict): include 'mp_group', 'offload', 'partition' and 'preserve_rng_state' keys. the key 'mp_group' (Group), represents the avtivations are splitted
+                   in which group. the key 'offload' (bool, optional, default=False), represents whether to offload to cpu. the key 'partition' (bool, optional, default=False),
+                   represents whether to split activations in the mp_group. the key 'preserve_rng_state' (bool, optional, default=True) indicate whether to save the forward rng.
+                   If it is True, then the last forward rng value will be restored when the forward recalculation of backpropagation is performed. and some keys such as 'segments',
+                   are invalid here, they are useful in 'recompute_sequential' API.
         function(paddle.nn.Layer): layer of sequence of layers that describes part of forward pass of the model
               whose intermediate activations will be released to save memory in forward stage and will be recomputed
               in backward stage for gradient calculation.
-        *args(Tensor): inputs to the function.
+        *args(Tensor): inputs(tuple) to the function.
 
-        **kwargs(Dict): Kwargs should contain the key-value pair of preserve_rng_state, which is used to 
-              indicate whether to save the forward rng. If it is True, then the last forward rng value will be 
-              restored when the forward recalculation of backpropagation is performed. The default 
-              preserve_rng_state is True. and it contains the key-value pair of __offload__ and __partition__, they are on behalf of whether to offload
-              to cpu and whether to split activation.
+        **kwargs(Dict): inputs(dict) to the function. 
 
     Returns:
-        Output of function on args.
+        Output of function on args and kwargs.
 
     """
+    assert "mp_group" in ctx.keys(), "ctx must contains mp_group."
 
-    offload = kwargs.pop('__offload__', True)
-    partition = kwargs.pop('__partition__', True)
+    offload = ctx.get('offload', False)
+    partition = ctx.get('partition', False)
+    preserve_rng_state = ctx.get('preserve_rng_state', True)
 
     all_outputs = []
-    _HPRecomputeFunction.apply(function, all_outputs, offload, partition, *args,
-                               **kwargs)
+    _HPRecomputeFunction.apply(function, all_outputs, mp_group, offload,
+                               partition, preserve_rng_state, *args, **kwargs)
 
     if len(all_outputs) == 1:
         return all_outputs[0]
     else:
         for output in all_outputs:
-            if paddle.is_tensor(output) and not is_float_tensor(output):
+            if paddle.is_tensor(output) and not utils.is_float_tensor(output):
                 output.stop_gradient = True
 
         return tuple(all_outputs)

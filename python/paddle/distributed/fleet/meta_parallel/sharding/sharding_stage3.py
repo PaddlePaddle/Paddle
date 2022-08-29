@@ -33,7 +33,7 @@ from paddle.distributed import collective as dist
 from paddle.distributed.collective import _get_global_group
 
 from .sharding_utils import Type, ShardingClipGrad, device_guard
-from ...recompute.recompute_hybrid import _all_gather
+from ..pp_utils.utils import _all_gather
 from ...utils.internal_storage import GradStorage
 
 # CUDA alignment 256 bytes

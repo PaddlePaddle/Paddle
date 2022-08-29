@@ -269,7 +269,7 @@ class RecomputeFunction(PyLayer):
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
-            outputs = run_function(*args)
+            outputs = run_function(*args, **kwargs)
         return outputs
 
     @staticmethod
@@ -301,7 +301,8 @@ class RecomputeFunction(PyLayer):
                             level=ctx.amp_level,
                             dtype=ctx.amp_dtype):
                         detached_inputs = detach_variable(tuple(inputs))
-                        outputs = ctx.run_function(*detached_inputs, ctx.kwargs)
+                        outputs = ctx.run_function(*detached_inputs,
+                                                   **ctx.kwargs)
             else:
                 with paddle.amp.auto_cast(enable=ctx.is_fw_autocast,
                                           custom_white_list=ctx.amp_white_list,
@@ -309,7 +310,7 @@ class RecomputeFunction(PyLayer):
                                           level=ctx.amp_level,
                                           dtype=ctx.amp_dtype):
                     detached_inputs = detach_variable(tuple(inputs))
-                    outputs = ctx.run_function(*detached_inputs, ctx.kwargs)
+                    outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
 
             if isinstance(outputs, (core.VarBase, core.eager.Tensor)):
                 outputs = (outputs, )
@@ -477,31 +478,32 @@ def recompute(function, *args, **kwargs):
     return RecomputeFunction.apply(function, preserve, *args, **kwargs)
 
 
-def recompute_sequential(functions, *args, **kwargs):
+def recompute_sequential(ctx, functions, *args, **kwargs):
     """
     recompute intermediate activations to save then memory for 'Sequential' models.
 
     Parameters:
+        ctx(dict): include 'segments' and  'preserve_rng_state' keys, the key 'segments' (int, default 1), represents the number of chunks to create in the model,
+                   the key 'preserve_rng_state' (bool, optional, default=True) indicate whether to save the forward rng. If it is True, then the last forward rng value will be
+                   restored when the forward recalculation of backpropagation is performed. and some keys such as 'mp_group', 'offload' and 'partition' are invalid here,
+                   they are useful in 'recompute_hybrid' API.
         functions(paddle.nn.Sequential): layer of sequence of layers that describes part of forward pass of the model  
               whose intermediate activations will be released to save memory in forward stage and will be recomputed 
               in backward stage for gradient calculation. 
-        *args(Tensor): inputs to the function.
-        **kwargs(Dict): Kwargs should contain the key-value pair of preserve_rng_state, which is used to 
-              indicate whether to save the forward rng. If it is True, then the last forward rng value will be 
-              restored when the forward recalculation of backpropagation is performed. The default 
-              preserve_rng_state is True. and it contains the key-value pair of __segments__, which is on behalf of the 
-              Number of chunks to create in the model.
+        *args(Tensor): inputs(tuple) to the function.
+        **kwargs(Dict): inputs(dict) to the function.
 
     Returns:
-        Output of function on args.
+        Output of function on args and kwargs.
 
     Examples:
         .. code-block:: python
 
             model = paddle.nn.Sequential(...)
-            input = recompute_sequential(model, segments, input)
+            input = recompute_sequential({'segments' : 1}, model, input)
     """
-    segments = kwargs.pop('__segments__', 1)
+    segments = ctx.get('segments', 1)
+    preserve_rng_state = ctx.get('preserve_rng_state', True)
 
     def _run_func(begin, end, funcs):
 
@@ -520,5 +522,8 @@ def recompute_sequential(functions, *args, **kwargs):
     end = -1
     for begin in range(0, segment_size * (segments - 1), segment_size):
         end = begin + segment_size - 1
-        args = recompute(_run_func(begin, end, functions), *args, **kwargs)
+        args = recompute(_run_func(begin, end, functions),
+                         *args,
+                         preserve_rng_state=preserve_rng_state,
+                         **kwargs)
     return _run_func(end + 1, len(functions) - 1, functions)(args)

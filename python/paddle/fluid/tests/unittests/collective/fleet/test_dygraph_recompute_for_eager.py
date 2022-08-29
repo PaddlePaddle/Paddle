@@ -83,9 +83,8 @@ class Naive_fc_net(paddle.nn.Layer):
     def forward(self, inputs):
 
         if self.use_fleet_sq:
-            return fleet.recompute_sequential(self.runfuncs,
-                                              inputs,
-                                              __segments__=self.segments)
+            return fleet.recompute_sequential({"segments": self.segments},
+                                              self.runfuncs, inputs)
 
         if 0 in self.recompute_blocks:
             recompute_func = fleet.recompute if self.use_fleet else recompute
@@ -245,7 +244,7 @@ class TestPyLayer(unittest.TestCase):
     def test_recompute_kwargs(self):
         paddle.set_device("gpu")
         kwargs = {"is_test": False}
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             loss_ref, param_ref, grad_ref = run_model(recompute_block=[2],
                                                       recompute_kwargs=kwargs)
 
