@@ -37,9 +37,9 @@ void LayerNormKernel(const Context& ctx,
   int right = static_cast<int>(matrix_dim[1]);
   const auto* x_data = x.data<T>();
   const auto* scale_data =
-      (scale.get_ptr() == nullptr ? nullptr : scale.data<float>());
+      (scale.get_ptr() == nullptr ? nullptr : scale.get_ptr()->data<float>());
   const auto* bias_data =
-      (bias.get_ptr() == nullptr ? nullptr : bias.data<float>());
+      (bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>());
   auto* out_data = ctx.template Alloc<T>(out);
   auto* mean_data = ctx.template Alloc<float>(mean);
   auto* variance_data = ctx.template Alloc<float>(variance);

@@ -33,6 +33,7 @@ void LayerNormGradKernel(const Context& ctx,
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   const auto& x_dims = x.dims();
   auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
   int left = static_cast<int>(matrix_dim[0]);
@@ -42,7 +43,7 @@ void LayerNormGradKernel(const Context& ctx,
   const auto* mean_data = mean.data<float>();
   const auto* variance_data = variance.data<float>();
   const auto* scale_data =
-      (scale.get_ptr() == nullptr ? nullptr : scale.data<float>());
+      (scale.get_ptr() == nullptr ? nullptr : scale.get_ptr()->data<float>());
   auto* scale_grad_data =
       (scale_grad == nullptr ? nullptr : ctx.template Alloc<float>(scale_grad));
   auto* bias_grad_data =
