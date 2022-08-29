@@ -401,7 +401,7 @@ class PipelineLayer(Layer):
                     input = (input, )
 
                 if self._need_recompute(funcs, input):
-                    input = fleet.hybrid_recompute(
+                    input = fleet.recompute_hybrid(
                         self.forward_function(start_idx,
                                               end_idx), self._recompute_offload,
                         self._recompute_partition, *input)

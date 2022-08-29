@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from .recompute import recompute, recompute_sequential, swith_rng_state_tracker, check_recompute_necessary, detach_variable
-from .hybrid_recompute import hybrid_recompute
+from .recompute_hybrid import recompute_hybrid
 
 __all__ = [
-    "recompute", "recompute_sequential", "hybrid_recompute",
+    "recompute", "recompute_sequential", "recompute_hybrid",
     "swith_rng_state_tracker", "check_recompute_necessary", "detach_variable"
 ]

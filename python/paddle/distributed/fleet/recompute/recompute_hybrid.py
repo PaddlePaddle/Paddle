@@ -25,7 +25,7 @@ from paddle.distributed import fleet
 from .recompute import check_recompute_necessary, detach_variable, swith_rng_state_tracker
 
 __all__ = [
-    "hybrid_recompute", "is_float_tensor", "get_tensor_dtype",
+    "recompute_hybrid", "is_float_tensor", "get_tensor_dtype",
     "paddle_2_number", "get_tensor_bytes"
 ]
 
@@ -146,11 +146,14 @@ class _HPRecomputeFunction(PyLayer):
     """
 
     @staticmethod
-    def forward(ctx, run_function, all_outputs, offload, partition, *args):
+    def forward(ctx, run_function, all_outputs, offload, partition, *args,
+                **kwargs):
         check_recompute_necessary(args)
 
         # store for recomputing
         ctx.run_function = run_function
+
+        ctx.kwargs = kwargs
 
         # store the rng states
         ctx.fwd_cuda_rng_state = paddle.get_cuda_rng_state()
@@ -185,7 +188,7 @@ class _HPRecomputeFunction(PyLayer):
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
-            outputs = run_function(*args)
+            outputs = run_function(*args, **kwargs)
 
         for i, arg in enumerate(args):
             if paddle.is_tensor(arg):
@@ -243,7 +246,7 @@ class _HPRecomputeFunction(PyLayer):
                                           custom_black_list=ctx.amp_black_list,
                                           level=ctx.amp_level):
                     detached_inputs = detach_variable(tuple(inputs))
-                    outputs = ctx.run_function(*detached_inputs)
+                    outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
 
             if isinstance(outputs, (core.VarBase, core.eager.Tensor)):
                 outputs = (outputs, )
@@ -272,7 +275,7 @@ class _HPRecomputeFunction(PyLayer):
             return grads
 
 
-def hybrid_recompute(function, offload, partition, *args):
+def recompute_hybrid(function, *args, **kwargs):
     """
     # NODTE(shenliang03)The current hybrid parallel recompute has limitations.
     # It cannot handle the following situations:
@@ -284,16 +287,25 @@ def hybrid_recompute(function, offload, partition, *args):
         function(paddle.nn.Sequential): layer of sequence of layers that describes part of forward pass of the model
               whose intermediate activations will be released to save memory in forward stage and will be recomputed
               in backward stage for gradient calculation.
-        offload(bool): whether to offload checkpoint.
-        partition: whether to split activation into each rank in model group.
         *args(Tensor): inputs to the function.
+
+        **kwargs(Dict): Kwargs should contain the key-value pair of preserve_rng_state, which is used to 
+              indicate whether to save the forward rng. If it is True, then the last forward rng value will be 
+              restored when the forward recalculation of backpropagation is performed. The default 
+              preserve_rng_state is True. and it contains the key-value pair of __offload__ and __partition__, they are on behalf of whether to offload
+              to cpu and whether to split activation.
+
     Returns:
         Output of function on args.
 
     """
 
+    offload = kwargs.pop('__offload__', True)
+    partition = kwargs.pop('__partition__', True)
+
     all_outputs = []
-    _HPRecomputeFunction.apply(function, all_outputs, offload, partition, *args)
+    _HPRecomputeFunction.apply(function, all_outputs, offload, partition, *args,
+                               **kwargs)
 
     if len(all_outputs) == 1:
         return all_outputs[0]

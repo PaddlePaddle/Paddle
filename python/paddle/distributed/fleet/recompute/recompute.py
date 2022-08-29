@@ -210,12 +210,13 @@ class LegacyRecomputeFunction(LegacyPyLayer):
 class RecomputeFunction(PyLayer):
 
     @staticmethod
-    def forward(ctx, run_function, preserve_rng_state, *args):
+    def forward(ctx, run_function, preserve_rng_state, *args, **kwargs):
         from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
 
         # store for recomputing
         ctx.run_function = run_function
         ctx.preserve_rng_state = preserve_rng_state
+        ctx.kwargs = kwargs
 
         # NOTE the number of outputs of backward() should be equal to the number of tensors in forward()'s input
         # the order of tensors in backward()'s output should be the same as tensors in forward()'s input
@@ -300,7 +301,7 @@ class RecomputeFunction(PyLayer):
                             level=ctx.amp_level,
                             dtype=ctx.amp_dtype):
                         detached_inputs = detach_variable(tuple(inputs))
-                        outputs = ctx.run_function(*detached_inputs)
+                        outputs = ctx.run_function(*detached_inputs, ctx.kwargs)
             else:
                 with paddle.amp.auto_cast(enable=ctx.is_fw_autocast,
                                           custom_white_list=ctx.amp_white_list,
@@ -308,7 +309,7 @@ class RecomputeFunction(PyLayer):
                                           level=ctx.amp_level,
                                           dtype=ctx.amp_dtype):
                     detached_inputs = detach_variable(tuple(inputs))
-                    outputs = ctx.run_function(*detached_inputs)
+                    outputs = ctx.run_function(*detached_inputs, ctx.kwargs)
 
             if isinstance(outputs, (core.VarBase, core.eager.Tensor)):
                 outputs = (outputs, )
@@ -355,7 +356,7 @@ def recompute(function, *args, **kwargs):
     recompute intermediate activations to save then memory.
 
     Parameters:
-        function(paddle.nn.Sequential): layer of sequence of layers that describes part of forward pass of the model  
+        function(paddle.nn.Layer): layer of sequence of layers that describes part of forward pass of the model  
               whose intermediate activations will be released to save memory in forward stage and will be recomputed 
               in backward stage for gradient calculation. 
         *args(Tensor): inputs to the function.    
@@ -469,17 +470,14 @@ def recompute(function, *args, **kwargs):
     """
     # Hack to mix *args with **kwargs in a python 2.7-compliant way
     preserve = kwargs.pop('preserve_rng_state', True)
-    if kwargs:
-        raise ValueError("Unexpected keyword arguments: " +
-                         ",".join(arg for arg in kwargs))
 
     if framework._dygraph_tracer()._has_grad:
         check_recompute_necessary(args)
 
-    return RecomputeFunction.apply(function, preserve, *args)
+    return RecomputeFunction.apply(function, preserve, *args, **kwargs)
 
 
-def recompute_sequential(functions, segments, input, **kwargs):
+def recompute_sequential(functions, *args, **kwargs):
     """
     recompute intermediate activations to save then memory for 'Sequential' models.
 
@@ -487,12 +485,12 @@ def recompute_sequential(functions, segments, input, **kwargs):
         functions(paddle.nn.Sequential): layer of sequence of layers that describes part of forward pass of the model  
               whose intermediate activations will be released to save memory in forward stage and will be recomputed 
               in backward stage for gradient calculation. 
-        segments(int): Number of chunks to create in the model
-        input(Tensor): inputs to the function.    
-        **kwargs(Dict): Kwargs should only contain the key-value pair of preserve_rng_state, which is used to 
+        *args(Tensor): inputs to the function.
+        **kwargs(Dict): Kwargs should contain the key-value pair of preserve_rng_state, which is used to 
               indicate whether to save the forward rng. If it is True, then the last forward rng value will be 
               restored when the forward recalculation of backpropagation is performed. The default 
-              preserve_rng_state is True.
+              preserve_rng_state is True. and it contains the key-value pair of __segments__, which is on behalf of the 
+              Number of chunks to create in the model.
 
     Returns:
         Output of function on args.
@@ -503,10 +501,7 @@ def recompute_sequential(functions, segments, input, **kwargs):
             model = paddle.nn.Sequential(...)
             input = recompute_sequential(model, segments, input)
     """
-    preserve = kwargs.pop('preserve_rng_state', True)
-    if kwargs:
-        raise ValueError("Unexpected keyword arguments: " +
-                         ",".join(arg for arg in kwargs))
+    segments = kwargs.pop('__segments__', 1)
 
     def _run_func(begin, end, funcs):
 
@@ -525,7 +520,5 @@ def recompute_sequential(functions, segments, input, **kwargs):
     end = -1
     for begin in range(0, segment_size * (segments - 1), segment_size):
         end = begin + segment_size - 1
-        input = recompute(_run_func(begin, end, functions),
-                          input,
-                          preserve_rng_state=preserve)
-    return _run_func(end + 1, len(functions) - 1, functions)(input)
+        args = recompute(_run_func(begin, end, functions), *args, **kwargs)
+    return _run_func(end + 1, len(functions) - 1, functions)(args)
