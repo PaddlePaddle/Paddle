@@ -101,7 +101,13 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
                        int nb_inputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nb_outputs) TRT_NOEXCEPT override {}
+                       int nb_outputs) TRT_NOEXCEPT override {
+  //TODO wangbojun
+  //choose gemm value;
+
+  
+
+  }
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
                           int nb_inputs,
@@ -115,7 +121,8 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     const int input_num = batch * seq_len * 3 * head_number_ * head_size_;
     const size_t qk_temp_ptr_size = batch * head_number_ * seq_len * seq_len + input_num;
     const size_t biasqk_size =  batch* head_number_* seq_len* seq_len;
-    return qk_temp_ptr_size+biasqk_size;
+    const int cublaslt_workspace_size=4*1024*1024; // workspace for cublaslt, 4M for now
+    return qk_temp_ptr_size+biasqk_size+2*cublaslt_workspace_size;
     // return 0;
   }
 

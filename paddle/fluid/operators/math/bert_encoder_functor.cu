@@ -583,8 +583,6 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
 
     if(std::is_same<T,half>::value){
     // cublaslt call, batchGemm(d=a*b+c) + softmax
-    int device_id;
-    cudaGetDevice(&device_id);
 
     int64_t strideq=seq_len*size_per_head;
     int64_t stridek=seq_len*size_per_head;
@@ -768,11 +766,12 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
     //                                sizeof(cublasLtEpilogue_t)));
 
     const cublasLtMatmulAlgo_t* algo = nullptr;
-    cublasLtHandle_t lt_handle;
-    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
-    memory::allocation::AllocationPtr workspace =
-        memory::Alloc(context, workspace_size);
+    // size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+    // memory::allocation::AllocationPtr workspace =
+    //     memory::Alloc(context, workspace_size);
 
+    // cublasLtHandle_t lt_handle = context.cublaslt_handle();
+    cublasLtHandle_t lt_handle;
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtCreate(&lt_handle));
     // PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
     // printf("@@ cuda error after cudaDeviceSynchronize %s \r\n", cudaGetErrorString(cudaGetLastError()));
@@ -825,8 +824,8 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
         (qk_buf_),
         qk_desc,
         algo,
-        workspace->ptr(),
-        workspace_size,
+        nullptr,
+        0,
         stream);
 
     // platform::dynload::nvtxRangePop();

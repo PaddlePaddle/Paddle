@@ -73,7 +73,7 @@ extern void *cublasLt_dso_handle;
   __macro(cublasLtMatrixTransform);              \
   __macro(cublasLtMatrixTransformDescCreate);    \
   __macro(cublasLtMatrixTransformDescDestroy);   \
-  __macro(cublasLtMatrixTransformDescSetAttribute);
+  __macro(cublasLtMatrixTransformDescSetAttribute); 
 
 CUBLASLT_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLASLT_WRAP)
 // #endif
