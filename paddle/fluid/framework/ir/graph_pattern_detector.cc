@@ -3517,7 +3517,7 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
   auto layer_norm_out = pattern->NewNode(layer_norm_out_repr())
                             ->AsIntermediate()
                             ->assert_is_op_input("reshape2", "X")
-                            ->assert_is_op_output("layer_norm", "Out");
+                            ->assert_is_op_output("layer_norm", "Y");
   auto reshape1_op = pattern->NewNode(reshape1_op_repr())
                          ->assert_is_op("reshape2")
                          ->assert_more([&](Node *node) {
@@ -3529,7 +3529,7 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
   auto reshape1_out = pattern->NewNode(reshape1_out_repr())
                           ->AsIntermediate()
                           ->assert_is_op_input("reshape2", "X")
-                          ->assert_is_op_output("layer_norm", "Out");
+                          ->assert_is_op_output("reshape2", "Out");
   auto reshape2_op = pattern->NewNode(reshape2_op_repr())
                          ->assert_is_op("reshape2")
                          ->assert_more([&](Node *node) {
@@ -3542,18 +3542,17 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
                           ->AsIntermediate()
                           ->assert_is_op_input("transpose2", "X")
                           ->assert_is_op_output("reshape2", "Out");
-  auto transpose_op = pattern->NewNode(transpose_op_repr())
-                          ->assert_is_op("transpose2")
-                          ->assert_more([&](Node *node) {
-                            if (!node->Op()->HasAttr("axis")) return false;
-                            std::vector<int> axis = PADDLE_GET_CONST(
-                                std::vector<int>, node->Op()->GetAttr("axis"));
-                            if (axis.size() != 6) return false;
-                            for (int i = 0; i < 6; i++) {
-                              if (axis[i] != i) return false;
-                            }
-                            return true;
-                          });
+  auto transpose_op =
+      pattern->NewNode(transpose_op_repr())
+          ->assert_is_op("transpose2")
+          ->assert_more([&](Node *node) {
+            if (!node->Op()->HasAttr("axis")) return false;
+            std::vector<int> axis =
+                PADDLE_GET_CONST(std::vector<int>, node->Op()->GetAttr("axis"));
+            if (axis.size() != 6) return false;
+            const std::vector<int> axis_cmp{0, 1, 3, 2, 4, 5};
+            return std::equal(axis.begin(), axis.end(), axis_cmp.begin());
+          });
   auto transpose_out = pattern->NewNode(transpose_out_repr())
                            ->AsIntermediate()
                            ->assert_is_op_input("reshape2", "X")

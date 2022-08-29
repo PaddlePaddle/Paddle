@@ -144,8 +144,9 @@ void LayerNormShiftPartitionFusePass::ApplyImpl(ir::Graph* graph) const {
         PADDLE_GET_CONST(std::vector<int>, reshape1_op->Op()->GetAttr("shape"));
 
     // emb dim should be same
-    if (!(shape_atr1.back() == shape_atr2.back() == shape_atr3.back() ==
-          shape_atr4.back())) {
+    if (!((shape_atr1.back() == shape_atr2.back()) &&
+          (shape_atr2.back() == shape_atr3.back()) &&
+          (shape_atr3.back() == shape_atr4.back()))) {
       return;
     }
     if (shape_atr2[1] != shape_atr2[2]) {
@@ -157,6 +158,9 @@ void LayerNormShiftPartitionFusePass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
     int window_size = shape_atr3[1];
+    if (window_size < 0 || input_resolution < 0) {
+      return;
+    }
 
     OpDesc new_op_desc;
     new_op_desc.SetType("layernorm_shift_partition");
