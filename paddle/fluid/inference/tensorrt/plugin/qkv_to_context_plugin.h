@@ -61,9 +61,20 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &cublas_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
+    printf("@@ clone begin \r\n");
     QkvToContextPluginDynamic* ptr = new QkvToContextPluginDynamic(
         hidden_, head_number_, head_size_, scale_, with_fp16_);
     ptr->cublas_ = cublas_;
+    ptr->operation_desc_qk_=operation_desc_qk_;
+    ptr->q_desc_ = q_desc_;
+    ptr->k_desc_=k_desc_;
+    ptr->v_desc_=v_desc_;
+    ptr->qk_desc_=qk_desc_;
+    ptr->qk_bias_desc_=qk_bias_desc_;
+    ptr->qkv_desc_=qkv_desc_;
+    ptr->algo_=algo_;
+    ptr->algo_qkv_=algo_qkv_;
+    printf("@@ clone end");
     return ptr;
   }
 
@@ -105,8 +116,274 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   //TODO wangbojun
   //choose gemm value;
 
-  
+  //configure qk gemm
+    if(with_fp16_){
+      // int device_id;
+      // cudaGetDevice(&device_id);
+      // auto *device_ctx = static_cast<phi::GPUContext *>(
+      //   platform::DeviceContextPool::Instance().Get(
+      //     platform::CUDAPlace(device_id)));
+      // const phi::GPUContext &dev_ctx = *device_ctx;
+      platform::dynload::cublasLtCreate(&cublas_);
+      int seq_len = in[0].desc.dims.d[1];
+      const int padding_num=8;
+      seq_len = (seq_len + padding_num - 1) / padding_num * padding_num; //padding
+      int batchNum = in[0].desc.dims.d[0] * head_number_;
+      printf("@@@@ in config seq_len %d, batch %d. \r\n",seq_len,batchNum);
+      int64_t strideq=seq_len*head_size_;
+      int64_t stridek=seq_len*head_size_;
+      int64_t strideqk=seq_len*seq_len;
+      int64_t stridev=seq_len*head_size_;
+      int64_t strideqkv=seq_len*head_size_;
 
+      printf("@@@ in config, head_size_ %d \r\n ", head_size_);
+      bool q_trans = false;
+      bool k_trans = true;
+      bool qk_trans = false;
+      bool v_trans = false;
+      cublasLtOrder_t rowOrder = CUBLASLT_ORDER_ROW;
+      cublasOperation_t transq = q_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
+      cublasOperation_t transk = k_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
+      cublasOperation_t transqk = qk_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
+      cublasOperation_t transv = v_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
+
+      int64_t q_M = q_trans ? head_size_ : seq_len;
+      int64_t q_K = q_trans ? seq_len : head_size_;
+
+      int64_t k_K = k_trans ? seq_len : head_size_;
+      int64_t k_N = k_trans ? head_size_ : seq_len;
+
+      int64_t v_M = q_trans ? head_size_ : seq_len;
+      int64_t v_K = q_trans ? seq_len : head_size_;
+
+
+      cudaDataType_t q_type, k_type, qk_type, scale_type, qk_bias_type, v_type, qkv_type;
+      cublasComputeType_t compute_type;
+      compute_type=CUBLAS_COMPUTE_16F;
+      q_type=CUDA_R_16F;
+      k_type=CUDA_R_16F;
+      v_type=CUDA_R_16F;
+      qk_type=CUDA_R_16F;
+      qk_bias_type=CUDA_R_16F;
+      qkv_type=CUDA_R_16F;
+      scale_type=CUDA_R_16F;
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &q_desc_, q_type, q_M, q_K, head_size_));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+        q_desc_,
+        CUBLASLT_MATRIX_LAYOUT_TYPE,
+        &q_type,
+        sizeof(q_type)));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatrixLayoutSetAttribute(
+            q_desc_, CUBLASLT_MATRIX_LAYOUT_ORDER, &rowOrder, sizeof( rowOrder ) ) );
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+          q_desc_, 
+          CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, 
+          &(batchNum), 
+          sizeof(batchNum)));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+          q_desc_,
+          CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
+          &(strideq),
+          sizeof(strideq)));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &k_desc_, k_type, k_K, k_N, head_size_));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatrixLayoutSetAttribute(
+            k_desc_, CUBLASLT_MATRIX_LAYOUT_ORDER, &rowOrder, sizeof( rowOrder ) ) );
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+          k_desc_,
+          CUBLASLT_MATRIX_LAYOUT_TYPE,
+          &k_type,
+          sizeof(k_type)
+      ));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+          k_desc_, 
+          CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, 
+          &(batchNum), 
+          sizeof(batchNum)));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+          k_desc_,
+          CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
+          &(stridek),
+          sizeof(stridek)));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &v_desc_, v_type, v_M, v_K, head_size_));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+        v_desc_,
+        CUBLASLT_MATRIX_LAYOUT_TYPE,
+        &v_type,
+        sizeof(v_type)));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatrixLayoutSetAttribute(
+            v_desc_, CUBLASLT_MATRIX_LAYOUT_ORDER, &rowOrder, sizeof( rowOrder ) ) );
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+          v_desc_, 
+          CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, 
+          &(batchNum), 
+          sizeof(batchNum)));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+          v_desc_,
+          CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
+          &(stridev),
+          sizeof(stridev)));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+          &qk_desc_, 
+          qk_type, 
+          seq_len, seq_len, seq_len));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatrixLayoutSetAttribute(
+            qk_desc_, CUBLASLT_MATRIX_LAYOUT_ORDER, &rowOrder, sizeof( rowOrder ) ) );
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+          qk_desc_,
+          CUBLASLT_MATRIX_LAYOUT_TYPE,
+          &qk_type,
+          sizeof(qk_type)));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+          qk_desc_, 
+          CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, 
+          &(batchNum), 
+          sizeof(batchNum)));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+          qk_desc_,
+          CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
+          &(strideqk),
+          sizeof(strideqk)));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+          &qk_bias_desc_,
+          qk_bias_type,
+          seq_len, seq_len, seq_len));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+          qk_bias_desc_,
+          CUBLASLT_MATRIX_LAYOUT_TYPE,
+          &qk_bias_type,
+          sizeof(qk_bias_type)));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatrixLayoutSetAttribute(
+        qk_bias_desc_, CUBLASLT_MATRIX_LAYOUT_ORDER, &rowOrder, sizeof( rowOrder ) ) );
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+          qk_bias_desc_, 
+          CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, 
+          &(batchNum), 
+          sizeof(batchNum)));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+          qk_bias_desc_,
+          CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
+          &(strideqk),
+          sizeof(strideqk)));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &qkv_desc_, qkv_type, v_M, v_K, head_size_));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+        qkv_desc_,
+        CUBLASLT_MATRIX_LAYOUT_TYPE,
+        &qkv_type,
+        sizeof(qkv_type)));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatrixLayoutSetAttribute(
+            qkv_desc_, CUBLASLT_MATRIX_LAYOUT_ORDER, &rowOrder, sizeof( rowOrder ) ) );
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+          qkv_desc_, 
+          CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, 
+          &(batchNum), 
+          sizeof(batchNum)));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
+          qkv_desc_,
+          CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
+          &(strideqkv),
+          sizeof(strideqkv)));
+
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
+        &operation_desc_qk_, compute_type, scale_type));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+        operation_desc_qk_,
+        CUBLASLT_MATMUL_DESC_TRANSA,
+        &transq, 
+        sizeof(transq)));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+        operation_desc_qk_,
+        CUBLASLT_MATMUL_DESC_TRANSB,
+        &transk,
+        sizeof(transk)));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
+        &operation_desc_qkv_, compute_type, scale_type));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+        operation_desc_qkv_,
+        CUBLASLT_MATMUL_DESC_TRANSA,
+        &transqk, 
+        sizeof(transqk)));
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+        operation_desc_qkv_,
+        CUBLASLT_MATMUL_DESC_TRANSB,
+        &transv,
+        sizeof(transv)));
+
+      cublasLtMatmulPreference_t preference;
+      PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cublasLtMatmulPreferenceCreate(&preference));
+      // int qk_workspace_size=4*1024*1024;
+      // PADDLE_ENFORCE_GPU_SUCCESS(
+      //   platform::dynload::cublasLtMatmulPreferenceSetAttribute(
+      //     preference,
+      //     CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+      //     &qk_workspace_size,
+      //     sizeof(qk_workspace_size)));
+      int returned_results = 0;
+      const int requested_algo_count = 10;
+      std::vector<cublasLtMatmulHeuristicResult_t> heuristic_results(
+          requested_algo_count);
+      PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulAlgoGetHeuristic(
+          cublas_,
+          operation_desc_qk_,
+          q_desc_,
+          k_desc_,
+          qk_bias_desc_,
+          qk_desc_,
+          preference,
+          requested_algo_count,
+          heuristic_results.data(),
+          &returned_results));
+      PADDLE_ENFORCE_GT(
+          returned_results,
+          0,
+          platform::errors::Unavailable("No GEMM epilogue algorithm support!"));
+      algo_ = heuristic_results[0].algo;
+      cublasLtMatmulPreference_t preference_qkv;
+      PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cublasLtMatmulPreferenceCreate(&preference_qkv));
+      // int qk_workspace_size=4*1024*1024;
+      // PADDLE_ENFORCE_GPU_SUCCESS(
+      //   platform::dynload::cublasLtMatmulPreferenceSetAttribute(
+      //     preference,
+      //     CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+      //     &qk_workspace_size,
+      //     sizeof(qk_workspace_size)));
+      int returned_results_qkv = 0;
+      const int requested_algo_count_qkv = 10;
+      std::vector<cublasLtMatmulHeuristicResult_t> heuristic_results_qkv(
+          requested_algo_count_qkv);
+      PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulAlgoGetHeuristic(
+          cublas_,
+          operation_desc_qkv_,
+          qk_desc_,
+          v_desc_,
+          qkv_desc_,
+          qkv_desc_,
+          preference_qkv,
+          requested_algo_count_qkv,
+          heuristic_results_qkv.data(),
+          &returned_results_qkv));
+      PADDLE_ENFORCE_GT(
+          returned_results_qkv,
+          0,
+          platform::errors::Unavailable("No GEMM epilogue algorithm support!"));
+      algo_qkv_ = heuristic_results_qkv[0].algo;
+
+      platform::dynload::cublasLtDestroy(cublas_);
+    //TODO speed test. wangbojun
+    }
   }
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
@@ -121,7 +398,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     const int input_num = batch * seq_len * 3 * head_number_ * head_size_;
     const size_t qk_temp_ptr_size = batch * head_number_ * seq_len * seq_len + input_num;
     const size_t biasqk_size =  batch* head_number_* seq_len* seq_len;
-    const int cublaslt_workspace_size=4*1024*1024; // workspace for cublaslt, 4M for now
+    const size_t cublaslt_workspace_size=4*1024*1024; // workspace for cublaslt, 4M for now
     return qk_temp_ptr_size+biasqk_size+2*cublaslt_workspace_size;
     // return 0;
   }
@@ -152,6 +429,17 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   int head_size_;
   float scale_;
   cublasLtHandle_t cublas_{nullptr};
+  cublasLtMatmulDesc_t operation_desc_qk_ = NULL;
+  cublasLtMatmulDesc_t operation_desc_qkv_ = NULL;
+  cublasLtMatrixLayout_t q_desc_ = NULL;
+  cublasLtMatrixLayout_t k_desc_ = NULL;
+  cublasLtMatrixLayout_t v_desc_ = NULL;
+  cublasLtMatrixLayout_t qk_desc_ = NULL;
+  cublasLtMatrixLayout_t qk_bias_desc_ = NULL;
+  cublasLtMatrixLayout_t qkv_desc_ = NULL;
+  cublasLtMatmulAlgo_t algo_;
+  cublasLtMatmulAlgo_t algo_qkv_;
+
 };
 
 class QkvToContextPluginDynamicCreator : public nvinfer1::IPluginCreator {

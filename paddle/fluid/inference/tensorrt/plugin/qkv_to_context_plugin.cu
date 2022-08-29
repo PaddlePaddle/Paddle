@@ -240,9 +240,6 @@ inline void TransposeQKV(const int batch,
 }
 
 int QkvToContextPluginDynamic::initialize() TRT_NOEXCEPT {
-  platform::dynload::nvtxRangePushA("init cublasLtCreate");
-  platform::dynload::cublasLtCreate(&cublas_);
-  platform::dynload::nvtxRangePop();
   return 0; 
 }
 
@@ -403,30 +400,6 @@ __global__ void broadcast_batch(const T *src,
   }
 }
 
-// template <typename T>
-// __global__ void padding_k8_rowMajor(const T *src,
-//                           T * dst,
-//                           const int64_t batch,
-//                           const int64_t row,
-//                           const int64_t col,
-//                           const int64_t paddingRow
-//                           const int64_t paddingCol){
-//   int rowId=blockIdx.x % (paddingRow)
-//   int dst_offset = blockIdx.x * paddingCol;
-//   if (rowId<row){
-//     int src_offset = blockIdx.x * col;
-//     if(threadIdx.x<paddingCol){
-//       dst[threadIdx.x+dst_offset]=src[threadIdx.x+src_offset];
-//     } else {
-//       dst[threadIdx.x+dst_offset]=0;
-//     }
-//   } else {
-//     if(threadIdx.x<paddingCol){
-//       dst[threadIdx+dst_offset]=0;
-//     }
-//   }
-// }
-
 // TODO wangbojun for debug
 template<typename T>
 __global__ void print_float(const T *src, int start_index, int end_index, int numPerRow=49, int stride=1){
@@ -442,11 +415,12 @@ __global__ void print_float(const T *src, int start_index, int end_index, int nu
 void QkvToContextPluginDynamic::attachToContext(
     cudnnContext* cudnnContext, cublasContext* cublasContext,
     nvinfer1::IGpuAllocator* gpuAllocator) TRT_NOEXCEPT {
-  // platform::dynload::cublasLtCreate(&cublas_);
+  platform::dynload::cublasLtCreate(&cublas_);
+  printf("@@@ cublas_ created\r\n");
 }
 
 void QkvToContextPluginDynamic::detachFromContext() TRT_NOEXCEPT {
-  // platform::dynload::cublasLtDestroy(cublas_);
+  platform::dynload::cublasLtDestroy(cublas_);
 }
 
 template <typename T>
@@ -495,8 +469,9 @@ inline void swinMatmulWithHeadQK_fp16(
       half *qk_buf_,
       const half *bias_qk,
       half alpha,
-      half beta){
-    platform::dynload::nvtxRangePushA("swinMatmulWithHeadQK_fp16 config");
+      half beta,
+      const cublasLtMatmulAlgo_t& algo){
+    // platform::dynload::nvtxRangePushA("swinMatmulWithHeadQK_fp16 config");
 
     typedef typename operators::math::CUDATypeTraits<half>::TYPE run_type;
     auto stream = context.stream();
@@ -643,44 +618,44 @@ inline void swinMatmulWithHeadQK_fp16(
       sizeof(transq)));
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
       operation_desc,
-      CUBLASLT_MATMUL_DESC_TRANSB,
+      CUBLASLT_MATMUL_DESC_TRANSB, 
       &transk,
       sizeof(transk)));
     //TODO
     // const cublasLtMatmulAlgo_t* algo = nullptr; 
-    cublasLtMatmulPreference_t preference;
-    const int workspace_size=4*1024*1024;
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulPreferenceCreate(&preference));
-        PADDLE_ENFORCE_GPU_SUCCESS(
-    platform::dynload::cublasLtMatmulPreferenceSetAttribute(
-            preference,
-            CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
-            &workspace_size,
-            sizeof(workspace_size)));
-    int returned_results = 0;
-    const int requested_algo_count = 10;
-    std::vector<cublasLtMatmulHeuristicResult_t> heuristic_results(
-        requested_algo_count);
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulAlgoGetHeuristic(
-            lt_handle,
-            operation_desc,
-            q_desc,
-            k_desc,
-            qk_bias_desc,
-            qk_desc,
-            preference,
-            requested_algo_count,
-            heuristic_results.data(),
-            &returned_results));
-    PADDLE_ENFORCE_GT(
-        returned_results,
-        0,
-        platform::errors::Unavailable("No GEMM epilogue algorithm support!"));
+    // cublasLtMatmulPreference_t preference;
+    // const int workspace_size=4*1024*1024;
+    // PADDLE_ENFORCE_GPU_SUCCESS(
+    //     platform::dynload::cublasLtMatmulPreferenceCreate(&preference));
+    // PADDLE_ENFORCE_GPU_SUCCESS(
+    // platform::dynload::cublasLtMatmulPreferenceSetAttribute(
+    //         preference,
+    //         CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+    //         &workspace_size,
+    //         sizeof(workspace_size)));
+    // int returned_results = 0;
+    // const int requested_algo_count = 10;
+    // std::vector<cublasLtMatmulHeuristicResult_t> heuristic_results(
+    //     requested_algo_count);
+    // PADDLE_ENFORCE_GPU_SUCCESS(
+    //     platform::dynload::cublasLtMatmulAlgoGetHeuristic(
+    //         lt_handle,
+    //         operation_desc,
+    //         q_desc,
+    //         k_desc,
+    //         qk_bias_desc,
+    //         qk_desc,
+    //         preference,
+    //         requested_algo_count,
+    //         heuristic_results.data(),
+    //         &returned_results));
+    // PADDLE_ENFORCE_GT(
+    //     returned_results,
+    //     0,
+    //     platform::errors::Unavailable("No GEMM epilogue algorithm support!"));
 
     half beta_half = static_cast<half>(1.0f);
-    platform::dynload::nvtxRangePop();
+    // platform::dynload::nvtxRangePop();
     cublasStatus_t cublasltMatmul_reslut = platform::dynload::cublasLtMatmul(
         lt_handle,
         operation_desc,
@@ -694,7 +669,7 @@ inline void swinMatmulWithHeadQK_fp16(
         qk_bias_desc,
         (qk_buf_),
         qk_desc,
-        &heuristic_results[0].algo,
+        &algo,
         nullptr,
         0,
         stream);
@@ -730,7 +705,6 @@ inline void swinMatmulWithHeadQK_fp16(
     int blocks = (N + batches_per_block - 1) / batches_per_block;
     dim3 threads(warp_size, warps_per_block, 1);
 
-
     phi::SwitchWarpSoftmaxForward<run_type, run_type, false>(blocks,
                                                         threads,
                                                         context,
@@ -740,9 +714,125 @@ inline void swinMatmulWithHeadQK_fp16(
                                                         dim,
                                                         dim,
                                                         dim_log2);
+}
 
+inline void swinMatmulWithHeadQK_fp16_direct(
+    const phi::GPUContext &context,
+    const cublasLtHandle_t& lt_handle,
+    const cublasLtMatmulDesc_t& operation_desc,
+    const cublasLtMatrixLayout_t& q_desc,
+    const cublasLtMatrixLayout_t& k_desc,
+    const cublasLtMatrixLayout_t& qk_bias_desc,
+    const cublasLtMatrixLayout_t& qk_desc,
+    const half* q_buf,
+    const half* k_buf,
+    const half* bias_qk,
+    half* qk_buf,
+    const half& alpha,
+    const half& beta,
+    cublasLtMatmulAlgo_t& algo,
+    void* workspace,
+    size_t workspace_size,
+    cudaStream_t stream,
+    int batch_size,
+    int head_num,
+    int seq_len){
+      typedef typename operators::math::CUDATypeTraits<half>::TYPE run_type;
+      half alpha_half = alpha;
+      half beta_half = beta;
+
+      cublasStatus_t cublasltMatmul_reslut = platform::dynload::cublasLtMatmul(
+        lt_handle,
+        operation_desc,
+        (&alpha_half),
+        (q_buf),
+        q_desc,
+        (k_buf),
+        k_desc,
+        (&beta_half),
+        (bias_qk),
+        qk_bias_desc,
+        (qk_buf),
+        qk_desc,
+        &algo,
+        workspace,
+        workspace_size,
+        stream);
+    VLOG(1)<<"@@@ cublasltMatmul_reslut:"<<cublasltMatmul_reslut;
+    int rank = 4;
+    int axis = phi::funcs::CanonicalAxis(-1, rank);
+    std::vector<int> tensor_dims = phi::GetSoftmaxTensorDims(phi::make_ddim({batch_size,head_num,seq_len,seq_len}), axis);
+    int N = tensor_dims[0];
+    int dim = tensor_dims[1];
+    int D = tensor_dims[2];
+
+    int dim_log2 = static_cast<int>(phi::Log2Ceil(dim));
+    int dim_ceil = 1 << dim_log2;
+    int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
+    int batches_per_warp = (dim_ceil <= 32) ? 2 : 1;
+
+    // use 128 threads per block to maximimize gpu utilization
+    constexpr int threads_per_block = 128;
+
+    int warps_per_block = (threads_per_block / warp_size);
+    int batches_per_block = warps_per_block * batches_per_warp;
+    int blocks = (N + batches_per_block - 1) / batches_per_block;
+    dim3 threads(warp_size, warps_per_block, 1);
+    
+    phi::SwitchWarpSoftmaxForward<run_type, run_type, false>(blocks,
+                                                        threads,
+                                                        context,
+                                                        reinterpret_cast<run_type*>(qk_buf),
+                                                        reinterpret_cast<run_type*>(qk_buf),
+                                                        N,
+                                                        dim,
+                                                        dim,
+                                                        dim_log2);
 
 }
+
+inline void swinMatmulWithHeadQKV_fp16_direct(
+    const phi::GPUContext &context,
+    const cublasLtHandle_t& lt_handle,
+    const cublasLtMatmulDesc_t& operation_desc,
+    const cublasLtMatrixLayout_t& qk_desc,
+    const cublasLtMatrixLayout_t& v_desc,
+    const cublasLtMatrixLayout_t& qkv_bias_desc,
+    const cublasLtMatrixLayout_t& qkv_desc,
+    const half* qk_buf,
+    const half* v_buf,
+    const half* bias_qkv,
+    half* qkv_buf,
+    const half& alpha,
+    const half& beta,
+    cublasLtMatmulAlgo_t& algo,
+    void* workspace,
+    size_t workspace_size,
+    cudaStream_t stream){
+      typedef typename operators::math::CUDATypeTraits<half>::TYPE run_type;
+      half alpha_half = alpha;
+      half beta_half = beta;
+
+      cublasStatus_t cublasltMatmul_reslut = platform::dynload::cublasLtMatmul(
+        lt_handle,
+        operation_desc,
+        (&alpha_half),
+        (qk_buf),
+        qk_desc,
+        (v_buf),
+        v_desc,
+        (&beta_half),
+        (bias_qkv),
+        qkv_bias_desc,
+        (qkv_buf),
+        qkv_desc,
+        &algo,
+        workspace,
+        workspace_size,
+        stream);
+    VLOG(1)<<"@@@ cublasltMatmul_reslut:"<<cublasltMatmul_reslut;
+}
+
 template <typename T>
 inline void MatMulWithHeadQKV(const phi::GPUContext &context,
                               int head_num,
@@ -992,6 +1082,9 @@ int QkvToContextPluginDynamic::enqueue(
     
     half *qkptr = reinterpret_cast<half *>(workspace);
     half *tptr = qkptr + scratch_size;
+    auto * temp_qk_bias = reinterpret_cast<half *>(workspace)+qk_temp_ptr_size;
+    auto * cublaslt_workspace_qk = temp_qk_bias + batch* head_number_* seq_len* seq_len;
+    auto * cublaslt_workspace_qkv = cublaslt_workspace_qk + 4*1024*1024;
     // printf("@@@ qkptr address: %X, scratch_size: %X, tptr address: %X, qkptr address end: %X \r\n",
     //       qkptr,scratch_size,tptr, qkptr + scratch_size + input_num);
     // cudaDeviceSynchronize();
@@ -1014,7 +1107,7 @@ int QkvToContextPluginDynamic::enqueue(
       // auto *temp_qk_bias =
       //     reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
       //         platform::CUDAPlace(device_id)));
-      auto * temp_qk_bias = reinterpret_cast<half *>(workspace)+qk_temp_ptr_size;
+
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(
@@ -1039,7 +1132,7 @@ int QkvToContextPluginDynamic::enqueue(
       // auto *temp_qk_bias =
       //     reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
       //         platform::CUDAPlace(device_id)));
-      auto * temp_qk_bias = reinterpret_cast<half *>(workspace)+qk_temp_ptr_size;
+      
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
 
@@ -1127,33 +1220,77 @@ int QkvToContextPluginDynamic::enqueue(
     half *qptr = tptr;
     half *kptr = qptr + tsize;
     half *vptr = kptr + tsize;
-    swinMatmulWithHeadQK_fp16(dev_ctx,
-                              cublas_,
-                              head_number_,
-                              seq_len,
-                              head_size_,
-                              batch,
-                              false,
-                              true,
-                              qptr,
-                              kptr,
-                              qkptr,
-                              input1_data,
-                              static_cast<half>(scale_),
-                              half(0.0));
-    MatMulWithHeadQKV<half>(
+
+    swinMatmulWithHeadQK_fp16_direct(
       dev_ctx,
-      head_number_,
-      seq_len,
-      head_size_,
-      batch,
-      false,
-      false,
-      vptr,
+      cublas_,
+      operation_desc_qk_,
+      q_desc_,
+      k_desc_,
+      qk_bias_desc_,
+      qk_desc_,
+      qptr,
+      kptr,
+      input1_data,
       qkptr,
+      static_cast<half>(scale_),
+      static_cast<half>(1.0f),
+      algo_,
+      nullptr,
+      0,
+      stream,
+      batch,
+      head_number_,
+      seq_len
+    );
+    // swinMatmulWithHeadQK_fp16(dev_ctx,
+    //                           cublas_,
+    //                           head_number_,
+    //                           seq_len,
+    //                           head_size_,
+    //                           batch,
+    //                           false,
+    //                           true,
+    //                           qptr,
+    //                           kptr,
+    //                           qkptr,
+    //                           input1_data,
+    //                           static_cast<half>(scale_),
+    //                           half(0.0),
+    //                           algo_);
+    swinMatmulWithHeadQKV_fp16_direct(
+      dev_ctx,
+      cublas_,
+      operation_desc_qkv_,
+      qk_desc_,
+      v_desc_,
+      qkv_desc_,
+      qkv_desc_,
+      qkptr,
+      vptr,
       tptr,
-      half(1.0),
-      half(0.0));
+      tptr,
+      static_cast<half>(1.0f),
+      static_cast<half>(0.0f),
+      algo_qkv_,
+      nullptr,
+      0,
+      stream
+    );
+    // MatMulWithHeadQKV<half>(
+    //   dev_ctx,
+    //   head_number_,
+    //   seq_len,
+    //   head_size_,
+    //   batch,
+    //   false,
+    //   false,
+    //   vptr,
+    //   qkptr,
+    //   tptr,
+    //   half(1.0),
+    //   half(0.0));
+    
     // operators::math::MultiHeadGPUComputeFunctor<half> multihead_compute_func;
     // multihead_compute_func(dev_ctx,
     //                        batch,
