@@ -14,9 +14,10 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/amp_kernel.h"
 
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-// #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -29,19 +30,19 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                                  std::vector<DenseTensor*> outs,
                                  DenseTensor* found_infinite) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
-  using XPUTyp = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
   using float16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
 
   const MPDType* scale_data = scale.data<MPDType>();
-  bool* found_inf_data = dev_ctx.template Alloc<bool>(found_infinite)
+  bool* found_inf_data = dev_ctx.template Alloc<bool>(found_infinite);
 
-                         // cpy to cpu
-                         bool cpu_found_inf_data = false;
+  // cpy to cpu
+  bool cpu_found_inf_data = false;
 
   // number of inf and nans
   int nums_inf_nans = 0;
   MPDType cpu_scale_data;
-  if (paddle::platform::is_xpu_place(scale.place())) {
+  if (scale.place().GetType() == phi::AllocationType::PU) {
     paddle::memory::Copy(phi::CPUPlace(),
                          static_cast<void*>(&cpu_scale_data),
                          scale.place(),
@@ -56,15 +57,15 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
     const auto* x = xs[i];
     auto* out = outs[i];
     dev_ctx.template Alloc<T>(out);
-    DenseTensor inf_nan_count =
-        ctx.AllocateTmpTensor<int, platform::XPUDeviceContext>(  // ?
-            found_infinite->dims(),
-            dev_ctx);
+
+    DenseTensor inf_nan_count;
+    inf_nan_count.Resize(found_infinite->dims());
+    dev_ctx.template Alloc<int>(&inf_nan_count);
 
     if (nums_inf_nans == 0) {
       int r =
-          xpu::count_nan_or_inf(dev_ctx.x_context(),  // ?
-                                reinterpret_cast<const XPUTyp*>(x->data<T>()),
+          xpu::count_nan_or_inf(dev_ctx.x_context(),
+                                reinterpret_cast<const XPUType*>(x->data<T>()),
                                 inf_nan_count.data<int>(),
                                 x->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "count_nan_or_inf");
@@ -112,8 +113,8 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
     } else {
       int r = xpu::scale(dev_ctx.x_context(),
-                         reinterpret_cast<const XPUTyp*>(x->data<T>()),
-                         reinterpret_cast<XPUTyp*>(out->data<T>()),
+                         reinterpret_cast<const XPUType*>(x->data<T>()),
+                         reinterpret_cast<XPUType*>(out->data<T>()),
                          x->numel(),
                          false,
                          inverse_scale,
