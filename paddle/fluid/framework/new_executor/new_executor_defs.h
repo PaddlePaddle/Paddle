@@ -176,6 +176,8 @@ class VariableScope {
 
   Scope* GetMutableLocalScope() const;
 
+  void SetScope(Scope* scope);
+
   void SetLocalScope(Scope* local_scope);
 
   ~VariableScope();
@@ -212,6 +214,17 @@ class VariableScope {
     return vec_meta_info_;
   }
 
+  const std::vector<std::pair<std::string, int>>& DataTransferAddedVars()
+      const {
+    return data_transfer_added_vars_;
+  }
+
+  std::vector<std::pair<std::string, int>>& MutableDataTransferAddedVars() {
+    return data_transfer_added_vars_;
+  }
+
+  std::vector<Variable*>& MutableVarList() { return var_list_; }
+
   void SetVarSikpInplace(const std::string& name, bool skip);
 
   bool GetVarSikpInplace(int id) const;
@@ -228,6 +241,9 @@ class VariableScope {
   // TODO(zhiqiu): find a better way to support local scope.
   Scope* local_scope_{nullptr};
   // mutable RWLock vars_lock_;
+
+  // var_name -> var_type
+  std::vector<std::pair<std::string, int>> data_transfer_added_vars_;
 };
 
 class NextInstruction {
@@ -339,6 +355,8 @@ class Instruction {
   const std::vector<std::pair<Variable*, Variable*>>& InplaceInfo() const;
 
   void AddInplace(Variable* in, Variable* out);
+
+  void ClearInplace();
 
   const std::vector<EventInter>& InputEvents() const;
 

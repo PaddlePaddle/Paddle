@@ -41,6 +41,31 @@ class TestCollectiveAllreduceAPI(TestDistBase):
         self.check_with_place("collective_allreduce_api.py", "allreduce",
                               "gloo", "2")
 
+    def test_allreduce_nccl_dygraph(self):
+        dtypes_to_test = [
+            'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
+            'bool'
+        ]
+        for dtype in dtypes_to_test:
+            self.check_with_place("collective_allreduce_api_dygraph.py",
+                                  "allreduce",
+                                  "nccl",
+                                  static_mode="0",
+                                  dtype=dtype)
+
+    def test_allreduce_gloo_dygraph(self):
+        dtypes_to_test = [
+            'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
+            'bool'
+        ]
+        for dtype in dtypes_to_test:
+            self.check_with_place("collective_allreduce_api_dygraph.py",
+                                  "allreduce",
+                                  "gloo",
+                                  "2",
+                                  static_mode="0",
+                                  dtype=dtype)
+
 
 if __name__ == '__main__':
     unittest.main()
