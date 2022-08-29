@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/kernels/funcs/onednn/onednn_reuse.h"
 
 namespace phi {
