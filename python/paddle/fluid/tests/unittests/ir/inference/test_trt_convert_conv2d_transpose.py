@@ -301,7 +301,7 @@ class TrtConvertConv2dTransposeTest2(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            return 0, 3
+            return 1, 2
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -311,19 +311,19 @@ class TrtConvertConv2dTransposeTest2(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False), 1e-4
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-5, 1e-3)
+            attrs, False), (1e0, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True), 1e-4
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-5, 1e-3)
+            attrs, True), (1e0, 1e-3)
 
     def add_skip_trt_case(self):
         pass

@@ -21,7 +21,7 @@ from .manipulation import squeeze, unsqueeze, reshape
 from .math import multiply
 from .math import sum as paddle_sum
 from ..fluid.framework import _in_legacy_dygraph
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
@@ -803,12 +803,12 @@ def gen_einsum_op(equation, *operands):
     """
     assert len(operands) <= 2, "Only support two operands in EinsumOp."
     if in_dygraph_mode():
-        return _C_ops.final_state_einsum(operands, equation)[0]
+        return _C_ops.einsum(operands, equation)[0]
 
     if _in_legacy_dygraph():
         # dygraph
-        return _C_ops.einsum(operands, len(operands), len(operands), 'equation',
-                             equation)[0]
+        return _legacy_C_ops.einsum(operands, len(operands), len(operands),
+                                    'equation', equation)[0]
 
     for inp in operands:
         check_variable_and_dtype(inp, 'dtype', ['float32', 'float64'], 'einsum')
