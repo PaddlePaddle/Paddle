@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/common/float16.h"
 
 namespace phi {
 namespace funcs {
@@ -26,27 +27,28 @@ HOSTDEVICE T DmcnIm2colBilinear(const T* bottom_data,
                                 const int width,
                                 T h,
                                 T w) {
-  int h_low = floor(h);
-  int w_low = floor(w);
+  // 要修改
+  int h_low = floor(static_cast<float>(h));
+  int w_low = floor(static_cast<float>(w));
   int h_high = h_low + 1;
   int w_high = w_low + 1;
 
-  T lh = h - h_low;
-  T lw = w - w_low;
-  T hh = 1 - lh;
-  T hw = 1 - lw;
+  T lh = h - static_cast<T>(h_low);
+  T lw = w - static_cast<T>(w_low);
+  T hh = T(1) - lh;
+  T hw = T(1) - lw;
 
   T v1 =
-      (h_low >= 0 && w_low >= 0) ? bottom_data[h_low * data_width + w_low] : 0;
+      (h_low >= 0 && w_low >= 0) ? bottom_data[h_low * data_width + w_low] : T(0);
   T v2 = (h_low >= 0 && w_high <= width - 1)
              ? bottom_data[h_low * data_width + w_high]
-             : 0;
+             : T(0);
   T v3 = (h_high <= height - 1 && w_low >= 0)
              ? bottom_data[h_high * data_width + w_low]
-             : 0;
+             : T(0);
   T v4 = (h_high <= height - 1 && w_high <= width - 1)
              ? bottom_data[h_high * data_width + w_high]
-             : 0;
+             : T(0);
 
   T w1 = hh * hw;
   T w2 = hh * lw;

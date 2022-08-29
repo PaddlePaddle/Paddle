@@ -37,7 +37,10 @@ void DeformableConvKernel(const Context& dev_ctx,
                           int im2col_step,
                           DenseTensor* out) {
   const int batch_size = static_cast<int>(x.dims()[0]);
-
+  
+  
+//   im2col_step = 2;
+//   printf("default im2col_step is: %d",im2col_step);
   std::vector<int64_t> filter_shape_vec(phi::vectorize(filter.dims()));
   std::vector<int64_t> output_shape_vec(phi::vectorize(out->dims()));
 

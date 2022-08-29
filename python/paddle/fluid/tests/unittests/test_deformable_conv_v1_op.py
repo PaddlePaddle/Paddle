@@ -23,6 +23,9 @@ from op_test import OpTest
 from paddle.fluid.framework import _test_eager_guard
 
 
+paddle.enable_static()
+
+
 def dmc_bilinear(data_im, height, width, h, w):
     h_low = int(np.floor(h))
     w_low = int(np.floor(w))
@@ -201,6 +204,7 @@ class TestModulatedDeformableConvOp(OpTest):
         self.dtype = np.float32
 
 
+
 class TestWithStride(TestModulatedDeformableConvOp):
 
     def init_test_case(self):
@@ -285,6 +289,11 @@ class TestWithDouble(TestModulatedDeformableConvOp):
     def init_type(self):
         self.dtype = np.float64
 
+
+class TestWithFloat16(TestModulatedDeformableConvOp):
+
+    def init_type(self):
+        self.dtype = np.float16
 
 class TestModulatedDeformableConvV1InvalidInput(unittest.TestCase):
 

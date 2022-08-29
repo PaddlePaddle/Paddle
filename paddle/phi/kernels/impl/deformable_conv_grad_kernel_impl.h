@@ -30,29 +30,29 @@ HOSTDEVICE T DmcnGetGradientWeight(T argmax_h,
                                    const int w,
                                    const int height,
                                    const int width) {
-  if (argmax_h <= -1 || argmax_h >= height || argmax_w <= -1 ||
-      argmax_w >= width) {
-    return 0;
+  if (argmax_h <= T(-1) || argmax_h >= static_cast<T>(height) || argmax_w <= T(-1) ||
+      argmax_w >= static_cast<T>(width)) {
+    return T(0);
   }
 
-  int argmax_h_low = floor(argmax_h);
-  int argmax_w_low = floor(argmax_w);
+  int argmax_h_low = floor(float(argmax_h));
+  int argmax_w_low = floor(float(argmax_w));
   int argmax_h_high = argmax_h_low + 1;
   int argmax_w_high = argmax_w_low + 1;
 
-  T weight = 0;
+  T weight(0);
 
   weight = (h == argmax_h_low && w == argmax_w_low)
-               ? (h + 1 - argmax_h) * (w + 1 - argmax_w)
+               ? ((static_cast<T>(h + 1) - argmax_h) * (static_cast<T>(w + 1) - argmax_w))
                : weight;
   weight = (h == argmax_h_low && w == argmax_w_high)
-               ? (h + 1 - argmax_h) * (argmax_w + 1 - w)
+               ? ((static_cast<T>(h + 1) - argmax_h) * (argmax_w + static_cast<T>(1 - w)))
                : weight;
   weight = (h == argmax_h_high && w == argmax_w_low)
-               ? (argmax_h + 1 - h) * (w + 1 - argmax_w)
+               ? (argmax_h + static_cast<T>(1 - h)) * (static_cast<T>(w + 1) - argmax_w)
                : weight;
   weight = (h == argmax_h_high && w == argmax_w_high)
-               ? (argmax_h + 1 - h) * (argmax_w + 1 - w)
+               ? (argmax_h + static_cast<T>(1 - h)) * (argmax_w + static_cast<T>(1 - w))
                : weight;
 
   return weight;
@@ -66,54 +66,54 @@ HOSTDEVICE T DmcnGetCoordinateWeight(T argmax_h,
                                      const T* im_data,
                                      const int data_width,
                                      const int bp_dir) {
-  if (argmax_h <= -1 || argmax_h >= height || argmax_w <= -1 ||
-      argmax_w >= width) {
-    return 0;
+  if (argmax_h <= T(-1) || argmax_h >= static_cast<T>(height) || argmax_w <= T(-1) ||
+      argmax_w >= static_cast<T>(width)) {
+    return T(0);
   }
 
-  int argmax_h_low = floor(argmax_h);
-  int argmax_w_low = floor(argmax_w);
+  int argmax_h_low = floor(float(argmax_h));
+  int argmax_w_low = floor(float(argmax_w));
   int argmax_h_high = argmax_h_low + 1;
   int argmax_w_high = argmax_w_low + 1;
 
-  T weight = 0;
+  T weight(0);
 
   if (bp_dir == 0) {
     weight += (argmax_h_low >= 0 && argmax_w_low >= 0)
-                  ? -1 * (argmax_w_low + 1 - argmax_w) *
+                  ? static_cast<T>(-1 * (argmax_w_low + 1 - float(argmax_w))) *
                         im_data[argmax_h_low * data_width + argmax_w_low]
-                  : 0;
+                  : T(0);
 
     weight += (argmax_h_low >= 0 && argmax_w_high <= width - 1)
-                  ? -1 * (argmax_w - argmax_w_low) *
+                  ? static_cast<T>(-1 * (float(argmax_w) - argmax_w_low)) *
                         im_data[argmax_h_low * data_width + argmax_w_high]
-                  : 0;
+                  : T(0);
 
     weight += (argmax_h_high <= height - 1 && argmax_w_low >= 0)
-                  ? (argmax_w_low + 1 - argmax_w) *
+                  ? static_cast<T>((argmax_w_low + 1 - float(argmax_w))) *
                         im_data[argmax_h_high * data_width + argmax_w_low]
-                  : 0;
+                  : T(0);
     weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
-                  ? (argmax_w - argmax_w_low) *
+                  ? static_cast<T>((float(argmax_w) - argmax_w_low)) *
                         im_data[argmax_h_high * data_width + argmax_w_high]
-                  : 0;
+                  : T(0);
   } else if (bp_dir == 1) {
     weight += (argmax_h_low >= 0 && argmax_w_low >= 0)
-                  ? -1 * (argmax_h_low + 1 - argmax_h) *
+                  ? static_cast<T>(-1 * (argmax_h_low + 1 - float(argmax_h))) *
                         im_data[argmax_h_low * data_width + argmax_w_low]
-                  : 0;
+                  : T(0);
     weight += (argmax_h_low >= 0 && argmax_w_high <= width - 1)
-                  ? (argmax_h_low + 1 - argmax_h) *
+                  ? static_cast<T>((argmax_h_low + 1 - float(argmax_h))) *
                         im_data[argmax_h_low * data_width + argmax_w_high]
-                  : 0;
+                  : T(0);
     weight += (argmax_h_high <= height - 1 && argmax_w_low >= 0)
-                  ? -1 * (argmax_h - argmax_h_low) *
+                  ? static_cast<T>(-1 * (float(argmax_h) - argmax_h_low)) *
                         im_data[argmax_h_high * data_width + argmax_w_low]
-                  : 0;
+                  : T(0);
     weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
-                  ? (argmax_h - argmax_h_low) *
+                  ? static_cast<T>((float(argmax_h) - argmax_h_low)) *
                         im_data[argmax_h_high * data_width + argmax_w_high]
-                  : 0;
+                  : T(0);
   }
 
   return weight;

@@ -13,7 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/float16.h"
+
 
 namespace phi {
 namespace funcs {
@@ -63,6 +67,7 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
     const int h_in = h_col * stride_h - pad_h;
     const int w_in = w_col * stride_w - pad_w;
 
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     T* data_col_ptr =
         data_col +
         ((c_col * batch_size + b_col) * height_col + h_col) * width_col + w_col;
@@ -88,9 +93,13 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
         const T offset_h = data_offset_ptr[data_offset_h_ptr];
         const T offset_w = data_offset_ptr[data_offset_w_ptr];
         T val = static_cast<T>(0);
-        const T h_im = h_in + i * dilation_h + offset_h;
-        const T w_im = w_in + j * dilation_w + offset_w;
-        if (h_im > -1 && w_im > -1 && h_im < height && w_im < width) {
+        // 下边几行要修改
+        // const T h_im = static_cast<T>(h_in + i * dilation_h) + offset_h;
+        // const T w_im = static_cast<T>(w_in + j * dilation_w) + offset_w;
+        const T h_im = static_cast<T>(h_in + i * dilation_h + double(offset_h));
+        const T w_im = static_cast<T>(w_in + j * dilation_w + double(offset_w));
+        // if (h_im > static_cast<T>(-1) && w_im > static_cast<T>(-1) && h_im < static_cast<T>(height) && w_im < static_cast<T>(width)) {
+        if (h_im > T(-1) && w_im > T(-1) && float(h_im) < height && float(w_im) < width) {
           val =
               DmcnIm2colBilinear(data_im_ptr, width, height, width, h_im, w_im);
         }
@@ -125,6 +134,8 @@ void ModulatedDeformableIm2col(const Context& dev_ctx,
 
   int blocks = NumBlocks(num_kernels);
   int threads = kNumCUDAThreads;
+
+  // phi::funcs::ElementwiseKernel
 
   ModulatedDeformableIm2colGpuKernel<T>
       <<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
@@ -163,6 +174,20 @@ template void ModulatedDeformableIm2col(
     const std::vector<int>& dilations,
     const int deformable_groups,
     float* data_col);
+
+template void ModulatedDeformableIm2col(
+    const phi::GPUContext& dev_ctx,
+    const phi::dtype::float16* data_im,
+    const phi::dtype::float16* data_offset,
+    const phi::dtype::float16* data_mask,
+    const std::vector<int64_t>& im_shape,
+    const std::vector<int64_t>& col_shape,
+    const std::vector<int64_t>& filter_shape,
+    const std::vector<int>& paddings,
+    const std::vector<int>& strides,
+    const std::vector<int>& dilations,
+    const int deformable_groups,
+    phi::dtype::float16* data_col);
 
 template void ModulatedDeformableIm2col(
     const phi::GPUContext& dev_ctx,

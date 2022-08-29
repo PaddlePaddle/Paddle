@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
-
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace phi {
 namespace funcs {
@@ -79,9 +80,9 @@ inline void ModulatedDeformableIm2colCPUKernel(
         const T offset_h = data_offset_ptr[data_offset_h_ptr];
         const T offset_w = data_offset_ptr[data_offset_w_ptr];
         T val = static_cast<T>(0);
-        const T h_im = h_in + i * dilation_h + offset_h;
-        const T w_im = w_in + j * dilation_w + offset_w;
-        if (h_im > -1 && w_im > -1 && h_im < height && w_im < width) {
+        const T h_im = static_cast<T>(h_in) + static_cast<T>(i * dilation_h) + offset_h;
+        const T w_im = static_cast<T>(w_in) + static_cast<T>(j * dilation_w) + offset_w;
+        if (h_im > static_cast<T>(-1) && w_im > static_cast<T>(-1) && h_im < static_cast<T>(height) && w_im < static_cast<T>(width)) {
           val =
               DmcnIm2colBilinear(data_im_ptr, width, height, width, h_im, w_im);
         }
@@ -165,6 +166,20 @@ template void ModulatedDeformableIm2col(
     const std::vector<int>& dilations,
     const int deformable_groups,
     double* data_col);
+
+template void ModulatedDeformableIm2col(
+    const phi::CPUContext& dev_ctx,
+    const phi::dtype::float16* data_im,
+    const phi::dtype::float16* data_offset,
+    const phi::dtype::float16* data_mask,
+    const std::vector<int64_t>& im_shape,
+    const std::vector<int64_t>& col_shape,
+    const std::vector<int64_t>& filter_shape,
+    const std::vector<int>& paddings,
+    const std::vector<int>& strides,
+    const std::vector<int>& dilations,
+    const int deformable_groups,
+    phi::dtype::float16* data_col);
 
 }  // namespace funcs
 }  // namespace phi

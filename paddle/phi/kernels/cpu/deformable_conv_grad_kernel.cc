@@ -69,8 +69,8 @@ inline void ModulatedDeformableCol2imCPUKernel(
         ((i * kernel_w + j) * height_col + h_out) * width_col + w_out;
     const T offset_h = data_offset_ptr[data_offset_h_ptr];
     const T offset_w = data_offset_ptr[data_offset_w_ptr];
-    const T cur_inv_h_data = h_in + i * dilation_h + offset_h;
-    const T cur_inv_w_data = w_in + j * dilation_w + offset_w;
+    const T cur_inv_h_data = static_cast<T>(h_in + i * dilation_h) + offset_h;
+    const T cur_inv_w_data = static_cast<T>(w_in + j * dilation_w) + offset_w;
 
     T cur_top_grad = data_col[thread];
     if (data_mask) {
@@ -85,8 +85,8 @@ inline void ModulatedDeformableCol2imCPUKernel(
     for (int dy = -2; dy <= 2; dy++) {
       for (int dx = -2; dx <= 2; dx++) {
         if (cur_h + dy >= 0 && cur_h + dy < height && cur_w + dx >= 0 &&
-            cur_w + dx < width && abs(cur_inv_h_data - (cur_h + dy)) < 1 &&
-            abs(cur_inv_w_data - (cur_w + dx)) < 1) {
+            cur_w + dx < width && abs(cur_inv_h_data - static_cast<T>(cur_h + dy)) < T(1) &&
+            abs(cur_inv_w_data - static_cast<T>(cur_w + dx)) < T(1)) {
           int cur_bottom_grad_pos =
               ((b * channels + c) * height + cur_h + dy) * width + cur_w + dx;
           T weight = DmcnGetGradientWeight(cur_inv_h_data,
@@ -170,7 +170,7 @@ void ModulatedDeformableCol2imCoordCPUKernel(
     T* grad_offset,
     T* grad_mask) {
   for (int i = 0; i < num_kernels; i++) {
-    T val = 0, mval = 0;
+    T val(0), mval(0);
     const int w = i % width_col;
     const int h = (i / width_col) % height_col;
     const int c = (i / width_col / height_col) % offset_channels;
@@ -217,9 +217,9 @@ void ModulatedDeformableCol2imCoordCPUKernel(
            w_out);
       const T offset_h = data_offset_ptr[data_offset_h_ptr];
       const T offset_w = data_offset_ptr[data_offset_w_ptr];
-      T inv_h = h_in + i * dilation_h + offset_h;
-      T inv_w = w_in + j * dilation_w + offset_w;
-      if (inv_h <= -1 || inv_w <= -1 || inv_h >= height || inv_w >= width) {
+      T inv_h = static_cast<T>(h_in + i * dilation_h) + offset_h;
+      T inv_w = static_cast<T>(w_in + j * dilation_w) + offset_w;
+      if (inv_h <= T(-1) || inv_w <= T(-1) || inv_h >= static_cast<T>(height) || inv_w >= static_cast<T>(width)) {
         inv_h = inv_w = -2;
       } else {
         mval += data_col_ptr[col_pos] *
@@ -326,4 +326,5 @@ PD_REGISTER_KERNEL(deformable_conv_grad,
                    ALL_LAYOUT,
                    phi::DeformableConvGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
