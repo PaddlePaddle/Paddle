@@ -583,18 +583,28 @@ class Adam(Optimizer):
                     self._beta2, Variable) else self._beta2.numpy().item(0)
 
                 if framework._non_static_mode():
-                    _, _, _, _, _, _ = _legacy_C_ops.merged_adam(
-                        self._param_dict[key], grad_dict[key], lr_dict[key],
-                        self._moment1_dict[key], self._moment2_dict[key],
-                        self._beta1_pow_acc_dict[key],
-                        self._beta2_pow_acc_dict[key],
-                        self._master_weight_dict[key], self._param_dict[key],
-                        self._moment1_dict[key], self._moment2_dict[key],
-                        self._beta1_pow_acc_dict[key],
-                        self._beta2_pow_acc_dict[key],
-                        self._master_weight_dict[key], 'epsilon', self._epsilon,
-                        'beta1', _beta1, 'beta2', _beta2, 'multi_precision',
-                        find_master)
+                    if in_dygraph_mode():
+                        _, _, _, _, _, _ = _C_ops.merged_adam_(
+                            self._param_dict[key], grad_dict[key], lr_dict[key],
+                            self._moment1_dict[key], self._moment2_dict[key],
+                            self._beta1_pow_acc_dict[key],
+                            self._beta2_pow_acc_dict[key],
+                            self._master_weight_dict[key], _beta1, _beta2,
+                            self._epsilon, find_master, False)
+                    else:
+                        _, _, _, _, _, _ = _legacy_C_ops.merged_adam(
+                            self._param_dict[key], grad_dict[key], lr_dict[key],
+                            self._moment1_dict[key], self._moment2_dict[key],
+                            self._beta1_pow_acc_dict[key],
+                            self._beta2_pow_acc_dict[key],
+                            self._master_weight_dict[key],
+                            self._param_dict[key], self._moment1_dict[key],
+                            self._moment2_dict[key],
+                            self._beta1_pow_acc_dict[key],
+                            self._beta2_pow_acc_dict[key],
+                            self._master_weight_dict[key], 'epsilon',
+                            self._epsilon, 'beta1', _beta1, 'beta2', _beta2,
+                            'multi_precision', find_master)
                 else:
                     inputs = {
                         "Param": self._param_dict[key],
