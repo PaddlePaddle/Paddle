@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/mlu/enforce.h"
 
 namespace paddle {
