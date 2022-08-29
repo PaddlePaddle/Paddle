@@ -16,7 +16,6 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/conv_util.h"
 
 namespace phi {
 
@@ -37,14 +36,14 @@ void GatherKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         index_dims[1],
         1,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The last dim of index should be 1 when it is 2D, but we get %d",
             index_dims[1]));
   } else {
     PADDLE_ENFORCE_EQ(
         index_dims.size(),
         1,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The index should be 1D, when it is not 2D, but we get %d",
             index_dims.size()));
   }
@@ -77,7 +76,7 @@ void GatherKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       r,
       xpu::Error_t::SUCCESS,
-      paddle::platform::errors::External(
+      phi::errors::External(
           "XPU gather kernel return wrong value[%d %s]", r, XPUAPIErrorMsg[r]));
 }
 

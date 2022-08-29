@@ -16,7 +16,6 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/conv_util.h"
 
 namespace phi {
 
@@ -37,14 +36,14 @@ void GatherNdKernel(const Context &ctx,
 
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
-  PADDLE_ENFORCE_EQ(index_type_match,
-                    true,
-                    paddle::platform::errors::InvalidArgument(
-                        "Index holds the wrong type, it holds [%s],"
-                        "but desires to be [%s] or [%s]",
-                        index_type,
-                        DataType::INT32,
-                        DataType::INT64));
+  PADDLE_ENFORCE_EQ(
+      index_type_match,
+      true,
+      phi::errors::InvalidArgument("Index holds the wrong type, it holds [%s],"
+                                   "but desires to be [%s] or [%s]",
+                                   index_type,
+                                   DataType::INT32,
+                                   DataType::INT64));
 
   auto x_shape = phi::vectorize<int>(x.dims());
   auto index_shape = phi::vectorize<int>(index.dims());
@@ -70,12 +69,12 @@ void GatherNdKernel(const Context &ctx,
                                      x_vec,
                                      index_shape);
   }
-  PADDLE_ENFORCE_EQ(ret,
-                    XPU_SUCCESS,
-                    paddle::platform::errors::External(
-                        "XPU gather_nd kernel return wrong value[%d %s]",
-                        ret,
-                        XPUAPIErrorMsg[ret]));
+  PADDLE_ENFORCE_EQ(
+      ret,
+      XPU_SUCCESS,
+      phi::errors::External("XPU gather_nd kernel return wrong value[%d %s]",
+                            ret,
+                            XPUAPIErrorMsg[ret]));
 }
 
 }  // namespace phi
