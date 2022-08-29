@@ -176,6 +176,19 @@ def process_run_type(run_type):
 
 
 DIST_UT_PORT = 21200
+ASSIGNED_PORTS = dict()
+
+
+def gset_port(test_name, port):
+    '''
+    Get and set a port for unit test named test_name. If the test has been already holding a port, return the port it holds.
+    Else assign the input port as a new port to the test.
+    '''
+    if test_name not in ASSIGNED_PORTS:
+        ASSIGNED_PORTS[test_name] = port
+    global DIST_UT_PORT
+    DIST_UT_PORT = max(DIST_UT_PORT, ASSIGNED_PORTS[test_name])
+    return ASSIGNED_PORTS[test_name]
 
 
 def process_dist_port_num(port_num):
@@ -184,10 +197,8 @@ def process_dist_port_num(port_num):
     port_num = port_num.strip()
     if len(port_num) == 0:
         port_num = "0"
-    global DIST_UT_PORT
-    port = DIST_UT_PORT
+    port = DIST_UT_PORT + int(port_num)
     assert port < 23000, "dist port is exhausted"
-    DIST_UT_PORT += int(port_num)
     return port
 
 
@@ -232,6 +243,7 @@ def parse_line(line, curdir):
 
     if launcher[-3:] == ".sh":
         dist_ut_port = process_dist_port_num(num_port)
+        dist_ut_port = gset_port(name, dist_ut_port)
         cmd += f'''if({archs} AND {os_})
     bash_test_modules(
     {name}
@@ -267,6 +279,49 @@ endif()
 
 
 PROCESSED_DIR = set()
+
+
+def init_dist_ut_ports_from_cmakefile(cmake_file_name):
+    '''
+    Find all signed ut ports in cmake_file and update the ASSIGNED_PORTS
+    and keep the DIST_UT_PORT max of all assigned ports 
+    '''
+    with open(cmake_file_name) as cmake_file:
+        port_reg = re.compile("PADDLE_DIST_UT_PORT=[0-9]+")
+        lines = cmake_file.readlines()
+        for idx, line in enumerate(lines):
+            matched = port_reg.search(line)
+            if matched is not None:
+                p = matched.span()
+                port = int(line[p[0]:p[1]].split("=")[-1])
+                for k in range(idx, 0, -1):
+                    if lines[k].strip() == "START_BASH":
+                        break
+                name = lines[k - 1].strip()
+                assert re.compile("^test_[0-9a-zA-Z_]+").search(name), \
+                    f'''we found a test for initial the latest dist_port but the test name '{name}' seems to be wrong
+                    at line {k-1}, in file {cmake_file_name}
+                    '''
+                gset_port(name, port)
+
+
+def parse_assigned_dist_ut_ports(current_work_dir):
+    '''
+    get all assigned dist ports to keep port of unmodified test fixed.
+    '''
+    if current_work_dir in PROCESSED_DIR:
+        return
+    PROCESSED_DIR.add(current_work_dir)
+    contents = os.listdir(current_work_dir)
+    cmake_file = os.path.join(current_work_dir, "CMakeLists.txt")
+    if os.path.isfile(cmake_file):
+        csv = cmake_file.replace("CMakeLists.txt", 'testslist.csv')
+        if os.path.isfile(csv):
+            init_dist_ut_ports_from_cmakefile(cmake_file)
+        for c in contents:
+            c_path = os.path.join(current_work_dir, c)
+            if os.path.isdir(c_path):
+                parse_assigned_dist_ut_ports(c_path)
 
 
 def gen_cmakelists(current_work_dir):
@@ -352,4 +407,10 @@ if __name__ == "__main__":
         current_work_dirs = current_work_dirs + [d for d in args.dirpaths]
 
     for c in current_work_dirs:
+        c = os.path.abspath(c)
+        parse_assigned_dist_ut_ports(c)
+
+    PROCESSED_DIR.clear()
+    for c in current_work_dirs:
+        c = os.path.abspath(c)
         gen_cmakelists(c)
