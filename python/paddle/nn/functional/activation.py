@@ -445,7 +445,9 @@ def leaky_relu(x, negative_slope=0.01, name=None):
             import paddle.nn.functional as F
 
             x = paddle.to_tensor([-2., 0., 1.])
-            out = F.leaky_relu(x) # [-0.02, 0., 1.]
+            out = F.leaky_relu(x)
+            print(out)
+            # [-0.02, 0., 1.]
 
     """
     if in_dygraph_mode():
@@ -490,17 +492,17 @@ def prelu(x, weight, data_format="NCHW", name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
+            data = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
                                [ 3.0, -4.0,  5.0, -6.0],
                                [-7.0, -8.0,  8.0,  9.0]],
                               [[ 1.0, -2.0, -3.0,  4.0],
                                [-5.0,  6.0,  7.0, -8.0],
-                               [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
-            x = paddle.to_tensor(data)
-            w = paddle.to_tensor(np.array([0.25]).astype('float32'))
-            out = F.prelu(x, w)
+                               [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
+
+            w = paddle.to_tensor([0.25], dtype='float32')
+            out = F.prelu(data, w)
+            print(out)
             # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
             #    [ 3.  , -1.  ,  5.  , -1.5 ],
             #    [-1.75, -2.  ,  8.  ,  9.  ]],
@@ -625,6 +627,7 @@ def rrelu(x, lower=1. / 8., upper=1. / 3., training=True, name=None):
                                             [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
 
             out = F.rrelu(input_tensor, 0.1, 0.3)
+            print(out)
             #[[[[-0.20000899  3.         -0.8810822   5.        ]
             #   [ 3.         -0.55175185  5.         -1.0776101 ]
             #   [-1.0680687  -1.9896201   8.          9.        ]]
@@ -699,10 +702,11 @@ def relu(x, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
-            out = F.relu(x) # [0., 0., 1.]
+            x = paddle.to_tensor([-2, 0, 1], dtype='float32')
+            out = F.relu(x)
+            print(out)
+            # [0., 0., 1.]
     """
 
     if in_dygraph_mode():
@@ -868,10 +872,11 @@ def relu6(x, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
-            out = F.relu6(x) # [0, 0.3, 6]
+            x = paddle.to_tensor([-1, 0.3, 6.5])
+            out = F.relu6(x)
+            print(out)
+            # [0, 0.3, 6]
     """
     threshold = 6.0
     if in_dygraph_mode():
@@ -921,10 +926,11 @@ def selu(x,
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
-            out = F.selu(x) # [[0, 1.050701],[2.101402, 3.152103]]
+            x = paddle.to_tensor([[0.0, 1.0],[2.0, 3.0]])
+            out = F.selu(x)
+            print(out)
+            # [[0, 1.050701],[2.101402, 3.152103]]
     """
     if scale <= 1.0:
         raise ValueError(

@@ -106,7 +106,7 @@
   forward : dense_to_coo(Tensor x, int64_t sparse_dim) -> Tensor(out)
   args : (Tensor out_grad)
   output : Tensor(x_grad)
-  invoke : to_dense_impl(out_grad)
+  invoke : coo_to_dense(out_grad)
 
 - backward_api : divide_grad
   forward : divide(Tensor x, Tensor y) -> Tensor(out)

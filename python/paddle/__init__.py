@@ -36,7 +36,7 @@ from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
 from .fluid.dataset import *  # noqa: F401
-from .fluid.lazy_init import LazyInit  # noqa: F401
+from .fluid.lazy_init import LazyGuard  # noqa: F401
 
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
@@ -417,7 +417,7 @@ __all__ = [  # noqa
     'cumprod',
     'logcumsumexp',
     'logit',
-    'LazyInit',
+    'LazyGuard',
     'sign',
     'is_empty',
     'equal',
