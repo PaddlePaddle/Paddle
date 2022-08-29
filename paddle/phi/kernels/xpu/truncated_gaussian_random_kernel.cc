@@ -17,6 +17,7 @@ limitations under the License. */
 #include <limits>
 #include <random>
 
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -31,14 +32,15 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    int seed,
                                    DataType dtype,
                                    DenseTensor* out) {
-  auto data = out;
+  auto out_cpu = out;
+  int64_t size = out->numel();
   TruncatedGaussianRandomKernel<T, CPUContext>(
-      dev_ctx, shape, mean, std, seed, dtype, data);
+      CPUContext(), shape, mean, std, seed, dtype, out_cpu);
 
   paddle::memory::Copy(dev_ctx.GetPlace(),
                        out,
                        phi::CPUPlace(),
-                       reinterpret_cast<void*>(data.get()),
+                       reinterpret_cast<void*>(out_cpu),
                        size * sizeof(T));
 }
 
