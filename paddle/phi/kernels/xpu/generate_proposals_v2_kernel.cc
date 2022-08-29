@@ -35,14 +35,13 @@ static void SortDescending(const XPUContext& dev_ctx,
 
   DenseTensor scores_slice_cpu;
   scores_slice_cpu.Resize({value.numel()});
-  T* scores_slice_cpu_data = dev_ctx.template Alloc<T>(&scores_slice_cpu);
+  T* scores_slice_cpu_data = dev_ctx.template HostAlloc<T>(&scores_slice_cpu);
 
   paddle::memory::Copy(cpu_place,
                        scores_slice_cpu_data,
                        place,
                        value_data,
                        sizeof(T) * value.numel());
-
   // Sort index
   DenseTensor index_t;
   index_t.Resize({value.numel()});
@@ -163,9 +162,10 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   // 3. filter
   DenseTensor keep_index, keep_num_t;
   keep_index.Resize(phi::make_ddim({pre_nms_num}));
-  dev_ctx.template Alloc<T>(&keep_index);
+  dev_ctx.template Alloc<int>(&keep_index);
 
   keep_num_t.Resize(phi::make_ddim({1}));
+  dev_ctx.template Alloc<int>(&keep_num_t);
   min_size = std::max(min_size, 1.0f);
   r = xpu::remove_small_boxes<T>(dev_ctx.x_context(),
                                  proposals.data<T>(),
@@ -245,10 +245,10 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   }
 
   DenseTensor scores_nms, proposals_nms;
-  scores_nms.Resize(phi::make_ddim({keep_index.numel(), 4}));
-  dev_ctx.template Alloc<T>(&scores_nms);
-  proposals_nms.Resize(phi::make_ddim({keep_index.numel(), 1}));
+  proposals_nms.Resize(phi::make_ddim({keep_index.numel(), 4}));
   dev_ctx.template Alloc<T>(&proposals_nms);
+  scores_nms.Resize(phi::make_ddim({keep_index.numel(), 1}));
+  dev_ctx.template Alloc<T>(&scores_nms);
   r = xpu::gather<T>(dev_ctx.x_context(),
                      proposals_filter.data<T>(),
                      keep_index.data<int>(),
