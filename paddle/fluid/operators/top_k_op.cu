@@ -110,7 +110,9 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     // TODO(typhoonzero): refine this kernel.
     const int kMaxHeight = 2048;
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
-    switch (GetDesiredBlockDim(input_width)) {
+    paddle::platform::GpuLaunchConfig config =
+        paddle::platform::GetGpuLaunchConfig1D(dev_ctx, input_width);
+    switch (config.thread_per_block.x) {
       FIXED_BLOCK_DIM(switch (getMaxLength(k)) {
         FIXED_MAXLENGTH(
             KeMatrixTopK<T, maxLength, kBlockDim>

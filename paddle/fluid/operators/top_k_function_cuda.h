@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
 #include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -95,11 +96,7 @@ struct ColumnIndexIter {
 };
 
 inline static int GetDesiredBlockDim(int dim) {
-  if (dim > 512) {
-    return 1024;
-  } else if (dim > 256) {
-    return 512;
-  } else if (dim > 128) {
+  if (dim > 128) {
     return 256;
   } else if (dim > 64) {
     return 128;
