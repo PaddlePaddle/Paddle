@@ -574,7 +574,7 @@ if((WITH_GPU
     OR WITH_ASCEND
     OR WITH_ASCEND_CL
    )
-   AND (LINUX OR WIN32))
+   AND (WIN32 OR LINUX))
   py_test_modules(
     test_fleet_hybrid_meta_optimizer MODULES test_fleet_hybrid_meta_optimizer
     ENVS
@@ -862,118 +862,4 @@ if(WITH_NCCL OR WITH_RCCL)
       set_tests_properties(test_dist_se_resnext_dgc PROPERTIES RUN_SERIAL 1)
     endif()
   endif()
-endif()
-if(LOCAL_ALL_ARCH AND (LINUX))
-  bash_test_modules(
-    test_auto_checkpoint
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_auto_checkpoint PROPERTIES TIMEOUT "200")
-endif()
-if(LOCAL_ALL_ARCH AND (LINUX))
-  bash_test_modules(
-    test_auto_checkpoint1
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_auto_checkpoint1 PROPERTIES TIMEOUT "200")
-endif()
-if(LOCAL_ALL_ARCH AND (LINUX))
-  bash_test_modules(
-    test_auto_checkpoint2
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_auto_checkpoint2 PROPERTIES TIMEOUT "200")
-endif()
-if(LOCAL_ALL_ARCH AND (LINUX))
-  bash_test_modules(
-    test_auto_checkpoint3
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_auto_checkpoint3 PROPERTIES TIMEOUT "200")
-endif()
-if(LOCAL_ALL_ARCH AND (LINUX))
-  bash_test_modules(
-    test_auto_checkpoint_multiple
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_auto_checkpoint_multiple PROPERTIES TIMEOUT "200")
-endif()
-if(LOCAL_ALL_ARCH AND (LINUX))
-  bash_test_modules(
-    test_auto_checkpoint_dist_basic
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_auto_checkpoint_dist_basic PROPERTIES TIMEOUT "200")
-endif()
-if(LOCAL_ALL_ARCH AND (LINUX))
-  bash_test_modules(
-    test_hdfs1
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_hdfs1 PROPERTIES TIMEOUT "200")
-endif()
-if(LOCAL_ALL_ARCH AND (LINUX))
-  bash_test_modules(
-    test_hdfs2
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_hdfs2 PROPERTIES TIMEOUT "200")
-endif()
-if(LOCAL_ALL_ARCH AND (LINUX))
-  bash_test_modules(
-    test_hdfs3
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=EXCLUSIVE:NIGHTLY"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_hdfs3 PROPERTIES TIMEOUT "200")
-endif()
-if(LOCAL_ALL_ARCH AND (LINUX))
-  py_test_modules(
-    test_fleet_checkpoint MODULES test_fleet_checkpoint ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT "200")
 endif()
