@@ -23,7 +23,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle.fluid.framework import _enable_legacy_dygraph
 
-_enable_legacy_dygraph()
+#_enable_legacy_dygraph()
 
 
 class SimpleNet(paddle.nn.Layer):
