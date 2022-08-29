@@ -23,7 +23,7 @@ from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.nn import functional as F
 import logging
 from paddle.fluid.log_helper import get_logger
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
 from paddle.nn import Layer
 
@@ -103,7 +103,7 @@ class FakeQuantAbsMax(Layer):
                     dtype=self._dtype,
                     persistable=False)
                 out_scale.stop_gradient = True
-            out, _, = _C_ops.fake_quantize_dequantize_abs_max(
+            out, _, = _legacy_C_ops.fake_quantize_dequantize_abs_max(
                 input, quant_out, out_scale, *attrs)
             return out
 
@@ -201,7 +201,7 @@ class FakeQuantMovingAverageAbsMax(Layer):
             state = self._state if self.training else None
             accum = self._accum if self.training else None
 
-            out, _, _, _ = _C_ops.fake_quantize_dequantize_moving_average_abs_max(
+            out, _, _, _ = _legacy_C_ops.fake_quantize_dequantize_moving_average_abs_max(
                 input, self._scale, accum, state, quant_out, self._scale, state,
                 accum, *attrs)
 
@@ -294,7 +294,7 @@ class FakeQuantChannelWiseAbsMax(Layer):
                     persistable=False)
                 out_scale.stop_gradient = True
 
-            out, _, = _C_ops.fake_channel_wise_quantize_dequantize_abs_max(
+            out, _, = _legacy_C_ops.fake_channel_wise_quantize_dequantize_abs_max(
                 input, quant_out, out_scale, *attrs)
             return out
 
@@ -389,7 +389,7 @@ class MovingAverageAbsMaxScale(Layer):
             state = self._state if self.training else None
             accum = self._accum if self.training else None
 
-            out, _, _, _ = _C_ops.moving_average_abs_max_scale(
+            out, _, _, _ = _legacy_C_ops.moving_average_abs_max_scale(
                 input, accum, state, quant_out, self._scale, state, accum,
                 *attrs)
             return out

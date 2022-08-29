@@ -30,7 +30,7 @@ from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.ir import apply_build_strategy
 from .base import topology as tp
 from .meta_parallel import model_parallel_random_seed
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 
 __all__ = []

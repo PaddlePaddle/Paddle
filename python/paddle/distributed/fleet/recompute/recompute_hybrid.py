@@ -16,7 +16,7 @@ import contextlib
 
 import paddle
 from paddle.fluid import core
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.autograd import PyLayer
 from paddle.fluid import framework
 from ..meta_parallel.parallel_layers.random import get_rng_state_tracker
@@ -102,8 +102,8 @@ def _all_gather(tensor, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
     nranks = paddle.distributed.collective._get_global_group(
     ).nranks if group is None else group.nranks
-    return _C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
-                              'ring_id', ring_id, 'nranks', nranks)
+    return _legacy_C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
+                                     'ring_id', ring_id, 'nranks', nranks)
 
 
 def _split_activation(tensor):

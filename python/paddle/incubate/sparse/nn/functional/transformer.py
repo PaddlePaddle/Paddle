@@ -14,7 +14,7 @@
 
 __all__ = []
 
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import dygraph_only
 
 
@@ -88,7 +88,5 @@ def attention(query,
             output = paddle.incubate.sparse.nn.functional.attention(query, key, value, sp_mask, kp_mask, attn_mask)
             output.backward()
     """
-    return _C_ops.final_state_sparse_fused_attention(query, key, value,
-                                                     sparse_mask,
-                                                     key_padding_mask,
-                                                     attn_mask)
+    return _C_ops.sparse_fused_attention(query, key, value, sparse_mask,
+                                         key_padding_mask, attn_mask)

@@ -32,7 +32,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.nn.initializer import Constant
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.fluid.framework import _non_static_mode, default_main_program
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.incubate.nn.functional import fused_multi_transformer
 
 default_main_program().random_seed = 42

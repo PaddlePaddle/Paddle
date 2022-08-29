@@ -30,7 +30,7 @@ from paddle.fluid.layers import nn
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _non_static_mode
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = ['TranslatedLayer']
 
@@ -865,9 +865,10 @@ def _run_dygraph(instance, input, program_holder):
     attrs = ('global_block', trace_program.block(0), 'start_op_index', 0,
              'end_op_index', end_op_index, 'is_test', instance._is_test,
              'program_id', _hash_with_id(trace_program, instance))
-    _C_ops.run_program(_valid_vars(input_vars), _valid_vars(persistable_vars),
-                       _valid_vars(output_vars), tmp_scope_vec,
-                       _valid_vars(double_grad_vars), None, *attrs)
+    _legacy_C_ops.run_program(_valid_vars(input_vars),
+                              _valid_vars(persistable_vars),
+                              _valid_vars(output_vars), tmp_scope_vec,
+                              _valid_vars(double_grad_vars), None, *attrs)
     # NOTE: [ why need set param's gradient type here ]
     # if user set sparse gradient mode, the param's gradient
     # will be SelectedRows, not LoDTensor. But tracer will just
