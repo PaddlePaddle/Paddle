@@ -107,8 +107,8 @@ def _get_dpmp_process_mesh(rank_id, topology, processes, sharding_group):
     return dpmp_topology, list(dpmp_processes_in_sharding)
 
 
-def _is_belong_to_global_norm(rank_id, tensor_shape, topology, processes,
-                              dims_mapping, sharding_group):
+def _is_about_global_norm(rank_id, tensor_shape, topology, processes,
+                          dims_mapping, sharding_group):
     # get current process_mesh where the parameter exist.
     dpmp_topology, dpmp_processes = _get_dpmp_process_mesh(
         rank_id, topology, processes, sharding_group)
@@ -152,9 +152,9 @@ class ClipHelper(object):
         topology = dist_attr.process_mesh.topology
         processes = dist_attr.process_mesh.processes
         dims_mapping = dist_attr.dims_mapping
-        return _is_belong_to_global_norm(self.rank_id, param.shape, topology,
-                                         processes, dims_mapping,
-                                         self.sharding_group)
+        return _is_about_global_norm(self.rank_id, param.shape, topology,
+                                     processes, dims_mapping,
+                                     self.sharding_group)
 
     def _get_dist_attr(self, name):
         var = self.block.vars[name]
