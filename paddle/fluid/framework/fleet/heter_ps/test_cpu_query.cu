@@ -177,7 +177,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
       query.initialize(
           i, 0, node_query_res.get_val(), 1, node_query_res.get_len());
       query.display();
-      auto c = g.graph_neighbor_sample_v3(query, false);
+      auto c = g.graph_neighbor_sample_v3(query, false, true);
       c.display();
     }
   }
@@ -219,7 +219,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
         query.initialize(i, 0, node_query_res.get_val(), 4,
                          node_query_res.get_len());
         query.display();
-        auto c = g.graph_neighbor_sample_v3(query, true);
+        auto c = g.graph_neighbor_sample_v3(query, true, true);
         c.display();
         platform::CUDADeviceGuard guard(i);
         uint64_t *key;
@@ -229,7 +229,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
         uint64_t t_key = 1;
         cudaMemcpy(key, &t_key, sizeof(uint64_t), cudaMemcpyHostToDevice);
         q1.initialize(i, 0, (uint64_t)key, 2, 1);
-        auto d = g.graph_neighbor_sample_v3(q1, true);
+        auto d = g.graph_neighbor_sample_v3(q1, true, true);
         d.display();
         cudaFree(key);
         g.cpu_graph_table_->set_search_level(1);
