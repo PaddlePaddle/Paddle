@@ -107,6 +107,12 @@ void CastPyArg2AttrFloat(PyObject* obj,
                          const std::string& op_type,
                          ssize_t arg_pos);
 
+void CastPyArg2AttrDouble(PyObject* obj,
+                          paddle::framework::AttributeMap& attrs,  // NOLINT
+                          const std::string& key,
+                          const std::string& op_type,
+                          ssize_t arg_pos);
+
 void CastPyArg2AttrString(PyObject* obj,
                           paddle::framework::AttributeMap& attrs,  // NOLINT
                           const std::string& key,

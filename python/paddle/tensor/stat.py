@@ -22,7 +22,7 @@ from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from .math import _get_reduce_axis
 
 __all__ = []
@@ -83,10 +83,11 @@ def mean(x, axis=None, keepdim=False, name=None):
     reduce_all, axis = _get_reduce_axis(axis, x)
 
     if in_dygraph_mode():
-        return _C_ops.final_state_mean(x, axis, keepdim)
+        return _C_ops.mean(x, axis, keepdim)
+
     if _in_legacy_dygraph():
-        return _C_ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
-                                  'reduce_all', reduce_all)
+        return _legacy_C_ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
+                                         'reduce_all', reduce_all)
 
     check_variable_and_dtype(x, 'x/input',
                              ['uint16', 'float16', 'float32', 'float64'],
@@ -226,9 +227,9 @@ def numel(x, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_size(x)
-    elif _in_legacy_dygraph():
         return _C_ops.size(x)
+    elif _in_legacy_dygraph():
+        return _legacy_C_ops.size(x)
 
     if not isinstance(x, Variable):
         raise TypeError("x must be a Tensor in numel")
@@ -314,8 +315,8 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
         raise ValueError("Axis has duplicated elements.")
 
     if _in_legacy_dygraph():
-        median_index, out = _C_ops.nanmedian(x, 'axis', axis, 'keepdim',
-                                             keepdim)
+        median_index, out = _legacy_C_ops.nanmedian(x, 'axis', axis, 'keepdim',
+                                                    keepdim)
         return out
 
     check_variable_and_dtype(

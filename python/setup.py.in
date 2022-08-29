@@ -402,6 +402,7 @@ packages=['paddle',
           'paddle.profiler',
           'paddle.geometric',
           'paddle.geometric.message_passing',
+          'paddle.geometric.sampling',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:

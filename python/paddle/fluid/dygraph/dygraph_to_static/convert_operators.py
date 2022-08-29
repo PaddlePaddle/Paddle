@@ -28,6 +28,13 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, Dygraph2S
 from paddle.fluid.layers.utils import copy_mutable_vars
 
 
+def convert_attr(x, attr):
+    if isinstance(x, Variable) and attr == "size":
+        return x.size()
+    else:
+        return getattr(value, attr)
+
+
 def indexable(x, code=None):
     if isinstance(x, Variable): return x
     if hasattr(x, '__len__') and hasattr(x, '__getitem__'): return x

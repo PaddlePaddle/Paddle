@@ -18,7 +18,7 @@ from paddle.fluid.framework import _non_static_mode, _in_legacy_dygraph, in_dygr
 from paddle.fluid.framework import Variable
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle.fluid.layers.tensor import cast
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 import paddle.utils.deprecated as deprecated
 
 
@@ -122,15 +122,15 @@ def graph_send_recv(x,
 
     if _in_legacy_dygraph():
         out_size = convert_out_size_to_list(out_size)
-        out, tmp = _C_ops.graph_send_recv(x, src_index,
-                                          dst_index, None, 'reduce_op',
-                                          pool_type.upper(), 'out_size',
-                                          out_size)
+        out, tmp = _legacy_C_ops.graph_send_recv(x, src_index, dst_index,
+                                                 None, 'reduce_op',
+                                                 pool_type.upper(), 'out_size',
+                                                 out_size)
         return out
     if in_dygraph_mode():
         out_size = convert_out_size_to_list(out_size)
-        return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
-                                                  pool_type.upper(), out_size)
+        return _C_ops.graph_send_recv(x, src_index, dst_index,
+                                      pool_type.upper(), out_size)
 
     check_variable_and_dtype(x, "X", ("float32", "float64", "int32", "int64"),
                              "graph_send_recv")
