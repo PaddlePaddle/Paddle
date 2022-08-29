@@ -25,6 +25,7 @@ namespace phi {
 
 static constexpr size_t WAIT_THRESHOLD = 64 * 1024;
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
 void MemcpyH2DKernel(const GPUContext& dev_ctx,
                      const DenseTensor& x,
@@ -41,12 +42,14 @@ void MemcpyH2DKernel(const GPUContext& dev_ctx,
       errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
                          dst_place_type));
 
-  auto stream = static_cast<const phi::GPUContext*>(&dev_ctx)->stream();
+  auto stream = dev_ctx.stream();
   out->mutable_data(dev_ctx.GetPlace(),
                     x.dtype(),
                     phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+
   Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 }
+#endif
 
 template <typename Context>
 void MemcpyH2DKernel(const Context& dev_ctx,
@@ -74,6 +77,9 @@ void MemcpyD2HKernel(const Context& dev_ctx,
                      DenseTensor* out) {
   switch (dst_place_type) {
     case 0:
+      // NOTE(lvyongkang): phi::Copy will use DeviceContext.zero_allocator to
+      // alloc and assign DeviceContext.place to out, which causes place check
+      // fails. So we specify out's place here.
       out->mutable_data(CPUPlace());
       Copy(dev_ctx, x, CPUPlace(), false, out);
       // NOTE(copy from Aurelius84): host <-> device memory copies of a memory
@@ -85,6 +91,9 @@ void MemcpyD2HKernel(const Context& dev_ctx,
       break;
 
     case 1:
+      // NOTE(lvyongkang): phi::Copy will use DeviceContext.zero_allocator to
+      // alloc and assign DeviceContext.place to out, which causes place check
+      // fails. So we specify out's place here.
       out->mutable_data(GPUPinnedPlace());
       Copy(dev_ctx, x, GPUPinnedPlace(), false, out);
       // paddle::memory::Copy use async copy for GPUPinnedPlace
@@ -114,9 +123,9 @@ void MemcpyD2HMultiIOKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_NOT_NULL(
         array[i],
         errors::PreconditionNotMet("input tesnor %d should not be nullptr", i));
-    PADDLE_ENFORCE_NOT_NULL(
-        out_array[i],
-        errors::PreconditionNotMet("input tesnor %d should not be nullptr", i));
+    PADDLE_ENFORCE_NOT_NULL(out_array[i],
+                            errors::PreconditionNotMet(
+                                "output tesnor %d should not be nullptr", i));
 
     const auto& x = *(array[i]);
     MemcpyD2HKernel<Context>(dev_ctx, x, dst_place_type, out_array[i]);
