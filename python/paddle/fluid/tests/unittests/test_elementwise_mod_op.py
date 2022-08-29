@@ -136,13 +136,13 @@ class TestRemainderOp(unittest.TestCase):
             np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
 
 
-class TestRemainderInplaceOp(unittest.TestCase):
+class TestRemainderInplaceOp(TestRemainderOp):
 
     def _executed_api(self, x, y, name=None):
         return x.remainder_(y, name)
 
 
-class TestRemainderInplaceBroadcastSuccess(unittest.TestCase):
+class TestRemainderInplaceBroadcastSuccess(TestRemainderOp):
 
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 4).astype('float')
