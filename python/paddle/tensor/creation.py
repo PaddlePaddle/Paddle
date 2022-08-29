@@ -354,20 +354,28 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
     if isinstance(data, Variable) and (dtype is None or dtype == data.dtype):
         output = data
     else:
-        if dtype:
-            target_dtype = dtype
-        elif hasattr(data, 'dtype'):
-            target_dtype = data.dtype
-        else:
-            target_dtype = paddle.get_default_dtype()
-
-        target_dtype = convert_dtype(target_dtype)
 
         if not isinstance(data, np.ndarray):
             if np.isscalar(data) and not isinstance(data, str):
                 data = np.array([data])
             elif isinstance(data, (list, tuple)):
                 data = np.array(data)
+
+            if isinstance(data,
+                          np.ndarray) and not dtype and data.dtype != 'object':
+                if data.dtype in ['float16', 'float32', 'float64']:
+                    data = data.astype(paddle.get_default_dtype())
+                elif data.dtype in ['int32']:
+                    data = data.astype('int64')
+
+        if dtype:
+            target_dtype = dtype
+        elif hasattr(data, 'dtype') and data.dtype != 'object':
+            target_dtype = data.dtype
+        else:
+            target_dtype = paddle.get_default_dtype()
+
+        target_dtype = convert_dtype(target_dtype)
 
         if isinstance(data, np.ndarray) and len(data.shape) > 0 and any(
                 isinstance(x, Variable) for x in data):
