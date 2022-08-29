@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/matmul_grad_kernel.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -81,11 +81,94 @@ void MatmulGradKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void MatmulWithFlattenGradKernel(const Context& dev_ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 const DenseTensor& out_grad,
+                                 int x_num_col_dims,
+                                 int y_num_col_dims,
+                                 DenseTensor* x_grad,
+                                 DenseTensor* y_grad) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
+  auto x_matrix = x.dims().size() > 2
+                      ? paddle::framework::ReshapeToMatrix(x, x_num_col_dims)
+                      : static_cast<const DenseTensor&>(x);
+  auto y_matrix = y.dims().size() > 2
+                      ? paddle::framework::ReshapeToMatrix(y, y_num_col_dims)
+                      : static_cast<const DenseTensor&>(y);
+  DenseTensor dout_mat;
+  dout_mat.Resize({phi::flatten_to_2d(x.dims(), x_num_col_dims)[0],
+                   phi::flatten_to_2d(y.dims(), y_num_col_dims)[1]});
+
+  if (x_grad != nullptr) {
+    x_grad->set_lod(x.lod());
+  }
+  if (y_grad != nullptr) {
+    y_grad->set_lod(y.lod());
+  }
+
+  phi::XpuFcInfo info_forward;
+  phi::GetFCInfo(x_matrix.dims(), y_matrix.dims(), false, false, &info_forward);
+
+  const XPUType* dout_ptr =
+      reinterpret_cast<const XPUType*>(out_grad.data<T>());
+  const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
+  const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
+
+  xpu::Context* xpu_ctx = dev_ctx.x_context();
+  xpu::ctx_guard RAII_GUARD(xpu_ctx);
+  // begin calculate
+  const XPUType* a_1 = reinterpret_cast<const XPUType*>(NULL);
+  const XPUType* b_1 = reinterpret_cast<const XPUType*>(NULL);
+  const XPUType* a_2 = reinterpret_cast<const XPUType*>(NULL);
+  const XPUType* b_2 = reinterpret_cast<const XPUType*>(NULL);
+  XPUType* c_1 =
+      (x_grad == NULL)
+          ? reinterpret_cast<XPUType*>(NULL)
+          : reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(x_grad));
+  XPUType* c_2 =
+      (y_grad == NULL)
+          ? reinterpret_cast<XPUType*>(NULL)
+          : reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(y_grad));
+  phi::XpuFcInfo info_dx;
+  phi::XpuFcInfo info_dy;
+  std::tuple<phi::XpuFcInfo,
+             phi::XpuFcInfo,
+             const XPUType*,
+             const XPUType*,
+             const XPUType*,
+             const XPUType*>
+      fc_info = phi::MatmulGradFcInfo(xpu_ctx,
+                                      &RAII_GUARD,
+                                      info_forward,
+                                      false,
+                                      false,
+                                      x_ptr,
+                                      y_ptr,
+                                      dout_ptr);
+  std::tie(info_dx, info_dy, a_1, b_1, a_2, b_2) = fc_info;
+  if (x_grad) {
+    phi::MatMulXPUFunction<XPUType>(xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f);
+  }
+  if (y_grad) {
+    phi::MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f);
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(matmul_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::MatmulGradKernel,
+                   float,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(matmul_with_flatten_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::MatmulWithFlattenGradKernel,
                    float,
                    phi::dtype::float16) {}
