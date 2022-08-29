@@ -189,7 +189,7 @@ class PipelineLayerChunk(Layer):
         # Users shouldn't call PipelineLayerChunk directly, since all logics relating with recompute
         # are in the forward function of PipelineLayer. Any directly call will bring unexpected
         # behavior under recompute circumstance.
-        raise NotImplementedError(
+        raise PermissionError(
             "The forward function of PipelineLayerChunk cannot be called directly. "
             "Please call forward function of PipelineLayer.")
 
