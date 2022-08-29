@@ -383,6 +383,7 @@ if is_compiled_with_cinn():
 disable_static()
 
 __all__ = [  # noqa
+    'iinfo',
     'dtype',
     'uint8',
     'int8',

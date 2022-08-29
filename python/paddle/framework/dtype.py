@@ -43,21 +43,15 @@ def iinfo(dtype):
     (i.e. paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64). 
     This is similar to numpy.iinfo.
 
-    .. code-block:: text
-
-        Case 1:
-
-          Input:
-            paddle.uint8
-
-          Output:
-            paddle.iinfo(min=0, max=255, bits=8, dtype="uint8")
-
     Args:
-        dtype(paddle.dtype):  an integer paddle.dtype (i.e. paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64). 
+        dtype(paddle.dtype):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64
 
     Returns:
-        an iinfo object, which has 4 attributes, like paddle.iinfo(min=0, max=255, bits=8, dtype="uint8")
+        An iinfo object, which has the following 4 attributes.
+        min: int, The smallest representable integer number.
+        max: int, The largest representable integer number.
+        bits: int, The number of bits occupied by the type.
+        dtype: str, The string name of the argument dtype
 
     Raises:
         ValueError: If the input "dtype" is not an integer paddle.dtype, it will raise an ValueError
@@ -68,12 +62,12 @@ def iinfo(dtype):
             import paddle
 
             iinfo_uint8 = paddle.iinfo(paddle.uint8)
+            # output: paddle.iinfo(min=0, max=255, bits=8, dtype=uint8)
             print(iinfo_uint8)
             print(iinfo_uint8.min)
             print(iinfo_uint8.max)
             print(iinfo_uint8.bits)
             print(iinfo_uint8.dtype)
+
     """
     return core_iinfo(dtype)
-        
-__all__ = []
