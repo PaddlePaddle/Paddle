@@ -25,9 +25,9 @@ class PixelShuffle(Layer):
     
     PixelShuffle Layer    
 
-    Rearranges elements in a tensor of shape [N, C, H, W]
-    to a tensor of shape [N, C/upscale_factor**2, H*upscale_factor, W*upscale_factor],
-    or from shape [N, H, W, C] to [N, H*upscale_factor, W*upscale_factor, C/upscale_factor**2].
+    Rearranges elements in a tensor of shape :math:`[N, C, H, W]`
+    to a tensor of shape :math:`[N, C/upscale_factor^2, H*upscale_factor, W \times upscale_factor]`,
+    or from shape :math:`[N, H, W, C]` to :math:`[N, H \times upscale_factor, W \times upscale_factor, C/upscale_factor^2]`.
     This is useful for implementing efficient sub-pixel convolution
     with a stride of 1/upscale_factor.
     Please refer to the paper: `Real-Time Single Image and Video Super-Resolution
@@ -42,7 +42,7 @@ class PixelShuffle(Layer):
 
     Shape:
         - x: 4-D tensor with shape of :math:`(N, C, H, W)` or :math:`(N, H, W, C)`.
-        - out: 4-D tensor with shape of :math:`(N, C/upscale_factor**2, H*upscale_factor, W*upscale_factor)` or :math:`(N, H*upscale_factor, W*upscale_factor, C/upscale_factor^2)`.
+        - out: 4-D tensor with shape of :math:`(N, C/upscale_factor^2, H \times upscale_factor, W \times upscale_factor)` or :math:`(N, H \times upscale_factor, W \times upscale_factor, C/upscale_factor^2)`.
 
 
     Examples:

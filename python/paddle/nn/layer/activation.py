@@ -496,7 +496,7 @@ class RReLU(Layer):
                                             [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
 
             rrelu_layer = paddle.nn.RReLU(0.1, 0.3)
-            output = rrelu_layer(input_tensor)
+            out = rrelu_layer(input_tensor)
             print(out)
             #[[[[-0.20000899  3.         -0.88108218  5.        ]
             #   [ 3.         -0.55175185  5.         -1.07761011]
