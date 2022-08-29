@@ -519,7 +519,6 @@ void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
                     residual_scale,
                     is_residual_unsigned,
                     "Scale_in_eltwise");
-      VLOG(4) << "Successfully quantized fc op with ResidualData!";
     } else {
       if (!AreScalesPresentForNodes({input, weights})) {
         MarkAndLogCannotQuantizeOp(fc, "No scale available for the operator");
@@ -557,7 +556,10 @@ void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
 
   gpd(graph, handler);
   AddStatis(quantize_fc_count);
-  LogQuantizedOpsCounter("fc", quantize_fc_count);
+  LogQuantizedOpsCounter(
+      "fc",
+      quantize_fc_count,
+      (with_residual_data ? "with residual connection" : ""));
 }
 
 void CPUQuantizePass::QuantizePool(Graph* graph) const {
