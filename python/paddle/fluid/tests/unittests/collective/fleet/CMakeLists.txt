@@ -574,7 +574,7 @@ if((WITH_GPU
     OR WITH_ASCEND
     OR WITH_ASCEND_CL
    )
-   AND (WIN32 OR LINUX))
+   AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_hybrid_meta_optimizer MODULES test_fleet_hybrid_meta_optimizer
     ENVS
