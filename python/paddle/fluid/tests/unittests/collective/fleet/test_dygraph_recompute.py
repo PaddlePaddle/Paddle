@@ -79,8 +79,9 @@ class Naive_fc_net(paddle.nn.Layer):
     def forward(self, inputs):
 
         if self.use_fleet_sq:
-            return fleet.recompute_sequential(self.runfuncs, self.segments,
-                                              inputs)
+            return fleet.recompute_sequential(self.runfuncs,
+                                              inputs,
+                                              __segments__=self.segments)
 
         if 0 in self.recompute_blocks:
             recompute_func = fleet.recompute if self.use_fleet else recompute

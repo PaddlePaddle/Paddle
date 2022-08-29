@@ -557,9 +557,10 @@ class PipelineLayer(Layer):
 
                 if self._need_recompute(funcs, input):
                     input = fleet.recompute_hybrid(
-                        self.forward_function(start_idx,
-                                              end_idx), self._recompute_offload,
-                        self._recompute_partition, *input)
+                        self.forward_function(start_idx, end_idx),
+                        *input,
+                        __offload__=self._recompute_offload,
+                        __partition__=self._recompute_partition)
                 else:
                     input = self.forward_function(start_idx, end_idx)(*input)
 
