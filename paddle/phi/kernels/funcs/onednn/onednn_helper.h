@@ -33,6 +33,61 @@ void* to_void_cast(const Type* t) {
   return static_cast<void*>(const_cast<Type*>(t));
 }
 
+template <typename Type>
+dnnl::memory::data_type MKLDNNGetDataType() {
+  return dnnl::memory::data_type::undef;
+}
+
+template <>
+inline dnnl::memory::data_type MKLDNNGetDataType<float>() {
+  return dnnl::memory::data_type::f32;
+}
+template <>
+inline dnnl::memory::data_type MKLDNNGetDataType<int32_t>() {
+  return dnnl::memory::data_type::s32;
+}
+template <>
+inline dnnl::memory::data_type MKLDNNGetDataType<int8_t>() {
+  return dnnl::memory::data_type::s8;
+}
+template <>
+inline dnnl::memory::data_type MKLDNNGetDataType<uint8_t>() {
+  return dnnl::memory::data_type::u8;
+}
+
+template <>
+inline dnnl::memory::data_type MKLDNNGetDataType<dtype::bfloat16>() {
+  return dnnl::memory::data_type::bf16;
+}
+
+inline dnnl::memory::format_tag GetPlainMKLDNNFormat(int tensor_rank) {
+  switch (tensor_rank) {
+    case 1:
+      return dnnl::memory::format_tag::a;
+    case 2:
+      return dnnl::memory::format_tag::ab;
+    case 3:
+      return dnnl::memory::format_tag::abc;
+    case 4:
+      return dnnl::memory::format_tag::abcd;
+    case 5:
+      return dnnl::memory::format_tag::abcde;
+    case 6:
+      return dnnl::memory::format_tag::abcdef;
+    case 7:
+      return dnnl::memory::format_tag::abcdefg;
+    case 8:
+      return dnnl::memory::format_tag::abcdefgh;
+    case 9:
+      return dnnl::memory::format_tag::abcdefghi;
+    default:
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Paddle support tensors with rank in range <1, 9>, but received "
+          "tensor with rank: %d",
+          tensor_rank));
+  }
+}
+
 inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,
                                               MKLDNNMemoryFormat data_format) {
   if (dims_size == 1) {

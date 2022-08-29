@@ -18,8 +18,6 @@ limitations under the License. */
 
 namespace phi {
 
-using paddle::platform::to_void_cast;
-
 inline std::vector<int64_t> CalculateReducedDims(
     const DenseTensor* input,
     const DenseTensor* output,
@@ -62,14 +60,12 @@ void ReduceKernel(const Context& dev_ctx,
   if (x_tz == out_tz) {
     dnnl::memory::data_type x_type = paddle::framework::ToMKLDNNDataType(
         paddle::framework::TransToProtoVarType(x.dtype()));
-    paddle::platform::ReorderMKLDNNHandler reorder_handler(
-        x_tz,
-        paddle::framework::TransToProtoVarType(x.dtype()),
-        x_type,
-        onednn_engine);
+
+    funcs::ReorderMKLDNNHandler reorder_handler(
+        x_tz, x.dtype(), x_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        x.mem_desc(), paddle::platform::to_void_cast(x.data<T>()));
+        x.mem_desc(), phi::funcs::to_void_cast(x.data<T>()));
 
     // reuse mem desc since it is a simple copy
     auto reorder_dst_memory_p =
@@ -84,14 +80,14 @@ void ReduceKernel(const Context& dev_ctx,
     out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(
         phi::vectorize<int64_t>(out->dims())));
   } else {
-    paddle::platform::ReductionMKLDNNHandler<T> handler(reduction_type,
-                                                        0.0f,
-                                                        0.0f,
-                                                        onednn_engine,
-                                                        dev_ctx.GetPlace(),
-                                                        &x,
-                                                        out,
-                                                        out_tz);
+    funcs::ReductionMKLDNNHandler<T> handler(reduction_type,
+                                             0.0f,
+                                             0.0f,
+                                             onednn_engine,
+                                             dev_ctx.GetPlace(),
+                                             &x,
+                                             out,
+                                             out_tz);
 
     auto src_memory_p = handler.AcquireSrcMemory(&x);
     auto dst_memory_p = handler.AcquireDstMemory(out);
@@ -126,14 +122,14 @@ void ReduceGradKernel(const Context& dev_ctx,
       CalculateReducedDims(x_grad, &out_grad, dims, reduce_all, keep_dim);
   auto x_grad_tz = phi::vectorize(x_grad->dims());
 
-  paddle::platform::BroadcastDataMKLDNNHandler<T> handler(binary_type,
-                                                          onednn_engine,
-                                                          dev_ctx.GetPlace(),
-                                                          &out_grad,
-                                                          x_grad,
-                                                          scale_x,
-                                                          scale_y,
-                                                          out_grad_tz);
+  funcs::BroadcastDataMKLDNNHandler<T> handler(binary_type,
+                                               onednn_engine,
+                                               dev_ctx.GetPlace(),
+                                               &out_grad,
+                                               x_grad,
+                                               scale_x,
+                                               scale_y,
+                                               out_grad_tz);
 
   const auto src_memory_p = handler.AcquireSrcMemory(&out_grad);
   const auto dst_memory_p = handler.AcquireZeroedDstMemory(x_grad);
