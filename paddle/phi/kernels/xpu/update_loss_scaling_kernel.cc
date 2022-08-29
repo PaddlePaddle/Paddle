@@ -51,7 +51,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
       phi::errors::InvalidArgument("FoundInfinite must has only one element."));
   const bool* found_inf_data = found_infinite.data<bool>();
   bool cpu_found_inf_data = false;
-  if (paddle::platform::is_xpu_place(found_infinite.place())) {
+  if (found_infinite.GetType() == phi::AllocationType::XPU) {
     paddle::memory::Copy(phi::CPUPlace(),
                          static_cast<void*>(&cpu_found_inf_data),
                          found_infinite.place(),
@@ -96,7 +96,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   int cpu_bad_in_data;
   int cpu_good_in_data;
   MPDType cpu_pre_loss_scaling_data;
-  if (paddle::platform::is_xpu_place(in_bad_steps.place())) {
+  if (in_bad_steps.GetType() == phi::AllocationType::XPU) {
     paddle::memory::Copy(phi::CPUPlace(),
                          static_cast<void*>(&cpu_bad_in_data),
                          in_bad_steps.place(),
@@ -106,7 +106,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
     cpu_bad_in_data = (*bad_in_data);
   }
 
-  if (paddle::platform::is_xpu_place(in_good_steps.place())) {
+  if (in_good_steps.GetType() == phi::AllocationType::XPU) {
     paddle::memory::Copy(phi::CPUPlace(),
                          static_cast<void*>(&cpu_good_in_data),
                          in_good_steps.place(),
@@ -116,7 +116,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
     cpu_good_in_data = (*good_in_data);
   }
 
-  if (paddle::platform::is_xpu_place(prev_loss_scaling.place())) {
+  if (prev_loss_scaling.GetType() == phi::AllocationType::XPU) {
     paddle::memory::Copy(phi::CPUPlace(),
                          static_cast<void*>(&cpu_pre_loss_scaling_data),
                          prev_loss_scaling.place(),
