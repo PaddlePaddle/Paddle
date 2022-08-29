@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -2744,6 +2745,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
               phi_kernel_context->EmplaceBackAttr(std::move(
                   phi::Scalar(PADDLE_GET_CONST(float, attr_iter->second))));
               break;
+            case proto::AttrType::FLOAT64:
+              phi_kernel_context->EmplaceBackAttr(std::move(
+                  phi::Scalar(PADDLE_GET_CONST(double, attr_iter->second))));
+              break;
             case proto::AttrType::INT:
               phi_kernel_context->EmplaceBackAttr(std::move(
                   phi::Scalar(PADDLE_GET_CONST(int, attr_iter->second))));
@@ -2886,6 +2891,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
           case phi::AttributeType::FLOAT32:
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(float, attr_iter->second));
+            break;
+          case phi::AttributeType::FLOAT64:
+            phi_kernel_context->EmplaceBackAttr(
+                PADDLE_GET_CONST(double, attr_iter->second));
             break;
           case phi::AttributeType::INT32:
             phi_kernel_context->EmplaceBackAttr(

@@ -31,7 +31,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
-                            true,
+                            false,
                             "Use inplace in new executor");
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
                             true,
@@ -566,12 +566,16 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
                                            : var_scope_.GetMutableScope();
 
 #ifdef PADDLE_WITH_ASCEND_CL
-  // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
-  // values, but only through special `float_status` to checks whether
-  // the operation is overflow. More about `float_status`, see:
-  // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
-  if (FLAGS_check_nan_inf) {
-    framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
+  if (platform::is_npu_place(place)) {
+    auto dev_id = place.device;
+    platform::SetNPUDeviceId(dev_id);
+    // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
+    // values, but only through special `float_status` to checks whether
+    // the operation is overflow. More about `float_status`, see:
+    // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
+    if (FLAGS_check_nan_inf) {
+      framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
+    }
   }
 #endif
 
