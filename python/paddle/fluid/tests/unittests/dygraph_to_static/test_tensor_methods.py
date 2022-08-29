@@ -82,9 +82,7 @@ class TestTensorItem(unittest.TestCase):
     def test_tensor_clone(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph res is {}\nstatic_res is {}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(dygraph_res, static_res)
 
 
 if __name__ == '__main__':
