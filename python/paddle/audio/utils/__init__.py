@@ -14,3 +14,4 @@
 from .env import DATA_HOME
 from .env import MODEL_HOME
 from .error import ParameterError
+from .download import download_and_decompress
