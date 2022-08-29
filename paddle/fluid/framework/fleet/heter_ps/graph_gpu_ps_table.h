@@ -126,7 +126,8 @@ class GpuPsGraphTable
       const std::vector<GpuPsCommGraphFea> &cpu_node_list, int idx);
   NodeQueryResult graph_node_sample(int gpu_id, int sample_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
-                                                bool cpu_switch);
+                                                bool cpu_switch,
+                                                bool compress);
   NeighborSampleResult graph_neighbor_sample(int gpu_id,
                                              uint64_t *key,
                                              int sample_size,
@@ -136,7 +137,8 @@ class GpuPsGraphTable
                                                 uint64_t *key,
                                                 int sample_size,
                                                 int len,
-                                                bool cpu_query_switch);
+                                                bool cpu_query_switch,
+                                                bool compress);
 
   int get_feature_of_nodes(
       int gpu_id, uint64_t *d_walk, uint64_t *d_offset, int size, int slot_num);

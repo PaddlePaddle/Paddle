@@ -232,6 +232,20 @@ struct NeighborSampleResult {
     delete[] ac_size;
     VLOG(0) << " ------------------";
   }
+  void display2() {
+    VLOG(0) << "in node sample result display -----";
+    uint64_t *res = new uint64_t[total_sample_size];
+    cudaMemcpy(res, actual_val, total_sample_size * sizeof(uint64_t),
+               cudaMemcpyDeviceToHost);
+    std::string sample_str;
+    for (int i = 0; i < total_sample_size; i++) {
+       if (sample_str.size() > 0) sample_str += ";";
+       sample_str += std::to_string(res[i]);
+    }
+    VLOG(0) << "sample result: " << sample_str;
+    delete[] res;
+  }
+
   std::vector<uint64_t> get_sampled_graph(NeighborSampleQuery q) {
     std::vector<uint64_t> graph;
     int64_t *sample_keys = new int64_t[q.len];

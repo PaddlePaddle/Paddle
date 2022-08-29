@@ -915,6 +915,17 @@ class GraphDataGenerator {
     type_to_index_[type] = h_device_keys_.size();
     h_device_keys_.push_back(device_keys);
   }
+  std::vector<std::shared_ptr<phi::Allocation>> SampleNeighbors(
+      int64_t* uniq_nodes, int len, int sample_size,
+      std::vector<int64_t>& edges_split_num, int64_t* neighbor_len);
+
+  std::shared_ptr<phi::Allocation> GetReindexResult(
+      int64_t* reindex_src_data, int64_t* reindex_dst_data,
+      const int* count, const int64_t* center_nodes,
+      int* final_nodes_len, int node_len, int64_t neighbor_len);
+
+  std::shared_ptr<phi::Allocation> GenerateSampleGraph(
+      uint64_t* node_ids, int len, int* uniq_len, phi::DenseTensor* inverse);
 
  protected:
   int walk_degree_;
@@ -930,9 +941,13 @@ class GraphDataGenerator {
   // point to device_keys_
   size_t cursor_;
   size_t jump_rows_;
+  int edge_to_id_len_;
+  int uniq_instance_;
   int64_t* id_tensor_ptr_;
+  int* index_tensor_ptr_;
   int64_t* show_tensor_ptr_;
   int64_t* clk_tensor_ptr_;
+
   cudaStream_t stream_;
   paddle::platform::Place place_;
   std::vector<LoDTensor*> feed_vec_;
@@ -960,6 +975,10 @@ class GraphDataGenerator {
   std::shared_ptr<phi::Allocation> d_pair_num_;
   std::shared_ptr<phi::Allocation> d_slot_tensor_ptr_;
   std::shared_ptr<phi::Allocation> d_slot_lod_tensor_ptr_;
+  std::shared_ptr<phi::Allocation> d_reindex_table_key_;
+  std::shared_ptr<phi::Allocation> d_reindex_table_value_;
+  std::shared_ptr<phi::Allocation> d_reindex_table_index_;
+  int64_t reindex_table_size_;
   int ins_buf_pair_len_;
   // size of a d_walk buf
   size_t buf_size_;
@@ -973,6 +992,8 @@ class GraphDataGenerator {
   std::vector<int> first_node_type_;
   std::vector<std::vector<int>> meta_path_;
   bool gpu_graph_training_;
+  bool sage_mode_;
+  std::vector<int> samples_;
 };
 
 class DataFeed {

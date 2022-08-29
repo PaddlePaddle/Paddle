@@ -58,6 +58,10 @@ class GraphSendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input tensor with data type float32, float64, int32, int64.");
     AddInput("Src_index", "The source index tensor.");
     AddInput("Dst_index", "The destination index tensor.");
+    AddInput("Out_size",
+             "(Tensor<int>, optional). The 0th dimension of the output."
+             "It has a higher priority than Attr(out_size).")
+        .AsDispensable();
     AddOutput("Out", "Output tensor of graph_send_recv op.");
     AddOutput("Dst_count",
               "Count tensor of Dst_index, mainly for MEAN pool_type.")
@@ -68,12 +72,12 @@ class GraphSendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
                          "tensors of Dst_index.")
         .SetDefault("SUM")
         .InEnum({"SUM", "MEAN", "MIN", "MAX"});
-    AddAttr<int64_t>(
+    AddAttr<std::vector<int64_t>>(
         "out_size",
-        "(int64_t, default 0)"
+        "(vector<int64_t>, default {0})"
         "Define the first dimension of Output tensor."
-        "If set default 0, then the shape of Out is the same with X.")
-        .SetDefault(0);
+        "If set default {0}, then the shape of Out is the same with X.")
+        .SetDefault({0});
     AddComment(R"DOC(
 Graph Learning Send_Recv combine operator.
 

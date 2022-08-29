@@ -87,7 +87,8 @@ class GraphGpuWrapper {
                                   int start,
                                   int query_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
-                                                bool cpu_switch);
+                                                bool cpu_switch,
+                                                bool compress);
   NeighborSampleResult graph_neighbor_sample(int gpu_id,
                                              uint64_t* device_keys,
                                              int walk_degree,
