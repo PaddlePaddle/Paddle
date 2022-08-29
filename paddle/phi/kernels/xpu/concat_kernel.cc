@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace phi {
@@ -31,7 +32,7 @@ void ConcatKernel(const Context& dev_ctx,
       x[0],
       nullptr,
       phi::errors::InvalidArgument("The input should not be null."));
-  axis = phi::func::ComputeAxis(axis, x[0]->dims().size());
+  axis = phi::funcs::ComputeAxis(axis, x[0]->dims().size());
   PADDLE_ENFORCE_GE(
       axis,
       0,
