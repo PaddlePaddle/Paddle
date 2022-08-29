@@ -275,6 +275,14 @@ class Engine:
         self._input_split_size, self._input_split_rank = self._get_input_split_info(
             feed_list[0], self._dist_contexts[mode])
 
+        self.dp_world_sizes = []
+        self.dp_ranks = []
+        for feed_var in feed_list:
+            dp_world_size, dp_rank = self._get_input_split_info(
+                feed_var, self._dist_contexts[mode])
+            self.dp_world_sizes.append(dp_world_size)
+            self.dp_ranks.append(dp_rank)
+
     def _parallel(self, mode, all_ranks):
         # Parallelize program based on the planner's results
         # For now, the completer has to be passed to the planner,
@@ -440,11 +448,14 @@ class Engine:
         for epoch in range(epochs):
             train_logs = {"epoch: {:d} ": epoch}
             for step, _ in enumerate(train_dataloader):
+                try:
+                    outs = self._executor.run(self.main_program,
+                                              fetch_list=fetch_list,
+                                              use_program_cache=use_cache,
+                                              return_numpy=return_numpy)
+                except fluid.core.EOFException:
+                    break
 
-                outs = self._executor.run(self.main_program,
-                                          fetch_list=fetch_list,
-                                          use_program_cache=use_cache,
-                                          return_numpy=return_numpy)
                 train_logs["step: {:d} "] = step
                 if lr_scheduler is not None:
                     lr_scheduler.step()
@@ -486,10 +497,13 @@ class Engine:
 
         for step, _ in enumerate(eval_dataloader):
             eval_logs = {"step: {:d} ": step}
-            outs = self._executor.run(self.main_program,
-                                      fetch_list=fetch_list,
-                                      use_program_cache=use_cache,
-                                      return_numpy=return_numpy)
+            try:
+                outs = self._executor.run(self.main_program,
+                                          fetch_list=fetch_list,
+                                          use_program_cache=use_cache,
+                                          return_numpy=return_numpy)
+            except fluid.core.EOFException:
+                break
             # inner fetches
             if fetch_loss:
                 eval_logs["loss: {:9f} "] = outs[0][0]
@@ -534,10 +548,13 @@ class Engine:
         outputs = []
         for step, _ in enumerate(test_dataloader):
             predict_logs = {"step: {:d} ": step}
-            outs = self._executor.run(self.main_program,
-                                      fetch_list=fetch_list,
-                                      use_program_cache=use_cache,
-                                      return_numpy=return_numpy)
+            try:
+                outs = self._executor.run(self.main_program,
+                                          fetch_list=fetch_list,
+                                          use_program_cache=use_cache,
+                                          return_numpy=return_numpy)
+            except fluid.core.EOFException:
+                break
             outputs.append(outs[:len(fetch_outputs)])
             for i, out in enumerate(outs):
                 predict_logs[fetch_map[fetch_list[i]] + ": {}"] = out
@@ -586,8 +603,8 @@ class Engine:
                 epochs,
                 steps_per_epoch,
                 collate_fn,
-                data_parallel_world_size=self._input_split_size,
-                data_parallel_rank=self._input_split_rank)
+                data_parallel_world_size=self.dp_world_sizes,
+                data_parallel_rank=self.dp_ranks)
 
         # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)
