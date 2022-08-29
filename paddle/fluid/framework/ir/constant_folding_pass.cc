@@ -58,6 +58,12 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("constant_folding", graph);
   auto *scope = param_scope();
+
+  PADDLE_ENFORCE_NOT_NULL(
+      scope,
+      platform::errors::Fatal(
+          "scope must not be null when applying constant floding."));
+
   // Now, I don't want to fold fill_constant op in Paddle-TRT
   std::vector<std::string> blacklist{"fill_constant", "feed"};
 
@@ -82,7 +88,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     for (auto out_node : op_node->outputs) {
       map[out_node->Name()] = 0;
     }
-    // Forbide other node in graph having the same name with nodes in map
+    // Forbid other node in graph having the same name with nodes in map
     for (auto iter : map) {
       for (auto node : graph->Nodes()) {
         if (node->IsVar() && node->Name() == iter.first) {
