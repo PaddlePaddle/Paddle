@@ -76,7 +76,7 @@ void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
                               in.dtype()));
 
   auto out_format =
-      OneDNNFormatForSize(in_tz.size(), ToMKLDNNFormat(out_layout));
+      OneDNNFormatForSize(in_tz.size(), ToOneDNNFormat(out_layout));
   dnnl::memory::desc out_mem_desc(out_tz, in_type, out_format);
 
   // output tensor has the same dims as input. Reorder don't change dims

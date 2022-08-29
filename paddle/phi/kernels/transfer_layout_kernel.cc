@@ -110,7 +110,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
     // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
     // Just set layout/format. No real transform occur
     auto out_format = funcs::OneDNNFormatForSize(
-        x.dims().size(), funcs::ToMKLDNNFormat(src_layout));
+        x.dims().size(), funcs::ToOneDNNFormat(src_layout));
 
     out->ShareDataWith(x);
     // For NHWC data we need reshape of tensors as MKL-DNN

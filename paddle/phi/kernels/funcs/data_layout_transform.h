@@ -31,7 +31,7 @@ namespace funcs {
 using OneDNNDataType = dnnl::memory::data_type;
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
-inline OneDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
+inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
   switch (layout) {
     case DataLayout::NHWC:
       return OneDNNMemoryFormat::nhwc;

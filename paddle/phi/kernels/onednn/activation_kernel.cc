@@ -52,12 +52,11 @@ void EltwiseForward(const OneDNNContext& dev_ctx,
                     true,
                     phi::errors::PreconditionNotMet(
                         "Operator DNNL eletwise_forward must use ONEDNNPlace"));
-  const auto& mkldnn_engine = dev_ctx.GetEngine();
 
   bool is_inplaced = x.IsSharedBufferWith(*out);
 
   funcs::ActivationOneDNNHandler<T> handler(
-      algorithm, alpha, beta, mkldnn_engine, dev_ctx.GetPlace(), &x);
+      algorithm, alpha, beta, dev_ctx.GetEngine(), dev_ctx.GetPlace(), &x);
 
   auto src_memory_p = handler.AcquireSrcMemory(&x);
   std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
@@ -89,13 +88,19 @@ struct OneDNNActivationFunc : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T>
+using AbsOneDNNFunctor = OneDNNActivationFunc<T, dnnl::algorithm::eltwise_abs>;
+
+template <typename T>
 using ReluOneDNNFunctor =
     OneDNNActivationFunc<T, dnnl::algorithm::eltwise_relu>;
 
 template <typename T>
+using Relu6OneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_bounded_relu>;
+
+template <typename T>
 using SwishOneDNNFunctor =
     OneDNNActivationFunc<T, dnnl::algorithm::eltwise_swish>;
-
 
 template <typename T>
 using HardSwishOneDNNFunctor =
@@ -127,6 +132,7 @@ template <typename T>
 using RoundOneDNNFunctor =
     OneDNNActivationFunc<T, dnnl::algorithm::eltwise_round>;
 
+DEFINE_ONEDNN_ACTIVATION_KERNEL(Abs, AbsOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Relu, ReluOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Tanh, TanhOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Exp, ExpOneDNNFunctor)
@@ -139,8 +145,8 @@ DEFINE_ONEDNN_ACTIVATION_KERNEL(Round, RoundOneDNNFunctor)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, ReluOneDNNFunctor, alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishOneDNNFunctor, threshold)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Elu, EluOneDNNFunctor, alpha)
+DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Relu6, Relu6OneDNNFunctor, threshold)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Swish, SwishOneDNNFunctor, beta)
-
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,

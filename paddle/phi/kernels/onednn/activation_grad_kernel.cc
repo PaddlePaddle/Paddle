@@ -75,10 +75,13 @@ void eltwise_grad(const OneDNNContext& dev_ctx,
                   float beta,
                   DenseTensor* dx,
                   dnnl::algorithm algorithm) {
-  const auto& mkldnn_engine = dev_ctx.GetEngine();
-
-  funcs::ActivationOneDNNHandler<T> handler(
-      algorithm, alpha, beta, mkldnn_engine, dev_ctx.GetPlace(), &x, &dout);
+  funcs::ActivationOneDNNHandler<T> handler(algorithm,
+                                            alpha,
+                                            beta,
+                                            dev_ctx.GetEngine(),
+                                            dev_ctx.GetPlace(),
+                                            &x,
+                                            &dout);
 
   auto src_memory_p = handler.AcquireBackwardSrcMemory(&x);
   auto diff_dst_memory_p = handler.AcquireDiffDstMemory(&dout);
@@ -103,10 +106,13 @@ void eltwise_grad_use_out(const OneDNNContext& dev_ctx,
                           float beta,
                           DenseTensor* dx,
                           dnnl::algorithm algorithm) {
-  const auto& mkldnn_engine = dev_ctx.GetEngine();
-
-  funcs::ActivationOneDNNHandler<T> handler(
-      algorithm, alpha, beta, mkldnn_engine, dev_ctx.GetPlace(), &out, &dout);
+  funcs::ActivationOneDNNHandler<T> handler(algorithm,
+                                            alpha,
+                                            beta,
+                                            dev_ctx.GetEngine(),
+                                            dev_ctx.GetPlace(),
+                                            &out,
+                                            &dout);
 
   auto dst_memory_p = handler.AcquireBackwardSrcMemory(&out);
   auto diff_dst_memory_p = handler.AcquireDiffDstMemory(&dout);
@@ -146,6 +152,10 @@ struct OneDNNActivationGradUseOutFunc : public funcs::BaseActivationFunctor<T> {
     eltwise_grad_use_out<T>(dev_ctx, out, dout, alpha, beta, dx, algorithm);
   }
 };
+
+template <typename T>
+using AbsOneDNNGradFunctor =
+    OneDNNActivationGradFunc<T, dnnl::algorithm::eltwise_abs>;
 
 template <typename T>
 using ReluOneDNNGradFunctor =
@@ -191,10 +201,10 @@ using ExpOneDNNGradUseOutFunctor = OneDNNActivationGradUseOutFunc<
 DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, TanhOneDNNGradUseOutFunctor);
 DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, SqrtOneDNNGradUseOutFunctor);
 DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid,
-                                            SigmoidMKLDNNGradUseOutFunctor);
-DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, ExpMKLDNNGradUseOutFunctor);
-DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Abs, AbsMKLDNNGradFunctor);
-DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, ReluMKLDNNGradFunctor);
+                                            SigmoidOneDNNGradUseOutFunctor);
+DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, ExpOneDNNGradUseOutFunctor);
+DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Abs, AbsOneDNNGradFunctor);
+DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, ReluOneDNNGradFunctor);
 
 DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
                                                   ReluOneDNNGradFunctor,
