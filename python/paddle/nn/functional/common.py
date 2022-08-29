@@ -1477,7 +1477,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             'complex128'
         ], "pad")
 
-        check_type(pad_value, 'pad_value', (float, Variable), 'pad')
+        check_type(pad_value, 'pad_value', (float, int, Variable), 'pad')
         if isinstance(pad_value, int):
             pad_value = float(pad_value)
 
