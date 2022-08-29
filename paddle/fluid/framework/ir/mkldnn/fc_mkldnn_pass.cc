@@ -40,7 +40,7 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
                 ->AsInput()
                 ->assert_is_op_input("fc", "Input");
   patterns::FCMKLDNN fc_pattern(gpd.mutable_pattern(), "fc_mkldnn_pass");
-  fc_pattern(x, true /*with bias*/);
+  fc_pattern(x, false /*with residual*/);
 
   int found_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,

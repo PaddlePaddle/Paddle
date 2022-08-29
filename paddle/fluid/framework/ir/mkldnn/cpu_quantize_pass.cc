@@ -482,7 +482,8 @@ void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
   int quantize_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "Quantize fc op";
+    VLOG(4) << "Quantize fc op " << (with_residual_data ? "with" : "without")
+            << " residual data";
     GET_IR_NODE_FROM_SUBGRAPH(fc, fc, fc_pattern);
 
     // skip if should not be quantized
@@ -518,6 +519,7 @@ void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
                     residual_scale,
                     is_residual_unsigned,
                     "Scale_in_eltwise");
+      VLOG(4) << "Successfully quantized fc op with ResidualData!";
     } else {
       if (!AreScalesPresentForNodes({input, weights})) {
         MarkAndLogCannotQuantizeOp(fc, "No scale available for the operator");
@@ -1187,7 +1189,8 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizePool(graph);
   QuantizeConcat(graph);
   QuantizePriorBox(graph);
-  QuantizeFc(graph);
+  QuantizeFc(graph, false /* with_residual_data */);
+  QuantizeFc(graph, true /* with_residual_data */);
   QuantizeMatmul(graph, false /* with_residual_data */);
   QuantizeMatmul(graph, true /* with_residual_data */);
   QuantizeImmutable(graph, "reshape2", "X");
