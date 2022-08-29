@@ -571,7 +571,7 @@ def dist(x, y, p=2, name=None):
     dimension of y.
 
     x (4-D Tensor):  8 x 1 x 6 x 1
-i
+
     y (4-D Tensor):  1 x 7 x 1 x 5
 
     2. Determine the size of each dimension of the output z: choose the maximum value from the
