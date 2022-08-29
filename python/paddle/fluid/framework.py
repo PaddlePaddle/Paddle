@@ -6794,18 +6794,19 @@ class EagerParamBase(_core_eager_eagertensor):
         self.need_clip = kwargs.get('need_clip', True)
 
         self.is_distributed = kwargs.get('is_distributed', False)
-        # self.block = default_main_program().global_block()
-        self.init_func = None
+        # hook functions for lazy initialization
+        self._init_func = None
+        self._init_op_creator = None
 
     def set_init_func(self, obj):
-        self.init_func = obj
+        self._init_func = obj
 
     @dygraph_only
     def initialize(self):
-        assert self.init_func is not None, "Required self.init_func is not None, but received None."
-        self.init_func()
+        assert self._init_func is not None, "Required self._init_func is not None, but received None."
+        self._init_func()
         # clear function handle to release resource
-        self.init_func = None
+        self._init_func = None
 
     @property
     def trainable(self):
@@ -6819,6 +6820,13 @@ class EagerParamBase(_core_eager_eagertensor):
             raise ValueError(
                 "The type of trainable MUST be bool, but the type is ",
                 type(trainable))
+
+    def _create_init_op(self, block):
+        """
+        Call init_op_creator function to create initializer operation in block.
+        """
+        assert self._init_op_creator is not None, "Required self._init_op_creator is not None, but received None."
+        self._init_op_creator(block)
 
     def __str__(self):
         """
