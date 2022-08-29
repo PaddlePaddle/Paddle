@@ -45,8 +45,7 @@ void PoolGradKernel(const Context& ctx,
       data_format,
       "NCHW",
       phi::errors::InvalidArgument("The Pool2d_grad XPU OP only support"
-                                   "data_format is 'NCHW', but received "
-                                   "%s",
+                                   "data_format is 'NCHW', but received %s",
                                    data_format));
 
   PADDLE_ENFORCE_EQ(
@@ -140,12 +139,7 @@ void PoolGradKernel(const Context& ctx,
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Unsupported pooling type for kunlun ", pooling_type));
   }
-  PADDLE_ENFORCE_EQ(
-      r,
-      xpu::Error_t::SUCCESS,
-      phi::errors::External("The Pool2dGrad XPU OP return wrong value[%d %s]",
-                            r,
-                            XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool2dgrad");
 }
 }  // namespace phi
 

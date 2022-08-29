@@ -46,9 +46,8 @@ void PoolKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       data_format,
       "NCHW",
-      phi::errors::InvalidArgument("The Pool2d XPU OP only support"
-                                   "data_format is 'NCHW', but received "
-                                   "%s",
+      phi::errors::InvalidArgument("The Pool2d XPU OP only support "
+                                   "data_format is 'NCHW', but received %s",
                                    data_format));
 
   if (global_pooling) {
@@ -152,12 +151,7 @@ void PoolKernel(const Context& ctx,
           "Unsupported pooling type for kunlun ", pooling_type));
     }
   }
-  PADDLE_ENFORCE_EQ(
-      r,
-      xpu::Error_t::SUCCESS,
-      phi::errors::External("The pool2d XPU API return wrong value[%d %s]",
-                            r,
-                            XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool2d");
 }
 }  // namespace phi
 
