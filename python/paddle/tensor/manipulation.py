@@ -4187,6 +4187,23 @@ def moveaxis(x, source, destination, name=None):
         out, _ = _legacy_C_ops.transpose2(x, 'axis', perm)
         return out
 
+    check_variable_and_dtype(x, 'x', [
+        'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
+        'complex128'
+    ], 'moveaxis')
+
+    helper = LayerHelper('moveaxis', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    x_shape = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='transpose2',
+                     inputs={'X': [x]},
+                     outputs={
+                         'Out': [out],
+                         'XShape': [x_shape]
+                     },
+                     attrs={'axis': perm})
+    return out
+
 
 def non_negative_axis(arr, axis):
     ndim = len(arr.shape)

@@ -2042,6 +2042,11 @@ def inverse(x, name=None):
         type='inverse', inputs={'Input': [x] }, outputs={'Output': [out]})
     return out
 
+def _get_reduce_axis(axis):
+    """
+    Internal function for max, min, amax and amin. 
+    It computes the attribute reduce_all value based on axis.
+    """
     if axis is not None and not isinstance(axis, list):
         if isinstance(axis, tuple):
             axis = list(axis)
@@ -3793,16 +3798,23 @@ def digamma(x, name=None):
         .. code-block:: python
 
             import paddle
+            data = paddle.to_tensor([[1, 1.5], [0, -2.2]], dtype='float32')
+            res = paddle.digamma(data)
+            print(res)
             # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #       [[-0.57721591,  0.03648996],
+            #       [ nan , 5.32286835]])
     """
 
     if in_dygraph_mode():
         return _C_ops.digamma(x)
+    else:
         if _in_legacy_dygraph():
             return _legacy_C_ops.digamma(x)
+
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'digamma')
     helper = LayerHelper('digamma', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out})
     return out
 
@@ -4115,8 +4127,30 @@ def rad2deg(x, name=None):
             rad2deg(x)=180/ \pi * x
 
     Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
+    
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            
+            x1 = paddle.to_tensor([3.142, -3.142, 6.283, -6.283, 1.570, -1.570])
+            result1 = paddle.rad2deg(x1)
+            print(result1)
+            # Tensor(shape=[6], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [180.02334595, -180.02334595,  359.98937988, -359.98937988,
+            #           9.95437622 , -89.95437622])
+            x2 = paddle.to_tensor(np.pi/2)
+            result2 = paddle.rad2deg(x2)
+            print(result2)
+            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [90.])
                      
             x3 = paddle.to_tensor(1)
+            result3 = paddle.rad2deg(x3)
             print(result3)
             # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #         [57.29578018])
@@ -4640,20 +4674,26 @@ def heaviside(x, y, name=None):
 def frac(x, name=None):
     """
     This API is used to return the fractional portion of each element in input.
+
     Args:
         x (Tensor): The input tensor, which data type should be int32, int64, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         Tensor: The output Tensor of frac.
+
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
+
             input = paddle.rand([3, 3], 'float32')
             print(input.numpy())
             # [[ 1.2203873  -1.0035421  -0.35193074]
             #  [-0.00928353  0.58917075 -0.8407828 ]
             #  [-1.5131804   0.5850153  -0.17597814]]
+
             output = paddle.frac(input)
             print(output.numpy())
             # [[ 0.22038734 -0.00354207 -0.35193074]
@@ -4692,18 +4732,24 @@ def sgn(x, name=None):
     elements of input and absolute values of one.
     For other float dtype tensor,
     this API returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero, same as paddle.sign.
+
     Args:
         x (Tensor): The input tensor, which data type should be float16, float32, float64, complex64, complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         Tensor: A sign Tensor for real input, or normalized Tensor for complex input, shape and data type are same as input.
+
     Examples:
         .. code-block:: Python
+
             import paddle
+
             x = paddle.to_tensor([[3 + 4j, 7 - 24j, 0, 1 + 2j], [6 + 8j, 3, 0, -2]])
             print(paddle.sgn(x))
             #[[0.6+0.8j       0.28-0.96j      0.+0.j      0.4472136+0.8944272j]
             # [0.6+0.8j       1.+0.j          0.+0.j      -1.+0.j]]
+
     """
     if x.dtype not in [paddle.float16, paddle.float32, paddle.float64, paddle.complex64, paddle.complex128]:
         raise TypeError(
