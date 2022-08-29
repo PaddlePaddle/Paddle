@@ -28,7 +28,7 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtyp
 from ..framework import convert_np_dtype_to_dtype_, _varbase_creator, OpProtoHolder
 # TODO: define functions to get create a tensor
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from ..fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_check
 import warnings
 
@@ -100,11 +100,10 @@ def linspace(start, stop, num, dtype=None, name=None):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
     if in_dygraph_mode():
-        return _C_ops.final_state_linspace(tensor_start, tensor_stop,
-                                           tensor_num, dtype)
+        return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, dtype)
     if _in_legacy_dygraph():
-        return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
-                               dtype)
+        return _legacy_C_ops.linspace(tensor_start, tensor_stop, tensor_num,
+                                      'dtype', dtype)
 
     helper = LayerHelper("linspace", **locals())
 
@@ -212,8 +211,8 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
         with device_guard("cpu"):
             tensor_base = fill_constant([1], dtype, base)
     if _non_static_mode():
-        return _C_ops.logspace(tensor_start, tensor_stop, tensor_num,
-                               tensor_base, 'dtype', dtype)
+        return _legacy_C_ops.logspace(tensor_start, tensor_stop, tensor_num,
+                                      tensor_base, 'dtype', dtype)
 
     helper = LayerHelper("logspace", **locals())
 
@@ -355,20 +354,28 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
     if isinstance(data, Variable) and (dtype is None or dtype == data.dtype):
         output = data
     else:
-        if dtype:
-            target_dtype = dtype
-        elif hasattr(data, 'dtype'):
-            target_dtype = data.dtype
-        else:
-            target_dtype = paddle.get_default_dtype()
-
-        target_dtype = convert_dtype(target_dtype)
 
         if not isinstance(data, np.ndarray):
             if np.isscalar(data) and not isinstance(data, str):
                 data = np.array([data])
             elif isinstance(data, (list, tuple)):
                 data = np.array(data)
+
+            if isinstance(data,
+                          np.ndarray) and not dtype and data.dtype != 'object':
+                if data.dtype in ['float16', 'float32', 'float64']:
+                    data = data.astype(paddle.get_default_dtype())
+                elif data.dtype in ['int32']:
+                    data = data.astype('int64')
+
+        if dtype:
+            target_dtype = dtype
+        elif hasattr(data, 'dtype') and data.dtype != 'object':
+            target_dtype = data.dtype
+        else:
+            target_dtype = paddle.get_default_dtype()
+
+        target_dtype = convert_dtype(target_dtype)
 
         if isinstance(data, np.ndarray) and len(data.shape) > 0 and any(
                 isinstance(x, Variable) for x in data):
@@ -504,10 +511,11 @@ def full_like(x, fill_value, dtype=None, name=None):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        return _C_ops.final_state_full_like(x, fill_value, dtype, x.place)
+        return _C_ops.full_like(x, fill_value, dtype, x.place)
 
     if _in_legacy_dygraph():
-        return _C_ops.fill_any_like(x, 'value', fill_value, 'dtype', dtype)
+        return _legacy_C_ops.fill_any_like(x, 'value', fill_value, 'dtype',
+                                           dtype)
 
     helper = LayerHelper("full_like", **locals())
     check_variable_and_dtype(
@@ -702,33 +710,35 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
           #  [0 1 0]]
     """
 
+    def _check_attr(attr, message):
+        if isinstance(attr, ((Variable, core.VarBase, core.eager.Tensor))):
+            assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
+        elif not isinstance(attr, int) or attr < 0:
+            raise TypeError("{} should be a non-negative int.".format(message))
+
+    _check_attr(num_rows, "num_rows")
+
     if dtype is None:
         dtype = 'float32'
-    if num_columns is None:
-        num_columns = num_rows
-
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if num_columns is not None:
-        if not isinstance(num_columns, int) or num_columns < 0:
-            raise TypeError("num_columns should be a non-negative int")
+        _check_attr(num_columns, "num_columns")
     else:
         num_columns = num_rows
 
     if _non_static_mode():
         if in_dygraph_mode():
-            out = _C_ops.final_state_eye(num_rows, num_columns, dtype,
-                                         _current_expected_place())
+            out = _C_ops.eye(num_rows, num_columns, dtype,
+                             _current_expected_place())
         elif _in_legacy_dygraph():
-            out = _C_ops.eye('dtype', dtype, 'num_rows', num_rows,
-                             'num_columns', num_columns)
+            out = _legacy_C_ops.eye('dtype', dtype, 'num_rows', num_rows,
+                                    'num_columns', num_columns)
 
     else:
         helper = LayerHelper("eye", **locals())
         check_dtype(dtype, 'dtype',
                     ['float16', 'float32', 'float64', 'int32', 'int64'], 'eye')
-        if not isinstance(num_rows, int) or num_rows < 0:
-            raise TypeError("num_rows should be a non-negative int")
         out = helper.create_variable_for_type_inference(dtype=dtype)
         helper.append_op(type='eye',
                          inputs={},
@@ -883,11 +893,10 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         step = paddle.cast(step, dtype)
 
     if in_dygraph_mode():
-        return _C_ops.final_state_arange(start, end, step, dtype,
-                                         _current_expected_place())
+        return _C_ops.arange(start, end, step, dtype, _current_expected_place())
 
     if _in_legacy_dygraph():
-        out = _C_ops.range(start, end, step)
+        out = _legacy_C_ops.range(start, end, step)
         out.stop_gradient = True
         return out
 
@@ -999,10 +1008,10 @@ def tril(x, diagonal=0, name=None):
             #         [9 , 10, 0 , 0 ]])
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_tril_triu(x, diagonal, True)
+        return _C_ops.tril_triu(x, diagonal, True)
 
     if _in_legacy_dygraph():
-        op = getattr(_C_ops, 'tril_triu')
+        op = getattr(_legacy_C_ops, 'tril_triu')
         return op(x, 'diagonal', diagonal, "lower", True)
 
     return _tril_triu_op(LayerHelper('tril', **locals()))
@@ -1064,10 +1073,10 @@ def triu(x, diagonal=0, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_tril_triu(x, diagonal, False)
+        return _C_ops.tril_triu(x, diagonal, False)
 
     if _in_legacy_dygraph():
-        op = getattr(_C_ops, 'tril_triu')
+        op = getattr(_legacy_C_ops, 'tril_triu')
         return op(x, 'diagonal', diagonal, "lower", False)
 
     return _tril_triu_op(LayerHelper('triu', **locals()))
@@ -1109,10 +1118,10 @@ def meshgrid(*args, **kwargs):
         args = args[0]
     if _in_legacy_dygraph():
         num = len(args)
-        out = _C_ops.meshgrid(list(args), num)
+        out = _legacy_C_ops.meshgrid(list(args), num)
         return out
     if in_dygraph_mode():
-        return _C_ops.final_state_meshgrid(list(args))
+        return _C_ops.meshgrid(list(args))
 
     name = kwargs.get("name", None)
     helper = LayerHelper('meshgrid', **locals())
@@ -1219,20 +1228,20 @@ def diagflat(x, offset=0, name=None):
     padding_value = 0
     if in_dygraph_mode():
         if len(x.shape) == 1:
-            return _C_ops.final_state_diag(x, offset, padding_value)
+            return _C_ops.diag(x, offset, padding_value)
         else:
-            y = _C_ops.final_state_flatten(x, 0, -1)
-            return _C_ops.final_state_diag(y, offset, padding_value)
+            y = _C_ops.flatten(x, 0, -1)
+            return _C_ops.diag(y, offset, padding_value)
 
     if _in_legacy_dygraph():
         if len(x.shape) == 1:
-            return _C_ops.diag_v2(x, "offset", offset, "padding_value",
-                                  padding_value)
+            return _legacy_C_ops.diag_v2(x, "offset", offset, "padding_value",
+                                         padding_value)
         else:
-            y, _ = _C_ops.flatten_contiguous_range(x, "start_axis", 0,
-                                                   "stop_axis", -1)
-            return _C_ops.diag_v2(y, "offset", offset, "padding_value",
-                                  padding_value)
+            y, _ = _legacy_C_ops.flatten_contiguous_range(
+                x, "start_axis", 0, "stop_axis", -1)
+            return _legacy_C_ops.diag_v2(y, "offset", offset, "padding_value",
+                                         padding_value)
 
     check_type(x, 'x', (Variable), 'diagflat')
     check_dtype(x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'],
@@ -1346,11 +1355,11 @@ def diag(x, offset=0, padding_value=0, name=None):
             # [4]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_diag(x, offset, padding_value)
+        return _C_ops.diag(x, offset, padding_value)
     else:
         if _in_legacy_dygraph():
-            return _C_ops.diag_v2(x, "offset", offset, "padding_value",
-                                  padding_value)
+            return _legacy_C_ops.diag_v2(x, "offset", offset, "padding_value",
+                                         padding_value)
         else:
             check_type(x, 'x', (Variable), 'diag_v2')
             check_dtype(x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'],
@@ -1434,15 +1443,15 @@ def empty(shape, dtype=None, name=None):
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        out = _C_ops.final_state_empty(shape, convert_np_dtype_to_dtype_(dtype),
-                                       _current_expected_place())
+        out = _C_ops.empty(shape, convert_np_dtype_to_dtype_(dtype),
+                           _current_expected_place())
         out.stop_gradient = True
         return out
 
     if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
-        out = _C_ops.empty('shape', shape, 'dtype',
-                           convert_np_dtype_to_dtype_(dtype))
+        out = _legacy_C_ops.empty('shape', shape, 'dtype',
+                                  convert_np_dtype_to_dtype_(dtype))
         out.stop_gradient = True
         return out
 
@@ -1507,15 +1516,14 @@ def empty_like(x, dtype=None, name=None):
     dtype = convert_dtype(dtype)
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_empty(x.shape,
-                                       convert_np_dtype_to_dtype_(dtype),
-                                       _current_expected_place())
+        out = _C_ops.empty(x.shape, convert_np_dtype_to_dtype_(dtype),
+                           _current_expected_place())
         out.stop_gradient = True
         return out
 
     if _in_legacy_dygraph():
-        out = _C_ops.empty('shape', x.shape, 'dtype',
-                           convert_np_dtype_to_dtype_(dtype))
+        out = _legacy_C_ops.empty('shape', x.shape, 'dtype',
+                                  convert_np_dtype_to_dtype_(dtype))
         out.stop_gradient = True
         return out
 
@@ -1592,13 +1600,13 @@ def assign(x, output=None):
     if isinstance(input, (Variable, core.VarBase, core.eager.Tensor)):
         if in_dygraph_mode():
             if output is None:
-                output = _C_ops.final_state_assign(input)
+                output = _C_ops.assign(input)
             else:
-                _C_ops.final_state_assign_out_(input, output)
+                _C_ops.assign_out_(input, output)
         elif _in_legacy_dygraph():
             if output is None:
                 output = core.VarBase()
-            _C_ops.assign(input, output)
+            _legacy_C_ops.assign(input, output)
         else:
             check_dtype(input.dtype, 'input', [
                 'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
@@ -1671,13 +1679,13 @@ def assign(x, output=None):
         if in_dygraph_mode():
             if output is None:
                 output = zeros(list(input.shape), dtype)
-            _C_ops.final_state_assign_value_(output, list(input.shape), dtype,
-                                             values, _current_expected_place())
+            _C_ops.assign_value_(output, list(input.shape), dtype, values,
+                                 _current_expected_place())
         elif _in_legacy_dygraph():
             if output is None:
                 output = core.VarBase()
-            _C_ops.assign_value(output, 'shape', list(input.shape), 'dtype',
-                                dtype, value_name, values)
+            _legacy_C_ops.assign_value(output, 'shape', list(input.shape),
+                                       'dtype', dtype, value_name, values)
         else:
             if output is None:
                 output = helper.create_variable_for_type_inference(
@@ -1813,10 +1821,10 @@ def complex(real, imag, name=None):
             #  [1.+0.j 1.+1.j 1.+2.j]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_complex(real, imag)
+        return _C_ops.complex(real, imag)
 
     if paddle.in_dynamic_mode():
-        return paddle._C_ops.complex(real, imag)
+        return paddle._legacy_C_ops.complex(real, imag)
 
     check_variable_and_dtype(real, 'real', ['float32', 'float64'], 'complex')
     check_variable_and_dtype(imag, 'imag', ['float32', 'float64'], 'complex')
@@ -1893,13 +1901,13 @@ def tril_indices(row, col, offset=0, dtype='int64'):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_tril_indices(row, col, offset, dtype,
-                                              _current_expected_place())
+        out = _C_ops.tril_indices(row, col, offset, dtype,
+                                  _current_expected_place())
         return out
 
     if _in_legacy_dygraph():
-        out = _C_ops.tril_indices('rows', row, 'cols', col, 'offset', offset,
-                                  "dtype", dtype)
+        out = _legacy_C_ops.tril_indices('rows', row, 'cols', col, 'offset',
+                                         offset, "dtype", dtype)
         return out
 
     else:
@@ -1978,13 +1986,13 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_triu_indices(row, col, offset, dtype,
-                                              _current_expected_place())
+        out = _C_ops.triu_indices(row, col, offset, dtype,
+                                  _current_expected_place())
         return out
 
     if _in_legacy_dygraph():
-        out = _C_ops.triu_indices('row', row, 'col', col, 'offset', offset,
-                                  "dtype", dtype)
+        out = _legacy_C_ops.triu_indices('row', row, 'col', col, 'offset',
+                                         offset, "dtype", dtype)
         return out
 
     else:
