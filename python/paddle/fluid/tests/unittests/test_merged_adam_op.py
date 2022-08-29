@@ -16,6 +16,7 @@ import unittest
 import paddle
 import numpy as np
 from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import in_dygraph_mode
 
 
 def run_adam_op(params,
@@ -63,12 +64,18 @@ def run_adam_op(params,
                 master_param_vars[i], 'epsilon', epsilon, 'beta1', beta1,
                 'beta2', beta2, 'multi_precision', multi_precision)
     else:
-        _, _, _, _, _, _ = _legacy_C_ops.merged_adam(
-            param_vars, grad_vars, lr_vars, moment1_vars, moment2_vars,
-            beta1_pow_vars, beta2_pow_vars, master_param_vars, param_vars,
-            moment1_vars, moment2_vars, beta1_pow_vars, beta2_pow_vars,
-            master_param_vars, 'epsilon', epsilon, 'beta1', beta1, 'beta2',
-            beta2, 'multi_precision', multi_precision)
+        if in_dygraph_mode():
+            _, _, _, _, _, _ = _C_ops.merged_adam_(
+                param_vars, grad_vars, lr_vars, moment1_vars, moment2_vars,
+                beta1_pow_vars, beta2_pow_vars, master_param_vars, beta1, beta2,
+                epsilon, multi_precision, False)
+        else:
+            _, _, _, _, _, _ = _legacy_C_ops.merged_adam(
+                param_vars, grad_vars, lr_vars, moment1_vars, moment2_vars,
+                beta1_pow_vars, beta2_pow_vars, master_param_vars, param_vars,
+                moment1_vars, moment2_vars, beta1_pow_vars, beta2_pow_vars,
+                master_param_vars, 'epsilon', epsilon, 'beta1', beta1, 'beta2',
+                beta2, 'multi_precision', multi_precision)
 
     outputs = {
         'ParamOut': param_vars,

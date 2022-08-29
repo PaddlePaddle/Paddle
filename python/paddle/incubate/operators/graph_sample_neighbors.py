@@ -18,8 +18,14 @@ from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
 from paddle import _C_ops, _legacy_C_ops
+import paddle.utils.deprecated as deprecated
 
 
+@deprecated(
+    since="2.4.0",
+    update_to="paddle.geometric.sample_neighbors",
+    level=1,
+    reason="paddle.incubate.graph_sample_neighbors will be removed in future")
 def graph_sample_neighbors(row,
                            colptr,
                            input_nodes,
