@@ -334,7 +334,7 @@ class TestPool3D_API(unittest.TestCase):
             self.check_max_dygraph_ndhwc_results(place)
             self.check_max_dygraph_ceilmode_results(place)
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with _test_eager_guard():
             self.test_pool3d()
 
@@ -504,7 +504,7 @@ class TestPool3DError_API(unittest.TestCase):
 
         self.assertRaises(ValueError, run_size_out_of_range)
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with _test_eager_guard():
             self.test_error_api()
 
