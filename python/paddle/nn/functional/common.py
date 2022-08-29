@@ -1478,6 +1478,8 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         ], "pad")
 
         check_type(pad_value, 'pad_value', (float, Variable), 'pad')
+        if isinstance(pad_value, int):
+            pad_value = float(pad_value)
 
         helper = LayerHelper('pad', **locals())
         dtype = helper.input_dtype(input_param_name='x')
