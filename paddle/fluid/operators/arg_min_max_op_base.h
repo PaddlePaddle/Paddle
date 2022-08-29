@@ -31,6 +31,13 @@ namespace operators {
 class ArgMinMaxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class BaseArgMinMaxOpMaker : public framework::OpProtoAndCheckerMaker {
