@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from scipy.special import expit, erf
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16, skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestHardSwish, TestRelu6, TestSigmoid
 from paddle.fluid.tests.unittests.test_gelu_op import gelu
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
@@ -128,6 +128,7 @@ class TestMKLDNNSwishDim2(TestSwish):
         self.dtype = np.float32
 
 
+@skip_check_grad_ci(reason="not implemented yet")
 class TestMKLDNNHardSwishDim2(TestHardSwish):
 
     def setUp(self):
@@ -137,6 +138,9 @@ class TestMKLDNNHardSwishDim2(TestHardSwish):
 
     def init_dtype(self):
         self.dtype = np.float32
+
+    def test_check_grad(self):
+        pass
 
 
 class TestMKLDNNSigmoidDim2(TestSigmoid):
@@ -317,6 +321,7 @@ def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
             scale).astype(x.dtype)
 
 
+@skip_check_grad_ci(reason="not implemented yet")
 class TestMKLDNNHardSwishDim4(TestHardSwish):
 
     def setUp(self):
@@ -337,6 +342,9 @@ class TestMKLDNNHardSwishDim4(TestHardSwish):
 
     def init_dtype(self):
         self.dtype = np.float32
+
+    def test_check_grad(self):
+        pass
 
 
 class TestMKLDNNMish(TestActivation):

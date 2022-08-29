@@ -82,30 +82,26 @@ def send_u_recv(x,
                       the 0th dimension.
 
     Examples:
-
         .. code-block:: python
 
             import paddle
 
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
             indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
-            src_index = indexes[:, 0]
-            dst_index = indexes[:, 1]
+            src_index, dst_index = indexes[:, 0], indexes[:, 1]
             out = paddle.geometric.send_u_recv(x, src_index, dst_index, reduce_op="sum")
             # Outputs: [[0., 2., 3.], [2., 8., 10.], [1., 4., 5.]]
 
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
             indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
-            src_index = indexes[:, 0]
-            dst_index = indexes[:, 1]
+            src_index, dst_index = indexes[:, 0], indexes[:, 1]
             out_size = paddle.max(dst_index) + 1
             out = paddle.geometric.send_u_recv(x, src_index, dst_index, reduce_op="sum", out_size=out_size)
             # Outputs: [[0., 2., 3.], [[2., 8., 10.]]]
 
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
             indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
-            src_index = indexes[:, 0]
-            dst_index = indexes[:, 1]
+            src_index, dst_index = indexes[:, 0], indexes[:, 1]
             out = paddle.geometric.send_u_recv(x, src_index, dst_index, reduce_op="sum")
             # Outputs: [[0., 2., 3.], [2., 8., 10.], [0., 0., 0.]]
 
@@ -233,7 +229,6 @@ def send_ue_recv(x,
                       the 0th dimension.
 
     Examples:
-
         .. code-block:: python
 
             import paddle
@@ -241,16 +236,14 @@ def send_ue_recv(x,
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
             y = paddle.to_tensor([1, 1, 1, 1], dtype="float32")
             indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
-            src_index = indexes[:, 0]
-            dst_index = indexes[:, 1]
+            src_index, dst_index = indexes[:, 0], indexes[:, 1]
             out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, message_op="add", reduce_op="sum")
             # Outputs: [[1., 3., 4.], [4., 10., 12.], [2., 5., 6.]]
 
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
             y = paddle.to_tensor([1, 1, 1], dtype="float32")
             indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
-            src_index = indexes[:, 0]
-            dst_index = indexes[:, 1]
+            src_index, dst_index = indexes[:, 0], indexes[:, 1]
             out_size = paddle.max(dst_index) + 1
             out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, message_op="add", reduce_op="sum", out_size=out_size)
             # Outputs: [[1., 3., 4.], [[4., 10., 12.]]]
@@ -258,8 +251,7 @@ def send_ue_recv(x,
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
             y = paddle.to_tensor([1, 1, 1], dtype="float32")
             indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
-            src_index = indexes[:, 0]
-            dst_index = indexes[:, 1]
+            src_index, dst_index = indexes[:, 0], indexes[:, 1]
             out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, message_op="add", reduce_op="sum")
             # Outputs: [[1., 3., 4.], [4., 10., 12.], [0., 0., 0.]]
 
@@ -282,7 +274,7 @@ def send_ue_recv(x,
         y = -y
     if message_op == "div":
         message_op = 'mul'
-        y = 1. / y
+        y = 1. / (y + 1e-12)
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
@@ -381,7 +373,7 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
         src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
         dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`. 
                             The available data type is int32, int64. 
-        message_op (Tensor): Different message ops for x and y, including `add`, `sub`, `mul` and `div`.
+        message_op (str): Different message ops for x and y, including `add`, `sub`, `mul` and `div`.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
@@ -389,7 +381,6 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
         out (Tensor): The output tensor.
 
     Examples:
-
         .. code-block:: python
 
             import paddle
@@ -416,7 +407,7 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
         y = -y
     if message_op == 'div':
         message_op = 'mul'
-        y = 1. / y
+        y = 1. / (y + 1e-12)
 
     if in_dygraph_mode():
         return _C_ops.graph_send_uv(x, y, src_index, dst_index,
