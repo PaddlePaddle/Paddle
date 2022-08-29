@@ -14,12 +14,16 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
+
+from paddle.fluid.framework import program_guard, Program
+from test_attribute_var import UnittestBase
 
 
 class TestReverseOp(OpTest):
@@ -193,6 +197,130 @@ class TestReverseLoDTensorArray(unittest.TestCase):
         # The value of axis should be 0 is input(X) is LoDTensorArray
         with self.assertRaises(Exception):
             self.run_program(arr_len=3, axis=1)
+
+
+class TestReverseAxisTensor(UnittestBase):
+
+    def init_info(self):
+        self.shapes = [[2, 3, 4]]
+        self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
+
+    def test_static(self):
+        main_prog = Program()
+        starup_prog = Program()
+        with program_guard(main_prog, starup_prog):
+            fc = paddle.nn.Linear(4, 10)
+            x = paddle.randn([2, 3, 4])
+            x.stop_gradient = False
+            feat = fc(x)  # [2,3,10]
+
+            out = self.call_func(feat)
+
+            sgd = paddle.optimizer.SGD()
+            sgd.minimize(paddle.mean(out))
+            self.assertTrue(self.var_prefix() in str(main_prog))
+
+            exe = paddle.static.Executor()
+            exe.run(starup_prog)
+            res = exe.run(fetch_list=[feat, out])
+            gt = res[0][::-1, :, ::-1]
+            np.testing.assert_allclose(res[1], gt)
+
+            paddle.static.save_inference_model(self.save_path, [x], [feat, out],
+                                               exe)
+            # Test for Inference Predictor
+            infer_outs = self.infer_prog()
+            gt = infer_outs[0][::-1, :, ::-1]
+            np.testing.assert_allclose(infer_outs[1], gt)
+
+    def path_prefix(self):
+        return 'reverse_tensor'
+
+    def var_prefix(self):
+        return "Var["
+
+    def call_func(self, x):
+        # axes is a Variable
+        axes = paddle.assign([0, 2])
+        out = paddle.fluid.layers.reverse(x, axes)
+        return out
+
+
+class TestReverseAxisListTensor(TestReverseAxisTensor):
+
+    def path_prefix(self):
+        return 'reverse_tensors'
+
+    def var_prefix(self):
+        return "Vars["
+
+    def call_func(self, x):
+        # axes is a List[Variable]
+        axes = [paddle.assign([0]), paddle.assign([2])]
+        out = paddle.fluid.layers.reverse(x, axes)
+        return out
+
+
+class TestAReverseEagerAPI(UnittestBase):
+
+    def test_api(self):
+        paddle.disable_static()
+        x = paddle.randn([4, 10])
+        y = paddle.randn([4, 10])
+
+        out = paddle._C_ops.reverse_array([x, y], [0])
+        np.testing.assert_allclose(x.numpy(), out[1].numpy())
+        np.testing.assert_allclose(y.numpy(), out[0].numpy())
+
+        paddle.enable_static()
+
+
+class TestReverseTensorArrayAxisTensor(UnittestBase):
+
+    def init_info(self):
+        self.shapes = [[2, 3, 4]]
+        self.save_path = os.path.join(self.temp_dir.name,
+                                      'reverse_tensor_array')
+
+    def test_static(self):
+        main_prog = Program()
+        starup_prog = Program()
+        with program_guard(main_prog, starup_prog):
+            fc = paddle.nn.Linear(4, 2)
+            x = paddle.randn([2, 3, 4])
+            x.stop_gradient = False
+            feat = fc(x)  # [2,3,10]
+            # tensor_array.shape: [[2,3,10], [2,3,10]]
+            tensor_array = paddle.fluid.layers.create_array(dtype='float32')
+            idx0 = paddle.full(shape=[1], fill_value=0, dtype="int64")
+            val0 = paddle.randn([2, 3, 2])
+            paddle.fluid.layers.array_write(val0, idx0, tensor_array)
+            idx1 = paddle.full(shape=[1], fill_value=1, dtype="int64")
+            paddle.fluid.layers.array_write(feat, idx1, tensor_array)
+            # axes is a Variable
+            axes = paddle.assign([0])
+            # tensor_array.shape: [[2,3,10], [2,3,10]]
+            reverse_array = paddle.fluid.layers.reverse(tensor_array, axes)
+
+            out, _ = paddle.fluid.layers.tensor_array_to_tensor(reverse_array,
+                                                                axis=0)
+
+            sgd = paddle.optimizer.SGD()
+            sgd.minimize(paddle.mean(out))
+            self.assertTrue("Var[" in str(main_prog))
+
+            exe = paddle.static.Executor()
+            exe.run(starup_prog)
+            res = exe.run(fetch_list=[val0, feat, out])
+            np.testing.assert_allclose(res[1], res[-1][0:2])
+            np.testing.assert_allclose(res[0], res[-1][2:4])
+
+            paddle.static.save_inference_model(self.save_path, [x],
+                                               [val0, feat, out], exe)
+            # Test for Inference Predictor
+            infer_outs = self.infer_prog()
+            np.testing.assert_allclose(infer_outs[1], infer_outs[-1][0:2])
+            np.testing.assert_allclose(infer_outs[0], infer_outs[-1][2:4])
 
 
 if __name__ == '__main__':
