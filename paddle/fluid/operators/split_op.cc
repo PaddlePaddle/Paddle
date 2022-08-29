@@ -21,7 +21,9 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+using framework::LoDTensor;
 using framework::Tensor;
+using framework::Variable;
 
 class SplitOp : public framework::OperatorWithKernel {
  public:
@@ -36,24 +38,18 @@ class SplitOp : public framework::OperatorWithKernel {
                       1UL,
                       platform::errors::InvalidArgument(
                           "Outputs(Out) of SplitOp should not be empty."));
-    auto in_dims = ctx->GetInputDim("X");
     auto outs_names = ctx->Outputs("Out");
-    size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
-    size_t num = static_cast<size_t>(ctx->Attrs().Get<int>("num"));
+    const size_t outs_number = outs_names.size();
+    int axis = static_cast<int>(ctx->Attrs().Get<int>("axis"));
+    int num = static_cast<int>(ctx->Attrs().Get<int>("num"));
     std::vector<int> sections = static_cast<std::vector<int>>(
         ctx->Attrs().Get<std::vector<int>>("sections"));
-    const size_t outs_number = outs_names.size();
 
-    if (sections.size() > 0) {
-      PADDLE_ENFORCE_EQ(
-          sections.size(),
-          outs_number,
-          platform::errors::InvalidArgument("tensor split sections size "
-                                            "should be equal to output size."));
-    }
-
-    if (ctx->HasInput("AxisTensor")) {
-      auto out_dims = phi::make_ddim(std::vector<int>(in_dims.size(), -1));
+    // Fill output dims with -1 in compile time
+    if (!ctx->IsRuntime() &&
+        (ctx->HasInput("AxisTensor") || ctx->HasInputs("SectionsTensorList"))) {
+      auto out_dims =
+          phi::make_ddim(std::vector<int>(ctx->GetInputDim("X").size(), -1));
       std::vector<framework::DDim> outs_dims(outs_number, out_dims);
       ctx->SetOutputsDim("Out", outs_dims);
       for (size_t i = 0; i < outs_number; ++i) {
@@ -62,22 +58,52 @@ class SplitOp : public framework::OperatorWithKernel {
       return;
     }
 
-    bool each_section_is_known =
-        (sections.size() > 0 && !ctx->HasInputs("SectionsTensorList"));
+    // Construct MetaTensor for InferMeta Func
+    using CompatMetaTensor = framework::CompatMetaTensor;
+    CompatMetaTensor x(ctx->GetInputVarPtrs("X")[0], ctx->IsRuntime());
+    std::vector<CompatMetaTensor> out;
+    size_t out_size = ctx->GetOutputVarPtrs("Out").size();
+    out.reserve(out_size);
+    for (size_t i = 0; i < out_size; i++) {
+      out.emplace_back(
+          CompatMetaTensor(ctx->GetOutputVarPtrs("Out")[i], ctx->IsRuntime()));
+    }
+    std::vector<phi::MetaTensor *> out_ptr(out_size);
+    for (size_t i = 0; i < out_size; i++) {
+      out_ptr[i] = &out[i];
+    }
+    phi::Scalar axis_final;
+    phi::IntArray sections_final;
+    // Construct axis_final
+    if (ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
+      Variable *var =
+          PADDLE_GET_CONST(Variable *, ctx->GetInputVarPtrs("AxisTensor")[0]);
+      axis_final = std::move(experimental::MakePhiScalarFromVar(*var));
+    } else {
+      axis_final = std::move(phi::Scalar(axis));
+    }
 
-    auto outs_dims = UpdateOutsDims(ctx->IsRuntime(),
-                                    each_section_is_known,
-                                    in_dims,
-                                    num,
-                                    sections,
-                                    axis,
-                                    outs_number);
-    ctx->SetOutputsDim("Out", outs_dims);
-    if (axis != 0) {
-      // Only pass LoD when not spliting along the first dim.
-      for (size_t i = 0; i < outs_number; ++i) {
-        ctx->ShareLoD("X", "Out", 0, i);
+    // Construct sections_final
+    if (ctx->IsRuntime() && ctx->HasInputs("SectionsTensorList")) {
+      int sections_tensor_list_size =
+          ctx->GetInputVarPtrs("SectionsTensorList").size();
+      const paddle::small_vector<framework::InferShapeVarPtr,
+                                 phi::kInputSmallVectorSize>
+          &sections_varptr_list = ctx->GetInputVarPtrs("SectionsTensorList");
+      std::vector<LoDTensor> sections_from_tensor;
+      sections_from_tensor.reserve(sections_tensor_list_size);
+      for (const auto &section_varptr : sections_varptr_list) {
+        Variable *var = PADDLE_GET_CONST(Variable *, section_varptr);
+        sections_from_tensor.emplace_back(var->Get<LoDTensor>());
       }
+      sections_final = std::move(phi::IntArray(sections_from_tensor));
+    } else {
+      sections_final = std::move(phi::IntArray(sections));
+    }
+    if (sections.size() > 0) {
+      phi::SplitInferMeta(x, sections_final, axis_final, out_ptr);
+    } else {
+      phi::SplitWithNumInferMeta(x, num, axis_final, out_ptr);
     }
   }
 

@@ -47,11 +47,9 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
   std::vector<MetaTensor*> out_meta_ptr;
   out_meta.reserve(out_number);
   out_meta_ptr.reserve(out_number);
-  std::vector<DenseTensor> result;
-  result.reserve(out_number);
+  std::vector<DenseTensor> result(out_number);
 
   for (size_t i = 0; i < out_number; ++i) {
-    result.emplace_back(DenseTensor());
     out_meta.emplace_back(&result.back());
     out_meta_ptr.push_back(&out_meta.back());
   }
@@ -79,11 +77,9 @@ std::vector<DenseTensor> SplitWithNum(const Context& dev_ctx,
   std::vector<MetaTensor*> out_meta_ptr;
   out_meta.reserve(out_number);
   out_meta_ptr.reserve(out_number);
-  std::vector<DenseTensor> result;
-  result.reserve(out_number);
+  std::vector<DenseTensor> result(out_number);
 
   for (size_t i = 0; i < out_number; ++i) {
-    result.emplace_back(DenseTensor());
     out_meta.emplace_back(&result.back());
     out_meta_ptr.push_back(&out_meta.back());
   }
