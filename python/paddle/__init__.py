@@ -36,6 +36,7 @@ from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
 from .fluid.dataset import *  # noqa: F401
+from .fluid.lazy_init import LazyInit  # noqa: F401
 
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
@@ -109,6 +110,7 @@ from .tensor.creation import assign  # noqa: F401
 from .tensor.creation import complex  # noqa: F401
 from .tensor.creation import clone  # noqa: F401
 from .tensor.creation import tril_indices  #noqa: F401
+from .tensor.creation import triu_indices  #noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -415,6 +417,7 @@ __all__ = [  # noqa
     'cumprod',
     'logcumsumexp',
     'logit',
+    'LazyInit',
     'sign',
     'is_empty',
     'equal',
@@ -652,4 +655,5 @@ __all__ = [  # noqa
     'heaviside',
     'tril_indices',
     'sgn',
+    'triu_indices',
 ]

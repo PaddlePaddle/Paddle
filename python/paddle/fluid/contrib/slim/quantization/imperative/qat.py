@@ -42,13 +42,27 @@ _logger = get_logger(__name__,
                      fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
+def lazy_import_fleet(layer_name_map, fake_quant_input_layers):
+    from paddle.distributed import fleet
+    layer_name_map[
+        'ColumnParallelLinear'] = fleet.meta_parallel.parallel_layers.mp_layers.ColumnParallelLinear
+    layer_name_map[
+        'RowParallelLinear'] = fleet.meta_parallel.parallel_layers.mp_layers.RowParallelLinear
+    fake_quant_input_layers.append(fleet.meta_parallel.RowParallelLinear)
+    fake_quant_input_layers.append(fleet.meta_parallel.ColumnParallelLinear)
+    return layer_name_map, fake_quant_input_layers
+
+
 class ImperativeQuantAware(object):
     """
     Applying quantization aware training (QAT) to the dgraph model.
     """
 
     def __init__(self,
-                 quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
+                 quantizable_layer_type=[
+                     'Conv2D', 'Linear', 'Conv2DTranspose',
+                     'ColumnParallelLinear', 'RowParallelLinear'
+                 ],
                  weight_quantize_type='abs_max',
                  activation_quantize_type='moving_average_abs_max',
                  weight_bits=8,
@@ -297,13 +311,15 @@ class ImperativeQuantizeInputs(object):
         Please refer to the args of ImperativeQuantAware.
         """
         super(ImperativeQuantizeInputs, self).__init__()
+        self.layer_name_map, self.fake_quant_input_layers = lazy_import_fleet(
+            utils.layer_name_map, utils.fake_quant_input_layers)
 
         self._quantizable_layer_type = tuple(
-            utils.layer_name_map[layer] if layer in
-            utils.layer_name_map else layer for layer in quantizable_layer_type)
+            self.layer_name_map[layer] if layer in
+            self.layer_name_map else layer for layer in quantizable_layer_type)
         for layer in self._quantizable_layer_type:
             assert not isinstance(layer, str) \
-                and layer in utils.fake_quant_input_layers, \
+                and layer in self.fake_quant_input_layers, \
                 "%s is unspported to be quantized." % layer
 
         quantize_type = {
@@ -380,7 +396,7 @@ class ImperativeQuantizeInputs(object):
     def _get_input_quantized_layer(self, layer):
         quant_layer_name = None
 
-        for key, value in utils.layer_name_map.items():
+        for key, value in self.layer_name_map.items():
             if isinstance(layer, value):
                 quant_layer_name = 'Quantized' + key
                 break
@@ -431,12 +447,14 @@ class ImperativeQuantizeOutputs(object):
             parent_layer, sub_name = \
                 utils.find_parent_layer_and_sub_name(model, cur_name)
 
+            reduce_type = None
+
             if isinstance(cur_layer, tuple(utils.fake_quant_output_layers)):
                 cur_quant_layer = quant_layers.FakeQuantMAOutputScaleLayer(
-                    cur_layer, self._moving_rate)
+                    cur_layer, self._moving_rate, reduce_type=reduce_type)
             else:
                 cur_quant_layer = quant_layers.MAOutputScaleLayer(
-                    cur_layer, self._moving_rate)
+                    cur_layer, self._moving_rate, reduce_type=reduce_type)
 
             setattr(parent_layer, sub_name, cur_quant_layer)
 

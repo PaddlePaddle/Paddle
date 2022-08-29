@@ -18,7 +18,7 @@ import unittest
 import paddle.fluid as fluid
 import numpy as np
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -44,7 +44,7 @@ class MyLayer(fluid.Layer):
 
     def forward(self, x):
         for i, p in enumerate(self.params):
-            x = _C_ops.mul(x, p)
+            x = _legacy_C_ops.mul(x, p)
         return x
 
 

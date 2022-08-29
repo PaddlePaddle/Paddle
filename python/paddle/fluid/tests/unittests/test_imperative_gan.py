@@ -231,12 +231,12 @@ class TestDygraphGAN(unittest.TestCase):
         self.assertEqual(dy_g_loss, static_g_loss)
         self.assertEqual(dy_d_loss, static_d_loss)
         for k, v in six.iteritems(dy_params):
-            self.assertTrue(np.allclose(v, static_params[k]))
+            np.testing.assert_allclose(v, static_params[k], rtol=1e-05)
 
         self.assertEqual(dy_g_loss2, static_g_loss)
         self.assertEqual(dy_d_loss2, static_d_loss)
         for k, v in six.iteritems(dy_params2):
-            self.assertTrue(np.allclose(v, static_params[k]))
+            np.testing.assert_allclose(v, static_params[k], rtol=1e-05)
 
     def test_gan_float32(self):
         with _test_eager_guard():

@@ -301,7 +301,7 @@ for stype in support_types:
     create_test_class(globals(),
                       XPUTestHuberLossOp,
                       stype,
-                      ignore_deivce_version=[core.XPUVersion.XPU1])
+                      ignore_device_version=[core.XPUVersion.XPU1])
 
 if __name__ == '__main__':
     unittest.main()

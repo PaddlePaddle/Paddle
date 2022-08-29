@@ -17,6 +17,9 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/version.h"
+#ifdef PADDLE_WITH_CRYPTO
+#include "paddle/fluid/framework/io/crypto/sha.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -247,6 +250,20 @@ void ProgramDesc::SetFetchHolderName(const std::string &fetch_holder_name) {
   auto *fetch_holder = global_block->Var(fetch_holder_name);
   fetch_holder->SetType(proto::VarType::FETCH_LIST);
   fetch_holder->SetPersistable(true);
+}
+
+std::string ProgramDesc::CachedHashString() {
+  std::string serialize_str;
+  if (cached_hash_str_.size() == 0 || NeedUpdate()) {
+    Flush();
+    desc_.SerializePartialToString(&serialize_str);
+#ifdef PADDLE_WITH_CRYPTO
+    cached_hash_str_ = HexEncoding(GetSha1(serialize_str));
+#else
+    cached_hash_str_ = serialize_str;
+#endif
+  }
+  return cached_hash_str_;
 }
 
 bool ProgramDesc::NeedUpdate() const {
