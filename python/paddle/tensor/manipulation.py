@@ -4448,13 +4448,8 @@ def index_add(x, index, axis, value, name=None):
     """
     _index_add_params_check(x, index, axis, value)
 
-    if _non_static_mode():
-        # todo(@limin29): add final_state_index_add support.
-        # if in_dygraph_mode():
-        #     return _C_ops.final_state_index_add(x, index, axis, value)
-        # if _in_legacy_dygraph():
-        #     return _C_ops.index_add(x, index, value, "axis", axis)
-        return _C_ops.index_add(x, index, value, "axis", axis)
+    if in_dygraph_mode():
+        return _C_ops.index_add(x, index, value, axis)
 
     helper = LayerHelper("index_add", **locals())
     check_variable_and_dtype(
@@ -4502,7 +4497,7 @@ def index_add_(x, index, axis, value, name=None):
     """
 
     _index_add_params_check(x, index, axis, value)
-    return _C_ops.index_add_(x, index, value, "axis", axis)
+    return _C_ops.index_add_(x, index, value, axis)
 
 
 # TODO(dev): We need avoid implementing it by this way.

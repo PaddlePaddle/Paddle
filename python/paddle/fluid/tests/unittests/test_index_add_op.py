@@ -53,9 +53,14 @@ def compute_index_add_ref(axis, x_shape, x_np, add_value_shape, add_value_np,
     return ref_out
 
 
+def raw_index_add(x, index, value, axis):
+    return paddle.index_add(x, index, axis, value)
+
+
 class TestIndexAddOp(OpTest):
 
     def setUp(self):
+        self.python_api = raw_index_add
         self.op_type = "index_add"
         self.init_dtype_type()
         index_np = np.random.randint(low=0,
@@ -81,10 +86,10 @@ class TestIndexAddOp(OpTest):
         self.add_value_shape = (3, 3)
 
     def test_check_output(self):
-        self.check_output(check_eager=False, atol=1e-2)
+        self.check_output(check_eager=True, atol=1e-2)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'AddValue'], 'Out', check_eager=False)
+        self.check_grad(['X', 'AddValue'], 'Out', check_eager=True)
 
 
 class TestIndexAddAPI(unittest.TestCase):
