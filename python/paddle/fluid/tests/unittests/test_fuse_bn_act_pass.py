@@ -83,7 +83,7 @@ class TestFuseBatchNormActPass(unittest.TestCase):
                 loss_v = exe.run(binary,
                                  feed=feeder.feed(data),
                                  fetch_list=[loss])
-                loss_vals.append(loss_v[0])
+                loss_vals.append(loss_v[0][0])
 
         # open fused_bn_act_ops
         build_strategy_fused = fluid.BuildStrategy()
@@ -101,7 +101,7 @@ class TestFuseBatchNormActPass(unittest.TestCase):
                 loss_v = exe.run(binary_fused,
                                  feed=feeder.feed(data),
                                  fetch_list=[loss])
-                loss_vals_fused.append(loss_v[0])
+                loss_vals_fused.append(loss_v[0][0]-0)
 
         # check loss
         for i in range(iters):

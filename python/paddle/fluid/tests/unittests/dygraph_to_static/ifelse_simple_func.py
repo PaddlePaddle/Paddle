@@ -161,7 +161,7 @@ def nested_if_else(x_v):
         if y.numpy()[0] < 10:
             tmp = y * w
             y = fluid.layers.relu(tmp)
-            if paddle.mean(y).numpy()[0] < batch_size:
+            if paddle.mean(y).numpy() < batch_size:
                 y = fluid.layers.abs(y)
             else:
                 tmp = fluid.layers.fill_constant([feat_size],
@@ -286,7 +286,7 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
 
 def if_with_and_or(x_v, label=None):
     batch_size = fluid.layers.shape(x_v)
-    if x_v is not None and (paddle.mean(x_v).numpy().item() > 0 or label
+    if x_v is not None and (paddle.mean(x_v).numpy() > 0 or label
                             is not None) and batch_size[0] > 1 and True:
         x_v = x_v - 1
     else:

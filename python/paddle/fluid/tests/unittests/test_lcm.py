@@ -77,8 +77,8 @@ class TestLcmAPI2(TestLcmAPI):
 class TestLcmAPI3(TestLcmAPI):
 
     def setUp(self):
-        self.x_np = 0
-        self.y_np = 20
+        self.x_np = [0]
+        self.y_np = [20]
         self.x_shape = [1]
         self.y_shape = [1]
 
@@ -86,8 +86,8 @@ class TestLcmAPI3(TestLcmAPI):
 class TestLcmAPI4(TestLcmAPI):
 
     def setUp(self):
-        self.x_np = 0
-        self.y_np = 0
+        self.x_np = [0]
+        self.y_np = [0]
         self.x_shape = [1]
         self.y_shape = [1]
 
@@ -95,7 +95,7 @@ class TestLcmAPI4(TestLcmAPI):
 class TestLcmAPI5(TestLcmAPI):
 
     def setUp(self):
-        self.x_np = 12
-        self.y_np = -20
+        self.x_np = [12]
+        self.y_np = [-20]
         self.x_shape = [1]
         self.y_shape = [1]

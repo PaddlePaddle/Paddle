@@ -101,7 +101,7 @@ class TestFeedData(unittest.TestCase):
                                                         use_parallel_executor)
                 self.assertEqual(
                     str(dtype_mismatch_err.exception),
-                    "The data type of fed Variable %r must be 'int64', but "
+                    "The data type of feed Variable %r must be 'int64', but "
                     "received 'float64'" % (u'label'))
 
     def _test_feed_data_dtype_mismatch(self, use_cuda, use_parallel_executor):
