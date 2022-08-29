@@ -871,7 +871,7 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
-    "PADDLE_DIST_UT_PORT=21300;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21380;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_auto_checkpoint PROPERTIES TIMEOUT "200")
 endif()
@@ -883,7 +883,7 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
-    "PADDLE_DIST_UT_PORT=21302;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21382;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_auto_checkpoint1 PROPERTIES TIMEOUT "200")
 endif()
@@ -895,7 +895,7 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
-    "PADDLE_DIST_UT_PORT=21304;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21384;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_auto_checkpoint2 PROPERTIES TIMEOUT "200")
 endif()
@@ -907,7 +907,7 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
-    "PADDLE_DIST_UT_PORT=21306;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21386;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_auto_checkpoint3 PROPERTIES TIMEOUT "200")
 endif()
@@ -919,7 +919,7 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
-    "PADDLE_DIST_UT_PORT=21308;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21388;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_auto_checkpoint_multiple PROPERTIES TIMEOUT "200")
 endif()
@@ -931,7 +931,7 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
-    "PADDLE_DIST_UT_PORT=21310;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21390;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_auto_checkpoint_dist_basic PROPERTIES TIMEOUT "200")
 endif()
@@ -943,7 +943,7 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
-    "PADDLE_DIST_UT_PORT=21312;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21392;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_hdfs1 PROPERTIES TIMEOUT "200")
 endif()
@@ -955,7 +955,7 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
-    "PADDLE_DIST_UT_PORT=21314;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21394;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_hdfs2 PROPERTIES TIMEOUT "200")
 endif()
@@ -967,7 +967,7 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
-    "PADDLE_DIST_UT_PORT=21316;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21396;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_hdfs3 PROPERTIES TIMEOUT "200")
 endif()

@@ -192,13 +192,15 @@ def gset_port(test_name, port):
 
 
 def process_dist_port_num(port_num):
-    assert re.compile("^[0-9]*$").search(port_num), \
-        f"""port_num must be foramt as an integer or empty, but this port_num is '{port_num}'"""
+    assert re.compile("^[0-9]+$").search(port_num) and int(port_num) > 0 or port_num.strip()=="", \
+        f"""port_num must be foramt as a positive integer or empty, but this port_num is '{port_num}'"""
     port_num = port_num.strip()
     if len(port_num) == 0:
-        port_num = "0"
-    port = DIST_UT_PORT + int(port_num)
+        return 0
+    global DIST_UT_PORT
+    port = DIST_UT_PORT
     assert port < 23000, "dist port is exhausted"
+    DIST_UT_PORT += int(port_num)
     return port
 
 
@@ -280,6 +282,9 @@ endif()
 
 PROCESSED_DIR = set()
 
+LAST_TEST_NAME = ""
+LAST_TEST_CMAKE_FILE = ""
+
 
 def init_dist_ut_ports_from_cmakefile(cmake_file_name):
     '''
@@ -303,6 +308,10 @@ def init_dist_ut_ports_from_cmakefile(cmake_file_name):
                     at line {k-1}, in file {cmake_file_name}
                     '''
                 gset_port(name, port)
+                if ASSIGNED_PORTS[name] == DIST_UT_PORT:
+                    global LAST_TEST_CMAKE_FILE, LAST_TEST_NAME
+                    LAST_TEST_NAME = name
+                    LAST_TEST_CMAKE_FILE = cmake_file_name
 
 
 NO_CMAKE_DIR_WARNING = []
@@ -320,17 +329,34 @@ def parse_assigned_dist_ut_ports(current_work_dir, ignores, depth=0):
     contents = os.listdir(current_work_dir)
     cmake_file = os.path.join(current_work_dir, "CMakeLists.txt")
     csv = cmake_file.replace("CMakeLists.txt", 'testslist.csv')
-    if os.path.isfile(csv):
+    if os.path.isfile(csv) or os.path.isfile(cmake_file):
         if current_work_dir not in ignores:
-            if os.path.isfile(cmake_file):
+            if os.path.isfile(cmake_file) and os.path.isfile(csv):
                 init_dist_ut_ports_from_cmakefile(cmake_file)
-            else:
+            elif not os.path.isfile(cmake_file):
                 NO_CMAKE_DIR_WARNING.append(current_work_dir)
         for c in contents:
             c_path = os.path.join(current_work_dir, c)
             if os.path.isdir(c_path):
+                print("parsed ", c_path)
                 parse_assigned_dist_ut_ports(c_path, ignores, depth + 1)
     if depth == 0:
+        print("LAST_TEST_NAME:", LAST_TEST_NAME)
+        if len(LAST_TEST_NAME) > 0 and len(LAST_TEST_CMAKE_FILE) > 0:
+            with open(
+                    LAST_TEST_CMAKE_FILE.replace("CMakeLists.txt",
+                                                 "testslist.csv")) as csv_file:
+                found = False
+                for line in csv_file.readlines():
+                    name, _, _, _, _, launcher, num_port, _, _, _ = line.strip(
+                    ).split(",")
+                    if name == LAST_TEST_NAME:
+                        found = True
+                        break
+            assert found, f"no such test named '{LAST_TEST_NAME}' in file '{LAST_TEST_CMAKE_FILE}'"
+            if launcher[-2:] == ".sh":
+                process_dist_port_num(num_port)
+
         err_msg = f"""==================[No Old CMakeLists.txt Error]==================================
     Following directories has no CmakeLists.txt files:
 """
@@ -441,7 +467,16 @@ if __name__ == "__main__":
         current_work_dirs = current_work_dirs + [d for d in args.dirpaths]
 
     for c in current_work_dirs:
-        c = os.path.abspath(c)
+        # c = os.path.abspath(c)
+        while True:
+            print(c)
+            dirpath = os.path.dirname(c)
+            cmake = os.path.join(dirpath, "CMakeLists.txt")
+            csv = os.path.join(dirpath, "testslist.csv.txt")
+            if not (os.path.isfile(cmake) or os.path.isfile(csv)):
+                break
+            c = os.path.abspath(dirpath)
+        print("=============>>>>>>", c)
         parse_assigned_dist_ut_ports(c, ignores=args.ignore_cmake_dirs, depth=0)
 
     PROCESSED_DIR.clear()
