@@ -305,23 +305,47 @@ def init_dist_ut_ports_from_cmakefile(cmake_file_name):
                 gset_port(name, port)
 
 
-def parse_assigned_dist_ut_ports(current_work_dir):
+NO_CMAKE_DIR_WARNING = []
+
+
+def parse_assigned_dist_ut_ports(current_work_dir, ignores, depth=0):
     '''
     get all assigned dist ports to keep port of unmodified test fixed.
     '''
     if current_work_dir in PROCESSED_DIR:
         return
+    if depth == 0:
+        ignores = [os.path.abspath(i) for i in ignores]
     PROCESSED_DIR.add(current_work_dir)
     contents = os.listdir(current_work_dir)
     cmake_file = os.path.join(current_work_dir, "CMakeLists.txt")
-    if os.path.isfile(cmake_file):
-        csv = cmake_file.replace("CMakeLists.txt", 'testslist.csv')
-        if os.path.isfile(csv):
-            init_dist_ut_ports_from_cmakefile(cmake_file)
+    csv = cmake_file.replace("CMakeLists.txt", 'testslist.csv')
+    if os.path.isfile(csv):
+        if current_work_dir not in ignores:
+            if os.path.isfile(cmake_file):
+                init_dist_ut_ports_from_cmakefile(cmake_file)
+            else:
+                NO_CMAKE_DIR_WARNING.append(current_work_dir)
         for c in contents:
             c_path = os.path.join(current_work_dir, c)
             if os.path.isdir(c_path):
-                parse_assigned_dist_ut_ports(c_path)
+                parse_assigned_dist_ut_ports(c_path, ignores, depth + 1)
+    if depth == 0:
+        err_msg = f"""==================[No Old CMakeLists.txt Error]==================================
+    Following directories has no CmakeLists.txt files:
+"""
+        for c in NO_CMAKE_DIR_WARNING:
+            err_msg += "   " + c + "\n"
+        err_msg += """
+      This may cause the dist ports different with the old version.
+      If the directories are newly created or there is no CMakeLists.txt before, or ignore this error, you
+    must specify the directories using the args option --ignore-cmake-dirs/-i.
+      If you want to keep the dist ports of old tests unchanged, please ensure the old
+    verson CMakeLists.txt file existing before using the gen_ut_cmakelists tool to 
+    generate new CmakeLists.txt files.
+====================================================================================
+"""
+        assert len(NO_CMAKE_DIR_WARNING) == 0, err_msg
 
 
 def gen_cmakelists(current_work_dir):
@@ -391,6 +415,16 @@ if __name__ == "__main__":
         help=
         "Input a list of dir paths including files named testslist.csv and output CmakeLists.txt in these directories respectly"
     )
+    parser.add_argument(
+        "--ignore-cmake-dirs",
+        '-i',
+        type=str,
+        required=False,
+        default=[],
+        nargs='*',
+        help=
+        "To keep dist ports the same with old version cmake, old cmakelists.txt files are needed to parse dist_ports. If a directories are newly created and there is no cmakelists.txt file, the directory path must be specified by this option. The dirs are not recursive."
+    )
     args = parser.parse_args()
 
     assert not (len(args.files) == 0 and len(args.dirpaths)
@@ -408,7 +442,7 @@ if __name__ == "__main__":
 
     for c in current_work_dirs:
         c = os.path.abspath(c)
-        parse_assigned_dist_ut_ports(c)
+        parse_assigned_dist_ut_ports(c, ignores=args.ignore_cmake_dirs, depth=0)
 
     PROCESSED_DIR.clear()
     for c in current_work_dirs:
