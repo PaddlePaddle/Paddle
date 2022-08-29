@@ -71,3 +71,13 @@ test_dygraph_recompute,,GPU;ROCM,,DIST,test_runner.py,2,1,http_proxy=;https_prox
 test_dygraph_recompute_for_eager,,GPU;ROCM,,DIST,test_runner.py,2,1,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_dist_mnist_dgc_nccl,,,,DIST,../../dist_test.sh,2,1,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_NCCL OR WITH_RCCL;WITH_DGC
 test_dist_se_resnext_dgc,,,,DIST,../../dist_test.sh,2,1,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_NCCL OR WITH_RCCL;WITH_DGC
+test_auto_checkpoint,linux,,200,EXCLUSIVE:NIGHTLY,../../dist_test.sh,2,1,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_auto_checkpoint1,linux,,200,EXCLUSIVE:NIGHTLY,../../dist_test.sh,2,1,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_auto_checkpoint2,linux,,200,EXCLUSIVE:NIGHTLY,../../dist_test.sh,2,1,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_auto_checkpoint3,linux,,200,EXCLUSIVE:NIGHTLY,../../dist_test.sh,2,1,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_auto_checkpoint_multiple,linux,,200,EXCLUSIVE:NIGHTLY,../../dist_test.sh,2,1,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_auto_checkpoint_dist_basic,linux,,200,EXCLUSIVE:NIGHTLY,../../dist_test.sh,2,1,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_hdfs1,linux,,200,EXCLUSIVE:NIGHTLY,../../dist_test.sh,2,1,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_hdfs2,linux,,200,EXCLUSIVE:NIGHTLY,../../dist_test.sh,2,1,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_hdfs3,linux,,200,EXCLUSIVE:NIGHTLY,../../dist_test.sh,2,1,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_fleet_checkpoint,linux,,200,EXCLUSIVE:NIGHTLY,test_runner.py,2,1,http_proxy=;https_proxy=;PYTHONPATH=../..,
