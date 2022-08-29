@@ -16,22 +16,19 @@ limitations under the License. */
 
 namespace phi {
 
-void CheckTensor(const DenseTensor& t1, const DenseTensor& t2) {
-  PADDLE_ENFORCE_EQ(
-      t1.meta(),
-      t2.meta(),
-      phi::errors::PreconditionNotMet(
-          "All tensor's meta must be same in TensorArray. "
-          "But different tensors' meta are detected in TensorArray."));
-}
-
 TensorArray::TensorArray(const std::vector<DenseTensor>& vec) {
+  bool has_same_meta = true;
   if (vec.size() > 0) {
     for (auto tensor : vec) {
-      CheckTensor(vec[0], tensor);
+      if (!(tensor.meta() == vec[0].meta())) {
+        has_same_meta = false;
+        break;
+      }
     }
-    meta_ = vec[0].meta();
-    place_ = vec[0].place();
+    if (has_same_meta) {
+      meta_ = vec[0].meta();
+      place_ = vec[0].place();
+    }
   }
   tensors_ = vec;
 }
@@ -60,8 +57,11 @@ void* TensorArray::AllocateFrom(Allocator* allocator,
 }
 
 void TensorArray::push_back(const DenseTensor& tensor) {
+  DenseTensorMeta init_meta;
   if (!empty()) {
-    CheckTensor(tensors_[0], tensor);
+    if (!(tensor.meta() == meta_) && !(meta_ == init_meta)) {
+      meta_ = init_meta;
+    }
   } else {
     meta_ = tensor.meta();
     if (tensor.IsInitialized()) {
@@ -72,8 +72,11 @@ void TensorArray::push_back(const DenseTensor& tensor) {
 }
 
 void TensorArray::emplace_back(const DenseTensor& tensor) {
+  DenseTensorMeta init_meta;
   if (!empty()) {
-    CheckTensor(tensors_[0], tensor);
+    if (!(tensor.meta() == meta_) && !(meta_ == init_meta)) {
+      meta_ = init_meta;
+    }
   } else {
     meta_ = tensor.meta();
     if (tensor.IsInitialized()) {
@@ -85,7 +88,6 @@ void TensorArray::emplace_back(const DenseTensor& tensor) {
 
 void TensorArray::emplace_back() {
   DenseTensor t;
-  t.set_meta(meta_);
   tensors_.emplace_back(t);
 }
 

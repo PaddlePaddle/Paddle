@@ -127,6 +127,8 @@ class TensorArray : public TensorBase,
 
  private:
   std::vector<DenseTensor> tensors_;
+  // meta_ store the tensor's meta if all tensors in TensorArray have same meta.
+  // Otherwise, it stores default initial value.
   DenseTensorMeta meta_;
   Place place_;
 };
