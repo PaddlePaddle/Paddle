@@ -27,7 +27,7 @@ if(WITH_MULTINODE_TESTING)
       LABELS
       "RUN_TYPE=DIST"
       ENVS
-      "PADDLE_DIST_UT_PORT=21284;http_proxy=;https_proxy=")
+      "PADDLE_DIST_UT_PORT=21290;http_proxy=;https_proxy=")
     set_tests_properties(test_multinode_dygraph_hybrid_dp
                          PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
   endif()
@@ -41,7 +41,7 @@ if(WITH_MULTINODE_TESTING)
       LABELS
       "RUN_TYPE=DIST"
       ENVS
-      "PADDLE_DIST_UT_PORT=21286;http_proxy=;https_proxy=")
+      "PADDLE_DIST_UT_PORT=21298;http_proxy=;https_proxy=")
     set_tests_properties(test_multinode_dygraph_sharding
                          PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
   endif()

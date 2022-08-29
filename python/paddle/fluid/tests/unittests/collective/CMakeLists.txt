@@ -42,7 +42,7 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21288;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy="
+    "PADDLE_DIST_UT_PORT=21306;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy="
   )
   set_tests_properties(test_collective_split_embedding PROPERTIES TIMEOUT "300"
                                                                   RUN_SERIAL 1)
@@ -84,7 +84,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21290;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21308;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_collective_alltoall_single PROPERTIES TIMEOUT "350"
                                                                   RUN_SERIAL 1)
@@ -104,7 +104,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21292;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21310;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_collective_batch_isend_irecv
                        PROPERTIES TIMEOUT "350" RUN_SERIAL 1)
@@ -153,7 +153,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21294;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21312;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_collective_process_group PROPERTIES TIMEOUT "350"
                                                                 RUN_SERIAL 1)
@@ -180,7 +180,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21296;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21314;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_collective_reduce_scatter PROPERTIES TIMEOUT "350"
                                                                  RUN_SERIAL 1)
@@ -268,7 +268,7 @@ if((WITH_GPU
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21298;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21316;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_gen_nccl_id_op PROPERTIES RUN_SERIAL 1)
 endif()

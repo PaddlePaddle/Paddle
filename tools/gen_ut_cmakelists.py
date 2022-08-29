@@ -135,7 +135,7 @@ def process_run_serial(run_serial):
     assert rs in ["1", "0", ""], \
         f"""the value of run_serial must be one of 0, 1 or empty. But this value is {rs}"""
     if rs == "":
-        rs = "0"
+        return ""
     return rs
 
 
@@ -178,10 +178,15 @@ def process_run_type(run_type):
 DIST_UT_PORT = 21200
 
 
-def process_dist_ut_port(port_num):
+def process_dist_port_num(port_num):
+    assert re.compile("^[0-9]*$").search(port_num), \
+        f"""port_num must be foramt as an integer or empty, but this port_num is '{port_num}'"""
+    port_num = port_num.strip()
+    if len(port_num) == 0:
+        port_num = "0"
     global DIST_UT_PORT
     port = DIST_UT_PORT
-    assert port < 23000, "dist port is exahausted"
+    assert port < 23000, "dist port is exhausted"
     DIST_UT_PORT += int(port_num)
     return port
 
@@ -204,7 +209,7 @@ def parse_line(line, curdir):
             endif()"
     """
 
-    name, os_, archs, timeout, run_type, launcher, dist_ut_port, run_serial, envs, conditions = line.strip(
+    name, os_, archs, timeout, run_type, launcher, num_port, run_serial, envs, conditions = line.strip(
     ).split(",")
 
     # name == "name" means the line being parsed is the header of the table
@@ -225,9 +230,8 @@ def parse_line(line, curdir):
     for c in conditions:
         cmd += f"if ({c})\n"
 
-    time_out_str = f'TIMEOUT "{timeout}"' if len(timeout.strip()) > 0 else ''
     if launcher[-3:] == ".sh":
-        dist_ut_port = process_dist_ut_port(2)
+        dist_ut_port = process_dist_port_num(num_port)
         cmd += f'''if({archs} AND {os_})
     bash_test_modules(
     {name}
@@ -236,8 +240,7 @@ def parse_line(line, curdir):
     LABELS
     "RUN_TYPE={run_type}"
     ENVS
-    "PADDLE_DIST_UT_PORT={dist_ut_port};{envs}")
-    set_tests_properties({name} PROPERTIES  {time_out_str} RUN_SERIAL {run_serial})
+    "PADDLE_DIST_UT_PORT={dist_ut_port};{envs}")%s
 endif()
 '''
     else:
@@ -247,10 +250,17 @@ endif()
     MODULES
     {name}
     ENVS
-    "{envs}")
-    set_tests_properties({name} PROPERTIES {time_out_str} RUN_SERIAL {run_serial})
+    "{envs}")%s
 endif()
 '''
+    time_out_str = f' TIMEOUT "{timeout}"' if len(timeout.strip()) > 0 else ''
+    run_serial_str = f' RUN_SERIAL {run_serial}' if len(run_serial) > 0 else ''
+    if len(time_out_str) > 0 or len(run_serial_str) > 0:
+        set_properties = f'''
+    set_tests_properties({name} PROPERTIES{time_out_str}{run_serial_str})'''
+    else:
+        set_properties = ""
+    cmd = cmd % set_properties
     for _ in conditions:
         cmd += f"endif()\n"
     return cmd
@@ -265,6 +275,7 @@ def gen_cmakelists(current_work_dir):
         current_work_dir = "."
 
     contents = os.listdir(current_work_dir)
+    contents.sort()
     sub_dirs = []
     for c in contents:
         c_path = os.path.join(current_work_dir, c)
