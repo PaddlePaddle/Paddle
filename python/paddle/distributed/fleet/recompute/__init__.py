@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .recompute import recompute, recompute_sequential, swith_rng_state_tracker, check_recompute_necessary, detach_variable
+from .recompute import recompute, recompute_sequential
 from .recompute_hybrid import recompute_hybrid
 
-__all__ = [
-    "recompute", "recompute_sequential", "recompute_hybrid",
-    "swith_rng_state_tracker", "check_recompute_necessary", "detach_variable"
-]
+__all__ = ["recompute", "recompute_sequential", "recompute_hybrid"]
