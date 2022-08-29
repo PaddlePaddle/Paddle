@@ -46,7 +46,7 @@ import numbers
 import warnings
 from ...framework import no_grad
 from .. import functional as F
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from .. import Layer
 from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
@@ -411,15 +411,14 @@ class GroupNorm(Layer):
             dtype=input.dtype, stop_gradient=True)
 
         if in_dygraph_mode():
-            pre_act = _C_ops.final_state_group_norm(input, self.weight,
-                                                    self.bias, self._epsilon,
-                                                    self._num_groups, "NCHW")
+            pre_act = _C_ops.group_norm(input, self.weight, self.bias,
+                                        self._epsilon, self._num_groups, "NCHW")
 
             return dygraph_utils._append_activation_in_dygraph(pre_act,
                                                                act=None)
 
         elif _in_legacy_dygraph():
-            pre_act, _, _ = _C_ops.group_norm(
+            pre_act, _, _ = _legacy_C_ops.group_norm(
                 input,
                 self.weight,
                 self.bias,
@@ -1109,7 +1108,7 @@ class SyncBatchNorm(_BatchNormBase):
         ### train mode: use mini-batch stats, eval mode: use global stats
         ### use_global_stats only support False in sync_batch_norm
         if in_dygraph_mode():
-            sync_batch_norm_out, _, _, _, _, _ = _C_ops.final_state_sync_batch_norm_(
+            sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
                 x, self.weight, self.bias, self._mean, self._variance,
                 self._momentum, self._epsilon, self._data_format,
                 not self.training, False, False, False)
@@ -1121,7 +1120,7 @@ class SyncBatchNorm(_BatchNormBase):
                      self._data_format, "use_mkldnn", False, "fuse_with_relu",
                      False, "use_global_stats", False, 'trainable_statistics',
                      False)
-            sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm(
+            sync_batch_norm_out, _, _, _, _, _ = _legacy_C_ops.sync_batch_norm(
                 x, self.weight, self.bias, self._mean, self._variance, mean_out,
                 variance_out, *attrs)
             return sync_batch_norm_out

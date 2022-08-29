@@ -99,6 +99,7 @@ paddle.enable_static()
          (randn(2, 3) > 0, randn(2, 3), randn(2, 3)), {}, (2, 3), 'float64'),
         ('eq', primops.eq, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'bool'),
         ('pow', primops.pow, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'float64'),
+        ('max', primops.max, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'float64'),
     ))
 class TestPrimops(unittest.TestCase):
 

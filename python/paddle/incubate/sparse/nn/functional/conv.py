@@ -14,7 +14,7 @@
 
 __all__ = []
 
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.fluid.layers.utils import convert_to_list
 from paddle.fluid.layers.nn import elementwise_add
 from ...creation import sparse_coo_tensor
@@ -64,9 +64,9 @@ def _conv3d(x,
     dilation = convert_to_list(dilation, dims, 'dilation')
     op_type = "conv3d"
 
-    pre_bias = _C_ops.final_state_sparse_conv3d(x, weight, padding, dilation,
-                                                stride, groups, subm,
-                                                key if key is not None else "")
+    pre_bias = _C_ops.sparse_conv3d(x, weight, padding, dilation, stride,
+                                    groups, subm,
+                                    key if key is not None else "")
     if bias is not None:
         values = pre_bias.values()
         add_bias = elementwise_add(values, bias, axis=1)

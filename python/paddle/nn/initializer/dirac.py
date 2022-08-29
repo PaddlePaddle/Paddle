@@ -18,7 +18,7 @@ from ...fluid.core import VarDesc
 from ...fluid import framework
 from ...fluid.framework import _current_expected_place, _non_static_mode
 from paddle.utils import unique_name
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from ... import fluid
 
 __all__ = []
@@ -131,8 +131,8 @@ class Dirac(Initializer):
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
                 place = _current_expected_place()
-                _C_ops.final_state_full_(out_var, out_var.shape, str(float(0)),
-                                         out_var.dtype, place)
+                _C_ops.full_(out_var, out_var.shape, str(float(0)),
+                             out_var.dtype, place)
 
         else:
             block.append_op(type='fill_constant',
@@ -170,7 +170,7 @@ class Dirac(Initializer):
                 idx_list.append(offset)
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                tmp_out, _ = _C_ops.reshape2(out_var, None, 'shape', [-1])
+                tmp_out = _C_ops.reshape(out_var, [-1])
                 tmp_out._share_underline_tensor_to(out_var)
         else:
             x_shape = block.create_var(name=unique_name.generate(".".join(
@@ -197,9 +197,9 @@ class Dirac(Initializer):
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
                 tmp_tensor = framework._varbase_creator()
-                _C_ops.assign_value(tmp_tensor, 'shape', [len(idx_list)],
-                                    'dtype', VarDesc.VarType.INT64,
-                                    'int64_values', idx_list)
+                _legacy_C_ops.assign_value(tmp_tensor, 'shape', [len(idx_list)],
+                                           'dtype', VarDesc.VarType.INT64,
+                                           'int64_values', idx_list)
                 tmp_tensor._share_underline_tensor_to(index_tensor)
         else:
             block.append_op(type='assign_value',
@@ -219,9 +219,10 @@ class Dirac(Initializer):
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
                 tmp_tensor = framework._varbase_creator()
-                _C_ops.assign_value(tmp_tensor, 'shape', [len(value_list)],
-                                    'dtype', VarDesc.VarType.FP32,
-                                    'fp32_values', value_list)
+                _legacy_C_ops.assign_value(tmp_tensor, 'shape',
+                                           [len(value_list)], 'dtype',
+                                           VarDesc.VarType.FP32, 'fp32_values',
+                                           value_list)
                 tmp_tensor._share_underline_tensor_to(value_tensor)
         else:
             block.append_op(type='assign_value',
@@ -235,18 +236,14 @@ class Dirac(Initializer):
 
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                tmp_out = _C_ops.final_state_scatter(out_var, index_tensor,
-                                                     value_tensor, True)
+                tmp_out = _C_ops.scatter(out_var, index_tensor, value_tensor,
+                                         True)
                 tmp_out._share_underline_tensor_to(out_var)
-                tmp_reshape_out, _ = _C_ops.reshape2(out_var, None, 'shape',
-                                                     origin_shape)
+                tmp_reshape_out = _C_ops.reshape(out_var, origin_shape)
                 tmp_reshape_out._share_underline_tensor_to(out_var)
                 if var.dtype != VarDesc.VarType.FP32:
-                    tmp_cast_out = _C_ops.cast(out_var, 'in_dtype',
-                                               out_var.dtype, 'out_dtype',
-                                               var.dtype)
+                    tmp_cast_out = _C_ops.cast(out_var, var.dtype)
                     tmp_cast_out._share_underline_tensor_to(var)
-
         else:
             op = block.append_op(type="scatter",
                                  inputs={

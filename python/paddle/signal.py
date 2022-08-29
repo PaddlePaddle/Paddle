@@ -21,7 +21,7 @@ from .fft import fft_r2c, fft_c2r, fft_c2c
 from .fluid.data_feeder import check_variable_and_dtype
 from .fluid.framework import _non_static_mode
 from .fluid.layer_helper import LayerHelper
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = [
@@ -129,12 +129,12 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
     op_type = 'frame'
 
     if in_dygraph_mode():
-        return _C_ops.final_state_frame(x, frame_length, hop_length, axis)
+        return _C_ops.frame(x, frame_length, hop_length, axis)
 
     if _in_legacy_dygraph():
         attrs = ('frame_length', frame_length, 'hop_length', hop_length, 'axis',
                  axis)
-        op = getattr(_C_ops, op_type)
+        op = getattr(_legacy_C_ops, op_type)
         out = op(x, *attrs)
     else:
         check_variable_and_dtype(
@@ -218,10 +218,10 @@ def overlap_add(x, hop_length, axis=-1, name=None):
     op_type = 'overlap_add'
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_overlap_add(x, hop_length, axis)
+        out = _C_ops.overlap_add(x, hop_length, axis)
     elif _in_legacy_dygraph():
         attrs = ('hop_length', hop_length, 'axis', axis)
-        op = getattr(_C_ops, op_type)
+        op = getattr(_legacy_C_ops, op_type)
         out = op(x, *attrs)
     else:
         check_variable_and_dtype(

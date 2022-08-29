@@ -27,15 +27,21 @@ from ..framework import in_dygraph_mode, _non_static_mode
 from ..framework import LayerHelper
 from ..fluid.framework import _in_legacy_dygraph
 # TODO: define logic functions of a tensor
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.tensor.creation import full
 
 __all__ = []
 
 
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
-    if _non_static_mode():
+    if in_dygraph_mode():
         op = getattr(_C_ops, op_name)
+        if binary_op:
+            return op(x, y)
+        else:
+            return op(x)
+    elif _in_legacy_dygraph():
+        op = getattr(_legacy_C_ops, op_name)
         if binary_op:
             return op(x, y)
         else:
@@ -108,7 +114,7 @@ def logical_and(x, y, out=None, name=None):
             print(res) # [True False True False]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_logical_and(x, y)
+        return _C_ops.logical_and(x, y)
 
     return _logical_op(op_name="logical_and",
                        x=x,
@@ -154,7 +160,7 @@ def logical_or(x, y, out=None, name=None):
             print(res) # [[ True  True] [ True False]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_logical_or(x, y)
+        return _C_ops.logical_or(x, y)
     return _logical_op(op_name="logical_or",
                        x=x,
                        y=y,
@@ -199,7 +205,7 @@ def logical_xor(x, y, out=None, name=None):
             print(res) # [[False,  True], [ True, False]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_logical_xor(x, y)
+        return _C_ops.logical_xor(x, y)
 
     return _logical_op(op_name="logical_xor",
                        x=x,
@@ -238,7 +244,7 @@ def logical_not(x, out=None, name=None):
             print(res) # [False  True False  True]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_logical_not(x)
+        return _C_ops.logical_not(x)
     return _logical_op(op_name="logical_not",
                        x=x,
                        y=None,
@@ -278,9 +284,9 @@ def is_empty(x, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_is_empty(x)
-    if _in_legacy_dygraph():
         return _C_ops.is_empty(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.is_empty(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'is_empty')
@@ -325,10 +331,10 @@ def equal_all(x, y, name=None):
           print(result2) # result2 = [False ]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_equal_all(x, y)
+        return _C_ops.equal_all(x, y)
 
     if _in_legacy_dygraph():
-        return _C_ops.equal_all(x, y)
+        return _legacy_C_ops.equal_all(x, y)
 
     helper = LayerHelper("equal_all", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
@@ -391,11 +397,11 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
         # C++ backend will cast it into float32 if passing float from python.
         as_tensor = lambda x: paddle.to_tensor(
             [x], dtype='float64', place='cpu')
-        return _C_ops.final_state_allclose(x, y, as_tensor(rtol),
-                                           as_tensor(atol), equal_nan)
+        return _C_ops.allclose(x, y, as_tensor(rtol), as_tensor(atol),
+                               equal_nan)
     if _in_legacy_dygraph():
-        return _C_ops.allclose(x, y, 'rtol', str(rtol), 'atol', str(atol),
-                               'equal_nan', equal_nan)
+        return _legacy_C_ops.allclose(x, y, 'rtol', str(rtol), 'atol',
+                                      str(atol), 'equal_nan', equal_nan)
     check_variable_and_dtype(x, "input", ['float32', 'float64'], 'allclose')
     check_variable_and_dtype(y, "input", ['float32', 'float64'], 'allclose')
     check_type(rtol, 'rtol', float, 'allclose')
@@ -454,10 +460,10 @@ def equal(x, y, name=None):
 
     if in_dygraph_mode():
         default_axis = -1
-        return _C_ops.final_state_equal(x, y, default_axis)
+        return _C_ops.equal(x, y, default_axis)
     else:
         if _in_legacy_dygraph():
-            return _C_ops.equal(x, y)
+            return _legacy_C_ops.equal(x, y)
         else:
             check_variable_and_dtype(
                 x, "x", ["bool", "float32", "float64", "int32", "int64"],
@@ -506,10 +512,10 @@ def greater_equal(x, y, name=None):
     """
     if in_dygraph_mode():
         default_axis = -1
-        return _C_ops.final_state_greater_equal(x, y, default_axis)
+        return _C_ops.greater_equal(x, y, default_axis)
     else:
         if _in_legacy_dygraph():
-            return _C_ops.greater_equal(x, y)
+            return _legacy_C_ops.greater_equal(x, y)
         else:
             check_variable_and_dtype(
                 x, "x", ["bool", "float32", "float64", "int32", "int64"],
@@ -557,10 +563,10 @@ def greater_than(x, y, name=None):
             print(result1)  # result1 = [False False True]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_greater_than(x, y, -1)
+        return _C_ops.greater_than(x, y, -1)
     else:
         if _in_legacy_dygraph():
-            return _C_ops.greater_than(x, y)
+            return _legacy_C_ops.greater_than(x, y)
         else:
             check_variable_and_dtype(
                 x, "x", ["bool", "float32", "float64", "int32", "int64"],
@@ -610,10 +616,10 @@ def less_equal(x, y, name=None):
     """
     if in_dygraph_mode():
         axis = -1
-        return _C_ops.final_state_less_equal(x, y, axis)
+        return _C_ops.less_equal(x, y, axis)
     else:
         if _in_legacy_dygraph():
-            return _C_ops.less_equal(x, y)
+            return _legacy_C_ops.less_equal(x, y)
         else:
             check_variable_and_dtype(
                 x, "x", ["bool", "float32", "float64", "int32", "int64"],
@@ -663,10 +669,10 @@ def less_than(x, y, name=None):
     """
     if in_dygraph_mode():
         default_axis = -1
-        return _C_ops.final_state_less_than(x, y, default_axis)
+        return _C_ops.less_than(x, y, default_axis)
     else:
         if _in_legacy_dygraph():
-            return _C_ops.less_than(x, y)
+            return _legacy_C_ops.less_than(x, y)
         else:
             check_variable_and_dtype(
                 x, "x", ["bool", "float32", "float64", "int32", "int64"],
@@ -716,10 +722,10 @@ def not_equal(x, y, name=None):
     """
     if in_dygraph_mode():
         axis = -1
-        return _C_ops.final_state_not_equal(x, y, axis)
+        return _C_ops.not_equal(x, y, axis)
     else:
         if _in_legacy_dygraph():
-            return _C_ops.not_equal(x, y)
+            return _legacy_C_ops.not_equal(x, y)
         else:
             check_variable_and_dtype(
                 x, "x", ["bool", "float32", "float64", "int32", "int64"],
@@ -769,8 +775,14 @@ def is_tensor(x):
 
 
 def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
-    if _non_static_mode():
+    if in_dygraph_mode():
         op = getattr(_C_ops, op_name)
+        if binary_op:
+            return op(x, y)
+        else:
+            return op(x)
+    elif _in_legacy_dygraph():
+        op = getattr(_legacy_C_ops, op_name)
         if binary_op:
             return op(x, y)
         else:
@@ -828,7 +840,7 @@ def bitwise_and(x, y, out=None, name=None):
             print(res)  # [0, 2, 1]
     """
     if in_dygraph_mode() and out is None:
-        return _C_ops.final_state_bitwise_and(x, y)
+        return _C_ops.bitwise_and(x, y)
     return _bitwise_op(op_name="bitwise_and",
                        x=x,
                        y=y,
@@ -860,7 +872,7 @@ def bitwise_or(x, y, out=None, name=None):
             print(res)  # [-1, -1, -3]
     """
     if in_dygraph_mode() and out is None:
-        return _C_ops.final_state_bitwise_or(x, y)
+        return _C_ops.bitwise_or(x, y)
 
     return _bitwise_op(op_name="bitwise_or",
                        x=x,
@@ -893,7 +905,7 @@ def bitwise_xor(x, y, out=None, name=None):
             print(res) # [-1, -3, -4]
     """
     if in_dygraph_mode() and out is None:
-        return _C_ops.final_state_bitwise_xor(x, y)
+        return _C_ops.bitwise_xor(x, y)
     return _bitwise_op(op_name="bitwise_xor",
                        x=x,
                        y=y,
@@ -923,7 +935,7 @@ def bitwise_not(x, out=None, name=None):
             print(res) # [4, 0, -2]
     """
     if in_dygraph_mode() and out is None:
-        return _C_ops.final_state_bitwise_not(x)
+        return _C_ops.bitwise_not(x)
 
     return _bitwise_op(op_name="bitwise_not",
                        x=x,
@@ -990,11 +1002,10 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
         # C++ backend will cast it into float32 if passing float from python.
         as_tensor = lambda x: paddle.to_tensor(
             [x], dtype='float64', place='cpu')
-        return _C_ops.final_state_isclose(x, y, as_tensor(rtol),
-                                          as_tensor(atol), equal_nan)
+        return _C_ops.isclose(x, y, as_tensor(rtol), as_tensor(atol), equal_nan)
     if _in_legacy_dygraph():
-        return _C_ops.isclose(x, y, 'rtol', str(rtol), 'atol', str(atol),
-                              'equal_nan', equal_nan)
+        return _legacy_C_ops.isclose(x, y, 'rtol', str(rtol), 'atol', str(atol),
+                                     'equal_nan', equal_nan)
 
     check_variable_and_dtype(x, "input", ['float32', 'float64'], 'isclose')
     check_variable_and_dtype(y, "input", ['float32', 'float64'], 'isclose')
