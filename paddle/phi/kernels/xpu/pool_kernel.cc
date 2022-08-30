@@ -22,9 +22,9 @@ namespace phi {
 template <typename T, typename Context>
 void Pool2dKernel(const Context& ctx,
                   const DenseTensor& x,
-                  const std::vector<int>& kernel_size,
+                  const std::vector<int>& kernel_size_t,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int>& paddings_t,
                   bool ceil_mode,
                   bool exclusive,
                   const std::string& data_format,
@@ -35,10 +35,10 @@ void Pool2dKernel(const Context& ctx,
                   DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  std::vector<int> paddings_t(paddings);
-  std::vector<int> kernel_size_t(kernel_size);
+  std::vector<int> paddings(paddings_t);
+  std::vector<int> kernel_size(kernel_size_t);
 
-  PADDLE_ENFORCE_EQ(kernel_size_t.size(),
+  PADDLE_ENFORCE_EQ(kernel_size.size(),
                     2,
                     phi::errors::InvalidArgument(
                         "The Pool2d XPU OP only support 2 dimension pooling!"));
@@ -51,9 +51,9 @@ void Pool2dKernel(const Context& ctx,
                                    data_format));
 
   if (global_pooling) {
-    for (size_t i = 0; i < kernel_size_t.size(); ++i) {
-      paddings_t[i] = 0;
-      kernel_size_t[i] = static_cast<int>(x.dims()[i + 2]);
+    for (size_t i = 0; i < kernel_size.size(); ++i) {
+      paddings[i] = 0;
+      kernel_size[i] = static_cast<int>(x.dims()[i + 2]);
     }
   }
 
@@ -68,22 +68,20 @@ void Pool2dKernel(const Context& ctx,
   DDim data_dims;
 
   data_dims = slice_ddim(x.dims(), 2, x.dims().size());
-  funcs::UpdatePadding(&paddings_t,
+  funcs::UpdatePadding(&paddings,
                        global_pooling,
                        adaptive,
                        padding_algorithm,
                        data_dims,
                        strides,
-                       kernel_size_t);
+                       kernel_size);
 
   if (ceil_mode) {
-    int in_h_ceil =
-        (out_h - 1) * strides[0] + kernel_size_t[0] - 2 * paddings_t[0];
-    int in_w_ceil =
-        (out_w - 1) * strides[1] + kernel_size_t[1] - 2 * paddings_t[2];
+    int in_h_ceil = (out_h - 1) * strides[0] + kernel_size[0] - 2 * paddings[0];
+    int in_w_ceil = (out_w - 1) * strides[1] + kernel_size[1] - 2 * paddings[2];
 
-    paddings_t[1] += (in_h_ceil - in_h);
-    paddings_t[3] += (in_w_ceil - in_w);
+    paddings[1] += (in_h_ceil - in_h);
+    paddings[3] += (in_w_ceil - in_w);
   }
 
   ctx.template Alloc<T>(out);
@@ -100,9 +98,9 @@ void Pool2dKernel(const Context& ctx,
           c,
           in_h,
           in_w,
-          kernel_size_t,
+          kernel_size,
           strides,
-          paddings_t,
+          paddings,
           true);
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool2d<XPUType>(
@@ -113,9 +111,9 @@ void Pool2dKernel(const Context& ctx,
           c,
           in_h,
           in_w,
-          kernel_size_t,
+          kernel_size,
           strides,
-          paddings_t,
+          paddings,
           !exclusive,
           true);
     } else {

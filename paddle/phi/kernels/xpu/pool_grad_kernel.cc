@@ -24,9 +24,9 @@ void Pool2dGradKernel(const Context& ctx,
                       const DenseTensor& x,
                       const DenseTensor& out,
                       const DenseTensor& dout,
-                      const std::vector<int>& kernel_size,
-                      const std::vector<int>& strides,
-                      const std::vector<int>& paddings,
+                      const std::vector<int>& kernel_size_t,
+                      const std::vector<int>& strides_t,
+                      const std::vector<int>& paddings_t,
                       bool ceil_mode,
                       bool exclusive,
                       const std::string& data_format,
@@ -37,9 +37,9 @@ void Pool2dGradKernel(const Context& ctx,
                       DenseTensor* dx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  std::vector<int> paddings_t(paddings);
-  std::vector<int> kernel_size_t(kernel_size);
-  std::vector<int> strides_t(strides);
+  std::vector<int> paddings(paddings_t);
+  std::vector<int> kernel_size(kernel_size_t);
+  std::vector<int> strides(strides_t);
 
   PADDLE_ENFORCE_EQ(
       data_format,
@@ -57,8 +57,8 @@ void Pool2dGradKernel(const Context& ctx,
                                    kernel_size.size()));
   if (global_pooling) {
     for (size_t i = 0; i < kernel_size.size(); ++i) {
-      paddings_t[i] = 0;
-      kernel_size_t[i] = static_cast<int>(x.dims()[i + 2]);
+      paddings[i] = 0;
+      kernel_size[i] = static_cast<int>(x.dims()[i + 2]);
     }
   }
   if (!dx) {
@@ -75,21 +75,19 @@ void Pool2dGradKernel(const Context& ctx,
   DDim data_dims;
 
   data_dims = slice_ddim(x.dims(), 2, x.dims().size());
-  funcs::UpdatePadding(&paddings_t,
+  funcs::UpdatePadding(&paddings,
                        global_pooling,
                        adaptive,
                        padding_algorithm,
                        data_dims,
-                       strides_t,
-                       kernel_size_t);
+                       strides,
+                       kernel_size);
   if (ceil_mode) {
-    int in_h_ceil =
-        (out_h - 1) * strides_t[0] + kernel_size_t[0] - 2 * paddings_t[0];
-    int in_w_ceil =
-        (out_w - 1) * strides_t[1] + kernel_size_t[1] - 2 * paddings_t[2];
+    int in_h_ceil = (out_h - 1) * strides[0] + kernel_size[0] - 2 * paddings[0];
+    int in_w_ceil = (out_w - 1) * strides[1] + kernel_size[1] - 2 * paddings[2];
 
-    paddings_t[1] += (in_h_ceil - in_h);
-    paddings_t[3] += (in_w_ceil - in_w);
+    paddings[1] += (in_h_ceil - in_h);
+    paddings[3] += (in_w_ceil - in_w);
   }
 
   ctx.template Alloc<T>(dx);
@@ -97,11 +95,11 @@ void Pool2dGradKernel(const Context& ctx,
   int r = xpu::Error_t::SUCCESS;
   if (adaptive) {
     // floor for stride
-    strides_t = {in_h / out_h, in_w / out_w};
-    int kh = in_h - (out_h - 1) * strides_t[0];
-    int kw = in_w - (out_w - 1) * strides_t[1];
-    kernel_size_t = {kh, kw};
-    paddings_t = {0, 0, 0, 0};
+    strides = {in_h / out_h, in_w / out_w};
+    int kh = in_h - (out_h - 1) * strides[0];
+    int kw = in_w - (out_w - 1) * strides[1];
+    kernel_size = {kh, kw};
+    paddings = {0, 0, 0, 0};
   }
 
   if (pooling_type == "max") {
@@ -117,9 +115,9 @@ void Pool2dGradKernel(const Context& ctx,
         c,
         in_h,
         in_w,
-        kernel_size_t,
-        strides_t,
-        paddings_t,
+        kernel_size,
+        strides,
+        paddings,
         true);
   } else if (pooling_type == "avg") {
     r = xpu::avg_pool2d_grad<XPUType>(
@@ -132,9 +130,9 @@ void Pool2dGradKernel(const Context& ctx,
         c,
         in_h,
         in_w,
-        kernel_size_t,
-        strides_t,
-        paddings_t,
+        kernel_size,
+        strides,
+        paddings,
         !exclusive,
         true);
   } else {
