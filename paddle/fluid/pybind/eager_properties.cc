@@ -196,8 +196,8 @@ PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
   }
 
   if (egr::IsVariableCompatTensor(self->tensor)) {
-    PADDLE_THROW(paddle::platform::errors::Unavailable(
-        "VariableCompatTensor does not support `layout` method."));
+    VLOG(3) << "VariableCompatTensor does not support `layout` method.";
+    return ToPyObject(layout);
   } else {
     return ToPyObject(
         paddle::framework::DataLayoutToString(self->tensor.layout()));

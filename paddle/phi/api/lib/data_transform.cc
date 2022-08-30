@@ -52,12 +52,16 @@ inline bool NeedTransformPlace(const paddle::platform::Place& input,
   return ret;
 }
 
-inline bool NeedTransformLayout(const DataLayout& input,
+inline bool NeedTransformLayout(const paddle::platform::Place& place,
+                                const DataLayout& input,
                                 const DataLayout& target,
                                 const TransformFlag& transform_flag) {
   bool ret = transform_flag.need_trans_layout() &&
              (input != DataLayout::ALL_LAYOUT &&
               target != DataLayout::ALL_LAYOUT && input != target);
+  if (platform::is_gpu_place(place)) {
+    return false;
+  }
   return ret;
 }
 
@@ -69,11 +73,10 @@ inline phi::DenseTensor TransDataLayout(const phi::DenseTensor& tensor,
   if (platform::is_cpu_place(tensor.place())) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
     return phi::TransferLayout(*dev_ctx, tensor, layout);
+  } else {
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
+        "Unsupported data layout cast from CPU to GPU."));
   }
-  // else {
-  //   PADDLE_THROW(phi::errors::PreconditionNotMet(
-  //       "Unsupported data layout cast from CPU to GPU."));
-  // }
   return tensor;
 }
 
@@ -198,8 +201,11 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
   phi::DenseTensor out = *tensor;
   bool trans_layout = false;
   bool trans_dtype = false;
-  if (NeedTransformLayout(
-          tensor->layout(), target_args_def.layout, transform_flag)) {
+
+  if (NeedTransformLayout(tensor->place(),
+                          tensor->layout(),
+                          target_args_def.layout,
+                          transform_flag)) {
     out = TransDataLayout(out, target_args_def.layout);
     trans_layout = true;
   }
@@ -234,8 +240,10 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
              dense_tensor.place(), target_args_def.backend, transform_flag) &&
          !NeedTransformDataType(
              dense_tensor.dtype(), target_args_def.dtype, transform_flag) &&
-         !NeedTransformLayout(
-             dense_tensor.layout(), target_args_def.layout, transform_flag))) {
+         !NeedTransformLayout(dense_tensor.place(),
+                              dense_tensor.layout(),
+                              target_args_def.layout,
+                              transform_flag))) {
       return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
     }
     phi::DenseTensor out =
@@ -269,8 +277,10 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
              tensor_in->place(), target_args_def.backend, transform_flag) &&
          !NeedTransformDataType(
              tensor_in->dtype(), target_args_def.dtype, transform_flag) &&
-         !NeedTransformLayout(
-             tensor_in->layout(), target_args_def.layout, transform_flag))) {
+         !NeedTransformLayout(tensor_in->place(),
+                              tensor_in->layout(),
+                              target_args_def.layout,
+                              transform_flag))) {
       pt_tensors->emplace_back(
           *std::dynamic_pointer_cast<phi::DenseTensor>(tensor_in));
     } else {
