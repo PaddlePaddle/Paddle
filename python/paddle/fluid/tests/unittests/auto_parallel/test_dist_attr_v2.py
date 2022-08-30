@@ -349,7 +349,6 @@ class TestDistAttrConversion(unittest.TestCase):
                                           optimizer, loss, feed_vars,
                                           fetch_vars)
         dist_context.initialize()
-        print_program_with_dist_attr(train_program, dist_context)
         original_dist_tensors = copy.deepcopy(
             dist_context._dist_tensors_for_program)
         original_dist_ops = copy.deepcopy(dist_context._dist_ops_for_program)
@@ -376,7 +375,6 @@ class TestDistAttrConversion(unittest.TestCase):
                                           optimizer, loss, feed_vars,
                                           fetch_vars)
         dist_context.initialize()
-        print_program_with_dist_attr(train_program, dist_context)
         original_dist_tensors = copy.deepcopy(
             dist_context._dist_tensors_for_graph)
         original_dist_ops = copy.deepcopy(dist_context._dist_ops_for_graph)

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_desc.h"
 
 #include "glog/logging.h"
+#include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -28,6 +29,16 @@ VarDesc::VarDesc(const VarDesc &other)
   if (other.dist_attr_) {
     dist_attr_.reset(new TensorDistAttr(*other.dist_attr_));
   }
+  need_updated_ = true;
+}
+
+VarDesc::VarDesc(const proto::VarDesc &desc) : desc_(desc) {
+  // Restore attrs_ for auto parallel
+  for (const proto::VarDesc::Attr &attr : desc_.attrs()) {
+    std::string attr_name = attr.name();
+    attrs_[attr_name] = GetAttrValue(attr);
+  }
+  need_updated_ = true;
 }
 
 proto::VarType::Type VarDesc::GetType() const { return desc_.type().type(); }
@@ -331,19 +342,9 @@ std::vector<std::string> VarDesc::AttrNames() const {
 void VarDesc::RemoveAttr(const std::string &name) { attrs_.erase(name); }
 
 void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
-  // NOTICE(sandyhouse): pybind11 will take the empty list in python as
-  // the std::vector<int> type in C++; so we have to change the attr's type
-  // here if we meet this issue
   proto::AttrType attr_type = static_cast<proto::AttrType>(v.index() - 1);
-  if (attr_type == proto::AttrType::INTS &&
-      PADDLE_GET_CONST(std::vector<int>, v).size() == 0u) {
-    // Find current attr via attr name and set the correct attribute value
-    this->attrs_[name] = std::vector<int>();
-    return;
-  }
-  bool valid = attr_type == proto::AttrType::INT ||
-               attr_type == proto::AttrType::STRING ||
-               attr_type == proto::AttrType::INTS;
+  bool valid = attr_type == proto::AttrType::LONG ||
+               attr_type == proto::AttrType::STRING;
   PADDLE_ENFORCE_EQ(
       valid,
       true,
@@ -352,6 +353,7 @@ void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
                                         name));
 
   this->attrs_[name] = v;
+  need_updated_ = true;
 }
 
 Attribute VarDesc::GetAttr(const std::string &name) const {
@@ -363,6 +365,48 @@ Attribute VarDesc::GetAttr(const std::string &name) const {
   return it->second;
 }
 
+struct SetVarAttrDescVisitor {
+  explicit SetVarAttrDescVisitor(proto::VarDesc::Attr *attr) : attr_(attr) {}
+  mutable proto::VarDesc::Attr *attr_;
+  template <typename T>
+  void operator()(T &&v) const {
+    using U = std::decay_t<decltype(v)>;
+    if constexpr (std::is_same<U, int64_t>::value) {
+      attr_->set_l(v);
+    } else if constexpr (std::is_same<U, std::string>::value) {
+      attr_->set_s(v);
+    } else {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Unsupported calling method of SetAttrDescVisitor object."));
+    }
+  }
+};
+
+// Only need to flush the attrs for auto parallel for now
+void VarDesc::Flush() {
+  VLOG(4) << "Flush "
+          << " " << Name() << " " << need_updated_;
+  if (need_updated_) {
+    this->desc_.mutable_attrs()->Clear();
+    std::vector<std::pair<std::string, Attribute>> sorted_attrs{attrs_.begin(),
+                                                                attrs_.end()};
+    std::sort(
+        sorted_attrs.begin(),
+        sorted_attrs.end(),
+        [](std::pair<std::string, Attribute> a,
+           std::pair<std::string, Attribute> b) { return a.first < b.first; });
+    for (auto &attr : sorted_attrs) {
+      auto *attr_desc = desc_.add_attrs();
+      attr_desc->set_name(attr.first);
+      attr_desc->set_type(
+          static_cast<proto::AttrType>(attr.second.index() - 1));
+      SetVarAttrDescVisitor visitor(attr_desc);
+      paddle::visit(visitor, attr.second);
+    }
+    need_updated_ = false;
+  }
+}
+
 TensorDistAttr *VarDesc::MutableDistAttr() {
   // If dist_attr_ is nullptr, construct a new one and return.
   if (dist_attr_) {
@@ -371,12 +415,14 @@ TensorDistAttr *VarDesc::MutableDistAttr() {
     dist_attr_.reset(new TensorDistAttr(*this));
     return dist_attr_.get();
   }
+  need_updated_ = true;
 }
 
 void VarDesc::SetDistAttr(const TensorDistAttr &dist_attr) {
   // Make sure this dist attr be created
   MutableDistAttr();
   *dist_attr_ = dist_attr;
+  need_updated_ = true;
 }
 
 bool operator==(const VarDesc &left, const VarDesc &right) {

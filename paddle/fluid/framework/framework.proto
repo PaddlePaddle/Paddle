@@ -193,9 +193,8 @@ message VarDesc {
   message Attr {
     required string name = 1;
     required AttrType type = 2;
-    optional int32 i = 3;
+    optional int64 l = 3;
     optional string s = 4;
-    repeated int32 ints = 5;
   };
 
   required string name = 1;

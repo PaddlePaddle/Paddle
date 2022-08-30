@@ -194,6 +194,11 @@ void BindAutoParallel(py::module *m) {
       .def("is_annotated", &TensorDistAttr::is_annotated)
       .def("annotate", &TensorDistAttr::annotate)
       .def("verify", &TensorDistAttr::verify)
+      .def("serialize_to_string",
+           [](TensorDistAttr &self) {
+             return py::bytes(self.serialize_to_string());
+           })
+      .def("parse_from_string", &TensorDistAttr::parse_from_string)
       .def(py::self == py::self)
       .def(py::self != py::self)
       .def("__str__", &TensorDistAttr::to_string);
@@ -241,6 +246,11 @@ void BindAutoParallel(py::module *m) {
       .def("set_output_dims_mapping",
            &OperatorDistAttr::set_output_dims_mapping)
       .def("verify", &OperatorDistAttr::verify)
+      .def("serialize_to_string",
+           [](OperatorDistAttr &self) {
+             return py::bytes(self.serialize_to_string());
+           })
+      .def("parse_from_string", &OperatorDistAttr::parse_from_string)
       .def(py::self == py::self)
       .def(py::self != py::self)
       .def(
