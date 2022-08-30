@@ -36,6 +36,7 @@ echo -e >> $1
 echo "## CUDA_MODULE_LOADING=EAGER,DEFAULT,LAZY" >> $1
 echo -e >> $1
 echo "# set cicc PATH for Centos" >> $1
+echo "export PATH=\$PATH:$2/bin" >> $1
 echo "export PATH=\$PATH:$2/nvvm/bin" >> $1
 echo -e >> $1
 echo "# check nvcc version, if nvcc >= 11.7, just run nvcc itself" >> $1
