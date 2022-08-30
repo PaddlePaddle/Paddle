@@ -7062,6 +7062,10 @@ def pad(x, paddings, pad_value=0., name=None):
         'complex128'
     ], "pad")
 
+    check_type(pad_value, 'pad_value', (float, int, Variable), 'pad')
+    if isinstance(pad_value, int):
+        pad_value = float(pad_value)
+
     helper = LayerHelper('pad', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -7070,7 +7074,7 @@ def pad(x, paddings, pad_value=0., name=None):
                      outputs={'Out': out},
                      attrs={
                          'paddings': paddings,
-                         'pad_value': float(pad_value)
+                         'pad_value': pad_value
                      })
     return out
 
