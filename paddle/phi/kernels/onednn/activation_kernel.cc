@@ -91,6 +91,14 @@ template <typename T>
 using AbsOneDNNFunctor = OneDNNActivationFunc<T, dnnl::algorithm::eltwise_abs>;
 
 template <typename T>
+using GeluTanhOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_gelu_tanh>;
+
+template <typename T>
+using GeluErfOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_gelu_erf>;
+
+template <typename T>
 using ReluOneDNNFunctor =
     OneDNNActivationFunc<T, dnnl::algorithm::eltwise_relu>;
 
@@ -159,6 +167,20 @@ void HardSwishKernel(const Context& dev_ctx,
   functor(dev_ctx, x, threshold, 0, out);
 }
 
+template <typename T, typename Context>
+void GeluKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                bool approximate,
+                DenseTensor* out) {
+  if (approximate) {
+    GeluTanhOneDNNFunctor<T> functor;
+    functor(dev_ctx, x, 0, 0, out);
+  } else {
+    GeluErfOneDNNFunctor<T> functor;
+    functor(dev_ctx, x, 0, 0, out);
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(round, OneDNN, ALL_LAYOUT, phi::RoundKernel, float) {}
@@ -168,6 +190,7 @@ PD_REGISTER_KERNEL(round, OneDNN, ALL_LAYOUT, phi::RoundKernel, float) {}
       name, OneDNN, ALL_LAYOUT, phi::func, float, phi::dtype::bfloat16) {}
 
 PD_REGISTER_ACTIVATION_KERNEL(abs, AbsKernel)
+PD_REGISTER_ACTIVATION_KERNEL(gelu, GeluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_swish, HardSwishKernel)
