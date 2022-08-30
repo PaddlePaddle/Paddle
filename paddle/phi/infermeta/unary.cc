@@ -3079,7 +3079,7 @@ void SplitInferMeta(const MetaTensor& x,
 
   auto sections_data = sections.GetData();
   // fill out dims with -1
-  if (sections.FromTensor() && !config.is_runtime || axis_value == -1 ||
+  if ((sections.FromTensor() && !config.is_runtime) || axis_value == -1 ||
       (axis_value >= 0 && x.dims().at(axis_value) <= 0)) {
     std::vector<phi::DDim> out_dims(
         sections_data.size(),

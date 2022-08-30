@@ -69,7 +69,7 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
 template <typename T, typename Context>
 std::vector<DenseTensor> SplitWithNum(const Context& dev_ctx,
                                       const DenseTensor& x,
-                                      const int& num,
+                                      int num,
                                       const Scalar& axis) {
   size_t out_number = num;
 
