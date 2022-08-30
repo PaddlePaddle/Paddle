@@ -34,7 +34,8 @@ class TestFrexpAPI(unittest.TestCase):
             out1 = np.frexp(self.x_np)
             out2 = math.frexp(self.x_np)
         # 对比静态图与 numpy 实现函数计算结果是否相同
-        self.assertEqual(np.allclose(out1, out2), True)
+        # self.assertEqual(np.allclose(out1, out2), True)
+        np.testing.assert_allclose(out1, out2, rtol=1e-05)
 
     # 动态图单测
     def test_dygraph_api(self):
@@ -43,12 +44,14 @@ class TestFrexpAPI(unittest.TestCase):
         # 测试动态图 tensor.frexp 和 paddle.tensor.math.frexp 计算结果
         out1 = np.frexp(self.x_np)
         out2 = math.frexp(self.x_np)
-        self.assertEqual(np.allclose(out1, out2), True)
+        # self.assertEqual(np.allclose(out1, out2), True)
+        np.testing.assert_allclose(out1, out2, rtol=1e-05)
 
         out1 = np.frexp(self.x_np)
         input_num = paddle.to_tensor(self.x_np)
         out2 = input_num.frexp()
-        self.assertEqual(np.allclose(out1, out2), True)
+        # self.assertEqual(np.allclose(out1, out2), True)
+        np.testing.assert_allclose(out1, out2, rtol=1e-05)
         paddle.enable_static()
 
 
