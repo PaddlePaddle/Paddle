@@ -27,21 +27,20 @@ void GaussianRandomKernel(const Context& ctx,
                           int seed,
                           DataType dtype,
                           DenseTensor* out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
-  T* data = out->mutable_data<T>(ctx.GetPlace());
   std::normal_distribution<T> dist(mean, std);
   auto engine = std::make_shared<std::mt19937_64>();
   engine->seed(seed);
 
+  T* data = ctx.template Alloc<T>(out);
   for (int64_t i = 0; i < out->numel(); ++i) {
     data[i] = dist(*engine);
   }
 
+  out->Resize(phi::make_ddim(shape.GetData()));
   dnnl::memory::desc out_mem_desc(
       vectorize(out->dims()),
       funcs::ToOneDNNDataType(out->dtype()),
       funcs::GetPlainOneDNNFormat(out->dims().size()));
-
   out->set_mem_desc(out_mem_desc);
 }
 
