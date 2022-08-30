@@ -47,7 +47,7 @@ void UniformRandomRawKernel(const Context &dev_ctx,
     engine = dev_ctx.GetGenerator()->GetCPUEngine();
   }
   UniformRealDistribution<T>(
-      data_cpu, size, min.to<float>(), max.to<float>(), engine);
+      data_cpu.get(), size, min.to<float>(), max.to<float>(), engine);
   if (diag_num > 0) {
     PADDLE_ENFORCE_GT(
         size,
@@ -66,7 +66,7 @@ void UniformRandomRawKernel(const Context &dev_ctx,
     }
   }
 
-  paddle::memory::Copy(ctx.GetPlace(),
+  paddle::memory::Copy(dev_ctx.GetPlace(),
                        out,
                        phi::CPUPlace(),
                        reinterpret_cast<void *>(data_cpu.get()),
