@@ -17,8 +17,8 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
@@ -30,40 +30,10 @@ void UniformRandomKernel(const Context& dev_ctx,
                          const Scalar& max,
                          int seed,
                          DenseTensor* out) {
-  framework::Tensor* tensor = nullptr;
-  auto out_var = ctx.OutputVar("Out");
-  std::vector<int64_t> new_shape;
-  auto list_new_shape_tensor =
-      ctx.MultiInput<framework::Tensor>("ShapeTensorList");
-  if (list_new_shape_tensor.size() > 0 || ctx.HasInput("ShapeTensor")) {
-    if (ctx.HasInput("ShapeTensor")) {
-      auto* shape_tensor = ctx.Input<framework::Tensor>("ShapeTensor");
-      new_shape = GetNewDataFromShapeTensor(shape_tensor);
-    } else if (list_new_shape_tensor.size() > 0) {
-      new_shape = GetNewDataFromShapeTensorList(list_new_shape_tensor);
-    }
-  }
+  out->Resize(phi::make_ddim(shape.GetData()));
+  T* data = dev_ctx.template Alloc<T>(out);
+  int64_t size = out->numel();
 
-  if (out_var->IsType<phi::SelectedRows>()) {
-    auto* selected_rows = out_var->GetMutable<phi::SelectedRows>();
-    tensor = selected_rows->mutable_value();
-    auto shape = ctx.Attr<std::vector<int64_t>>("shape");
-    if (!new_shape.empty()) shape = new_shape;
-    tensor->Resize(phi::make_ddim(shape));
-    selected_rows->mutable_rows()->reserve(shape[0]);
-  } else if (out_var->IsType<framework::LoDTensor>()) {
-    tensor = out_var->GetMutable<framework::LoDTensor>();
-    if (!new_shape.empty()) tensor->Resize(phi::make_ddim(new_shape));
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Expected type of Output(out) in uniform_random_op must be Tensor, "
-        "SelectedRows. But got "
-        "unsupport type: %s.",
-        framework::ToTypeName(out_var->Type())));
-  }
-  T* data = tensor->mutable_data<T>(ctx.GetPlace());
-
-  int64_t size = tensor->numel();
   std::unique_ptr<T[]> data_cpu(new T[size]);
   std::uniform_real_distribution<T> dist(
       static_cast<T>(ctx.Attr<float>("min")),
