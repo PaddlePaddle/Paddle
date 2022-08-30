@@ -50,11 +50,18 @@ def _split_activation(tensor, mp_group):
 
 
 def _merge_activation(tensor, mp_group):
-    mp_degree = mp_degree.nranks
-    mp_rank = mp_degree.rank
+    mp_degree = mp_group.nranks
+    mp_rank = mp_group.rank
     if mp_degree < 2:
         return tensor
-    return utils._all_gather(tensor, group=mp_group)
+
+    # adapt to new dygraph
+    tensor_shape = list(tensor.shape)
+    tensor_shape[0] *= mp_group.nranks
+    out = paddle.empty(tensor_shape, tensor.dtype)
+    task = mp_group.process_group.all_gather(tensor.cuda(), out)
+    task.wait()
+    return out
 
 
 class _HPRecomputeFunction(PyLayer):
@@ -153,9 +160,9 @@ class _HPRecomputeFunction(PyLayer):
             for i, idx in enumerate(tensor_indices):
                 if ctx.partition:
                     state = tensors[i].stop_gradient
-                    tensors[i] = _merge_activation(tensors[i],
-                                                   mp_group).detach().reshape_(
-                                                       tensor_shapes[i])
+                    tensors[i] = _merge_activation(
+                        tensors[i],
+                        ctx.mp_group).detach().reshape_(tensor_shapes[i])
                     tensors[i].stop_gradient = state
                 inputs[idx] = tensors[i].cuda(
                     device_id) if ctx.offload else tensors[i]

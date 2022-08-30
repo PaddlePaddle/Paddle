@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 from paddle.autograd import PyLayer
-from paddle.distributed.fleet.utils import recompute
 import random
 from paddle.distributed import fleet
 
@@ -57,12 +56,14 @@ class Naive_fc_net(paddle.nn.Layer):
                  use_fleet=False,
                  use_fleet_sq=False,
                  segments=1,
+                 use_raw_recompute=False,
                  recompute_kwargs={}):
         super(Naive_fc_net, self).__init__()
         self.recompute_blocks = recompute_blocks
         self.recompute_kwargs = recompute_kwargs
         self.use_fleet = use_fleet
         self.use_fleet_sq = use_fleet_sq
+        self.use_raw_recompute = use_raw_recompute
         self.segments = segments
 
         self.runfunc0 = get_fc_block(0, input_size, is_last=False)
@@ -71,47 +72,40 @@ class Naive_fc_net(paddle.nn.Layer):
         self.runfunc3 = get_fc_block(3, input_size, is_last=False)
         self.runfunc4 = get_fc_block(4, input_size, is_last=True)
 
-        if self.use_fleet_sq:
+        if self.use_fleet_sq and not use_raw_recompute:
             self.runfuncs = paddle.nn.Sequential(self.runfunc0, self.runfunc1,
                                                  self.runfunc2, self.runfunc3,
                                                  self.runfunc4)
 
+        self.layers = [
+            self.runfunc0, self.runfunc1, self.runfunc2, self.runfunc3,
+            self.runfunc4
+        ]
+
+        # default segments = 2
+        if use_raw_recompute:
+            self.layers = [
+                paddle.nn.Sequential(self.runfunc0, self.runfunc1),
+                paddle.nn.Sequential(self.runfunc2, self.runfunc3,
+                                     self.runfunc4)
+            ]
+
     def forward(self, inputs):
 
-        if self.use_fleet_sq:
+        if self.use_fleet_sq and not self.use_raw_recompute:
             return fleet.recompute_sequential({"segments": self.segments},
                                               self.runfuncs, inputs)
 
-        if 0 in self.recompute_blocks:
-            recompute_func = fleet.recompute if self.use_fleet else recompute
-            inputs = recompute_func(self.runfunc0, inputs)
-        else:
-            inputs = self.runfunc0(inputs)
+        if self.use_raw_recompute:
+            inputs = fleet.recompute(self.layers[0], inputs)
+            return self.layers[1](inputs)
 
-        if 1 in self.recompute_blocks:
-            recompute_func = fleet.recompute if self.use_fleet else recompute
-            inputs = recompute_func(self.runfunc1, inputs)
-        else:
-            inputs = self.runfunc1(inputs)
-
-        if 2 in self.recompute_blocks:
-            recompute_func = fleet.recompute if self.use_fleet else recompute
-            inputs = recompute_func(self.runfunc2, inputs,
-                                    **self.recompute_kwargs)
-        else:
-            inputs = self.runfunc2(inputs)
-
-        if 3 in self.recompute_blocks:
-            recompute_func = fleet.recompute if self.use_fleet else recompute
-            inputs = recompute_func(self.runfunc3, inputs)
-        else:
-            inputs = self.runfunc3(inputs)
-
-        if 4 in self.recompute_blocks:
-            recompute_func = fleet.recompute if self.use_fleet else recompute
-            inputs = recompute_func(self.runfunc4, inputs)
-        else:
-            inputs = self.runfunc4(inputs)
+        for i in range(len(self.layers)):
+            if i in self.recompute_blocks:
+                inputs = fleet.recompute(self.layers[i], inputs,
+                                         **self.recompute_kwargs)
+            else:
+                inputs = self.layers[i](inputs)
 
         return inputs
 
@@ -120,6 +114,7 @@ def run_model(recompute_block=[],
               recompute_kwargs={},
               use_fleet=False,
               use_fleet_sq=False,
+              use_raw_recompute=False,
               segments=1,
               enable_autocast=False,
               pure_fp16=False):
@@ -133,6 +128,7 @@ def run_model(recompute_block=[],
                          recompute_blocks=recompute_block,
                          use_fleet=use_fleet,
                          use_fleet_sq=use_fleet_sq,
+                         use_raw_recompute=use_raw_recompute,
                          segments=segments,
                          recompute_kwargs=recompute_kwargs)
     loss_fn = paddle.nn.MSELoss(reduction='mean')
@@ -225,6 +221,21 @@ class TestPyLayer(unittest.TestCase):
         # recompute using fleet.recompute_sequential, segments=1
         loss, param, grad = run_model(recompute_block=[],
                                       use_fleet_sq=True,
+                                      enable_autocast=enable_autocast,
+                                      pure_fp16=pure_fp16)
+        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
+
+        # with base recompute, and segments=2
+        loss_ref, param_ref, grad_ref = run_model(
+            recompute_block=[],
+            enable_autocast=enable_autocast,
+            use_raw_recompute=True,
+            pure_fp16=pure_fp16)
+
+        # recompute using fleet.recompute_sequential, segments=2
+        loss, param, grad = run_model(recompute_block=[],
+                                      use_fleet_sq=True,
+                                      segments=2,
                                       enable_autocast=enable_autocast,
                                       pure_fp16=pure_fp16)
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
