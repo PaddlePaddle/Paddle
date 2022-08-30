@@ -32,15 +32,30 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    int seed,
                                    DataType dtype,
                                    DenseTensor* out) {
-  auto out_cpu = out;
+  dev_ctx.template Alloc<T>(out);
+
+  std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
+                                         1.0);
+  TruncatedNormal<T> truncated_normal(mean, std);
   int64_t size = out->numel();
-  TruncatedGaussianRandomKernel<T, CPUContext>(
-      CPUContext(), shape, mean, std, seed, dtype, out_cpu);
+  std::unique_ptr<T[]> data_cpu(new T[size]);
+
+  std::shared_ptr<std::mt19937_64> engine;
+  if (seed) {
+    engine = std::make_shared<std::mt19937_64>();
+    engine->seed(seed);
+  } else {
+    engine = dev_ctx.GetGenerator()->GetCPUEngine();
+  }
+
+  for (int64_t i = 0; i < size; ++i) {
+    data_cpu[i] = truncated_normal(dist(*engine));
+  }
 
   paddle::memory::Copy(dev_ctx.GetPlace(),
                        out,
                        phi::CPUPlace(),
-                       reinterpret_cast<void*>(out_cpu),
+                       reinterpret_cast<void*>(data_cpu.get()),
                        size * sizeof(T));
 }
 
