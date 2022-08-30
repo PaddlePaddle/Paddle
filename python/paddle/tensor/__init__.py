@@ -507,6 +507,7 @@ tensor_method_func = [  #noqa
     'heaviside',
     'bucketize',
     'sgn',
+    'frexp',
 ]
 
 #this list used in math_op_patch.py for magic_method bind
