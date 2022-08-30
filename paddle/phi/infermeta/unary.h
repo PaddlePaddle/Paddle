@@ -507,7 +507,7 @@ void TileInferMeta(const MetaTensor& x,
                    MetaConfig config = MetaConfig());
 
 void TopKInferMeta(const MetaTensor& x,
-                   const Scalar& k_scalar,
+                   const MetaTensor& k_list,
                    int axis,
                    bool largest,
                    bool sorted,

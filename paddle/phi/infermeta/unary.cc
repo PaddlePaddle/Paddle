@@ -3546,7 +3546,7 @@ void TileInferMeta(const MetaTensor& x,
 }
 
 void TopKInferMeta(const MetaTensor& x,
-                   const Scalar& k_scalar,
+                   const MetaTensor& k_list,
                    int axis,
                    bool largest,
                    bool sorted,
@@ -3566,18 +3566,6 @@ void TopKInferMeta(const MetaTensor& x,
 
   if (axis < 0) axis += dim_size;
 
-  int k = k_scalar.to<int>();
-  if (k_scalar.FromTensor()) {
-    k = -1;
-  } else {
-    PADDLE_ENFORCE_EQ(k >= 1,
-                      true,
-                      phi::errors::InvalidArgument(
-                          "the attribute of k in the topk must >= 1 or be a "
-                          "Tensor, but received %d .",
-                          k));
-  }
-
   PADDLE_ENFORCE_GE(
       input_dims.size(),
       1,
@@ -3585,7 +3573,7 @@ void TopKInferMeta(const MetaTensor& x,
 
   phi::DDim dims = input_dims;
 
-  dims[axis] = k;
+  dims[axis] = -1;
   out->set_dims(dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
