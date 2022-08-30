@@ -39,12 +39,7 @@ void MeanAllKernel(const Context& dev_ctx,
                            reinterpret_cast<XPUType*>(y_data),
                            x_shape,
                            rdims);
-  PADDLE_ENFORCE_EQ(
-      r,
-      XPU_SUCCESS,
-      phi::errors::External("XPU reduce_mean kernel return wrong value[%d %s]",
-                            r,
-                            XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "mean_all");
 }
 }  // namespace phi
 

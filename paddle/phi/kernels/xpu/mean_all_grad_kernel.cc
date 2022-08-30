@@ -46,12 +46,7 @@ void MeanAllGradKernel(const Context& dev_ctx,
 
   int r = xpu::constant(
       dev_ctx.x_context(), dx, IG->numel(), static_cast<XPUType>(dy0_fp32));
-  PADDLE_ENFORCE_EQ(
-      r,
-      XPU_SUCCESS,
-      phi::errors::External("XPU constant kernel return wrong value[%d %s]",
-                            r,
-                            XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "mean_all_grad");
 }
 }  // namespace phi
 
