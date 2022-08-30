@@ -904,6 +904,7 @@ def max_unpool2d(x,
     if in_dygraph_mode():
         output = _C_ops.final_state_unpool(x, indices, kernel_size, stride,
                                            padding, output_size, data_format)
+        return output
 
     elif in_dynamic_mode():
         output = _C_ops.unpool(x, indices, 'unpooling_type', 'max', 'ksize',
@@ -1021,6 +1022,7 @@ def max_unpool3d(x,
     if in_dygraph_mode():
         output = _C_ops.final_state_unpool3d(x, indices, kernel_size, stride,
                                              padding, output_size, data_format)
+        return output
     elif in_dynamic_mode():
         output = _C_ops.unpool3d(x, indices, 'unpooling_type', 'max', 'ksize',
                                  kernel_size, 'strides', stride, 'paddings',
