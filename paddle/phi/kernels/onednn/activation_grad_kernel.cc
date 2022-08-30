@@ -23,16 +23,6 @@
 
 namespace phi {
 
-#define DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPX(name, functor_class) \
-  template <typename T, typename Context>                              \
-  void name##GradKernel(const Context& dev_ctx,                        \
-                        const DenseTensor& x,                          \
-                        const DenseTensor& dout,                       \
-                        DenseTensor* dx) {                             \
-    functor_class<T> functor;                                          \
-    functor(dev_ctx, x, dout, 0, 0, dx);                               \
-  }
-
 #define DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX( \
     name, functor_class, attr)                             \
   template <typename T, typename Context>                  \
@@ -53,18 +43,6 @@ namespace phi {
                         DenseTensor* dx) {                               \
     functor_class<T> functor;                                            \
     functor(dev_ctx, out, dout, 0, 0, dx);                               \
-  }
-
-#define DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPOUT( \
-    name, functor_class, attr)                               \
-  template <typename T, typename Context>                    \
-  void name##GradKernel(const Context& dev_ctx,              \
-                        const DenseTensor& out,              \
-                        const DenseTensor& dout,             \
-                        float attr,                          \
-                        DenseTensor* dx) {                   \
-    functor_class<T> functor;                                \
-    functor(dev_ctx, out, dout, attr, 0, dx);                \
   }
 
 template <typename T>
