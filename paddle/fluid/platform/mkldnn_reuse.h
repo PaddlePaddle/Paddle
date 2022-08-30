@@ -35,6 +35,9 @@ using framework::Tensor;
 using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = dnnl::memory;
 
+// TODO(lvyongkang): remove when its dependency has migrated.
+auto& MKLDNNMemDesc = phi::funcs::MKLDNNMemDesc;
+
 template <typename T,
           typename TForward,
           typename TBackward = mkldnn_dummy_primitive,
