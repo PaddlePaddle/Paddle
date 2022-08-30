@@ -88,17 +88,17 @@ paddle::experimental::Tensor conv2d_dygraph_function(
     auto NEW_input = transformer->TransInTensor("input", input);
 
     paddle::imperative::LayoutAutoTune::Instance().DisableLayoutAutoTune();
-    auto out = conv2d_final_state_dygraph_function(NEW_input,
-                                                   filter,
-                                                   strides,
-                                                   paddings,
-                                                   paddding_algorithm,
-                                                   groups,
-                                                   dilations,
-                                                   data_format,
-                                                   use_addto,
-                                                   workspace_size_MB,
-                                                   exhaustive_search);
+    auto out = conv2d_dygraph_function(NEW_input,
+                                       filter,
+                                       strides,
+                                       paddings,
+                                       paddding_algorithm,
+                                       groups,
+                                       dilations,
+                                       data_format,
+                                       use_addto,
+                                       workspace_size_MB,
+                                       exhaustive_search);
     transformer->SetOutTensorLayout(&out);
     paddle::imperative::LayoutAutoTune::Instance().EnableLayoutAutoTune();
     // Returns
