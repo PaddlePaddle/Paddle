@@ -193,7 +193,6 @@ class CudnnNormConvolution {
                Tensor *sum,
                Tensor *sum_of_squares) {
     auto cudnn_handle = ctx.cudnn_handle();
-    auto place = ctx.GetPlace();
 
     CudnnFusionOp *fwd_op = GetForwardOp(ctx);
     size_t workspace_size = RoundUp(
@@ -313,7 +312,6 @@ class CudnnNormConvolutionGrad {
                 Tensor *input_grad,
                 Tensor *filter_grad,
                 bool use_addto = false) {
-    auto place = ctx.GetPlace();
     T *input_ptr = const_cast<T *>(input.data<T>());
     T *filter_ptr = const_cast<T *>(filter.data<T>());
     T *output_grad_ptr = const_cast<T *>(output_grad.data<T>());
