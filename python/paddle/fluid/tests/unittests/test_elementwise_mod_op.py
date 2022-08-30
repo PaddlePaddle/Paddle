@@ -142,7 +142,7 @@ class TestRemainderInplaceOp(TestRemainderOp):
         return x.remainder_(y, name)
 
 
-class TestRemainderInplaceBroadcastSuccess(TestRemainderOp):
+class TestRemainderInplaceBroadcastSuccess(unittest.TestCase):
 
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 4).astype('float')
