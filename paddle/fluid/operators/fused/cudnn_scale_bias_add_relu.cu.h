@@ -156,8 +156,9 @@ class CudnnScaleBiasAddRelu {
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &fwd_workspace_byte_);
 
     // output ptr
-    T *out_ptr = out->mutable_data<T>(place);
-    int32_t *bitmask_ptr = bitmask->mutable_data<int32_t>(place);
+    T *out_ptr = ctx.template Alloc<T>(out, out->numel() * sizeof(T));
+    int32_t *bitmask_ptr = ctx.template Alloc<int32_t>(
+        bitmask, bitmask->numel() * sizeof(int32_t));
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_YDATA, out_ptr);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ACTIVATION_BITMASK, bitmask_ptr);
 
@@ -199,10 +200,15 @@ class CudnnScaleBiasAddRelu {
     float *saved_invstd_ptr = const_cast<float *>(saved_invstd.data<float>());
     int32_t *bitmask_ptr =
         bitmask ? const_cast<int32_t *>(bitmask->data<int32_t>()) : nullptr;
-    T *dx_ptr = dx->mutable_data<T>(place);
-    T *dz_ptr = dz ? dz->mutable_data<T>(place) : nullptr;
-    float *dscale_ptr = dscale ? dscale->mutable_data<float>(place) : nullptr;
-    float *dbias_ptr = dbias ? dbias->mutable_data<float>(place) : nullptr;
+    T *dx_ptr = ctx.template Alloc<T>(dx, dx->numel() * sizeof(T));
+    T *dz_ptr =
+        dz ? ctx.template Alloc<T>(dz, dz->numel() * sizeof(T)) : nullptr;
+    float *dscale_ptr = dscale ? ctx.template Alloc<float>(
+                                     dscale, dscale->numel() * sizeof(float))
+                               : nullptr;
+    float *dbias_ptr =
+        dbias ? ctx.template Alloc<float>(dbias, dbias->numel() * sizeof(float))
+              : nullptr;
 
     bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, x_ptr);
     bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_DYDATA, dy_ptr);

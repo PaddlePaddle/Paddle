@@ -90,7 +90,7 @@ void ComputeMergedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   auto *qkv_weight = ctx.Input<Tensor>("QKVWeight");
   auto *qkv_weight_grad =
       ctx.Output<Tensor>(framework::GradVarName("QKVWeight"));
-  qkv_weight_grad->mutable_data<T>(ctx.GetPlace());
+  dev_ctx->Alloc<T>(qkv_weight_grad, qkv_weight_grad->numel() * sizeof(T));
 
   // Gradient of GEMM(query, qkv_weight)
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
@@ -160,7 +160,7 @@ void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   const auto *key_weight = ctx.Input<Tensor>("KeyWeight");
   auto *key_weight_grad =
       ctx.Output<Tensor>(framework::GradVarName("KeyWeight"));
-  key_weight_grad->mutable_data<T>(ctx.GetPlace());
+  dev_ctx->Alloc<T>(key_weight_grad, key_weight_grad->numel() * sizeof(T));
 
   int kv_m = config.batch_size * config.seq_len_m * config.m_size;
   int kv_n = config.num_heads * config.head_dim;
@@ -174,7 +174,7 @@ void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   auto *value_weight = ctx.Input<Tensor>("ValueWeight");
   auto *value_weight_grad =
       ctx.Output<Tensor>(framework::GradVarName("ValueWeight"));
-  value_weight_grad->mutable_data<T>(ctx.GetPlace());
+  dev_ctx->Alloc<T>(value_weight_grad, value_weight_grad->numel() * sizeof(T));
 
   kv_compute.ComputeBackward(key,
                              value_weight,
@@ -188,7 +188,7 @@ void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   const auto *query_weight = ctx.Input<Tensor>("QueryWeight");
   auto *query_weight_grad =
       ctx.Output<Tensor>(framework::GradVarName("QueryWeight"));
-  query_weight_grad->mutable_data<T>(ctx.GetPlace());
+  dev_ctx->Alloc<T>(query_weight_grad, query_weight_grad->numel() * sizeof(T));
 
   int q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int q_n = config.num_heads * config.head_dim;
@@ -246,7 +246,7 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
   // Re-compute gate_bias_out
   Tensor gate_bias_out;
   gate_bias_out.Resize(config.gate_out_dims);
-  gate_bias_out.mutable_data<T>(ctx.GetPlace());
+  dev_ctx->Alloc<T>(&gate_bias_out, gate_bias_out.numel() * sizeof(T));
 
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.num_heads * config.head_dim;
@@ -267,8 +267,8 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
   auto *gate_weight_grad =
       ctx.Output<Tensor>(framework::GradVarName("GateWeight"));
   auto *gate_bias_grad = ctx.Output<Tensor>(framework::GradVarName("GateBias"));
-  gate_weight_grad->mutable_data<T>(ctx.GetPlace());
-  gate_bias_grad->mutable_data<T>(ctx.GetPlace());
+  dev_ctx->Alloc<T>(gate_weight_grad, gate_weight_grad->numel() * sizeof(T));
+  dev_ctx->Alloc<T>(gate_bias_grad, gate_bias_grad->numel() * sizeof(T));
 
   gate_attn_compute.ComputeBackward(query,
                                     gate_weight,
@@ -309,8 +309,10 @@ void ComputeOutputLinearBackward(const framework::ExecutionContext &ctx,
   auto *out_linear_bias_grad =
       ctx.Output<Tensor>(framework::GradVarName("OutLinearBias"));
 
-  out_linear_weight_grad->mutable_data<T>(ctx.GetPlace());
-  out_linear_bias_grad->mutable_data<T>(ctx.GetPlace());
+  dev_ctx->Alloc<T>(out_linear_weight_grad,
+                    out_linear_weight_grad->numel() * sizeof(T));
+  dev_ctx->Alloc<T>(out_linear_bias_grad,
+                    out_linear_bias_grad->numel() * sizeof(T));
 
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.q_dim;

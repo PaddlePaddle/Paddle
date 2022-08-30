@@ -93,7 +93,8 @@ struct EmbeddingVSumFunctor {
     const int64_t *ids = ids_t->data<int64_t>();
     auto ids_lod = ids_t->lod()[0];
     int64_t idx_width = ids_t->numel() / ids_lod.back();
-    auto *output = output_t->mutable_data<T>(context.GetPlace());
+    auto &dev_ctx = ctx.device_context();
+    auto *output = dev_ctx.Alloc<T>(output_t, output_t->numel() * sizeof(T));
 
     PADDLE_ENFORCE_LE(table_width * idx_width,
                       out_width,
@@ -165,7 +166,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__)
       int64_t padding_idx = context.Attr<int64_t>("padding_idx");
-      auto output = output_t->mutable_data<T>(context.GetPlace());
+      auto output = dev_ctx->Alloc<T>(output_t, output_t->numel() * sizeof(T));
       int64_t table_height = table_var->dims()[0];
       int64_t table_width = table_var->dims()[1];
       auto weights = table_var->data<T>();
@@ -178,9 +179,12 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
       csr_vals_t.Resize({len});
       csr_colmuns_t.Resize({len});
       csr_row_idx_t.Resize({(batch_size + 1) * idx_width});
-      auto csr_vals = csr_vals_t.mutable_data<T>(context.GetPlace());
-      auto csr_colmuns = csr_colmuns_t.mutable_data<int>(context.GetPlace());
-      auto csr_row_idx = csr_row_idx_t.mutable_data<int>(context.GetPlace());
+      auto csr_vals =
+          dev_ctx->Alloc<T>(&csr_vals_t, csr_vals_t.numel() * sizeof(T));
+      auto csr_colmuns = dev_ctx->Alloc<int>(
+          &csr_colmuns_t, csr_colmuns_t.numel() * sizeof(int));
+      auto csr_row_idx = dev_ctx->Alloc<int>(
+          &csr_row_idx_t, csr_row_idx_t.numel() * sizeof(int));
       prepare_csr_data<T>(offset,
                           ids_t->data<int64_t>(),
                           idx_width,
@@ -261,7 +265,8 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
 
       auto *d_table_value = d_table->mutable_value();
       d_table_value->Resize({ids_num, table_dim[1]});
-      T *d_table_data = d_table_value->mutable_data<T>(context.GetPlace());
+      T *d_table_data =
+          dev_ctx->Alloc<T>(d_table_value, d_table_value->numel() * sizeof(T));
       const T *d_output_data = d_output->data<T>();
 
       auto vbroadcast =
@@ -282,7 +287,8 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       int64_t padding_idx = context.Attr<int64_t>("padding_idx");
 
       d_table->Resize(table_dim);
-      auto *d_table_data = d_table->mutable_data<T>(context.GetPlace());
+      auto *d_table_data =
+          dev_ctx->Alloc<T>(d_table, d_table->numel() * sizeof(T));
       memset(d_table_data, 0, d_table->numel() * sizeof(T));
 
       const auto &ids_lod = ids->lod();
@@ -301,9 +307,12 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       csr_colmuns_t.Resize({len});
       int64_t batch_size = ids_lod[0].size() - 1;
       csr_row_idx_t.Resize({(batch_size + 1) * idx_width});
-      auto csr_vals = csr_vals_t.mutable_data<T>(context.GetPlace());
-      auto csr_colmuns = csr_colmuns_t.mutable_data<int>(context.GetPlace());
-      auto csr_row_idx = csr_row_idx_t.mutable_data<int>(context.GetPlace());
+      auto csr_vals =
+          dev_ctx->Alloc<T>(&csr_vals_t, csr_vals_t.numel() * sizeof(T));
+      auto csr_colmuns = dev_ctx->Alloc<int>(
+          &csr_colmuns_t, csr_colmuns_t.numel() * sizeof(int));
+      auto csr_row_idx = dev_ctx->Alloc<int>(
+          &csr_row_idx_t, csr_row_idx_t.numel() * sizeof(int));
       prepare_csr_data<T>(offset,
                           ids->data<int64_t>(),
                           idx_width,
