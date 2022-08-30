@@ -28,6 +28,49 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
+enum Type { kRule, kNnz, kIdx, kNormalInt, kNormalFloat };
+template <typename IntT>
+__global__ void print(const IntT* p, int len, Type t = kRule) {
+  if (t == kNnz) {
+    for (int i = 0; i < len; i++) {
+      printf("%f,", *(p + i));
+      if ((i + 1) % 2 == 0) printf("\n");
+    }
+    printf("\n");
+  }
+
+  if (t == kIdx) {
+    for (int i = 0; i < len; i++) {
+      printf("%d,%d,%d,%d\n",
+             *(p + i),
+             *(p + len + i),
+             *(p + 2 * len + i),
+             *(p + 3 * len + i));
+    }
+  }
+
+  if (t == kRule) {
+    for (int i = 0; i < len; i++) {
+      printf("%d,%d\n", *(p + i), *(p + len + i));
+    }
+  }
+
+  if (t == kNormalInt) {
+    for (int i = 0; i < len; i++) {
+      printf("%d,", *(p + i));
+      if ((i + 1) % 8 == 0) printf("\n");
+    }
+    printf("\n");
+  }
+
+  if (t == kNormalFloat) {
+    for (int i = 0; i < len; i++) {
+      printf("%f,", *(p + i));
+      if ((i + 1) % 10 == 0) printf("\n");
+    }
+  }
+}
+
 template <typename T, typename IntT>
 void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                         const SparseCooTensor& x,
@@ -116,9 +159,37 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                                         h_offsets_ptr);
     rulebook_ptr = tmp_rulebook.data<IntT>();
 
+    std::cout << "counter,offset:" << std::endl;
+    for (int i = 0; i < kernel_size; i++) {
+      printf("%d,%d\n", h_counter_ptr[i], h_offsets_ptr[i]);
+  }
+  printf("\n");
+
+  std::cout<<"rulebook len: "<<rulebook_len<<std::endl;
+  std::cout<<"tmp size: "<<tmp_rulebook.dims().size()<<std::endl;
+  std::cout<<"tmp: "<<tmp_rulebook.dims().at(0)<<","<<tmp_rulebook.dims().at(1)<<std::endl;
+
+  std::cout<<"tmp value:"<<std::endl;
+  print<<<1,1>>>(tmp_rulebook.data<IntT>(),(int)tmp_rulebook.dims().at(1),kRule);
+  cudaDeviceSynchronize();
+
     phi::funcs::sparse::SaveToTable(
         dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
   }
+
+  std::cout<<"rule size: "<<rulebook->dims().size()<<std::endl;
+  std::cout<<"rule : "<<rulebook->dims().at(0)<<","<<rulebook->dims().at(1)<<std::endl;
+
+  std::cout<<"rulebook value:"<<std::endl;
+  print<<<1,1>>>(rulebook->data<IntT>(),(int)rulebook->dims().at(1),kRule);
+  cudaDeviceSynchronize();
+
+  std::cout<<"nnz value:"<<x.non_zero_elements().numel()<<std::endl;
+  print<<<1,1>>>(x.non_zero_elements().data<T>(),x.non_zero_elements().numel(),kNnz);
+  cudaDeviceSynchronize();
+  std::cout<<"nnz idx:"<<x.non_zero_indices().numel()/4<<std::endl;
+  print<<<1,1>>>(x.non_zero_indices().data<IntT>(),x.non_zero_indices().numel()/4,kIdx);
+  cudaDeviceSynchronize();
 
   // 2. gather
   phi::DenseTensor in_features =
@@ -189,16 +260,37 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
               tmp_out_ptr);
   }
 
-  // 4. scatter
-  phi::funcs::sparse::ScatterV2<T>(dev_ctx,
-                                   out_features_ptr,
-                                   out_index.data<int>(),
-                                   unique_value.data<int>(),
-                                   out->nnz(),
-                                   kernel_size,
-                                   out_channels,
-                                   1,
-                                   out_values_ptr);
+
+    std::cout<<"out_indices:" << out->non_zero_indices().numel() / 4 << std::endl;
+    print<<<1, 1>>>(out->non_zero_indices().data<IntT>(), out->non_zero_indices().numel() / 4, kIdx);
+    cudaDeviceSynchronize();
+
+    std::cout << "out_index:" << out_index.numel() << std::endl;
+    print<<<1, 1>>>(out_index.data<int>(), out_index.numel(), kNormalInt);
+    cudaDeviceSynchronize();
+
+    std::cout << "unique_value:" << unique_value.numel() << std::endl;
+    print<<<1, 1>>>(
+        unique_value.data<int>(), unique_value.numel(), kNormalInt);
+    cudaDeviceSynchronize();
+
+    std::cout << "out_features:" << out_features.numel() << std::endl;
+    print<<<1, 1>>>(out_features.data<T>(), out_features.numel(), kNnz);
+    cudaDeviceSynchronize();
+    // 4. scatter
+    phi::funcs::sparse::ScatterV2<T>(dev_ctx,
+                                     out_features_ptr,
+                                     out_index.data<int>(),
+                                     unique_value.data<int>(),
+                                     out->nnz(),
+                                     kernel_size,
+                                     out_channels,
+                                     1,
+                                     out_values_ptr);
+    cudaDeviceSynchronize();
+    std::cout << "out:" << out_values->numel() << std::endl;
+    print<<<1, 1>>>(out_values->data<T>(), out_values->numel(), kNnz);
+    cudaDeviceSynchronize();
 }
 
 /**
