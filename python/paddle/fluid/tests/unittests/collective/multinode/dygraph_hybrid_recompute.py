@@ -139,7 +139,7 @@ class Model(nn.Layer):
         self.layers_pp.append(dp_linear)
         mp = hcg.get_model_parallel_group() if hcg else None
         for i in range(6):
-            mp_layer = RecomputeBlock(mp, 1024 + i, 64, 128, 64, True)
+            mp_layer = RecomputeBlock(mp, 1024 + i, 64, 128, 64)
             act = nn.ReLU6()
             layer_seq = nn.Sequential(mp_layer, act)
             self.layers_pp.append(layer_seq)
