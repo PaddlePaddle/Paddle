@@ -29,6 +29,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/pybind/imperative.h"
 
 namespace py = pybind11;
@@ -959,6 +960,15 @@ void InitOpsAttrTypeMap() {
     auto attrs_proto = op_proto->attrs();
     for (auto& attr : attrs_proto) {
       OpAttrTypeMap::Instance().Map()[iter->first][attr.name()] = attr.type();
+    }
+  }
+  const auto& extra_attr_maps =
+      operators::ExtraInfoUtils::Instance().GetAllExtraAttrsMap();
+  for (const auto& extra_attrs : extra_attr_maps) {
+    for (auto& attr : extra_attrs.second) {
+      OpAttrTypeMap::Instance().Map()[extra_attrs.first][attr.first] =
+          static_cast<paddle::framework::proto::AttrType>(attr.second.index() -
+                                                          1);
     }
   }
 }
