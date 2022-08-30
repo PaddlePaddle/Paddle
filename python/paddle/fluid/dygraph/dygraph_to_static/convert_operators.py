@@ -32,7 +32,7 @@ def convert_attr(x, attr):
     if isinstance(x, Variable) and attr == "size":
         return x.size()
     else:
-        return getattr(value, attr)
+        return getattr(x, attr)
 
 
 def indexable(x, code=None):
