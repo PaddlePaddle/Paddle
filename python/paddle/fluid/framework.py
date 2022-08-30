@@ -5876,6 +5876,15 @@ class Program(object):
                 op = block.op(op_idx)
                 if op.type() not in OpProtoHolder.instance().op_proto_map:
                     continue
+
+                extra_attrs_map = core.get_op_extra_attrs(op.type())
+                if len(extra_attrs_map) > 0:
+                    for name in op.attr_names():
+                        if name in extra_attrs_map:
+                            op.remove_attr(name)
+                            continue
+                    continue
+
                 proto = OpProtoHolder.instance().get_op_proto(op.type())
                 remove_input_list = []
                 for name in op.input_names():
