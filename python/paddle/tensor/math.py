@@ -4778,7 +4778,7 @@ def sgn(x, name=None):
         return paddle.sign(x)
 
 
-def frexp(x, dtype=paddle.float32):
+def frexp(x, dtype='float32'):
     x = paddle.to_tensor(x, dtype=dtype)
     input_x = paddle.abs(x)
     exponent = paddle.floor(paddle.log2(input_x))
