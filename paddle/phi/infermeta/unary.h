@@ -277,9 +277,10 @@ void ModeInferMeta(const MetaTensor& x,
                    MetaTensor* indices);
 
 void MultinomialInferMeta(const MetaTensor& x,
-                          int num_samples,
+                          const Scalar& num_samples,
                           bool replacement,
-                          MetaTensor* out);
+                          MetaTensor* out,
+                          MetaConfig config = MetaConfig());
 
 void NanmedianInferMeta(const MetaTensor& x,
                         const IntArray& axes,
