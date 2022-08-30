@@ -70,10 +70,9 @@ class Criterion(nn.Layer):
 
 class RecomputeMatmulBlock(nn.Layer):
 
-    def __init__(self, mp, seed, m, n, k, use_fleet=False):
+    def __init__(self, mp, seed, m, n, k):
         super(RecomputeMatmulBlock, self).__init__()
         self.mp = mp
-        self.use_fleet = use_fleet
         if mp is not None and mp.nranks > 1:
             mp_linear_1 = fleet.meta_parallel.ColumnParallelLinear(
                 m,
@@ -100,10 +99,7 @@ class RecomputeMatmulBlock(nn.Layer):
 
     def forward(self, x):
         if self.mp:
-            if self.use_fleet:
-                return fleet.recompute(self.layers, x)
-            else:
-                return recompute(self.layers, x)
+            return fleet.recompute(self.layers, x)
         else:
             return self.layers(x)
 
