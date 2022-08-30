@@ -20,7 +20,7 @@ from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
 from paddle.fluid import core
 from paddle.fluid.framework import _in_legacy_dygraph, Variable
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode, _non_static_mode
 
 __all__ = []
 
@@ -657,7 +657,7 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
     if output_size is None:
         ret = default_size
     elif utils._contain_var(output_size):
-        if not in_dygraph_mode():
+        if not _non_static_mode():
             has_static_var = True
             output_size = utils._convert_to_tensor_list(output_size)
         else:
