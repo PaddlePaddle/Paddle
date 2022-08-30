@@ -3504,7 +3504,13 @@ PDNode *patterns::AddSupportInt8::operator()() {
 
 PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
   auto layer_norm_op =
-      pattern->NewNode(layer_norm_op_repr())->assert_is_op("layer_norm");
+      pattern->NewNode(layer_norm_op_repr())
+          ->assert_is_op("layer_norm")
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("begin_norm_axis") &&
+                   (PADDLE_GET_CONST(
+                        int, node->Op()->GetAttr("begin_norm_axis")) == 2);
+          });
   auto layer_norm_in = pattern->NewNode(layer_norm_in_repr())
                            ->AsInput()
                            ->assert_is_op_input("layer_norm", "X");
@@ -3518,26 +3524,28 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
                             ->AsIntermediate()
                             ->assert_is_op_input("reshape2", "X")
                             ->assert_is_op_output("layer_norm", "Y");
-  auto reshape1_op = pattern->NewNode(reshape1_op_repr())
-                         ->assert_is_op("reshape2")
-                         ->assert_more([&](Node *node) {
-                           return node->Op()->HasAttr("shape") &&
-                                  PADDLE_GET_CONST(std::vector<int>,
-                                                   node->Op()->GetAttr("shape"))
-                                          .size() == 4;
-                         });
+  auto reshape1_op =
+      pattern->NewNode(reshape1_op_repr())
+          ->assert_is_op("reshape2")
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("shape") &&
+                   (PADDLE_GET_CONST(std::vector<int>,
+                                     node->Op()->GetAttr("shape"))
+                        .size() == 4);
+          });
   auto reshape1_out = pattern->NewNode(reshape1_out_repr())
                           ->AsIntermediate()
                           ->assert_is_op_input("reshape2", "X")
                           ->assert_is_op_output("reshape2", "Out");
-  auto reshape2_op = pattern->NewNode(reshape2_op_repr())
-                         ->assert_is_op("reshape2")
-                         ->assert_more([&](Node *node) {
-                           return node->Op()->HasAttr("shape") &&
-                                  PADDLE_GET_CONST(std::vector<int>,
-                                                   node->Op()->GetAttr("shape"))
-                                          .size() == 6;
-                         });
+  auto reshape2_op =
+      pattern->NewNode(reshape2_op_repr())
+          ->assert_is_op("reshape2")
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("shape") &&
+                   (PADDLE_GET_CONST(std::vector<int>,
+                                     node->Op()->GetAttr("shape"))
+                        .size() == 6);
+          });
   auto reshape2_out = pattern->NewNode(reshape2_out_repr())
                           ->AsIntermediate()
                           ->assert_is_op_input("transpose2", "X")
@@ -3557,26 +3565,28 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
                            ->AsIntermediate()
                            ->assert_is_op_input("reshape2", "X")
                            ->assert_is_op_output("transpose2", "Out");
-  auto reshape3_op = pattern->NewNode(reshape3_op_repr())
-                         ->assert_is_op("reshape2")
-                         ->assert_more([&](Node *node) {
-                           return node->Op()->HasAttr("shape") &&
-                                  PADDLE_GET_CONST(std::vector<int>,
-                                                   node->Op()->GetAttr("shape"))
-                                          .size() == 4;
-                         });
+  auto reshape3_op =
+      pattern->NewNode(reshape3_op_repr())
+          ->assert_is_op("reshape2")
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("shape") &&
+                   (PADDLE_GET_CONST(std::vector<int>,
+                                     node->Op()->GetAttr("shape"))
+                        .size() == 4);
+          });
   auto reshape3_out = pattern->NewNode(reshape3_out_repr())
                           ->AsIntermediate()
                           ->assert_is_op_input("reshape2", "X")
                           ->assert_is_op_output("reshape2", "Out");
-  auto reshape4_op = pattern->NewNode(reshape4_op_repr())
-                         ->assert_is_op("reshape2")
-                         ->assert_more([&](Node *node) {
-                           return node->Op()->HasAttr("shape") &&
-                                  PADDLE_GET_CONST(std::vector<int>,
-                                                   node->Op()->GetAttr("shape"))
-                                          .size() == 3;
-                         });
+  auto reshape4_op =
+      pattern->NewNode(reshape4_op_repr())
+          ->assert_is_op("reshape2")
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("shape") &&
+                   (PADDLE_GET_CONST(std::vector<int>,
+                                     node->Op()->GetAttr("shape"))
+                        .size() == 3);
+          });
   auto reshape4_out = pattern->NewNode(reshape4_out_repr())
                           ->assert_is_op_output("reshape2", "Out")
                           ->AsOutput();
