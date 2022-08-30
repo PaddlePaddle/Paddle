@@ -39,12 +39,7 @@ void HuberLossKernel(const Context& dev_ctx,
                              input.numel(),
                              1,
                              delta);
-  PADDLE_ENFORCE_EQ(r,
-                    XPU_SUCCESS,
-                    phi::errors::External("XPU API(huber_loss) return wrong "
-                                          "value[%d %s]",
-                                          r,
-                                          XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "huber_loss");
 }
 }  // namespace phi
 

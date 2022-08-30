@@ -44,13 +44,7 @@ void HuberLossGradKernel(const Context& dev_ctx,
                                   out_grad.numel(),
                                   1,
                                   delta);
-  PADDLE_ENFORCE_EQ(
-      r,
-      XPU_SUCCESS,
-      phi::errors::External("XPU API(huber_loss_grad) return wrong "
-                            "value[%d %s]",
-                            r,
-                            XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "huber_loss_grad");
 }
 }  // namespace phi
 
