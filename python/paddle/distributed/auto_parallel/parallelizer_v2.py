@@ -218,8 +218,8 @@ class Parallelizer:
                                               self._pass_context)
 
         # GradClip is train-only optimization
-        grad_clip = self._dist_context._lr_optimizer._grad_clip
-        if self._mode == "train" and grad_clip is not None:
+
+        if self._mode == "train":
             config = copy.deepcopy(self._strategy.sharding_configs)
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads

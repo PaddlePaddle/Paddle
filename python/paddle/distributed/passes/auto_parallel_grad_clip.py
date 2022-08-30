@@ -20,7 +20,9 @@ import paddle
 from paddle.fluid import core
 from .pass_base import PassBase, register_pass
 from ..auto_parallel.reshard import Resharder
+from ..auto_parallel.process_group import get_world_process_group
 from ..auto_parallel.utils import is_gradient_clip_op, is_optimize_op, OP_ROLE_KEY, OpRole, _get_comm_group
+from ..auto_parallel.dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
 
 
 def _get_params_grads(block):
@@ -140,6 +142,7 @@ class ClipHelper(object):
         self.block = block
         self.dist_context = dist_context
         self.sharding_group = None
+        self.world_ranks = get_world_process_group().ranks
         if hasattr(dist_context, '_sharding_group'):
             self.sharding_group = dist_context._sharding_group
 
@@ -170,6 +173,27 @@ class ClipHelper(object):
         assert dist_attr is not None
         return self.rank_id in dist_attr.process_mesh.processes
 
+    def _init_dist_attr(self, op):
+        op_dist_attr = OperatorDistributedAttribute()
+        op_dist_attr.process_mesh = self.world_ranks
+        for in_name in op.input_arg_names:
+            in_var = self.block.vars[in_name]
+            in_dist_attr = TensorDistributedAttribute()
+            in_dist_attr.process_mesh = self.world_ranks
+            in_dist_attr.dims_mapping = [-1]
+            self.dist_context.set_tensor_dist_attr_for_program(
+                in_var, in_dist_attr)
+            op_dist_attr.set_input_dist_attr(in_name, in_dist_attr)
+        for out_name in op.output_arg_names:
+            out_var = self.block.vars[out_name]
+            out_dist_attr = TensorDistributedAttribute()
+            out_dist_attr.process_mesh = self.world_ranks
+            out_dist_attr.dims_mapping = [-1]
+            self.dist_context.set_tensor_dist_attr_for_program(
+                out_var, out_dist_attr)
+            op_dist_attr.set_output_dist_attr(out_name, out_dist_attr)
+        self.dist_context.set_op_dist_attr_for_program(op, op_dist_attr)
+
 
 @register_pass("auto_parallel_grad_clip")
 class ClipGradByGloblNormPass(PassBase):
@@ -186,6 +210,9 @@ class ClipGradByGloblNormPass(PassBase):
 
     def _check_self(self):
         if self.get_attr("dist_context") is None:
+            return False
+        dist_context = self.get_attr("dist_context")
+        if dist_context._lr_optimizer._grad_clip is None:
             return False
         return True
 
@@ -290,11 +317,12 @@ class ClipGradByGloblNormPass(PassBase):
                                 'dtype': input_var.dtype,
                                 'value': 0,
                                 'force_cpu': False,
-                                OP_ROLE_KEY: OpRole.Forward
+                                OP_ROLE_KEY: OpRole.Optimize
                             })
                         fill_constant_op._set_attr('op_namescope',
                                                    "/gradient_clip_pass")
                         offset += 1
+                        self.clip_helper._init_dist_attr(fill_constant_op)
 
                     allreduce_op = block._insert_op(
                         idx + offset,
@@ -308,6 +336,7 @@ class ClipGradByGloblNormPass(PassBase):
                         })
                     allreduce_op._set_attr('op_namescope',
                                            "/gradient_clip_pass")
+                    self.clip_helper._init_dist_attr(allreduce_op)
 
         for varname in removed_tmp_var:
             block._remove_var(varname, sync=False)
