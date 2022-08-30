@@ -31,7 +31,7 @@ void DropoutGradRawKernel(const Context& dev_ctx,
                           const std::string& mode,
                           DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  PADDLE_ENFORCE_EQ(is_test,
+  PADDLE_ENFORCE_EQ(!is_test,
                     true,
                     phi::errors::InvalidArgument(
                         "GradOp is only callable when is_test is false"));
