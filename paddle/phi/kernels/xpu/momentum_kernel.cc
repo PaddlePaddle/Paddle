@@ -58,7 +58,7 @@ void MomentumDenseKernel(const Context& dev_ctx,
                         param_out->numel(),
                         lr,
                         use_nesterov,
-                        mu,
+                        static_cast<T>(mu),
                         regularization_coeff);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "momentum");
 }
