@@ -1798,15 +1798,6 @@
     func : mode
   backward : mode_grad
 
-- api : modulo
-  args : (Tensor x, Tensor y)
-  output : Tensor
-  infer_meta :
-    func : ElementwiseInferMeta
-  kernel :
-    func : modulo
-  backward : modulo_grad
-
 - api : momentum_
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0, bool multi_precision = false, float rescale_grad = 1.0f)
   output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
@@ -1837,7 +1828,7 @@
   optional : rois_num
 
 - api : multinomial
-  args : (Tensor x, int num_samples, bool replacement)
+  args : (Tensor x, Scalar num_samples, bool replacement)
   output : Tensor(out)
   infer_meta :
     func : MultinomialInferMeta
@@ -2127,6 +2118,15 @@
   kernel :
     func : relu6
   backward : relu6_grad
+
+- api : remainder
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : remainder
+  inplace : (x -> out)
 
 - api : renorm
   args : (Tensor x, float p, int axis, float max_norm)

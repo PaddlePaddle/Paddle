@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/funcs/onednn/mkldnn_helper.h"
+#include "paddle/phi/kernels/funcs/onednn/onednn_helper.h"
 
 namespace phi {
 namespace funcs {

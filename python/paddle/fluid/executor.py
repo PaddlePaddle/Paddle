@@ -398,6 +398,12 @@ def _is_enable_standalone_executor():
     ]
 
 
+def _is_dy2st_enable_standalone_executor():
+    return framework._dy2st_enable_standalone_executor_ in [
+        1, '1', True, 'True', 'true'
+    ]
+
+
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
     trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")

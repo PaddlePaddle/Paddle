@@ -205,7 +205,7 @@ OP_NAMEMAPPING = {
     'elementwise_sub': 'subtract',
     'elementwise_mul': 'multiply',
     'elementwise_div': 'divide',
-    'elementwise_mod': 'modulo',
+    'elementwise_mod': 'remainder',
 }
 
 
