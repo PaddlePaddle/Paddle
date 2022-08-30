@@ -16,6 +16,39 @@ import unittest
 import numpy as np
 import paddle
 import paddle.tensor.math as math
+import paddle.fluid
+
+
+def frexp(x):
+    if x.dtype not in [paddle.float32, paddle.float64]:
+        raise TypeError(
+            "The data type of input must be one of ['float32', 'float64'], but got {}"
+            .format(x.dtype))
+    input_x = paddle.abs(x)
+    exponent = paddle.floor(paddle.log2(input_x))
+    exponent = paddle.where(paddle.isinf(exponent),
+                            paddle.full_like(exponent, 0), exponent)
+
+    # 0填充
+    mantissa = paddle.divide(input_x, 2**exponent)
+    # 计算exponent
+    exponent = paddle.where((mantissa <= -1),
+                            paddle.add(exponent, paddle.ones_like(exponent)),
+                            exponent)
+    exponent = paddle.where((mantissa >= 1),
+                            paddle.add(exponent, paddle.ones_like(exponent)),
+                            exponent)
+    mantissa = paddle.where((mantissa <= -1),
+                            paddle.divide(mantissa,
+                                          2**paddle.ones_like(exponent)),
+                            mantissa)
+    mantissa = paddle.where((mantissa >= -1),
+                            paddle.divide(mantissa,
+                                          2**paddle.ones_like(exponent)),
+                            mantissa)
+
+    mantissa = paddle.where((x < 0), mantissa * -1, mantissa)
+    return mantissa, exponent
 
 
 class TestFrexpAPI(unittest.TestCase):
@@ -31,29 +64,36 @@ class TestFrexpAPI(unittest.TestCase):
         # 开启静态图模式
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            out1 = np.frexp(self.x_np)
-            out2 = math.frexp(self.x_np)
+            input_data = paddle.fluid.data('X', [10, 12])
+            out2 = math.frexp(input_data)
+            # out2 = frexp(input_data)
+            # 计算静态图结果
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out2])
+        out1 = np.frexp(self.x_np)
         # 对比静态图与 numpy 实现函数计算结果是否相同
-        # self.assertEqual(np.allclose(out1, out2), True)
-        np.testing.assert_allclose(out1, out2, rtol=1e-05)
+        np.testing.assert_allclose(out1, res, rtol=1e-05)
 
     # 动态图单测
     def test_dygraph_api(self):
+        input_num = paddle.to_tensor(self.x_np)
         # 关闭静态图模式
         paddle.disable_static(self.place)
         # 测试动态图 tensor.frexp 和 paddle.tensor.math.frexp 计算结果
         out1 = np.frexp(self.x_np)
-        out2 = math.frexp(self.x_np)
-        # self.assertEqual(np.allclose(out1, out2), True)
+        out2 = math.frexp(input_num)
+        # out2 = frexp(input_num)
         np.testing.assert_allclose(out1, out2, rtol=1e-05)
 
         out1 = np.frexp(self.x_np)
-        input_num = paddle.to_tensor(self.x_np)
         out2 = input_num.frexp()
-        # self.assertEqual(np.allclose(out1, out2), True)
+        # out2 = frexp(input_num)
         np.testing.assert_allclose(out1, out2, rtol=1e-05)
         paddle.enable_static()
 
 
 if __name__ == "__main__":
-    unittest.main()
+    a = TestFrexpAPI()
+    a.setUp()
+    a.test_dygraph_api()
+    a.test_static_api()
