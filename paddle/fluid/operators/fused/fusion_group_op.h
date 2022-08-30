@@ -35,10 +35,10 @@ static void MutableMultiTypeData(
                                     (*var)[i]->numel() * sizeof(float));
     } else if (data_type[i] == framework::proto::VarType::FP16) {
       dev_ctx.template Alloc<paddle::platform::float16>(
-          (*var)[i], (*var)[i]->numel() * sizeof(float));
+          (*var)[i], (*var)[i]->numel() * sizeof(paddle::platform::float16));
     } else if (data_type[i] == framework::proto::VarType::FP64) {
       dev_ctx.template Alloc<double>((*var)[i],
-                                     (*var)[i]->numel() * sizeof(float));
+                                     (*var)[i]->numel() * sizeof(double));
     }
   }
 }
