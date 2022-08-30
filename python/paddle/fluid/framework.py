@@ -86,6 +86,8 @@ _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
 _enable_standalone_executor_ = (os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR',
                                                None))
+_dy2st_enable_standalone_executor_ = (os.environ.get(
+    'FLAGS_DY2ST_USE_STANDALONE_EXECUTOR', 0))
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to
@@ -5040,6 +5042,8 @@ class Program(object):
         all_new_vars = []
         block_num = new_desc.num_blocks()
         for idx in range(block_num):
+            if (idx > (len(self.blocks) - 1)):
+                self._create_block()
             new_block_desc = new_desc.block(idx)
             all_new_vars.append([])
             block_new_vars = all_new_vars[-1]
