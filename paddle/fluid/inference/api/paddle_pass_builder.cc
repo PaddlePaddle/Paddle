@@ -189,11 +189,12 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
     //   "identity_scale_op_clean_pass",             //
     "is_test_pass",                               //
+        "fused_multi_transformer_encoder_pass",   //
+        "fused_multi_transformer_decoder_pass",   //
         "simplify_with_basic_ops_pass",           //
         "conv_bn_fuse_pass",                      //
         "conv_eltwiseadd_bn_fuse_pass",           //
         "embedding_eltwise_layernorm_fuse_pass",  //
-        "fused_attention_pass",                   //
         "multihead_matmul_fuse_pass_v2",          //
         "gpu_cpu_squeeze2_matmul_fuse_pass",      //
         "gpu_cpu_reshape2_matmul_fuse_pass",      //

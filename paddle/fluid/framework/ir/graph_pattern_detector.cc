@@ -91,15 +91,12 @@ void GraphPatternDetector::operator()(Graph *graph,
   if (!MarkPDNodesInGraph(*graph)) {
     return;
   }
-  LOG(ERROR) << "MarkPDNodesInGraph passed";
 
   auto subgraphs = DetectPatterns();
   UniquePatterns(&subgraphs);
   SortSubgraphs(&subgraphs);
   RemoveOverlappedMatch(&subgraphs);
-  LOG(ERROR) << "RemoveOverlappedMatch subgraphs size: " << subgraphs.size();
   ValidateByNodeRole(&subgraphs);
-  LOG(ERROR) << "ValidateByNodeRole subgraphs size: " << subgraphs.size();
 
   if (subgraphs.empty()) return;
 
@@ -115,9 +112,10 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
   if (graph.Nodes().empty()) return false;
 
   for (auto &node : GraphTraits::DFS(graph)) {
+    if (node.Name().rfind("__control_var") == 0) continue;
     for (const auto &pdnode : pattern_.nodes()) {
       if (pdnode->Tell(&node)) {
-        // LOG(ERROR) << "Node " << node.Name() << " marked as " << pdnode->name();
+        VLOG(4) << "Node " << node.Name() << " marked as " << pdnode->name();
         pdnodes2nodes_[pdnode.get()].insert(&node);
       }
     }
@@ -252,13 +250,13 @@ GraphPatternDetector::DetectPatterns() {
         }
       }
     }
-    LOG(ERROR) << "step " << step << " get records: " << cur_groups.size();
-    for (auto &group : cur_groups) {
-      for (auto &item : group.roles) {
-        VLOG(4) << "node " << item.second->id() << " as " << item.first->name();
-      }
-      // LOG(ERROR) << "=========================================================";
-    }
+    VLOG(4) << "step " << step << " get records: " << cur_groups.size();
+    // for (auto &group : cur_groups) {
+    //   for (auto &item : group.roles) {
+    //     // VLOG(4) << "node " << item.second->id() << " as " << item.first->name();
+    //   }
+    //   // LOG(ERROR) << "=========================================================";
+    // }
   }
 
   for (auto &group : bi_records[step % 2]) {
@@ -386,7 +384,6 @@ std::string PDPattern::DotString() const {
   // Create Edges
   for (const auto &edge : edges()) {
     if (!node2dot.count(edge.first) || !node2dot.count(edge.second)) {
-      LOG(ERROR) << "no node " << edge.first << " " << edge.second;
       continue;
     }
     auto &src = node2dot.at(edge.first);

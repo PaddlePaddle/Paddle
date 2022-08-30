@@ -47,7 +47,8 @@ constexpr char kPassRecorder[] = "pass_recorder";
 constexpr char kEmbEltwiseLayernormPass[] =
     "embedding_eltwise_layernorm_fuse_pass_flag";
 constexpr char kMultiheadMatmulPass[] = "multihead_matmul_fuse_pass_flag";
-constexpr char kFusedAttentionPass[] = "fused_attention_pass_flag";
+constexpr char kFusedMultiTransformerEncoderPass[] = "fused_multi_transformer_encoder_pass_flag";
+constexpr char kFusedMultiTransformerDecoderPass[] = "fused_multi_transformer_decoder_pass_flag";
 constexpr char kPrelnEmbEltwiseLayernormPass[] =
     "preln_embedding_eltwise_layernorm_fuse_pass_flag";
 
