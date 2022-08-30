@@ -22,6 +22,7 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
+from test_sum_op import TestReduceOPTensorAxisBase
 
 np.random.seed(10)
 
@@ -406,6 +407,30 @@ class TestMeanAPI(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', [10, 12], 'int32')
             self.assertRaises(TypeError, paddle.mean, x)
+
+
+class TestMeanWithTensorAxis1(TestReduceOPTensorAxisBase):
+
+    def init_data(self):
+        self.pd_api = paddle.mean
+        self.np_api = np.mean
+        self.x = paddle.randn([10, 5, 9, 9], dtype='float64')
+        self.np_axis = np.array([1, 2], dtype='int64')
+        self.tensor_axis = paddle.to_tensor([1, 2], dtype='int64')
+
+
+class TestMeanWithTensorAxis2(TestReduceOPTensorAxisBase):
+
+    def init_data(self):
+        self.pd_api = paddle.mean
+        self.np_api = np.mean
+        self.x = paddle.randn([10, 10, 9, 9], dtype='float64')
+        self.np_axis = np.array([0, 1, 2], dtype='int64')
+        self.tensor_axis = [
+            0,
+            paddle.to_tensor([1], 'int64'),
+            paddle.to_tensor([2], 'int64')
+        ]
 
 
 if __name__ == "__main__":
