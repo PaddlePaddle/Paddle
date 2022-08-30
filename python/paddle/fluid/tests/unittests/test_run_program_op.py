@@ -26,6 +26,8 @@ from paddle import compat as cpt
 from paddle.fluid import core, framework, executor
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.framework import _in_eager_mode_
+from paddle.fluid.executor import _is_enable_standalone_executor, _is_dy2st_enable_standalone_executor
+from paddle.fluid.dygraph.base import switch_to_static_graph
 
 paddle.enable_static()
 
@@ -39,6 +41,30 @@ def program_scope_guard():
         with fluid.program_guard(prog, startup_prog):
             with fluid.unique_name.guard():
                 yield
+
+
+@switch_to_static_graph
+def _add_build_strategy_for(input_program, start_op_index, end_op_index):
+    compiled_program = paddle.static.CompiledProgram(
+        core.Graph(input_program.desc, start_op_index, end_op_index),
+        build_strategy=paddle.static.BuildStrategy())
+    compiled_program._compile(core.Scope(),
+                              paddle.framework._current_expected_place())
+    ir_graph = paddle.fluid.framework.IrGraph(compiled_program._graph)
+    builded_program = ir_graph.to_program()
+    return builded_program
+
+
+@switch_to_static_graph
+def _build_program_by_desc(program_desc):
+    prog = framework.Program()
+    prog.desc = program_desc
+    prog.blocks = [
+        framework.Block(prog, i)
+        for i in six.moves.range(prog.desc.num_blocks())
+    ]
+    prog._sync_with_cpp()
+    return prog
 
 
 # NOTE: Because RunProgramOp has a special output of type std::vector<Scope *>,
@@ -97,10 +123,22 @@ class RunProgramOpTest(unittest.TestCase):
             fwd_op_num = self.build_model()
             return fluid.default_main_program().desc, fwd_op_num
 
+    def get_forward_backward_program_desc(self, whole_program_desc,
+                                          forward_op_num, output_num):
+        program = _build_program_by_desc(whole_program_desc)
+        forward_program = _add_build_strategy_for(program, 0, forward_op_num)
+        backward_program = _add_build_strategy_for(
+            program, forward_op_num + 2 * output_num,
+            program.desc.block(0).op_size())
+        return forward_program.desc, backward_program.desc
+
     def prepare_attrs(self):
-        return ('global_block', self.program_desc.block(0), 'start_op_index', 0,
-                'end_op_index', self.fwd_op_num, 'program_id',
-                _hash_with_id(self.program_desc, self))
+        return [
+            'global_block',
+            self.program_desc.block(0), 'start_op_index', 0, 'end_op_index',
+            self.fwd_op_num, 'program_id',
+            _hash_with_id(self.program_desc, self)
+        ]
 
     def get_param_grad_names(self):
         grad_names = []
@@ -200,9 +238,21 @@ class RunProgramOpTest(unittest.TestCase):
             inputs = self.prepare_dygraph_input(place)
             outputs = self.prepare_dygraph_output()
 
+            forward_program_desc, backward_program_desc = self.get_forward_backward_program_desc(
+                self.program_desc, self.fwd_op_num, len(outputs['Out']))
+
+            use_interpretorcore = _is_enable_standalone_executor(
+            ) and _is_dy2st_enable_standalone_executor()
+            self.attrs.extend(('use_interpretorcore', use_interpretorcore))
+            if use_interpretorcore:
+                self.attrs.extend(
+                    ('forward_global_block', forward_program_desc.block(0),
+                     'backward_global_block', backward_program_desc.block(0)))
+
             _legacy_C_ops.run_program(inputs['X'], inputs['Params'],
                                       outputs['Out'], outputs['OutScope'],
                                       outputs['DOut'], None, *self.attrs)
+
             return outputs['Out']
 
     def calc_dygraph_grad(self, place):
@@ -213,6 +263,17 @@ class RunProgramOpTest(unittest.TestCase):
             # Step 1. run forward
             inputs, input_param_list = self.prepare_dygraph_input(place, True)
             outputs = self.prepare_dygraph_output()
+
+            forward_program_desc, backward_program_desc = self.get_forward_backward_program_desc(
+                self.program_desc, self.fwd_op_num, len(outputs['Out']))
+
+            use_interpretorcore = _is_enable_standalone_executor(
+            ) and _is_dy2st_enable_standalone_executor()
+            self.attrs.extend(('use_interpretorcore', use_interpretorcore))
+            if use_interpretorcore:
+                self.attrs.extend(
+                    ('forward_global_block', forward_program_desc.block(0),
+                     'backward_global_block', backward_program_desc.block(0)))
 
             _legacy_C_ops.run_program(inputs['X'], inputs['Params'],
                                       outputs['Out'], outputs['OutScope'],
