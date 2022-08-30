@@ -591,11 +591,11 @@
     func : cumprod_grad
 
 - backward_api : cumsum_grad
-  forward : cumsum(Tensor x, int axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
+  forward : cumsum(Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
-  args : (Tensor out_grad, int axis, bool flatten, bool exclusive, bool reverse)
+  args : (Tensor out_grad, Scalar axis, bool flatten, bool exclusive, bool reverse)
   output : Tensor(x_grad)
   invoke : cumsum(out_grad, axis, flatten, exclusive, !reverse)
 
@@ -834,7 +834,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
-  invoke : zeros_like(out_grad, DataType::UNDEFINED, {})
+  invoke : zeros_like(out_grad)
 
 - backward_api : fill_diagonal_grad
   forward : fill_diagonal (Tensor x, float value, int offset, bool wrap) -> Tensor(out)
@@ -998,7 +998,6 @@
     data_type : out_grad
   optional: out, dst_count
 
-# grid sample
 - backward_api : grid_sample_grad
   forward : grid_sample (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners) -> Tensor(out)
   args : (Tensor x, Tensor grid, Tensor out_grad, str mode, str padding_mode, bool align_corners)
@@ -1452,8 +1451,8 @@
     func : matrix_power_grad
 
 - backward_api : max_grad
-  forward: max (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  forward: max (Tensor x,  IntArray dims={},  bool keep_dim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray dims={}, bool keep_dim=false, bool reduce_all=false)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1510,14 +1509,14 @@
     func : mean_all_grad
 
 - backward_api : mean_double_grad
-  forward: mean_grad (Tensor x, Tensor grad_out, int64_t[] dims={},  bool keep_dim=false, bool reduce_all = false) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  forward: mean_grad (Tensor x, Tensor grad_out, IntArray dims={},  bool keep_dim=false, bool reduce_all = false) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray dims={},  bool keep_dim=false)
   output : Tensor(grad_out_grad)
   invoke : mean(grad_x_grad, dims, keep_dim)
 
 - backward_api : mean_grad
-  forward: mean (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  forward: mean (Tensor x,  IntArray dims={},  bool keep_dim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray dims={},  bool keep_dim=false, bool reduce_all=false)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1537,8 +1536,8 @@
     func : meshgrid_grad
 
 - backward_api : min_grad
-  forward: min (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  forward: min (Tensor x,  IntArray dims={},  bool keep_dim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray dims={}, bool keep_dim=false, bool reduce_all=false)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1576,17 +1575,6 @@
     param: [x]
   kernel :
     func : mode_grad
-
-- backward_api : modulo_grad
-  forward : modulo (Tensor x, Tensor y) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
-  kernel :
-    func : modulo_grad
-  no_need_buffer : x, y
 
 - backward_api : multi_dot_grad
   forward : multi_dot (Tensor[] x) -> Tensor(out)
@@ -1718,8 +1706,8 @@
   backward : pad3d_double_grad
 
 - backward_api : pad_double_grad
-  forward : pad_grad(Tensor x, Tensor grad_out, int[] paddings, float pad_value) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, int[] paddings, float pad_value)
+  forward : pad_grad(Tensor x, Tensor grad_out, int[] paddings, Scalar pad_value) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, int[] paddings, Scalar pad_value)
   output : Tensor(grad_out_grad)
   infer_meta :
     func : PadInferMeta
@@ -1727,8 +1715,8 @@
     func : pad
 
 - backward_api : pad_grad
-  forward : pad(Tensor x, int[] paddings, float pad_value) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int[] paddings, float pad_value)
+  forward : pad(Tensor x, int[] paddings, Scalar pad_value) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] paddings, Scalar pad_value)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1861,8 +1849,8 @@
   inplace : (out_grad -> x_grad)
 
 - backward_api : reduce_prod_grad
-  forward : reduce_prod (Tensor x, int64_t[] dims, bool keep_dim, bool reduce_all) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] dims,  bool keep_dim, bool reduce_all)
+  forward : reduce_prod (Tensor x, IntArray dims, bool keep_dim, bool reduce_all) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray dims,  bool keep_dim, bool reduce_all)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1964,8 +1952,8 @@
   inplace : (out_grad -> x_grad)
 
 - backward_api : reverse_array_grad
-  forward : reverse_array (Tensor[] x, int[] axis) -> Tensor[](out)
-  args : (Tensor[] out_grad, int[] axis)
+  forward : reverse_array (Tensor[] x, IntArray axis) -> Tensor[](out)
+  args : (Tensor[] out_grad, IntArray axis)
   output : Tensor[](x_grad){out_grad.size()}
   infer_meta :
     func : ReverseArrayInferMeta
@@ -1973,8 +1961,8 @@
     func : reverse
 
 - backward_api : reverse_grad
-  forward : reverse (Tensor x, int[] axis) -> Tensor(out)
-  args : (Tensor out_grad, int[] axis)
+  forward : reverse (Tensor x, IntArray axis) -> Tensor(out)
+  args : (Tensor out_grad, IntArray axis)
   output : Tensor(x_grad)
   infer_meta :
     func : ReverseInferMeta
@@ -2051,26 +2039,11 @@
   backward : rsqrt_double_grad
   inplace : (out_grad -> x_grad)
 
-- backward_api : scale_double_grad
-  forward : scale_grad (Tensor grad_out, Scalar scale, float bias, bool bias_after_scale) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
-  output : Tensor(grad_out_grad)
-  invoke : scale(grad_x_grad, scale, 0.0, bias_after_scale)
-  backward : scale_triple_grad
-
 - backward_api : scale_grad
   forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
-  args : (Tensor out_grad, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
+  args : (Tensor out_grad, Scalar scale=1.0, bool bias_after_scale=true)
   output : Tensor(x_grad)
   invoke : scale(out_grad, scale, 0.0, bias_after_scale)
-  backward : scale_double_grad
-  inplace : (out_grad -> x_grad)
-
-- backward_api : scale_triple_grad
-  forward : scale_double_grad (Tensor grad_grad_x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(grad_grad_out)
-  args : (Tensor grad_grad_out_grad, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
-  output : Tensor(grad_grad_x_grad)
-  invoke : scale(grad_grad_out_grad, scale, 0.0, bias_after_scale)
 
 - backward_api : scatter_grad
   forward : scatter (Tensor x, Tensor index, Tensor updates, bool overwrite) -> Tensor(out)
@@ -2250,7 +2223,6 @@
     func : softmax_grad
     use_gpudnn : true
 
-# softplus
 - backward_api : softplus_grad
   forward : softplus (Tensor x, float beta, float threshold) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float beta, float threshold)
@@ -2414,15 +2386,14 @@
   inplace : (out_grad -> x_grad)
 
 - backward_api : sum_double_grad
-  forward : sum_grad (Tensor x, Tensor grad_out, int64_t[] dims, bool keep_dim, bool reduce_all=false) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, int64_t[] dims={}, bool keep_dim=false)
+  forward : sum_grad (Tensor x, Tensor grad_out, IntArray dims, bool keep_dim, bool reduce_all=false) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray dims={}, bool keep_dim=false)
   output : Tensor(grad_out_grad)
   invoke : sum(grad_x_grad, dims, grad_x_grad.dtype(), keep_dim)
-  backward : sum_triple_grad
 
 - backward_api : sum_grad
-  forward : sum (Tensor x, int64_t[] dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int64_t[] dims, bool keep_dim, bool reduce_all=false)
+  forward : sum (Tensor x, IntArray dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray dims, bool keep_dim, bool reduce_all=false)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -2431,12 +2402,6 @@
     func : sum_grad
   no_need_buffer : x
   backward : sum_double_grad
-
-- backward_api : sum_triple_grad
-  forward : sum_double_grad (Tensor grad_grad_x, int64_t[] dims={}, bool keep_dim=false) -> Tensor(grad_grad_out)
-  args : (Tensor grad_grad_x, Tensor grad_grad_out_grad, int64_t[] dims={}, bool keep_dim=false, bool reduce_all=false)
-  output : Tensor(grad_grad_x_grad)
-  invoke : sum_grad(grad_grad_x, grad_grad_out_grad, dims, keep_dim, reduce_all, grad_grad_x_grad)
 
 - backward_api : svd_grad
   forward : svd (Tensor x, bool full) -> Tensor(u), Tensor(s), Tensor(vh)
@@ -2462,7 +2427,7 @@
 
 - backward_api : sync_batch_norm_grad
   forward : sync_batch_norm_ (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu) -> Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
-  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean_out, Tensor variance_out, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor out_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor out_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :
     func : GeneralTernaryGradInferMeta
@@ -2470,7 +2435,7 @@
   kernel :
     func : sync_batch_norm_grad
     data_type : out_grad
-  optional : mean_out, variance_out, reserve_space
+  optional : reserve_space
 
 - backward_api : take_along_axis_grad
   forward : take_along_axis (Tensor x, Tensor index, int axis) -> Tensor(out)
@@ -2729,7 +2694,6 @@
     func : yolov3_loss_grad
   optional : gt_score
 
-# fold
 - backward_api: fold_grad
   forward: fold (Tensor x, int[] output_sizes, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations) -> Tensor(out)
   args: (Tensor x, Tensor out_grad, int[] output_sizes, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
@@ -2741,7 +2705,6 @@
     func: fold_grad
   no_need_buffer : x
 
-# unpool3d
 - backward_api: unpool3d_grad
   forward: unpool3d (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format) -> Tensor(out)
   args: (Tensor x, Tensor indices, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)
@@ -2754,7 +2717,6 @@
     data_type: x
   no_need_buffer : x
 
-# unpool
 - backward_api: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding,  int[] output_size, str data_format) -> Tensor(out)
   args: (Tensor x, Tensor indices, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)
