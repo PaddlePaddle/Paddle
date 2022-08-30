@@ -2377,7 +2377,7 @@ void OperatorWithKernel::ParseInputDataType(
           t->IsInitialized(),
           true,
           platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
-                                            "contains uninitialized Tensor.",
+                                            "contains uninitialized Tensor. ",
                                             Type(),
                                             name));
       *data_type = paddle::framework::TransToProtoVarType(t->dtype());

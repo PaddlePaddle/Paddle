@@ -35,6 +35,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+static const char kParamScopeAttr[] = "__param_scope__";
+
 Graph *Pass::Apply(Graph *graph) const {
   VLOG(10) << "start to apply pass " << Type() << " to graph";
   CheckPrevPass();
@@ -65,11 +67,34 @@ Graph *Pass::Apply(Graph *graph) const {
       true,
       platform::errors::InvalidArgument(
           "The VarDescs of persistable variable are not consistency."));
-  applied_ = true;
   if (!graph->Has(kPassRecorder)) {
     graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
   }
   graph->Get<PassRecorder>(kPassRecorder).insert(Type());
+
+  if(graph->IsMainGraph() and "graph_viz_pass"!=Type() and "graph_to_program_pass"!=Type()) {
+    for(size_t i=1; i<graph->SubGraphsSize(); i++) {
+      auto* sub_graph = graph->GetSubGraph(i);
+      if(!sub_graph->Has(framework::ir::kParamScopeAttr)) {
+        sub_graph->SetNotOwned<Scope>(framework::ir::kParamScopeAttr, &graph->Get<Scope>(framework::ir::kParamScopeAttr));
+      }
+
+      ApplyImpl(sub_graph);
+      PADDLE_ENFORCE_EQ(
+          HasCircle(*sub_graph), false,
+          platform::errors::InvalidArgument(
+             "Illegal pass %s. Generated graph shouldn't contain cycle.", Type()));
+      PADDLE_ENFORCE_EQ(
+          VarDescIsConsistency(*sub_graph), true,
+          platform::errors::InvalidArgument(
+            "The VarDescs of persistable variable are not consistency."));
+      if (!sub_graph->Has(kPassRecorder)) {
+        sub_graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
+      }
+      sub_graph->Get<PassRecorder>(kPassRecorder).insert(Type());
+    }
+  }
+  applied_ = true;
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // Passes can change params, tensors, so caching need to be discarded
