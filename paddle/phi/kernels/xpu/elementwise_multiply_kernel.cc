@@ -35,26 +35,11 @@ void MultiplyRawKernel(const Context& dev_ctx,
       dev_ctx, x, y, axis, out, xpu::broadcast_mul<XPUType>);
 }
 
-template <typename T, typename Context>
-void MultiplyKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    DenseTensor* out) {
-  MultiplyRawKernel<T, Context>(dev_ctx, x, y, -1, out);
-}
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(multiply_raw,
                    XPU,
                    ALL_LAYOUT,
                    phi::MultiplyRawKernel,
-                   phi::dtype::float16,
-                   float) {}
-
-PD_REGISTER_KERNEL(multiply,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::MultiplyKernel,
                    phi::dtype::float16,
                    float) {}

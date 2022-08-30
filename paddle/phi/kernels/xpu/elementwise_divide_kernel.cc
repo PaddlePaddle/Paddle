@@ -35,14 +35,6 @@ void DivideRawKernel(const Context& dev_ctx,
       dev_ctx, x, y, axis, out, xpu::broadcast_div<XPUType>);
 }
 
-template <typename T, typename Context>
-void DivideKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& y,
-                  DenseTensor* out) {
-  DivideRawKernel<T, Context>(dev_ctx, x, y, -1, out);
-}
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(divide_raw,
@@ -51,6 +43,3 @@ PD_REGISTER_KERNEL(divide_raw,
                    phi::DivideRawKernel,
                    phi::dtype::float16,
                    float) {}
-
-PD_REGISTER_KERNEL(
-    divide, XPU, ALL_LAYOUT, phi::DivideKernel, phi::dtype::float16, float) {}
