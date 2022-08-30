@@ -807,7 +807,10 @@ class TRTEngineManager {
   using AllocationPtr = phi::Allocator::AllocationPtr;
 
  public:
-  bool Empty() const { return engines_.size() == 0; }
+  bool Empty() const {
+    std::unique_lock<std::mutex> lock(mutex_);
+    return engines_.size() == 0;
+  }
   bool Has(const std::string& name) const {
     std::unique_lock<std::mutex> lock(mutex_);
     if (engines_.count(name) == 0) return false;
