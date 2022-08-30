@@ -51,7 +51,8 @@ class ReshapeOpConverter : public OpConverter {
         real_shape_tensor = Concat(concat_inputs);
       } else if (op_desc.Inputs().find("Shape") != op_desc.Inputs().end() &&
                  op_desc.Input("Shape").size() > 0) {
-        real_shape_tensor = engine_->GetITensor(op_desc.Input("Shape")[0], scope);
+        real_shape_tensor =
+            engine_->GetITensor(op_desc.Input("Shape")[0], scope);
       } else {
         reshape_dim.nbDims = nbDims_num;
         for (int i = 0; i < nbDims_num; ++i) {
