@@ -149,6 +149,7 @@ if (WITH_DGC)
 endif()
 
 cc_library(common_infer_shape_functions SRCS common_infer_shape_functions.cc DEPS operator)
+cc_library(ops_extra_info SRCS ops_extra_info.cc DEPS attribute cudnn_workspace_helper)
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows_utils lapack_function
 lod_tensor maxouting unpooling pooling lod_rank_table context_project
