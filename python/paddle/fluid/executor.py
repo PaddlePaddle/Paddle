@@ -716,14 +716,14 @@ class _ExecutorCache(object):
         def __hash__(self):
             return self.key
 
-    def __init__(self):
+    def __init__(self, place):
+        self.place = place
         # NOTE(Ruibiao): Wrap the lru_cache in constructor so that the cache is local to the _ExecutorCache instance, otherwise a global cache may not be released after the Executor instance deleted
         self._get_cached_program_and_executor = lru_cache(maxsize=8)(
             self._get_program_and_executor)
-        print("init _ExecutorCache in python", flush=True)
 
-    def __del__(self):
-        print(f"del _ExecutorCache in python", flush=True)
+    def clear(self):
+        self._get_cached_program_and_executor.cache_clear()
 
     def get_program_and_executor(self, program, feed, fetch_list, feed_var_name,
                                  fetch_var_name, place, scope):
@@ -896,21 +896,16 @@ class Executor(object):
 
         # NOTE: Whether to use experimental executor `StandaloneExecutor`.
         self._enable_interpreter_core = _is_enable_standalone_executor()
-        self._executor_cache = _ExecutorCache()
+        self._executor_cache = _ExecutorCache(self.place)
 
         self._fleet_executor = None
         # TODO(liyurui): This option will be removed and always true when the functionality
         # of fleet executor with standalone executor is ready.
         self._fleet_executor_with_standalone = False
 
-        print(
-            f"init executor in python, ref = {sys.getrefcount(self._executor_cache)}",
-            flush=True)
-
     def __del__(self):
-        print(
-            f"del executor in python, ref = {sys.getrefcount(self._executor_cache)}",
-            flush=True)
+        # NOTE(Ruibiao): The manually call of clear is required. Because in Python, executor_cache may not immediately destructed after Executor instance deleted (so does not the _StandaloneExecutor), that brings errors to mkl-dnn unit tests (see ClearMKLDNNCache in interpretercore.cc for why).
+        self._executor_cache.clear()
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
