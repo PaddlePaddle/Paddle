@@ -88,18 +88,6 @@ struct MKLDNNActivationGradFunc : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct GeluMKLDNNGradFunctor : public BaseActivationFunctor<T> {
-  void operator()(const framework::ExecutionContext &ctx) const {
-    const bool approximate = ctx.Attr<bool>("approximate");
-    if (approximate) {
-      eltwise_grad<T>(ctx, dnnl::algorithm::eltwise_gelu_tanh);
-    } else {
-      eltwise_grad<T>(ctx, dnnl::algorithm::eltwise_gelu_erf);
-    }
-  }
-};
-
-template <typename T>
 struct SoftplusMKLDNNFunctor : public BaseActivationFunctor<T> {
   void operator()(const framework::ExecutionContext &ctx) const {
     custom_softplus_eltwise_forward<T>(ctx);
@@ -133,5 +121,4 @@ namespace ops = paddle::operators;
           ops::grad_functor<paddle::platform::bfloat16>>);
 
 REGISTER_FWD_ACTIVATION_MKLDNN_KERNEL(softplus, SoftplusMKLDNNFunctor);
-REGISTER_GRAD_ACTIVATION_MKLDNN_KERNEL(gelu, GeluMKLDNNGradFunctor);
 REGISTER_GRAD_ACTIVATION_MKLDNN_KERNEL(relu6, Relu6MKLDNNGradFunctor);

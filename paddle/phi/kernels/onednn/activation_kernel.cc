@@ -129,9 +129,6 @@ using SigmoidOneDNNFunctor =
     OneDNNActivationFunc<T, dnnl::algorithm::eltwise_logistic>;
 
 template <typename T>
-using SoftplusOneDNNFunctor = SoftplusOneDNNActivationFunc<T>;
-
-template <typename T>
 using SqrtOneDNNFunctor =
     OneDNNActivationFunc<T, dnnl::algorithm::eltwise_sqrt>;
 
@@ -147,7 +144,6 @@ DEFINE_ONEDNN_ACTIVATION_KERNEL(Abs, AbsOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Exp, ExpOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Relu, ReluOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Sigmoid, SigmoidOneDNNFunctor)
-DEFINE_ONEDNN_ACTIVATION_KERNEL(Softplus, SoftplusOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Sqrt, SqrtOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Tanh, TanhOneDNNFunctor)
 
