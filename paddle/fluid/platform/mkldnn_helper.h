@@ -33,6 +33,9 @@ using MKLDNNMemoryFormat = dnnl::memory::format_tag;
 #endif
 namespace platform {
 
+// TODO(lvyongkang)
+auto& MKLDNNFormatForSize = phi::funcs::MKLDNNFormatForSize;
+
 using MKLDNNStream = dnnl::stream;
 using MKLDNNEngine = dnnl::engine;
 using MKLDNNMemory = dnnl::memory;
@@ -483,7 +486,7 @@ inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
 }
 
 inline void RegisterModelLayout(
-    const std::vector<std::unique_ptr<framework::OperatorBase>>& ops,
+    std::vector<std::unique_ptr<framework::OperatorBase>>& ops,  // NOLINT
     const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
     // If there is already registered NHWC then quit this call
