@@ -20,7 +20,7 @@ namespace phi {
 template <typename T, typename Context>
 void ReduceMeanKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      const std::vector<int64_t>& dims,
+                      const IntArray& dims,
                       bool keep_dim,
                       DenseTensor* out) {
   bool reduce_all = false;
@@ -36,7 +36,7 @@ void ReduceMeanKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void ReduceMeanRawKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const std::vector<int64_t>& dims,
+                         const IntArray& dims,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* out) {
@@ -53,14 +53,14 @@ template <typename T, typename Context>
 void ReduceMeanGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& out_grad,
-                          const std::vector<int64_t>& dims,
+                          const IntArray& dims,
                           bool keep_dim,
                           bool reduce_all,
                           DenseTensor* x_grad)
 
 {
   auto input_dims = phi::vectorize(x.dims());
-  std::vector<int64_t> reduce_dims = dims;
+  std::vector<int64_t> reduce_dims = dims.GetData();
   int number_of_elements = 1;
   if (reduce_all == false) {
     for (size_t i = 0; i < dims.size(); ++i) {
@@ -72,11 +72,11 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   } else {
     number_of_elements = x.numel();
   }
-
+  const IntArray new_dims = IntArray(reduce_dims);
   ReduceGradKernel<T, Context>(dev_ctx,
                                x,
                                out_grad,
-                               reduce_dims,
+                               new_dims,
                                keep_dim,
                                reduce_all,
                                x_grad,

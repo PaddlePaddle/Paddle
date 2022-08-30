@@ -41,14 +41,14 @@ inline std::vector<int64_t> CalculateReducedDims(
 template <typename T, typename Context>
 void ReduceKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
+                  const IntArray& dims,
                   bool keep_dim,
                   bool reduce_all,
                   DenseTensor* out,
                   dnnl::algorithm reduction_type) {
   const auto& onednn_engine = dev_ctx.GetEngine();
   auto x_tz = phi::vectorize(x.dims());
-  auto out_tz = CalculateReducedDims(&x, out, dims, reduce_all, keep_dim);
+  auto out_tz = CalculateReducedDims(&x, out, dims.GetData(), reduce_all, keep_dim);
 
   auto& astream = OneDNNContext::tls().get_stream();
 
@@ -108,7 +108,7 @@ template <typename T, typename Context>
 void ReduceGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad,
-                      const std::vector<int64_t>& dims,
+                      const IntArray& dims,
                       bool keep_dim,
                       bool reduce_all,
                       DenseTensor* x_grad,
@@ -118,7 +118,7 @@ void ReduceGradKernel(const Context& dev_ctx,
                       float scale_y) {
   const auto& onednn_engine = dev_ctx.GetEngine();
   auto out_grad_tz =
-      CalculateReducedDims(x_grad, &out_grad, dims, reduce_all, keep_dim);
+      CalculateReducedDims(x_grad, &out_grad, dims.GetData(), reduce_all, keep_dim);
   auto x_grad_tz = phi::vectorize(x_grad->dims());
 
   funcs::BroadcastDataMKLDNNHandler<T> handler(binary_type,

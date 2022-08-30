@@ -20,7 +20,7 @@ namespace phi {
 template <typename T, typename Context>
 void ReduceSumKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const std::vector<int64_t>& dims,
+                     const IntArray& dims,
                      DataType out_dtype,
                      bool keep_dim,
                      DenseTensor* out) {
@@ -37,7 +37,7 @@ void ReduceSumKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void ReduceSumRawKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const std::vector<int64_t>& dims,
+                        const IntArray& dims,
                         bool keep_dim,
                         bool reduce_all,
                         DataType out_dtype,
@@ -55,7 +55,7 @@ template <typename T, typename Context>
 void ReduceSumGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& out_grad,
-                         const std::vector<int64_t>& dims,
+                         const IntArray& dims,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* x_grad) {

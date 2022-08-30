@@ -20,7 +20,7 @@ namespace phi {
 template <typename T, typename Context>
 void ReduceMaxKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const std::vector<int64_t>& dims,
+                     const IntArray& dims,
                      bool keep_dim,
                      DenseTensor* out) {
   bool reduce_all = false;
@@ -36,7 +36,7 @@ void ReduceMaxKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void ReduceMaxRawKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const std::vector<int64_t>& dims,
+                        const IntArray& dims,
                         bool keep_dim,
                         bool reduce_all,
                         DenseTensor* out) {
