@@ -197,7 +197,7 @@
     support_trans_dtype : start, end, step
 
 - api : argmax
-  args : (Tensor x, int64_t axis, bool keepdims, bool flatten, int dtype)
+  args : (Tensor x, Scalar axis, bool keepdims, bool flatten, int dtype)
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -205,7 +205,7 @@
     func : arg_max
 
 - api : argmin
-  args : (Tensor x, int64_t axis, bool keepdims, bool flatten, int dtype)
+  args : (Tensor x, Scalar axis, bool keepdims, bool flatten, int dtype)
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -1668,10 +1668,10 @@
     func : matrix_rank_tol
 
 - api : max
-  args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
+  args : (Tensor x, IntArray dims={}, bool keep_dim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceInferMeta
+    func : ReduceIntArrayAxisInferMeta
   kernel :
     func : max
   backward : max_grad
@@ -1713,10 +1713,10 @@
   backward : maxout_grad
 
 - api : mean
-  args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
+  args : (Tensor x, IntArray dims={}, bool keep_dim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceInferMeta
+    func : ReduceIntArrayAxisInferMeta
   kernel :
     func : mean
   backward : mean_grad
@@ -1762,10 +1762,10 @@
   backward : meshgrid_grad
 
 - api : min
-  args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
+  args : (Tensor x, IntArray dims={}, bool keep_dim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceInferMeta
+    func : ReduceIntArrayAxisInferMeta
   kernel :
     func : min
   backward : min_grad
@@ -1931,7 +1931,7 @@
   backward : p_norm_grad
 
 - api : pad
-  args : (Tensor x, int[] paddings, float pad_value)
+  args : (Tensor x, int[] paddings, Scalar pad_value)
   output : Tensor
   infer_meta :
     func : PadInferMeta
@@ -2091,10 +2091,10 @@
   backward : reciprocal_grad
 
 - api : reduce_prod
-  args : (Tensor x, int64_t[] dims, bool keep_dim, bool reduce_all)
+  args : (Tensor x, IntArray dims, bool keep_dim, bool reduce_all)
   output : Tensor
   infer_meta :
-    func : ReduceInferMetaBase
+    func : ReduceIntArrayAxisInferMetaBase
   kernel :
     func : prod_raw
   backward : reduce_prod_grad
@@ -2555,7 +2555,7 @@
   backward : subtract_grad
 
 - api : sum
-  args : (Tensor x, int64_t[] dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false)
+  args : (Tensor x, IntArray dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false)
   output : Tensor(out)
   infer_meta :
     func : SumInferMeta

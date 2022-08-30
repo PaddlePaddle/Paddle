@@ -121,28 +121,12 @@ void AffineGridInferMeta(const MetaTensor& input,
 }
 
 void ArgMinMaxInferMeta(const MetaTensor& x,
-                        int64_t axis,
+                        const Scalar& axis,
                         bool keepdims,
                         bool flatten,
                         int dtype,
                         MetaTensor* out,
                         MetaConfig config) {
-  const auto& x_dims = x.dims();
-
-  PADDLE_ENFORCE_GE(
-      axis,
-      -x_dims.size(),
-      phi::errors::InvalidArgument("'axis'(%d) must be greater than or equal to"
-                                   " -Rank(X)(%d).",
-                                   axis,
-                                   -x_dims.size()));
-  PADDLE_ENFORCE_LT(axis,
-                    x_dims.size(),
-                    phi::errors::InvalidArgument(
-                        "'axis'(%d) must be less than Rank(X)(%d) of Input(X).",
-                        axis,
-                        x_dims.size()));
-
   PADDLE_ENFORCE_EQ(
       (dtype < 0 || dtype == 2 || dtype == 3),
       true,
@@ -156,8 +140,45 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
           paddle::framework::DataTypeToString(
               static_cast<paddle::framework::proto::VarType::Type>(dtype))));
 
+  if (!config.is_runtime && axis.FromTensor()) {
+    std::vector<int64_t> vec;
+    if (flatten) {
+      vec = {1};
+    } else {
+      if (keepdims) {
+        vec = std::vector<int64_t>(x.dims().size(), -1);
+      } else {
+        vec = std::vector<int64_t>(x.dims().size() - 1, -1);
+      }
+    }
+    out->set_dims(phi::make_ddim(vec));
+    if (dtype == 2) {
+      out->set_dtype(DataType::INT32);
+    } else if (dtype == 3) {
+      out->set_dtype(DataType::INT64);
+    }
+    return;
+  }
+
+  auto int_axis = axis.to<int64_t>();
+  const auto& x_dims = x.dims();
+
+  PADDLE_ENFORCE_GE(
+      int_axis,
+      -x_dims.size(),
+      phi::errors::InvalidArgument("'axis'(%d) must be greater than or equal to"
+                                   " -Rank(X)(%d).",
+                                   int_axis,
+                                   -x_dims.size()));
+  PADDLE_ENFORCE_LT(int_axis,
+                    x_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "'axis'(%d) must be less than Rank(X)(%d) of Input(X).",
+                        int_axis,
+                        x_dims.size()));
+
   auto x_rank = x_dims.size();
-  if (axis < 0) axis += x_rank;
+  if (int_axis < 0) int_axis += x_rank;
   if (config.is_runtime) {
     if (dtype == paddle::framework::proto::VarType::INT32) {
       int64_t all_element_num = 0;
@@ -165,7 +186,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
         all_element_num = phi::product(x_dims);
 
       } else {
-        all_element_num = x_dims[axis];
+        all_element_num = x_dims[int_axis];
       }
       PADDLE_ENFORCE_LE(
           all_element_num,
@@ -182,11 +203,11 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   if (flatten) {
     vec.emplace_back(static_cast<int64_t>(1));
   } else {
-    for (int64_t i = 0; i < axis; i++) vec.emplace_back(x_dims[i]);
+    for (int64_t i = 0; i < int_axis; i++) vec.emplace_back(x_dims[i]);
     if (keepdims) {
       vec.emplace_back(static_cast<int64_t>(1));
     }
-    for (int64_t i = axis + 1; i < x_rank; i++) vec.emplace_back(x_dims[i]);
+    for (int64_t i = int_axis + 1; i < x_rank; i++) vec.emplace_back(x_dims[i]);
   }
   out->set_dims(phi::make_ddim(vec));
   if (dtype == 2) {
@@ -2121,7 +2142,7 @@ void OverlapAddInferMeta(const MetaTensor& x,
 
 void PadInferMeta(const MetaTensor& input,
                   const std::vector<int>& paddings,
-                  float pad_value,
+                  const Scalar& padding_value,
                   MetaTensor* out,
                   MetaConfig config) {
   auto x_dim = input.dims();
@@ -2656,6 +2677,33 @@ DDim ReduceInferDim(const MetaTensor& x,
   return out_dim;
 }
 
+DDim ReduceInferDimForIntArrayAxis(const MetaTensor& x,
+                                   const IntArray& axis,
+                                   bool keep_dim,
+                                   bool reduce_all) {
+  std::vector<int64_t> vec_axis = axis.GetData();
+  std::vector<int64_t> vec_dim;
+  if (reduce_all) {
+    if (keep_dim) {
+      vec_dim = std::vector<int64_t>(x.dims().size(), 1);
+    } else {
+      vec_dim = {1};
+    }
+  } else {
+    if (keep_dim) {
+      vec_dim = std::vector<int64_t>(x.dims().size(), -1);
+    } else {
+      auto x_rank = static_cast<size_t>(x.dims().size());
+      if (vec_axis.size() >= x_rank) {
+        vec_dim = {-1};
+      } else {
+        vec_dim = std::vector<int64_t>(x.dims().size() - vec_axis.size(), -1);
+      }
+    }
+  }
+  return phi::make_ddim(vec_dim);
+}
+
 void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,
@@ -2676,6 +2724,34 @@ void ReduceInferMetaBase(const MetaTensor& x,
   out->set_dims(out_dim);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
+}
+
+void ReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
+                                     const IntArray& axis,
+                                     bool keep_dim,
+                                     bool reduce_all,
+                                     MetaTensor* out,
+                                     MetaConfig config) {
+  if (config.is_runtime || !axis.FromTensor()) {
+    ReduceInferMetaBase(x, axis.GetData(), keep_dim, reduce_all, out);
+  } else {
+    DDim out_dim = ReduceInferDimForIntArrayAxis(x, axis, keep_dim, reduce_all);
+    out->set_dims(out_dim);
+    out->set_dtype(x.dtype());
+    out->set_layout(x.layout());
+  }
+}
+
+void ReduceIntArrayAxisInferMeta(const MetaTensor& x,
+                                 const IntArray& axis,
+                                 bool keep_dim,
+                                 MetaTensor* out,
+                                 MetaConfig config) {
+  bool reduce_all = false;
+  if (axis.size() == 0) {
+    reduce_all = true;
+  }
+  ReduceIntArrayAxisInferMetaBase(x, axis, keep_dim, reduce_all, out, config);
 }
 
 void RepeatInterleaveInferMeta(const MetaTensor& x,
@@ -3354,24 +3430,31 @@ void StridedSliceInferMeta(const MetaTensor& x,
    api.yaml
 */
 void SumInferMeta(const MetaTensor& x,
-                  const std::vector<int64_t>& axis,
+                  const IntArray& axis,
                   DataType dtype,
                   bool keep_dim,
-                  MetaTensor* out) {
+                  MetaTensor* out,
+                  MetaConfig config) {
   bool reduce_all = false;
   if (axis.size() == 0) {
     reduce_all = true;
   }
-  SumRawInferMeta(x, axis, keep_dim, reduce_all, dtype, out);
+  SumRawInferMeta(x, axis, keep_dim, reduce_all, dtype, out, config);
 }
 
 void SumRawInferMeta(const MetaTensor& x,
-                     const std::vector<int64_t>& axis,
+                     const IntArray& axis,
                      bool keep_dim,
                      bool reduce_all,
                      DataType dtype,
-                     MetaTensor* out) {
-  DDim out_dim = ReduceInferDim(x, axis, keep_dim, reduce_all);
+                     MetaTensor* out,
+                     MetaConfig config) {
+  DDim out_dim;
+  if (config.is_runtime || !axis.FromTensor()) {
+    out_dim = ReduceInferDim(x, axis.GetData(), keep_dim, reduce_all);
+  } else {
+    out_dim = ReduceInferDimForIntArrayAxis(x, axis, keep_dim, reduce_all);
+  }
 
   DataType out_dtype;
   if (dtype != DataType::UNDEFINED) {

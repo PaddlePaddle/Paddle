@@ -1389,10 +1389,9 @@ bool OperatorWithKernel::SupportsKernelType(
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
-  const auto& attrs_map = ctx.Attrs();
-  auto iter = attrs_map.find("use_mkldnn");
-  bool use_mkldnn_ctx = iter != attrs_map.end() &&
-                        PADDLE_GET_CONST(bool, iter->second) &&
+  const std::string use_mkldnn_attr = "use_mkldnn";
+  bool use_mkldnn_ctx = ctx.HasAttr(use_mkldnn_attr) &&
+                        ctx.Attr<bool>(use_mkldnn_attr) &&
                         platform::is_cpu_place(ctx.GetPlace());
   return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
 }
@@ -2881,12 +2880,16 @@ void OperatorWithKernel::BuildPhiKernelContext(
         }
       } break;
       default: {
-        PADDLE_ENFORCE_NE(
-            attr_iter,
-            Attrs().end(),
-            platform::errors::NotFound("(%s) is not found in AttributeMap when "
-                                       "buildind static KernelContext.",
-                                       attr_names[i]));
+        if (attr_iter == Attrs().end()) {
+          attr_iter = RuntimeAttrs().find(attr_names[i]);
+          PADDLE_ENFORCE_NE(attr_iter,
+                            RuntimeAttrs().end(),
+                            platform::errors::NotFound(
+                                "(%s) is not found in AttributeMap when "
+                                "buildind static KernelContext.",
+                                attr_names[i]));
+        }
+
         switch (attr_defs[i].type_index) {
           case phi::AttributeType::FLOAT32:
             phi_kernel_context->EmplaceBackAttr(

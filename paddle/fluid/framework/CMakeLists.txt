@@ -348,7 +348,7 @@ cc_test(
 cc_library(
   op_proto_maker
   SRCS op_proto_maker.cc
-  DEPS framework_proto attribute glog)
+  DEPS framework_proto attribute ops_extra_info glog)
 cc_test(
   op_proto_maker_test
   SRCS op_proto_maker_test.cc
@@ -483,6 +483,7 @@ cc_library(
   proto_desc
   SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc
   DEPS attribute
+       ops_extra_info
        shape_inference
        op_info
        operator
@@ -498,7 +499,7 @@ endif()
 cc_library(
   op_registry
   SRCS op_registry.cc
-  DEPS op_proto_maker op_info operator glog proto_desc)
+  DEPS op_proto_maker op_info operator ops_extra_info glog proto_desc)
 
 cc_library(
   op_call_stack

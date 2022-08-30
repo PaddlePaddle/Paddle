@@ -177,7 +177,9 @@ class OperatorBase {
 
   const std::string& Type() const { return type_; }
 
-  bool HasAttr(const std::string& name) const { return attrs_.count(name); }
+  bool HasAttr(const std::string& name) const {
+    return attrs_.count(name) || runtime_attrs_.count(name);
+  }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
     PADDLE_ENFORCE_NE(
@@ -196,6 +198,10 @@ class OperatorBase {
     attrs_[name] = v;
   }
   const AttributeMap& Attrs() const { return attrs_; }
+  const AttributeMap& RuntimeAttrs() const { return runtime_attrs_; }
+  void SetRuntimeAttributeMap(const AttributeMap& runtime_attrs) {
+    runtime_attrs_ = runtime_attrs;
+  }
 
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
@@ -250,6 +256,12 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
+  // NOTE: runtime_attrs_ contains the attributes which used for dispatching
+  // kernel (use_mkldnn, use_cudnn, ...) or passing additional configuration
+  // for special heterogeneous kernel (workspace_size_MB, ...).
+  // The attributes in runtime_attrs_ are setted by framework (such as PASS),
+  // and not in the python api.
+  AttributeMap runtime_attrs_;
 
   // OpInfo
   const OpInfo* info_;
@@ -302,7 +314,12 @@ class ExecutionContext {
   }
 
   virtual const Attribute& GetAttr(const std::string& name) const {
-    return op_.Attrs().at(name);
+    auto iter = op_.Attrs().find(name);
+    if (iter == op_.Attrs().end()) {
+      return op_.RuntimeAttrs().at(name);
+    } else {
+      return iter->second;
+    }
   }
 
   virtual bool HasInput(const std::string& name) const;
