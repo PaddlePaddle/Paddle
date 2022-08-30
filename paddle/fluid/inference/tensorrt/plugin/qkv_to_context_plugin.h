@@ -118,12 +118,14 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
 
   //configure qk gemm
     if(with_fp16_){
-      // int device_id;
-      // cudaGetDevice(&device_id);
-      // auto *device_ctx = static_cast<phi::GPUContext *>(
-      //   platform::DeviceContextPool::Instance().Get(
-      //     platform::CUDAPlace(device_id)));
-      // const phi::GPUContext &dev_ctx = *device_ctx;
+      int device_id;
+      cudaGetDevice(&device_id);
+      auto *device_ctx = static_cast<phi::GPUContext *>(
+        platform::DeviceContextPool::Instance().Get(
+          platform::CUDAPlace(device_id)));
+      const phi::GPUContext &dev_ctx = *device_ctx;
+      auto stream = dev_ctx.stream();
+      printf("@@@ in configPlugin, do algo choose \r\n");
       platform::dynload::cublasLtCreate(&cublas_);
       int seq_len = in[0].desc.dims.d[1];
       const int padding_num=8;
@@ -380,9 +382,158 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
           0,
           platform::errors::Unavailable("No GEMM epilogue algorithm support!"));
       algo_qkv_ = heuristic_results_qkv[0].algo;
+      framework::Tensor q_t,k_t,v_t,biasqk_t,qkv_t,qk_t;
+      q_t.Resize({batchNum,head_number_,seq_len,head_size_});
+      k_t.Resize({batchNum,head_number_,seq_len,head_size_});
+      qk_t.Resize({batchNum,head_number_,seq_len,seq_len});
+      v_t.Resize({batchNum,head_number_,seq_len,head_size_});
+      biasqk_t.Resize({batchNum,head_number_,seq_len,seq_len});
+      qkv_t.Resize({batchNum,head_number_,seq_len,head_size_});
+      auto * q_d=reinterpret_cast<half *>(q_t.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
+      auto * k_d=reinterpret_cast<half *>(k_t.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
+      auto * qk_d=reinterpret_cast<half *>(qk_t.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
+      auto * v_d=reinterpret_cast<half *>(v_t.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
+      auto * biasqk_d=reinterpret_cast<half *>(biasqk_t.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
+      auto * qkv_d=reinterpret_cast<half *>(qkv_t.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
 
-      platform::dynload::cublasLtDestroy(cublas_);
-    //TODO speed test. wangbojun
+      // algo for qk
+      cublasStatus_t status = CUBLAS_STATUS_SUCCESS;
+      float qk_algo_time=1E20; // TODO
+      float qkv_algo_time=1E20; // TODO
+      half alpha_qk=static_cast<half>(1.0f);
+      half beta_qk=static_cast<half>(1.0f);
+      for (int algoIto = 0; algoIto<requested_algo_count; algoIto++ ){
+        const int warmup_time=10;
+        cudaEvent_t start;
+        cudaEvent_t stop; 
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&start));
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&stop));
+        for(int i=0;i<warmup_time && status == CUBLAS_STATUS_SUCCESS;i++){
+          status = platform::dynload::cublasLtMatmul(
+            cublas_,
+            operation_desc_qk_,
+            &alpha_qk,
+            q_d,
+            q_desc_,
+            k_d,
+            k_desc_,
+            &beta_qk,
+            biasqk_d,
+            qk_bias_desc_,
+            qk_d,
+            qk_desc_,
+            &heuristic_results[algoIto].algo,
+            nullptr,
+            0,
+            stream);
+        }
+        const int test_time=100; // 
+        PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaEventRecord(start, stream));
+        for(int i=0;i<test_time && status == CUBLAS_STATUS_SUCCESS ;i++){
+          status = platform::dynload::cublasLtMatmul(
+            cublas_,
+            operation_desc_qk_,
+            &alpha_qk,
+            q_d,
+            q_desc_,
+            k_d,
+            k_desc_,
+            &beta_qk,
+            biasqk_d,
+            qk_bias_desc_,
+            qk_d,
+            qk_desc_,
+            &heuristic_results[algoIto].algo,
+            nullptr,
+            0,
+            stream);            
+        };
+        PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaEventRecord(stop, stream));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaEventSynchronize(stop));
+        float time;
+        PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaEventElapsedTime(&time,start,stop)
+        );
+        time=time/test_time;
+        printf("@@test time for qk gemm algo %f ms \r\n",time);
+        if(qk_algo_time>time){
+          qk_algo_time = time;
+          algo_ = heuristic_results[algoIto].algo;
+        }
+      }
+      printf("@@@ fast time for qk gemm algo %f ms\r\n",qk_algo_time);
+
+      half alpha_qkv=static_cast<half>(1.0f);
+      half beta_qkv=static_cast<half>(0.0f);
+
+      for (int algoIto = 0; algoIto<requested_algo_count_qkv; algoIto++ ){
+        const int warmup_time=10;
+        cudaEvent_t start;
+        cudaEvent_t stop; 
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&start));
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&stop));
+        for(int i=0;i<warmup_time && status == CUBLAS_STATUS_SUCCESS ;i++){
+          status = platform::dynload::cublasLtMatmul(
+            cublas_,
+            operation_desc_qkv_,
+            &alpha_qkv,
+            qk_d,
+            qk_desc_,
+            v_d,
+            v_desc_,
+            &beta_qkv,
+            qkv_d,
+            qkv_desc_,
+            qkv_d,
+            qkv_desc_,
+            &heuristic_results_qkv[algoIto].algo,
+            nullptr,
+            0,
+            stream);
+        }
+        const int test_time=100; // 
+        PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaEventRecord(start, stream));
+        for(int i=0;i<test_time && status == CUBLAS_STATUS_SUCCESS ;i++){
+          status = platform::dynload::cublasLtMatmul(
+            cublas_,
+            operation_desc_qkv_,
+            &alpha_qkv,
+            qk_d,
+            qk_desc_,
+            v_d,
+            v_desc_,
+            &beta_qkv,
+            qkv_d,
+            qkv_desc_,
+            qkv_d,
+            qkv_desc_,
+            &heuristic_results_qkv[algoIto].algo,
+            nullptr,
+            0,
+            stream);            
+        };
+        PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaEventRecord(stop, stream));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaEventSynchronize(stop));
+        float time;
+        PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaEventElapsedTime(&time,start,stop)
+        );
+        time=time/test_time;
+        printf("@@ test time for qkv gemm algo %f ms \r\n",time);
+        if(qkv_algo_time>time){
+          qkv_algo_time = time;
+          algo_qkv_ = heuristic_results_qkv[algoIto].algo;
+        }
+      }
+      printf("@@@ fast time for qkv gemm algo %f ms \r\n",qkv_algo_time);
+
+      //TODO speed test. wangbojun
     }
   }
 
