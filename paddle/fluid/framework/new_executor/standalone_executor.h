@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/new_executor/graph_engine/graph_engine.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -49,6 +50,13 @@ class StandaloneExecutor {
 
  private:
   std::shared_ptr<InterpreterCore> GetInterpreterCore(
+      Scope* scope,
+      const ProgramDesc& prog,
+      const std::vector<std::string>& feed_names,
+      const std::vector<std::string>& fetch_names,
+      bool add_fetch_op);
+
+  std::shared_ptr<GraphEngine> GetGraphEngine(
       Scope* scope,
       const ProgramDesc& prog,
       const std::vector<std::string>& feed_names,

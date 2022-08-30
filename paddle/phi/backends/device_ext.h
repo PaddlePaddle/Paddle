@@ -89,6 +89,8 @@ void profiler_add_runtime_trace_event(C_Profiler prof, void* event);
 
 void profiler_add_device_trace_event(C_Profiler prof, void* event);
 
+typedef struct C_Graph_st* C_Graph;
+
 struct C_DeviceInterface {
   // Core fill it and plugin must to check it
   size_t size;
@@ -674,7 +676,15 @@ struct C_DeviceInterface {
                          void* x,
                          float beta,
                          void* y);
-  void* reserved_other_api[7];
+
+  C_Status (*execute_graph_with_feed_and_fetch)(const C_Device device,
+                                                C_Stream stream,
+                                                C_Graph graph,
+                                                void** feed_tensors,
+                                                size_t feed_num,
+                                                void** fetch_tensors,
+                                                size_t fetch_num);
+  void* reserved_other_api[6];
 };
 
 struct CustomRuntimeVersion {

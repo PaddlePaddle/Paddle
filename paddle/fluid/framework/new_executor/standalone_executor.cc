@@ -16,6 +16,8 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+DECLARE_bool(use_graph_engine);
+
 namespace paddle {
 namespace framework {
 StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
@@ -28,19 +30,30 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& fetch_names) {
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
-  auto core = GetInterpreterCore(scope, prog_, feed_names, fetch_names, false);
-
-  VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
-  return core->Run(feed_names);
+  if (FLAGS_use_graph_engine) {
+    auto engine = GetGraphEngine(scope, prog_, feed_names, fetch_names, false);
+    VLOG(4) << "StandaloneExecutor: " << this << ", GraphEngine: " << engine
+            << " Run.";
+    return engine->Run(feed_names);
+  } else {
+    auto core =
+        GetInterpreterCore(scope, prog_, feed_names, fetch_names, false);
+    VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
+    return core->Run(feed_names);
+  }
 }
 
 framework::interpreter::CostInfo StandaloneExecutor::DryRun(
     Scope* scope,
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors) {
-  auto core = GetInterpreterCore(scope, prog_, feed_names, {}, true);
-
-  return core->DryRun(feed_names, feed_tensors);
+  if (FLAGS_use_graph_engine) {
+    auto engine = GetGraphEngine(scope, prog_, feed_names, {}, false);
+    return engine->DryRun(feed_names, feed_tensors);
+  } else {
+    auto core = GetInterpreterCore(scope, prog_, feed_names, {}, true);
+    return core->DryRun(feed_names, feed_tensors);
+  }
 }
 
 std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
@@ -82,6 +95,33 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
   } else {
     return iter->second;
   }
+}
+
+std::shared_ptr<GraphEngine> StandaloneExecutor::GetGraphEngine(
+    Scope* scope,
+    const ProgramDesc& prog,
+    const std::vector<std::string>& feed_names,
+    const std::vector<std::string>& fetch_names,
+    bool add_fetch_op) {
+  //   if (paddle::platform::is_custom_place(place_)) {
+  // #ifdef PADDLE_WITH_CUSTOM_DEVICE
+  auto new_prog = std::make_shared<framework::ProgramDesc>(prog);
+
+  if (add_fetch_op) {
+    auto* block = new_prog->MutableBlock(0);
+    interpreter::add_fetch(fetch_names, block);
+  }
+
+  auto engine = std::make_shared<CustomGraphEngine>(place_, scope, new_prog);
+  return engine;
+  // #else
+  //     PADDLE_THROW(platform::errors::Unimplemented(
+  //         "GraphEngine is not supported on %s", place_));
+  // #endif
+  //   } else {
+  //     PADDLE_THROW(platform::errors::Unimplemented(
+  //         "GraphEngine is not supported on %s", place_));
+  //   }
 }
 
 }  // namespace framework

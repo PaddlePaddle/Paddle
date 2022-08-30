@@ -1065,3 +1065,14 @@ PADDLE_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
  */
 PADDLE_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
 #endif  // PADDLE_WITH_CUDNN_FRONTEND
+
+/**
+ * GraphEngine related FLAG
+ * Name: FLAGS_use_graph_engine
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example:
+ */
+PADDLE_DEFINE_EXPORTED_bool(use_graph_engine,
+                            false,
+                            "Whether enable graph engine.");
