@@ -53,22 +53,15 @@ class AvgPool1D(Layer):
         name(str, optional): For eed to detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no nset and None by default.
 
-    Returns:
-        A callable object of AvgPool1D.
-
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ValueError: If `padding` is a list or tuple but its length greater than 1.
-        ShapeError: If the input is not a 3-D tensor.
-        ShapeError: If the output's shape calculated is not greater than 0.
-
     Shape:
         - x(Tensor): The input tensor of avg pool1d operator, which is a 3-D tensor.
           The data type can be float32, float64.
         - output(Tensor): The output tensor of avg pool1d  operator, which is a 3-D tensor.
           The data type is same as input x.
 
+    Returns:
+        A callable object of AvgPool1D.
+        
     Examples:
 
         .. code-block:: python
@@ -164,10 +157,7 @@ class AvgPool2D(Layer):
 
     Returns:
         A callable object of AvgPool2D.
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
+
     Examples:
         .. code-block:: python
 
@@ -255,10 +245,6 @@ class AvgPool3D(Layer):
 
     Returns:
         A callable object of AvgPool3D.
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
 
     Shape:
         - x(Tensor): The input tensor of avg pool3d operator, which is a 5-D tensor.

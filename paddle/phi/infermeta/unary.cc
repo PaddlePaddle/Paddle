@@ -1905,9 +1905,11 @@ void ModeInferMeta(const MetaTensor& x,
 }
 
 void MultinomialInferMeta(const MetaTensor& x,
-                          int num_samples,
+                          const Scalar& num_samples,
                           bool replacement,
-                          MetaTensor* out) {
+                          MetaTensor* out,
+                          MetaConfig config) {
+  auto int_num_samples = num_samples.to<int>();
   auto x_dim = x.dims();
   int64_t x_rank = x_dim.size();
   PADDLE_ENFORCE_GT(x_rank,
@@ -1928,12 +1930,16 @@ void MultinomialInferMeta(const MetaTensor& x,
     out_dims[i] = x_dim[i];
   }
 
-  PADDLE_ENFORCE_GT(
-      num_samples,
-      0,
-      errors::InvalidArgument(
-          "The number of samples should be > 0, but got %d.", num_samples));
-  out_dims[x_rank - 1] = num_samples;
+  if (config.is_runtime || !num_samples.FromTensor()) {
+    PADDLE_ENFORCE_GT(int_num_samples,
+                      0,
+                      errors::InvalidArgument(
+                          "The number of samples should be > 0, but got %d.",
+                          int_num_samples));
+    out_dims[x_rank - 1] = int_num_samples;
+  } else {
+    out_dims[x_rank - 1] = -1;
+  }
 
   out->set_dims(make_ddim(out_dims));
   out->set_dtype(DataType::INT64);
@@ -2744,13 +2750,22 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
 }
 
 void ReverseInferMeta(const MetaTensor& x,
-                      const std::vector<int>& axis,
-                      MetaTensor* out) {
-  PADDLE_ENFORCE_NE(axis.empty(),
+                      const IntArray& axis,
+                      MetaTensor* out,
+                      MetaConfig config) {
+  // NOTE(Aurelius84): In Reverse Op, output TensorMeta is always same
+  // as input, so we only verify axis when it is not from Tensor or in
+  // runtime.
+  if (!config.is_runtime && axis.FromTensor()) {
+    out->share_meta(x);
+    return;
+  }
+  auto& axis_data = axis.GetData();
+  PADDLE_ENFORCE_NE(axis_data.empty(),
                     true,
                     phi::errors::InvalidArgument("'axis' can not be empty."));
   const auto& x_dims = x.dims();
-  for (int a : axis) {
+  for (int a : axis_data) {
     PADDLE_ENFORCE_LT(a,
                       x_dims.size(),
                       phi::errors::OutOfRange(
@@ -2771,22 +2786,27 @@ void ReverseInferMeta(const MetaTensor& x,
 }
 
 void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
-                           const std::vector<int>& axis,
-                           std::vector<phi::MetaTensor*> out) {
+                           const IntArray& axis,
+                           std::vector<phi::MetaTensor*> out,
+                           MetaConfig config) {
+  if (!config.is_runtime && axis.FromTensor()) {
+    return;
+  }
+  auto& axis_data = axis.GetData();
   PADDLE_ENFORCE_EQ(
-      axis.size(),
+      axis_data.size(),
       1,
       phi::errors::InvalidArgument(
           "The size of axis must be 1 when the Input(X) is LoDTensorArray, "
           "but received %d.",
-          axis.size()));
+          axis_data.size()));
   PADDLE_ENFORCE_EQ(
-      axis[0],
+      axis_data[0],
       0,
       phi::errors::InvalidArgument("The value of axis should be 1 when "
                                    "the Input(X) is LoDTensorArray, "
                                    "but received %d.",
-                                   axis[0]));
+                                   axis_data[0]));
 }
 
 void RollInferMeta(const MetaTensor& x,
@@ -3635,11 +3655,13 @@ void TraceInferMeta(
 }
 
 void TransferLayoutInferMeta(const MetaTensor& x,
-                             DataLayout layout,
+                             int src_layout,
+                             int dst_layout,
                              MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
-  out->set_layout(layout);
+  out->set_layout(static_cast<DataLayout>(dst_layout));
+  out->share_lod(x);
 }
 
 void TransposeInferMeta(const MetaTensor& x,

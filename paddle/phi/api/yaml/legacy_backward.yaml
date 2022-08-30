@@ -834,7 +834,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
-  invoke : zeros_like(out_grad, DataType::UNDEFINED, {})
+  invoke : zeros_like(out_grad)
 
 - backward_api : fill_diagonal_grad
   forward : fill_diagonal (Tensor x, float value, int offset, bool wrap) -> Tensor(out)
@@ -1510,7 +1510,7 @@
 
 - backward_api : mean_double_grad
   forward: mean_grad (Tensor x, Tensor grad_out, int64_t[] dims={},  bool keep_dim=false, bool reduce_all = false) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  args : (Tensor grad_x_grad, int64_t[] dims={},  bool keep_dim=false)
   output : Tensor(grad_out_grad)
   invoke : mean(grad_x_grad, dims, keep_dim)
 
@@ -1575,17 +1575,6 @@
     param: [x]
   kernel :
     func : mode_grad
-
-- backward_api : modulo_grad
-  forward : modulo (Tensor x, Tensor y) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
-  kernel :
-    func : modulo_grad
-  no_need_buffer : x, y
 
 - backward_api : multi_dot_grad
   forward : multi_dot (Tensor[] x) -> Tensor(out)
@@ -1963,8 +1952,8 @@
   inplace : (out_grad -> x_grad)
 
 - backward_api : reverse_array_grad
-  forward : reverse_array (Tensor[] x, int[] axis) -> Tensor[](out)
-  args : (Tensor[] out_grad, int[] axis)
+  forward : reverse_array (Tensor[] x, IntArray axis) -> Tensor[](out)
+  args : (Tensor[] out_grad, IntArray axis)
   output : Tensor[](x_grad){out_grad.size()}
   infer_meta :
     func : ReverseArrayInferMeta
@@ -1972,8 +1961,8 @@
     func : reverse
 
 - backward_api : reverse_grad
-  forward : reverse (Tensor x, int[] axis) -> Tensor(out)
-  args : (Tensor out_grad, int[] axis)
+  forward : reverse (Tensor x, IntArray axis) -> Tensor(out)
+  args : (Tensor out_grad, IntArray axis)
   output : Tensor(x_grad)
   infer_meta :
     func : ReverseInferMeta
@@ -2050,26 +2039,11 @@
   backward : rsqrt_double_grad
   inplace : (out_grad -> x_grad)
 
-- backward_api : scale_double_grad
-  forward : scale_grad (Tensor grad_out, Scalar scale, float bias, bool bias_after_scale) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
-  output : Tensor(grad_out_grad)
-  invoke : scale(grad_x_grad, scale, 0.0, bias_after_scale)
-  backward : scale_triple_grad
-
 - backward_api : scale_grad
   forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
-  args : (Tensor out_grad, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
+  args : (Tensor out_grad, Scalar scale=1.0, bool bias_after_scale=true)
   output : Tensor(x_grad)
   invoke : scale(out_grad, scale, 0.0, bias_after_scale)
-  backward : scale_double_grad
-  inplace : (out_grad -> x_grad)
-
-- backward_api : scale_triple_grad
-  forward : scale_double_grad (Tensor grad_grad_x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(grad_grad_out)
-  args : (Tensor grad_grad_out_grad, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
-  output : Tensor(grad_grad_x_grad)
-  invoke : scale(grad_grad_out_grad, scale, 0.0, bias_after_scale)
 
 - backward_api : scatter_grad
   forward : scatter (Tensor x, Tensor index, Tensor updates, bool overwrite) -> Tensor(out)
@@ -2416,7 +2390,6 @@
   args : (Tensor grad_x_grad, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(grad_out_grad)
   invoke : sum(grad_x_grad, dims, grad_x_grad.dtype(), keep_dim)
-  backward : sum_triple_grad
 
 - backward_api : sum_grad
   forward : sum (Tensor x, int64_t[] dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false) -> Tensor(out)
@@ -2429,12 +2402,6 @@
     func : sum_grad
   no_need_buffer : x
   backward : sum_double_grad
-
-- backward_api : sum_triple_grad
-  forward : sum_double_grad (Tensor grad_grad_x, int64_t[] dims={}, bool keep_dim=false) -> Tensor(grad_grad_out)
-  args : (Tensor grad_grad_x, Tensor grad_grad_out_grad, int64_t[] dims={}, bool keep_dim=false, bool reduce_all=false)
-  output : Tensor(grad_grad_x_grad)
-  invoke : sum_grad(grad_grad_x, grad_grad_out_grad, dims, keep_dim, reduce_all, grad_grad_x_grad)
 
 - backward_api : svd_grad
   forward : svd (Tensor x, bool full) -> Tensor(u), Tensor(s), Tensor(vh)
@@ -2460,7 +2427,7 @@
 
 - backward_api : sync_batch_norm_grad
   forward : sync_batch_norm_ (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu) -> Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
-  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean_out, Tensor variance_out, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor out_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor out_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :
     func : GeneralTernaryGradInferMeta
@@ -2468,7 +2435,7 @@
   kernel :
     func : sync_batch_norm_grad
     data_type : out_grad
-  optional : mean_out, variance_out, reserve_space
+  optional : reserve_space
 
 - backward_api : take_along_axis_grad
   forward : take_along_axis (Tensor x, Tensor index, int axis) -> Tensor(out)

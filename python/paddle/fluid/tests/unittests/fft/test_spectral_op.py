@@ -26,7 +26,7 @@ import paddle.fluid.dygraph as dg
 import paddle.static as static
 from numpy.random import random as rand
 from paddle.fluid import Program, program_guard
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 sys.path.append("../")
 from op_test import OpTest
@@ -75,15 +75,15 @@ def class_name(cls, num, params_dict):
 
 
 def fft_c2c_python_api(x, axes, norm, forward):
-    return _C_ops.final_state_fft_c2c(x, axes, norm, forward)
+    return _C_ops.fft_c2c(x, axes, norm, forward)
 
 
 def fft_r2c_python_api(x, axes, norm, forward, onesided):
-    return _C_ops.final_state_fft_r2c(x, axes, norm, forward, onesided)
+    return _C_ops.fft_r2c(x, axes, norm, forward, onesided)
 
 
 def fft_c2r_python_api(x, axes, norm, forward, last_dim_size=0):
-    return _C_ops.final_state_fft_c2r(x, axes, norm, forward, last_dim_size)
+    return _C_ops.fft_c2r(x, axes, norm, forward, last_dim_size)
 
 
 @parameterize(

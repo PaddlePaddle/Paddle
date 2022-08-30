@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import dygraph_only
 
 __all__ = []
@@ -78,4 +78,4 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             out = paddle.incubate.sparse.addmm(input, x, y, 3.0, 2.0)
             
     """
-    return _C_ops.final_state_sparse_addmm(input, x, y, alpha, beta)
+    return _C_ops.sparse_addmm(input, x, y, alpha, beta)
