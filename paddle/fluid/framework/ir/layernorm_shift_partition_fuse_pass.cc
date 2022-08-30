@@ -137,11 +137,11 @@ void LayerNormShiftPartitionFusePass::ApplyImpl(ir::Graph* graph) const {
     std::vector<int> shape_atr1 =
         PADDLE_GET_CONST(std::vector<int>, reshape1_op->Op()->GetAttr("shape"));
     std::vector<int> shape_atr2 =
-        PADDLE_GET_CONST(std::vector<int>, reshape1_op->Op()->GetAttr("shape"));
+        PADDLE_GET_CONST(std::vector<int>, reshape2_op->Op()->GetAttr("shape"));
     std::vector<int> shape_atr3 =
-        PADDLE_GET_CONST(std::vector<int>, reshape1_op->Op()->GetAttr("shape"));
+        PADDLE_GET_CONST(std::vector<int>, reshape3_op->Op()->GetAttr("shape"));
     std::vector<int> shape_atr4 =
-        PADDLE_GET_CONST(std::vector<int>, reshape1_op->Op()->GetAttr("shape"));
+        PADDLE_GET_CONST(std::vector<int>, reshape4_op->Op()->GetAttr("shape"));
 
     // emb dim should be same
     if (!((shape_atr1.back() == shape_atr2.back()) &&
@@ -149,15 +149,16 @@ void LayerNormShiftPartitionFusePass::ApplyImpl(ir::Graph* graph) const {
           (shape_atr3.back() == shape_atr4.back()))) {
       return;
     }
-    if (shape_atr2[1] != shape_atr2[2]) {
+
+    if (shape_atr1[1] != shape_atr1[2]) {
       return;
     }
-    int input_resolution = shape_atr2[1];
+    int input_resolution = shape_atr1[1];
 
     if (shape_atr3[1] != shape_atr3[2]) {
       return;
     }
-    int window_size = shape_atr3[1];
+    int window_size = shape_atr2[2];
     if (window_size < 0 || input_resolution < 0) {
       return;
     }
