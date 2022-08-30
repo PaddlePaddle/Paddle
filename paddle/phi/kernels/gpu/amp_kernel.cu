@@ -347,7 +347,8 @@ PD_REGISTER_KERNEL(check_finite_and_unscale,
                    phi::CheckFiniteAndUnscaleKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(update_loss_scaling,
                    GPU,
@@ -355,4 +356,5 @@ PD_REGISTER_KERNEL(update_loss_scaling,
                    phi::UpdateLossScalingKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
