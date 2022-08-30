@@ -90,7 +90,6 @@ class TestFrexpAPI(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-    # a = TestFrexpAPI()
     # a.setUp()
     # a.test_dygraph_api()
     # a.test_static_api()
