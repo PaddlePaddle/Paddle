@@ -29,7 +29,7 @@
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #endif
 #include "paddle/fluid/framework/infershape_utils.h"
-#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {

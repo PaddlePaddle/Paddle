@@ -81,6 +81,7 @@ class TestAllocContinuousSpace(OpTest):
     def init_output(self, input_list, set_constant, constant):
         inputs = []
         outputs = input_list
+        # GpuMinChunkSize=256 bytes, FP32=4 bytes
         alignment = 256 / 4
         if 'user_defined_size_of_dtype' in self.attrs:
             alignment = 256 / self.attrs['user_defined_size_of_dtype']

@@ -985,18 +985,12 @@ class RNNBase(LayerList):
                 dtype=core.VarDesc.VarType.UINT8)
             if in_dynamic_mode():
                 with paddle.no_grad():
-                    if in_dygraph_mode():
-                        _C_ops.coalesce_tensor(self._all_weights,
-                                               params[0].dtype, True, False,
-                                               False, 0.0, False, -1, -1, [],
-                                               [])
-                    else:
-                        _legacy_C_ops.coalesce_tensor(self._all_weights,
-                                                      self._all_weights,
-                                                      self._flat_weight[0],
-                                                      "copy_data", True,
-                                                      "use_align", False,
-                                                      "dtype", params[0].dtype)
+                    _legacy_C_ops.coalesce_tensor(self._all_weights,
+                                                  self._all_weights,
+                                                  self._flat_weight[0],
+                                                  "copy_data", True,
+                                                  "use_align", False, "dtype",
+                                                  params[0].dtype)
                     return
             # for static-graph, append coalesce_tensor into startup program
             with program_guard(default_startup_program(),
