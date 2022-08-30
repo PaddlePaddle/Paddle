@@ -40,7 +40,7 @@ void AffineGridInferMeta(const MetaTensor& input,
                          MetaTensor* output);
 
 void ArgMinMaxInferMeta(const MetaTensor& x,
-                        int64_t axis,
+                        const Scalar& axis,
                         bool keepdims,
                         bool flatten,
                         int dtype,

@@ -197,7 +197,7 @@
     support_trans_dtype : start, end, step
 
 - api : argmax
-  args : (Tensor x, int64_t axis, bool keepdims, bool flatten, int dtype)
+  args : (Tensor x, Scalar axis, bool keepdims, bool flatten, int dtype)
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -205,7 +205,7 @@
     func : arg_max
 
 - api : argmin
-  args : (Tensor x, int64_t axis, bool keepdims, bool flatten, int dtype)
+  args : (Tensor x, Scalar axis, bool keepdims, bool flatten, int dtype)
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
