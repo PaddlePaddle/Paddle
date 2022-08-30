@@ -699,7 +699,7 @@ class _ExecutorCache(object):
             self.place = place
             self.scope = scope
 
-            # Not all changeable information is fully considered at present, only consider program, feed and fetch_list in key
+            # NOTE(Ruibiao): Not all changeable item is considered for key at present, only consider: program, feed, and fetch_list
             if isinstance(self.program, compiler.CompiledProgram):
                 self.key = hash(
                     _get_strong_program_cache_key_for_new_exe(
@@ -716,8 +716,22 @@ class _ExecutorCache(object):
         def __hash__(self):
             return self.key
 
-    @lru_cache(maxsize=8)
-    def _get_cached_program_and_executor(self, cached_data):
+    def __init__(self):
+        # NOTE(Ruibiao): Wrap the lru_cache in constructor so that the cache is local to the _ExecutorCache instance, otherwise a global cache may not be released after the Executor instance deleted
+        self._get_cached_program_and_executor = lru_cache(maxsize=8)(
+            self._get_program_and_executor)
+        print("init _ExecutorCache in python", flush=True)
+
+    def __del__(self):
+        print(f"del _ExecutorCache in python", flush=True)
+
+    def get_program_and_executor(self, program, feed, fetch_list, feed_var_name,
+                                 fetch_var_name, place, scope):
+        return self._get_cached_program_and_executor(
+            self._CachedData(program, feed, fetch_list, feed_var_name,
+                             fetch_var_name, place, scope))
+
+    def _get_program_and_executor(self, cached_data):
         program = cached_data.program
         inner_program = program._program if isinstance(
             program, compiler.CompiledProgram) else program
@@ -779,13 +793,6 @@ class _ExecutorCache(object):
         new_program = program.clone()
         new_exe = _StandaloneExecutor(place, new_program, scope)
         return new_program, new_exe
-
-    def get_cached_program_and_executor(self, program, feed, fetch_list,
-                                        feed_var_name, fetch_var_name, place,
-                                        scope):
-        return self._get_cached_program_and_executor(
-            self._CachedData(program, feed, fetch_list, feed_var_name,
-                             fetch_var_name, place, scope))
 
 
 class Executor(object):
@@ -895,6 +902,15 @@ class Executor(object):
         # TODO(liyurui): This option will be removed and always true when the functionality
         # of fleet executor with standalone executor is ready.
         self._fleet_executor_with_standalone = False
+
+        print(
+            f"init executor in python, ref = {sys.getrefcount(self._executor_cache)}",
+            flush=True)
+
+    def __del__(self):
+        print(
+            f"del executor in python, ref = {sys.getrefcount(self._executor_cache)}",
+            flush=True)
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
@@ -1608,7 +1624,7 @@ class Executor(object):
                         % (type(feed)))
                 feed = self._update_feed(program, feed)
 
-                program, new_exe = self._executor_cache.get_cached_program_and_executor(
+                program, new_exe = self._executor_cache.get_program_and_executor(
                     program, feed, fetch_list, feed_var_name, fetch_var_name,
                     self.place, scope)
 
