@@ -206,12 +206,12 @@ class FileReader(object):
             prefix_str = fileName.split(sed)[-1]
             try:
                 return int(prefix_str)
-            except ValueError, Argument:
-                print(Argument)
+            except ValueError as e:
+                print(e)
                 raise TypeError("invalid fileName [%s]" % fileName)
 
-        except IndexError, Argument:
-            print(Argument)
+        except IndexError as e:
+            print(e)
             raise TypeError(
                 "invalid fileName [%s], the prefix should be a number!" %
                 fileName)
@@ -363,8 +363,8 @@ def getLogger():
 def test_FileReader(args):
     try:
         testReader = FileReader(None, args)
-    except Exception, Argument:
-        print(Argument)
+    except Exception as e:
+        print(e)
     else:
         testReader.printArgs()
 

@@ -266,10 +266,10 @@ __device__ __forceinline__ void LoadData(
   // numel : whole num of output
   // num: how many data will be deal with in this time
   if (need_broadcast) {
-    kps::ReadDataBc<T, VecSize, 1, 1, IsBoundary>(
+    kps::ReadDataBc<T, VecSize, 1, IsBoundary>(
         dst, src, block_offset, config, numel, read_lens);
   } else {
-    kps::ReadData<T, VecSize, 1, 1, IsBoundary>(
+    kps::ReadData<T, VecSize, 1, IsBoundary>(
         dst, src + block_offset, num, read_lens);
   }
 }

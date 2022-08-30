@@ -602,8 +602,7 @@ class MSELoss(Layer):
                                                        'MSELoss')
 
         if in_dygraph_mode():
-            square_out = paddle._C_ops.final_state_square(
-                paddle.subtract(input, label))
+            square_out = paddle._C_ops.square(paddle.subtract(input, label))
         else:
             square_out = paddle.square(paddle.subtract(input, label))
         if self.reduction == 'none':
