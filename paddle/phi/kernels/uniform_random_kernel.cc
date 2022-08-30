@@ -14,12 +14,14 @@
 
 #include "paddle/phi/kernels/uniform_random_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#endif
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #endif
@@ -48,8 +50,10 @@ PD_REGISTER_KERNEL(uniform_random,
                    double,
                    phi::dtype::bfloat16) {}
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(
     uniform_random, GPU, ALL_LAYOUT, phi::UniformRandomKernel, float, double) {}
+#endif
 
 #ifdef PADDLE_WITH_XPU
 PD_REGISTER_KERNEL(
