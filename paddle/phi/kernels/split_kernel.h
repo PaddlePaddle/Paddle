@@ -50,11 +50,10 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
   std::vector<DenseTensor> result(out_number);
 
   for (size_t i = 0; i < out_number; ++i) {
-    out_meta.emplace_back(&result.back());
+    out_meta.emplace_back(&result[i]);
     out_meta_ptr.push_back(&out_meta.back());
   }
   SplitInferMeta(x, sections, axis, out_meta_ptr);
-
   std::vector<DenseTensor*> outs;
   outs.reserve(out_meta.size());
   for (size_t i = 0; i < out_meta.size(); ++i) {
@@ -62,7 +61,6 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
   }
 
   SplitKernel<T, Context>(dev_ctx, x, sections, axis, outs);
-
   return result;
 }
 
@@ -80,7 +78,7 @@ std::vector<DenseTensor> SplitWithNum(const Context& dev_ctx,
   std::vector<DenseTensor> result(out_number);
 
   for (size_t i = 0; i < out_number; ++i) {
-    out_meta.emplace_back(&result.back());
+    out_meta.emplace_back(&result[i]);
     out_meta_ptr.push_back(&out_meta.back());
   }
   SplitWithNumInferMeta(x, num, axis, out_meta_ptr);

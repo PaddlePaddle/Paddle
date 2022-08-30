@@ -41,14 +41,12 @@ TEST(DEV_API, split) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
-
   auto* dense_x_data = dev_ctx.Alloc<float>(&dense_x);
   for (size_t i = 0; i < 4; ++i) {
     for (size_t j = 0; j < 10; ++j) {
       dense_x_data[i * 10 + j] = (i * 10 + j) * 1.0;
     }
   }
-
   // 2. test API
   auto out = phi::Split<float>(dev_ctx, dense_x, {2, 2}, 0);
 
@@ -89,17 +87,14 @@ TEST(DEV_API, split_with_num) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
-
   auto* dense_x_data = dev_ctx.Alloc<float>(&dense_x);
   for (size_t i = 0; i < 4; ++i) {
     for (size_t j = 0; j < 10; ++j) {
       dense_x_data[i * 10 + j] = (i * 10 + j) * 1.0;
     }
   }
-
   // 2. test API
   auto out = phi::SplitWithNum<float>(dev_ctx, dense_x, 2, 0);
-
   // 3. check result
   ASSERT_EQ(out.size(), static_cast<size_t>(2));
   ASSERT_EQ(out[0].dims().size(), 2);
