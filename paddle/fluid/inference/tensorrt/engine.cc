@@ -81,21 +81,65 @@ void TensorRTEngine::InitNetwork() {
     optim_profiles_[i] = infer_builder_->createOptimizationProfile();
 }
 
+nvinfer1::IExecutionContext *TensorRTEngine::context() {
+#ifndef PADDLE_WITH_TESTING
+  PADDLE_ENFORCE_GT(
+      predictor_id_per_thread,
+      -1,
+      platform::errors::InvalidArgument(
+          "thread local var predictor_id_per_thread must be "
+          "initialized to >= 0, but now predictor_id_per_thread = %d",
+          predictor_id_per_thread));
+#endif
+  std::unique_lock<std::mutex> lock(mutex_);
+  if (infer_context_.find(predictor_id_per_thread) == infer_context_.end()) {
+    PADDLE_ENFORCE_NOT_NULL(
+        infer_engine_,
+        platform::errors::InvalidArgument(
+            "You should build engine first and then set the context."));
+    // We may see trt warning: Profile 0 has been chosen by another
+    // IExecutionContext...
+    // It's ok. We will set it later.
+    nvinfer1::IExecutionContext *infer_context{nullptr};
+    if (context_memory_shared_) {
+      infer_context =
+          infer_engine_->createExecutionContextWithoutDeviceMemory();
+    } else {
+      infer_context = infer_engine_->createExecutionContext();
+    }
+    PADDLE_ENFORCE_NOT_NULL(
+        infer_context,
+        platform::errors::InvalidArgument(
+            "TensorRT engine can not build execution context."));
+    if (with_dynamic_shape_) {
+      // need new profile if it's not the first
+      if (cur_profile_num_ > 0) {
+        infer_context->setOptimizationProfile(cur_profile_num_);
+      }
+      profile_index_[predictor_id_per_thread] = cur_profile_num_;
+      ++cur_profile_num_;
+    }
+    if (context_memory_shared_) {
+      void *context_memory{nullptr};
+      context_memory =
+          inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+              .getContextMemory(
+                  this,
+                  phi::GPUPlace(device_id_),
+                  phi::Stream(reinterpret_cast<phi::StreamId>(stream_)));
+      infer_context->setDeviceMemory(context_memory);
+    }
+    infer_context_[predictor_id_per_thread].reset(infer_context);
+  }
+  return infer_context_[predictor_id_per_thread].get();
+}
+
 void TensorRTEngine::Execute(int batch_size,
                              std::vector<void *> *buffers,
                              cudaStream_t stream) {
   freshDeviceId();
+  setStream(stream);
   auto infer_context = context();
-  if (context_memory_shared_) {
-    void *context_memory{nullptr};
-    context_memory =
-        inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-            .getContextMemory(
-                this,
-                phi::GPUPlace(device_id_),
-                phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
-    infer_context->setDeviceMemory(context_memory);
-  }
   if (!with_dynamic_shape()) {
     infer_context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {

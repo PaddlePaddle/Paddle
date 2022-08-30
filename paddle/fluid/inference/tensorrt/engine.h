@@ -289,49 +289,7 @@ class TensorRTEngine {
   std::unordered_map<std::string, nvinfer1::ITensor*>* GetITensorMap();
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
-
-  nvinfer1::IExecutionContext* context() {
-#ifndef PADDLE_WITH_TESTING
-    PADDLE_ENFORCE_GT(
-        predictor_id_per_thread,
-        -1,
-        platform::errors::InvalidArgument(
-            "thread local var predictor_id_per_thread must be "
-            "initialized to >= 0, but now predictor_id_per_thread = %d",
-            predictor_id_per_thread));
-#endif
-    std::unique_lock<std::mutex> lock(mutex_);
-    if (infer_context_.find(predictor_id_per_thread) == infer_context_.end()) {
-      PADDLE_ENFORCE_NOT_NULL(
-          infer_engine_,
-          platform::errors::InvalidArgument(
-              "You should build engine first and then set the context."));
-      // We may see trt warning: Profile 0 has been chosen by another
-      // IExecutionContext...
-      // It's ok. We will set it later.
-      nvinfer1::IExecutionContext* infer_context{nullptr};
-      if (context_memory_shared_) {
-        infer_context =
-            infer_engine_->createExecutionContextWithoutDeviceMemory();
-      } else {
-        infer_context = infer_engine_->createExecutionContext();
-      }
-      PADDLE_ENFORCE_NOT_NULL(
-          infer_context,
-          platform::errors::InvalidArgument(
-              "TensorRT engine can not build execution context."));
-      if (with_dynamic_shape_) {
-        // need new profile if it's not the first
-        if (cur_profile_num_ > 0) {
-          infer_context->setOptimizationProfile(cur_profile_num_);
-        }
-        profile_index_[predictor_id_per_thread] = cur_profile_num_;
-        ++cur_profile_num_;
-      }
-      infer_context_[predictor_id_per_thread].reset(infer_context);
-    }
-    return infer_context_[predictor_id_per_thread].get();
-  }
+  nvinfer1::IExecutionContext* context();
 
   int GetProfileIndex() {
     if (max_profile_num_ > 1) {
@@ -711,6 +669,8 @@ class TensorRTEngine {
   // freshDeviceId().
   void freshDeviceId();
 
+  void setStream(cudaStream_t stream) { stream_ = stream; }
+
   // the max batch size
   int max_batch_;
   // the runtime batch size
@@ -724,6 +684,7 @@ class TensorRTEngine {
   int batch_size_{-1};
 
   // use for subengine context memory sharing
+  cudaStream_t stream_{0};
   bool context_memory_shared_{true};
 
   int device_id_;
@@ -811,6 +772,7 @@ class TRTEngineManager {
     std::unique_lock<std::mutex> lock(mutex_);
     return engines_.size() == 0;
   }
+
   bool Has(const std::string& name) const {
     std::unique_lock<std::mutex> lock(mutex_);
     if (engines_.count(name) == 0) return false;
