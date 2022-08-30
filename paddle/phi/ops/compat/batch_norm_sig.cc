@@ -109,5 +109,5 @@ PD_REGISTER_BASE_KERNEL_NAME(batch_norm_grad_grad, batch_norm_double_grad);
 PD_REGISTER_ARG_MAPPING_FN(batch_norm, phi::BatchNormOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(batch_norm_grad,
                            phi::BatchNormGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(batch_norm_double_grad,
+PD_REGISTER_ARG_MAPPING_FN(batch_norm_grad_grad,
                            phi::BatchNormGradGradOpArgumentMapping);
