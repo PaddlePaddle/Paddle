@@ -162,6 +162,8 @@ void SaveMixedModel(
     if (var->IsType<framework::LoDTensor>() ||
         var->IsType<framework::Tensor>()) {
       auto* t = var->GetMutable<framework::LoDTensor>();
+      if (t->dtype() != phi::DataType::FLOAT32) continue;
+
       framework::Tensor mixed_tensor;
       mixed_tensor.Resize(t->dims());
       auto* data = t->mutable_data<float>(platform::CPUPlace());
@@ -366,6 +368,7 @@ void ProcessInputNode(
         in_var_type == framework::proto::VarType::FP32) {
       if (WeightsShouldNotConvert(in_node)) return;
       in_var->SetDataType(to_type);
+      in_var_type = to_type;
     } else if (!in_var->Persistable() && IsFloatVarType(in_var_type) &&
                in_var_type != to_type) {
       AddCastOp(graph,

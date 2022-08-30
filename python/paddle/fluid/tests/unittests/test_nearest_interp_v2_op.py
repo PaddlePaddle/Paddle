@@ -35,9 +35,9 @@ def nearest_interp_test(x,
                         out_h=-1,
                         out_w=-1,
                         scale=[],
-                        interp_method='linear',
-                        align_corners=False,
-                        align_mode=1):
+                        interp_method='nearest',
+                        align_corners=True,
+                        align_mode=0):
     if isinstance(scale, float) or isinstance(scale, int):
         scale_list = []
         for _ in range(len(x.shape) - 2):
@@ -49,11 +49,10 @@ def nearest_interp_test(x,
         if not isinstance(SizeTensor, list) and not isinstance(
                 SizeTensor, tuple):
             SizeTensor = [SizeTensor]
-    return paddle._C_ops.final_state_nearest_interp(x, OutSize, SizeTensor,
-                                                    Scale, data_layout, out_d,
-                                                    out_h, out_w, scale,
-                                                    interp_method,
-                                                    align_corners, align_mode)
+    return paddle._C_ops.nearest_interp(x, OutSize, SizeTensor, Scale,
+                                        data_layout, out_d, out_h, out_w, scale,
+                                        interp_method, align_corners,
+                                        align_mode)
 
 
 def nearest_neighbor_interp_np(X,

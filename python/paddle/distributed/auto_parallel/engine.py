@@ -440,6 +440,7 @@ class Engine:
         for epoch in range(epochs):
             train_logs = {"epoch: {:d} ": epoch}
             for step, _ in enumerate(train_dataloader):
+
                 outs = self._executor.run(self.main_program,
                                           fetch_list=fetch_list,
                                           use_program_cache=use_cache,

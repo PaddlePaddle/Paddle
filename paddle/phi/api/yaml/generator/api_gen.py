@@ -179,8 +179,7 @@ class ForwardAPI(BaseAPI):
 
                 for out_name in self.outputs['names']:
                     if out_name in self.inplace_map:
-                        output_create = output_create + self.inplace_map[
-                            out_name] + ', '
+                        output_create += self.inplace_map[out_name] + ', '
                     else:
                         output_create += 'Tensor(), '
                 output_create = output_create[:-2] + '};'
@@ -200,6 +199,13 @@ class ForwardAPI(BaseAPI):
                 if out_dtype_list[i] == 'std::vector<Tensor>':
                     assert self.outputs['out_size_expr'][i] is not None, \
                         f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                    # Special case for inplace vector and inplace optional<vector>
+                    if self.outputs['names'][i] in self.inplace_map:
+                        set_out_func = "SetInplaceVectorKernelOutput"
+                        if self.inplace_map[self.outputs['names']
+                                            [i]] in self.optional_vars:
+                            set_out_func = "SetInplaceOptionalVectorKernelOutput"
+                            get_out_code = f"std::get<{i}>(api_output)"
                     output_create = output_create + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, kernel_backend, {get_out_code});"""
 

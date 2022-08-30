@@ -14,6 +14,8 @@
 
 from .device import Device
 
+import os
+import random
 import socket
 import struct
 from contextlib import closing
@@ -27,6 +29,12 @@ class Node(object):
         self.ip = self.get_host_ip()
         self.free_ports = []
         self._allocated_ports = []
+
+        port_range = os.getenv('PORT_RANGE', '35100:64000')
+        port_range = port_range.split(':')
+        self._port_start = int(port_range[0])
+        self._port_end = int(port_range[1])
+        self._port_cur = random.randint(self._port_start, self._port_end)
 
     def get_host_ip(self):
         try:
@@ -44,21 +52,31 @@ class Node(object):
     def get_ports_occupied(self):
         return self.free_ports
 
+    def _get_free_port(self, port=0):
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
+                         struct.pack('ii', 1, 0))
+            try:
+                s.bind(('', port))
+                return s.getsockname()[1]
+            except:
+                return -1
+
+    def _update_port_cur(self):
+        self._port_cur += 1
+        if self._port_cur > self._port_end:
+            self._port_cur = self._port_start
+
     def get_free_port(self):
-        # for loop to avoid port conflict
         for _ in range(100):
-            with closing(socket.socket(socket.AF_INET,
-                                       socket.SOCK_STREAM)) as s:
-                s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
-                             struct.pack('ii', 1, 0))
-                s.bind(('', 0))
-                port = s.getsockname()[1]
-                if port in self._allocated_ports:
-                    continue
-                else:
-                    self._allocated_ports.append(port)
-                    return port
-        return port
+            ret = self._get_free_port(self._port_cur)
+            if ret > 0:
+                self._update_port_cur()
+                return ret
+            else:
+                self._update_port_cur()
+
+        return self._port_cur
 
     @classmethod
     def is_server_ready(self, ip, port):
