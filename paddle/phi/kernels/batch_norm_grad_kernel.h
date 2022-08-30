@@ -20,28 +20,31 @@
 
 namespace phi {
 
+// Used in op inplace_abn_op, so needs to be put in header file, but not a phi
+// kernel
 template <typename T, typename Context>
-void BatchNormGradRawKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            const DenseTensor& scale,
-                            const DenseTensor& bias,
-                            const paddle::optional<DenseTensor>& mean,
-                            const paddle::optional<DenseTensor>& variance,
-                            const DenseTensor& saved_mean,
-                            const DenseTensor& saved_variance,
-                            const paddle::optional<DenseTensor>& reserve_space,
-                            const DenseTensor& y_grad,
-                            float momentum,
-                            float epsilon,
-                            const std::string& data_layout,
-                            bool is_test,
-                            bool use_global_stats,
-                            bool trainable_statistics,
-                            bool fuse_with_relu,
-                            bool is_inplace,
-                            DenseTensor* x_grad,
-                            DenseTensor* scale_grad,
-                            DenseTensor* bias_grad);
+void BatchNormGradCoreFunction(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& scale,
+    const DenseTensor& bias,
+    const paddle::optional<DenseTensor>& mean,
+    const paddle::optional<DenseTensor>& variance,
+    const DenseTensor& saved_mean,
+    const DenseTensor& saved_variance,
+    const paddle::optional<DenseTensor>& reserve_space,
+    const DenseTensor& y_grad,
+    float momentum,
+    float epsilon,
+    const std::string& data_layout,
+    bool is_test,
+    bool use_global_stats,
+    bool trainable_statistics,
+    bool fuse_with_relu,
+    bool is_inplace,
+    DenseTensor* x_grad,
+    DenseTensor* scale_grad,
+    DenseTensor* bias_grad);
 
 template <typename T, typename Context>
 void BatchNormGradKernel(const Context& dev_ctx,

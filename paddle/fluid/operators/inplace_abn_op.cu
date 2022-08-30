@@ -190,7 +190,7 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
       }
 
       auto& dev_ctx = ctx.device_context<DeviceContext>();
-      phi::BatchNormGradRawKernel<T>(
+      phi::BatchNormGradCoreFunction<T>(
           static_cast<const typename framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
           *y,

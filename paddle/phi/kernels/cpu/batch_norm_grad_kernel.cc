@@ -35,28 +35,29 @@ using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
 template <typename T, typename Context>
-void BatchNormGradRawKernel(const Context& ctx,
+void BatchNormGradCoreFunction(
+    const Context& ctx,
 
-                            const DenseTensor& x,
-                            const DenseTensor& scale,
-                            const DenseTensor& bias,
-                            const paddle::optional<DenseTensor>& mean,
-                            const paddle::optional<DenseTensor>& variance,
-                            const DenseTensor& saved_mean,
-                            const DenseTensor& saved_variance,
-                            const paddle::optional<DenseTensor>& reserve_space,
-                            const DenseTensor& y_grad,
-                            float momentum,
-                            float epsilon,
-                            const std::string& data_layout_str,
-                            bool is_test,
-                            bool use_global_stats,
-                            bool trainable_statistics,
-                            bool fuse_with_relu,
-                            bool is_inplace,
-                            DenseTensor* x_grad,
-                            DenseTensor* scale_grad,
-                            DenseTensor* bias_grad) {
+    const DenseTensor& x,
+    const DenseTensor& scale,
+    const DenseTensor& bias,
+    const paddle::optional<DenseTensor>& mean,
+    const paddle::optional<DenseTensor>& variance,
+    const DenseTensor& saved_mean,
+    const DenseTensor& saved_variance,
+    const paddle::optional<DenseTensor>& reserve_space,
+    const DenseTensor& y_grad,
+    float momentum,
+    float epsilon,
+    const std::string& data_layout_str,
+    bool is_test,
+    bool use_global_stats,
+    bool trainable_statistics,
+    bool fuse_with_relu,
+    bool is_inplace,
+    DenseTensor* x_grad,
+    DenseTensor* scale_grad,
+    DenseTensor* bias_grad) {
   const auto* d_y = &y_grad;
 
   DataLayout data_layout =
@@ -315,27 +316,27 @@ void BatchNormGradKernel(const Context& dev_ctx,
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad) {
-  BatchNormGradRawKernel<T, Context>(dev_ctx,
-                                     x,
-                                     scale,
-                                     bias,
-                                     mean,
-                                     variance,
-                                     saved_mean,
-                                     saved_variance,
-                                     reserve_space,
-                                     y_grad,
-                                     momentum,
-                                     epsilon,
-                                     data_layout,
-                                     is_test,
-                                     use_global_stats,
-                                     trainable_statistics,
-                                     fuse_with_relu,
-                                     false,
-                                     x_grad,
-                                     scale_grad,
-                                     bias_grad);
+  BatchNormGradCoreFunction<T, Context>(dev_ctx,
+                                        x,
+                                        scale,
+                                        bias,
+                                        mean,
+                                        variance,
+                                        saved_mean,
+                                        saved_variance,
+                                        reserve_space,
+                                        y_grad,
+                                        momentum,
+                                        epsilon,
+                                        data_layout,
+                                        is_test,
+                                        use_global_stats,
+                                        trainable_statistics,
+                                        fuse_with_relu,
+                                        false,
+                                        x_grad,
+                                        scale_grad,
+                                        bias_grad);
 }
 
 template <typename T, typename Context>
@@ -662,14 +663,7 @@ PD_REGISTER_KERNEL(
     batch_norm_grad, CPU, ALL_LAYOUT, phi::BatchNormGradKernel, float, double) {
 }
 
-PD_REGISTER_KERNEL(batch_norm_grad_raw,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormGradRawKernel,
-                   float,
-                   double) {}
-
-PD_REGISTER_KERNEL(batch_norm_grad_grad,
+PD_REGISTER_KERNEL(batch_norm_double_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::BatchNormDoubleGradKernel,
