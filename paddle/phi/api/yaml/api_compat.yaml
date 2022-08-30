@@ -1,7 +1,7 @@
-# - api : conv3d_transpose
-#   backward : conv3d_transpose_grad
-#   extra :
-#     attrs : [bool use_cudnn = true, bool use_mkldnn = false, int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
+- api : abs
+  backward : abs_grad
+  extra :
+    attrs : [bool use_cudnn = false, bool use_mkldnn = false]
 
 - api : atan2
   inputs :
@@ -45,6 +45,11 @@
              bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
              float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
              int workspace_size_MB = 512, bool exhaustive_search = false]
+
+- api : conv3d_transpose
+  backward : conv3d_transpose_grad
+  extra :
+    attrs : [bool use_cudnn = true, bool use_mkldnn = false, int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
 
 - api : cross
   inputs :
