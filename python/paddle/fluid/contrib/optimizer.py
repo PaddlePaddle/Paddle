@@ -21,7 +21,7 @@ from paddle.fluid import unique_name
 from paddle.fluid import layers
 from paddle.fluid.layer_helper import LayerHelper
 import warnings
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = ['Momentum']
 
@@ -207,7 +207,7 @@ class Momentum(Optimizer):
                          if find_master else None)
 
         if framework._non_static_mode():
-            _, _, _ = _C_ops.momentum(
+            _, _, _ = _legacy_C_ops.momentum(
                 param_and_grad[0], param_and_grad[1], velocity_acc, lr,
                 master_weight, param_and_grad[0], velocity_acc, master_weight,
                 'mu', self._momentum, 'use_nesterov', self._use_nesterov,

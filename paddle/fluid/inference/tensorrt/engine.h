@@ -177,6 +177,7 @@ class TRTInt8Calibrator;
 class TensorRTEngine {
   using DescType = ::paddle::framework::proto::BlockDesc;
   using ShapeMapType = std::map<std::string, std::vector<int>>;
+  using PredictorID = int;
 
  public:
   // Weight is model parameter.
@@ -286,9 +287,17 @@ class TensorRTEngine {
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::IExecutionContext* context() {
+#ifndef PADDLE_WITH_TESTING
+    PADDLE_ENFORCE_GT(
+        predictor_id_per_thread,
+        -1,
+        platform::errors::InvalidArgument(
+            "thread local var predictor_id_per_thread must be "
+            "initialized to >= 0, but now predictor_id_per_thread = %d",
+            predictor_id_per_thread));
+#endif
     std::unique_lock<std::mutex> lock(mutex_);
-    const std::thread::id tid = std::this_thread::get_id();
-    if (infer_context_.find(tid) == infer_context_.end()) {
+    if (infer_context_.find(predictor_id_per_thread) == infer_context_.end()) {
       PADDLE_ENFORCE_NOT_NULL(
           infer_engine_,
           platform::errors::InvalidArgument(
@@ -296,24 +305,34 @@ class TensorRTEngine {
       // We may see trt warning: Profile 0 has been chosen by another
       // IExecutionContext...
       // It's ok. We will set it later.
-      infer_context_[tid].reset(infer_engine_->createExecutionContext());
+      infer_context_[predictor_id_per_thread].reset(
+          infer_engine_->createExecutionContext());
       if (with_dynamic_shape_) {
         // need new profile if it's not the first
         if (cur_profile_num_ > 0) {
-          infer_context_[tid]->setOptimizationProfile(cur_profile_num_);
+          infer_context_[predictor_id_per_thread]->setOptimizationProfile(
+              cur_profile_num_);
         }
-        profile_index_[tid] = cur_profile_num_;
+        profile_index_[predictor_id_per_thread] = cur_profile_num_;
         ++cur_profile_num_;
       }
     }
-    return infer_context_[tid].get();
+    return infer_context_[predictor_id_per_thread].get();
   }
 
   int GetProfileIndex() {
     if (max_profile_num_ > 1) {
+#ifndef PADDLE_WITH_TESTING
+      PADDLE_ENFORCE_GT(
+          predictor_id_per_thread,
+          -1,
+          platform::errors::InvalidArgument(
+              "thread local var predictor_id_per_thread must be "
+              "initialized to >= 0, but now predictor_id_per_thread = %d",
+              predictor_id_per_thread));
+#endif
       std::unique_lock<std::mutex> lock(mutex_);
-      const std::thread::id tid = std::this_thread::get_id();
-      return profile_index_[tid];
+      return profile_index_[predictor_id_per_thread];
     } else {
       return 0;
     }
@@ -326,14 +345,22 @@ class TensorRTEngine {
   int GetNbBindings() { return binding_num_; }
 
   void ResetContext() {
-    std::unique_lock<std::mutex> lock(mutex_);
-    const std::thread::id tid = std::this_thread::get_id();
     PADDLE_ENFORCE_NOT_NULL(
         infer_engine_,
         platform::errors::InvalidArgument(
             "You should build engine first and then set the context."));
-    infer_context_[tid].reset(nullptr);
-    infer_context_.erase(tid);
+#ifndef PADDLE_WITH_TESTING
+    PADDLE_ENFORCE_GT(
+        predictor_id_per_thread,
+        -1,
+        platform::errors::InvalidArgument(
+            "thread local var predictor_id_per_thread must be "
+            "initialized to >= 0, but now predictor_id_per_thread = %d",
+            predictor_id_per_thread));
+#endif
+    std::unique_lock<std::mutex> lock(mutex_);
+    infer_context_[predictor_id_per_thread].reset(nullptr);
+    infer_context_.erase(predictor_id_per_thread);
   }
 
   nvinfer1::IHostMemory* Serialize() {
@@ -686,7 +713,7 @@ class TensorRTEngine {
   int device_id_;
   int max_profile_num_{1};
   int cur_profile_num_{0};
-  std::unordered_map<std::thread::id, int> profile_index_;
+  std::unordered_map<PredictorID, int> profile_index_;
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
@@ -723,7 +750,7 @@ class TensorRTEngine {
   infer_ptr<nvinfer1::IBuilder> infer_builder_;
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
-  std::unordered_map<std::thread::id, infer_ptr<nvinfer1::IExecutionContext>>
+  std::unordered_map<PredictorID, infer_ptr<nvinfer1::IExecutionContext>>
       infer_context_;
   infer_ptr<nvinfer1::IHostMemory> ihost_memory_;
   std::unordered_map<nvinfer1::ITensor*, float> quant_dynamic_range_;
@@ -741,6 +768,9 @@ class TensorRTEngine {
 #endif
   std::mutex mutex_;
   bool use_inspector_;
+
+ public:
+  thread_local static int predictor_id_per_thread;
 };  // class TensorRTEngine
 
 // Add a layer__ into engine__ with args ARGS.

@@ -131,7 +131,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
 
   Gather<T, IntT>(dev_ctx,
-                  x.non_zero_elements().data<T>(),
+                  x.values().data<T>(),
                   rulebook_ptr,
                   rulebook_len,
                   in_channels,
@@ -139,7 +139,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
 
   // 3. call gemm for every werght
   auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
-  auto* out_values = out->mutable_non_zero_elements();
+  auto* out_values = out->mutable_values();
   T* out_values_ptr = out_values->data<T>();
   set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
 
@@ -202,21 +202,20 @@ void Conv3dCooKernel(const Context& dev_ctx,
                      SparseCooTensor* out,
                      DenseTensor* rulebook,
                      DenseTensor* counter) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "Conv3dCooGPUKernel", ([&] {
-        Conv3dCooGPUKernel<T, data_t>(dev_ctx,
-                                      x,
-                                      kernel,
-                                      paddings,
-                                      dilations,
-                                      strides,
-                                      groups,
-                                      subm,
-                                      key,
-                                      out,
-                                      rulebook,
-                                      counter);
-      }));
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "Conv3dCooGPUKernel", ([&] {
+                                 Conv3dCooGPUKernel<T, data_t>(dev_ctx,
+                                                               x,
+                                                               kernel,
+                                                               paddings,
+                                                               dilations,
+                                                               strides,
+                                                               groups,
+                                                               subm,
+                                                               key,
+                                                               out,
+                                                               rulebook,
+                                                               counter);
+                               }));
 }
 
 }  // namespace sparse

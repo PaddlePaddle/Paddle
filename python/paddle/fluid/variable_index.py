@@ -500,9 +500,8 @@ def _getitem_impl_(var, item):
                 end = inputs['EndsTensorList']
             else:
                 end = attrs['ends']
-            out = paddle._C_ops.final_state_slice(var, axes, st, end,
-                                                  attrs['infer_flags'],
-                                                  attrs['decrease_axis'])
+            out = paddle._C_ops.slice(var, axes, st, end, attrs['infer_flags'],
+                                      attrs['decrease_axis'])
         else:
             target_block = default_main_program().current_block()
 

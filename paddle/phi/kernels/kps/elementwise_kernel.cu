@@ -42,8 +42,8 @@ void MinimumKernel(const Context& dev_ctx,
   int axis = -1;
   MinimumRawKernel<T>(dev_ctx, x, y, axis, out);
 }
-// Create the definition of Modulo
-DEFINE_CUDA_ELEMENTWISE_OP(Modulo)
+// Create the definition of Remainder
+DEFINE_CUDA_ELEMENTWISE_OP(Remainder)
 // Create the definition of FloorDivide
 DEFINE_CUDA_ELEMENTWISE_OP(FloorDivide)
 template <typename T, typename Context>
@@ -118,10 +118,10 @@ PD_REGISTER_KERNEL(minimum_raw,
                    int64_t,
                    float16,
                    bfloat16) {}
-PD_REGISTER_KERNEL(modulo_raw,
+PD_REGISTER_KERNEL(remainder_raw,
                    KPS,
                    ALL_LAYOUT,
-                   phi::ModuloRawKernel,
+                   phi::RemainderRawKernel,
                    float,
                    double,
                    int,

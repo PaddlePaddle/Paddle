@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -34,20 +35,21 @@ struct EyeFunctor {
 
 template <typename T, typename Context>
 void EyeKernel(const Context& ctx,
-               int64_t num_rows,
-               int64_t num_columns,
+               const Scalar& num_rows,
+               const Scalar& num_columns,
                DataType dtype,
                DenseTensor* out) {
-  auto num = num_columns;
-  if (num == -1) {
-    num = num_rows;
+  auto columns = num_columns.to<int64_t>();
+  auto rows = num_rows.to<int64_t>();
+  if (columns == -1) {
+    columns = rows;
   }
   T* out_data = ctx.template Alloc<T>(out);
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(ctx, out, static_cast<T>(0));
-  int64_t num_eyes = (std::min)(num_rows, num);
+  int64_t num_eyes = (std::min)(rows, columns);
   paddle::platform::ForRange<Context> for_range(ctx, num_eyes);
-  EyeFunctor<T> functor(num, out_data);
+  EyeFunctor<T> functor(columns, out_data);
   for_range(functor);
 }
 

@@ -29,7 +29,7 @@ from functools import reduce, partial
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
@@ -89,9 +89,9 @@ def select_input(inputs, mask):
     check_type(inputs, 'inputs', (list, tuple), 'select_input')
     check_variable_and_dtype(mask, 'mask', ['int32'], 'select_input')
 
-    input_dtype = inputs[0].dtype
-    input_shape = inputs[0].shape
-    input_type = inputs[0].type
+    input_dtype = inputs[1].dtype
+    input_shape = inputs[1].shape
+    input_type = inputs[1].type
 
     out = helper.create_variable(dtype=input_dtype,
                                  shape=input_shape,
@@ -1161,6 +1161,8 @@ class While(object):
             if inner_var:
                 out_vars.append(inner_var)
 
+        x_name_list |= set(map(lambda x: x.name, out_vars))
+
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
 
@@ -1188,6 +1190,13 @@ def assign_skip_lod_tensor_array(input, output):
     """
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     """
+
+    def has_shape_diff(x_var, y_var):
+        if len(x_var.shape) != len(y_var.shape): return True
+        for x_dim, y_dim in zip(x_var.shape, y_var.shape):
+            if x_dim != y_dim and -1 not in [x_dim, y_dim]: return True
+        return False
+
     if not isinstance(input, (Variable, core.VarBase)):
         if isinstance(output, Variable) and isinstance(
                 input, support_ret_buildin_type):
@@ -1203,6 +1212,11 @@ def assign_skip_lod_tensor_array(input, output):
         if parent_block and not parent_block._find_var_recursive(input.name):
             assign(input, output)
     else:
+        if isinstance(output, Variable) and isinstance(
+                input, Variable) and has_shape_diff(input, output):
+            warnings.warn(
+                "In dy2static mode, we attemp to assign a variable with shape {} into a variable with shape{}, which is not always right."
+                .format(input.shape, output.shape))
         assign(input, output)
 
 
@@ -1327,8 +1341,11 @@ def _deal_with_undefined_var(output_vars, loop_vars):
         if isinstance(o_var,
                       (Variable, ) + support_ret_buildin_type) or o_var is None:
             return create_undefined_variable()
-        if isinstance(o_var, (tuple, list)):
-            return [create_undefined_variable() for i in range(len(o_var))]
+        if is_sequence(o_var):
+            """ 
+            Create a complex container class inside the body of while, including Python list and python Dict
+            """
+            return map_structure(lambda x: create_undefined_variable(), o_var)
 
     if len(output_vars) != len(loop_vars):
         raise ValueError("The length of loop_vars should be the same.")
@@ -1549,6 +1566,9 @@ def increment(x, value=1.0, in_place=True):
           counter = fluid.layers.zeros(shape=[1], dtype='float32') # [0.]
           fluid.layers.increment(counter) # [1.]
     """
+    if in_dygraph_mode():
+        return _C_ops.increment_(x, value)
+
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'increment')
     helper = LayerHelper("increment", **locals())
@@ -1871,7 +1891,7 @@ def greater_than(x, y, cond=None, name=None):
     attrs = dict()
 
     if in_dygraph_mode():
-        return _C_ops.final_state_greater_than(x, y, -1)
+        return _C_ops.greater_than(x, y, -1)
     else:
         helper.append_op(type='greater_than',
                          inputs={
@@ -1968,6 +1988,10 @@ def equal(x, y, cond=None, name=None):
           out1 = fluid.layers.equal(x=label,y=limit) #out1=[True, False]
           out2 = fluid.layers.equal(x=label_cond,y=limit, cond=out_cond) #out2=[False, True] out_cond=[False, True]
     """
+    if in_dygraph_mode():
+        default_axis = -1
+        return _C_ops.equal(x, y, default_axis)
+
     check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
                              "equal")
     check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
@@ -4026,9 +4050,9 @@ def is_empty(x, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_is_empty(x)
-    if _in_legacy_dygraph():
         return _C_ops.is_empty(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.is_empty(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'is_empty')
