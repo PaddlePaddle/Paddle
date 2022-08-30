@@ -19,145 +19,13 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/adam_functors.h"
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace phi {
 
 using float16 = dtype::float16;
-
-template <typename Context, typename T1, typename T2>
-static int ConvertDataByType(
-    const T1* x, T2** y, int len, bool allocateFlag, const Context& dev_ctx) {
-  if (nullptr == x || nullptr == y || len <= 0)
-    return xpu::Error_t::INVALID_PARAM;
-  int r = 0;
-  if (allocateFlag) {
-    r = xpu_malloc(reinterpret_cast<void**>(y), sizeof(T2) * len);
-
-    PADDLE_ENFORCE_EQ(
-        r,
-        xpu::Error_t::SUCCESS,
-        errors::External("Alloc memory in xpu for result data failed with [%d]",
-                         r));
-  }
-
-  T1* cpu_data = reinterpret_cast<T1*>(malloc(sizeof(T1) * len));
-
-  paddle::memory::Copy(
-      CPUPlace(), cpu_data, dev_ctx.GetPlace(), x, len * sizeof(T1));
-
-  T2* cpu_real_data = reinterpret_cast<T2*>(malloc(sizeof(T2) * len));
-  for (int i = 0; i < len; i++) cpu_real_data[i] = static_cast<T2>(cpu_data[i]);
-
-  paddle::memory::Copy(
-      dev_ctx.GetPlace(), *y, CPUPlace(), cpu_real_data, len * sizeof(T2));
-
-  free(cpu_data);
-  free(cpu_real_data);
-
-  return xpu::Error_t::SUCCESS;
-}
-
-template <typename Context, typename T>
-static void GetDataPointer(const phi::DenseTensor& tensorData,
-                           T** result,
-                           const Context& dev_ctx) {
-  if (tensorData.dtype() == DataType::FLOAT16) {
-    const float16* real_data = tensorData.template data<float16>();
-    int len = tensorData.numel();
-
-    int r =
-        ConvertDataByType<float16, T>(real_data, result, len, true, dev_ctx);
-    PADDLE_ENFORCE_EQ(
-        r,
-        xpu::Error_t::SUCCESS,
-        errors::External("execute function ConvertDataByType failed with [%d]",
-                         r));
-  }
-}
-
-template <typename Context, typename T>
-static void CopyOutData(const Tensor& srcTensor,
-                        phi::DenseTensor* dstTensor,
-                        const Context& dev_ctx) {
-  if (dstTensor->dtype() == DataType::FLOAT16) {
-    const T* xpu_out_data = srcTensor.template data<T>();
-    float16* out_data = dev_ctx.template Alloc<float16>(dstTensor);
-    int len = srcTensor.numel();
-
-    int r = ConvertDataByType<T, float16>(
-        xpu_out_data, &out_data, len, false, dev_ctx);
-    PADDLE_ENFORCE_EQ(
-        r,
-        xpu::Error_t::SUCCESS,
-        errors::External("execute function ConvertDataByType failed with[%d]",
-                         r));
-  }
-}
-
-template <typename T>
-static void FreeData(const phi::DenseTensor& tensorData, T* dataPtr) {
-  if (tensorData.dtype() == DataType::FLOAT16) xpu_free(dataPtr);
-}
-
-template <typename Context, typename T>
-static void SetBetaData(const phi::DenseTensor& beta_pow,
-                        phi::DenseTensor* beta_pow_out,
-                        const T& beta,
-                        const Context& dev_ctx) {
-  if (beta_pow.dtype() == DataType::FLOAT16) {
-    const float16* beta_pow_p = beta_pow.template data<float16>();
-    dev_ctx.template HostAlloc<float16>(beta_pow_out)[0] =
-        static_cast<float16>(beta) * beta_pow_p[0];
-  } else {
-    const T* beta_pow_p = beta_pow.template data<T>();
-    dev_ctx.template HostAlloc<T>(beta_pow_out)[0] = beta * beta_pow_p[0];
-  }
-}
-
-template <typename Context, typename T>
-static void Scale(phi::DenseTensor* beta_pow_out,
-                  const phi::DenseTensor& beta_pow,
-                  T* beta_pow_ptr,
-                  const T& beta,
-                  const Context& dev_ctx) {
-  float16* beta_pow_out_p2 = dev_ctx.template Alloc<float16>(beta_pow_out);
-
-  Tensor xpu_beta_pow_out;
-  const phi::DenseTensorMeta meta_beta_pow_out(DataType::FLOAT32,
-                                               beta_pow_out->dims());
-  xpu_beta_pow_out.set_meta(meta_beta_pow_out);
-
-  T* beta_pow_out_ptr = dev_ctx.template Alloc<T>(xpu_beta_pow_out);
-
-  int r = xpu::scale(dev_ctx.x_context(),
-                     beta_pow_ptr,
-                     beta_pow_out_ptr,
-                     beta_pow.numel(),
-                     false,
-                     beta,
-                     0.0f);
-  PADDLE_ENFORCE_EQ(
-      r,
-      xpu::SUCCESS,
-      errors::External("XPU kernel scale occur error in adam error code ",
-                       r,
-                       XPUAPIErrorMsg[r]));
-
-  const float* xpu_beta_pow_out_data =
-      dev_ctx.template Alloc<T>(xpu_beta_pow_out);
-  int len = xpu_beta_pow_out.numel();
-
-  r = ConvertDataByType<Context, T, float16>(
-      xpu_beta_pow_out_data, &beta_pow_out_p2, len, false, dev_ctx);
-  PADDLE_ENFORCE_EQ(
-      r,
-      xpu::Error_t::SUCCESS,
-      errors::External("execute function ConvertDataByType failed with [%d]",
-                       r));
-}
 
 template <typename T, typename Context>
 void AdamDenseKernel(const Context& dev_ctx,
@@ -184,16 +52,16 @@ void AdamDenseKernel(const Context& dev_ctx,
                      DenseTensor* beta2_pow_out,
                      DenseTensor* master_param_outs) {
   float* param_ptr = nullptr;
-  GetDataPointer<Context, float>(param, &param_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(param, &param_ptr, dev_ctx);
 
   float* mom1_ptr = nullptr;
-  GetDataPointer<Context, float>(moment1, &mom1_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(moment1, &mom1_ptr, dev_ctx);
 
   float* mom2_ptr = nullptr;
-  GetDataPointer<Context, float>(moment2, &mom2_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(moment2, &mom2_ptr, dev_ctx);
 
   float* lr_ptr = nullptr;
-  getDataPointer<Context, float>(learning_rate, &lr_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(learning_rate, &lr_ptr, dev_ctx);
 
   float* beta1_pow_ptr = nullptr;
   const float* beta1_const_pow_ptr = nullptr;
@@ -201,12 +69,13 @@ void AdamDenseKernel(const Context& dev_ctx,
     DenseTensor xpu_beta1_pow;
     phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, xpu_beta1_pow);
     if (xpu_beta1_pow.dtype() == DataType::FLOAT16)
-      GetDataPointer<Context, float>(xpu_beta1_pow, &beta1_pow_ptr, dev_ctx);
+      funcs::GetDataPointer<Context, float>(
+          xpu_beta1_pow, &beta1_pow_ptr, dev_ctx);
     else
       beta1_const_pow_ptr = xpu_beta1_pow.template data<float>();
   } else {
     if (beta1_pow.dtype() == DataType::FLOAT16)
-      GetDataPointer<Context, float>(beta1_pow, &beta1_pow_ptr, dev_ctx);
+      funcs::GetDataPointer<Context, float>(beta1_pow, &beta1_pow_ptr, dev_ctx);
     else
       beta1_const_pow_ptr = beta1_pow.template data<float>();
   }
@@ -217,12 +86,13 @@ void AdamDenseKernel(const Context& dev_ctx,
     DenseTensor xpu_beta2_pow;
     phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, xpu_beta2_pow);
     if (xpu_beta2_pow.dtype() == DataType::FLOAT16)
-      GetDataPointer<Context, float>(xpu_beta2_pow, &beta2_pow_ptr, dev_ctx);
+      funcs::GetDataPointer<Context, float>(
+          xpu_beta2_pow, &beta2_pow_ptr, dev_ctx);
     else
       beta2_const_pow_ptr = xpu_beta2_pow.template data<float>();
   } else {
     if (beta2_pow.dtype() == DataType::FLOAT16)
-      GetDataPointer<Context, float>(beta2_pow, &beta2_pow_ptr, dev_ctx);
+      funcs::GetDataPointer<Context, float>(beta2_pow, &beta2_pow_ptr, dev_ctx);
     else
       beta2_const_pow_ptr = beta2_pow.template data<float>();
   }
@@ -231,19 +101,22 @@ void AdamDenseKernel(const Context& dev_ctx,
   float* param_out_ptr = nullptr;
   const phi::DenseTensorMeta meta_param(DataType::FLOAT32, param_out->dims());
   xpu_param_out.set_meta(meta_param);
-  GetOutDataPointer(param_out, &xpu_param_out, &param_out_ptr, dev_ctx);
+  funcs::GetOutDataPointer<Context, float>(
+      param_out, &xpu_param_out, &param_out_ptr, dev_ctx);
 
   Tensor xpu_mom1_out;
   float* mom1_out_ptr = nullptr;
   const phi::DenseTensorMeta meta_mom1(DataType::FLOAT32, moment1_out->dims());
   xpu_mom1_out.set_meta(meta_mom1);
-  GetOutDataPointer(moment1_out, &xpu_mom1_out, &mom1_out_ptr, dev_ctx);
+  funcs::GetOutDataPointer<Context, float>(
+      moment1_out, &xpu_mom1_out, &mom1_out_ptr, dev_ctx);
 
   DenseTensor xpu_mom2_out;
   float* mom2_out_ptr = nullptr;
   const phi::DenseTensorMeta meta_mom2(DataType::FLOAT32, moment2_out->dims());
   xpu_mom2_out.set_meta(meta_mom2);
-  GetOutDataPointer(moment2_out, &xpu_mom2_out, &mom2_out_ptr, dev_ctx);
+  funcs::GetOutDataPointer<Context, float>(
+      moment2_out, &xpu_mom2_out, &mom2_out_ptr, dev_ctx);
 
   bool skip_update_ = false;
   if (skip_update.is_initialized()) {
@@ -291,7 +164,7 @@ void AdamDenseKernel(const Context& dev_ctx,
   auto epsilon_ = epsilon.to<float>();
 
   float* grad_c = nullptr;
-  GetDataPointer<Context, float>(grad, &grad_c, dev_ctx);
+  funcs::GetDataPointer<Context, float>(grad, &grad_c, dev_ctx);
 
   int r = xpu::adam(
       dev_ctx.x_context(),
@@ -315,23 +188,23 @@ void AdamDenseKernel(const Context& dev_ctx,
                     true,
                     errors::External("XPU API return wrong value[%d],", r));
 
-  FreeData<float>(grad, grad_c);
+  funcs::FreeData<float>(grad, grad_c);
 
-  CopyOutData<Context, float>(xpu_mom1_out, moment1_out, dev_ctx);
-  CopyOutData<Context, float>(xpu_mom2_out, moment2_out, dev_ctx);
-  CopyOutData<Context, float>(xpu_param_out, param_out, dev_ctx);
+  funcs::CopyOutData<Context, float>(xpu_mom1_out, moment1_out, dev_ctx);
+  funcs::CopyOutData<Context, float>(xpu_mom2_out, moment2_out, dev_ctx);
+  funcs::CopyOutData<Context, float>(xpu_param_out, param_out, dev_ctx);
 
   if (!use_global_beta_pow) {
     // update in cpu and then copy to xpu
     if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
-      SetBetaData(beta1_pow, beta1_pow_out, beta1_);
+      funcs::SetBetaData<Context, float>(beta1_pow, beta1_pow_out, beta1_);
 
-      SetBetaData(beta2_pow, beta2_pow_out, beta2_);
+      funcs::SetBetaData<Context, float>(beta2_pow, beta2_pow_out, beta2_);
     } else {
       float* beta1_pow_out_p1 = nullptr;
 
       if (beta1_pow_out->dtype() == DataType::FLOAT16) {
-        Scale<Context, float>(
+        funcs::Scale<Context, float>(
             beta1_pow_out, beta1_pow, beta1_pow_ptr, beta1, dev_ctx);
       } else {
         const float* beta1_pow_data = beta1_pow.template data<float>();
@@ -354,7 +227,7 @@ void AdamDenseKernel(const Context& dev_ctx,
 
       float* beta2_pow_out_p1 = nullptr;
       if (beta2_pow_out->dtype() == DataType::FLOAT16) {
-        Scale<Context, float>(
+        funcs::Scale<Context, float>(
             beta2_pow_out, beta2_pow, beta2_pow_ptr, beta2_, dev_ctx);
       } else {
         const float* beta2_pow_data = beta2_pow.template data<float>();
@@ -376,20 +249,15 @@ void AdamDenseKernel(const Context& dev_ctx,
       }
     }
   }
-  FreeData<float>(param, param_ptr);
-  FreeData<float>(mom1, mom1_ptr);
-  FreeData<float>(mom2, mom2_ptr);
-  FreeData<float>(learning_rate, lr_ptr);
+  funcs::FreeData<float>(param, param_ptr);
+  funcs::FreeData<float>(mom1, mom1_ptr);
+  funcs::FreeData<float>(mom2, mom2_ptr);
+  funcs::FreeData<float>(learning_rate, lr_ptr);
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(adam,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::AdamDenseKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {
+PD_REGISTER_KERNEL(
+    adam, XPU, ALL_LAYOUT, phi::AdamDenseKernel, float, phi::dtype::float16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);

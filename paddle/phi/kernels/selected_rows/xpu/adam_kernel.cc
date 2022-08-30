@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/adam_functors.h"
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
@@ -51,16 +52,16 @@ void AdamDenseParamSparseGradKernel(
     DenseTensor* beta2_pow_out,
     DenseTensor* master_param_outs) {
   float* param_ptr = nullptr;
-  GetDataPointer<Context, float>(param, &param_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(param, &param_ptr, dev_ctx);
 
   float* mom1_ptr = nullptr;
-  GetDataPointer<Context, float>(moment1, &mom1_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(moment1, &mom1_ptr, dev_ctx);
 
   float* mom2_ptr = nullptr;
-  GetDataPointer<Context, float>(moment2, &mom2_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(moment2, &mom2_ptr, dev_ctx);
 
   float* lr_ptr = nullptr;
-  getDataPointer<Context, float>(learning_rate, &lr_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(learning_rate, &lr_ptr, dev_ctx);
 
   float* beta1_pow_ptr = nullptr;
   const float* beta1_const_pow_ptr = nullptr;
@@ -68,12 +69,13 @@ void AdamDenseParamSparseGradKernel(
     DenseTensor xpu_beta1_pow;
     phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, xpu_beta1_pow);
     if (xpu_beta1_pow.dtype() == DataType::FLOAT16)
-      GetDataPointer<Context, float>(xpu_beta1_pow, &beta1_pow_ptr, dev_ctx);
+      funcs::GetDataPointer<Context, float>(
+          xpu_beta1_pow, &beta1_pow_ptr, dev_ctx);
     else
       beta1_const_pow_ptr = xpu_beta1_pow.template data<float>();
   } else {
     if (beta1_pow.dtype() == DataType::FLOAT16)
-      GetDataPointer<Context, float>(beta1_pow, &beta1_pow_ptr, dev_ctx);
+      funcs::GetDataPointer<Context, float>(beta1_pow, &beta1_pow_ptr, dev_ctx);
     else
       beta1_const_pow_ptr = beta1_pow.template data<float>();
   }
@@ -84,12 +86,13 @@ void AdamDenseParamSparseGradKernel(
     DenseTensor xpu_beta2_pow;
     phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, xpu_beta2_pow);
     if (xpu_beta2_pow.dtype() == DataType::FLOAT16)
-      GetDataPointer<Context, float>(xpu_beta2_pow, &beta2_pow_ptr, dev_ctx);
+      funcs::GetDataPointer<Context, float>(
+          xpu_beta2_pow, &beta2_pow_ptr, dev_ctx);
     else
       beta2_const_pow_ptr = xpu_beta2_pow.template data<float>();
   } else {
     if (beta2_pow.dtype() == DataType::FLOAT16)
-      GetDataPointer<Context, float>(beta2_pow, &beta2_pow_ptr, dev_ctx);
+      funcs::GetDataPointer<Context, float>(beta2_pow, &beta2_pow_ptr, dev_ctx);
     else
       beta2_const_pow_ptr = beta2_pow.template data<float>();
   }
@@ -98,19 +101,22 @@ void AdamDenseParamSparseGradKernel(
   float* param_out_ptr = nullptr;
   const phi::DenseTensorMeta meta_param(DataType::FLOAT32, param_out->dims());
   xpu_param_out.set_meta(meta_param);
-  GetOutDataPointer(param_out, &xpu_param_out, &param_out_ptr, dev_ctx);
+  funcs::GetOutDataPointer<Context, float>(
+      param_out, &xpu_param_out, &param_out_ptr, dev_ctx);
 
   Tensor xpu_mom1_out;
   float* mom1_out_ptr = nullptr;
   const phi::DenseTensorMeta meta_mom1(DataType::FLOAT32, moment1_out->dims());
   xpu_mom1_out.set_meta(meta_mom1);
-  GetOutDataPointer(moment1_out, &xpu_mom1_out, &mom1_out_ptr, dev_ctx);
+  funcs::GetOutDataPointer<Context, float>(
+      moment1_out, &xpu_mom1_out, &mom1_out_ptr, dev_ctx);
 
   DenseTensor xpu_mom2_out;
   float* mom2_out_ptr = nullptr;
   const phi::DenseTensorMeta meta_mom2(DataType::FLOAT32, moment2_out->dims());
   xpu_mom2_out.set_meta(meta_mom2);
-  GetOutDataPointer(moment2_out, &xpu_mom2_out, &mom2_out_ptr, dev_ctx);
+  funcs::GetOutDataPointer<Context, float>(
+      moment2_out, &xpu_mom2_out, &mom2_out_ptr, dev_ctx);
 
   bool skip_update_ = false;
   if (skip_update.is_initialized()) {
@@ -187,7 +193,7 @@ void AdamDenseParamSparseGradKernel(
   auto& grad_merge = *grad_merge_ptr;
   auto& grad_tensor = grad_merge.value();
 
-  GetDataPointer<Context, float>(grad_tensor, &grad_c, dev_ctx);
+  funcs::GetDataPointer<Context, float>(grad_tensor, &grad_c, dev_ctx);
 
   int row_count = grad_merge.rows().size();
   std::vector<int> rows(row_count);
@@ -232,23 +238,23 @@ void AdamDenseParamSparseGradKernel(
                     true,
                     errors::External("XPU API return wrong value[%d],", r));
 
-  FreeData<float>(grad_tensor, grad_c);
+  funcs::FreeData<float>(grad_tensor, grad_c);
 
-  CopyOutData<Context, float>(xpu_mom1_out, moment1_out, dev_ctx);
-  CopyOutData<Context, float>(xpu_mom2_out, moment1_out, dev_ctx);
-  CopyOutData<Context, float>(xpu_param_out, moment1_out, dev_ctx);
+  funcs::CopyOutData<Context, float>(xpu_mom1_out, moment1_out, dev_ctx);
+  funcs::CopyOutData<Context, float>(xpu_mom2_out, moment1_out, dev_ctx);
+  funcs::CopyOutData<Context, float>(xpu_param_out, moment1_out, dev_ctx);
 
   if (!use_global_beta_pow) {
     // update in cpu and then copy to xpu
     if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
-      SetBetaData(beta1_pow, beta1_pow_out, beta1_);
+      funcs::SetBetaData<Context, float>(beta1_pow, beta1_pow_out, beta1_);
 
-      SetBetaData(beta2_pow, beta2_pow_out, beta2_);
+      funcs::SetBetaData<Context, float>(beta2_pow, beta2_pow_out, beta2_);
     } else {
       float* beta1_pow_out_p1 = nullptr;
 
       if (beta1_pow_out->dtype() == DataType::FLOAT16) {
-        Scale<Context, float>(
+        funcs::Scale<Context, float>(
             beta1_pow_out, beta1_pow, beta1_pow_ptr, beta1_, dev_ctx);
       } else {
         const float* beta1_pow_data = beta1_pow.template data<float>();
@@ -271,7 +277,7 @@ void AdamDenseParamSparseGradKernel(
 
       float* beta2_pow_out_p1 = nullptr;
       if (beta2_pow_out->dtype() == DataType::FLOAT16) {
-        Scale<Context, float>(
+        funcs::Scale<Context, float>(
             beta2_pow_out, beta2_pow, beta2_pow_ptr, beta2_, dev_ctx);
       } else {
         const float* beta2_pow_data = beta2_pow.template data<float>();
@@ -293,10 +299,10 @@ void AdamDenseParamSparseGradKernel(
       }
     }
   }
-  FreeData<float>(param, param_ptr);
-  FreeData<float>(mom1, mom1_ptr);
-  FreeData<float>(mom2, mom2_ptr);
-  FreeData<float>(learning_rate, lr_ptr);
+  funcs::FreeData<float>(param, param_ptr);
+  funcs::FreeData<float>(mom1, mom1_ptr);
+  funcs::FreeData<float>(mom2, mom2_ptr);
+  funcs::FreeData<float>(learning_rate, lr_ptr);
 }
 }  // namespace sr
 }  // namespace phi
@@ -306,7 +312,6 @@ PD_REGISTER_KERNEL(adam_dense_param_sparse_grad,
                    ALL_LAYOUT,
                    phi::sr::AdamDenseParamSparseGradKernel,
                    float,
-                   double,
                    phi::dtype::float16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
