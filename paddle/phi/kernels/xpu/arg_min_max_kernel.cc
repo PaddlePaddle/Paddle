@@ -23,11 +23,11 @@ namespace phi {
 template <typename T, typename Context>
 void ArgMaxKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  int64_t axis,
+                  const Scalar& axis,
                   bool keepdims,
                   bool flatten,
                   int dtype,
-                  DenseTensor* out) {
+                  DenseTensor* out){
   PADDLE_ENFORCE_EQ(
       (dtype < 0 || dtype == 2 || dtype == 3),
       true,
@@ -41,17 +41,18 @@ void ArgMaxKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<int64_t>(out);
 
   DDim x_dims;
+  int axis_val = axis.to<int>();
   if (flatten) {
     x_dims = phi::make_ddim({x.numel()});
     // if flatten, the axis just as 0
-    axis = 0;
+    axis_val = 0;
   } else {
     x_dims = x.dims();
-    if (axis < 0) axis += x_dims.size();
+    if (axis_val < 0) axis_val += x_dims.size();
   }
   auto xdims_vec = phi::vectorize<int>(x_dims);
   int r = xpu::argmax(
-      dev_ctx.x_context(), x.data<T>(), out->data<int64_t>(), xdims_vec, axis);
+      dev_ctx.x_context(), x.data<T>(), out->data<int64_t>(), xdims_vec, axis_val);
   PADDLE_ENFORCE_EQ(
       r,
       XPU_SUCCESS,
@@ -59,16 +60,10 @@ void ArgMaxKernel(const Context& dev_ctx,
                        r,
                        XPUAPIErrorMsg[r]));
 }
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(arg_max,
                    XPU,
                    ALL_LAYOUT,
                    phi::ArgMaxKernel,
-                   float,
-                   double,
-                   int32_t,
-                   int64_t,
-                   int16_t,
-                   uint8_t) {}
+                   float) {}
