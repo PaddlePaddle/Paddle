@@ -1055,6 +1055,8 @@ class PostTrainingQuantization(object):
                     max_scale = None
                     tmp_tensor_list = []
                     for tensor_name in tensor_list:
+                        if tensor_name not in scale_dict.keys():
+                            continue
                         if '#' in tensor_name:
                             real_tensor_name, opera, scalar = tensor_name.split(
                                 '#')
@@ -1075,6 +1077,8 @@ class PostTrainingQuantization(object):
                                     max_scale, scale_dict[tensor_name])
 
                     for tensor_name in tensor_list:
+                        if tensor_name not in scale_dict.keys():
+                            continue
                         if '#' in tensor_name:
                             real_tensor_name, opera, scalar = tensor_name.split(
                                 '#')

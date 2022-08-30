@@ -34,6 +34,7 @@ from ..fluid.framework import _in_legacy_dygraph
 from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
+from ..fluid.layers import utils
 
 # TODO: define math functions
 # yapf: disable
@@ -419,12 +420,11 @@ OP_NAMEMAPPING = {
     'elementwise_min': 'minimum',
     'elementwise_pow': 'elementwise_pow',
     'elementwise_floordiv': 'floor_divide',
-    'elementwise_mod': 'modulo',
     'elementwise_add': 'add',
     'elementwise_sub': 'subtract',
     'elementwise_mul': 'multiply',
     'elementwise_div': 'divide',
-    'elementwise_mod': 'modulo',
+    'elementwise_mod': 'remainder',
 }
 
 @dygraph_only
@@ -1145,11 +1145,22 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             out8 = paddle.sum(x, axis=0)  # [1, 1, 1, 1]
             out9 = paddle.sum(x, axis=1)  # [4, 0]
     """
-    if axis is not None and not isinstance(axis, (list, tuple)):
-        axis = [axis]
+    if isinstance(axis, Variable):
+        reduce_all_flag = True if axis.shape[0] == len(x.shape) else False
+    else:
+        if axis is not None and not isinstance(axis, (list, tuple)):
+            axis = [axis]
 
-    if not axis:
-        axis = []
+        if not axis:
+            axis = []
+
+        if len(axis) == 0:
+            reduce_all_flag = True
+        else:
+            if len(axis) == len(x.shape):
+                reduce_all_flag = True
+            else:
+                reduce_all_flag = False
 
     dtype_flag = False
     if dtype is not None:
@@ -1159,16 +1170,12 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     if in_dygraph_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
 
-    if len(axis) == 0:
-        reduce_all_flag = True
-    else:
-        if len(axis) == len(x.shape):
-            reduce_all_flag = True
-        else:
-            reduce_all_flag = False
+    if not isinstance(axis, Variable):
+        axis = axis if axis != None and axis != [] and axis != () else [0]
+        if utils._contain_var(axis):
+            axis = utils._convert_to_tensor_list(axis)
 
     if _in_legacy_dygraph():
-        axis = axis if axis != None and axis != [] else [0]
         if dtype_flag:
             return _legacy_C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
                                        'reduce_all', reduce_all_flag, 'in_dtype',
@@ -1178,7 +1185,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                                        'reduce_all', reduce_all_flag)
 
     attrs = {
-        'dim': axis if axis != None and axis != [] and axis != () else [0],
+        'dim': axis,
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag
     }
@@ -1195,7 +1202,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                 u'bool', u'float16', u'float32', u'float64',
                 u'int32', u'int64', u'complex64', u'complex128'], 'sum')
 
-    check_type(axis, 'axis', (int, list, tuple, type(None)), 'sum')
+    check_type(axis, 'axis', (int, list, tuple, type(None), Variable), 'sum')
 
     helper = LayerHelper('sum', **locals())
     if dtype_flag:
@@ -2059,6 +2066,11 @@ def _get_reduce_axis(axis):
         axis = []
     return reduce_all, axis
 
+def _get_reduce_axis_with_tensor(axis):
+    if isinstance(axis, Variable):
+        return False, axis
+    return _get_reduce_axis(axis)
+
 def _get_reduce_all_value(axis):
     """
     Internal function for max, min, amax and amin. 
@@ -2155,7 +2167,7 @@ def max(x, axis=None, keepdim=False, name=None):
             #[7., 8.], [[[0., 0.], [0., 0.]], [[0., 0.], [1., 1.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis(axis)
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis)
     if in_dygraph_mode():
         return _C_ops.max(x, axis, keepdim)
     if _in_legacy_dygraph():
@@ -2165,6 +2177,8 @@ def max(x, axis=None, keepdim=False, name=None):
     helper = LayerHelper('max', **locals())
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max')
+    if not isinstance(axis, Variable) and utils._contain_var(axis):
+        axis = utils._convert_to_tensor_list(axis)
 
     out = helper.create_variable_for_type_inference(
             dtype=x.dtype)
@@ -2256,7 +2270,7 @@ def min(x, axis=None, keepdim=False, name=None):
             #[1., 2.], [[[1., 1.], [0., 0.]], [[0., 0.], [0., 0.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis(axis)
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis)
     if in_dygraph_mode():
         return _C_ops.min(x, axis, keepdim)
 
@@ -2267,6 +2281,8 @@ def min(x, axis=None, keepdim=False, name=None):
     helper = LayerHelper('min', **locals())
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'min')
+    if not isinstance(axis, Variable) and utils._contain_var(axis):
+        axis = utils._convert_to_tensor_list(axis)
 
     out = helper.create_variable_for_type_inference(
             dtype=x.dtype)
@@ -3370,19 +3386,22 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             x = cast(x, dtype)
 
     dim = axis
-    if dim is not None and not isinstance(dim, list):
-        if isinstance(dim, tuple):
-            dim = list(dim)
-        elif isinstance(dim, int):
-            dim = [dim]
-        else:
-            raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".
-                format(type(dim)))
+    if isinstance(dim, Variable):
+        reduce_all = True if axis.shape[0] == len(x.shape) else False
+    else:
+        if dim is not None and not isinstance(dim, list):
+            if isinstance(dim, tuple):
+                dim = list(dim)
+            elif isinstance(dim, int):
+                dim = [dim]
+            else:
+                raise TypeError(
+                    "The type of axis must be int, list or tuple, but received {}".
+                    format(type(dim)))
 
-    reduce_all = True if dim is None or len(dim) == 0 or len(dim) == len(x.shape) else False
-    if dim is None or len(dim) == 0:
-        dim = [0]
+        reduce_all = True if dim is None or len(dim) == 0 or len(dim) == len(x.shape) else False
+        if dim is None or len(dim) == 0:
+            dim = [0]
 
     if in_dygraph_mode():
         return _C_ops.reduce_prod(x, dim, keepdim, reduce_all)
@@ -3394,6 +3413,8 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     check_variable_and_dtype(
         x, 'x/input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod')
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    if not isinstance(dim, Variable) and utils._contain_var(dim):
+        dim = utils._convert_to_tensor_list(dim)
     helper.append_op(
         type='reduce_prod',
         inputs={'X': x},

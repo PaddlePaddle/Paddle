@@ -395,7 +395,7 @@ def monkey_patch_math_varbase():
         if framework._in_eager_mode_ else
         ('__floordiv__',
          _binary_creator_('__floordiv__', 'elementwise_floordiv', False, None)),
-        ('__mod__', _binary_creator_('__mod__', 'modulo', False, None, True))
+        ('__mod__', _binary_creator_('__mod__', 'remainder', False, None, True))
         if framework._in_eager_mode_ else
         ('__mod__',
          _binary_creator_('__mod__', 'elementwise_mod', False, None)),

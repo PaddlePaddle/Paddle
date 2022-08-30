@@ -874,7 +874,7 @@
   backward : exponential__grad
 
 - api : eye
-  args : (int64_t num_rows, int64_t num_columns, DataType dtype=DataType::FLOAT32, Place place={})
+  args : (Scalar num_rows, Scalar num_columns, DataType dtype=DataType::FLOAT32, Place place={})
   output : Tensor(out)
   infer_meta :
     func : EyeInferMeta
@@ -1668,10 +1668,10 @@
     func : matrix_rank_tol
 
 - api : max
-  args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
+  args : (Tensor x, IntArray dims={}, bool keep_dim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceInferMeta
+    func : ReduceIntArrayAxisInferMeta
   kernel :
     func : max
   backward : max_grad
@@ -1713,10 +1713,10 @@
   backward : maxout_grad
 
 - api : mean
-  args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
+  args : (Tensor x, IntArray dims={}, bool keep_dim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceInferMeta
+    func : ReduceIntArrayAxisInferMeta
   kernel :
     func : mean
   backward : mean_grad
@@ -1729,6 +1729,17 @@
   kernel :
     func : mean_all
   backward : mean_all_grad
+
+- api : merged_adam_
+  args : (Tensor[] param, Tensor[] grad, Tensor[] learning_rate, Tensor[] moment1, Tensor[] moment2, Tensor[] beta1_pow, Tensor[] beta2_pow, Tensor[] master_param, Scalar beta1, Scalar beta2, Scalar epsilon, bool multi_precision, bool use_global_beta_pow)
+  output : Tensor[](param_out){param.size()}, Tensor[](moment1_out){param.size()}, Tensor[](moment2_out){param.size()}, Tensor[](beta1_pow_out){param.size()}, Tensor[](beta2_pow_out){param.size()}, Tensor[](master_param_out){param.size()}
+  infer_meta :
+    func : MergedAdamInferMeta
+  optional: master_param
+  kernel :
+    func : merged_adam
+    data_type : param
+  inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_out)
 
 - api : merged_momentum_
   args : (Tensor[] param, Tensor[] grad, Tensor[] velocity, Tensor[] learning_rate, Tensor[] master_param, float mu, bool use_nesterov = false, str[] regularization_method = {}, float[] regularization_coeff = {}, bool multi_precision = false, float rescale_grad = 1.0f)
@@ -1751,10 +1762,10 @@
   backward : meshgrid_grad
 
 - api : min
-  args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
+  args : (Tensor x, IntArray dims={}, bool keep_dim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceInferMeta
+    func : ReduceIntArrayAxisInferMeta
   kernel :
     func : min
   backward : min_grad
@@ -1787,15 +1798,6 @@
     func : mode
   backward : mode_grad
 
-- api : modulo
-  args : (Tensor x, Tensor y)
-  output : Tensor
-  infer_meta :
-    func : ElementwiseInferMeta
-  kernel :
-    func : modulo
-  backward : modulo_grad
-
 - api : momentum_
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0, bool multi_precision = false, float rescale_grad = 1.0f)
   output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
@@ -1826,7 +1828,7 @@
   optional : rois_num
 
 - api : multinomial
-  args : (Tensor x, int num_samples, bool replacement)
+  args : (Tensor x, Scalar num_samples, bool replacement)
   output : Tensor(out)
   infer_meta :
     func : MultinomialInferMeta
@@ -1929,7 +1931,7 @@
   backward : p_norm_grad
 
 - api : pad
-  args : (Tensor x, int[] paddings, float pad_value)
+  args : (Tensor x, int[] paddings, Scalar pad_value)
   output : Tensor
   infer_meta :
     func : PadInferMeta
@@ -2089,10 +2091,10 @@
   backward : reciprocal_grad
 
 - api : reduce_prod
-  args : (Tensor x, int64_t[] dims, bool keep_dim, bool reduce_all)
+  args : (Tensor x, IntArray dims, bool keep_dim, bool reduce_all)
   output : Tensor
   infer_meta :
-    func : ReduceInferMetaBase
+    func : ReduceIntArrayAxisInferMetaBase
   kernel :
     func : prod_raw
   backward : reduce_prod_grad
@@ -2116,6 +2118,15 @@
   kernel :
     func : relu6
   backward : relu6_grad
+
+- api : remainder
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : remainder
+  inplace : (x -> out)
 
 - api : renorm
   args : (Tensor x, float p, int axis, float max_norm)
@@ -2544,7 +2555,7 @@
   backward : subtract_grad
 
 - api : sum
-  args : (Tensor x, int64_t[] dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false)
+  args : (Tensor x, IntArray dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false)
   output : Tensor(out)
   infer_meta :
     func : SumInferMeta
