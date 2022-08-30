@@ -288,30 +288,37 @@ LAST_TEST_CMAKE_FILE = ""
 
 def init_dist_ut_ports_from_cmakefile(cmake_file_name):
     '''
-    Find all signed ut ports in cmake_file and update the ASSIGNED_PORTS
-    and keep the DIST_UT_PORT max of all assigned ports 
+    Desc:
+        Find all signed ut ports in cmake_file and update the ASSIGNED_PORTS
+        and keep the DIST_UT_PORT max of all assigned ports
     '''
     with open(cmake_file_name) as cmake_file:
         port_reg = re.compile("PADDLE_DIST_UT_PORT=[0-9]+")
         lines = cmake_file.readlines()
         for idx, line in enumerate(lines):
             matched = port_reg.search(line)
-            if matched is not None:
-                p = matched.span()
-                port = int(line[p[0]:p[1]].split("=")[-1])
-                for k in range(idx, 0, -1):
-                    if lines[k].strip() == "START_BASH":
-                        break
-                name = lines[k - 1].strip()
-                assert re.compile("^test_[0-9a-zA-Z_]+").search(name), \
-                    f'''we found a test for initial the latest dist_port but the test name '{name}' seems to be wrong
-                    at line {k-1}, in file {cmake_file_name}
-                    '''
-                gset_port(name, port)
-                if ASSIGNED_PORTS[name] == DIST_UT_PORT:
-                    global LAST_TEST_CMAKE_FILE, LAST_TEST_NAME
-                    LAST_TEST_NAME = name
-                    LAST_TEST_CMAKE_FILE = cmake_file_name
+            if matched is None:
+                continue
+            p = matched.span()
+            port = int(line[p[0]:p[1]].split("=")[-1])
+
+            # find the test name which the port belongs to
+            for k in range(idx, 0, -1):
+                if lines[k].strip() == "START_BASH":
+                    break
+            name = lines[k - 1].strip()
+
+            assert re.compile("^test_[0-9a-zA-Z_]+").search(name), \
+                f'''we found a test for initial the latest dist_port but the test name '{name}' seems to be wrong
+                at line {k-1}, in file {cmake_file_name}
+                '''
+            gset_port(name, port)
+
+            # get the test_name which latest assigned port belongs to
+            if ASSIGNED_PORTS[name] == DIST_UT_PORT:
+                global LAST_TEST_CMAKE_FILE, LAST_TEST_NAME
+                LAST_TEST_NAME = name
+                LAST_TEST_CMAKE_FILE = cmake_file_name
 
 
 NO_CMAKE_DIR_WARNING = []
@@ -319,27 +326,43 @@ NO_CMAKE_DIR_WARNING = []
 
 def parse_assigned_dist_ut_ports(current_work_dir, ignores, depth=0):
     '''
-    get all assigned dist ports to keep port of unmodified test fixed.
+    Desc:
+        get all assigned dist ports to keep port of unmodified test fixed.
     '''
     if current_work_dir in PROCESSED_DIR:
         return
+
+    # if root(depth==0), convert the ignores to abs paths
     if depth == 0:
         ignores = [os.path.abspath(i) for i in ignores]
+
     PROCESSED_DIR.add(current_work_dir)
     contents = os.listdir(current_work_dir)
     cmake_file = os.path.join(current_work_dir, "CMakeLists.txt")
     csv = cmake_file.replace("CMakeLists.txt", 'testslist.csv')
+
     if os.path.isfile(csv) or os.path.isfile(cmake_file):
         if current_work_dir not in ignores:
             if os.path.isfile(cmake_file) and os.path.isfile(csv):
                 init_dist_ut_ports_from_cmakefile(cmake_file)
             elif not os.path.isfile(cmake_file):
+                # put the directory which has csv but no cmake into NO_CMAKE_DIR_WARNING
                 NO_CMAKE_DIR_WARNING.append(current_work_dir)
+
+        # recursively process the subdirectories
         for c in contents:
             c_path = os.path.join(current_work_dir, c)
             if os.path.isdir(c_path):
                 parse_assigned_dist_ut_ports(c_path, ignores, depth + 1)
+
     if depth == 0:
+        # After all directories are scanned and processed
+        # 1. Get the num_port of last added test and set DIST_UT_PORT+=num_port
+        #    to guarantee the DIST_UT_PORT is not assined
+        # 2. Summary all the directories which include csv but no cmake and show an error
+        #    if such a drectory exists
+
+        # step 1
         print("LAST_TEST_NAME:", LAST_TEST_NAME)
         if len(LAST_TEST_NAME) > 0 and len(LAST_TEST_CMAKE_FILE) > 0:
             with open(
@@ -356,6 +379,7 @@ def parse_assigned_dist_ut_ports(current_work_dir, ignores, depth=0):
             if launcher[-2:] == ".sh":
                 process_dist_port_num(num_port)
 
+        # step 2
         err_msg = f"""==================[No Old CMakeLists.txt Error]==================================
     Following directories has no CmakeLists.txt files:
 """
