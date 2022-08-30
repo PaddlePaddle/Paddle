@@ -104,6 +104,7 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   engine_op_desc.SetType("tensorrt_engine");
   engine_op_desc.SetInput("Xs", std::vector<std::string>({"x"}));
   engine_op_desc.SetOutput("Ys", std::vector<std::string>({"z0"}));
+  engine_op_desc.SetAttr("origin_outputs_dtype", std::vector<int>{5});
 
   engine_op_desc.SetBlockAttr("sub_block", &block_desc);
   engine_op_desc.SetAttr("max_batch_size", static_cast<int>(2));

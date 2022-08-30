@@ -21,14 +21,14 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/phi/kernels/cast_kernel.h"
-#include "paddle/phi/api/lib/data_transform.h"
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 #include "paddle/fluid/framework/data_device_transform.h"
 #include "paddle/fluid/framework/executor.h"
@@ -582,22 +582,27 @@ class TensorRTEngineOp : public framework::OperatorBase {
       if (type == framework::proto::VarType::FP32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
       } else if (type == framework::proto::VarType::INT64) {
-        //int32_tensor.Resize(t.dims());
-        //auto *int32_data = int32_tensor.mutable_data<int32_t>(platform::CUDAPlace());
-        //paddle::experimental::CastDateType(dev_ctx, t, phi::DataType::INT32);
-        
-        framework::Tensor int32_tensor = phi::Cast<int64_t>(reinterpret_cast<const phi::GPUContext &>(dev_ctx), t, phi::DataType::INT32);
-        buffers[bind_index] = static_cast<void *>(int32_tensor.data<int32_t>());
-        // buffers[bind_index] = static_cast<void *>(t.data<int64_t>());
-
+        std::cout << "子图输入是int64" << x << std::endl;
+        auto int32_tensor = scope.FindVar(x + "_cast_to_INT32")
+                                ->GetMutable<framework::LoDTensor>();
+        // phi::CastKernel<int64_t>(reinterpret_cast<const phi::GPUContext
+        // &>(dev_ctx), t, phi::DataType::INT32, int32_tensor);
+        *int32_tensor = phi::Cast<int64_t>(
+            reinterpret_cast<const phi::GPUContext &>(dev_ctx),
+            t,
+            phi::DataType::INT32);
+        buffers[bind_index] =
+            static_cast<void *>(int32_tensor->data<int32_t>());
       } else if (type == framework::proto::VarType::INT32) {
         buffers[bind_index] = static_cast<void *>(t.data<int32_t>());
       } else if (type == framework::proto::VarType::FP16) {
         buffers[bind_index] = static_cast<void *>(t.data<float16>());
+      } else if (type == framework::proto::VarType::BOOL) {
+        buffers[bind_index] = static_cast<void *>(t.data<bool>());
       } else {
-        PADDLE_THROW(
-            platform::errors::Fatal("The TRT Engine OP only support "
-                                    "float/int32_t/int64_t/float16 input."));
+        PADDLE_THROW(platform::errors::Fatal(
+            "The TRT Engine OP only support "
+            "float/int32_t/int64_t/float16/bool input."));
       }
     }
 
@@ -638,17 +643,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
               "Output variable %s is not found in TensorRT subgraph.", y));
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
       fluid_t->Resize(phi::make_ddim(ddim));
-      auto type = framework::TransToProtoVarType(fluid_t->dtype());
 
-      if (type == framework::proto::VarType::INT64) {
-        std::cout << "是INT64" << std::endl;
-      }
-      if (type == framework::proto::VarType::INT32) {
-        std::cout << "是INT32" << std::endl;
-      }
-      if (type == framework::proto::VarType::FP32) {
-        std::cout << "是fp32" << std::endl;
-      }
       PADDLE_ENFORCE_LT(bind_index,
                         num_bindings,
                         platform::errors::InvalidArgument(
@@ -694,18 +689,29 @@ class TensorRTEngineOp : public framework::OperatorBase {
     // Execute the engine.
     engine->Execute(runtime_batch, &buffers, stream);
 
-    for (const auto &y : Outputs("Ys")) {
+    std::vector<int> origin_outputs_dtype =
+        Attr<std::vector<int>>("origin_outputs_dtype");
+    for (size_t i = 0; i < Outputs("Ys").size(); i++) {
+      auto y = Outputs("Ys")[i];
       auto *fluid_v = scope.FindVar(y);
-      // fluid_v->GetDataType();
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
-      auto type = framework::TransToProtoVarType(fluid_t->dtype());
+      auto type =
+          static_cast<framework::proto::VarType_Type>(origin_outputs_dtype[i]);
+
       if (type == framework::proto::VarType::INT64) {
         framework::Tensor int32_tensor;
         int32_tensor.Resize(fluid_t->dims());
-        int32_t* int32_data = int32_tensor.mutable_data<int32_t>(platform::CUDAPlace());
-        cudaMemcpyAsync(int32_data, fluid_t->data<int64_t>(), sizeof(int32_t) * int32_tensor.numel(), cudaMemcpyDeviceToDevice, stream);
-        *fluid_t = phi::Cast<int32_t>(reinterpret_cast<const phi::GPUContext &>(dev_ctx), int32_tensor, phi::DataType::INT64);
-        std::cout << "hahha int64" << std::endl;
+        int32_t *int32_data =
+            int32_tensor.mutable_data<int32_t>(platform::CUDAPlace());
+        cudaMemcpyAsync(int32_data,
+                        fluid_t->data<int32_t>(),
+                        sizeof(int32_t) * int32_tensor.numel(),
+                        cudaMemcpyDeviceToDevice,
+                        stream);
+        *fluid_t = phi::Cast<int32_t>(
+            reinterpret_cast<const phi::GPUContext &>(dev_ctx),
+            int32_tensor,
+            phi::DataType::INT64);
       }
     }
   }
