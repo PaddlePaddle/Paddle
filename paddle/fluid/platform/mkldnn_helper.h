@@ -21,10 +21,12 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "dnnl.hpp"
+#include "dnnl.hpp"  //NOLINT
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/kernels/funcs/onednn/onednn_helper.h"
+
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
 using MKLDNNMemoryFormat = dnnl::memory::format_tag;
@@ -76,70 +78,7 @@ tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e,
   return tf_pd<Type>(desc, e, p);
 }
 
-inline void MatchShapeToLayout(framework::Tensor* tensor_in,
-                               framework::DataLayout from,
-                               framework::DataLayout to) {
-  auto print_dims = [](const std::vector<int>& dims) {
-    std::ostringstream oss;
-
-    if (!dims.empty()) {
-      oss << "[";
-      // Convert all but the last element to avoid a trailing ","
-      std::copy(
-          dims.begin(), dims.end() - 1, std::ostream_iterator<int>(oss, ","));
-
-      // Now add the last element with no delimiter
-      oss << dims.back() << "]";
-    }
-
-    return oss.str();
-  };
-
-  // In these data layouts, channel dimension is either on 2nd position: nChw or
-  // at last nhwC, so for dim==2 these layouts are the same and nothing should
-  // be done. Similarly for dim==1 when you have just one possible combination.
-  if (tensor_in->dims().size() < 3) {
-    VLOG(3) << "Keeping kMKLDNN/kNHWC/kNDHWC output_shape"
-            << print_dims(phi::vectorize<int>(tensor_in->dims()));
-    return;
-  }
-
-  switch (from) {
-    case framework::DataLayout::kMKLDNN:
-      if ((to == framework::DataLayout::kNHWC) ||
-          (to == framework::DataLayout::kNDHWC)) {
-        auto dims = phi::vectorize<int>(tensor_in->dims());
-        std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
-        tensor_in->Resize(phi::make_ddim(dims));
-        VLOG(3) << "Rotating Shape from: kMKLDNN to: kNHWC/kNDHWC output_shape"
-                << print_dims(dims);
-      }
-      break;
-    case framework::DataLayout::kNHWC:
-    case framework::DataLayout::kNDHWC:
-      if (to == framework::DataLayout::kMKLDNN) {
-        auto dims = phi::vectorize<int>(tensor_in->dims());
-        std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
-        tensor_in->Resize(phi::make_ddim(dims));
-        VLOG(3) << "Rotating Shape from: kNHWC/kNDHWC to: kMKLDNN output_shape"
-                << print_dims(dims);
-      }
-      break;
-    default:
-      break;
-  }
-}
-
-struct mkldnn_dummy_primitive {
-  struct primitive_desc {};
-  struct desc {};
-};
-
-inline dnnl::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
-                                        dnnl::memory::data_type data_type,
-                                        MKLDNNMemoryFormat format) {
-  return dnnl::memory::desc({dims}, data_type, format);
-}
+using mkldnn_dummy_primitive = phi::funcs::mkldnn_dummy_primitive;
 
 inline void ClearMKLDNNCache(const platform::Place& place,
                              void* ptr = nullptr) {
@@ -388,39 +327,6 @@ inline dnnl::memory::format_tag GetPlainMKLDNNFormat(int tensor_rank) {
   }
 }
 
-inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,
-                                              MKLDNNMemoryFormat data_format) {
-  if (dims_size == 1) {
-    return MKLDNNMemoryFormat::x;
-  } else if (dims_size == 2) {
-    return MKLDNNMemoryFormat::nc;
-  } else if (dims_size == 3) {
-    if (data_format == MKLDNNMemoryFormat::nchw) {
-      return MKLDNNMemoryFormat::ncw;
-    } else if (data_format == MKLDNNMemoryFormat::nhwc) {
-      return MKLDNNMemoryFormat::nwc;
-    }
-  } else if (dims_size == 4) {
-    if (data_format == MKLDNNMemoryFormat::goihw) {
-      return MKLDNNMemoryFormat::oihw;
-    }
-  } else if (dims_size == 5) {
-    if (data_format == MKLDNNMemoryFormat::goidhw) {
-      return MKLDNNMemoryFormat::oidhw;
-    }
-    if (data_format == MKLDNNMemoryFormat::nchw) {
-      return MKLDNNMemoryFormat::ncdhw;
-    } else if (data_format == MKLDNNMemoryFormat::nhwc) {
-      return MKLDNNMemoryFormat::ndhwc;
-    }
-  } else if (dims_size == 6) {
-    if (data_format == MKLDNNMemoryFormat::nchw) {
-      return MKLDNNMemoryFormat::abcdef;
-    }
-  }
-  return data_format;
-}
-
 inline MKLDNNMemoryFormat data_format_to_memory_format(
     const std::string& data_format) {
   switch (framework::StringToDataLayout(data_format)) {
@@ -577,7 +483,7 @@ inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
 }
 
 inline void RegisterModelLayout(
-    std::vector<std::unique_ptr<framework::OperatorBase>>& ops,
+    const std::vector<std::unique_ptr<framework::OperatorBase>>& ops,
     const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
     // If there is already registered NHWC then quit this call

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 namespace paddle {
 namespace operators {
@@ -77,14 +78,10 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
 
     out->Resize(phi::make_ddim(slice_dims));
 
-    dnnl::memory::data_type x_type =
-        framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
+    dnnl::memory::data_type x_type = phi::funcs::ToMKLDNNDataType(x->dtype());
 
     platform::ReorderMKLDNNHandler reorder_handler(
-        x_vec_dims,
-        framework::TransToProtoVarType(x->dtype()),
-        x_type,
-        onednn_engine);
+        x_vec_dims, x->dtype() s, x_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->mem_desc(), platform::to_void_cast(x->data<T>()));
@@ -177,14 +174,11 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
       slice_dims[axes[i]] = ends[i] - starts[i];
     }
 
-    dnnl::memory::data_type dout_type = framework::ToMKLDNNDataType(
-        framework::TransToProtoVarType(dout->dtype()));
+    dnnl::memory::data_type dout_type =
+        phi::funcs::ToMKLDNNDataType(dout->dtype());
 
     platform::ReorderMKLDNNHandler reorder_handler(
-        slice_dims,
-        framework::TransToProtoVarType(dout->dtype()),
-        dout_type,
-        onednn_engine);
+        slice_dims, dout->dtype(), dout_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         dout->mem_desc().reshape(slice_dims),

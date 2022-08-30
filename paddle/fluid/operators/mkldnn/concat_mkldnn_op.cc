@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 namespace paddle {
 namespace operators {
@@ -207,13 +208,10 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     std::vector<int64_t> offset(dout_vec_dims.size(), 0);
 
-    dnnl::memory::data_type dout_type = framework::ToMKLDNNDataType(
-        framework::TransToProtoVarType(dout->dtype()));
+    dnnl::memory::data_type dout_type =
+        phi::funcs::ToMKLDNNDataType(dout->dtype());
     platform::ReorderMKLDNNHandler reorder_handler(
-        dout_vec_dims,
-        framework::TransToProtoVarType(dout->dtype()),
-        dout_type,
-        onednn_engine);
+        dout_vec_dims, dout->dtype(), dout_type, onednn_engine);
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
 

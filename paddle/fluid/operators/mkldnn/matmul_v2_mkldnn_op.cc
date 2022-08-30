@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/mkldnn/matmul_mkldnn_op.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 namespace {
 using dnnl::memory;
@@ -55,13 +56,9 @@ static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext &dev_ctx,
 
   auto output_dims = vectorize(output.dims());
 
-  memory::data_type input_type = paddle::framework::ToMKLDNNDataType(
-      paddle::framework::TransToProtoVarType(input->dtype()));
+  memory::data_type input_type = phi::funcs::ToMKLDNNDataType(input->dtype());
   paddle::platform::ReorderMKLDNNHandler reorder_handler(
-      output_dims,
-      paddle::framework::TransToProtoVarType(input->dtype()),
-      input_type,
-      dev_ctx.GetEngine());
+      output_dims, input->dtype(), input_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
       memory::format_tag::abc,

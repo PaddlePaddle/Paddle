@@ -12,13 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "dnnl.hpp"
+#include "dnnl.hpp"  //NOLINT
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/dequantize_op.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 namespace paddle {
 namespace operators {
@@ -56,8 +57,8 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
 
     auto x_tz = phi::vectorize<int64_t>(x->dims());
-    auto x_paddle_dtype = framework::TransToProtoVarType(x->dtype());
-    auto out_paddle_dtype = framework::TransToProtoVarType(out->dtype());
+    auto x_paddle_dtype = x->dtype();
+    auto out_paddle_dtype = out->dtype();
 
     dnnl::primitive_attr attrs;
     static constexpr int32_t mask = 0;  // same shift and scale for whole tensor
@@ -73,9 +74,9 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     platform::ReorderMKLDNNHandler reorder_handler(
         x_tz,
         x_paddle_dtype,
-        framework::ToMKLDNNDataType(x_paddle_dtype),
+        phi::funcs::ToMKLDNNDataType(x_paddle_dtype),
         out_paddle_dtype,
-        framework::ToMKLDNNDataType(out_paddle_dtype),
+        phi::funcs::ToMKLDNNDataType(out_paddle_dtype),
         dev_ctx.GetEngine());
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(

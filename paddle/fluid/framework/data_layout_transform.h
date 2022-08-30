@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 namespace paddle {
 namespace framework {
@@ -99,19 +100,10 @@ inline MKLDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
   return MKLDNNDataType::undef;
 }
 
-void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
-                                    DataLayout out_layout,
-                                    const Tensor& in,
-                                    Tensor* out,
-                                    platform::Place place,
-                                    bool always_copy = false);
-
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
                                const Tensor& in,
                                Tensor* out);
-
-void* GetDataFromTensor(const Tensor& tensor, MKLDNNDataType type);
 
 #endif
 

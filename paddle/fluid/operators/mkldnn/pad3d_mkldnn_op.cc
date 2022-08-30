@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 namespace paddle {
 namespace operators {
 
@@ -102,12 +103,12 @@ class PadMKLDNNKernel : public framework::OpKernel<T> {
     }
     out->Resize(phi::make_ddim(out_tz));
 
-    auto paddle_dtype = framework::TransToProtoVarType(x->dtype());
+    auto paddle_dtype = x->dtype();
 
     platform::ReorderMKLDNNHandler reorder_handler(
         x_tz,
         paddle_dtype,
-        framework::ToMKLDNNDataType(paddle_dtype),
+        phi::funcs::ToMKLDNNDataType(paddle_dtype),
         onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(

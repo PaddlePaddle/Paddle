@@ -19,6 +19,7 @@
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 namespace paddle {
 namespace operators {
@@ -1056,8 +1057,8 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
       // For convolution with groups convert from blocked to NCHW
       // otherwise there will be problems in next operators working on this data
       if (g > 1) {
-        dnnl::memory::data_type in_type = framework::ToMKLDNNDataType(
-            framework::TransToProtoVarType(filter->dtype()));
+        dnnl::memory::data_type in_type =
+            phi::funcs::ToMKLDNNDataType(filter->dtype());
         // for 3d conv with groups (six dimensional data reorder to goidhw)
         // for 2d conv with groups (five dimensional data reorder to goihw)
         // auto weights_tz = phi::vectorize(filter->dims());
@@ -1067,10 +1068,7 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
             weights_tz.size() == 6 ? dnnl::memory::format_tag::goidhw
                                    : dnnl::memory::format_tag::goihw;
         platform::ReorderMKLDNNHandler handler(
-            weights_tz,
-            framework::TransToProtoVarType(filter->dtype()),
-            in_type,
-            mkldnn_engine);
+            weights_tz, filter->dtype(), in_type, mkldnn_engine);
         auto reorder_dst_memory_p =
             handler.AcquireDstMemory(filter_grad, out_format, ctx.GetPlace());
 

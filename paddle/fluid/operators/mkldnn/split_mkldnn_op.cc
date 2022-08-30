@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 namespace paddle {
 namespace operators {
@@ -95,18 +96,14 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
 
     auto x_vec_dims = phi::vectorize(x_dims);
 
-    dnnl::memory::data_type x_type =
-        framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
+    dnnl::memory::data_type x_type = phi::funcs::ToMKLDNNDataType(x->dtype());
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     std::vector<int64_t> offset(x_vec_dims.size(), 0);
 
     platform::ReorderMKLDNNHandler reorder_handler(
-        x_vec_dims,
-        framework::TransToProtoVarType(x->dtype()),
-        x_type,
-        onednn_engine);
+        x_vec_dims, x->dtype(), x_type, onednn_engine);
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->mem_desc(), platform::to_void_cast(x->data<T>()));
 

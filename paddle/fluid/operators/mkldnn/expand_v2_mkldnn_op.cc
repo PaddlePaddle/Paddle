@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/operators/expand_v2_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 namespace {
 
@@ -112,13 +113,10 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     auto& astream = MKLDNNDeviceContext::tls().get_stream();
     if (dout_vec_dims == dx_vec_dims) {
-      dnnl::memory::data_type dout_type = paddle::framework::ToMKLDNNDataType(
-          paddle::framework::TransToProtoVarType(dout->dtype()));
+      dnnl::memory::data_type dout_type =
+          phi::funcs::ToMKLDNNDataType(dout->dtype());
       paddle::platform::ReorderMKLDNNHandler reorder_handler(
-          dout_vec_dims,
-          paddle::framework::TransToProtoVarType(dout->dtype()),
-          dout_type,
-          onednn_engine);
+          dout_vec_dims, dout->dtype(), dout_type, onednn_engine);
 
       auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
           dout->mem_desc(), paddle::platform::to_void_cast(dout->data<T>()));

@@ -20,6 +20,7 @@
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 namespace paddle {
 namespace operators {
@@ -160,12 +161,11 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     int axis = ctx.Attr<int>("axis");
 
     auto tz = phi::vectorize<int64_t>(dout->dims());
-    auto proto_type_dout = framework::TransToProtoVarType(dout->dtype());
 
     platform::ReorderMKLDNNHandler reorder_handler(
         tz,
-        proto_type_dout,
-        framework::ToMKLDNNDataType(proto_type_dout),
+        dout->dtype(),
+        phi::funcs::ToMKLDNNDataType(dout->dtype()),
         onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(

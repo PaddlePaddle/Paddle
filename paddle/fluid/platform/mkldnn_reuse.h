@@ -572,7 +572,7 @@ class BroadcastDataMKLDNNHandler
 };
 
 static void AppendActivation(const framework::ExecutionContext& ctx,
-                             dnnl::post_ops& post_ops,
+                             dnnl::post_ops& post_ops,  // NOLINT
                              float activation_scale = 1.0f) {
   const auto invalid_attribute =
       ctx.HasAttr("fuse_activation")
@@ -966,111 +966,6 @@ static std::vector<std::string> GetSupportedActivations() {
                                   "swish",
                                   "tanh"};
 }
-
-class ReorderMKLDNNHandler {
- public:
-  ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
-                       framework::proto::VarType::Type vtype,
-                       dnnl::memory::data_type dtype,
-                       dnnl::engine engine)
-      : dims_(dims),
-        vtype_(vtype),
-        vtype_dst_(vtype),
-        dtype_(dtype),
-        dtype_dst_(dtype),
-        engine_(engine) {}
-
-  ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
-                       framework::proto::VarType::Type vtype,
-                       dnnl::memory::data_type dtype,
-                       framework::proto::VarType::Type vtype_dst,
-                       dnnl::memory::data_type dtype_dst,
-                       dnnl::engine engine)
-      : dims_(dims),
-        vtype_(vtype),
-        vtype_dst_(vtype_dst),
-        dtype_(dtype),
-        dtype_dst_(dtype_dst),
-        engine_(engine) {}
-
-  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const dnnl::memory::desc& md,
-                                                 void* ptr) {
-    return std::make_shared<dnnl::memory>(md, engine_, ptr);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const MKLDNNMemoryFormat& fmt,
-                                                 void* ptr) {
-    auto md = dnnl::memory::desc(dims_, dtype_, fmt);
-    return std::make_shared<dnnl::memory>(md, engine_, ptr);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireSubmemory(
-      const std::vector<int64_t>& dims,
-      const std::vector<int64_t>& offset,
-      const std::shared_ptr<dnnl::memory>& mem_p) {
-    auto sub_md = mem_p->get_desc().submemory_desc(dims, {offset});
-    auto sub_mem_p = std::make_shared<dnnl::memory>(
-        sub_md, engine_, mem_p->get_data_handle());
-    return sub_mem_p;
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(framework::Tensor* output,
-                                                 const MKLDNNMemoryFormat& fmt,
-                                                 platform::Place place) {
-    auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_dst_, fmt);
-    auto dst_data = output->mutable_data(
-        place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
-    return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      framework::Tensor* output,
-      const dnnl::memory::desc& src_md,
-      platform::Place place) {
-    if (vtype_dst_ == vtype_) {
-      auto dst_data = output->mutable_data(
-          place, framework::TransToPhiDataType(vtype_dst_), src_md.get_size());
-      return std::make_shared<dnnl::memory>(src_md, engine_, dst_data);
-    } else {
-      auto dst_md = src_md;
-      dst_md.data.data_type = static_cast<dnnl_data_type_t>(dtype_dst_);
-      auto dst_data = output->mutable_data(
-          place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
-      return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
-    }
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      framework::Tensor* output,
-      const std::vector<int64_t>& dims,
-      const MKLDNNMemoryFormat& fmt,
-      platform::Place place) {
-    auto dst_md = platform::MKLDNNMemDesc(dims, dtype_dst_, fmt);
-    auto dst_data = output->mutable_data(
-        place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
-    return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
-  }
-
-  std::shared_ptr<dnnl::reorder> AcquireReorder(
-      std::shared_ptr<dnnl::memory> dst_memory_p,
-      std::shared_ptr<dnnl::memory> src_memory_p) {
-    return std::make_shared<dnnl::reorder>(*(src_memory_p), *(dst_memory_p));
-  }
-
-  std::shared_ptr<dnnl::reorder> AcquireReorder(
-      std::shared_ptr<dnnl::memory> dst_memory_p,
-      std::shared_ptr<dnnl::memory> src_memory_p,
-      const dnnl::primitive_attr& attrs) {
-    return std::make_shared<dnnl::reorder>(
-        *(src_memory_p), *(dst_memory_p), attrs);
-  }
-
- private:
-  std::vector<int64_t> dims_;
-  framework::proto::VarType::Type vtype_, vtype_dst_;
-  dnnl::memory::data_type dtype_, dtype_dst_;
-  dnnl::engine engine_;
-};
 
 template <typename T>
 static void SetDstMemoryQuantized(
