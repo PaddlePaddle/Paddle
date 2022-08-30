@@ -27,7 +27,7 @@ import numpy as np
 from ..fluid.layers.nn import _elementwise_op_in_dygraph
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from ..common_ops_import import dygraph_utils, fill_constant, _varbase_creator
 import warnings
 from .creation import zeros
@@ -64,12 +64,12 @@ def cast(x, dtype):
     if in_dygraph_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        return _C_ops.final_state_cast(x, dtype)
+        return _C_ops.cast(x, dtype)
 
     if _non_static_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        out = _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        out = _legacy_C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
         return out
 
     check_variable_and_dtype(x, 'x', [
@@ -212,8 +212,7 @@ def slice(input, axes, starts, ends):
             ends = [ele for ele in tensor_t]
             infer_flags = list(-1 for i in range(len(axes)))
 
-        return _C_ops.final_state_slice(input, axes, starts, ends, infer_flags,
-                                        [])
+        return _C_ops.slice(input, axes, starts, ends, infer_flags, [])
     else:
         if _in_legacy_dygraph():
             attrs = ()
@@ -264,9 +263,9 @@ def slice(input, axes, starts, ends):
                 ends_tensor.stop_gradient = True
                 infer_flags = list(-1 for i in range(len(axes)))
 
-            return _C_ops.slice(input, starts_tensor, ends_tensor, None, None,
-                                'axes', axes, 'infer_flags', infer_flags,
-                                *attrs)
+            return _legacy_C_ops.slice(input, starts_tensor, ends_tensor, None,
+                                       None, 'axes', axes, 'infer_flags',
+                                       infer_flags, *attrs)
 
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(
@@ -380,10 +379,10 @@ def transpose(x, perm, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_transpose(x, perm)
+        return _C_ops.transpose(x, perm)
     else:
         if _in_legacy_dygraph():
-            out, _ = _C_ops.transpose2(x, 'axis', perm)
+            out, _ = _legacy_C_ops.transpose2(x, 'axis', perm)
             return out
 
     check_variable_and_dtype(x, 'x', [
@@ -458,14 +457,14 @@ def unstack(x, axis=0, num=None):
             num = x.shape[axis]
         if num == 0:
             return []
-        return _C_ops.final_state_unstack(x, axis, num)
+        return _C_ops.unstack(x, axis, num)
 
     if _non_static_mode():
         if num == None:
             num = x.shape[axis]
         if num == 0:
             return []
-        return _C_ops.unstack(x, num, 'axis', int(axis), 'num', num)
+        return _legacy_C_ops.unstack(x, num, 'axis', int(axis), 'num', num)
 
     helper = LayerHelper('unstack', **locals())
     if num is None:
@@ -535,8 +534,8 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             # [[-1], [1]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_shard_index(input, index_num, nshards,
-                                              shard_id, ignore_value)
+        return _C_ops.shard_index(input, index_num, nshards, shard_id,
+                                  ignore_value)
 
     check_variable_and_dtype(input, 'input', ['int64', 'int32'], 'shard_index')
     op_type = 'shard_index'
@@ -657,7 +656,7 @@ def crop(x, shape=None, offsets=None, name=None):
         offsets = [0] * len(x.shape)
 
     if in_dygraph_mode():
-        return _C_ops.final_state_crop_tensor(x, shape, offsets)
+        return _C_ops.crop_tensor(x, shape, offsets)
 
     out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x}
@@ -778,10 +777,10 @@ def fill_(x, value):
             "The type of 'value'  must be int or float, but received %s." %
             (type(value)))
     if in_dygraph_mode():
-        return _C_ops.final_state_fill_(x, value)
+        return _C_ops.fill_(x, value)
     else:
-        return _C_ops.fill_any_(x, "value_float", float(value), "value_int",
-                                int(value))
+        return _legacy_C_ops.fill_any_(x, "value_float", float(value),
+                                       "value_int", int(value))
 
 
 @dygraph_only
@@ -810,9 +809,10 @@ def zero_(x):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_fill_(x, 0.)
+        return _C_ops.fill_(x, 0.)
     else:
-        return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
+        return _legacy_C_ops.fill_any_(x, "value_float", 0., "value_int",
+                                       int(0))
 
 
 @dygraph_only
@@ -859,14 +859,14 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
         )
     if in_dygraph_mode():
         if len(inshape) == 2:
-            return _C_ops.final_state_fill_diagonal_(x, value, offset, wrap)
-        return _C_ops.final_state_fill_diagonal_(x, value, offset, True)
+            return _C_ops.fill_diagonal_(x, value, offset, wrap)
+        return _C_ops.fill_diagonal_(x, value, offset, True)
 
     if len(inshape) == 2:
-        return _C_ops.fill_diagonal_(x, 'value', value, 'offset', offset,
-                                     'wrap', wrap)
-    return _C_ops.fill_diagonal_(x, 'value', value, 'offset', offset, 'wrap',
-                                 True)
+        return _legacy_C_ops.fill_diagonal_(x, 'value', value, 'offset', offset,
+                                            'wrap', wrap)
+    return _legacy_C_ops.fill_diagonal_(x, 'value', value, 'offset', offset,
+                                        'wrap', True)
 
 
 def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
@@ -894,16 +894,16 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
 
     if inplace:
         if in_dygraph_mode():
-            return _C_ops.final_state_fill_diagonal_tensor_(
-                x, y, offset, dim1, dim2)
+            return _C_ops.fill_diagonal_tensor_(x, y, offset, dim1, dim2)
         else:
-            return _C_ops.fill_diagonal_tensor_(x, y, 'offset', offset, 'dim1',
-                                                dim1, 'dim2', dim2)
+            return _legacy_C_ops.fill_diagonal_tensor_(x, y, 'offset', offset,
+                                                       'dim1', dim1, 'dim2',
+                                                       dim2)
     if in_dygraph_mode():
-        return _C_ops.final_state_fill_diagonal_tensor(x, y, offset, dim1, dim2)
+        return _C_ops.fill_diagonal_tensor(x, y, offset, dim1, dim2)
     else:
-        return _C_ops.fill_diagonal_tensor(x, y, 'offset', offset, 'dim1', dim1,
-                                           'dim2', dim2)
+        return _legacy_C_ops.fill_diagonal_tensor(x, y, 'offset', offset,
+                                                  'dim1', dim1, 'dim2', dim2)
 
 
 def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
@@ -1058,7 +1058,7 @@ def concat(x, axis=0, name=None):
             axis = axis.item(0)
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
-        return _C_ops.final_state_concat(input, axis)
+        return _C_ops.concat(input, axis)
 
     if _in_legacy_dygraph():
         if isinstance(axis, Variable):
@@ -1067,7 +1067,7 @@ def concat(x, axis=0, name=None):
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
         out = _varbase_creator()
-        _C_ops.concat(input, out, 'axis', axis)
+        _legacy_C_ops.concat(input, out, 'axis', axis)
         return out
 
     check_type(input, 'input', (list, tuple, Variable), 'concat')
@@ -1157,9 +1157,9 @@ def broadcast_tensors(input, name=None):
 
     num_inputs = len(input)
     if paddle.framework.in_dygraph_mode():
-        return _C_ops.final_state_broadcast_tensors(input)
+        return _C_ops.broadcast_tensors(input)
     if paddle.framework._non_static_mode():
-        return _C_ops.broadcast_tensors(input, num_inputs)
+        return _legacy_C_ops.broadcast_tensors(input, num_inputs)
 
     check_type(input, 'input', (list, tuple), 'broadcast_tensors')
     if num_inputs < 1:
@@ -1257,10 +1257,10 @@ def flip(x, axis, name=None):
         axis = [axis]
 
     if in_dygraph_mode():
-        return _C_ops.final_state_flip(x, axis)
+        return _C_ops.flip(x, axis)
 
     if paddle.in_dynamic_mode():
-        return _C_ops.flip(x, "axis", axis)
+        return _legacy_C_ops.flip(x, "axis", axis)
 
     helper = LayerHelper("flip", **locals())
     check_type(x, 'X', (Variable), 'flip')
@@ -1476,11 +1476,11 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         raise ValueError("The stop_axis should be larger than stat_axis")
 
     if in_dygraph_mode():
-        return _C_ops.final_state_flatten(x, start_axis, stop_axis)
+        return _C_ops.flatten(x, start_axis, stop_axis)
 
     if _in_legacy_dygraph():
-        dy_out, _ = _C_ops.flatten_contiguous_range(x, 'start_axis', start_axis,
-                                                    'stop_axis', stop_axis)
+        dy_out, _ = _legacy_C_ops.flatten_contiguous_range(
+            x, 'start_axis', start_axis, 'stop_axis', stop_axis)
         return dy_out
 
     helper = LayerHelper('flatten', **locals())
@@ -1525,12 +1525,11 @@ def flatten_(x, start_axis=0, stop_axis=-1, name=None):
         raise ValueError("The stop_axis should be larger than stat_axis")
 
     if in_dygraph_mode():
-        return _C_ops.final_state_flatten_(x, start_axis, stop_axis)
+        return _C_ops.flatten_(x, start_axis, stop_axis)
 
     if _in_legacy_dygraph():
-        dy_out, _ = _C_ops.flatten_contiguous_range_(x, 'start_axis',
-                                                     start_axis, 'stop_axis',
-                                                     stop_axis)
+        dy_out, _ = _legacy_C_ops.flatten_contiguous_range_(
+            x, 'start_axis', start_axis, 'stop_axis', stop_axis)
         return dy_out
 
 
@@ -1594,10 +1593,10 @@ def roll(x, shifts, axis=None, name=None):
         axis = []
 
     if in_dygraph_mode():
-        return _C_ops.final_state_roll(x, shifts, axis)
+        return _C_ops.roll(x, shifts, axis)
 
     if _in_legacy_dygraph():
-        return _C_ops.roll(x, 'axis', axis, 'shifts', shifts)
+        return _legacy_C_ops.roll(x, 'axis', axis, 'shifts', shifts)
 
     helper = LayerHelper("roll", **locals())
     check_type(axis, 'axis', (list, tuple), 'roll')
@@ -1713,10 +1712,10 @@ def stack(x, axis=0, name=None):
     axis = 0 if axis is None else axis
 
     if in_dygraph_mode():
-        return _C_ops.final_state_stack(x, axis)
+        return _C_ops.stack(x, axis)
 
     if _in_legacy_dygraph():
-        return _C_ops.stack(x, 'axis', axis)
+        return _legacy_C_ops.stack(x, 'axis', axis)
 
     if not isinstance(x, list) and not isinstance(x, tuple):
         # NOTE:(zhiqiu) Only support Variable as input if the Variable is a LOD_TENSOR_ARRAY create by create_array, array_write, array_read, etc.
@@ -1840,12 +1839,11 @@ def split(x, num_or_sections, axis=0, name=None):
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
         if in_dygraph_mode():
-            return _C_ops.final_state_split(
-                input, [num_or_sections]
-                if isinstance(num_or_sections, int) else num_or_sections, dim)
+            return _C_ops.split(input, [num_or_sections] if isinstance(
+                num_or_sections, int) else num_or_sections, dim)
         elif _in_legacy_dygraph():
             out = [_varbase_creator() for n in range(num)]
-            _C_ops.split(input, out, *attrs)
+            _legacy_C_ops.split(input, out, *attrs)
             return out
 
     check_variable_and_dtype(input, 'input', [
@@ -2009,9 +2007,9 @@ def squeeze(x, axis=None, name=None):
     input = x
     axes = axis
     if in_dygraph_mode():
-        return _C_ops.final_state_squeeze(input, axes)
+        return _C_ops.squeeze(input, axes)
     if _in_legacy_dygraph():
-        out, _ = _C_ops.squeeze2(input, 'axes', axes)
+        out, _ = _legacy_C_ops.squeeze2(input, 'axes', axes)
         return out
 
     helper = LayerHelper("squeeze", **locals())
@@ -2060,9 +2058,9 @@ def squeeze_(x, axis=None, name=None):
     input = x
     axes = axis
     if in_dygraph_mode():
-        return _C_ops.final_state_squeeze_(input, axes)
+        return _C_ops.squeeze_(input, axes)
     if _in_legacy_dygraph():
-        out, _ = _C_ops.squeeze2_(input, 'axes', axes)
+        out, _ = _legacy_C_ops.squeeze2_(input, 'axes', axes)
         return out
 
 
@@ -2124,7 +2122,7 @@ def unique_consecutive(x,
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dygraph_mode():
-        out, inverse, counts = _C_ops.final_state_unique_consecutive(
+        out, inverse, counts = _C_ops.unique_consecutive(
             x, return_inverse, return_counts, axis, attr_dtype)
         outs = [out]
         if return_inverse:
@@ -2135,7 +2133,7 @@ def unique_consecutive(x,
             return outs[0]
         return tuple(outs)
     elif paddle.in_dynamic_mode():
-        out, inverse, counts = _C_ops.unique_consecutive(
+        out, inverse, counts = _legacy_C_ops.unique_consecutive(
             x, 'dtype', attr_dtype, 'return_inverse', return_inverse,
             'return_counts', return_counts, 'axis', axis)
         outs = [out]
@@ -2240,11 +2238,11 @@ def unique(x,
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
     if _non_static_mode():
         if in_dygraph_mode():
-            out, indices, inverse, counts = _C_ops.final_state_unique(
+            out, indices, inverse, counts = _C_ops.unique(
                 x, return_index, return_inverse, return_counts, axis,
                 attr_dtype)
         if _in_legacy_dygraph():
-            out, inverse, indices, counts = _C_ops.unique(
+            out, inverse, indices, counts = _legacy_C_ops.unique(
                 x, 'dtype', attr_dtype, 'return_index', return_index,
                 'return_inverse', return_inverse, 'return_counts',
                 return_counts, 'axis', axis, "is_sorted", True)
@@ -2371,9 +2369,9 @@ def unsqueeze(x, axis, name=None):
                 for item in axes
             ]
         if _in_legacy_dygraph():
-            out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
+            out, _ = _legacy_C_ops.unsqueeze2(input, 'axes', axes)
             return out
-        return _C_ops.final_state_unsqueeze(input, axes)
+        return _C_ops.unsqueeze(input, axes)
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
     check_variable_and_dtype(input, 'input', [
@@ -2434,8 +2432,8 @@ def unsqueeze_(x, axis, name=None):
             for item in axes
         ]
     if in_dygraph_mode():
-        return _C_ops.final_state_unsqueeze_(input, axes)
-    out, _ = _C_ops.unsqueeze2_(input, 'axes', axes)
+        return _C_ops.unsqueeze_(input, axes)
+    out, _ = _legacy_C_ops.unsqueeze2_(input, 'axes', axes)
     return out
 
 
@@ -2488,10 +2486,11 @@ def gather(x, index, axis=None, name=None):
         axis = 0
 
     if in_dygraph_mode():
-        return _C_ops.final_state_gather(x, index, axis)
+        return _C_ops.gather(x, index, axis)
     if _in_legacy_dygraph():
         axis = axis.item() if isinstance(axis, paddle.Tensor) else axis
-        return _C_ops.gather(x, index, None, "axis", axis, "overwrite", False)
+        return _legacy_C_ops.gather(x, index, None, "axis", axis, "overwrite",
+                                    False)
 
     check_variable_and_dtype(
         x, 'x',
@@ -2561,7 +2560,7 @@ def unbind(input, axis=0):
             # x3.shape [3, 5]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_unbind(input, axis)
+        return _C_ops.unbind(input, axis)
 
     if not isinstance(axis, (int)):
         raise TypeError("The type of 'axis'  must be int, but received %s." %
@@ -2572,7 +2571,7 @@ def unbind(input, axis=0):
     axis_ = axis if axis >= 0 else len(input_shape) + axis
     num = input_shape[axis_]
     if _in_legacy_dygraph():
-        return _C_ops.unbind(input, num, 'axis', axis)
+        return _legacy_C_ops.unbind(input, num, 'axis', axis)
 
     helper = LayerHelper("unbind", **locals())
     check_type(input, 'input', (Variable), 'unbind')
@@ -2665,10 +2664,11 @@ def scatter(x, index, updates, overwrite=True, name=None):
             #  [1., 1.]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_scatter(x, index, updates, overwrite)
+        return _C_ops.scatter(x, index, updates, overwrite)
     else:
         if _in_legacy_dygraph():
-            return _C_ops.scatter(x, index, updates, 'overwrite', overwrite)
+            return _legacy_C_ops.scatter(x, index, updates, 'overwrite',
+                                         overwrite)
         else:
             check_variable_and_dtype(
                 x, 'dtype', ['float32', 'float64', 'float16', 'int32', 'int64'],
@@ -2694,8 +2694,8 @@ def scatter_(x, index, updates, overwrite=True, name=None):
     Please refer to :ref:`api_paddle_tensor_scatter`.
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_scatter_(x, index, updates, overwrite)
-    return _C_ops.scatter_(x, index, updates, 'overwrite', overwrite)
+        return _C_ops.scatter_(x, index, updates, overwrite)
+    return _legacy_C_ops.scatter_(x, index, updates, 'overwrite', overwrite)
 
 
 def scatter_nd_add(x, index, updates, name=None):
@@ -2768,10 +2768,10 @@ def scatter_nd_add(x, index, updates, name=None):
             # [3, 5, 9, 10]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_scatter_nd_add(x, index, updates)
+        return _C_ops.scatter_nd_add(x, index, updates)
     else:
         if _in_legacy_dygraph():
-            op = getattr(_C_ops, 'scatter_nd_add')
+            op = getattr(_legacy_C_ops, 'scatter_nd_add')
             return op(x, index, updates)
         else:
             if x.dtype != updates.dtype:
@@ -2918,10 +2918,10 @@ def tile(x, repeat_times, name=None):
             assert repeat_times.ndim == 1, "Only support ndim == 1 while repeat_times is a Tensor."
             repeat_times = repeat_times.numpy().tolist()
 
-        return _C_ops.final_state_tile(x, repeat_times)
+        return _C_ops.tile(x, repeat_times)
 
     if _in_legacy_dygraph():
-        return _C_ops.tile(x, 'repeat_times', repeat_times)
+        return _legacy_C_ops.tile(x, 'repeat_times', repeat_times)
 
     check_type(repeat_times, 'repeat_times', (list, tuple, Variable), 'tile')
     if isinstance(repeat_times, Variable):
@@ -3008,10 +3008,10 @@ def expand_as(x, y, name=None):
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_expand_as(x, None, y.shape)
+        return _C_ops.expand_as(x, None, y.shape)
 
     if _non_static_mode():
-        return _C_ops.expand_as_v2(x, 'target_shape', y.shape)
+        return _legacy_C_ops.expand_as_v2(x, 'target_shape', y.shape)
 
     check_variable_and_dtype(x, 'x',
                              ['bool', 'float32', 'float64', 'int32', 'int64'],
@@ -3064,9 +3064,9 @@ def broadcast_to(x, shape, name=None):
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_expand(x, shape)
+        return _C_ops.expand(x, shape)
     if _in_legacy_dygraph():
-        return _C_ops.expand_v2(x, 'shape', shape)
+        return _legacy_C_ops.expand_v2(x, 'shape', shape)
 
     if isinstance(shape, Variable):
         assert len(shape.shape) == 1, ('shape must be an 1-D Tensor.')
@@ -3155,10 +3155,10 @@ def expand(x, shape, name=None):
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_expand(x, shape)
+        return _C_ops.expand(x, shape)
 
     if paddle.in_dynamic_mode():
-        return _C_ops.expand_v2(x, 'shape', shape)
+        return _legacy_C_ops.expand_v2(x, 'shape', shape)
 
     if isinstance(shape, Variable):
         assert len(shape.shape) == 1, ('shape must be an 1-D Tensor.')
@@ -3291,10 +3291,10 @@ def reshape(x, shape, name=None):
                 item.numpy().item(0)
                 if isinstance(item, tmp_tensor_type) else item for item in shape
             ]
-            out = _C_ops.final_state_reshape(x, shape)
+            out = _C_ops.reshape(x, shape)
         elif isinstance(shape, tmp_tensor_type):
             shape.stop_gradient = True
-            out = _C_ops.final_state_reshape(x, shape)
+            out = _C_ops.reshape(x, shape)
         else:
             raise ValueError(
                 "shape must be an instance of `list`, `tuple` or `Variable`,"
@@ -3313,10 +3313,10 @@ def reshape(x, shape, name=None):
                     item.numpy().item(0) if isinstance(item, Variable) else item
                     for item in shape
                 ]
-                out, _ = _C_ops.reshape2(x, None, 'shape', shape)
+                out, _ = _legacy_C_ops.reshape2(x, None, 'shape', shape)
             elif isinstance(shape, tmp_tensor_type):
                 shape.stop_gradient = True
-                out, _ = _C_ops.reshape2(x, shape)
+                out, _ = _legacy_C_ops.reshape2(x, shape)
             else:
                 raise ValueError(
                     "shape must be an instance of `list`, `tuple` or `Variable`,"
@@ -3409,10 +3409,10 @@ def reshape_(x, shape, name=None):
                 item.numpy().item(0)
                 if isinstance(item, tmp_tensor_type) else item for item in shape
             ]
-            out = _C_ops.final_state_reshape_(x, shape)
+            out = _C_ops.reshape_(x, shape)
         elif isinstance(shape, tmp_tensor_type):
             shape.stop_gradient = True
-            out = _C_ops.final_state_reshape_(x, shape)
+            out = _C_ops.reshape_(x, shape)
         else:
             raise ValueError(
                 "shape must be an instance of `list`, `tuple` or `Variable`,"
@@ -3425,7 +3425,7 @@ def reshape_(x, shape, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in shape
             ]
-            out, _ = _C_ops.reshape2_(x, None, 'shape', shape)
+            out, _ = _legacy_C_ops.reshape2_(x, None, 'shape', shape)
             return out
         elif isinstance(shape, Variable):
             shape.stop_gradient = True
@@ -3435,7 +3435,7 @@ def reshape_(x, shape, name=None):
             # Thus, convert Shape Tensor to list firstly and then call
             # reshape inplace op.
             shape_list = shape.numpy().tolist()
-            out, _ = _C_ops.reshape2_(x, None, 'shape', shape_list)
+            out, _ = _legacy_C_ops.reshape2_(x, None, 'shape', shape_list)
             return out
 
 
@@ -3512,10 +3512,10 @@ def gather_nd(x, index, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_gather_nd(x, index)
+        return _C_ops.gather_nd(x, index)
     else:
         if _in_legacy_dygraph():
-            return _C_ops.gather_nd(x, index)
+            return _legacy_C_ops.gather_nd(x, index)
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int16', 'int32', 'int64'],
         'gather_np')
@@ -3580,7 +3580,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
                 result = [ [2], ]
 
     Args:
-        x (Tensor): An N-D ``Tensor``. The data type is ``bool``, ``float32``, ``float64``, ``int32`` or ``int64``.
+        x (Tensor): An N-D ``Tensor``. The data type is ``bool``, ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
         axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
                             It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
         starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of                                                                                          it should be integers or Tensors with shape [1]. If ``starts`` is an Tensor, it should be an 1-D Tensor.                                                                                    It represents starting indices of corresponding axis in ``axes``.
@@ -3614,12 +3614,14 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             sliced_2 = paddle.strided_slice(x, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
             # sliced_2 is x[:, 1:3:1, 0:2:1, 2:4:2].
     """
+    if in_dygraph_mode():
+        return _C_ops.strided_slice(x, axes, starts, ends, strides)
 
     helper = LayerHelper('strided_slice', **locals())
 
-    check_variable_and_dtype(x, 'x',
-                             ['bool', 'float32', 'float64', 'int32', 'int64'],
-                             'strided_slice')
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'strided_slice')
     check_type(axes, 'axes', (list, tuple), 'strided_slice')
     check_type(starts, 'starts', (list, tuple, Variable), 'strided_slice')
     check_type(ends, 'ends', (list, tuple, Variable), 'strided_slice')
@@ -3657,7 +3659,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
     attrs = {'axes': axes}
     infer_flags = list(1 for i in range(len(axes)))
 
-    if _non_static_mode():
+    if _in_legacy_dygraph():
         inputs = {'Input': x}
         attrs = {
             'axes': axes,
@@ -3965,9 +3967,9 @@ def as_complex(x, name=None):
             #  [ 6. +7.j  8. +9.j 10.+11.j]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_as_complex(x)
-    if _in_legacy_dygraph():
         return _C_ops.as_complex(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.as_complex(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'as_complex')
     op_type = "as_complex"
@@ -4016,9 +4018,9 @@ def as_real(x, name=None):
             #   [10. 11.]]]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_as_real(x)
-    if _in_legacy_dygraph():
         return _C_ops.as_real(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.as_real(x)
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'as_real')
     op_type = "as_real"
@@ -4073,9 +4075,8 @@ def repeat_interleave(x, repeats, axis=None, name=None):
 
     if in_dygraph_mode():
         if isinstance(repeats, Variable):
-            return _C_ops.final_state_repeat_interleave_with_tensor_index(
-                x, repeats, axis)
-        return _C_ops.final_state_repeat_interleave(x, repeats, axis)
+            return _C_ops.repeat_interleave_with_tensor_index(x, repeats, axis)
+        return _C_ops.repeat_interleave(x, repeats, axis)
 
     helper = LayerHelper("repeat_interleave", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
@@ -4179,11 +4180,11 @@ def moveaxis(x, source, destination, name=None):
         perm[dst_dims[i]] = src_dims[i]
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_transpose(x, perm)
+        out = _C_ops.transpose(x, perm)
         return out
 
     if _in_legacy_dygraph():
-        out, _ = _C_ops.transpose2(x, 'axis', perm)
+        out, _ = _legacy_C_ops.transpose2(x, 'axis', perm)
         return out
 
     check_variable_and_dtype(x, 'x', [
@@ -4269,8 +4270,8 @@ def take_along_axis(arr, indices, axis):
         broadcast_shape = tuple(broadcast_shape_list)
         arr = paddle.broadcast_to(arr, broadcast_shape)
         if not _in_legacy_dygraph():
-            return _C_ops.final_state_take_along_axis(arr, indices, axis)
-        return _C_ops.take_along_axis(arr, indices, 'Axis', axis)
+            return _C_ops.take_along_axis(arr, indices, axis)
+        return _legacy_C_ops.take_along_axis(arr, indices, 'Axis', axis)
     check_variable_and_dtype(
         arr, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
         'take_along_axis')
@@ -4334,10 +4335,9 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
             indices = paddle.broadcast_to(indices, broadcast_shape)
         values = paddle.broadcast_to(values, indices.shape)
         if in_dygraph_mode():
-            return _C_ops.final_state_put_along_axis(arr, indices, values, axis,
-                                                     reduce)
-        return _C_ops.put_along_axis(arr, indices, values, "Axis", axis,
-                                     "Reduce", reduce)
+            return _C_ops.put_along_axis(arr, indices, values, axis, reduce)
+        return _legacy_C_ops.put_along_axis(arr, indices, values, "Axis", axis,
+                                            "Reduce", reduce)
 
     check_variable_and_dtype(
         arr, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
@@ -4381,10 +4381,9 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
         indices = paddle.broadcast_to(indices, broadcast_shape)
     values = paddle.broadcast_to(values, indices.shape)
     if in_dygraph_mode():
-        return _C_ops.final_state_put_along_axis_(arr, indices, values, axis,
-                                                  reduce)
-    return _C_ops.put_along_axis_(arr, indices, values, "Axis", axis, "Reduce",
-                                  reduce)
+        return _C_ops.put_along_axis_(arr, indices, values, axis, reduce)
+    return _legacy_C_ops.put_along_axis_(arr, indices, values, "Axis", axis,
+                                         "Reduce", reduce)
 
 
 # TODO(dev): We need avoid implementing it by this way.

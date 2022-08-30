@@ -71,6 +71,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -1068,6 +1069,23 @@ All parameter, weight, gradient are variables in Paddle.
           }
           return res;
         });
+  m.def(
+      "get_op_extra_attrs",
+      [](const std::string &op_type)
+          -> const paddle::framework::AttributeMap & {
+        return operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(op_type);
+      });
+
+  m.def(
+      "get_attrtibute_type",
+      [](const std::string &op_type,
+         const std::string &attr_name) -> paddle::framework::proto::AttrType {
+        const auto &defalut_val =
+            operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(op_type).at(
+                attr_name);
+        return static_cast<paddle::framework::proto::AttrType>(
+            defalut_val.index() - 1);
+      });
   m.def("get_grad_op_desc",
         [](const OpDesc &op_desc,
            const std::unordered_set<std::string> &no_grad_set,
@@ -2147,8 +2165,14 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_cudnn_switch", platform::SetAllowTF32Cudnn);
   m.def("get_cudnn_switch", platform::AllowTF32Cudnn);
 #endif  // PADDLE_WITH_CUDA
-  m.def("clear_executor_cache",
-        []() { framework::ExecutorInfoCache::Instance().Finalize(); });
+  m.def("clear_executor_cache", []() {
+    pybind11::gil_scoped_release release;
+    framework::ExecutorInfoCache::Instance().Finalize();
+    framework::InterpreterCoreInfoCache::Instance().Finalize();
+  });
+
+  m.def("parse_safe_eager_deletion_skip_vars",
+        paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet);
 
 #ifdef PADDLE_WITH_IPU
   py::class_<platform::ipu::IpuBackend,

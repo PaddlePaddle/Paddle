@@ -365,30 +365,28 @@ def replace_cuda_graph_section(ins_and_outs, section_program, section_idx,
     program_id = _hash_with_id(section_program, ins_and_outs)
 
     # insert the run_program_op into the block
-    origin_block._insert_op(insert_idx,
-                            type='run_program',
-                            inputs={'X': ins},
-                            outputs={
-                                'Out': outs,
-                                'OutScope': out_scope_var,
-                                'CUDAGraph': cuda_graph_var
-                            },
-                            attrs={
-                                'global_block':
-                                section_program.global_block(),
-                                'start_op_index':
-                                0,
-                                'end_op_index':
-                                len(section_program.global_block().ops),
-                                'is_test':
-                                is_test,
-                                'program_id':
-                                program_id,
-                                'cuda_graph_capture_mode':
-                                mode,
-                                'cuda_graph_pool_id':
-                                memory_pool_id,
-                            })
+    origin_block._insert_op(
+        insert_idx,
+        type='run_program',
+        inputs={'X': ins},
+        outputs={
+            'Out': outs,
+            'OutScope': out_scope_var,
+            'CUDAGraph': cuda_graph_var
+        },
+        attrs={
+            'global_block': section_program.global_block(),
+            'start_op_index': 0,
+            'end_op_index': len(section_program.global_block().ops),
+            'is_test': is_test,
+            'program_id': program_id,
+            'cuda_graph_capture_mode': mode,
+            'cuda_graph_pool_id': memory_pool_id,
+            # Todo: now not support use interpretercore
+            'use_interpretorcore': False,
+            'forward_global_block': section_program.global_block(),
+            'backward_global_block': section_program.global_block(),
+        })
 
 
 def cuda_graph_transform(program):
