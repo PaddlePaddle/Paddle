@@ -180,6 +180,8 @@ class TestPaddingValueTensor2(TestPaddingValueTensor):
 
     def call_func(self, x):
         padding_value = paddle.assign([1.0])
+        # test for int value
+        tmp = paddle.fluid.layers.pad(x, paddings=[1, 1, 1, 1], pad_value=1)
         out = paddle.fluid.layers.pad(x,
                                       paddings=[1, 1, 1, 1],
                                       pad_value=padding_value)
