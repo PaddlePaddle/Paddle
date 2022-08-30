@@ -62,5 +62,29 @@ class TestTensorDygraphOnlyMethodError(unittest.TestCase):
             static_res = self._run(to_static=True)
 
 
+@paddle.jit.to_static
+def tensor_size(x):
+    x = paddle.to_tensor(x)
+    x = paddle.reshape(x, paddle.shape(x))  # dynamic shape
+    y = x.size
+    return y
+
+
+class TestTensorSize(unittest.TestCase):
+
+    def _run(self, to_static):
+        prog_trans = paddle.jit.ProgramTranslator()
+        prog_trans.enable(to_static)
+        x = paddle.ones([1, 2, 3])
+        if to_static == False:
+            return tensor_size(x)
+        return tensor_size(x).numpy()
+
+    def test_tensor_clone(self):
+        dygraph_res = self._run(to_static=False)
+        static_res = self._run(to_static=True)
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-5)
+
+
 if __name__ == '__main__':
     unittest.main()
