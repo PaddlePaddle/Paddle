@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/matmul_kernel.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -42,7 +43,50 @@ void MatmulKernel(const Context& dev_ctx,
   MatMulXPUFunction<XPUType>(xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, 1.0f);
 }
 
+template <typename T, typename Context>
+void MatmulWithFlattenKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& y,
+                             int x_num_col_dims,
+                             int y_num_col_dims,
+                             DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  const DenseTensor x_matrix =
+      x.dims().size() > 2
+          ? paddle::framework::ReshapeToMatrix(x, x_num_col_dims)
+          : x;
+  const DenseTensor y_matrix =
+      y.dims().size() > 2
+          ? paddle::framework::ReshapeToMatrix(y, y_num_col_dims)
+          : y;
+  dev_ctx.template Alloc<T>(out);
+
+  const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x_matrix.data<T>());
+  const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y_matrix.data<T>());
+  XPUType* out_ptr = reinterpret_cast<XPUType*>(out->data<T>());
+
+  bool trans_a = false;
+  bool trans_b = false;
+  auto x_dims = x_matrix.dims();
+  auto y_dims = y_matrix.dims();
+
+  phi::XpuFcInfo fc_info;
+  phi::GetFCInfo(x_dims, y_dims, trans_a, trans_b, &fc_info);
+
+  xpu::Context* xpu_ctx = dev_ctx.x_context();
+
+  phi::MatMulXPUFunction<XPUType>(
+      xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, 1.0f);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     matmul, XPU, ALL_LAYOUT, phi::MatmulKernel, float, phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(matmul_with_flatten,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::MatmulWithFlattenKernel,
+                   float,
+                   phi::dtype::float16) {}

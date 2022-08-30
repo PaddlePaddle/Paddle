@@ -30,6 +30,8 @@ from paddle.fluid.layers import nn
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.executor import _is_enable_standalone_executor, _is_dy2st_enable_standalone_executor
+from paddle.fluid.dygraph.dygraph_to_static.partial_program import add_build_strategy_for, LazyInitialized
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = ['TranslatedLayer']
@@ -333,6 +335,37 @@ class _ProgramHolder(object):
         self._train_program_desc = self._append_backward_desc(
             self._infer_program_desc)
 
+    # forward:
+    @switch_to_static_graph
+    def _create_forward_train_program(self):
+        whole_program = _build_program_by_desc(self._train_program_desc)
+        end_op_index = self._infer_program_desc.block(0).op_size()
+        if end_op_index > 0:
+            return add_build_strategy_for(whole_program, 0, end_op_index)
+        else:
+            return whole_program
+
+    @LazyInitialized
+    def _forward_program_desc(self):
+        return self._create_forward_train_program().desc
+
+    # backward
+    @switch_to_static_graph
+    def _create_backward_train_program(self):
+        whole_program = _build_program_by_desc(self._train_program_desc)
+        start_op_index = self._infer_program_desc.block(0).op_size() + 2 * len(
+            self._output_descs)
+        end_op_index = whole_program.desc.block(0).op_size()
+        if (start_op_index < end_op_index):
+            return add_build_strategy_for(whole_program, start_op_index,
+                                          end_op_index)
+        else:
+            return paddle.static.Program()
+
+    @LazyInitialized
+    def _backward_program_desc(self):
+        return self._create_backward_train_program().desc
+
     @property
     def infer_program(self):
         return self._infer_program_desc
@@ -340,6 +373,14 @@ class _ProgramHolder(object):
     @property
     def train_program(self):
         return self._train_program_desc
+
+    @property
+    def forward_program(self):
+        return self._forward_program_desc
+
+    @property
+    def backward_program(self):
+        return self._backward_program_desc
 
     @property
     def input_descs(self):
@@ -460,7 +501,7 @@ class _ProgramHolder(object):
             self._output_descs[i] = var.desc
 
     @switch_to_static_graph
-    def _append_backward_desc(self, infer_program_desc):
+    def _get_train_forward_program(self, infer_program_desc):
         program_desc_copy = core.ProgramDesc(infer_program_desc)
 
         # 1. set all `is_test` attributes to False
@@ -488,6 +529,11 @@ class _ProgramHolder(object):
                             persistable=False,
                             stop_gradient=True)
                         op.desc.set_output("ReserveSpace", [reserve_space.name])
+        return program
+
+    @switch_to_static_graph
+    def _append_backward_desc(self, infer_program_desc):
+        program = self._get_train_forward_program(infer_program_desc)
 
         targets = []
         for out in self._output_descs:
@@ -861,14 +907,29 @@ def _run_dygraph(instance, input, program_holder):
 
     # 2. run program by op
     trace_program = program_holder.infer_program if instance._is_test else program_holder.train_program
+    forward_program = program_holder._infer_program_desc if instance._is_test else program_holder.forward_program
     end_op_index = program_holder.infer_program.block(0).op_size()
-    attrs = ('global_block', trace_program.block(0), 'start_op_index', 0,
-             'end_op_index', end_op_index, 'is_test', instance._is_test,
-             'program_id', _hash_with_id(trace_program, instance))
+
+    attrs = [
+        'global_block',
+        trace_program.block(0), 'start_op_index', 0, 'end_op_index',
+        end_op_index, 'is_test', instance._is_test, 'program_id',
+        _hash_with_id(trace_program, instance)
+    ]
+
+    use_interpretorcore = _is_enable_standalone_executor(
+    ) and _is_dy2st_enable_standalone_executor()
+    attrs.extend(('use_interpretorcore', use_interpretorcore))
+    if use_interpretorcore:
+        attrs.extend(
+            ('forward_global_block', forward_program.block(0),
+             'backward_global_block', program_holder.backward_program.block(0)))
+
     _legacy_C_ops.run_program(_valid_vars(input_vars),
                               _valid_vars(persistable_vars),
                               _valid_vars(output_vars), tmp_scope_vec,
                               _valid_vars(double_grad_vars), None, *attrs)
+
     # NOTE: [ why need set param's gradient type here ]
     # if user set sparse gradient mode, the param's gradient
     # will be SelectedRows, not LoDTensor. But tracer will just

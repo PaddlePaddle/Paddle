@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/kernels/funcs/onednn/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace platform {

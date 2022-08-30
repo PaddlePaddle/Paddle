@@ -874,7 +874,7 @@
   backward : exponential__grad
 
 - api : eye
-  args : (int64_t num_rows, int64_t num_columns, DataType dtype=DataType::FLOAT32, Place place={})
+  args : (Scalar num_rows, Scalar num_columns, DataType dtype=DataType::FLOAT32, Place place={})
   output : Tensor(out)
   infer_meta :
     func : EyeInferMeta

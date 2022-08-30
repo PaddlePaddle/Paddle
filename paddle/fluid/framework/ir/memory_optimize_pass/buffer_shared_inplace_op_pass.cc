@@ -167,14 +167,15 @@ static std::string GetFirstVarName(const OpDesc &op,
 static std::vector<std::vector<std::pair<std::string, std::string>>>
 GetInplaceVars(const BlockDesc &block,
                bool use_cuda,
-               const std::vector<std::string> &skip_vars) {
+               const std::vector<std::string> &skip_vars,
+               const bool &for_partial_block) {
   PADDLE_ENFORCE_EQ(
       block.ID(),
       0,
       platform::errors::Unimplemented("Inplace can only perform in block 0."));
   // only take block 0 gc_vars
-  const auto op_gc_vars =
-      GetEagerDeletionCleanVars(*block.Program(), skip_vars)[0];
+  const auto op_gc_vars = GetEagerDeletionCleanVarsForPartial(
+      *block.Program(), skip_vars, for_partial_block)[0];
   const auto all_ops = block.AllOps();
   PADDLE_ENFORCE_EQ(op_gc_vars.size(),
                     all_ops.size(),
@@ -267,9 +268,14 @@ void BufferSharedInplaceOpPass::ApplyImpl(ProgramDesc *main_program,
                                           ProgramDesc *startup_program) const {
   bool use_cuda = Get<bool>(kUseCuda);
   auto skip_vars = Get<std::vector<std::string>>("mem_opt_skip_vars");
+  bool for_partial_block = false;
+  if (Has("for_partial_block")) {
+    for_partial_block = Get<bool>("for_partial_block");
+  }
 
   auto *block = main_program->MutableBlock(0);
-  auto inplace_vars = GetInplaceVars(*block, use_cuda, skip_vars);
+  auto inplace_vars =
+      GetInplaceVars(*block, use_cuda, skip_vars, for_partial_block);
   PADDLE_ENFORCE_EQ(inplace_vars.size(),
                     block->OpSize(),
                     platform::errors::PermissionDenied(
