@@ -23,7 +23,7 @@ void LabelSmoothKernel(const Context& ctx,
                        DenseTensor* out) {
   auto label_dim = label.dims()[label.dims().size() - 1];
   auto ptr = ctx.template Alloc<T>(out);
-  if (prior_dist) {
+  if (prior_dist.is_initialized()) {
     PADDLE_THROW(
         phi::errors::External("XPU doesn't support dist label smooth"));
   } else {
