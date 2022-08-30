@@ -7,7 +7,7 @@ test_c_split,linux,gpu;rocm,120,DIST,test_runner.py,2,1,PYTHONPATH=..;http_proxy
 test_collective_split_embedding,linux,rocm;gpu,300,DIST,../dist_test.sh,2,1,PYTHONPATH=..;http_proxy=;https_proxy=,
 test_collective_allgather_api,linux,gpu;rocm,300,DIST,test_runner.py,2,1,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_collective_allgather_object_api,linux,gpu;rocm,120,DIST,test_runner.py,2,1,http_proxy=;https_proxy=;PYTHONPATH=..,
-test_collective_allreduce_api,linux,gpu;rocm,120,DIST,test_runner.py,2,1,http_proxy=;https_proxy=;PYTHONPATH=..,
+test_collective_allreduce_api,linux,gpu;rocm,300,DIST,test_runner.py,2,1,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_collective_alltoall_api,linux,gpu;rocm,120,DIST,test_runner.py,2,1,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_collective_alltoall_single,linux,gpu;rocm,350,DIST,../dist_test.sh,2,1,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_collective_barrier_api,linux,gpu;rocm,300,DIST,test_runner.py,2,1,http_proxy=;https_proxy=;PYTHONPATH=..,
