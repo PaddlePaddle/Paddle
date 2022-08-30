@@ -483,7 +483,7 @@ class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
         return var.subtract_(input_var_2)
 
 
-class TestDygraphInplaceRemainder(TestDygraphInplace):
+class TestDygraphInplaceRemainder(TestDygraphInplaceAdd):
 
     def non_inplace_api_processing(self, var):
         input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
