@@ -162,6 +162,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // problem, so we filter them out.
   std::vector<std::string> params_not_shared;
 
+  auto *scope = param_scope();
+
   // The node->inputs contains input tensors and parameters.
   for (auto *x : node->inputs) {
     input_names.insert(x->Name());
@@ -173,15 +175,21 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
         x->outputs.size() <= 1) {
       params_not_shared.push_back(x->Name());
     }
+    scope->Var(x->Name() + "_haha");
   }
 
   std::set<std::string> output_names;
   std::set<std::string> output_names_with_id;
   std::map<std::string, int> origin_name_output_dims;
+  std::vector<int> origin_outputs_dtype;
+  std::map<std::string, int> map_origin_outputs_dtype;
+  
   for (auto *x : node->outputs) {
     output_names.insert(x->Name());
     output_names_with_id.insert(x->Name() + std::to_string(x->id()));
     origin_name_output_dims[x->Name()] = x->Var()->GetShape().size();
+    map_origin_outputs_dtype[x->Name()] = (int)(x->Var()->GetDataType());
+    scope->Var(x->Name() + "_haha");
   }
 
   std::unordered_map<std::string, std::string> output_name_map;
@@ -217,6 +225,23 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                                          &opt_input_shape);
   }
 
+// auto copy_min_input_shape = min_input_shape;
+// for (auto iter : copy_min_input_shape)
+// {
+//   min_input_shape.insert(std::make_pair(iter.first + "_out321",  min_input_shape.at(iter.first)));
+// }
+// auto copy_max_input_shape = max_input_shape;
+// for (auto iter : copy_max_input_shape)
+// {
+//   max_input_shape.insert(std::make_pair(iter.first + "_out321",  max_input_shape.at(iter.first)));
+// }
+// auto copy_opt_input_shape = opt_input_shape;
+// for (auto iter : copy_opt_input_shape)
+// {
+//   opt_input_shape.insert(std::make_pair(iter.first + "_out321",  opt_input_shape.at(iter.first)));
+// }
+
+
   // The following procedure is used to rename all the intermediate
   // variables and the output variables of the subgraph.
   // Why we do this?
@@ -250,6 +275,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                           "The output_name_map should have %s", name));
     output_mapping.push_back(output_name_map[name]);
     renamed_output_dims.push_back(origin_name_output_dims[name]);
+    origin_outputs_dtype.push_back(map_origin_outputs_dtype[name]);
   }
   PADDLE_ENFORCE_EQ(output_mapping.empty(),
                     false,
@@ -270,6 +296,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
 
   op_desc->SetBlockAttr("sub_block", new_block);
   op_desc->SetAttr("subgraph", block_desc.Proto()->SerializeAsString());
+  op_desc->SetAttr("origin_outputs_dtype", origin_outputs_dtype);
   op_desc->SetAttr("max_batch_size", max_batch_size);
   op_desc->SetAttr("workspace_size", Get<int>("workspace_size"));
   op_desc->SetAttr("gpu_id", Get<int>("gpu_device_id"));
@@ -433,7 +460,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
                "kernel etc). This process may cost a lot of time.";
 
-  auto *scope = param_scope();
+  //auto *scope = param_scope();
   framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
   std::unordered_set<std::string> param_set(params.begin(), params.end());
   inference::Singleton<inference::tensorrt::OpConverter>::Global()

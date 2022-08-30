@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 #include "glog/logging.h"
 
@@ -22,9 +23,10 @@ namespace ir {
 
 class Graph;
 class Node;
-
+static int ii =0;
 std::pair<std::vector<Node *>, std::vector<Node *>>
-ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
+ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph,
+                       paddle::framework::ir::Graph *global_graph) {  // NOLINT
   std::unordered_set<Node *> nodes(graph.begin(), graph.end());
   std::unordered_set<Node *> inputs;
   std::unordered_set<Node *> outputs;
@@ -35,6 +37,15 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
     }
     return false;
   };
+
+
+  framework::BlockDesc *block_cast{nullptr};
+  for (auto *op_node : framework::ir::TopologySortOperations(*global_graph)) {
+    if (!op_node->IsOp()) continue;
+    auto op_type = op_node->Op()->Type();
+    if (op_type == "feed") block_cast = op_node->Op()->Block();
+  }
+
 
   for (auto &node : graph) {
     for (auto *in : node->inputs) {
@@ -50,6 +61,81 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
       }
     }
   }
+
+  auto copy_inputs = inputs;
+  for (auto in_var : copy_inputs) {
+    if (in_var->Var()->GetDataType() == framework::proto::VarType::INT64 && 0) {
+      std::cout << "哈哈哈" << std::endl;
+      // We should place a `cast` op between in_var and `node` op.
+      // node muse be within tensorrt sub-graph.
+      //        |                      |
+      //      in_var                 in_var   int64
+      //        |                      |
+      //        |        ->        cast_node
+      //        |                      |
+      //        |            cast_output_node int32
+      //        |                      |
+      //     other ops            other ops   they must be in sub-graph
+      //        |                      |
+      framework::OpDesc cast_desc(block_cast);
+      cast_desc.SetType("cast");
+      cast_desc.SetInput("X", {in_var->Name()});
+      std::string cast_out_name = in_var->Name() + "_out321" + std::to_string(ii);
+      ii++;
+      cast_desc.SetOutput("Out", {cast_out_name});
+      cast_desc.SetAttr("in_dtype", 3);
+      cast_desc.SetAttr("out_dtype", 2);
+      cast_desc.Flush();
+      auto *cast_node = global_graph->CreateOpNode(&cast_desc);
+      auto *cast_output_vardesc = block_cast->Var(cast_out_name);
+      cast_output_vardesc->SetPersistable(false);
+      cast_output_vardesc->SetDataType(framework::proto::VarType::INT32);
+      cast_output_vardesc->SetShape(in_var->Var()->GetShape());
+      auto *cast_output_node = global_graph->CreateVarNode(cast_output_vardesc);
+
+      std::vector<paddle::framework::ir::Node *> new_in_var_outputs;
+      for (auto op : in_var->outputs) {
+        if (!nodes.count(op))
+        new_in_var_outputs.push_back(op);
+      }
+      new_in_var_outputs.push_back(cast_node);
+      
+      std::vector<Node*> other_ops;
+      for (auto op : in_var->outputs) {
+        if(nodes.count(op)) {
+          other_ops.push_back(op);
+        }
+      }
+
+      in_var->outputs = new_in_var_outputs;
+
+      cast_node->inputs = std::vector<paddle::framework::ir::Node *>{in_var};
+      cast_node->outputs = std::vector<paddle::framework::ir::Node *>{cast_output_node};
+      cast_output_node->inputs = std::vector<paddle::framework::ir::Node *>{cast_node};
+
+      cast_output_node->outputs = other_ops;
+      for (auto other_op : other_ops) {
+        // in `other_op->Op()`, we need replace `in_var->Name()` with cast_out_name
+        for (auto iter : other_op->Op()->Inputs()) {
+          auto iter_inputs = iter.second;
+          for (auto &var_name : iter_inputs) {
+            if (var_name == in_var->Name()) {
+              var_name = cast_out_name;
+            }
+          }
+          other_op->Op()->SetInput(iter.first, iter_inputs);
+        }
+        if (std::find(other_op->inputs.begin(), other_op->inputs.end(), in_var) !=
+            other_op->inputs.end()) {
+          *(std::find(other_op->inputs.begin(), other_op->inputs.end(), in_var)) =
+              cast_output_node;
+        }
+      }
+      inputs.erase(in_var);
+      inputs.emplace(cast_output_node);
+    }
+  }
+
   return std::make_pair(std::vector<Node *>(inputs.begin(), inputs.end()),
                         std::vector<Node *>(outputs.begin(), outputs.end()));
 }
@@ -420,11 +506,89 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
     empty_desc.SetType(name_);
     auto *block_node = graph_->CreateOpNode(&empty_desc);
     Agent(block_node).set_subgraph({});
-    auto io = ExtractInputAndOutputOfSubGraph(subgraph);
+    auto io = ExtractInputAndOutputOfSubGraph(subgraph, graph_);
     block_node->inputs = std::move(io.first);
     block_node->outputs = std::move(io.second);
 
     RemoveIntermediateOutputInSubgraph(subgraph, graph_, &block_node->outputs);
+
+  framework::BlockDesc *block_cast{nullptr};
+  for (auto *op_node : framework::ir::TopologySortOperations(*graph_)) {
+    if (!op_node->IsOp()) continue;
+    auto op_type = op_node->Op()->Type();
+    if (op_type == "feed") block_cast = op_node->Op()->Block();
+  }
+
+    // We should place a `cast` op between out_var and `node` op.
+    //        |                         |
+    //     out_var                   out_var.         int64 but infact int32
+    //        |                         |
+    //        |           ->        cast_node
+    //        |                         |
+    //        |                     cast_output_node  int64
+    //        |                         |
+    //    other ops                  other ops      they must be outside sub-graph
+    //        |                         |
+  std::unordered_set<Node *> nodes(subgraph.begin(), subgraph.end());
+  for (size_t i = 0; i < block_node->outputs.size() * 0; i++) {
+    auto out_var = block_node->outputs[i];
+    if (out_var->Var()->GetDataType() == framework::proto::VarType::INT64) {
+      framework::OpDesc cast_desc(block_cast);
+      cast_desc.SetType("cast");
+      cast_desc.SetInput("X", {out_var->Name()});
+      std::string cast_out_name = out_var->Name() + "_out321" + std::to_string(ii);
+      ii++;
+      cast_desc.SetOutput("Out", {cast_out_name});
+      cast_desc.SetAttr("in_dtype", 2);
+      cast_desc.SetAttr("out_dtype", 3);
+      cast_desc.Flush();
+      auto *cast_node = graph_->CreateOpNode(&cast_desc);
+      auto *cast_output_vardesc = block_cast->Var(cast_out_name);
+      cast_output_vardesc->SetPersistable(false);
+      cast_output_vardesc->SetDataType(framework::proto::VarType::INT64);
+      cast_output_vardesc->SetShape(out_var->Var()->GetShape());
+      auto *cast_output_node = graph_->CreateVarNode(cast_output_vardesc);
+
+      std::vector<paddle::framework::ir::Node *> new_out_var_outputs;
+      for (auto op : out_var->outputs) {
+        if (nodes.count(op))
+        new_out_var_outputs.push_back(op);
+      }
+      new_out_var_outputs.push_back(cast_node);
+      
+      std::vector<Node*> other_ops;
+      for (auto op : out_var->outputs) {
+        if(!nodes.count(op)) {
+          other_ops.push_back(op);
+        }
+      }
+
+      out_var->outputs = new_out_var_outputs;
+
+      cast_node->inputs = std::vector<paddle::framework::ir::Node *>{out_var};
+      cast_node->outputs = std::vector<paddle::framework::ir::Node *>{cast_output_node};
+      cast_output_node->inputs = std::vector<paddle::framework::ir::Node *>{cast_node};
+
+      cast_output_node->outputs = other_ops;
+      for (auto other_op : other_ops) {
+        // in `other_op->Op()`, we need replace `in_var->Name()` with cast_out_name
+        for (auto iter : other_op->Op()->Inputs()) {
+          auto iter_inputs = iter.second;
+          for (auto &var_name : iter_inputs) {
+            if (var_name == out_var->Name()) {
+              var_name = cast_out_name;
+            }
+          }
+          other_op->Op()->SetInput(iter.first, iter_inputs);
+        }
+        if (std::find(other_op->inputs.begin(), other_op->inputs.end(), out_var) !=
+            other_op->inputs.end()) {
+          *(std::find(other_op->inputs.begin(), other_op->inputs.end(), out_var)) =
+              cast_output_node;
+        }
+      }
+    }
+  }
 
     for (auto *node : subgraph) {
       // TODO(Superjomn) need a unified mechanism to treat deleted node in each

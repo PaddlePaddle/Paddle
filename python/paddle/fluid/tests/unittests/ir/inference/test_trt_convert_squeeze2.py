@@ -67,8 +67,8 @@ class TrtConvertSqueeze2Test(TrtLayerAutoScanTest):
                         self.input_shape[0] = batch
                         for i in new_axes:
                             self.input_shape[i] = 1
-                        return np.random.random(self.input_shape).astype(
-                            np.float32)
+                        return (10 * np.random.random(self.input_shape)).astype(
+                            np.int64)
 
                     ops = self.generate_op_config(ops_config)
                     program_config = ProgramConfig(

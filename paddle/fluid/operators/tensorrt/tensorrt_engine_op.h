@@ -16,7 +16,8 @@
 
 #include "paddle/fluid/framework/scope.h"
 #ifdef PADDLE_WITH_CUDA
-
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -505,7 +506,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       trt_context = engine->context();
       binding_offset = engine->GetBindingsOffset();
     }
-
+    framework::Tensor int32_tensor;
     // Bind input tensor to TRT.
     for (const auto &x : runtime_input_names_) {
       // convert input and copy to TRT engine's buffer
@@ -578,7 +579,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
       if (type == framework::proto::VarType::FP32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
       } else if (type == framework::proto::VarType::INT64) {
-        buffers[bind_index] = static_cast<void *>(t.data<int64_t>());
+        std::cout << "子图输入是int64" << x <<  std::endl;
+        auto int32_tensor = scope.FindVar(x + "_haha")->GetMutable<framework::LoDTensor>();
+        //phi::CastKernel<int64_t>(reinterpret_cast<const phi::GPUContext &>(dev_ctx), t, phi::DataType::INT32, int32_tensor);
+        *int32_tensor = phi::Cast<int64_t>(reinterpret_cast<const phi::GPUContext &>(dev_ctx), t, phi::DataType::INT32);
+        buffers[bind_index] = static_cast<void *>(int32_tensor->data<int32_t>());
+        //buffers[bind_index] = static_cast<void *>(t.data<int64_t>());
       } else if (type == framework::proto::VarType::INT32) {
         buffers[bind_index] = static_cast<void *>(t.data<int32_t>());
       } else if (type == framework::proto::VarType::FP16) {
@@ -669,7 +675,27 @@ class TensorRTEngineOp : public framework::OperatorBase {
               max_batch_size_));
     }
     // Execute the engine.
+    //cudaStreamSynchronize(stream);
     engine->Execute(runtime_batch, &buffers, stream);
+    //cudaStreamSynchronize(stream);
+
+    std::vector<int> origin_outputs_dtype = Attr<std::vector<int>>("origin_outputs_dtype");
+
+    for (size_t i = 0; i < Outputs("Ys").size(); i++) {
+      auto y = Outputs("Ys")[i];
+      auto *fluid_v = scope.FindVar(y);
+      auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
+      auto type = origin_outputs_dtype[i];
+      
+      if (type == 3) {
+        std::cout << "哈哈哈type == 3" << std::endl;
+        framework::Tensor int32_tensor;
+        int32_tensor.Resize(fluid_t->dims());
+        int32_t* int32_data = int32_tensor.mutable_data<int32_t>(platform::CUDAPlace());
+        cudaMemcpyAsync(int32_data, fluid_t->data<int32_t>(), sizeof(int32_t) * int32_tensor.numel(), cudaMemcpyDeviceToDevice, stream);
+        *fluid_t = phi::Cast<int32_t>(reinterpret_cast<const phi::GPUContext &>(dev_ctx), int32_tensor, phi::DataType::INT64);
+      }
+    }
   }
 
   TensorRTEngine *GetEngine(const framework::Scope &scope,

@@ -58,7 +58,9 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
 
         def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.random.random([6, 6, 64, 64]).astype(np.float32)
+            a = (10 * np.random.random([6, 6, 64, 64])).astype(np.int64)
+            #print(max(a.flatten()))
+            return a
 
         for axes in [[0, 1], [1, 3], [2, 3]]:
             for starts in [[0, 1]]:
@@ -123,12 +125,6 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         self.trt_param.max_batch_size = 9
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-4
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)

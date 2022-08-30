@@ -938,7 +938,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
       auto dtype = x_var_desc->GetDataType();
       // At present, forbid int64_t into trt.
-      if (dtype == 3) {
+      if (dtype == 3 && 0) {
         return false;
       }
     }
@@ -970,7 +970,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
       auto dtype = x_var_desc->GetDataType();
       // At present, forbid int64_t into trt.
-      if (dtype == 3) {
+      if (dtype == 3 && 0) {
         return false;
       }
     }
@@ -1221,7 +1221,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto* x_var_desc = block->FindVar(desc.Input("Input")[0]);
       auto dtype = x_var_desc->GetDataType();
       // At present, forbid int64_t into trt.
-      if (dtype == 3) {
+      if (dtype == 3 && 0) {
         return false;
       }
     }
