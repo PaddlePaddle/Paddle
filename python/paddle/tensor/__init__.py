@@ -236,6 +236,7 @@ from .math import outer  # noqa: F401
 from .math import heaviside  # noqa: F401
 from .math import frac  # noqa: F401
 from .math import sgn  # noqa: F401
+from .math import take  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -282,8 +283,8 @@ from .array import create_array  # noqa: F401
 
 from .einsum import einsum  # noqa: F401
 
-#this list used in math_op_patch.py for _binary_creator_
-tensor_method_func = [  #noqa
+# this list used in math_op_patch.py for _binary_creator_
+tensor_method_func = [  # noqa
     'matmul',
     'dot',
     'cov',
@@ -509,11 +510,12 @@ tensor_method_func = [  #noqa
     'heaviside',
     'index_add',
     "index_add_",
+    'take',
     'bucketize',
     'sgn',
 ]
 
-#this list used in math_op_patch.py for magic_method bind
+# this list used in math_op_patch.py for magic_method bind
 magic_method_func = [
     ('__and__', 'bitwise_and'),
     ('__or__', 'bitwise_or'),

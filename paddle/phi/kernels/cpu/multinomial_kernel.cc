@@ -23,7 +23,7 @@ namespace phi {
 template <typename T, typename Context>
 void MultinomialKernel(const Context& dev_ctx,
                        const DenseTensor& x,
-                       int num_samples,
+                       const Scalar& num_samples,
                        bool replacement,
                        DenseTensor* out) {
   auto* in_data = x.data<T>();
@@ -36,7 +36,7 @@ void MultinomialKernel(const Context& dev_ctx,
   funcs::MultinomialFunctor<T>(dev_ctx,
                                out_data,
                                in_data,
-                               num_samples,
+                               num_samples.to<int>(),
                                replacement,
                                num_categories,
                                num_distributions);

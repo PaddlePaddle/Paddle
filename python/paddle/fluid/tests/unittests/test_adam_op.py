@@ -1230,6 +1230,10 @@ class TestMultiTensorAdam(unittest.TestCase):
                 self._check_with_param_arrt(place, use_amp)
                 self._check_with_param_group(place, use_amp)
 
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_main()
+
 
 if __name__ == "__main__":
     paddle.enable_static()
