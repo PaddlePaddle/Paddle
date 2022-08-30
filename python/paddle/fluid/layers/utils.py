@@ -17,7 +17,7 @@ import collections
 import copy
 import six
 import numpy as np
-from ..framework import Block, Variable, _non_static_mode
+from ..framework import Block, Variable, _non_static_mode, core
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..layer_helper import LayerHelper
 from sys import version_info
@@ -319,7 +319,7 @@ def _contain_var(list_or_tuple):
     Check whether list or tuple contains variable.
     """
     for item in list_or_tuple:
-        if isinstance(item, Variable):
+        if isinstance(item, (Variable, core.eager.Tensor)):
             return True
     return False
 

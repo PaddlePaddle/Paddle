@@ -2699,7 +2699,7 @@ void UnpoolInferMeta(const MetaTensor& x,
                      const std::vector<int>& ksize,
                      const std::vector<int>& strides,
                      const std::vector<int>& paddings,
-                     const std::vector<int>& output_size,
+                     const IntArray& output_size,
                      const std::string& data_format,
                      MetaTensor* out,
                      MetaConfig config) {
@@ -2723,11 +2723,16 @@ void UnpoolInferMeta(const MetaTensor& x,
                         in_y_dims));
 
   std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
+
+  std::vector<int64_t> output_size_val(output_size.size(), -1);
+  if (config.is_runtime || !output_size.FromTensor()) {
+    output_size_val = output_size.GetData();
+  }
   for (size_t i = 0; i < ksize.size(); ++i) {
     if (!config.is_runtime && in_x_dims[i + 2] <= 0) {
       output_shape.push_back(-1);
     } else {
-      output_shape.push_back(output_size[i]);
+      output_shape.push_back(output_size_val[i]);
     }
   }
   if (out != nullptr) {

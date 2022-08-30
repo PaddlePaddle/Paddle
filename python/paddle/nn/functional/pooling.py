@@ -18,7 +18,8 @@ from ...tensor.manipulation import unsqueeze, squeeze
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
-from paddle.fluid.framework import _in_legacy_dygraph
+from paddle.fluid import core
+from paddle.fluid.framework import _in_legacy_dygraph, Variable
 from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = []
@@ -651,8 +652,19 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
     for d in range(len(kernel_size)):
         default_size.append((input_size[-len(kernel_size) + d] - 1) *
                             stride[d] + kernel_size[d] - 2 * padding[d])
+
+    has_static_var = False
     if output_size is None:
         ret = default_size
+    elif utils._contain_var(output_size):
+        if not in_dygraph_mode():
+            has_static_var = True
+            output_size = utils._convert_to_tensor_list(output_size)
+        else:
+            for i, var in enumerate(output_size):
+                if isinstance(var, core.eager.Tensor):
+                    output_size[i] = var.numpy()[0]
+        ret = output_size
     else:
         if len(output_size) == len(kernel_size) + 2:
             output_size = output_size[2:]
@@ -662,13 +674,14 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
                 "{} or {} elements, but it has a length of '{}'".format(
                     len(kernel_size),
                     len(kernel_size) + 2, len(output_size)))
-        for d in range(len(kernel_size)):
-            min_size = default_size[d] - stride[d]
-            max_size = default_size[d] + stride[d]
-            if not (min_size < output_size[d] < max_size):
-                raise ValueError(
-                    'invalid output_size "{}" (dim {} must be between {} and {})'
-                    .format(output_size, d, min_size, max_size))
+        if not has_static_var:
+            for d in range(len(kernel_size)):
+                min_size = default_size[d] - stride[d]
+                max_size = default_size[d] + stride[d]
+                if not (min_size < output_size[d] < max_size):
+                    raise ValueError(
+                        'invalid output_size "{}" (dim {} must be between {} and {})'
+                        .format(output_size, d, min_size, max_size))
 
         ret = output_size
     return ret
