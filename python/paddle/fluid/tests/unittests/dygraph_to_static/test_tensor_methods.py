@@ -61,6 +61,7 @@ class TestTensorDygraphOnlyMethodError(unittest.TestCase):
         with self.assertRaises(AssertionError):
             static_res = self._run(to_static=True)
 
+
 @paddle.jit.to_static
 def tensor_item(x):
     x = paddle.to_tensor(x)
@@ -82,6 +83,7 @@ class TestTensorItem(unittest.TestCase):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
         np.testing.assert_allclose(dygraph_res, static_res)
+
 
 @paddle.jit.to_static
 def tensor_size(x):
