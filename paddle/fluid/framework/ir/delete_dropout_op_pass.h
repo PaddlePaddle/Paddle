@@ -19,6 +19,7 @@
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/op_compat_sensible_pass.h"
 
 namespace paddle {
 namespace framework {
@@ -34,8 +35,9 @@ class DeleteDropoutOpPass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 };
 
-class DeleteDropoutOpXPass : public FusePassBase {
+class DeleteDropoutOpXPass : public OpCompatSensiblePass {
  public:
+  DeleteDropoutOpXPass();
   virtual ~DeleteDropoutOpXPass() {}
 
  protected:

@@ -15,6 +15,8 @@
 
 #include <string>
 
+#include "paddle/fluid/framework/op_version_registry.h"
+
 namespace phi {
 class DenseTensor;
 }  // namespace phi
@@ -90,6 +92,26 @@ void DeleteDropoutOpPass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 }
 
+DeleteDropoutOpXPass::DeleteDropoutOpXPass() {
+  AddOpCompat(OpCompat("scale"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("scale")
+      .IsNumGE(0.f)
+      .IsNumLE(1.f)
+      .End()
+      .AddAttr("bias")
+      .IsNumEQ(0.f)
+      .End()
+      .AddAttr("bias_after_scale")
+      .IsNumEQ(true)
+      .End();
+}
+
 void DeleteDropoutOpXPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "delte dropout op.";
   std::unordered_set<const Node*> del_node_set;
@@ -128,6 +150,8 @@ bool DeleteDropoutOpXPass::DelDropout(
                                "dropout_implementation")) == "upscale_in_train";
     }
   }
+
+  VLOG(3) << "upscale_in_train: " << upscale_in_train;
 
   if (upscale_in_train) {
     // delete dropout
@@ -255,5 +279,10 @@ void DeleteDropoutOpXPass::ReplaceOutputVar(Node* op,
 
 REGISTER_PASS(delete_dropout_op_pass,
               paddle::framework::ir::DeleteDropoutOpPass);
+
 REGISTER_PASS(delete_dropout_op_x_pass,
               paddle::framework::ir::DeleteDropoutOpXPass);
+REGISTER_PASS_CAPABILITY(delete_dropout_op_x_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
+            "scale", 0));
