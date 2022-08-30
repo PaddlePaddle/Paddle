@@ -35,6 +35,7 @@ complex128 = VarDesc.VarType.COMPLEX128
 
 bool = VarDesc.VarType.BOOL
 
+
 def iinfo(dtype):
     """
 
@@ -51,7 +52,7 @@ def iinfo(dtype):
         min: int, The smallest representable integer number.
         max: int, The largest representable integer number.
         bits: int, The number of bits occupied by the type.
-        dtype: str, The string name of the argument dtype
+        dtype: str, The string name of the argument dtype.
 
     Raises:
         ValueError: If the input "dtype" is not an integer paddle.dtype, it will raise an ValueError
