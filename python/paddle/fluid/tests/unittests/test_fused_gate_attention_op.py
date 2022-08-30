@@ -25,7 +25,7 @@ from paddle import tensor
 import unittest
 from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 from test_sparse_attention_op import get_cuda_version
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import default_main_program
 from paddle.fluid import core
 
@@ -232,7 +232,7 @@ class TestFusedGateAttentionOp(OpTest):
         output_w = paddle.to_tensor(self.output_w, stop_gradient=False)
         output_b = paddle.to_tensor(self.output_b, stop_gradient=False)
 
-        _, _, _, _, softmax_out, fmha_out, gate_out, out = _C_ops.fused_gate_attention(
+        _, _, _, _, softmax_out, fmha_out, gate_out, out = _legacy_C_ops.fused_gate_attention(
             query, key, q_weight, k_weight, v_weight, qkv_weight,
             nonbatched_bias, src_mask, gating_w, gating_b, output_w, output_b,
             'has_gating', self.has_gating, 'merge_qkv', self.merge_qkv)

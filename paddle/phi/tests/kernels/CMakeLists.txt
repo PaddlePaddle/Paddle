@@ -129,3 +129,13 @@ elseif(WITH_ROCM)
     SRCS test_strings_copy_dev_api.cu
     DEPS phi phi_api_utils)
 endif()
+
+cc_test(
+  test_memcpy_dev_api
+  SRCS test_memcpy_dev_api.cc
+  DEPS phi phi_api_utils)
+
+cc_test(
+  test_transfer_layout_dev_api
+  SRCS test_transfer_layout_dev_api.cc
+  DEPS phi phi_api_utils)

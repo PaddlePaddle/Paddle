@@ -26,7 +26,7 @@ import numpy as np
 import time
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = []
 
@@ -342,7 +342,7 @@ class Adam(Optimizer):
             _beta2 = self._beta2 if not isinstance(
                 self._beta2, Variable) else self._beta2.numpy().item(0)
 
-            _, _, _, _, _, _ = _C_ops.final_state_adam_(
+            _, _, _, _, _, _ = _C_ops.adam_(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                 beta1_pow_acc, beta2_pow_acc, master_weight, found_inf, _beta1,
                 _beta2, self._epsilon, self._lazy_mode, 1000, find_master,
@@ -356,7 +356,7 @@ class Adam(Optimizer):
                 self._beta1, Variable) else self._beta1.numpy().item(0)
             _beta2 = self._beta2 if not isinstance(
                 self._beta2, Variable) else self._beta2.numpy().item(0)
-            _, _, _, _, _, _ = _C_ops.adam(
+            _, _, _, _, _, _ = _legacy_C_ops.adam(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                 beta1_pow_acc, beta2_pow_acc, master_weight, param_and_grad[0],
                 moment1, moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
@@ -583,7 +583,7 @@ class Adam(Optimizer):
                     self._beta2, Variable) else self._beta2.numpy().item(0)
 
                 if framework._non_static_mode():
-                    _, _, _, _, _, _ = _C_ops.merged_adam(
+                    _, _, _, _, _, _ = _legacy_C_ops.merged_adam(
                         self._param_dict[key], grad_dict[key], lr_dict[key],
                         self._moment1_dict[key], self._moment2_dict[key],
                         self._beta1_pow_acc_dict[key],

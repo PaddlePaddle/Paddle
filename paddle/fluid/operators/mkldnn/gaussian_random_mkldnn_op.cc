@@ -15,7 +15,8 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/operators/fill_constant_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
