@@ -53,7 +53,6 @@ class Naive_fc_net(paddle.nn.Layer):
     def __init__(self,
                  input_size=10,
                  recompute_blocks=[1, 3],
-                 use_fleet=False,
                  use_fleet_sq=False,
                  segments=1,
                  use_raw_recompute=False,
@@ -61,7 +60,6 @@ class Naive_fc_net(paddle.nn.Layer):
         super(Naive_fc_net, self).__init__()
         self.recompute_blocks = recompute_blocks
         self.recompute_kwargs = recompute_kwargs
-        self.use_fleet = use_fleet
         self.use_fleet_sq = use_fleet_sq
         self.use_raw_recompute = use_raw_recompute
         self.segments = segments
@@ -112,7 +110,6 @@ class Naive_fc_net(paddle.nn.Layer):
 
 def run_model(recompute_block=[],
               recompute_kwargs={},
-              use_fleet=False,
               use_fleet_sq=False,
               use_raw_recompute=False,
               segments=1,
@@ -126,7 +123,6 @@ def run_model(recompute_block=[],
     batch_size, input_size = 1, 10
     model = Naive_fc_net(input_size,
                          recompute_blocks=recompute_block,
-                         use_fleet=use_fleet,
                          use_fleet_sq=use_fleet_sq,
                          use_raw_recompute=use_raw_recompute,
                          segments=segments,
@@ -204,16 +200,8 @@ class TestPyLayer(unittest.TestCase):
                                       pure_fp16=pure_fp16)
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
-        # recompute second block using fleet
-        loss, param, grad = run_model(recompute_block=[1],
-                                      use_fleet=True,
-                                      enable_autocast=enable_autocast,
-                                      pure_fp16=pure_fp16)
-        check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
-
         # recompute second & fourth block using fleet
         loss, param, grad = run_model(recompute_block=[1, 3],
-                                      use_fleet=True,
                                       enable_autocast=enable_autocast,
                                       pure_fp16=pure_fp16)
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
