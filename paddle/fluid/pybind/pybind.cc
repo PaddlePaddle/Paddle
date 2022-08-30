@@ -21,8 +21,8 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT // for call_once
-#include <string>
 #include <sstream>
+#include <string>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
@@ -347,49 +347,49 @@ bool IsCompiledWithDIST() {
 }
 
 struct iinfo {
-    int64_t min, max;
-    int bits;
-    std::string dtype;
+  int64_t min, max;
+  int bits;
+  std::string dtype;
 
-    iinfo(const framework::proto::VarType::Type& type) { 
-        switch (type) {
-        case framework::proto::VarType::INT16:
-          min = std::numeric_limits<int16_t>::min();
-          max = std::numeric_limits<int16_t>::max();
-          bits = 16;
-          dtype = "int16";
-          break;
-        case framework::proto::VarType::INT32:
-          min = std::numeric_limits<int32_t>::min();
-          max = std::numeric_limits<int32_t>::max();
-          bits = 32;
-          dtype = "int32";
-          break;
-        case framework::proto::VarType::INT64:
-          min = std::numeric_limits<int64_t>::min();
-          max = std::numeric_limits<int64_t>::max();
-          bits = 64;
-          dtype = "int64";
-          break;
-        case framework::proto::VarType::INT8:
-          min = std::numeric_limits<int8_t>::min();
-          max = std::numeric_limits<int8_t>::max();
-          bits = 8;
-          dtype = "int8";
-          break;
-        case framework::proto::VarType::UINT8:
-          min = std::numeric_limits<uint8_t>::min();
-          max = std::numeric_limits<uint8_t>::max();
-          bits = 8;
-          dtype = "uint8";
-          break;
-        default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
-             "the argument of paddle.iinfo can only be "
-             "paddle.int8, paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"));
-          break;
-        }
+  explicit iinfo(const framework::proto::VarType::Type &type) {
+    switch (type) {
+      case framework::proto::VarType::INT16:
+        min = std::numeric_limits<int16_t>::min();
+        max = std::numeric_limits<int16_t>::max();
+        bits = 16;
+        dtype = "int16";
+        break;
+      case framework::proto::VarType::INT32:
+        min = std::numeric_limits<int32_t>::min();
+        max = std::numeric_limits<int32_t>::max();
+        bits = 32;
+        dtype = "int32";
+        break;
+      case framework::proto::VarType::INT64:
+        min = std::numeric_limits<int64_t>::min();
+        max = std::numeric_limits<int64_t>::max();
+        bits = 64;
+        dtype = "int64";
+        break;
+      case framework::proto::VarType::INT8:
+        min = std::numeric_limits<int8_t>::min();
+        max = std::numeric_limits<int8_t>::max();
+        bits = 8;
+        dtype = "int8";
+        break;
+      case framework::proto::VarType::UINT8:
+        min = std::numeric_limits<uint8_t>::min();
+        max = std::numeric_limits<uint8_t>::max();
+        bits = 8;
+        dtype = "uint8";
+        break;
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "the argument of paddle.iinfo can only be paddle.int8, "
+            "paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"));
+        break;
     }
+  }
 };
 
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
@@ -607,15 +607,15 @@ PYBIND11_MODULE(core_noavx, m) {
       .def_readonly("max", &iinfo::max)
       .def_readonly("bits", &iinfo::bits)
       .def_readonly("dtype", &iinfo::dtype)
-      .def("__repr__", [](const iinfo& a) {
-            std::ostringstream oss;
-            oss << "paddle.iinfo(min=" << a.min;
-            oss << ", max=" << a.max;
-            oss << ", bits=" << a.bits;
-            oss << ", dtype=" << a.dtype << ")";
-            return oss.str();
+      .def("__repr__", [](const iinfo &a) {
+        std::ostringstream oss;
+        oss << "paddle.iinfo(min=" << a.min;
+        oss << ", max=" << a.max;
+        oss << ", bits=" << a.bits;
+        oss << ", dtype=" << a.dtype << ")";
+        return oss.str();
       });
-    
+
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);
