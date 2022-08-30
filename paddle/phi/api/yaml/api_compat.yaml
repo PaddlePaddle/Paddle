@@ -138,6 +138,12 @@
   outputs :
     out : Out
 
+- api : transpose
+  op_name : transpose2
+  backward : transpose_grad
+  extra :
+    attrs : [bool use_mkldnn = false, str date_format = "AnyLayout", bool use_quantizer = false, str mkldnn_data_type = "float32"]
+
 - api : trunc
   inputs :
     x : X
