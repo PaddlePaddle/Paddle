@@ -21,7 +21,7 @@ limitations under the License. */
 #if defined(__xpu__)
 #include <xpu/runtime.h>
 
-#include "xpu/kernel/math_xpu2.h"  //pow()
+#include "xpu/kernel/math_xpu2.h"  // pow()
 #endif
 
 namespace phi {
@@ -499,7 +499,7 @@ struct MinGradXYFunctor {
 
 // Modulo
 template <typename T, typename Enable = void>
-struct ModuloFunctor {
+struct RemainderFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     T res = a % b;
 
@@ -511,7 +511,7 @@ struct ModuloFunctor {
 };
 
 template <typename T>
-struct ModuloFunctor<
+struct RemainderFunctor<
     T,
     typename std::enable_if_t<std::is_floating_point<T>::value>> {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
@@ -525,7 +525,7 @@ struct ModuloFunctor<
 };
 
 template <typename T, typename Enable = void>
-struct InverseModuloFunctor {
+struct InverseRemainderFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     T res = b % a;
     if ((res != 0) && ((res < 0) != (a < 0))) res += a;
@@ -534,7 +534,7 @@ struct InverseModuloFunctor {
 };
 
 template <typename T>
-struct InverseModuloFunctor<
+struct InverseRemainderFunctor<
     T,
     typename std::enable_if_t<std::is_floating_point<T>::value>> {
   inline HOSTDEVICE T operator()(const T a, const T b) const {

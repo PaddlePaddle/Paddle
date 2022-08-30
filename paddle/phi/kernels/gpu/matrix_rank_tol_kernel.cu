@@ -378,7 +378,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
 
   phi::MaxKernel<T, Context>(dev_ctx,
                              eigenvalue_tensor,
-                             std::vector<int64_t>{-1},
+                             phi::IntArray({-1}),
                              false,
                              &max_eigenvalue_tensor);
 

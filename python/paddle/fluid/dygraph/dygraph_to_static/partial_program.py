@@ -18,6 +18,7 @@ import six
 
 import paddle
 from paddle.fluid import framework, backward, core, program_guard
+from paddle.fluid.executor import _is_enable_standalone_executor, _is_dy2st_enable_standalone_executor
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
@@ -26,6 +27,7 @@ from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.compiler import BuildStrategy
+from paddle.fluid.framework import _apply_pass
 from paddle.fluid.contrib.mixed_precision.decorator import AutoMixedPrecisionLists
 from paddle.fluid.contrib.mixed_precision.fp16_utils import rewrite_program, cast_model_to_fp16
 from paddle.fluid.dygraph.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
@@ -175,105 +177,208 @@ class PartialProgramLayer:
     def _double_grads(self):
         return self._get_double_grads(self._origin_main_program)
 
-    @LazyInitialized
-    def _infer_program(self):
-        """
-        Lazy initialized property of infer_program.
-        """
-        return self._clone_for_test(self._origin_main_program)
+    # whole
+    @switch_to_static_graph
+    def _create_program(self, is_infer_mode=False):
+        if is_infer_mode:
+            return self._origin_main_program.clone(for_test=is_infer_mode)
+        else:
+            train_program = self._append_backward_desc(
+                self._origin_main_program)
+            # Note: Only set grad type once after initializing train program. So we put it here.
+            self._set_grad_type(self._params, train_program)
+            return train_program
+
+    @switch_to_static_graph
+    def _create_amp_program(self, is_infer_mode=False):
+        amp_program = self._origin_main_program.clone(for_test=is_infer_mode)
+        with program_guard(amp_program):
+            rewrite_program(amp_program, self._amp_list)
+        if is_infer_mode:
+            return amp_program
+        else:
+            train_amp_program = self._append_backward_desc(amp_program)
+            self._set_grad_type(self._params, train_amp_program)
+            return train_amp_program
+
+    @switch_to_static_graph
+    def _create_pure_fp16_program(self, is_infer_mode=False):
+        pure_fp16_program = self._origin_main_program.clone(
+            for_test=is_infer_mode)
+        with program_guard(pure_fp16_program):
+            cast_model_to_fp16(pure_fp16_program,
+                               self._amp_list,
+                               use_fp16_guard=False)
+        if is_infer_mode:
+            return pure_fp16_program
+        else:
+            train_pure_fp16_program = self._append_backward_desc(
+                pure_fp16_program)
+            self._set_grad_type(self._params, train_pure_fp16_program)
+            return train_pure_fp16_program
+
+    @switch_to_static_graph
+    def _create_forward_backward_train_program(self):
+        whole_program = self._create_program()
+        forward_end_op_index = self._infer_program.desc.block(0).op_size()
+        return self._get_forward_backward_program_form(whole_program,
+                                                       forward_end_op_index)
+
+    @switch_to_static_graph
+    def _create_forward_backward_train_amp_program(self):
+        whole_program = self._create_amp_program()
+        forward_end_op_index = self._infer_amp_program.desc.block(0).op_size()
+        return self._get_forward_backward_program_form(whole_program,
+                                                       forward_end_op_index)
+
+    @switch_to_static_graph
+    def _create_forward_backward_train_pure_fp16_program(self):
+        whole_program = self._create_pure_fp16_program()
+        forward_end_op_index = self._infer_pure_fp16_program.desc.block(
+            0).op_size()
+        return self._get_forward_backward_program_form(whole_program,
+                                                       forward_end_op_index)
 
     @LazyInitialized
     def _train_program(self):
-        """
-        Lazy initialized property of train_program.
-        """
-        train_program = self._append_backward_desc(self._origin_main_program)
-        # Note: Only set grad type once after initializing train program. So we
-        # put it here.
-        self._set_grad_type(self._params, train_program)
-
-        return train_program
+        return self._create_program()
 
     @LazyInitialized
-    @switch_to_static_graph
-    def _infer_amp_program(self):
-        """
-        Lazy initialized property of infer_amp_program.
-        """
-        infer_amp_program = self._origin_main_program.clone()
-        with program_guard(infer_amp_program):
-            rewrite_program(infer_amp_program, self._amp_list)
-
-        return infer_amp_program
+    def _infer_program(self):
+        return self._create_program(is_infer_mode=True)
 
     @LazyInitialized
     def _train_amp_program(self):
-        """
-        Lazy initialized property of train_amp_program.
-        """
-        train_amp_program = self._append_backward_desc(self._infer_amp_program)
-        self._set_grad_type(self._params, train_amp_program)
-        return train_amp_program
+        return self._create_amp_program()
 
     @LazyInitialized
-    @switch_to_static_graph
-    def _infer_pure_fp16_program(self):
-        """
-        Lazy initialized property of _infer_pure_fp16_program.
-        """
-        infer_pure_fp16_program = self._origin_main_program.clone()
-        with program_guard(infer_pure_fp16_program):
-            cast_model_to_fp16(infer_pure_fp16_program,
-                               self._amp_list,
-                               use_fp16_guard=False)
-
-        return infer_pure_fp16_program
+    def _infer_amp_program(self):
+        return self._create_amp_program(is_infer_mode=True)
 
     @LazyInitialized
     def _train_pure_fp16_program(self):
-        """
-        Lazy initialized property of _train_pure_fp16_program.
-        """
-        train_pure_fp16_program = self._append_backward_desc(
-            self._infer_pure_fp16_program)
-        self._set_grad_type(self._params, train_pure_fp16_program)
-        return train_pure_fp16_program
+        return self._create_pure_fp16_program()
 
     @LazyInitialized
-    def _infer_program_id(self):
-        return _hash_with_id(self._infer_program, self)
+    def _infer_pure_fp16_program(self):
+        return self._create_pure_fp16_program(is_infer_mode=True)
 
     @LazyInitialized
-    def _infer_pure_fp16_program_id(self):
-        return _hash_with_id(self._infer_pure_fp16_program, self)
+    def _train_forward_backward_program(self):
+        program = self._create_forward_backward_train_program()
+        return program
 
     @LazyInitialized
-    def _infer_amp_program_id(self):
-        return _hash_with_id(self._infer_amp_program, self)
+    def _train_amp_forward_backward_program(self):
+        program = self._create_forward_backward_train_amp_program()
+        return program
+
+    @LazyInitialized
+    def _train_pure_fp16_forward_backward_program(self):
+        program = self._create_forward_backward_train_pure_fp16_program()
+        return program
+
+    @property
+    def whole_program(self):
+        if self.training:
+            if _in_amp_guard():
+                return self._train_amp_program
+            elif _in_pure_fp16_guard():
+                return self._train_pure_fp16_program
+            else:
+                return self._train_program
+        else:
+            if _in_amp_guard():
+                return self._infer_amp_program
+            elif _in_pure_fp16_guard():
+                return self._infer_pure_fp16_program
+            else:
+                return self._infer_program
+
+    @property
+    def forward_program(self):
+        if self.training:
+            if _in_amp_guard():
+                program = self._train_amp_forward_backward_program
+                return program[0]
+            elif _in_pure_fp16_guard():
+                program = self._train_pure_fp16_forward_backward_program
+                return program[0]
+            else:
+                program = self._train_forward_backward_program
+                return program[0]
+        else:
+            if _in_amp_guard():
+                return self._infer_amp_program
+            elif _in_pure_fp16_guard():
+                return self._infer_pure_fp16_program
+            else:
+                return self._infer_program
+
+    @property
+    def backward_program(self):
+        if self.training:
+            if _in_amp_guard():
+                program = self._train_amp_forward_backward_program
+                return program[1]
+            elif _in_pure_fp16_guard():
+                program = self._train_pure_fp16_forward_backward_program
+                return program[1]
+            else:
+                program = self._train_forward_backward_program
+                return program[1]
+        else:
+            return paddle.static.Program()
 
     @LazyInitialized
     def _train_program_id(self):
         program_id = _hash_with_id(self._train_program, self)
         core._set_cached_executor_build_strategy(program_id,
                                                  self._build_strategy)
-
         return program_id
+
+    @LazyInitialized
+    def _infer_program_id(self):
+        return _hash_with_id(self._infer_program, self)
 
     @LazyInitialized
     def _train_amp_program_id(self):
         program_id = _hash_with_id(self._train_amp_program, self)
         core._set_cached_executor_build_strategy(program_id,
                                                  self._build_strategy)
-
         return program_id
+
+    @LazyInitialized
+    def _infer_amp_program_id(self):
+        return _hash_with_id(self._infer_amp_program, self)
 
     @LazyInitialized
     def _train_pure_fp16_program_id(self):
         program_id = _hash_with_id(self._train_pure_fp16_program, self)
         core._set_cached_executor_build_strategy(program_id,
                                                  self._build_strategy)
-
         return program_id
+
+    @LazyInitialized
+    def _infer_pure_fp16_program_id(self):
+        return _hash_with_id(self._infer_pure_fp16_program, self)
+
+    @property
+    def whole_program_id(self):
+        if self.training:
+            if _in_amp_guard():
+                return self._train_amp_program_id
+            elif _in_pure_fp16_guard():
+                return self._train_pure_fp16_program_id
+            else:
+                return self._train_program_id
+        else:
+            if _in_amp_guard():
+                return self._infer_amp_program_id
+            elif _in_pure_fp16_guard():
+                return self._infer_pure_fp16_program_id
+            else:
+                return self._infer_program_id
 
     def _verify_program(self, main_program):
         """
@@ -429,6 +534,8 @@ class PartialProgramLayer:
     def __call__(self, inputs):
         in_vars, out_vars = self._prepare(inputs)
 
+        self._cast_fp16_if_pure_fp16(in_vars)
+
         attrs = [
             'global_block',
             self.program.desc.block(0), 'start_op_index', 0, 'end_op_index',
@@ -440,7 +547,13 @@ class PartialProgramLayer:
                 ('cuda_graph_capture_mode', self._cuda_graph_capture_mode,
                  'cuda_graph_pool_id', self._cuda_graph_pool_id))
 
-        self._cast_fp16_if_pure_fp16(in_vars)
+        use_interpretorcore = _is_enable_standalone_executor(
+        ) and _is_dy2st_enable_standalone_executor()
+        attrs.extend(('use_interpretorcore', use_interpretorcore))
+        if use_interpretorcore:
+            attrs.extend(
+                ('forward_global_block', self.forward_program.desc.block(0),
+                 'backward_global_block', self.backward_program.desc.block(0)))
 
         _legacy_C_ops.run_program(self._valid_vars(in_vars),
                                   self._valid_vars(self._params),
@@ -459,30 +572,24 @@ class PartialProgramLayer:
                         == paddle.float16):
                     in_vars[i] = var.astype('float16')
                     in_vars[i].name = name
+                if (self.forward_program.global_block().has_var(name)
+                        and self.forward_program.global_block().var(name).dtype
+                        == paddle.float16):
+                    in_vars[i] = var.astype('float16')
+                    in_vars[i].name = name
+                if (self.backward_program.global_block().has_var(name)
+                        and self.backward_program.global_block().var(name).dtype
+                        == paddle.float16):
+                    in_vars[i] = var.astype('float16')
+                    in_vars[i].name = name
 
     @property
     def program(self):
-        if self.training:
-            return self.train_program
-        else:
-            return self.infer_program
+        return self.whole_program
 
     @property
     def program_id(self):
-        if self.training:
-            if _in_amp_guard():
-                return self._train_amp_program_id
-            elif _in_pure_fp16_guard():
-                return self._train_pure_fp16_program_id
-            else:
-                return self._train_program_id
-        else:
-            if _in_amp_guard():
-                return self._infer_amp_program_id
-            elif _in_pure_fp16_guard():
-                return self._infer_pure_fp16_program_id
-            else:
-                return self._infer_program_id
+        return self.whole_program_id
 
     @property
     def train_program(self):
@@ -501,6 +608,64 @@ class PartialProgramLayer:
             return self._infer_pure_fp16_program
         else:
             return self._infer_program
+
+    @switch_to_static_graph
+    def _get_forward_backward_program_form(self, whole_program,
+                                           forward_end_op_index):
+        forward_builded_program = add_build_strategy_for(
+            whole_program, 0, forward_end_op_index, self._build_strategy)
+        backward_start_op_index = forward_end_op_index + 2 * len(
+            self._outputs.var_ids)
+        backward_end_op_index = whole_program.desc.block(0).op_size()
+        backward_builded_program = add_build_strategy_for(
+            whole_program, backward_start_op_index, backward_end_op_index,
+            self._build_strategy)
+        self._apply_inplace_pass(forward_builded_program,
+                                 backward_builded_program)
+        return [forward_builded_program, backward_builded_program]
+
+    def _apply_inplace_pass(self, forward_program, backward_program):
+        attr_types = {
+            "use_cuda": "bool",
+            "mem_opt_skip_vars": "list[str]",
+            "for_partial_block": "bool"
+        }
+        empty_startup_program = paddle.static.Program()
+        use_cuda = True if core.is_compiled_with_cuda() else False
+        # skip data var
+        forward_mem_opt_skip_vars = []
+        backward_mem_opt_skip_vars = []
+        for var_name, var in forward_program.global_block().vars.items():
+            if var.is_data:
+                forward_mem_opt_skip_vars.append(var_name)
+        for var_name, var in backward_program.global_block().vars.items():
+            if var.is_data:
+                backward_mem_opt_skip_vars.append(var_name)
+        for var in self._inputs:
+            if isinstance(var, paddle.fluid.framework.Variable):
+                forward_mem_opt_skip_vars.append(var.desc.name())
+                backward_mem_opt_skip_vars.append(var.desc.name())
+        for var in self._outputs:
+            if isinstance(var, paddle.fluid.framework.Variable):
+                forward_mem_opt_skip_vars.append(var.desc.name())
+                backward_mem_opt_skip_vars.append(var.desc.name())
+        for var_name in core.parse_safe_eager_deletion_skip_vars(
+                backward_program.desc):
+            forward_mem_opt_skip_vars.append(var_name)
+        attrs = {
+            "use_cuda": use_cuda,
+            "mem_opt_skip_vars": forward_mem_opt_skip_vars,
+            "for_partial_block": True
+        }
+        _apply_pass(forward_program, empty_startup_program,
+                    "buffer_shared_inplace_pass", attrs, attr_types)
+        attrs = {
+            "use_cuda": use_cuda,
+            "mem_opt_skip_vars": backward_mem_opt_skip_vars,
+            "for_partial_block": True
+        }
+        _apply_pass(backward_program, empty_startup_program,
+                    "buffer_shared_inplace_pass", attrs, attr_types)
 
     def _prepare(self, inputs):
         """
@@ -739,3 +904,23 @@ def partial_program_from(concrete_program):
                                concrete_program.outputs,
                                concrete_program.parameters,
                                **concrete_program.kwargs)
+
+
+@switch_to_static_graph
+def add_build_strategy_for(program,
+                           start_op_index,
+                           end_op_index,
+                           build_strategy=None):
+    if (start_op_index < end_op_index):
+        compiled_program = paddle.static.CompiledProgram(
+            core.Graph(program.desc, start_op_index, end_op_index),
+            build_strategy=build_strategy)
+        compiled_program._compile(core.Scope(),
+                                  framework._current_expected_place())
+        ir_graph = framework.IrGraph(compiled_program._graph)
+        builded_program = ir_graph.to_program()
+        if hasattr(compiled_program._program, 'lr_sheduler'):
+            builded_program.lr_sheduler = compiled_program._program.lr_sheduler
+    else:
+        builded_program = program
+    return builded_program
