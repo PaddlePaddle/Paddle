@@ -3138,7 +3138,7 @@ class Operator(object):
         Returns:
             core.AttrType: the attribute type.
         """
-        return self.desc.attr_type(name)
+        return self.desc.attr_type(name, True)
 
     def _set_attr(self, name, val):
         """
@@ -3290,6 +3290,41 @@ class Operator(object):
 
         return self.desc._blocks_attr_ids(name)
 
+    def _var_attr(self, name):
+        """
+        Get the Variable attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            Variable: the Variable attribute.
+        """
+        attr_type = self.desc.attr_type(name, True)
+        assert attr_type == core.AttrType.VAR, "Required type attr({}) is Variable, but received {}".format(
+            name, attr_type)
+        attr_var_name = self.desc.attr(name, True).name()
+        return self.block._var_recursive(attr_var_name)
+
+    def _vars_attr(self, name):
+        """
+        Get the Variables attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            Variables: the Variables attribute.
+        """
+        attr_type = self.desc.attr_type(name, True)
+        assert attr_type == core.AttrType.VARS, "Required type attr({}) is list[Variable], but received {}".format(
+            name, attr_type)
+        attr_vars = [
+            self.block._var_recursive(var.name())
+            for var in self.desc.attr(name, True)
+        ]
+        return attr_vars
+
     def all_attrs(self):
         """
         Get the attribute dict.
@@ -3300,16 +3335,17 @@ class Operator(object):
         attr_names = self.attr_names
         attr_map = {}
         for n in attr_names:
-            attr_type = self.desc.attr_type(n)
+            attr_type = self.desc.attr_type(n, True)
             if attr_type == core.AttrType.BLOCK:
                 attr_map[n] = self._block_attr(n)
-                continue
-
-            if attr_type == core.AttrType.BLOCKS:
+            elif attr_type == core.AttrType.BLOCKS:
                 attr_map[n] = self._blocks_attr(n)
-                continue
-
-            attr_map[n] = self.attr(n)
+            elif attr_type == core.AttrType.VAR:
+                attr_map[n] = self._var_attr(n)
+            elif attr_type == core.AttrType.VARS:
+                attr_map[n] = self._vars_attr(n)
+            else:
+                attr_map[n] = self.attr(n)
 
         return attr_map
 
