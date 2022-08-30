@@ -419,12 +419,11 @@ OP_NAMEMAPPING = {
     'elementwise_min': 'minimum',
     'elementwise_pow': 'elementwise_pow',
     'elementwise_floordiv': 'floor_divide',
-    'elementwise_mod': 'modulo',
     'elementwise_add': 'add',
     'elementwise_sub': 'subtract',
     'elementwise_mul': 'multiply',
     'elementwise_div': 'divide',
-    'elementwise_mod': 'modulo',
+    'elementwise_mod': 'remainder',
 }
 
 @dygraph_only
