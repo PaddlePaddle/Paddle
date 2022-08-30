@@ -16,7 +16,7 @@
 from ...fluid.layers import utils, LayerHelper
 from ...tensor.manipulation import unsqueeze, squeeze
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
 from paddle.fluid.framework import _in_legacy_dygraph
 from paddle.fluid.framework import in_dygraph_mode
@@ -192,23 +192,16 @@ def avg_pool1d(x,
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ValueError: If `padding` is a list or tuple but its length is greater than 1.
-        ShapeError: If the input is not a 3-D tensor.
-        ShapeError: If the output's shape calculated is not greater than 0.
-
     Examples:
         .. code-block:: python
           
             import paddle
-            import paddle.nn.functional as F
-            import numpy as np
+            import paddle.nn as nn
 
-            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
-            out = F.avg_pool1d(data, kernel_size=2, stride=2, padding=0)
-            # out shape: [1, 3, 16]
+            data = paddle.uniform([1, 3, 32], paddle.float32)
+            AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
+            pool_out = AvgPool1D(data)
+            # pool_out shape: [1, 3, 16]
     """
     """NCL to NCHW"""
     data_format = "NCHW"
@@ -237,13 +230,13 @@ def avg_pool1d(x,
     padding = _expand_low_nd_padding(padding)
 
     if in_dynamic_mode():
-        output = _C_ops.pool2d(x, 'pooling_type', 'avg', 'ksize', kernel_size,
-                               'global_pooling', False, 'strides', stride,
-                               'paddings', padding, 'padding_algorithm',
-                               padding_algorithm, 'use_cudnn', True,
-                               'ceil_mode', ceil_mode, 'use_mkldnn', False,
-                               'exclusive', exclusive, 'data_format',
-                               data_format)
+        output = _legacy_C_ops.pool2d(x, 'pooling_type', 'avg', 'ksize',
+                                      kernel_size, 'global_pooling', False,
+                                      'strides', stride, 'paddings', padding,
+                                      'padding_algorithm', padding_algorithm,
+                                      'use_cudnn', True, 'ceil_mode', ceil_mode,
+                                      'use_mkldnn', False, 'exclusive',
+                                      exclusive, 'data_format', data_format)
         return squeeze(output, [2])
 
     op_type = 'pool2d'
@@ -318,20 +311,14 @@ def avg_pool2d(x,
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
     
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
-    
     Examples:
         .. code-block:: python
           
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
             
             # avg pool2d
-            x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+            x = paddle.uniform([1, 3, 32, 32], paddle.float32)
             out = F.avg_pool2d(x,
                             kernel_size=2,
                             stride=2, padding=0)
@@ -354,18 +341,16 @@ def avg_pool2d(x,
 
     if in_dygraph_mode() or _in_legacy_dygraph():
         if in_dygraph_mode():
-            output = _C_ops.final_state_pool2d(x, kernel_size, stride, padding,
-                                               ceil_mode, exclusive,
-                                               data_format, 'avg', False, False,
-                                               padding_algorithm)
+            output = _C_ops.pool2d(x, kernel_size, stride, padding, ceil_mode,
+                                   exclusive, data_format, 'avg', False, False,
+                                   padding_algorithm)
         else:
-            output = _C_ops.pool2d(x, 'pooling_type', 'avg', 'ksize',
-                                   kernel_size, 'global_pooling', False,
-                                   'padding_algorithm', padding_algorithm,
-                                   'strides', stride, 'paddings', padding,
-                                   'use_cudnn', True, 'ceil_mode', ceil_mode,
-                                   'use_mkldnn', False, 'exclusive', exclusive,
-                                   'data_format', data_format)
+            output = _legacy_C_ops.pool2d(
+                x, 'pooling_type', 'avg', 'ksize', kernel_size,
+                'global_pooling', False, 'padding_algorithm', padding_algorithm,
+                'strides', stride, 'paddings', padding, 'use_cudnn', True,
+                'ceil_mode', ceil_mode, 'use_mkldnn', False, 'exclusive',
+                exclusive, 'data_format', data_format)
         if divisor_override is None:
             return output
         else:
@@ -446,19 +431,13 @@ def avg_pool3d(x,
     
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
-    
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
-    
+
     Examples:
         .. code-block:: python
           
           import paddle
-          import numpy as np
 
-          x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
+          x = paddle.uniform([1, 3, 32, 32, 32], paddle.float32)
           # avg pool3d
           out = paddle.nn.functional.avg_pool3d(
                                             x,
@@ -484,18 +463,16 @@ def avg_pool3d(x,
 
     if in_dygraph_mode() or _in_legacy_dygraph():
         if in_dygraph_mode():
-            output = _C_ops.final_state_pool3d(x, kernel_size, stride, padding,
-                                               ceil_mode, exclusive,
-                                               data_format, 'avg', False, False,
-                                               padding_algorithm)
+            output = _C_ops.pool3d(x, kernel_size, stride, padding, ceil_mode,
+                                   exclusive, data_format, 'avg', False, False,
+                                   padding_algorithm)
         if _in_legacy_dygraph():
-            output = _C_ops.pool3d(x, 'pooling_type', 'avg', 'ksize',
-                                   kernel_size, 'strides', stride, 'paddings',
-                                   padding, 'global_pooling', False,
-                                   'padding_algorithm', padding_algorithm,
-                                   'use_cudnn', True, 'ceil_mode', ceil_mode,
-                                   'use_mkldnn', False, 'exclusive', exclusive,
-                                   'data_format', data_format)
+            output = _legacy_C_ops.pool3d(
+                x, 'pooling_type', 'avg', 'ksize', kernel_size, 'strides',
+                stride, 'paddings', padding, 'global_pooling', False,
+                'padding_algorithm', padding_algorithm, 'use_cudnn', True,
+                'ceil_mode', ceil_mode, 'use_mkldnn', False, 'exclusive',
+                exclusive, 'data_format', data_format)
         if divisor_override is None:
             return output
         else:
@@ -581,9 +558,8 @@ def max_pool1d(x,
 
           import paddle
           import paddle.nn.functional as F
-          import numpy as np
 
-          data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+          data = paddle.uniform([1, 3, 32], paddle.float32)
           pool_out = F.max_pool1d(data, kernel_size=2, stride=2, padding=0)
           # pool_out shape: [1, 3, 16]
           pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
@@ -610,21 +586,20 @@ def max_pool1d(x,
 
     if in_dygraph_mode():
         if return_mask:
-            pool_out = _C_ops.final_state_max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False)
+            pool_out = _C_ops.max_pool2d_with_index(x, kernel_size, stride,
+                                                    padding, False, False)
             return (squeeze(pool_out[0], [2]),
                     squeeze(pool_out[1], [2])) if return_mask else squeeze(
                         pool_out[0], [2])
         else:
-            pool_out = _C_ops.final_state_pool2d(x, kernel_size, stride,
-                                                 padding, ceil_mode, True,
-                                                 data_format, 'max', False,
-                                                 False, padding_algorithm)
+            pool_out = _C_ops.pool2d(x, kernel_size, stride, padding, ceil_mode,
+                                     True, data_format, 'max', False, False,
+                                     padding_algorithm)
             return squeeze(pool_out, [2])
 
     if _in_legacy_dygraph():
         if return_mask:
-            pool_out = _C_ops.max_pool2d_with_index(
+            pool_out = _legacy_C_ops.max_pool2d_with_index(
                 x, 'ksize', kernel_size, 'global_pooling', False, 'strides',
                 stride, 'paddings', padding, 'padding_algorithm',
                 padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
@@ -634,13 +609,12 @@ def max_pool1d(x,
                     squeeze(pool_out[1], [2])) if return_mask else squeeze(
                         pool_out[0], [2])
         else:
-            pool_out = _C_ops.pool2d(x, 'pooling_type', 'max', 'ksize',
-                                     kernel_size, 'global_pooling', False,
-                                     'padding_algorithm', padding_algorithm,
-                                     'strides', stride, 'paddings', padding,
-                                     'use_cudnn', True, 'ceil_mode', ceil_mode,
-                                     'use_mkldnn', False, 'exclusive', True,
-                                     'data_format', data_format)
+            pool_out = _legacy_C_ops.pool2d(
+                x, 'pooling_type', 'max', 'ksize', kernel_size,
+                'global_pooling', False, 'padding_algorithm', padding_algorithm,
+                'strides', stride, 'paddings', padding, 'use_cudnn', True,
+                'ceil_mode', ceil_mode, 'use_mkldnn', False, 'exclusive', True,
+                'data_format', data_format)
             return squeeze(pool_out, [2])
 
     op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
@@ -783,14 +757,14 @@ def max_unpool1d(x,
                                       output_size)
 
     if in_dygraph_mode():
-        output = _C_ops.final_state_unpool(x, indices, kernel_size, stride,
-                                           padding, output_size, data_format)
+        output = _C_ops.unpool(x, indices, kernel_size, stride, padding,
+                               output_size, data_format)
         return squeeze(output, [2])
     elif in_dynamic_mode():
-        output = _C_ops.unpool(x, indices, 'unpooling_type', 'max', 'ksize',
-                               kernel_size, 'strides', stride, 'paddings',
-                               padding, "output_size", output_size,
-                               "data_format", data_format)
+        output = _legacy_C_ops.unpool(x, indices, 'unpooling_type', 'max',
+                                      'ksize', kernel_size, 'strides', stride,
+                                      'paddings', padding, "output_size",
+                                      output_size, "data_format", data_format)
         return squeeze(output, [2])
 
     op_type = "unpool"
@@ -902,14 +876,14 @@ def max_unpool2d(x,
                                       output_size)
 
     if in_dygraph_mode():
-        output = _C_ops.final_state_unpool(x, indices, kernel_size, stride,
-                                           padding, output_size, data_format)
+        output = _C_ops.unpool(x, indices, kernel_size, stride, padding,
+                               output_size, data_format)
 
     elif in_dynamic_mode():
-        output = _C_ops.unpool(x, indices, 'unpooling_type', 'max', 'ksize',
-                               kernel_size, 'strides', stride, 'paddings',
-                               padding, "output_size", output_size,
-                               "data_format", data_format)
+        output = _legacy_C_ops.unpool(x, indices, 'unpooling_type', 'max',
+                                      'ksize', kernel_size, 'strides', stride,
+                                      'paddings', padding, "output_size",
+                                      output_size, "data_format", data_format)
         return output
 
     op_type = "unpool"
@@ -1019,13 +993,13 @@ def max_unpool3d(x,
                                       output_size)
 
     if in_dygraph_mode():
-        output = _C_ops.final_state_unpool3d(x, indices, kernel_size, stride,
-                                             padding, output_size, data_format)
+        output = _C_ops.unpool3d(x, indices, kernel_size, stride, padding,
+                                 output_size, data_format)
     elif in_dynamic_mode():
-        output = _C_ops.unpool3d(x, indices, 'unpooling_type', 'max', 'ksize',
-                                 kernel_size, 'strides', stride, 'paddings',
-                                 padding, "output_size", output_size,
-                                 "data_format", data_format)
+        output = _legacy_C_ops.unpool3d(x, indices, 'unpooling_type', 'max',
+                                        'ksize', kernel_size, 'strides', stride,
+                                        'paddings', padding, "output_size",
+                                        output_size, "data_format", data_format)
         return output
 
     op_type = "unpool3d"
@@ -1141,18 +1115,17 @@ def max_pool2d(x,
 
     if in_dygraph_mode():
         if return_mask:
-            output = _C_ops.final_state_max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False)
+            output = _C_ops.max_pool2d_with_index(x, kernel_size, stride,
+                                                  padding, False, False)
             return output if return_mask else output[0]
         else:
-            return _C_ops.final_state_pool2d(x, kernel_size, stride, padding,
-                                             ceil_mode, True, data_format,
-                                             'max', False, False,
-                                             padding_algorithm)
+            return _C_ops.pool2d(x, kernel_size, stride, padding, ceil_mode,
+                                 True, data_format, 'max', False, False,
+                                 padding_algorithm)
 
     if _in_legacy_dygraph():
         if return_mask:
-            output = _C_ops.max_pool2d_with_index(
+            output = _legacy_C_ops.max_pool2d_with_index(
                 x, 'ksize', kernel_size, 'global_pooling', False, 'strides',
                 stride, 'paddings', padding, 'padding_algorithm',
                 padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
@@ -1160,13 +1133,12 @@ def max_pool2d(x,
                 data_format)
             return output if return_mask else output[0]
         else:
-            output = _C_ops.pool2d(x, 'pooling_type', 'max', 'ksize',
-                                   kernel_size, 'global_pooling', False,
-                                   'padding_algorithm', padding_algorithm,
-                                   'strides', stride, 'paddings', padding,
-                                   'use_cudnn', True, 'ceil_mode', ceil_mode,
-                                   'use_mkldnn', False, 'exclusive', True,
-                                   'data_format', data_format)
+            output = _legacy_C_ops.pool2d(
+                x, 'pooling_type', 'max', 'ksize', kernel_size,
+                'global_pooling', False, 'padding_algorithm', padding_algorithm,
+                'strides', stride, 'paddings', padding, 'use_cudnn', True,
+                'ceil_mode', ceil_mode, 'use_mkldnn', False, 'exclusive', True,
+                'data_format', data_format)
             return output
 
     op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
@@ -1284,18 +1256,17 @@ def max_pool3d(x,
 
     if in_dygraph_mode():
         if return_mask:
-            output = _C_ops.final_state_max_pool3d_with_index(
-                x, kernel_size, stride, padding, False, False)
+            output = _C_ops.max_pool3d_with_index(x, kernel_size, stride,
+                                                  padding, False, False)
             return output if return_mask else output[0]
         else:
-            return _C_ops.final_state_pool3d(x, kernel_size, stride, padding,
-                                             ceil_mode, True, data_format,
-                                             'max', False, False,
-                                             padding_algorithm)
+            return _C_ops.pool3d(x, kernel_size, stride, padding, ceil_mode,
+                                 True, data_format, 'max', False, False,
+                                 padding_algorithm)
 
     if _in_legacy_dygraph():
         if return_mask:
-            output = _C_ops.max_pool3d_with_index(
+            output = _legacy_C_ops.max_pool3d_with_index(
                 x, 'pooling_type', 'max', 'ksize', kernel_size, 'strides',
                 stride, 'paddings', padding, 'global_pooling', False,
                 'padding_algorithm', padding_algorithm, 'use_cudnn', True,
@@ -1303,13 +1274,12 @@ def max_pool3d(x,
                 'data_format', data_format)
             return output if return_mask else output[0]
         else:
-            output = _C_ops.pool3d(x, 'pooling_type', 'max', 'ksize',
-                                   kernel_size, 'global_pooling', False,
-                                   'padding_algorithm', padding_algorithm,
-                                   'strides', stride, 'paddings', padding,
-                                   'use_cudnn', True, 'ceil_mode', ceil_mode,
-                                   'use_mkldnn', False, 'exclusive', True,
-                                   'data_format', data_format)
+            output = _legacy_C_ops.pool3d(
+                x, 'pooling_type', 'max', 'ksize', kernel_size,
+                'global_pooling', False, 'padding_algorithm', padding_algorithm,
+                'strides', stride, 'paddings', padding, 'use_cudnn', True,
+                'ceil_mode', ceil_mode, 'use_mkldnn', False, 'exclusive', True,
+                'data_format', data_format)
             return output
 
     op_type = "max_pool3d_with_index" if return_mask else "pool3d"
@@ -1351,8 +1321,10 @@ def adaptive_avg_pool1d(x, output_size, name=None):
         x (Tensor): The input Tensor of pooling, which is a 3-D tensor with shape :math:`[N, C, L]`, where :math:`N` is batch size, :math:`C` is the number of channels and :math:`L` is the length of the feature. The data type is float32 or float64.
         output_size (int): The target output size. Its data type must be int.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+    
     Returns:
         Tensor: The result of 1D adaptive average pooling. Its data type is same as input.
+    
     Examples:
         .. code-block:: python
 
@@ -1385,8 +1357,8 @@ def adaptive_avg_pool1d(x, output_size, name=None):
 
     x = unsqueeze(x, [2])
     if in_dynamic_mode():
-        pool_out = _C_ops.pool2d(x, 'pooling_type', pool_type, 'ksize',
-                                 pool_size, 'adaptive', True)
+        pool_out = _legacy_C_ops.pool2d(x, 'pooling_type', pool_type, 'ksize',
+                                        pool_size, 'adaptive', True)
         return squeeze(pool_out, [2])
 
     l_type = "pool2d"
@@ -1410,8 +1382,16 @@ def adaptive_avg_pool1d(x, output_size, name=None):
 
 def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
     """
-    This API implements adaptive average pooling 2d operation.
-    See more details in :ref:`api_nn_pooling_AdaptiveAvgPool2d` .
+    Applies 2D adaptive avg pooling on input tensor. The h and w dimensions
+    of the output tensor are determined by the parameter output_size.
+    
+    For avg adaptive pool2d:
+    ..  math::
+        hstart &= floor(i * H_{in} / H_{out})
+        hend &= ceil((i + 1) * H_{in} / H_{out})
+        wstart &= floor(j * W_{in} / W_{out})
+        wend &= ceil((j + 1) * W_{in} / W_{out})
+        Output(i ,j) &= \frac{\sum Input[hstart:hend, wstart:wend]}{(hend - hstart) * (wend - wstart)}
 
     Args:
         x (Tensor): The input tensor of adaptive avg pool2d operator, which is a 4-D tensor.
@@ -1427,8 +1407,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
                              None by default.
     Returns:
         Tensor: The output tensor of avg adaptive pool2d result. The data type is same as input tensor.
-    Raises:
-        ValueError: If `data_format` is not "NCHW" or "NHWC".
+
     Examples:
         .. code-block:: python
 
@@ -1483,15 +1462,15 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             output_size[1] = in_w
 
     if in_dygraph_mode():
-        return _C_ops.final_state_pool2d_gpudnn_unused(x, output_size, [1, 1],
-                                                       [0, 0], False, True,
-                                                       data_format, 'avg',
-                                                       False, True, "EXPLICIT")
+        return _C_ops.pool2d_gpudnn_unused(x, output_size, [1, 1], [0, 0],
+                                           False, True, data_format, 'avg',
+                                           False, True, "EXPLICIT")
 
     if _in_legacy_dygraph():
-        return _C_ops.pool2d(x, 'pooling_type', 'avg', 'ksize', output_size,
-                             'global_pooling', False, 'adaptive', True,
-                             'data_format', data_format)
+        return _legacy_C_ops.pool2d(x, 'pooling_type', 'avg', 'ksize',
+                                    output_size, 'global_pooling', False,
+                                    'adaptive', True, 'data_format',
+                                    data_format)
 
     l_type = 'pool2d'
 
@@ -1516,8 +1495,19 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
 
 def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
     """
-    This API implements adaptive average pooling 3d operation.
-    See more details in :ref:`api_nn_pooling_AdaptiveAvgPool3d` .
+    This operation applies 3D adaptive avg pooling on input tensor. The h and w dimensions
+    of the output tensor are determined by the parameter output_size.
+    
+    For avg adaptive pool3d:
+    ..  math::
+        dstart &= floor(i * D_{in} / D_{out})
+        dend &= ceil((i + 1) * D_{in} / D_{out})
+        hstart &= floor(j * H_{in} / H_{out})
+        hend &= ceil((j + 1) * H_{in} / H_{out})
+        wstart &= floor(k * W_{in} / W_{out})
+        wend &= ceil((k + 1) * W_{in} / W_{out})
+        Output(i ,j, k) &= \frac{\sum Input[dstart:dend, hstart:hend, wstart:wend]}
+            {(dend - dstart) * (hend - hstart) * (wend - wstart)}
 
     Args:
         x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
@@ -1533,8 +1523,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
                              None by default.
     Returns:
         Tensor: The output tensor of avg adaptive pool3d result. The data type is same as input tensor.
-    Raises:
-        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
+
     Examples:
         .. code-block:: python
 
@@ -1557,12 +1546,10 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             #                 output[:, :, i, j, k] =
             #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
-            import numpy as np
-            input_data = np.random.rand(2, 3, 8, 32, 32)
-            x = paddle.to_tensor(input_data)
-            # x.shape is [2, 3, 8, 32, 32]
+
+            input_data = paddle.randn(shape=(2, 3, 8, 32, 32))
             out = paddle.nn.functional.adaptive_avg_pool3d(
-                            x = x,
+                            x = input_data,
                             output_size=[3, 3, 3])
             # out.shape is [2, 3, 3, 3, 3]
     """
@@ -1593,9 +1580,10 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             output_size[2] = in_w
 
     if in_dynamic_mode():
-        return _C_ops.pool3d(x, 'pooling_type', 'avg', 'ksize', output_size,
-                             'global_pooling', False, 'adaptive', True,
-                             'data_format', data_format)
+        return _legacy_C_ops.pool3d(x, 'pooling_type', 'avg', 'ksize',
+                                    output_size, 'global_pooling', False,
+                                    'adaptive', True, 'data_format',
+                                    data_format)
 
     l_type = 'pool3d'
 
@@ -1655,9 +1643,8 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
               #
               import paddle
               import paddle.nn.functional as F
-              import numpy as np
 
-              data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+              data = paddle.uniform([1, 3, 32], paddle.float32)
               pool_out = F.adaptive_max_pool1d(data, output_size=16)
               # pool_out shape: [1, 3, 16])
               pool_out, indices = F.adaptive_max_pool1d(data, output_size=16, return_mask=True)
@@ -1675,14 +1662,15 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
 
     x = unsqueeze(x, [2])
     if in_dygraph_mode():
-        pool_out = _C_ops.final_state_max_pool2d_with_index(
-            x, pool_size, [1, 1], [0, 0], False, True)
+        pool_out = _C_ops.max_pool2d_with_index(x, pool_size, [1, 1], [0, 0],
+                                                False, True)
         return (squeeze(pool_out[0], [2]), squeeze(
             pool_out[1], [2])) if return_mask else squeeze(pool_out[0], [2])
     if _in_legacy_dygraph():
-        pool_out = _C_ops.max_pool2d_with_index(x, 'pooling_type', pool_type,
-                                                'ksize', pool_size, 'adaptive',
-                                                True)
+        pool_out = _legacy_C_ops.max_pool2d_with_index(x, 'pooling_type',
+                                                       pool_type, 'ksize',
+                                                       pool_size, 'adaptive',
+                                                       True)
         return (squeeze(pool_out[0], [2]), squeeze(
             pool_out[1], [2])) if return_mask else squeeze(pool_out[0], [2])
 
@@ -1741,13 +1729,10 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
               #             output[:, :, i, j] = max(input[:, :, hstart: hend, wstart: wend])
               #
               import paddle
-              import numpy as np
 
-              input_data = np.random.rand(2, 3, 32, 32)
-              x = paddle.to_tensor(input_data)
-              # x.shape is [2, 3, 32, 32]
+              input_data = paddle.randn(shape=(2, 3, 32, 32))
               out = paddle.nn.functional.adaptive_max_pool2d(
-                            x = x,
+                            x = input_data,
                             output_size=[3, 3])
               # out.shape is [2, 3, 3, 3]
     """
@@ -1768,13 +1753,13 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
         if output_size[1] == None:
             output_size[1] = in_w
     if in_dygraph_mode():
-        pool_out = _C_ops.final_state_max_pool2d_with_index(
-            x, output_size, [1, 1], [0, 0], False, True)
+        pool_out = _C_ops.max_pool2d_with_index(x, output_size, [1, 1], [0, 0],
+                                                False, True)
         return pool_out if return_mask else pool_out[0]
     if _in_legacy_dygraph():
-        pool_out = _C_ops.max_pool2d_with_index(x, 'pooling_type', 'max',
-                                                'ksize', output_size,
-                                                'adaptive', True)
+        pool_out = _legacy_C_ops.max_pool2d_with_index(x, 'pooling_type', 'max',
+                                                       'ksize', output_size,
+                                                       'adaptive', True)
         return pool_out if return_mask else pool_out[0]
 
     l_type = 'max_pool2d_with_index'
@@ -1834,13 +1819,10 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
               #             output[:, :, i, j, k] = max(input[:, :, dstart: dend, hstart: hend, wstart: wend])
               #
               import paddle
-              import numpy as np
 
-              input_data = np.random.rand(2, 3, 8, 32, 32)
-              x = paddle.to_tensor(input_data)
-              # x.shape is [2, 3, 8, 32, 32]
+              input_data = paddle.randn(shape=(2, 3, 8, 32, 32))
               out = paddle.nn.functional.adaptive_max_pool3d(
-                            x = x,
+                            x = input_data,
                             output_size=[3, 3, 3])
               # out.shape is [2, 3, 3, 3, 3]
     """
@@ -1865,9 +1847,9 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
             output_size[2] = in_w
 
     if in_dynamic_mode():
-        pool_out = _C_ops.max_pool3d_with_index(x, 'pooling_type', 'max',
-                                                'ksize', output_size,
-                                                'adaptive', True)
+        pool_out = _legacy_C_ops.max_pool3d_with_index(x, 'pooling_type', 'max',
+                                                       'ksize', output_size,
+                                                       'adaptive', True)
         return pool_out if return_mask else pool_out[0]
 
     l_type = 'max_pool3d_with_index'

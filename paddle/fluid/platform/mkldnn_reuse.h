@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/kernels/funcs/onednn/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace platform {
@@ -779,10 +779,14 @@ class MatMulV2MKLDNNHandler
       auto* residual_data = ctx.Input<Tensor>("ResidualData");
       auto residual_data_tz = phi::vectorize(residual_data->dims());
       auto residual_data_md = memory::desc(residual_data_tz,
-                                           dnnl::memory::data_type::f32,
-                                           dnnl::memory::format_tag::abcd);
+                                           MKLDNNGetDataType<OT>(),
+                                           dnnl::memory::format_tag::any);
       post_operations.append_binary(dnnl::algorithm::binary_add,
                                     residual_data_md);
+      if (ctx.HasAttr("Scale_in_eltwise")) {
+        float sum_scale = scale_out / ctx.Attr<float>("Scale_in_eltwise");
+        post_operations.append_sum(sum_scale);
+      }
     }
 
     AppendActivation(ctx, post_operations);

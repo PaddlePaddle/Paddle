@@ -940,6 +940,12 @@ class Completer:
                             core.op_proto_and_checker_maker.OpRole.Forward):
                 appended_grad_times += 1
 
+            if int(op.attr('op_role')) == int(
+                    int(core.op_proto_and_checker_maker.OpRole.Backward)
+                    | int(core.op_proto_and_checker_maker.OpRole.Loss)):
+                assert op.type == "fill_constant"
+                break
+
             # complete the annotation of grad op (xxx_grad op or sum op)
             # xxx_grad op will have a corresponding forward op in grad_op_id_to_op_id
             grad_op = ops[idx]

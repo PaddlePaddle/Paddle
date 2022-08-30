@@ -147,6 +147,7 @@ pass_library(delete_dropout_op_pass inference)
 pass_library(delete_c_identity_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(delete_fill_constant_op_pass inference)
+pass_library(constant_folding_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
 pass_library(skip_layernorm_fuse_pass base)
@@ -199,7 +200,6 @@ if(WITH_MKLDNN)
   pass_library(conv_affine_channel_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_bias_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_activation_mkldnn_fuse_pass inference DIR mkldnn)
-  pass_library(conv_concat_relu_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(int8_scale_calculation_mkldnn_pass inference DIR mkldnn)
   pass_library(params_quantization_mkldnn_pass inference DIR mkldnn)
@@ -409,7 +409,7 @@ if(WITH_MKLDNN)
   cc_test(
     test_conv_concat_relu_mkldnn_fuse_pass
     SRCS mkldnn/conv_concat_relu_mkldnn_fuse_pass_tester.cc
-    DEPS conv_concat_relu_mkldnn_fuse_pass)
+    DEPS conv_activation_mkldnn_fuse_pass)
   cc_test(
     test_conv_elementwise_add_mkldnn_fuse_pass
     SRCS mkldnn/conv_elementwise_add_mkldnn_fuse_pass_tester.cc

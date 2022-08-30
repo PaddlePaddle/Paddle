@@ -32,13 +32,8 @@ void HeterServer::StartHeterService(bool neeed_encrypt) {
   server_.AddService(&service_, brpc::SERVER_DOESNT_OWN_SERVICE);
   brpc::ServerOptions options;
   if (neeed_encrypt) {
-#ifdef PADDLE_WITH_ARM_BRPC
     options.mutable_ssl_options()->default_cert.certificate = "/cert.pem";
     options.mutable_ssl_options()->default_cert.private_key = "/key.pem";
-#else
-    options.ssl_options.default_cert.certificate = "/cert.pem";
-    options.ssl_options.default_cert.private_key = "/key.pem";
-#endif
   }
   if (server_.Start(endpoint_.c_str(), &options) != 0) {
     VLOG(0) << "HeterServer start fail. Try again.";
@@ -72,13 +67,8 @@ void HeterServer::StartHeterInterService(bool neeed_encrypt) {
   server_inter_.AddService(&service_, brpc::SERVER_DOESNT_OWN_SERVICE);
   brpc::ServerOptions options;
   if (neeed_encrypt) {
-#ifdef PADDLE_WITH_ARM_BRPC
     options.mutable_ssl_options()->default_cert.certificate = "/cert.pem";
     options.mutable_ssl_options()->default_cert.private_key = "/key.pem";
-#else
-    options.ssl_options.default_cert.certificate = "/cert.pem";
-    options.ssl_options.default_cert.private_key = "/key.pem";
-#endif
   }
   if (server_inter_.Start(endpoint_inter_.c_str(), &options) != 0) {
     VLOG(4) << "switch inter server start fail. Try again.";
