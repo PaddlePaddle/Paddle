@@ -1534,36 +1534,43 @@ class TheOnePSRuntime(RuntimeBase):
         self._init_params(main_program, scope, send_ctx, dense_map)
 
     def _save_one_table(self, table_id, path, mode):
+        fleet.util.barrier()
         if self.role_maker._is_first_worker():
             self._worker.save_one_model(table_id, path, mode)
         fleet.util.barrier()
 
     def _save_dense_params(self, *args, **kwargs):
+        fleet.util.barrier()
         if self.role_maker._is_first_worker():
             self._ps_save_dense_params(*args, **kwargs)
         fleet.util.barrier()
 
     def _save_persistables(self, *args, **kwargs):
+        fleet.util.barrier()
         if self.role_maker._is_first_worker():
             self._save_distributed_persistables(*args, **kwargs)
         fleet.util.barrier()
 
     def _save_inference_model(self, *args, **kwargs):
+        fleet.util.barrier()
         if self.role_maker._is_first_worker():
             self._ps_inference_save_inference_model(*args, **kwargs)
         fleet.util.barrier()
 
     def _load_one_table(self, table_id, path, mode):
+        fleet.util.barrier()
         if self.role_maker._is_first_worker():
             self._worker.load_one_table(table_id, path, mode)
         fleet.util.barrier()
 
     def _load_persistables(self, path, mode):
+        fleet.util.barrier()
         if self.role_maker._is_first_worker():
             self._worker.load_model(path, mode)
         fleet.util.barrier()
 
     def _load_inference_model(self, path, mode):
+        fleet.util.barrier()
         if self.role_maker._is_first_worker():
             self._ps_inference_load_inference_model(path, mode)
         fleet.util.barrier()
