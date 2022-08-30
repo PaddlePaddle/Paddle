@@ -225,7 +225,8 @@ def recompute_hybrid(ctx, function, *args, **kwargs):
         Output of function on args and kwargs.
 
     """
-    assert "mp_group" in ctx.keys(), "ctx must contains mp_group."
+    mp_group = ctx.get('mp_group', None)
+    assert mp_group is not None, "ctx must contains mp_group and mp_group can not be None."
 
     offload = ctx.get('offload', False)
     partition = ctx.get('partition', False)
