@@ -50,6 +50,7 @@ def _process_envs(envs):
 and the var can not contain space in either env names or values.
 However the var's format is '{p}'."""
 
+        # if p starts with "PYTHONPATH=", then process python path
         if re.compile("^PYTHONPATH=").search(p):
             p = _process_PYTHONPATH(p)
 
@@ -169,6 +170,7 @@ def _process_name(name, curdir):
 
 def _process_run_type(run_type):
     rt = run_type.strip()
+    # completely match one of the strings: 'NIGHTLY', 'EXCLUSIVE', 'CINN', 'DIST', 'GPUPS', 'INFER', 'EXCLUSIVE:NIGHTLY' and 'DIST:NIGHTLY'
     assert re.compile("^(NIGHTLY|EXCLUSIVE|CINN|DIST|GPUPS|INFER|EXCLUSIVE:NIGHTLY|DIST:NIGHTLY)$").search(rt), \
         f""" run_type must be one of 'NIGHTLY', 'EXCLUSIVE', 'CINN', 'DIST', 'GPUPS', 'INFER', 'EXCLUSIVE:NIGHTLY' and 'DIST:NIGHTLY'""" \
         f"""but the run_type is {rt}"""
@@ -220,6 +222,7 @@ class DistUTPortManager():
             and keep the DIST_UT_PORT max of all assigned ports
         '''
         with open(cmake_file_name) as cmake_file:
+            # match lines including 'PADDLE_DIST_UT_PORT=' followed by a number
             port_reg = re.compile("PADDLE_DIST_UT_PORT=[0-9]+")
             lines = cmake_file.readlines()
             for idx, line in enumerate(lines):
@@ -235,6 +238,8 @@ class DistUTPortManager():
                         break
                 name = lines[k - 1].strip()
 
+                # matcg right tets name format, the name must start with 'test_' follwed bu at least one cahr of
+                # '0-9'. 'a-z'. 'A-Z' or '_'
                 assert re.compile("^test_[0-9a-zA-Z_]+").search(name), \
                     f'''we found a test for initial the latest dist_port but the test name '{name}' seems to be wrong
                     at line {k-1}, in file {cmake_file_name}
