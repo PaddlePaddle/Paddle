@@ -699,7 +699,8 @@ class _ExecutorCache(object):
             self.place = place
             self.scope = scope
 
-            # NOTE(Ruibiao): Not all changeable item is considered for key at present, only consider: program, feed, and fetch_list
+            # NOTE(Ruibiao): Not all changeable item is considered for key at present,
+            # ONLY: program, feed, and fetch_list
             if isinstance(self.program, compiler.CompiledProgram):
                 self.key = hash(
                     _get_strong_program_cache_key_for_new_exe(
@@ -716,9 +717,10 @@ class _ExecutorCache(object):
         def __hash__(self):
             return self.key
 
-    def __init__(self, place):
-        self.place = place
-        # NOTE(Ruibiao): Wrap the lru_cache in constructor so that the cache is local to the _ExecutorCache instance, otherwise a global cache may not be released after the Executor instance deleted
+    def __init__(self):
+        # NOTE(Ruibiao): Wrap the lru_cache in constructor so that the cache is local to
+        # the _ExecutorCache instance, otherwise a global cache may not be released after
+        # the Executor instance deleted
         self._get_cached_program_and_executor = lru_cache(maxsize=8)(
             self._get_program_and_executor)
 
@@ -904,7 +906,9 @@ class Executor(object):
         self._fleet_executor_with_standalone = False
 
     def __del__(self):
-        # NOTE(Ruibiao): The manually call of clear is required. Because in Python, executor_cache may not immediately destructed after Executor instance deleted (so does not the _StandaloneExecutor), that brings errors to mkl-dnn unit tests (see ClearMKLDNNCache in interpretercore.cc for why).
+        # NOTE(Ruibiao): The manually call of clear is required. Because in Python, executor_cache
+        # may not immediately destructed after Executor instance deleted (so does not the _StandaloneExecutor),
+        # that brings errors to mkl-dnn unit tests (see ClearMKLDNNCache in interpretercore.cc for why).
         self._executor_cache.clear()
 
     def _get_scope_cache(self, program_cache_key):
