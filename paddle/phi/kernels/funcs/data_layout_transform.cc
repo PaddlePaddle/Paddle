@@ -114,7 +114,7 @@ void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
   VLOG(10) << "out->layout: " << out->layout() << " in->dims: " << in.dims()
            << " out->dims: " << out->dims();
   // reset format since the out tensor will be feed to non-MKLDNN OPkernel
-  out->set_format(MKLDNNMemoryFormat::undef);
+  out->set_format(OneDNNMemoryFormat::undef);
 }
 
 #endif

@@ -39,8 +39,8 @@ using MKLDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T,
           typename TForward,
-          typename TBackward = OneDNN_dummy_primitive,
-          typename TBackward_params = OneDNN_dummy_primitive>
+          typename TBackward = onednn_dummy_primitive,
+          typename TBackward_params = onednn_dummy_primitive>
 class MKLDNNHandlerNoCachingT {
  public:
   MKLDNNHandlerNoCachingT(dnnl::engine engine, Place cpu_place)
