@@ -61,7 +61,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &cublas_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    printf("@@ clone begin \r\n");
+    // printf("@@ clone begin \r\n");
     QkvToContextPluginDynamic* ptr = new QkvToContextPluginDynamic(
         hidden_, head_number_, head_size_, scale_, with_fp16_);
     ptr->cublas_ = cublas_;
@@ -74,7 +74,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     ptr->qkv_desc_=qkv_desc_;
     ptr->algo_=algo_;
     ptr->algo_qkv_=algo_qkv_;
-    printf("@@ clone end");
+    // printf("@@ clone end");
     return ptr;
   }
 
@@ -129,14 +129,14 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
       const int padding_num=8;
       seq_len = (seq_len + padding_num - 1) / padding_num * padding_num; //padding
       int batchNum = in[0].desc.dims.d[0] * head_number_;
-      printf("@@@@ in config seq_len %d, batch %d. \r\n",seq_len,batchNum);
+      // printf("@@@@ in config seq_len %d, batch %d. \r\n",seq_len,batchNum);
       int64_t strideq=seq_len*head_size_;
       int64_t stridek=seq_len*head_size_;
       int64_t strideqk=seq_len*seq_len;
       int64_t stridev=seq_len*head_size_;
       int64_t strideqkv=seq_len*head_size_;
 
-      printf("@@@ in config, head_size_ %d \r\n ", head_size_);
+      // printf("@@@ in config, head_size_ %d \r\n ", head_size_);
       bool q_trans = false;
       bool k_trans = true;
       bool qk_trans = false;
@@ -391,15 +391,20 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
                           const nvinfer1::PluginTensorDesc* outputs,
                           int nb_outputs) const TRT_NOEXCEPT override {
     auto input_dims = inputs[0].dims;
-    const int batch = 512;
+    const int batch = input_dims.d[0]; // batch = for swin, batch in input = image_batch * window_number
+    // printf("@@@ in get worksapce, batch :%d \r\n", batch);
     int seq_len = input_dims.d[1];
     const int padding_num=8;
     seq_len = (seq_len + padding_num - 1) / padding_num * padding_num;
     const int input_num = batch * seq_len * 3 * head_number_ * head_size_;
     const size_t qk_temp_ptr_size = batch * head_number_ * seq_len * seq_len + input_num;
-    const size_t biasqk_size =  batch* head_number_* seq_len* seq_len;
+    const size_t biasqk_size =  batch * head_number_* seq_len* seq_len;
     const size_t cublaslt_workspace_size=4*1024*1024; // workspace for cublaslt, 4M for now
-    return qk_temp_ptr_size+biasqk_size+2*cublaslt_workspace_size;
+    if(with_fp16_){
+      return sizeof(half)*(qk_temp_ptr_size+biasqk_size+2*cublaslt_workspace_size);
+    } else {
+      return sizeof(float)*(qk_temp_ptr_size+biasqk_size+2*cublaslt_workspace_size);
+    }
     // return 0;
   }
 

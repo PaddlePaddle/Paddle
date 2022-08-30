@@ -416,7 +416,6 @@ void QkvToContextPluginDynamic::attachToContext(
     cudnnContext* cudnnContext, cublasContext* cublasContext,
     nvinfer1::IGpuAllocator* gpuAllocator) TRT_NOEXCEPT {
   platform::dynload::cublasLtCreate(&cublas_);
-  printf("@@@ cublas_ created\r\n");
 }
 
 void QkvToContextPluginDynamic::detachFromContext() TRT_NOEXCEPT {
@@ -1192,8 +1191,7 @@ int QkvToContextPluginDynamic::enqueue(
     // printf("@#@@  TransposeQKV before mha functor result: \r\n");
     // print_float<half><<<1,1,0,stream>>>(tptr,
     //                                     0,
-    //                                     batch * seq_len * 3 * head_number_ * head_size_,
-    //                                     head_size_,1);
+    //                                     seq_len*3*head_size_*head_number_,3*head_size_*head_number_,1);
     // }
     // cudaDeviceSynchronize();
     // printf("\r\n");
@@ -1315,8 +1313,16 @@ int QkvToContextPluginDynamic::enqueue(
     // //                                     (batch*window_num)*seq_len*head_size_,head_size_,1);
     // cudaDeviceSynchronize();
     // printf("\r\n");
+    // printf("@@@ fp16 mha output : \r\n");
+    // cudaDeviceSynchronize();
+    // if(batch==64){
+    //   print_float<half><<<1,1>>>(tptr,0,batch * head_number_ * seq_len * head_size_ ,head_size_,1);
+    // }
+    // cudaDeviceSynchronize();
+    // printf("\r\n");
 
     half *output = static_cast<half *>(outputs[0]);
+
     // int grid = batch * head_number_ * seq_len;
     // int block = head_size_;
     // transpose<half><<<grid, block, 0, stream>>>(
