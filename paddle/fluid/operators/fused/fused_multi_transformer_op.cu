@@ -1181,10 +1181,11 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
     auto ln_compute = AttnLayerNorm<T>(dev_ctx, epsilon, bsz_seq, dim_embed);
     Tensor ln_mean, ln_var;
-    auto *ln_mean_data = ln_mean.Resize({{bsz_seq}});
-    dev_ctx.Alloc<U>(&ln_mean, ln_mean.numel() * sizeof(U));
-    auto *ln_var_data = ln_var.Resize({{bsz_seq}});
-    dev_ctx.Alloc<U>(&ln_var, ln_var.numel() * sizeof(U));
+    ln_mean.Resize({{bsz_seq}});
+    auto *ln_mean_data =
+        dev_ctx.Alloc<U>(&ln_mean, ln_mean.numel() * sizeof(U));
+    ln_var.Resize({{bsz_seq}});
+    auto *ln_var_data = dev_ctx.Alloc<U>(&ln_var, ln_var.numel() * sizeof(U));
 
     // 2. qkv
     // x: qkv's input [batch_size, seq_len, dim_embed]
@@ -1209,9 +1210,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                      input_size,
                                      compute_bias);
     Tensor qkv_out;
+    qkv_out.Resize({{bsz, seq_len, 3, num_head, dim_head}});
     auto *qkv_out_data =
-        qkv_out.Resize({{bsz, seq_len, 3, num_head, dim_head}});
-    dev_ctx.Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
+        dev_ctx.Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
 
     // 3. fmha
     AttnDropoutParam attn_param(
@@ -1255,9 +1256,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     Tensor softmax_out;
     Tensor attn_dropout_mask_out, attn_dropout_out;
     Tensor qktv_out, fmha_out;
+    softmax_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
     auto *softmax_out_data =
-        softmax_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
-    dev_ctx.Alloc<T>(&softmax_out, softmax_out.numel() * sizeof(T));
+        dev_ctx.Alloc<T>(&softmax_out, softmax_out.numel() * sizeof(T));
 
     attn_dropout_mask_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
     auto *attn_dropout_mask_out_data = dev_ctx.Alloc<T>(
@@ -1308,20 +1309,21 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto ffn1_linear_compute = AttnMatMul<T>(
         dev_ctx, false, false, bsz_seq, dim_ffn, dim_embed, false);
     Tensor ffn1_out;
-    auto *ffn1_out_data = ffn1_out.Resize({{bsz_seq, dim_ffn}});
-    dev_ctx.Alloc<T>(&ffn1_out, ffn1_out.numel() * sizeof(T));
+    ffn1_out.Resize({{bsz_seq, dim_ffn}});
+    auto *ffn1_out_data =
+        dev_ctx.Alloc<T>(&ffn1_out, ffn1_out.numel() * sizeof(T));
 
     // 7. ffn act + bias
     DropoutParam ffn1_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
     FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper(
         dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
     Tensor ffn1_dropout_out, ffn1_dropout_mask;
-    auto *ffn1_dropout_out_data = ffn1_dropout_out.Resize({{bsz_seq, dim_ffn}});
-    dev_ctx.Alloc<T>(&ffn1_dropout_out, ffn1_dropout_out.numel() * sizeof(T));
-    auto *ffn1_dropout_mask_data =
-        ffn1_dropout_mask.Resize({{bsz_seq, dim_ffn}});
-    dev_ctx.Alloc<uint8_t>(&ffn1_dropout_mask,
-                           ffn1_dropout_mask.numel() * sizeof(uint8_t));
+    ffn1_dropout_out.Resize({{bsz_seq, dim_ffn}});
+    auto *ffn1_dropout_out_data = dev_ctx.Alloc<T>(
+        &ffn1_dropout_out, ffn1_dropout_out.numel() * sizeof(T));
+    ffn1_dropout_mask.Resize({{bsz_seq, dim_ffn}});
+    auto *ffn1_dropout_mask_data = dev_ctx.Alloc<uint8_t>(
+        &ffn1_dropout_mask, ffn1_dropout_mask.numel() * sizeof(uint8_t));
 
     // 8. ffn2 matmul
     auto ffn2_weights = ctx.MultiInput<Tensor>("FFN2Weight");
@@ -1339,8 +1341,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto *from_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
     Tensor *from_tensor = out;
     Tensor tmp_out;
-    auto *tmp_out_data = tmp_out.Resize({{bsz, seq_len, dim_embed}});
-    dev_ctx.Alloc<T>(&tmp_out, tmp_out.numel() * sizeof(T));
+    tmp_out.Resize({{bsz, seq_len, dim_embed}});
+    auto *tmp_out_data =
+        dev_ctx.Alloc<T>(&tmp_out, tmp_out.numel() * sizeof(T));
 
     auto *x_data = input_x->data<T>();
     Tensor *buf0 = nullptr;

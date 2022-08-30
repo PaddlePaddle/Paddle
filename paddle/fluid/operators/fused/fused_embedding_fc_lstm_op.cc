@@ -309,21 +309,19 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   int64_t row_width = embeddings->dims()[1];           \
   const int D4 = wh_dims[1];
 
-#define INIT_BASE_INPUT_DATAS                                               \
-  const int64_t* ids_data = ids->data<int64_t>();                           \
-  const T* embeddings_data = embeddings->data<T>();                         \
-  const T* wh_data = wh->data<T>();                                         \
-  /* diagonal weight*/                                                      \
-  const T* wc_data = bias->data<T>() + D4;                                  \
-  /* for peephole only*/                                                    \
-  Tensor checked_cell;                                                      \
-  T* checked_cell_data = nullptr;                                           \
-  auto place = ctx.GetPlace();                                              \
-  if (use_peepholes) {                                                      \
-    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                        \
-    checked_cell.Resize({2, D});                                            \
-    checked_cell_data =                                                     \
-        dev_ctx->Alloc<T>(&checked_cell, checked_cell.numel() * sizeof(T)); \
+#define INIT_BASE_INPUT_DATAS                                        \
+  const int64_t* ids_data = ids->data<int64_t>();                    \
+  const T* embeddings_data = embeddings->data<T>();                  \
+  const T* wh_data = wh->data<T>();                                  \
+  /* diagonal weight*/                                               \
+  const T* wc_data = bias->data<T>() + D4;                           \
+  /* for peephole only*/                                             \
+  Tensor checked_cell;                                               \
+  T* checked_cell_data = nullptr;                                    \
+  auto place = ctx.GetPlace();                                       \
+  if (use_peepholes) {                                               \
+    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                 \
+    checked_cell_data = checked_cell.mutable_data<T>({2, D}, place); \
   }
 
 /// Compute LSTM
@@ -399,18 +397,15 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
     INIT_VEC_FUNC
     INIT_BASE_INPUT_DATAS
 
-    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-
     // log(INFO) << "====> SeqCompute" << "\n";
     auto ids_lod = ids->lod();
     const int total_T = ids_dims[0];
     const int N = ids_lod[0].size() - 1;
     const T* h0_data = h0 ? h0->data<T>() : nullptr;
     const T* c0_data = c0 ? c0->data<T>() : nullptr;
-    T* xx_data = dev_ctx->Alloc<T>(xx, xx->numel() * sizeof(T));
-    T* h_out_data =
-        dev_ctx->Alloc<T>(hidden_out, hidden_out->numel() * sizeof(T));
-    T* c_out_data = dev_ctx->Alloc<T>(cell_out, cell_out->numel() * sizeof(T));
+    T* xx_data = xx->mutable_data<T>(place);
+    T* h_out_data = hidden_out->mutable_data<T>(place);
+    T* c_out_data = cell_out->mutable_data<T>(place);
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     for (int64_t i = 0; i < ids_numel; ++i) {
@@ -516,18 +511,15 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
     auto* batched_input = ctx.Output<LoDTensor>("BatchedInput");
     auto* batched_c_out = ctx.Output<LoDTensor>("BatchedCell");
     auto* batched_h_out = ctx.Output<LoDTensor>("BatchedHidden");
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    T* xx_data = dev_ctx->Alloc<T>(xx, xx->numel() * sizeof(T));
-    T* batched_input_data =
-        dev_ctx->Alloc<T>(batched_input, batched_input->numel() * sizeof(T));
-    T* batched_c_out_data =
-        dev_ctx->Alloc<T>(batched_c_out, batched_c_out->numel() * sizeof(T));
-    T* batched_h_out_data =
-        dev_ctx->Alloc<T>(batched_h_out, batched_h_out->numel() * sizeof(T));
-    dev_ctx->Alloc<T>(hidden_out, hidden_out->numel() * sizeof(T));
-    dev_ctx->Alloc<T>(cell_out, cell_out->numel() * sizeof(T));
+    T* xx_data = xx->mutable_data<T>(place);
+    T* batched_input_data = batched_input->mutable_data<T>(place);
+    T* batched_c_out_data = batched_c_out->mutable_data<T>(place);
+    T* batched_h_out_data = batched_h_out->mutable_data<T>(place);
+    hidden_out->mutable_data<T>(place);
+    cell_out->mutable_data<T>(place);
 
     phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
     for (int64_t i = 0; i < ids_numel; ++i) {
@@ -558,10 +550,8 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
     T* prev_c_data = nullptr;
     if (h0) {
       // reorder h0, c0
-      T* reordered_h0_data =
-          dev_ctx->Alloc<T>(reordered_h0, reordered_h0->numel() * sizeof(T));
-      T* reordered_c0_data =
-          dev_ctx->Alloc<T>(reordered_c0, reordered_c0->numel() * sizeof(T));
+      T* reordered_h0_data = reordered_h0->mutable_data<T>(place);
+      T* reordered_c0_data = reordered_c0->mutable_data<T>(place);
       const T* h0_data = h0->data<T>();
       const T* c0_data = c0->data<T>();
       prev_h_data = reordered_h0_data;

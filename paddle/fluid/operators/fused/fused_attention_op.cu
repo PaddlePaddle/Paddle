@@ -262,9 +262,9 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
           (ln_scale == nullptr ? nullptr : ln_scale->data<U>());
       auto *ln_bias_data = (ln_bias == nullptr ? nullptr : ln_bias->data<U>());
       auto *ln_mean_data =
-          dev_ctx.template Alloc<T>(ln_mean, ln_mean->numel() * sizeof(U));
+          dev_ctx.template Alloc<U>(ln_mean, ln_mean->numel() * sizeof(U));
       auto *ln_var_data =
-          dev_ctx.template Alloc<T>(ln_var, ln_var->numel() * sizeof(U));
+          dev_ctx.template Alloc<U>(ln_var, ln_var->numel() * sizeof(U));
       auto *ln_out_data =
           dev_ctx.template Alloc<T>(ln_out, ln_out->numel() * sizeof(T));
 
@@ -371,7 +371,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     const float ln2epsilon = ctx.Attr<float>("ln_epsilon");
 
     float attn_dropout_prob = ctx.Attr<float>("attn_dropout_rate");
-    auto &dev_ctx = context.template device_context<phi::GPUContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     bool is_test_1 = ctx.Attr<bool>("is_test");
     auto &dropout_implementation_1 =
         ctx.Attr<std::string>("attn_dropout_implementation");
@@ -593,15 +593,15 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
       auto *d_ln_2_scale_data =
           (d_ln_2_scale == nullptr
                ? nullptr
-               : dev_ctx.template Alloc<U>(d_ln_2_scale, \
-               d_ln_2_scale->numel() * sizeof(U));
+               : dev_ctx.template Alloc<U>(d_ln_2_scale,
+                                           d_ln_2_scale->numel() * sizeof(U)));
       auto *d_ln_2_bias_data =
           (d_ln_2_bias == nullptr
                ? nullptr
-               : dev_ctx.template Alloc<U>(d_ln_2_bias, \
-               d_ln_2_bias->numel() * sizeof(U));
-      auto *d_bias_dropout_residual_out_data =
-          dev_ctx.template Alloc<T>(d_bias_dropout_residual_out, \
+               : dev_ctx.template Alloc<U>(d_ln_2_bias,
+                                           d_ln_2_bias->numel() * sizeof(U)));
+      auto *d_bias_dropout_residual_out_data = dev_ctx.template Alloc<T>(
+          d_bias_dropout_residual_out,
           d_bias_dropout_residual_out->numel() * sizeof(T));
 
       fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
@@ -677,13 +677,15 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
       auto *d_ln_out_data =
           dev_ctx.template Alloc<T>(d_ln_out, d_ln_out->numel() * sizeof(T));
       auto *d_ln_scale_data =
-          (d_ln_scale == nullptr ? nullptr
-                                 : dev_ctx.template Alloc<U>(d_ln_scale, \
-                                 d_ln_scale->numel() * sizeof(U));
+          (d_ln_scale == nullptr
+               ? nullptr
+               : dev_ctx.template Alloc<U>(d_ln_scale,
+                                           d_ln_scale->numel() * sizeof(U)));
       auto *d_ln_bias_data =
-          (d_ln_bias == nullptr ? nullptr
-                                : dev_ctx.template Alloc<U>(d_ln_bias, \
-                                d_ln_bias->numel() * sizeof(U));
+          (d_ln_bias == nullptr
+               ? nullptr
+               : dev_ctx.template Alloc<U>(d_ln_bias,
+                                           d_ln_bias->numel() * sizeof(U)));
       if (qkv_bias != nullptr) {
         qkv_compute.ComputeBackward(ln_out,
                                     qkv_weight,

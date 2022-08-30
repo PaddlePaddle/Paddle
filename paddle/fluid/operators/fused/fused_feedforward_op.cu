@@ -204,6 +204,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     auto* linear2_weight = context.Input<framework::Tensor>("Linear2Weight");
     auto* linear2_bias = context.Input<framework::Tensor>("Linear2Bias");
     const bool pre_layer_norm = context.Attr<bool>("pre_layer_norm");
+    auto& dev_ctx = context.template device_context<phi::GPUContext>();
 
     auto* ln1_scale =
         pre_layer_norm ? context.Input<framework::Tensor>("Ln1Scale") : nullptr;
@@ -247,23 +248,23 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
 
     using U = LayerNormParamType<T>;
     auto place = context.GetPlace();
-    dev_ctx->Alloc<T>(out, out->numel() * sizeof(T));
-    dev_ctx->Alloc<uint8_t>(dropout1_mask,
-                            dropout1_mask->numel() * sizeof(uint8_t));
-    dev_ctx->Alloc<uint8_t>(dropout2_mask,
-                            dropout2_mask->numel() * sizeof(uint8_t));
+    dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
+    dev_ctx.Alloc<uint8_t>(dropout1_mask,
+                           dropout1_mask->numel() * sizeof(uint8_t));
+    dev_ctx.Alloc<uint8_t>(dropout2_mask,
+                           dropout2_mask->numel() * sizeof(uint8_t));
     if (pre_layer_norm) {
-      dev_ctx->Alloc<U>(ln1_mean, ln1_mean->numel() * sizeof(U));
-      dev_ctx->Alloc<U>(ln1_variance, ln1_variance->numel() * sizeof(U));
-      dev_ctx->Alloc<T>(ln1_out, ln1_out->numel() * sizeof(T));
+      dev_ctx.Alloc<U>(ln1_mean, ln1_mean->numel() * sizeof(U));
+      dev_ctx.Alloc<U>(ln1_variance, ln1_variance->numel() * sizeof(U));
+      dev_ctx.Alloc<T>(ln1_out, ln1_out->numel() * sizeof(T));
     } else {
-      dev_ctx->Alloc<U>(ln2_mean, ln2_mean->numel() * sizeof(U));
-      dev_ctx->Alloc<U>(ln2_variance, ln2_variance->numel() * sizeof(U));
+      dev_ctx.Alloc<U>(ln2_mean, ln2_mean->numel() * sizeof(U));
+      dev_ctx.Alloc<U>(ln2_variance, ln2_variance->numel() * sizeof(U));
     }
 
-    dev_ctx->Alloc<T>(linear1_out, linear1_out->numel() * sizeof(T));
-    dev_ctx->Alloc<T>(dropout1_out, dropout1_out->numel() * sizeof(T));
-    dev_ctx->Alloc<T>(dropout2_out, dropout2_out->numel() * sizeof(T));
+    dev_ctx.Alloc<T>(linear1_out, linear1_out->numel() * sizeof(T));
+    dev_ctx.Alloc<T>(dropout1_out, dropout1_out->numel() * sizeof(T));
+    dev_ctx.Alloc<T>(dropout2_out, dropout2_out->numel() * sizeof(T));
 
     auto x_dim = x->dims();
     auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
@@ -400,15 +401,15 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
 
     framework::Tensor d_linear2_out, d_dropout2_out, d_residual;
     d_linear2_out.Resize({bsz_seq, d_model});
-    dev_ctx->Alloc<T>(&d_linear2_out, d_linear2_out.numel() * sizeof(T));
+    ctx.Alloc<T>(&d_linear2_out, d_linear2_out.numel() * sizeof(T));
     d_dropout2_out.Resize({bsz_seq, d_model});
-    dev_ctx->Alloc<T>(&d_dropout2_out, d_dropout2_out.numel() * sizeof(T));
+    ctx.Alloc<T>(&d_dropout2_out, d_dropout2_out.numel() * sizeof(T));
 
     T* d_residual_ptr = nullptr;
     if (add_residual) {
       d_residual.Resize(d_x->dims());
       d_residual_ptr =
-          dev_ctx->Alloc<T>(&d_residual, d_residual.numel() * sizeof(T));
+          ctx.Alloc<T>(&d_residual, d_residual.numel() * sizeof(T));
     }
     if (pre_layer_norm) {
       fused_dropout_layernorm_helper.ResidualDropoutBiasGrad(
@@ -437,7 +438,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
 
     framework::Tensor d_dropout1_out;
     d_dropout1_out.Resize({bsz_seq, dim_feedforward});
-    dev_ctx->Alloc<T>(&d_dropout1_out, d_dropout1_out.numel() * sizeof(T));
+    ctx.Alloc<T>(&d_dropout1_out, d_dropout1_out.numel() * sizeof(T));
     MatMulGrad(ctx,
                d_linear2_out,
                dropout1_out,
@@ -447,7 +448,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
 
     framework::Tensor d_linear1_out;
     d_linear1_out.Resize({bsz_seq, dim_feedforward});
-    dev_ctx->Alloc<T>(&d_linear1_out, d_linear1_out.numel() * sizeof(T));
+    ctx.Alloc<T>(&d_linear1_out, d_linear1_out.numel() * sizeof(T));
     fused_act_dropout_helper.DropoutActBiasGrad(ctx,
                                                 d_dropout1_out.data<T>(),
                                                 linear1_out.data<T>(),
@@ -460,7 +461,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     if (pre_layer_norm) {
       framework::Tensor d_ln1_out;
       d_ln1_out.Resize({bsz_seq, d_model});
-      dev_ctx->Alloc<T>(&d_ln1_out, d_ln1_out.numel() * sizeof(T));
+      ctx.Alloc<T>(&d_ln1_out, d_ln1_out.numel() * sizeof(T));
       MatMulGrad(ctx,
                  d_linear1_out,
                  *ln1_out,
@@ -495,6 +496,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
 
   void Compute(const framework::ExecutionContext& context) const override {
     using U = LayerNormParamType<T>;
+    auto& dev_ctx = context.template device_context<phi::GPUContext>();
     auto d_out =
         *context.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto x = *context.Input<framework::Tensor>("X");
@@ -561,27 +563,27 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     DropoutParam dropout_param2(context, 2);
 
     auto place = context.GetPlace();
-    dev_ctx->Alloc<T>(d_x, d_x->numel() * sizeof(T));
+    dev_ctx.Alloc<T>(d_x, d_x->numel() * sizeof(T));
     if (d_ln1_scale) {
-      dev_ctx->Alloc<U>(d_ln1_scale, d_ln1_scale->numel() * sizeof(U));
+      dev_ctx.Alloc<U>(d_ln1_scale, d_ln1_scale->numel() * sizeof(U));
     }
     if (d_ln1_bias) {
-      dev_ctx->Alloc<U>(d_ln1_bias, d_ln1_bias->numel() * sizeof(U));
+      dev_ctx.Alloc<U>(d_ln1_bias, d_ln1_bias->numel() * sizeof(U));
     }
     if (d_ln2_scale) {
-      dev_ctx->Alloc<U>(d_ln2_scale, d_ln2_scale->numel() * sizeof(U));
+      dev_ctx.Alloc<U>(d_ln2_scale, d_ln2_scale->numel() * sizeof(U));
     }
     if (d_ln2_bias) {
-      dev_ctx->Alloc<U>(d_ln2_bias, d_ln2_bias->numel() * sizeof(U));
+      dev_ctx.Alloc<U>(d_ln2_bias, d_ln2_bias->numel() * sizeof(U));
     }
     if (d_linear1_bias) {
-      dev_ctx->Alloc<T>(d_linear1_bias, d_linear1_bias->numel() * sizeof(T));
+      dev_ctx.Alloc<T>(d_linear1_bias, d_linear1_bias->numel() * sizeof(T));
     }
     if (d_linear2_bias) {
-      dev_ctx->Alloc<T>(d_linear2_bias, d_linear2_bias->numel() * sizeof(T));
+      dev_ctx.Alloc<T>(d_linear2_bias, d_linear2_bias->numel() * sizeof(T));
     }
-    dev_ctx->Alloc<T>(d_linear1_weight, d_linear1_weight->numel() * sizeof(T));
-    dev_ctx->Alloc<T>(d_linear2_weight, d_linear2_weight->numel() * sizeof(T));
+    dev_ctx.Alloc<T>(d_linear1_weight, d_linear1_weight->numel() * sizeof(T));
+    dev_ctx.Alloc<T>(d_linear2_weight, d_linear2_weight->numel() * sizeof(T));
 
     auto x_dim = x.dims();
     auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(

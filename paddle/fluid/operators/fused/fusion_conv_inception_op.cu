@@ -55,10 +55,10 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
         static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
 
     const T* input_data = input->data<T>();
-    T* output_data = dev_ctx->Alloc<T>(output, output->numel() * sizeof(T));
+    T* output_data = dev_ctx.Alloc<T>(output, output->numel() * sizeof(T));
     temp_outs[0]->Resize(input->dims());
     T* temp_data =
-        dev_ctx->Alloc<T>(temp_outs[0], temp_outs[0]->numel() * sizeof(T));
+        dev_ctx.Alloc<T>(temp_outs[0], temp_outs[0]->numel() * sizeof(T));
 
     DataLayout layout = DataLayout::kNCHW;
     std::vector<int> in_dim = phi::vectorize<int>(input->dims());
@@ -257,8 +257,8 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
     in_datas.push_back(
         static_cast<const void*>(output_data + (oc0 + oc1) * h * w));
     temp_outs[1]->Resize(phi::make_ddim(out_dims[2]));
-    T* temp_data =
-        dev_ctx->Alloc<T>(temp_outs[1], temp_outs[1]->numel() * sizeof(T));
+    T* temp2_data =
+        dev_ctx.Alloc<T>(temp_outs[1], temp_outs[1]->numel() * sizeof(T));
     in_datas.push_back(static_cast<const void*>(temp2_data + oc2 * h * w));
 
     std::vector<void*> out_datas;

@@ -47,7 +47,7 @@ template <typename T>
 void AllocWithDebugInfo(const phi::GPUContext& dev_ctx,
                         const std::string& info,
                         Tensor* t) {
-  dev_ctx->Alloc<T>(t, t->numel() * sizeof(T));
+  dev_ctx.Alloc<T>(t, t->numel() * sizeof(T));
   VLOG(4) << info << ": " << MemoryDebugString(*t);
 }
 
@@ -505,11 +505,11 @@ class FMHAGateRef {
       k_transpose_out_grad.Resize(config->kv_transpose_out_dims);
       v_transpose_out_grad.Resize(config->kv_transpose_out_dims);
 
-      q_grad_ptr = dev_ctx->Alloc<T>(&q_transpose_out_grad,
+      q_grad_ptr = dev_ctx_.Alloc<T>(&q_transpose_out_grad,
                                      q_transpose_out_grad.numel() * sizeof(T));
-      k_grad_ptr = dev_ctx->Alloc<T>(&k_transpose_out_grad,
+      k_grad_ptr = dev_ctx_.Alloc<T>(&k_transpose_out_grad,
                                      k_transpose_out_grad.numel() * sizeof(T));
-      v_grad_ptr = dev_ctx->Alloc<T>(&v_transpose_out_grad,
+      v_grad_ptr = dev_ctx_.Alloc<T>(&v_transpose_out_grad,
                                      v_transpose_out_grad.numel() * sizeof(T));
     }
 

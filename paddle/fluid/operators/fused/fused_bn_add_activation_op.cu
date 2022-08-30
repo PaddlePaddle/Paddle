@@ -253,8 +253,6 @@ class FusedBatchNormAddActGradKernel<phi::GPUContext, T>
         platform::errors::PreconditionNotMet(
             "The size of scale is equal to the channel of Input(X)."));
 
-    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
-
     std::vector<int> dims = {N, C, H, W, D};
     std::vector<int> strides = {H * W * C * D, 1, W * D * C, D * C, C};
     // ------------------- cudnn descriptors ---------------------
