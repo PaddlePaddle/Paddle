@@ -1905,9 +1905,11 @@ void ModeInferMeta(const MetaTensor& x,
 }
 
 void MultinomialInferMeta(const MetaTensor& x,
-                          int num_samples,
+                          const Scalar& num_samples,
                           bool replacement,
-                          MetaTensor* out) {
+                          MetaTensor* out,
+                          MetaConfig config) {
+  auto int_num_samples = num_samples.to<int>();
   auto x_dim = x.dims();
   int64_t x_rank = x_dim.size();
   PADDLE_ENFORCE_GT(x_rank,
@@ -1928,12 +1930,16 @@ void MultinomialInferMeta(const MetaTensor& x,
     out_dims[i] = x_dim[i];
   }
 
-  PADDLE_ENFORCE_GT(
-      num_samples,
-      0,
-      errors::InvalidArgument(
-          "The number of samples should be > 0, but got %d.", num_samples));
-  out_dims[x_rank - 1] = num_samples;
+  if (config.is_runtime || !num_samples.FromTensor()) {
+    PADDLE_ENFORCE_GT(int_num_samples,
+                      0,
+                      errors::InvalidArgument(
+                          "The number of samples should be > 0, but got %d.",
+                          int_num_samples));
+    out_dims[x_rank - 1] = int_num_samples;
+  } else {
+    out_dims[x_rank - 1] = -1;
+  }
 
   out->set_dims(make_ddim(out_dims));
   out->set_dtype(DataType::INT64);

@@ -1828,7 +1828,7 @@
   optional : rois_num
 
 - api : multinomial
-  args : (Tensor x, int num_samples, bool replacement)
+  args : (Tensor x, Scalar num_samples, bool replacement)
   output : Tensor(out)
   infer_meta :
     func : MultinomialInferMeta
