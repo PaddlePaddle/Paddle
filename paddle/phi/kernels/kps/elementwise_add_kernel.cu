@@ -29,7 +29,7 @@ void GradAddKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    DenseTensor* out) {
-  AddKernel<T>(dev_ctx, x, y, out);
+  AddRawKernel<T>(dev_ctx, x, y, -1, out);
 }
 
 }  // namespace phi
