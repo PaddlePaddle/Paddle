@@ -80,34 +80,6 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   dx->set_mem_desc(diff_src_memory_p->get_desc());
 }
 
-template <typename T>
-void eltwise_grad_use_out(const framework::ExecutionContext &ctx,
-                          dnnl::algorithm algorithm) {
-  auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-  const auto &mkldnn_engine = dev_ctx.GetEngine();
-
-  const auto *out = ctx.Input<Tensor>("Out");
-  const auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-  auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-
-  platform::ActivationMKLDNNHandler<T> handler(
-      algorithm, ctx, mkldnn_engine, ctx.GetPlace(), out, dout);
-
-  auto dst_memory_p = handler.AcquireBackwardSrcMemory(out);
-  auto diff_dst_memory_p = handler.AcquireDiffDstMemory(dout);
-  auto diff_src_memory_p = handler.AcquireDiffSrcMemory(dx);
-  auto activation_backward_p = handler.AcquireBackwardPrimitive();
-
-  auto &astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
-  activation_backward_p->execute(astream,
-                                 {{DNNL_ARG_DST, *dst_memory_p},
-                                  {DNNL_ARG_DIFF_DST, *diff_dst_memory_p},
-                                  {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
-  astream.wait();
-
-  dx->set_mem_desc(diff_src_memory_p->get_desc());
-}
-
 template <typename T, dnnl::algorithm algorithm>
 struct MKLDNNActivationGradFunc : public BaseActivationFunctor<T> {
   void operator()(const framework::ExecutionContext &ctx) const {
