@@ -94,10 +94,6 @@ void TensorRTEngine::Execute(int batch_size,
                 this,
                 phi::GPUPlace(device_id_),
                 phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
-    PADDLE_ENFORCE_NOT_NULL(context_memory,
-                            platform::errors::InvalidArgument(
-                                "The address of engine context_memory is null, "
-                                "we failed to set it."));
     infer_context->setDeviceMemory(context_memory);
   }
   if (!with_dynamic_shape()) {
