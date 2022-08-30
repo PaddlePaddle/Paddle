@@ -236,14 +236,14 @@ class RecomputePass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _apply_single_impl(self, main_programs, startup_programs, context):
+    def _apply_single_impl(self, main_program, startup_program, context):
         checkpoints = self.get_attr("checkpoints")
         loss = self.get_attr("loss")
         no_grad_set = self.get_attr("no_grad_set")
         self._dist_context = self.get_attr("dist_context")
 
-        main_block = main_programs.global_block()
-        no_grad_set_name = _get_stop_gradients(main_programs, no_grad_set)
+        main_block = main_program.global_block()
+        no_grad_set_name = _get_stop_gradients(main_program, no_grad_set)
         # get op_path which is related to loss
         op_path = _find_op_path_(main_block, [loss], [], no_grad_set_name)
 
@@ -373,7 +373,7 @@ class RecomputePass(PassBase):
                     ckpt_ops_dict[fwd_op_id][0] = False
                     main_block._sync_with_cpp()
 
-        main_programs._sync_with_cpp()
+        main_program._sync_with_cpp()
 
     def reset_op_dist_attr(self, op, var_name_dict):
         op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)

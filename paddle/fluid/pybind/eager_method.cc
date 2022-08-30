@@ -806,14 +806,14 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                                            decrease_axis.end());
 
     if (op_type == "slice") {
-      out = slice_final_state_dygraph_function(self->tensor,
-                                               slice_axes_tmp,
-                                               slice_starts,
-                                               slice_ends,
-                                               infer_flags_tmp,
-                                               decrease_axis_tmp);
+      out = slice_dygraph_function(self->tensor,
+                                   slice_axes_tmp,
+                                   slice_starts,
+                                   slice_ends,
+                                   infer_flags_tmp,
+                                   decrease_axis_tmp);
     } else if (op_type == "strided_slice") {
-      out = strided_slice_final_state_dygraph_function(
+      out = strided_slice_dygraph_function(
           self->tensor, slice_axes, slice_starts, slice_ends, slice_strides);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -852,7 +852,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
       }
 
       paddle::experimental::Tensor new_out;
-      new_out = unsqueeze_final_state_dygraph_function(out, none_axes);
+      new_out = unsqueeze_dygraph_function(out, none_axes);
       return ToPyObject(new_out);
     }
   }
@@ -868,8 +868,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     paddle::framework::TensorFromVector(
         list_select_idxs, *dev_ctx, idx_tensor.get());
     framework::AttributeMap attrs = {{"dim", 0}};
-    out = index_select_final_state_dygraph_function(
-        self->tensor, select_index, 0);
+    out = index_select_dygraph_function(self->tensor, select_index, 0);
   }
 
   return ToPyObject(out);

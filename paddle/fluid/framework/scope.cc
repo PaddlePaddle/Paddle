@@ -115,7 +115,10 @@ const Scope* Scope::FindScope(const std::string& name) const {
 void Scope::DropKids() {
   {
     SCOPE_KIDS_WRITER_LOCK
-    for (Scope* s : kids_) delete s;
+    for (Scope* s : kids_) {
+      delete s;
+      s = nullptr;
+    }
     kids_.clear();
   }
 }

@@ -637,7 +637,6 @@ class SparseTable(Table):
 
         check_embedding_dim(table_proto.accessor, self.common.table_name,
                             ctx.program_id(), self.context)
-        print(">>> set sparse table!")
         self.common.parse_by_optimizer(ctx, self.context)
         self.common.parse_entry(self.common.table_name, ctx.program_id(),
                                 self.context)
@@ -806,6 +805,9 @@ class PsDescBuilder(object):
                                 not self.context['local_sparse']):
                         tables.append(globals()['GeoSparseTable'](self.context,
                                                                   ctx))
+                    else:
+                        tables.append(globals()['SparseTable'](self.context,
+                                                               ctx))
                 else:
                     tables.append(globals()['SparseTable'](self.context, ctx))
             else:
