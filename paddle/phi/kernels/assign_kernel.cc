@@ -158,3 +158,20 @@ PD_REGISTER_KERNEL(assign_value,
                    float,
                    int64_t) {}
 #endif
+
+#ifdef PADDLE_WITH_XPU
+PD_REGISTER_GENERAL_KERNEL(
+    assign, XPU, ALL_LAYOUT, phi::AssignKernel<phi::XPUContext>, ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(assign_raw,
+                           XPU,
+                           ALL_LAYOUT,
+                           phi::AssignRawKernel<phi::XPUContext>,
+                           ALL_DTYPE) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+PD_REGISTER_GENERAL_KERNEL(assign_array,
+                           XPU,
+                           ALL_LAYOUT,
+                           phi::AssignArrayKernel<phi::XPUContext>,
+                           ALL_DTYPE) {}
+#endif

@@ -100,7 +100,9 @@ class HeterClient {
       options.connection_type = "";
       VLOG(4) << "ssl enabled in arm";
 #else
-      options.ssl_options.enable = need_encrypt;
+      if (need_encrypt) {
+        options.mutable_ssl_options();
+      }
 #endif
       client_channels = &peer_switch_channels_;
     } else if (peer_role == PEER_ROLE_IS_WORKER) {
