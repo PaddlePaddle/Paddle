@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/uniform_real_distribution.h"
