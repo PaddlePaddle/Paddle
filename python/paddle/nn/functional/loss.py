@@ -2309,7 +2309,7 @@ def cross_entropy(input,
         label = paddle.unsqueeze(label, axis=axis)
 
     if in_dygraph_mode():
-        if soft_label == False:
+        if soft_label == False and ignore_index >= 0:
             valid_label = paddle.cast(label != ignore_index,
                                       dtype=label.dtype) * label
             label_min = paddle.min(valid_label)
