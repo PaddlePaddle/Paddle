@@ -4817,8 +4817,6 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
 
     helper = LayerHelper('reduce_max', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
     helper.append_op(type='reduce_max',
                      inputs={'X': input},
                      outputs={'Out': out},
@@ -4883,8 +4881,6 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
     
     helper = LayerHelper('reduce_min', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
     helper.append_op(type='reduce_min',
                      inputs={'X': input},
                      outputs={'Out': out},
@@ -5073,8 +5069,6 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
     check_variable_and_dtype(input, 'input', ('bool'), 'reduce_any')
     helper = LayerHelper('reduce_any', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
     helper.append_op(type='reduce_any',
                      inputs={'X': input},
                      outputs={'Out': out},

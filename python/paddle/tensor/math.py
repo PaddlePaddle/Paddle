@@ -3535,7 +3535,7 @@ def all(x, axis=None, keepdim=False, name=None):
 
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_all(x, 'dim', axis, 'keep_dim', keepdim,
-                                       'reduce_all', reduce_all_flag)
+                                       'reduce_all', reduce_all)
 
     attrs = {
         'dim': axis,
@@ -3610,7 +3610,7 @@ def any(x, axis=None, keepdim=False, name=None):
 
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_any(x, 'dim', axis, 'keep_dim', keepdim,
-                                       'reduce_all', reduce_all_flag)
+                                       'reduce_all', reduce_all)
 
     attrs = {
         'dim': axis,

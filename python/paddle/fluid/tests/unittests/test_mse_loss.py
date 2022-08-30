@@ -312,7 +312,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-            self.assertEqual(dy_result.shape, (10, 10))
+            self.assertEqual(dy_result.shape, tuple(dim))
 
 
 class TestMseLossZeroDim(unittest.TestCase):
