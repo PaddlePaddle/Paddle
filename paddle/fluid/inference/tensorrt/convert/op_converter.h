@@ -231,31 +231,6 @@ class OpConverter {
                     TensorRTEngine* engine) {
     std::unique_lock<std::mutex> lk(mut_);
     for (int i = 0; i < block.ops_size(); i++) {
-      SetEngine(engine);
-      const auto& op = block.ops(i);
-      framework::OpDesc op_desc(op, nullptr);
-      framework::Variable* X_v = nullptr;
-      std::string X_name;
-      // inputs : string -> std::vector<string>
-      auto inputs = op_desc.Inputs();
-      if (inputs.count("X")) {
-        X_name = op_desc.Input("X")[0];
-      } else if (inputs.count("Input")) {
-        X_name = op_desc.Input("Input")[0];
-      } else if (inputs.count("Y")) {
-        X_name = op_desc.Input("Y")[0];
-      }
-      X_v = scope.FindVar(X_name);
-      // If this weight is shared between ops, it needn't to be convtered to
-      // itensor once again
-      if (engine->GetITensorMap()->count(X_name)) {
-        continue;
-      }
-      if (X_v) {
-        ConvertWeight2ITensor(scope, X_name);
-      }
-    }
-    for (int i = 0; i < block.ops_size(); i++) {
       const auto& op = block.ops(i);
       ConvertOp(op, parameters, scope, engine);
     }

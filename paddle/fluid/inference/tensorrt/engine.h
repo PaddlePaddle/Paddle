@@ -24,7 +24,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
+#include "paddle/fluid/framework/scope.h"
 #include "NvInferRuntimeCommon.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -282,6 +282,8 @@ class TensorRTEngine {
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);
+  nvinfer1::ITensor* GetITensor(const std::string& name, const framework::Scope& scope);
+  nvinfer1::ITensor*   ConvertWeight2ITensor(const std::string& name, const framework::Scope& scope);
   std::unordered_map<std::string, nvinfer1::ITensor*>* GetITensorMap();
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
