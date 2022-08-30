@@ -21,6 +21,7 @@
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
@@ -242,20 +243,30 @@ void build_variable_scope(const framework::BlockDesc& block,
 void create_all_ops(const framework::BlockDesc& block,
                     std::vector<std::unique_ptr<OperatorBase>>* ops) {
   for (auto& op : block.AllOps()) {
-    VLOG(3) << "CreateOp from : " << op->Type();
+    auto op_type = op->Type();
+    VLOG(1) << "CreateOp from : " << op_type;
 
-    auto& info = OpInfoMap::Instance().Get(op->Type());
+    auto& info = OpInfoMap::Instance().Get(op_type);
 
     const VariableNameMap& inputs_names = op->Inputs();
     const VariableNameMap& outputs_names = op->Outputs();
 
     AttributeMap op_attr_map = op->GetAttrMap();
+    AttributeMap op_runtime_attr_map = op->GetRuntimeAttrMap();
 
     if (info.Checker() != nullptr) {
       info.Checker()->Check(&op_attr_map);
     }
+
+    const auto& extra_attr_checkers =
+        operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(op_type);
+    for (const auto& checker : extra_attr_checkers) {
+      checker(&op_runtime_attr_map, false);
+    }
+
     auto op_base =
-        info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
+        info.Creator()(op_type, inputs_names, outputs_names, op_attr_map);
+    op_base->SetRuntimeAttributeMap(op_runtime_attr_map);
 
 #ifdef PADDLE_WITH_MKLDNN
     if (FLAGS_use_mkldnn) {
@@ -387,10 +398,8 @@ void deal_operator_base(const platform::Place& place,
     PADDLE_THROW(
         platform::errors::Fatal("Unsupported current place %s", place));
   }
-
   op_func_node->kernel_func_ = nullptr;
   op_base->Run(*local_scope, place);  // Run without data transformer.
-
   std::unordered_set<int> no_data_transform_index;
   for (auto& it : op_func_node->input_index) {
     for (auto& id : it.second) {
@@ -407,7 +416,8 @@ void build_op_func_list(const platform::Place& place,
                         const std::set<std::string>& skip_gc_vars,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* var_scope,
-                        bool use_local_scope) {
+                        bool use_local_scope,
+                        bool used_for_jit) {
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
   std::vector<std::unique_ptr<OperatorBase>>
@@ -415,19 +425,21 @@ void build_op_func_list(const platform::Place& place,
   bool flag_log_is_printed = false;
   // Step 1: create all ops for current block.
   create_all_ops(block, &ops_unique);
-  // If gc is enabled and block size > 1
-  const ProgramDesc& main_program = *block.Program();
-  operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
-      main_program, block.ID(), ops_unique);
-  operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
-      main_program, block.ID(), ops_unique);
-  operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-      main_program, block.ID(), ops_unique);
+
+  if (!used_for_jit) {
+    // If gc is enabled and block size > 1
+    const ProgramDesc& main_program = *block.Program();
+    operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
+        main_program, block.ID(), ops_unique);
+    operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
+        main_program, block.ID(), ops_unique);
+    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
+        main_program, block.ID(), ops_unique);
+  }
 
 #ifdef PADDLE_WITH_MKLDNN
   platform::RegisterModelLayout(ops_unique, place);
 #endif
-
   // its elements will be moved to vec_func_list
   std::vector<std::shared_ptr<OperatorBase>> ops;
   for (auto& op_unique : ops_unique) {
@@ -484,157 +496,187 @@ void build_op_func_list(const platform::Place& place,
     }
 #endif
 
-    if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
-      // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
-      deal_operator_base(place, var_scope, ops[i], &op_func_node, local_scope);
-    } else {
-      auto op_with_kernel = const_cast<framework::OperatorWithKernel*>(
-          static_cast<const framework::OperatorWithKernel*>(op));
-      // construct RuntimeContext and analysis KernelType
-      RuntimeContext runtime_context({}, {});
-      runtime_context.inputs.swap(ins_map);
-      runtime_context.outputs.swap(outs_map);
+    try {
+      if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
+        // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
+        deal_operator_base(
+            place, var_scope, ops[i], &op_func_node, local_scope);
+        VLOG(4) << "deal_operator_base";
+      } else {
+        VLOG(4) << "OP is not null";
+        auto op_with_kernel = const_cast<framework::OperatorWithKernel*>(
+            static_cast<const framework::OperatorWithKernel*>(op));
+        VLOG(4) << "get op_with_kernel";
+        // construct RuntimeContext and analysis KernelType
+        RuntimeContext runtime_context({}, {});
+        runtime_context.inputs.swap(ins_map);
+        runtime_context.outputs.swap(outs_map);
+        VLOG(4) << "get RuntimeContext";
 
-      Scope scope, *runtime_scope = &scope;
-      // NOTE(Ruibiao): We do not encourage directly using scope in OP kernel.
-      // But some OPs do have such behavior (e.g., cinn_launch OP). Here special
-      // treatment for them.
-      if (op_with_kernel->Type() == "cinn_launch") {
-        VLOG(6) << "OP(" << op_with_kernel->Type()
-                << ") use scope in kernel, "
-                   "so pass a real scope to "
-                   "ExecutionContext";
-        runtime_scope = local_scope;
-      }
+        Scope scope, *runtime_scope = &scope;
+        // NOTE(Ruibiao): We do not encourage directly using scope in OP kernel.
+        // But some OPs do have such behavior (e.g., cinn_launch OP). Here
+        // special treatment for them.
+        if (op_with_kernel->Type() == "cinn_launch") {
+          VLOG(6) << "OP(" << op_with_kernel->Type()
+                  << ") use scope in kernel, "
+                     "so pass a real scope to "
+                     "ExecutionContext";
+          runtime_scope = local_scope;
+        }
 
-      auto& pool = platform::DeviceContextPool::Instance();
-      auto* dev_ctx = pool.Get(place);
-      auto exec_ctx = ExecutionContext(
-          *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
-      auto expected_kernel_key =
-          op_with_kernel->GetExpectedKernelType(exec_ctx);
-      // change device by the device_guard()
-      apply_device_guard(op, place, &expected_kernel_key);
-      VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
+        auto& pool = platform::DeviceContextPool::Instance();
+        auto* dev_ctx = pool.Get(place);
+        VLOG(4) << "get dev_ctx";
+        auto exec_ctx = ExecutionContext(
+            *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
+        VLOG(4) << "get exec_ctx";
+        auto expected_kernel_key =
+            op_with_kernel->GetExpectedKernelType(exec_ctx);
+        VLOG(4) << "get expected_kernel_key";
+        // change device by the device_guard()
+        apply_device_guard(op, place, &expected_kernel_key);
+        VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
 
-      // step 2. select op kernel
-      auto run_phi_kernel = false;
-      if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
-              op_with_kernel->Type())) {
-        auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
-        auto phi_kernel_name = op_with_kernel->PhiKernelSignature()->name;
+        // step 2. select op kernel
+        auto run_phi_kernel = false;
+        if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
+                op_with_kernel->Type())) {
+          auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
+          auto phi_kernel_name = op_with_kernel->PhiKernelSignature()->name;
 
-        if (op_with_kernel->PhiKernel()->IsValid()) {
-          run_phi_kernel = true;
-        } else {
-          if (!op_with_kernel->SupportsKernelType(expected_kernel_key)) {
-            auto phi_cpu_kernel_key = FallBackToCpu(
-                expected_kernel_key, phi_kernel_key, *op_with_kernel);
-            op_with_kernel->ResetPhiKernel(
-                new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-                    phi_kernel_name, phi_cpu_kernel_key)));
-            if (op_with_kernel->PhiKernel()->IsValid()) {
-              VLOG(6) << "Static mode PrepareImpl - kernel name: "
-                      << phi_kernel_name
-                      << " | kernel key: " << phi_cpu_kernel_key
-                      << " | kernel: " << *(op_with_kernel->PhiKernel());
-              op_with_kernel->ResetKernelType(new OpKernelType(
-                  TransPhiKernelKeyToOpKernelType(phi_cpu_kernel_key)));
-              run_phi_kernel = true;
+          if (op_with_kernel->PhiKernel()->IsValid()) {
+            run_phi_kernel = true;
+          } else {
+            if (!op_with_kernel->SupportsKernelType(expected_kernel_key)) {
+              auto phi_cpu_kernel_key = FallBackToCpu(
+                  expected_kernel_key, phi_kernel_key, *op_with_kernel);
+              op_with_kernel->ResetPhiKernel(
+                  new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
+                      phi_kernel_name, phi_cpu_kernel_key)));
+              if (op_with_kernel->PhiKernel()->IsValid()) {
+                VLOG(6) << "Static mode PrepareImpl - kernel name: "
+                        << phi_kernel_name
+                        << " | kernel key: " << phi_cpu_kernel_key
+                        << " | kernel: " << *(op_with_kernel->PhiKernel());
+                op_with_kernel->ResetKernelType(new OpKernelType(
+                    TransPhiKernelKeyToOpKernelType(phi_cpu_kernel_key)));
+                run_phi_kernel = true;
+              }
             }
           }
         }
-      }
-      if (!run_phi_kernel) {
-        op_with_kernel->ChooseKernel(exec_ctx);
-        op_func_node.kernel_func_ = *op_with_kernel->kernel_func();
-      } else {
-        op_func_node.phi_kernel_ = op_with_kernel->PhiKernel();
-      }
-      auto kernel_type = *(op_with_kernel->kernel_type());
-      if (kernel_type.place_ != dev_ctx->GetPlace()) {
-        dev_ctx = pool.Get(kernel_type.place_);
-      }
-      op_func_node.dev_ctx_ = dev_ctx;
-      if (IsSupportedHetePlace(kernel_type.place_)) {
-        op_func_node.type_ = OpFuncType::kQueueAsync;
-      } else if (platform::is_cpu_place(kernel_type.place_)) {
-        op_func_node.type_ = OpFuncType::kQueueSync;
-      } else {
-        PADDLE_THROW(platform::errors::Fatal("Unsupported current place %s",
-                                             kernel_type.place_));
-      }
-      VLOG(3) << op_with_kernel->Type()
-              << " : finally selected kernel_key: " << kernel_type;
+        VLOG(4) << "if run phi kernel? : " << run_phi_kernel;
+        if (!run_phi_kernel) {
+          op_with_kernel->ChooseKernel(exec_ctx);
+          op_func_node.kernel_func_ = *op_with_kernel->kernel_func();
+        } else {
+          op_func_node.phi_kernel_ = op_with_kernel->PhiKernel();
+        }
+        auto kernel_type = *(op_with_kernel->kernel_type());
+        if (kernel_type.place_ != dev_ctx->GetPlace()) {
+          dev_ctx = pool.Get(kernel_type.place_);
+        }
+        op_func_node.dev_ctx_ = dev_ctx;
+        if (IsSupportedHetePlace(kernel_type.place_)) {
+          op_func_node.type_ = OpFuncType::kQueueAsync;
+        } else if (platform::is_cpu_place(kernel_type.place_)) {
+          op_func_node.type_ = OpFuncType::kQueueSync;
+        } else {
+          PADDLE_THROW(platform::errors::Fatal("Unsupported current place %s",
+                                               kernel_type.place_));
+        }
+        VLOG(3) << op_with_kernel->Type()
+                << " : finally selected kernel_key: " << kernel_type;
 
-      // step 3. data transform
-      VariableValueMap& ins_map_temp = runtime_context.inputs;
-      VariableValueMap& outs_map_temp = runtime_context.outputs;
-      ApplyDataTransform(kernel_type,
-                         place,
-                         &ins_map_temp,
-                         &outs_map_temp,
-                         var_scope,
-                         &op_func_node,
-                         vec_func_list,
-                         use_local_scope);
+        // step 3. data transform
+        VariableValueMap& ins_map_temp = runtime_context.inputs;
+        VariableValueMap& outs_map_temp = runtime_context.outputs;
+        ApplyDataTransform(kernel_type,
+                           place,
+                           &ins_map_temp,
+                           &outs_map_temp,
+                           var_scope,
+                           &op_func_node,
+                           vec_func_list,
+                           use_local_scope);
+        VLOG(4) << "apply data transform done. ";
+        // step 4. infershape, see OperatorWithKernel::RunImpl in operator.cc
+        // for why.
+        if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
+              op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+          InterpretercoreInferShapeContext infer_shape_ctx(*op,
+                                                           runtime_context);
+          // TODO(Aurelius84): In case of control flow ops, they are NOT
+          // inheritted from OperatorWithKernel.
+          op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
+        }
 
-      // step 4. infershape, see OperatorWithKernel::RunImpl in operator.cc for
-      // why.
-      if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
-            op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
-        InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
-        // TODO(Aurelius84): In case of control flow ops, they are NOT
-        // inheritted from OperatorWithKernel.
-        op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
-      }
+        // step 5. run kernel
+        if (run_phi_kernel) {
+          VLOG(1) << "start run phi kernel. ";
+          phi::KernelContext phi_kernel_context;
+          op_with_kernel->BuildPhiKernelContext(
+              runtime_context, dev_ctx, &phi_kernel_context);
+          (*op_func_node.phi_kernel_)(&phi_kernel_context);
+          VLOG(1) << "end run phi kernel. ";
+        } else {
+          VLOG(4) << "start run kernel. ";
+          // the place of exec_ctx maybe has changed.
+          op_func_node.kernel_func_(ExecutionContext(
+              *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
+          VLOG(4) << "end run kernel. ";
+        }
 
-      // step 5. run kernel
-      if (run_phi_kernel) {
-        phi::KernelContext phi_kernel_context;
-        op_with_kernel->BuildPhiKernelContext(
-            runtime_context, dev_ctx, &phi_kernel_context);
-        (*op_func_node.phi_kernel_)(&phi_kernel_context);
-      } else {
-        // the place of exec_ctx maybe has changed.
-        op_func_node.kernel_func_(ExecutionContext(
-            *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
-      }
+        // post-process grad_op.outputs if need cast complex grad into real
+        // grad.
+        // NOTE(Aurelius84): insert a transfer_dtype_op inplacely to cast it.
+        if (framework::IsComplexType(kernel_type.data_type_)) {
+          interpreter::HandleComplexGradToRealGrad(op_func_node,
+                                                   place,
+                                                   outputs_names,
+                                                   &runtime_context.outputs,
+                                                   var_scope,
+                                                   vec_func_list,
+                                                   local_scope);
+        }
+        if (!op_func_node.inplace_back_map.empty()) {
+          auto& m = op_func_node.inplace_back_map;
+          // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in
+          // operator.cc
+          for (auto& p : m) {
+            auto* transformed_tensor =
+                GetMutableLoDTensorOrSelectedRowsValueFromVar(
+                    local_scope->FindVar(var_scope->GetNameById(p.first)));
+            auto* original_tensor =
+                GetMutableLoDTensorOrSelectedRowsValueFromVar(
+                    local_scope->FindVar(var_scope->GetNameById(p.second)));
+            original_tensor->ShareDataWith(*transformed_tensor);
+            VLOG(4) << "Transfer inplace variable back form "
+                    << var_scope->GetNameById(p.first) << " to "
+                    << var_scope->GetNameById(p.second);
+          }
+        }
 
-      // post-process grad_op.outputs if need cast complex grad into real
-      // grad.
-      // NOTE(Aurelius84): insert a transfer_dtype_op inplacely to cast it.
-      if (framework::IsComplexType(kernel_type.data_type_)) {
-        interpreter::HandleComplexGradToRealGrad(op_func_node,
-                                                 place,
-                                                 outputs_names,
-                                                 &runtime_context.outputs,
-                                                 var_scope,
-                                                 vec_func_list,
-                                                 local_scope);
-      }
-      if (!op_func_node.inplace_back_map.empty()) {
-        auto& m = op_func_node.inplace_back_map;
-        // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in
-        // operator.cc
-        for (auto& p : m) {
-          auto* transformed_tensor =
-              GetMutableLoDTensorOrSelectedRowsValueFromVar(
-                  local_scope->FindVar(var_scope->GetNameById(p.first)));
-          auto* original_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
-              local_scope->FindVar(var_scope->GetNameById(p.second)));
-          original_tensor->ShareDataWith(*transformed_tensor);
-          VLOG(4) << "Transfer inplace variable back form "
-                  << var_scope->GetNameById(p.first) << " to "
-                  << var_scope->GetNameById(p.second);
+        // for debug nan/inf
+        if (FLAGS_check_nan_inf) {
+          VLOG(4) << "Check nan/inf";
+          framework::details::CheckOpHasNanOrInf(*op, *runtime_scope, place);
         }
       }
-
-      // for debug nan/inf
-      if (FLAGS_check_nan_inf) {
-        VLOG(4) << "Check nan/inf";
-        framework::details::CheckOpHasNanOrInf(*op, *runtime_scope, place);
-      }
+    } catch (platform::EnforceNotMet& ex) {
+      framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
+      throw std::move(ex);
+    } catch (platform::EOFException&) {
+      std::rethrow_exception(std::current_exception());
+    } catch (std::exception& ex) {
+      LOG(WARNING) << op->Type() << " raises an exception "
+                   << platform::demangle(typeid(ex).name()) << ", "
+                   << ex.what();
+      std::rethrow_exception(std::current_exception());
+    } catch (...) {
+      LOG(WARNING) << op->Type() << " raises an unknown exception";
+      std::rethrow_exception(std::current_exception());
     }
 
     VLOG(4) << "End run " << place << " "
@@ -662,20 +704,6 @@ void build_op_func_list(const platform::Place& place,
       if (var->IsType<LoDTensor>()) {
         garbages->emplace_back(
             var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-      } else if (var->IsType<phi::SelectedRows>()) {
-        garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
-                                   ->mutable_value()
-                                   ->MoveMemoryHolder());
-      } else if (var->IsType<LoDTensorArray>()) {
-        auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
-        for (auto& t : *lod_tensor_arr) {
-          garbages->emplace_back(t.MoveMemoryHolder());
-        }
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Type %s of variable %s is not supported eager deletion.",
-            framework::ToTypeName(var->Type()),
-            var_name));
       }
     }
     delete garbages;  // free mem
