@@ -234,6 +234,7 @@ from .math import outer  # noqa: F401
 from .math import heaviside  # noqa: F401
 from .math import frac  # noqa: F401
 from .math import sgn  # noqa: F401
+from .math import frexp  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
