@@ -995,6 +995,7 @@ def max_unpool3d(x,
     if in_dygraph_mode():
         output = _C_ops.unpool3d(x, indices, kernel_size, stride, padding,
                                  output_size, data_format)
+        return output
     elif _in_legacy_dygraph():
         output = _legacy_C_ops.unpool3d(x, indices, 'unpooling_type', 'max',
                                         'ksize', kernel_size, 'strides', stride,
