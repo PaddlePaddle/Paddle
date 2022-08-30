@@ -898,7 +898,7 @@ class Executor(object):
 
         # NOTE: Whether to use experimental executor `StandaloneExecutor`.
         self._enable_interpreter_core = _is_enable_standalone_executor()
-        self._executor_cache = _ExecutorCache(self.place)
+        self._executor_cache = _ExecutorCache()
 
         self._fleet_executor = None
         # TODO(liyurui): This option will be removed and always true when the functionality
