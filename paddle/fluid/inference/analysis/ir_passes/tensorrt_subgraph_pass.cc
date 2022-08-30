@@ -325,6 +325,10 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                                          &opt_input_shape);
   }
 
+// min_input_shape.insert(std::make_pair("cast_0.tmp_0_out",  min_input_shape.at("cast_0.tmp_0")));
+// max_input_shape.insert(std::make_pair("cast_0.tmp_0_out",  max_input_shape.at("cast_0.tmp_0")));
+// opt_input_shape.insert(std::make_pair("cast_0.tmp_0_out",  opt_input_shape.at("cast_0.tmp_0")));
+
   // The following procedure is used to rename all the intermediate
   // variables and the output variables of the subgraph.
   // Why we do this?
