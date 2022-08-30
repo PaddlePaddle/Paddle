@@ -19,7 +19,7 @@ from .. import core
 from ..framework import convert_np_dtype_to_dtype_, Variable, in_dygraph_mode
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from paddle.utils import deprecated
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 import paddle
 
 __deprecated_func_name__ = {
@@ -818,7 +818,7 @@ _erf_ = generate_layer_fn('erf')
 
 def erf(x, name=None):
     if in_dygraph_mode():
-        return _C_ops.final_state_erf(x)
+        return _C_ops.erf(x)
 
     locals_var = locals().copy()
     kwargs = dict()

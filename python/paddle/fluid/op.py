@@ -124,6 +124,8 @@ class OpDescCreationMethod(object):
                     new_attr.bools.extend(user_defined_attr)
                 elif attr.type == framework_pb2.LONGS:
                     new_attr.longs.extend(user_defined_attr)
+                elif attr.type == framework_pb2.FLOAT64:
+                    new_attr.float64 = user_defined_attr
                 else:
                     raise NotImplementedError(
                         "A not supported attribute type: %s." %

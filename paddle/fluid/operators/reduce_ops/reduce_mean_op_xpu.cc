@@ -112,6 +112,7 @@ class ReduceMeanGradXPUKernel : public framework::OpKernel<T> {
         d = d + xdims.size();
       }
       reduce_numel *= xdims[d];
+      ydims.insert(ydims.begin() + d, 1);
     }
 
     float val = 1.0f / static_cast<float>(reduce_numel);
