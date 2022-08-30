@@ -3204,7 +3204,6 @@ void SplitWithNumInferMeta(const MetaTensor& x,
       sections_vec.push_back(input_axis_dim / num);
     }
     // setp2: fill out dims
-    VLOG(4) << "splitwithNumInfermeta";
     FillSplitOutDims(x, axis_value, sections_vec, &out);
   }
 }

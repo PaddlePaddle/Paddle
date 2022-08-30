@@ -38,26 +38,10 @@ class SplitOp : public framework::OperatorWithKernel {
                       1UL,
                       platform::errors::InvalidArgument(
                           "Outputs(Out) of SplitOp should not be empty."));
-    auto outs_names = ctx->Outputs("Out");
-    const size_t outs_number = outs_names.size();
     int axis = static_cast<int>(ctx->Attrs().Get<int>("axis"));
     int num = static_cast<int>(ctx->Attrs().Get<int>("num"));
     std::vector<int> sections = static_cast<std::vector<int>>(
         ctx->Attrs().Get<std::vector<int>>("sections"));
-
-    // Fill output dims with -1 in compile time
-    if (!ctx->IsRuntime() &&
-        (ctx->HasInput("AxisTensor") || ctx->HasInputs("SectionsTensorList"))) {
-      auto out_dims =
-          phi::make_ddim(std::vector<int>(ctx->GetInputDim("X").size(), -1));
-      std::vector<framework::DDim> outs_dims(outs_number, out_dims);
-      ctx->SetOutputsDim("Out", outs_dims);
-      for (size_t i = 0; i < outs_number; ++i) {
-        ctx->ShareLoD("X", "Out", 0, i);
-      }
-      return;
-    }
-
     // Construct MetaTensor for InferMeta Func
     using CompatMetaTensor = framework::CompatMetaTensor;
     CompatMetaTensor x(ctx->GetInputVarPtrs("X")[0], ctx->IsRuntime());
@@ -79,6 +63,9 @@ class SplitOp : public framework::OperatorWithKernel {
       Variable *var =
           PADDLE_GET_CONST(Variable *, ctx->GetInputVarPtrs("AxisTensor")[0]);
       axis_final = std::move(experimental::MakePhiScalarFromVar(*var));
+    } else if (!ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
+      axis_final = std::move(phi::Scalar(-1));
+      axis_final.SetFromTensor(true);
     } else {
       axis_final = std::move(phi::Scalar(axis));
     }
@@ -97,13 +84,27 @@ class SplitOp : public framework::OperatorWithKernel {
         sections_from_tensor.emplace_back(var->Get<LoDTensor>());
       }
       sections_final = std::move(phi::IntArray(sections_from_tensor));
+    } else if (!ctx->IsRuntime() && ctx->HasInputs("SectionsTensorList")) {
+      sections_final = std::move(phi::IntArray(std::vector<int>(
+          ctx->GetInputVarPtrs("SectionsTensorList").size(), -1)));
+      sections_final.SetFromTensor(true);
     } else {
       sections_final = std::move(phi::IntArray(sections));
     }
     if (sections.size() > 0) {
-      phi::SplitInferMeta(x, sections_final, axis_final, out_ptr);
+      if (ctx->IsRuntime()) {
+        phi::SplitInferMeta(
+            x, sections_final, axis_final, out_ptr, {true, false});
+      } else {
+        phi::SplitInferMeta(
+            x, sections_final, axis_final, out_ptr, {false, false});
+      }
     } else {
-      phi::SplitWithNumInferMeta(x, num, axis_final, out_ptr);
+      if (ctx->IsRuntime()) {
+        phi::SplitWithNumInferMeta(x, num, axis_final, out_ptr, {true, false});
+      } else {
+        phi::SplitWithNumInferMeta(x, num, axis_final, out_ptr, {false, false});
+      }
     }
   }
 
