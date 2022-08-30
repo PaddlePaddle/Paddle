@@ -48,7 +48,8 @@ void ReduceKernel(const Context& dev_ctx,
                   dnnl::algorithm reduction_type) {
   const auto& onednn_engine = dev_ctx.GetEngine();
   auto x_tz = phi::vectorize(x.dims());
-  auto out_tz = CalculateReducedDims(&x, out, dims.GetData(), reduce_all, keep_dim);
+  auto out_tz =
+      CalculateReducedDims(&x, out, dims.GetData(), reduce_all, keep_dim);
 
   auto& astream = OneDNNContext::tls().get_stream();
 
@@ -117,8 +118,8 @@ void ReduceGradKernel(const Context& dev_ctx,
                       float scale_x,
                       float scale_y) {
   const auto& onednn_engine = dev_ctx.GetEngine();
-  auto out_grad_tz =
-      CalculateReducedDims(x_grad, &out_grad, dims.GetData(), reduce_all, keep_dim);
+  auto out_grad_tz = CalculateReducedDims(
+      x_grad, &out_grad, dims.GetData(), reduce_all, keep_dim);
   auto x_grad_tz = phi::vectorize(x_grad->dims());
 
   funcs::BroadcastDataMKLDNNHandler<T> handler(binary_type,
