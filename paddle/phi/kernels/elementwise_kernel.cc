@@ -38,12 +38,12 @@ void MinimumKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ModuloKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& y,
-                  DenseTensor* out) {
+void RemainderKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out) {
   int axis = -1;
-  ModuloRawKernel<T>(dev_ctx, x, y, axis, out);
+  RemainderRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 template <typename T, typename Context>
@@ -96,8 +96,14 @@ PD_REGISTER_KERNEL(minimum,
                    int,
                    int64_t,
                    phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(
-    modulo, CPU, ALL_LAYOUT, phi::ModuloKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(remainder,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::RemainderKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 PD_REGISTER_KERNEL(
     floor_divide, CPU, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
 PD_REGISTER_KERNEL(elementwise_heaviside,
@@ -139,8 +145,14 @@ PD_REGISTER_KERNEL(minimum,
                    int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(
-    modulo, GPU, ALL_LAYOUT, phi::ModuloKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(remainder,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RemainderKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 PD_REGISTER_KERNEL(
     floor_divide, KPS, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
 PD_REGISTER_KERNEL(elementwise_heaviside,

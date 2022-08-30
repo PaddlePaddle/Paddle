@@ -86,6 +86,8 @@ _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
 _enable_standalone_executor_ = (os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR',
                                                None))
+_dy2st_enable_standalone_executor_ = (os.environ.get(
+    'FLAGS_DY2ST_USE_STANDALONE_EXECUTOR', 0))
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to
@@ -115,7 +117,7 @@ def _update_monkey_methods(is_eager):
     Update monkey methods of VarBase or eager.Tensor while
     switching eager mode and legacy mode.
     """
-    from paddle import _C_ops
+    from paddle import _C_ops, _legacy_C_ops
     from .dygraph.varbase_patch_methods import monkey_patch_varbase
     from .dygraph import monkey_patch_math_varbase
 
@@ -125,7 +127,7 @@ def _update_monkey_methods(is_eager):
     assert isinstance(is_eager, bool)
     # switch into eager mode
     if is_eager:
-        _C_ops.switch_to_eager_ops()
+        _legacy_C_ops.switch_to_eager_ops()
         if not _already_patch_eager_tensor:
             monkey_patch_varbase()
             monkey_patch_math_varbase()
@@ -133,7 +135,7 @@ def _update_monkey_methods(is_eager):
             _already_patch_eager_tensor = True
     # switch back into legacy mode
     else:
-        _C_ops.switch_to_core_ops()
+        _legacy_C_ops.switch_to_core_ops()
         if not _already_patch_varbase:
             monkey_patch_varbase()
             monkey_patch_math_varbase()
@@ -2838,6 +2840,7 @@ class Operator(object):
                                 arg.op = self
                     self.desc.set_output(out_proto.name, out_arg_names)
 
+            extra_attrs_map = core.get_op_extra_attrs(type)
             if op_attrs is not None:
                 if not isinstance(op_attrs, dict):
                     raise TypeError("'attrs' should be a dict.")
@@ -2848,6 +2851,13 @@ class Operator(object):
                         continue
                     attr_val = op_attrs[attr_name]
                     self._update_desc_attr(attr_name, attr_val)
+                for attr_name in extra_attrs_map.keys():
+                    if (attr_name
+                            not in op_attrs) or (op_attrs[attr_name] is None):
+                        self._update_desc_attr(attr_name,
+                                               extra_attrs_map[attr_name])
+                    else:
+                        self._update_desc_attr(attr_name, op_attrs[attr_name])
 
             # proto.attrs doesn't include ipu_index
             if core.is_compiled_with_ipu():
@@ -5040,6 +5050,8 @@ class Program(object):
         all_new_vars = []
         block_num = new_desc.num_blocks()
         for idx in range(block_num):
+            if (idx > (len(self.blocks) - 1)):
+                self._create_block()
             new_block_desc = new_desc.block(idx)
             all_new_vars.append([])
             block_new_vars = all_new_vars[-1]
@@ -5817,17 +5829,29 @@ class Program(object):
         ]
         res._sync_with_cpp()
 
+        # Note: The op_role and op_role_var cann't be deleted currently,
+        # and we will try to remove them in the future.
+        common_clipped_attrs_list = ['op_namescope', 'op_callstack']
+
         for i in six.moves.range(res.desc.num_blocks()):
             block = res.desc.block(i)
             for var in block.all_vars():
                 var.clear_is_parameter()
                 var.clear_stop_gradient()
-            if not clip_extra:
-                continue
             for op_idx in range(0, block.op_size()):
                 op = block.op(op_idx)
                 if op.type() not in OpProtoHolder.instance().op_proto_map:
                     continue
+
+                if not clip_extra:
+                    continue
+
+                extra_attrs_map = core.get_op_extra_attrs(op.type())
+                for name in op.attr_names():
+                    if name in extra_attrs_map:
+                        op.remove_attr(name)
+                        continue
+
                 proto = OpProtoHolder.instance().get_op_proto(op.type())
                 remove_input_list = []
                 for name in op.input_names():
@@ -5841,8 +5865,9 @@ class Program(object):
                         break
                     if not find:
                         remove_input_list.append(name)
-                for name in remove_input_list:
-                    op.remove_input(name)
+                # The extra input of op will be removed in the future
+                # for name in remove_input_list:
+                #     op.remove_input(name)
 
                 remove_output_list = []
                 for name in op.output_names():
@@ -5856,10 +5881,10 @@ class Program(object):
                         break
                     if not find:
                         remove_output_list.append(name)
-                for name in remove_output_list:
-                    op.remove_output(name)
+                # The extra input of op will be removed in the future
+                # for name in remove_output_list:
+                #     op.remove_output(name)
 
-                remove_attr_list = []
                 op_quant_name = core.op_proto_and_checker_maker.kOpWithQuantAttrName(
                 )
                 quant = bool(op.attr(op_quant_name)
@@ -5869,18 +5894,21 @@ class Program(object):
                     "activation_bits", "bit_length", "quantize_weight_bits",
                     "weight_quant_scale"
                 ]
+                remove_attr_list = []
                 for name in op.attr_names():
                     if quant:
                         if name in quant_attrs:
                             continue
                         if name.endswith("_threshold"):
                             continue
+                    if name in common_clipped_attrs_list:
+                        remove_attr_list.append(name)
+                        continue
+
                     find = False
                     for attr_proto in proto.attrs:
                         if attr_proto.name != name:
                             continue
-                        if attr_proto.extra:
-                            remove_attr_list.append(name)
                         find = True
                         break
                     if not find:
@@ -6794,18 +6822,19 @@ class EagerParamBase(_core_eager_eagertensor):
         self.need_clip = kwargs.get('need_clip', True)
 
         self.is_distributed = kwargs.get('is_distributed', False)
-        # self.block = default_main_program().global_block()
-        self.init_func = None
+        # hook functions for lazy initialization
+        self._init_func = None
+        self._init_op_creator = None
 
     def set_init_func(self, obj):
-        self.init_func = obj
+        self._init_func = obj
 
     @dygraph_only
     def initialize(self):
-        assert self.init_func is not None, "Required self.init_func is not None, but received None."
-        self.init_func()
+        assert self._init_func is not None, "Required self._init_func is not None, but received None."
+        self._init_func()
         # clear function handle to release resource
-        self.init_func = None
+        self._init_func = None
 
     @property
     def trainable(self):
@@ -6819,6 +6848,13 @@ class EagerParamBase(_core_eager_eagertensor):
             raise ValueError(
                 "The type of trainable MUST be bool, but the type is ",
                 type(trainable))
+
+    def _create_init_op(self, block):
+        """
+        Call init_op_creator function to create initializer operation in block.
+        """
+        assert self._init_op_creator is not None, "Required self._init_op_creator is not None, but received None."
+        self._init_op_creator(block)
 
     def __str__(self):
         """
