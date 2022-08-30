@@ -28,7 +28,7 @@ class TestCollectiveScatterAPI(test_base.TestCollectiveAPIRunnerBase):
     def get_model(self, main_prog, startup_program, rank, indata=None):
         with fluid.program_guard(main_prog, startup_program):
             tindata = paddle.to_tensor(indata)
-            subdata1, subdata2 = paddle.split(tindata, 2)
+            subdata1, subdata2 = paddle.split(tindata, 2, axis=0)
             if rank == 0:
                 paddle.distributed.scatter(subdata1, src=1)
             else:

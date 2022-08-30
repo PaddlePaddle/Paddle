@@ -2011,7 +2011,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
 
     Args:
         in_tensor_list (list): A list of input Tensors. Every element in the list must be a Tensor whose data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         out_tensor_list (list): A list of output Tensors. The data type of its elements should be the same as the
             data type of the input Tensors.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
@@ -2024,21 +2024,19 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
         .. code-block:: python
 
             # required: distributed
-            import numpy as np
             import paddle
-            from paddle.distributed import init_parallel_env
-            
-            init_parallel_env()
+            import paddle.distributed as dist
+
+            dist.init_parallel_env()
             out_tensor_list = []
-            if paddle.distributed.ParallelEnv().rank == 0:
-                np_data1 = np.array([[1, 2, 3], [4, 5, 6]])
-                np_data2 = np.array([[7, 8, 9], [10, 11, 12]])
+            if dist.ParallelEnv().rank == 0:
+                data1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+                data2 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]])
             else:
-                np_data1 = np.array([[13, 14, 15], [16, 17, 18]])
-                np_data2 = np.array([[19, 20, 21], [22, 23, 24]])
-            data1 = paddle.to_tensor(np_data1)
-            data2 = paddle.to_tensor(np_data2)
-            paddle.distributed.alltoall([data1, data2], out_tensor_list)
+                data1 = paddle.to_tensor([[13, 14, 15], [16, 17, 18]])
+                data2 = paddle.to_tensor([[19, 20, 21], [22, 23, 24]])
+            dist.alltoall([data1, data2], out_tensor_list)
+            print(out_tensor_list)
             # out for rank 0: [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]
             # out for rank 1: [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]]
     """
@@ -2047,6 +2045,8 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
 
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
+        backend = _group_map_backend[group]
+        assert backend != 'gloo', ("backend gloo is not supported yet")
     else:
         ring_id = 0 if group is None else group.id
 
@@ -2196,7 +2196,7 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
 
     Args:
         tensor (Tensor): The Tensor to send. Its data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         dst (int): The destination rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
@@ -2209,22 +2209,23 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
 
             # required: distributed
             import paddle
-            from paddle.distributed import init_parallel_env
+            import paddle.distributed as dist
 
-            init_parallel_env()
-            if paddle.distributed.ParallelEnv().rank == 0:
+            dist.init_parallel_env()
+            if dist.ParallelEnv().rank == 0:
                 data = paddle.to_tensor([7, 8, 9])
-                paddle.distributed.send(data, dst=1)
+                dist.send(data, dst=1)
             else:
-                data = paddle.to_tensor([1,2,3])
-                paddle.distributed.recv(data, src=0)
-            out = data.numpy()
+                data = paddle.to_tensor([1, 2, 3])
+                dist.recv(data, src=0)
     """
     if group is not None and not group.is_member():
         return
     dst = _get_group_rank(dst, group)
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
+        backend = _group_map_backend[group]
+        assert backend != 'gloo', ("backend gloo is not supported yet")
         task = group.process_group.send(tensor, dst)
         if use_calc_stream:
             task.wait()
@@ -2258,7 +2259,7 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
 
     Args:
         tensor (Tensor): The Tensor to receive. Its data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         src (int): The source rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
@@ -2271,16 +2272,15 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
 
             # required: distributed
             import paddle
-            from paddle.distributed import init_parallel_env
+            import paddle.distributed as dist
 
-            init_parallel_env()
-            if paddle.distributed.ParallelEnv().rank == 0:
+            dist.init_parallel_env()
+            if dist.ParallelEnv().rank == 0:
                 data = paddle.to_tensor([7, 8, 9])
-                paddle.distributed.send(data, dst=1)
+                dist.send(data, dst=1)
             else:
-                data = paddle.to_tensor([1,2,3])
-                paddle.distributed.recv(data, src=0)
-            out = data.numpy()
+                data = paddle.to_tensor([1, 2, 3])
+                dist.recv(data, src=0)
     """
     if group is not None and not group.is_member():
         return
@@ -2288,6 +2288,8 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
     src = _get_group_rank(src, group)
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
+        backend = _group_map_backend[group]
+        assert backend != 'gloo', ("backend gloo is not supported yet")
         task = group.process_group.recv(tensor, src)
         if use_calc_stream:
             task.wait()
