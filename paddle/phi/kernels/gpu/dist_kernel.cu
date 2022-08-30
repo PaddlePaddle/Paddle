@@ -13,14 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/dist_kernel.h"
-
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
-#include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/p_norm_kernel.h"
 
@@ -32,7 +28,7 @@ template <typename T>
 struct ZeroOrderFunctor {
  public:
   __device__ T operator()(const T& x, const T& y) const {
-    return abs(static_cast<T>(static_cast<double>(x - y) != 0));
+    return static_cast<T>((x - y) != 0);
   }
 };
 
