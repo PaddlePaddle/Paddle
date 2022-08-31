@@ -237,7 +237,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
                                  epsilon);
   } else {
     if (!x_grad) {
-      x_grad_data = RAII_GUARD.alloc_l3_or_gm<T>(x->numel());
+      x_grad_data = RAII_GUARD.alloc_l3_or_gm<T>(x.numel());
     }
     if (!scale_grad) {
       scale_grad_data = RAII_GUARD.alloc_l3_or_gm<float>(C);
