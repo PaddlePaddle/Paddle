@@ -1596,16 +1596,7 @@ class Executor(object):
                         UserWarning)
                     return False
 
-                # Unsupported case 6: distributed
-                if compiled_program._build_strategy is not None and (
-                        compiled_program._build_strategy.is_distribution
-                        or compiled_program._build_strategy.num_trainers > 1):
-                    warnings.warn(
-                        "Standalone executor is not used for distribution",
-                        UserWarning)
-                    return False
-
-                # Unsupported case 7: async mode
+                # Unsupported case 6: async mode
                 if compiled_program._build_strategy is not None and compiled_program._build_strategy.async_mode:
                     warnings.warn(
                         "Standalone executor is not used for async mode",
