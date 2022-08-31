@@ -138,11 +138,19 @@ class BuildCINNPass(CPPPassWrapper):
 
             feed = self.get_attr('feed', [])
             fetch_list = self.get_attr('fetch_list', [])
-            tmp_main_program = Executor._prune_program(main_program, feed,
-                                                       fetch_list, [])
+            prune_program = self.get_attr('prune_program', True)
 
-            tmp_main_program = Executor._add_fetch_ops(tmp_main_program,
-                                                       fetch_list, 'fetch')
+            if prune_program:
+                tmp_main_program = Executor._prune_program(
+                    main_program, feed, fetch_list, [])
+
+                tmp_main_program = Executor._add_fetch_ops(
+                    tmp_main_program, fetch_list, 'fetch')
+
+            else:
+
+                tmp_main_program = Executor._add_fetch_ops(
+                    main_program, fetch_list, 'fetch')
 
             _apply_cpp_pass(tmp_main_program, startup_program, self.cpp_name,
                             {}, self.cpp_attr_types)
