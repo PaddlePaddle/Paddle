@@ -180,29 +180,29 @@ def _process_run_type(run_type):
 class DistUTPortManager():
 
     def __init__(self):
-        self.DIST_UT_PORT = 21200
-        self.ASSIGNED_PORTS = dict()
-        self.LAST_TEST_NAME = ""
-        self.LAST_TEST_CMAKE_FILE = ""
-        self.NO_CMAKE_DIR_WARNING = []
-        self.PROCESSED_DIR = set()
+        self.dist_ut_port = 21200
+        self.assigned_ports = dict()
+        self.last_test_name = ""
+        self.last_test_cmake_file = ""
+        self.no_cmake_dirs = []
+        self.processed_dirs = set()
 
     def reset_current_port(self, port=None):
-        self.DIST_UT_PORT = 21200 if port is None else port
+        self.dist_ut_port = 21200 if port is None else port
 
     def get_currnt_port(self):
-        return self.DIST_UT_PORT
+        return self.dist_ut_port
 
     def gset_port(self, test_name, port):
         '''
         Get and set a port for unit test named test_name. If the test has been already holding a port, return the port it holds.
         Else assign the input port as a new port to the test.
         '''
-        if test_name not in self.ASSIGNED_PORTS:
-            self.ASSIGNED_PORTS[test_name] = port
-        self.DIST_UT_PORT = max(self.DIST_UT_PORT,
-                                self.ASSIGNED_PORTS[test_name])
-        return self.ASSIGNED_PORTS[test_name]
+        if test_name not in self.assigned_ports:
+            self.assigned_ports[test_name] = port
+        self.dist_ut_port = max(self.dist_ut_port,
+                                self.assigned_ports[test_name])
+        return self.assigned_ports[test_name]
 
     def process_dist_port_num(self, port_num):
         assert re.compile("^[0-9]+$").search(port_num) and int(port_num) > 0 or port_num.strip()=="", \
@@ -210,9 +210,9 @@ class DistUTPortManager():
         port_num = port_num.strip()
         if len(port_num) == 0:
             return 0
-        port = self.DIST_UT_PORT
+        port = self.dist_ut_port
         assert port < 23000, "dist port is exhausted"
-        self.DIST_UT_PORT += int(port_num)
+        self.dist_ut_port += int(port_num)
         return port
 
     def _init_dist_ut_ports_from_cmakefile(self, cmake_file_name):
@@ -247,24 +247,24 @@ class DistUTPortManager():
                 self.gset_port(name, port)
 
                 # get the test_name which latest assigned port belongs to
-                if self.ASSIGNED_PORTS[name] == self.DIST_UT_PORT:
-                    self.LAST_TEST_NAME = name
-                    self.LAST_TEST_CMAKE_FILE = cmake_file_name
+                if self.assigned_ports[name] == self.dist_ut_port:
+                    self.last_test_name = name
+                    self.last_test_cmake_file = cmake_file_name
 
     def parse_assigned_dist_ut_ports(self, current_work_dir, ignores, depth=0):
         '''
         Desc:
             get all assigned dist ports to keep port of unmodified test fixed.
         '''
-        if current_work_dir in self.PROCESSED_DIR:
+        if current_work_dir in self.processed_dirs:
             return
 
         # if root(depth==0), convert the ignores to abs paths
         if depth == 0:
-            self.PROCESSED_DIR.clear()
+            self.processed_dirs.clear()
             ignores = [os.path.abspath(i) for i in ignores]
 
-        self.PROCESSED_DIR.add(current_work_dir)
+        self.processed_dirs.add(current_work_dir)
         contents = os.listdir(current_work_dir)
         cmake_file = os.path.join(current_work_dir, "CMakeLists.txt")
         csv = cmake_file.replace("CMakeLists.txt", 'testslist.csv')
@@ -275,7 +275,7 @@ class DistUTPortManager():
                     self._init_dist_ut_ports_from_cmakefile(cmake_file)
                 elif not os.path.isfile(cmake_file):
                     # put the directory which has csv but no cmake into NO_CMAKE_DIR_WARNING
-                    self.NO_CMAKE_DIR_WARNING.append(current_work_dir)
+                    self.no_cmake_dirs.append(current_work_dir)
 
             # recursively process the subdirectories
             for c in contents:
@@ -292,19 +292,19 @@ class DistUTPortManager():
             #    if such a drectory exists
 
             # step 1
-            if len(self.LAST_TEST_NAME) > 0 and len(
-                    self.LAST_TEST_CMAKE_FILE) > 0:
+            if len(self.last_test_name) > 0 and len(
+                    self.last_test_cmake_file) > 0:
                 with open(
-                        self.LAST_TEST_CMAKE_FILE.replace(
+                        self.last_test_cmake_file.replace(
                             "CMakeLists.txt", "testslist.csv")) as csv_file:
                     found = False
                     for line in csv_file.readlines():
                         name, _, _, _, _, launcher, num_port, _, _, _ = line.strip(
                         ).split(",")
-                        if name == self.LAST_TEST_NAME:
+                        if name == self.last_test_name:
                             found = True
                             break
-                assert found, f"no such test named '{self.LAST_TEST_NAME}' in file '{self.LAST_TEST_CMAKE_FILE}'"
+                assert found, f"no such test named '{self.last_test_name}' in file '{self.last_test_cmake_file}'"
                 if launcher[-2:] == ".sh":
                     self.process_dist_port_num(num_port)
 
@@ -312,7 +312,7 @@ class DistUTPortManager():
             err_msg = f"""==================[No Old CMakeLists.txt Error]==================================
         Following directories has no CmakeLists.txt files:
     """
-            for c in self.NO_CMAKE_DIR_WARNING:
+            for c in self.no_cmake_dirs:
                 err_msg += "   " + c + "\n"
             err_msg += """
         This may cause the dist ports different with the old version.
@@ -323,32 +323,44 @@ class DistUTPortManager():
         generate new CmakeLists.txt files.
     ====================================================================================
     """
-            assert len(self.NO_CMAKE_DIR_WARNING) == 0, err_msg
+            assert len(self.no_cmake_dirs) == 0, err_msg
 
 
 class CMakeGenerator():
 
-    def __init__(self, root_dirs):
-        self.PROCESSED_DIR = set()
+    def __init__(self, current_dirs):
+        self.processed_dirs = set()
         self.port_manager = DistUTPortManager()
-        self.root_dirs = root_dirs
+        self.current_dirs = current_dirs
 
     def prepare_dist_ut_port(self):
-        for c in self.root_dirs:
-            while True:
-                dirpath = os.path.dirname(c)
-                cmake = os.path.join(dirpath, "CMakeLists.txt")
-                csv = os.path.join(dirpath, "testslist.csv.txt")
-                if not (os.path.isfile(cmake) or os.path.isfile(csv)):
-                    break
-                c = os.path.abspath(dirpath)
+        for c in self._find_root_dirs():
             self.port_manager.parse_assigned_dist_ut_ports(
                 c, ignores=args.ignore_cmake_dirs, depth=0)
 
     def parse_csvs(self):
-        for c in self.root_dirs:
+        for c in self.current_dirs:
             c = os.path.abspath(c)
             self._gen_cmakelists(c)
+
+    def _find_root_dirs(self):
+        root_dirs = []
+        # for each current directory, find its highest ancient directory (at least itself)
+        # which includes CMakeLists.txt or testslist.csv.txt in the filesys tree
+        for c in self.current_dirs:
+            c = os.path.abspath(c)
+            while True:
+                ppath = os.path.dirname(c)
+                if os.path.abspath(ppath) == os.path.abspath(c):
+                    break
+                cmake = os.path.join(ppath, "CMakeLists.txt")
+                csv = os.path.join(ppath, "testslist.csv.txt")
+                if not (os.path.isfile(cmake) or os.path.isfile(csv)):
+                    break
+                c = os.path.abspath(ppath)
+            if c not in root_dirs:
+                root_dirs.append(c)
+        return root_dirs
 
     def _parse_line(self, line, curdir):
         """
@@ -429,7 +441,7 @@ class CMakeGenerator():
 
     def _gen_cmakelists(self, current_work_dir, depth=0):
         if depth == 0:
-            self.PROCESSED_DIR.clear()
+            self.processed_dirs.clear()
         print("procfessing dir:", current_work_dir)
         if current_work_dir == "":
             current_work_dir = "."
@@ -439,15 +451,16 @@ class CMakeGenerator():
         sub_dirs = []
         for c in contents:
             c_path = os.path.join(current_work_dir, c)
-            if c_path in self.PROCESSED_DIR:
+            if c_path in self.processed_dirs:
                 return
-            if os.path.isdir(c_path):
-                self.PROCESSED_DIR.add(c_path)
-                if os.path.isfile(os.path.join(current_work_dir, c, "testslist.csv")) \
-                    or os.path.isfile(os.path.join(current_work_dir, c, "CMakeLists.txt")):
-                    self._gen_cmakelists(os.path.join(current_work_dir, c),
-                                         depth + 1)
-                    sub_dirs.append(c)
+            if not os.path.isdir(c_path):
+                continue
+            self.processed_dirs.add(c_path)
+            if os.path.isfile(os.path.join(current_work_dir, c, "testslist.csv")) \
+                or os.path.isfile(os.path.join(current_work_dir, c, "CMakeLists.txt")):
+                self._gen_cmakelists(os.path.join(current_work_dir, c),
+                                     depth + 1)
+                sub_dirs.append(c)
 
         if not os.path.isfile(os.path.join(current_work_dir, "testslist.csv")):
             return
