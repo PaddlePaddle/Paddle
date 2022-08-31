@@ -97,13 +97,12 @@ void SliceRawKernel(const Context& ctx,
   }
 
   ctx.template Alloc<T>(out);
-  int r = xpu::slice<XPUType>(
-      ctx.x_context(),
-      reinterpret_cast<const XPUType*>(input.data<T>()),
-      reinterpret_cast<XPUType*>(out->data<T>(ctx.GetPlace())),
-      shape,
-      starts_extension,
-      ends_extension);
+  int r = xpu::slice<XPUType>(ctx.x_context(),
+                              reinterpret_cast<const XPUType*>(input.data<T>()),
+                              reinterpret_cast<XPUType*>(out->data<T>()),
+                              shape,
+                              starts_extension,
+                              ends_extension);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "slice");
 }
 }  // namespace phi
