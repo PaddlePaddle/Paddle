@@ -685,7 +685,7 @@ class TensorRTEngine {
 
   // use for subengine context memory sharing
   cudaStream_t stream_{0};
-  bool context_memory_shared_{true};
+  bool context_memory_shared_{false};
 
   int device_id_;
   int max_profile_num_{1};
@@ -842,6 +842,10 @@ class TRTEngineManager {
                          const phi::GPUPlace& place,
                          const phi::Stream& stream) {
     std::unique_lock<std::mutex> lock(mutex_);
+#ifdef PADDLE_WITH_TESTING
+    size_t ctx_mem_size = trt_engine->engine()->getDeviceMemorySize();
+    max_ctx_mem_size_ = std::max(max_ctx_mem_size_, ctx_mem_size);
+#endif
     auto predictor_id = trt_engine->predictor_id_per_thread;
     if (context_memorys_.count(predictor_id) == 0) {
       auto memory_addr = memory::Alloc(place, max_ctx_mem_size_, stream);
