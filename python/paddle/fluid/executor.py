@@ -978,7 +978,8 @@ class Executor(object):
         ]
         return outs
 
-    def _split_optimize_ops_in_fetch_list(self, fetch_list):
+    @classmethod
+    def _split_optimize_ops_in_fetch_list(cls, fetch_list):
         """
         Split optimize_ops from fetch_list, which provided to specify program prunning.
         Args:
@@ -1030,7 +1031,8 @@ class Executor(object):
 
         return _fetch_list, _optimize_ops
 
-    def _prune_program(self,
+    @classmethod
+    def _prune_program(cls,
                        program,
                        feed=None,
                        fetch_list=None,
@@ -1093,7 +1095,8 @@ class Executor(object):
 
         return program
 
-    def _update_feed(self, program, feed):
+    @classmethod
+    def _update_feed(cls, program, feed):
         """
         Update the feed dict, remove the feed item which is pruned in program.  
 
@@ -2382,7 +2385,8 @@ class Executor(object):
 
         return tmp_program
 
-    def _add_fetch_ops(self,
+    @classmethod
+    def _add_fetch_ops(cls,
                        program,
                        fetch_list,
                        fetch_var_name,
@@ -2416,6 +2420,17 @@ class Executor(object):
                                        inputs={'X': [var]},
                                        outputs={'Out': [fetch_var]},
                                        attrs={'col': i})
+
+        return tmp_program
+
+    @classmethod
+    def _remove_fetch_ops(cls, program, fetch_op_name='fetch'):
+        tmp_program = program.clone()
+        global_block = tmp_program.global_block()
+        op_num = len(global_block.ops)
+        for idx in reversed(range(op_num)):
+            if global_block.ops[idx].type == fetch_op_name:
+                global_block._remove_op(idx)
 
         return tmp_program
 
