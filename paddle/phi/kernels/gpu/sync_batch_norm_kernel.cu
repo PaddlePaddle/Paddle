@@ -86,7 +86,10 @@ void SyncBatchNormKernel(const Context &ctx,
     // x, x^2, 1, here 1 is used to calc device num
     // device num also can be got from platform::DeviceContextPool
     const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-    alloc_ptr = paddle::memory::Alloc(ctx, bytes);
+    alloc_ptr = paddle::memory::Alloc(
+        ctx.GetPlace(),
+        bytes,
+        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
 
     auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
     const int threads = 256;
