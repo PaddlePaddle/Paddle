@@ -1,23 +1,23 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+#include "paddle/phi/kernels/argsort_kernel.h"
 
-    http://www.apache.org/licenses/LICENSE-2.0
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
-#ifdef PADDLE_WITH_XPU
-
-#include "paddle/fluid/framework/op_registry.h"
-
-namespace paddle {
-namespace operators {
+namespace phi {
 
 const int XPU_SORT_MAX_SIZE = 16384;
 
@@ -34,9 +34,9 @@ static inline void xpu_argsort(xpu::Context* ctx,
   PADDLE_ENFORCE_EQ(
       ret,
       XPU_SUCCESS,
-      platform::errors::External("XPU sort kernel return wrong value[%d %s].",
-                                 ret,
-                                 XPUAPIErrorMsg[ret]));
+      errors::External("XPU sort kernel return wrong value[%d %s].",
+                       ret,
+                       XPUAPIErrorMsg[ret]));
 }
 
 template <typename T>
@@ -46,12 +46,12 @@ static inline void xpu_transpose(xpu::Context* ctx,
                                  const std::vector<int>& xshape,
                                  const std::vector<int>& permute) {
   int ret = xpu::transpose(ctx, x, y, xshape, permute);
-  PADDLE_ENFORCE_EQ(ret,
-                    XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU transpose kernel return wrong value[%d %s]",
-                        ret,
-                        XPUAPIErrorMsg[ret]));
+  PADDLE_ENFORCE_EQ(
+      ret,
+      XPU_SUCCESS,
+      errors::External("XPU transpose kernel return wrong value[%d %s]",
+                       ret,
+                       XPUAPIErrorMsg[ret]));
 }
 
 template <typename TX, typename TY>
@@ -60,9 +60,9 @@ static inline void xpu_cast(xpu::Context* ctx, const TX* x, TY* y, int len) {
   PADDLE_ENFORCE_EQ(
       ret,
       XPU_SUCCESS,
-      platform::errors::External("XPU cast kernel return wrong value[%d %s]",
-                                 ret,
-                                 XPUAPIErrorMsg[ret]));
+      errors::External("XPU cast kernel return wrong value[%d %s]",
+                       ret,
+                       XPUAPIErrorMsg[ret]));
 }
 
 template <typename T,
@@ -179,82 +179,67 @@ struct XPUArgsort<int64_t, true, true> {
   }
 };
 
-template <typename T>
-class ArgsortXPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<framework::Tensor>("X");
-    auto* output = ctx.Output<framework::Tensor>("Out");
-    auto* indices = ctx.Output<framework::Tensor>("Indices");
-    int axis = ctx.Attr<int>("axis");
-    bool descending = ctx.Attr<bool>("descending");
+template <typename T, typename Context>
+void ArgsortKernel(const Context& dev_ctx,
+                   const DenseTensor& input,
+                   int axis,
+                   bool descending,
+                   DenseTensor* output,
+                   DenseTensor* indices) {
+  auto in_dims = input.dims();
+  axis = (axis < 0) ? (in_dims.size() + axis) : axis;
+  int n = in_dims[axis];
 
-    auto in_dims = input->dims();
-    axis = (axis < 0) ? (in_dims.size() + axis) : axis;
-    int n = in_dims[axis];
+  PADDLE_ENFORCE_LT(
+      n,
+      XPU_SORT_MAX_SIZE,
+      errors::InvalidArgument(
+          "The axis dimension of Input should less than %d, but got %d.",
+          XPU_SORT_MAX_SIZE,
+          in_dims[axis]));
 
-    PADDLE_ENFORCE_LT(
-        n,
-        XPU_SORT_MAX_SIZE,
-        platform::errors::InvalidArgument(
-            "The axis dimension of Input should less than %d, but got %d.",
-            XPU_SORT_MAX_SIZE,
-            in_dims[axis]));
+  auto input_data = input.data<T>();
+  auto output_data = dev_ctx.template Alloc<T>(output);
+  auto indices_data = dev_ctx.template Alloc<int64_t>(indices);
 
-    auto input_data = input->data<T>();
-    auto output_data = output->mutable_data<T>(ctx.GetPlace());
-    auto indices_data = indices->mutable_data<int64_t>(ctx.GetPlace());
+  int len_before = phi::product(phi::slice_ddim(in_dims, 0, axis));
+  int len_after =
+      phi::product(phi::slice_ddim(in_dims, axis + 1, in_dims.size()));
+  bool int64_need_cast =
+      (std::is_same<T, int64_t>::value && n > (XPU_SORT_MAX_SIZE / 2)) ? true
+                                                                       : false;
+  bool index_need_cast = (n > (XPU_SORT_MAX_SIZE / 2)) ? true : false;
+  std::vector<int> permute_vec{0, 2, 1};
+  std::vector<int> data_shape{len_before, n, len_after};
 
-    auto& dev_ctx =
-        ctx.template device_context<paddle::platform::XPUDeviceContext>();
-    int len_before = phi::product(phi::slice_ddim(in_dims, 0, axis));
-    int len_after =
-        phi::product(phi::slice_ddim(in_dims, axis + 1, in_dims.size()));
-    bool int64_need_cast =
-        (std::is_same<T, int64_t>::value && n > (XPU_SORT_MAX_SIZE / 2))
-            ? true
-            : false;
-    bool index_need_cast = (n > (XPU_SORT_MAX_SIZE / 2)) ? true : false;
-    std::vector<int> permute_vec{0, 2, 1};
-    std::vector<int> data_shape{len_before, n, len_after};
-
-    if (int64_need_cast) {
-      XPUArgsort<T, true, true>()(dev_ctx.x_context(),
+  if (int64_need_cast) {
+    XPUArgsort<T, true, true>()(dev_ctx.x_context(),
+                                input_data,
+                                output_data,
+                                indices_data,
+                                data_shape,
+                                permute_vec,
+                                descending);
+  } else if (index_need_cast) {
+    XPUArgsort<T, false, true>()(dev_ctx.x_context(),
+                                 input_data,
+                                 output_data,
+                                 indices_data,
+                                 data_shape,
+                                 permute_vec,
+                                 descending);
+  } else {
+    XPUArgsort<T, false, false>()(dev_ctx.x_context(),
                                   input_data,
                                   output_data,
                                   indices_data,
                                   data_shape,
                                   permute_vec,
                                   descending);
-    } else if (index_need_cast) {
-      XPUArgsort<T, false, true>()(dev_ctx.x_context(),
-                                   input_data,
-                                   output_data,
-                                   indices_data,
-                                   data_shape,
-                                   permute_vec,
-                                   descending);
-    } else {
-      XPUArgsort<T, false, false>()(dev_ctx.x_context(),
-                                    input_data,
-                                    output_data,
-                                    indices_data,
-                                    data_shape,
-                                    permute_vec,
-                                    descending);
-    }
   }
-};
+}
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-
-REGISTER_OP_XPU_KERNEL(argsort,
-                       ops::ArgsortXPUKernel<float>,
-                       ops::ArgsortXPUKernel<int>,
-                       ops::ArgsortXPUKernel<int64_t>);
-
-#endif
+PD_REGISTER_KERNEL(
+    argsort, XPU, ALL_LAYOUT, phi::ArgsortKernel, float, int, int64_t) {}
