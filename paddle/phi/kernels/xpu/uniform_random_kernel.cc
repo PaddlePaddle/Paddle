@@ -35,7 +35,7 @@ void UniformRandomRawKernel(const Context &dev_ctx,
                             float diag_val,
                             DenseTensor *out) {
   out->Resize(phi::make_ddim(shape.GetData()));
-  dev_ctx.template Alloc<T>(out);
+  T *data = dev_ctx.template Alloc<T>(out);
   int64_t size = out->numel();
 
   std::unique_ptr<T[]> data_cpu(new T[size]);
@@ -68,7 +68,7 @@ void UniformRandomRawKernel(const Context &dev_ctx,
   }
 
   paddle::memory::Copy(dev_ctx.GetPlace(),
-                       out,
+                       data,
                        phi::CPUPlace(),
                        reinterpret_cast<void *>(data_cpu.get()),
                        size * sizeof(T));
