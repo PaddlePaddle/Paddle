@@ -1254,11 +1254,8 @@ def l1_loss(input, label, reduction='mean', name=None):
             "received %s, which is not allowed." % reduction)
 
     if in_dygraph_mode():
-        unreduced = _elementwise_op_in_dygraph(input,
-                                               label,
-                                               axis=-1,
-                                               act='abs',
-                                               op_name='elementwise_sub')
+        unreduced = _C_ops.abs(_C_ops.subtract(input, label))
+
         if reduction == 'mean':
             return _C_ops.mean_all(unreduced)
         elif reduction == 'sum':
