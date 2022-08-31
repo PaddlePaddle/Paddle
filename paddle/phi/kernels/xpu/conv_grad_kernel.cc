@@ -26,10 +26,10 @@ void ConvGradKernel(const Context& dev_ctx,
                     const DenseTensor& filter,
                     const DenseTensor& out_grad,
                     const std::vector<int>& strides,
-                    const std::vector<int>& paddings,
+                    const std::vector<int>& paddings_t,
                     const std::string& padding_algorithm,
                     int groups,
-                    const std::vector<int>& dilations,
+                    const std::vector<int>& dilations_t,
                     const std::string& data_format,
                     bool use_addto,
                     int workspace_size_MB,
@@ -37,6 +37,8 @@ void ConvGradKernel(const Context& dev_ctx,
                     DenseTensor* input_grad,
                     DenseTensor* filter_grad) {
   using XPUT = typename XPUTypeTrait<T>::Type;
+  std::vector<int> paddings = paddings_t;
+  std::vector<int> dilations = dilations_t;
   // The filter and filter_grad will be reshaped in the calculations,
   // so here use an assignment operation,
   // that avoids modifying the variable in the Scope.
