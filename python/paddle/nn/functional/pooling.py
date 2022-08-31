@@ -1048,6 +1048,7 @@ def max_pool2d(x,
     """
     This API implements max pooling 2d operation.
     See more details in :ref:`api_nn_pooling_MaxPool2d` .
+
     Args:
         x (Tensor): The input tensor of pooling operator which is a 4-D tensor with
                           shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
@@ -1075,7 +1076,7 @@ def max_pool2d(x,
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
-    Returns:
+   Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
    Raises:
@@ -1083,24 +1084,19 @@ def max_pool2d(x,
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
         ShapeError: If the output's shape calculated is not greater than 0.
 
-    Examples:
+   Examples:
         .. code-block:: python
+
             import paddle
             import paddle.nn.functional as F
             import numpy as np
 
             # max pool2d
             x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
-            out = F.max_pool2d(x,
-                                  kernel_size=2,
-                                  stride=2, padding=0)
+            out = F.max_pool2d(x, kernel_size=2, stride=2, padding=0)
             # output.shape [1, 3, 16, 16]
             # for return_mask=True
-            out, max_indices = F.max_pool2d(x,
-                                               kernel_size=2,
-                                               stride=2,
-                                               padding=0,
-                                               return_mask=True)
+            out, max_indices = F.max_pool2d(x, kernel_size=2, stride=2, padding=0, return_mask=True)
             # out.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
     """
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
