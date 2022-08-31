@@ -31,6 +31,7 @@ class GradNodePyLayer : public GradNodeBase {
                   size_t bwd_out_slot_num)
       : GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {
     ctx_ = ctx;
+    Py_INCREF(ctx_);
   }
 
   ~GradNodePyLayer() override { Py_XDECREF(ctx_); };

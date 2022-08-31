@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
-#include "paddle/fluid/operators/detection/nms_util.h"
+#include "paddle/phi/kernels/funcs/detection/nms_util.h"
 #include "paddle/phi/kernels/funcs/gather.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -251,7 +251,8 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       return std::make_pair(bbox_sel, scores_filter);
     }
 
-    Tensor keep_nms = NMS<T>(ctx, &bbox_sel, &scores_filter, nms_thresh, eta);
+    Tensor keep_nms =
+        phi::funcs::NMS<T>(ctx, &bbox_sel, &scores_filter, nms_thresh, eta);
 
     if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
       keep_nms.Resize({post_nms_top_n});

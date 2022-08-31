@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import copy
 import logging
 from collections import defaultdict
-import socket
 
 import paddle
 import paddle.utils as utils
@@ -34,7 +34,6 @@ from paddle.fluid.framework import Operator, Parameter, _non_static_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed import fleet
-from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
 from .hepler import ProgramHelper
@@ -75,7 +74,18 @@ class Engine:
         self._cur_rank = paddle.distributed.get_rank()
         self._nranks = paddle.distributed.get_world_size()
         self._saver = DistributedSaver()
-        self._logger = get_logger(logging.INFO)
+
+        # TODO: add logger module
+        self._logger = logging.getLogger()
+        self._logger.propagate = False
+        if not self._logger.handlers:
+            self._logger.setLevel(logging.INFO)
+            log_handler = logging.StreamHandler()
+            log_format = logging.Formatter(
+                '[%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s'
+            )
+            log_handler.setFormatter(log_format)
+            self._logger.addHandler(log_handler)
 
         self._orig_main_prog = static.default_main_program()
         self._orig_startup_prog = static.default_startup_program()
@@ -223,8 +233,8 @@ class Engine:
         assert "dataset" in self._user_tuning_config, "Optimization Tuning should provide with dataset."
         batch_size = self._user_tuning_config["batch_size"]
         dataset = self._user_tuning_config["dataset"]
-        dataset.dp_world_size = self._dp_world_size
-        dataset.dp_rank = self._dp_rank
+        dataset.dp_world_size = self._input_split_size
+        dataset.dp_rank = self._input_split_rank
 
         from .tuner.optimization_tuner import OptimizationTuner
         self._optimization_tuner = OptimizationTuner(self._user_tuning_config,
@@ -262,7 +272,7 @@ class Engine:
             if var.name in block.vars:
                 feed_list.append(block.vars[var.name])
 
-        self._dp_world_size, self._dp_rank = self._get_data_parallel_info(
+        self._input_split_size, self._input_split_rank = self._get_input_split_info(
             feed_list[0], self._dist_contexts[mode])
 
     def _parallel(self, mode, all_ranks):
@@ -306,6 +316,7 @@ class Engine:
             mode].dist_startup_programs
         self._feed_vars[mode] = self._dist_contexts[mode].serial_feed_vars
         self._fetch_vars[mode] = self._dist_contexts[mode].serial_fetch_vars
+        self._lr_optimizer = self._dist_contexts[mode]._lr_optimizer
 
         if self._nranks > 1:
             # Traverse different rank programs and traverse each op of them,
@@ -403,7 +414,8 @@ class Engine:
             epochs=1,
             fetches=None,
             steps_per_epoch=None,
-            use_program_cache=False,
+            collate_fn=None,
+            use_cache=False,
             return_numpy=True):
         # TODO: callbacks
         # TODO: evaluate after training
@@ -417,34 +429,44 @@ class Engine:
         assert self.mode in self._dist_main_progs, \
             "train model is not ready, please call `engine.prepare()` first."
         train_dataloader = self._create_dataloader(train_data, batch_size,
-                                                   epochs, steps_per_epoch)
+                                                   epochs, steps_per_epoch,
+                                                   collate_fn)
 
         usr_fetch = self._validate_fetches(fetches)
         fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
         fetch_list, fetch_map = self._fetch_map(fetch_loss, usr_fetch)
+        lr_scheduler = self.get_lr_scheduler(self.main_program)
+
         for epoch in range(epochs):
-            train_logs = {"epoch": epoch}
+            train_logs = {"epoch: {:d} ": epoch}
             for step, _ in enumerate(train_dataloader):
+
                 outs = self._executor.run(self.main_program,
                                           fetch_list=fetch_list,
-                                          use_program_cache=use_program_cache,
+                                          use_program_cache=use_cache,
                                           return_numpy=return_numpy)
-                train_logs["step"] = step
+                train_logs["step: {:d} "] = step
+                if lr_scheduler is not None:
+                    lr_scheduler.step()
+                    train_logs["lr: {:5e} "] = self._lr_optimizer.get_lr()
                 # inner fetches
                 if fetch_loss:
-                    train_logs["train_loss"] = outs[0][0]
+                    train_logs["loss: {:9f} "] = outs[0][0]
                 # user fetches
                 user_outs = outs[len(fetch_loss):]
                 user_fetch_list = fetch_list[len(fetch_loss):]
                 for i, out in enumerate(user_outs):
-                    train_logs["train_" + fetch_map[user_fetch_list[i]]] = out
-                self._logger.info(train_logs)
+                    train_logs[fetch_map[user_fetch_list[i]] + ": {}"] = out
+                # logger
+                string = '[train] ' + ''.join(list(train_logs.keys()))
+                self._logger.info(string.format(*list(train_logs.values())))
 
     def evaluate(self,
                  eval_data,
                  batch_size=1,
                  fetches=None,
-                 use_program_cache=False,
+                 collate_fn=None,
+                 use_cache=False,
                  return_numpy=True):
         self.mode = 'eval'
         if not self._mode_init_states[self.mode]:
@@ -452,7 +474,9 @@ class Engine:
 
         assert self.mode in self._dist_main_progs, \
             "eval model is not ready, please call `engine.prepare()` first."
-        eval_dataloader = self._create_dataloader(eval_data, batch_size)
+        eval_dataloader = self._create_dataloader(eval_data,
+                                                  batch_size,
+                                                  collate_fn=collate_fn)
 
         usr_fetch = self._validate_fetches(fetches)
         fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
@@ -461,14 +485,14 @@ class Engine:
         fetch_list, fetch_map = self._fetch_map(inner_fetch, usr_fetch)
 
         for step, _ in enumerate(eval_dataloader):
-            eval_logs = {"step": step}
+            eval_logs = {"step: {:d} ": step}
             outs = self._executor.run(self.main_program,
                                       fetch_list=fetch_list,
-                                      use_program_cache=use_program_cache,
+                                      use_program_cache=use_cache,
                                       return_numpy=return_numpy)
             # inner fetches
             if fetch_loss:
-                eval_logs["eval_loss"] = outs[0][0]
+                eval_logs["loss: {:9f} "] = outs[0][0]
             # Metric
             if fetch_metrics:
                 metric_out = outs[len(fetch_loss):len(inner_fetch)]
@@ -476,20 +500,22 @@ class Engine:
                     metric.update(*metric_out)
                     results = metric.accumulate()
                     for i, res in enumerate(to_list(results)):
-                        eval_logs["eval_" + metric.name()[i]] = res
+                        eval_logs[metric.name()[i] + ": {:9f} "] = res
             # usr fetches
             usr_outs = outs[len(inner_fetch):]
             usr_fetch_list = fetch_list[len(inner_fetch):]
             for i, out in enumerate(usr_outs):
-                eval_logs["eval_" + fetch_map[usr_fetch_list[i]]] = out
+                eval_logs[fetch_map[usr_fetch_list[i]] + ": {}"] = out
             # logger
-            self._logger.info(eval_logs)
+            string = '[eval] ' + ''.join(list(eval_logs.keys()))
+            self._logger.info(string.format(*list(eval_logs.values())))
 
     def predict(self,
                 test_data,
                 batch_size=1,
                 fetches=None,
-                use_program_cache=False,
+                collate_fn=None,
+                use_cache=False,
                 return_numpy=True):
         self.mode = 'predict'
         if not self._mode_init_states[self.mode]:
@@ -497,7 +523,9 @@ class Engine:
 
         assert self.mode in self._dist_main_progs, \
             "predict model is not ready, please call `engine.prepare()` first."
-        test_dataloader = self._create_dataloader(test_data, batch_size)
+        test_dataloader = self._create_dataloader(test_data,
+                                                  batch_size,
+                                                  collate_fn=collate_fn)
 
         usr_fetch = self._validate_fetches(fetches)
         fetch_outputs = self._validate_fetches(self.fetch_vars["outputs"])
@@ -505,15 +533,17 @@ class Engine:
 
         outputs = []
         for step, _ in enumerate(test_dataloader):
-            predict_logs = {"step": step}
+            predict_logs = {"step: {:d} ": step}
             outs = self._executor.run(self.main_program,
                                       fetch_list=fetch_list,
-                                      use_program_cache=use_program_cache,
+                                      use_program_cache=use_cache,
                                       return_numpy=return_numpy)
             outputs.append(outs[:len(fetch_outputs)])
             for i, out in enumerate(outs):
-                predict_logs["pred_" + fetch_map[fetch_list[i]]] = out
-            self._logger.info(predict_logs)
+                predict_logs[fetch_map[fetch_list[i]] + ": {}"] = out
+            # logger
+            string = '[pred] ' + ''.join(list(predict_logs.keys()))
+            self._logger.info(string.format(*list(predict_logs.values())))
 
         return outputs
 
@@ -521,7 +551,8 @@ class Engine:
                            dataset,
                            batch_size,
                            epochs=1,
-                           steps_per_epoch=None):
+                           steps_per_epoch=None,
+                           collate_fn=None):
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
         dist_startup_prog = self._dist_startup_progs[self.mode][self._cur_rank]
         dist_context = self._dist_contexts[self.mode]
@@ -554,8 +585,9 @@ class Engine:
                 batch_size,
                 epochs,
                 steps_per_epoch,
-                data_parallel_world_size=self._dp_world_size,
-                data_parallel_rank=self._dp_rank)
+                collate_fn,
+                data_parallel_world_size=self._input_split_size,
+                data_parallel_rank=self._input_split_rank)
 
         # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)
@@ -615,8 +647,8 @@ class Engine:
         fetches = dict(inner_fetch, **usr_fetch)
         return list(fetches.keys()), fetches
 
-    def _get_data_parallel_info(self, var, dist_context):
-        # get data parallel world size and current data parallel rank
+    def _get_input_split_info(self, var, dist_context):
+        # deduce how the input data is split among the cluster
         from .utils import _get_comm_group, _get_corresponding_rank
 
         tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
@@ -645,12 +677,11 @@ class Engine:
         config = self.strategy.recompute_configs
 
         # extract ckpts by specific model
-        self.model
         if isinstance(self.model, paddle.nn.Layer):
             if hasattr(
-                    self.model, "model"
-            ) and self.model.model.__class__.__name__ == 'GPTForPretraining':
-                exact_ckpts = self.model.model.gpt.checkpoints
+                    self.model, "gpt"
+            ) and self.model.__class__.__name__ == 'GPTForPretraining':
+                exact_ckpts = self.model.gpt.checkpoints
         else:
             exact_ckpts = config["checkpoints"]
 
@@ -659,7 +690,7 @@ class Engine:
             config["checkpoints"] = exact_ckpts[:]
             self.strategy.recompute_configs = config
             logs = {
-                'Model Class': self.model.model.__class__.__name__,
+                'Model Class': self.model.__class__.__name__,
                 'Applied Recompute ckpts': exact_ckpts
             }
             self._logger.info(logs)
@@ -698,6 +729,15 @@ class Engine:
         dist_context = self._dist_contexts[mode]
         self._saver.load(path, dist_main_prog, dist_context, strict,
                          load_optimizer)
+
+    @staticmethod
+    def get_lr_scheduler(program):
+        lr_sheduler = None
+        if hasattr(program, 'lr_sheduler'):
+            from paddle.optimizer.lr import LRScheduler
+            lr_sheduler = program.lr_sheduler
+            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
+        return lr_sheduler
 
     @property
     def mode(self):

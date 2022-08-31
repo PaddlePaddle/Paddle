@@ -13,7 +13,6 @@
 # limitations under the License.
 import os
 
-os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
 import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
@@ -64,8 +63,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
 
-        with self.assertRaises(ValueError):
-            optimizer.minimize(avg_cost)
+        optimizer.minimize(avg_cost)
 
     def test_a_sync_optimizer_pserver(self):
         os.environ["TRAINING_ROLE"] = "PSERVER"

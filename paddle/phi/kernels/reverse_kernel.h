@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -23,13 +24,13 @@ namespace phi {
 template <typename T, typename Context>
 void ReverseKernel(const Context& dev_ctx,
                    const DenseTensor& x,
-                   const std::vector<int>& axis,
+                   const IntArray& axis,
                    DenseTensor* out);
 
 template <typename T, typename Context>
 void ReverseArrayKernel(const Context& dev_ctx,
                         const std::vector<const DenseTensor*>& x,
-                        const std::vector<int>& axis,
+                        const IntArray& axis,
                         std::vector<DenseTensor*> out);
 
 }  // namespace phi

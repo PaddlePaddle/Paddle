@@ -37,11 +37,11 @@ namespace framework {
 
 // To handle append_op at python-level
 std::unordered_map<std::string, std::vector<std::string>>
-    core_ops_returns_info = {};
-std::unordered_map<std::string, std::vector<std::string>> core_ops_args_info =
-    {};
+    core_ops_legacy_returns_info = {};
 std::unordered_map<std::string, std::vector<std::string>>
-    core_ops_args_type_info = {};
+    core_ops_legacy_args_info = {};
+std::unordered_map<std::string, std::vector<std::string>>
+    core_ops_legacy_args_type_info = {};
 
 /* --- Static maps to handle corner cases --- */
 static std::unordered_map<std::string, paddle::framework::AttributeMap>
@@ -54,7 +54,8 @@ static std::unordered_set<std::string> ops_to_fill_zero_for_empty_grads = {
 static std::unordered_set<std::string> black_ops_list = {"run_program",
                                                          "fused_gate_attention",
                                                          "fused_feedforward",
-                                                         "fused_attention"};
+                                                         "fused_attention",
+                                                         "fused_gemm_epilogue"};
 
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
@@ -1472,10 +1473,10 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
   std::string dygraph_function_args_str = "";
   std::string amp_function_call_args_str = "";
-  core_ops_args_info[op_type] = {};
-  core_ops_args_type_info[op_type] = {};
-  core_ops_args_info[op_type].resize(in_vars.size());
-  core_ops_args_type_info[op_type].resize(in_vars.size());
+  core_ops_legacy_args_info[op_type] = {};
+  core_ops_legacy_args_type_info[op_type] = {};
+  core_ops_legacy_args_info[op_type].resize(in_vars.size());
+  core_ops_legacy_args_type_info[op_type].resize(in_vars.size());
 
   /* ------ Dygraph forward function generation ------ */
   generated_function_body += "  // Dygraph Forward Pass\n";
@@ -1499,7 +1500,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       amp_function_call_args_str_list[input_position] =
           " NEW_" + LegalizeVarName(input_name);
 
-      core_ops_args_type_info[op_type][input_position] = "list";
+      core_ops_legacy_args_type_info[op_type][input_position] = "list";
     } else {
       // inplace tensor can't be const
       const char* FWD_INS_ARG_TEMPLATE;
@@ -1521,9 +1522,9 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       amp_function_call_args_str_list[input_position] =
           " NEW_" + LegalizeVarName(input_name);
 
-      core_ops_args_type_info[op_type][input_position] = "tensor";
+      core_ops_legacy_args_type_info[op_type][input_position] = "tensor";
     }
-    core_ops_args_info[op_type][input_position] = input_name;
+    core_ops_legacy_args_info[op_type][input_position] = input_name;
 
     if (input.dispensable()) continue;
 
@@ -1665,7 +1666,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         dygraph_function_args_str += arg_str;
         amp_function_call_args_str += (", " + LegalizeVarName(output_var_name));
 
-        core_ops_args_type_info[op_type].push_back("list");
+        core_ops_legacy_args_type_info[op_type].push_back("list");
       } else {
         const char* FWD_NUM_ARG_TEMPLATE = ", paddle::experimental::Tensor* %s";
         std::string arg_str = paddle::string::Sprintf(
@@ -1673,7 +1674,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         dygraph_function_args_str += arg_str;
         amp_function_call_args_str += (", " + LegalizeVarName(output_var_name));
 
-        core_ops_args_type_info[op_type].push_back("tensor");
+        core_ops_legacy_args_type_info[op_type].push_back("tensor");
       }
 
       if (BeSameAsInput(output_name, input_names)) {
@@ -1692,7 +1693,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
                                     output_name,
                                     LegalizeVarName(output_var_name));
       }
-      core_ops_args_info[op_type].push_back(output_name);
+      core_ops_legacy_args_info[op_type].push_back(output_name);
 
     } else if (!forward_inplace_map.empty() &&
                forward_inplace_map.count(output_name)) {
@@ -1726,8 +1727,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
             "{ \"%s\", egr::EagerUtils::CreateVars(%s) },";
         outs_contents_str += paddle::string::Sprintf(
             FWD_OUTS_CONTENT_TEMPLATE, output_name, outnum);
-        core_ops_args_info[op_type].push_back(outnum);
-        core_ops_args_type_info[op_type].push_back("int");
+        core_ops_legacy_args_info[op_type].push_back(outnum);
+        core_ops_legacy_args_type_info[op_type].push_back("int");
       } else {
         const char* FWD_OUTS_CONTENT_TEMPLATE =
             "{ \"%s\", "
@@ -2002,10 +2003,11 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   VLOG(6) << "Converted Output VarBase to EagerVariable(s)";
   /* ------ END Generate TraceOp ----- */
 
-  // [Generation] Handle core_ops_returns_info
-  // avoid inplace op changing core_ops_returns_info
-  if (core_ops_returns_info.empty() || !core_ops_returns_info.count(op_type)) {
-    core_ops_returns_info[op_type] = return_contents;
+  // [Generation] Handle core_ops_legacy_returns_info
+  // avoid inplace op changing core_ops_legacy_returns_info
+  if (core_ops_legacy_returns_info.empty() ||
+      !core_ops_legacy_returns_info.count(op_type)) {
+    core_ops_legacy_returns_info[op_type] = return_contents;
   }
 
   // [Generation] ComputeRequireGrad -> GradNodeCreation
@@ -2982,13 +2984,13 @@ static std::string GenerateDygraphHFileIncludes() {
 
   dygraph_forward_api_includes_str +=
       "extern std::unordered_map<std::string, std::vector<std::string>> "
-      "core_ops_args_info;\n";
+      "core_ops_legacy_args_info;\n";
   dygraph_forward_api_includes_str +=
       "extern std::unordered_map<std::string, std::vector<std::string>> "
-      "core_ops_args_type_info;\n";
+      "core_ops_legacy_args_type_info;\n";
   dygraph_forward_api_includes_str +=
       "extern std::unordered_map<std::string, std::vector<std::string>> "
-      "core_ops_returns_info;\n\n";
+      "core_ops_legacy_returns_info;\n\n";
 
   return dygraph_forward_api_includes_str;
 }
@@ -3059,7 +3061,7 @@ static void GenerateNodeCCFile(const std::string& node_cc_path,
 static std::string ConvertCoreOpsInfosToString(
     const std::unordered_map<std::string, std::vector<std::string>>&
         core_ops_info) {
-  std::string core_ops_returns_info_init_str = "";
+  std::string core_ops_legacy_returns_info_init_str = "";
   for (const auto& iter : core_ops_info) {
     const char* Core_Ops_Returns_TEMPLATE = "{ \"%s\", { %s } },\n";
     const std::string& op_type = iter.first;
@@ -3073,23 +3075,23 @@ static std::string ConvertCoreOpsInfosToString(
     if (returns_str.size() > 0) returns_str.pop_back();
     std::string op_type_init_str = paddle::string::Sprintf(
         Core_Ops_Returns_TEMPLATE, op_type, returns_str);
-    core_ops_returns_info_init_str += op_type_init_str;
+    core_ops_legacy_returns_info_init_str += op_type_init_str;
   }
 
   // Remove trailing ','
-  if (core_ops_returns_info_init_str.size() > 0)
-    core_ops_returns_info_init_str.pop_back();
+  if (core_ops_legacy_returns_info_init_str.size() > 0)
+    core_ops_legacy_returns_info_init_str.pop_back();
 
-  return core_ops_returns_info_init_str;
+  return core_ops_legacy_returns_info_init_str;
 }
 
 static std::string GenerateCoreOpsArgsInfo() {
   const char* Core_Ops_Returns_MAP_TEMPLATE =
       "std::unordered_map<std::string, std::vector<std::string>> "
-      "core_ops_args_info = { %s };\n";
+      "core_ops_legacy_args_info = { %s };\n";
 
   std::string core_ops_args_info_init_str =
-      ConvertCoreOpsInfosToString(core_ops_args_info);
+      ConvertCoreOpsInfosToString(core_ops_legacy_args_info);
 
   std::string core_ops_info_str = paddle::string::Sprintf(
       Core_Ops_Returns_MAP_TEMPLATE, core_ops_args_info_init_str);
@@ -3100,10 +3102,10 @@ static std::string GenerateCoreOpsArgsInfo() {
 static std::string GenerateCoreOpsArgsTypeInfo() {
   const char* Core_Ops_Returns_MAP_TEMPLATE =
       "std::unordered_map<std::string, std::vector<std::string>> "
-      "core_ops_args_type_info = { %s };\n";
+      "core_ops_legacy_args_type_info = { %s };\n";
 
   std::string core_ops_args_type_info_init_str =
-      ConvertCoreOpsInfosToString(core_ops_args_type_info);
+      ConvertCoreOpsInfosToString(core_ops_legacy_args_type_info);
 
   std::string core_ops_info_str = paddle::string::Sprintf(
       Core_Ops_Returns_MAP_TEMPLATE, core_ops_args_type_info_init_str);
@@ -3114,13 +3116,13 @@ static std::string GenerateCoreOpsArgsTypeInfo() {
 static std::string GenerateCoreOpsReturnsInfo() {
   const char* Core_Ops_Returns_MAP_TEMPLATE =
       "std::unordered_map<std::string, std::vector<std::string>> "
-      "core_ops_returns_info = { %s };\n";
+      "core_ops_legacy_returns_info = { %s };\n";
 
-  std::string core_ops_returns_info_init_str =
-      ConvertCoreOpsInfosToString(core_ops_returns_info);
+  std::string core_ops_legacy_returns_info_init_str =
+      ConvertCoreOpsInfosToString(core_ops_legacy_returns_info);
 
   std::string core_ops_info_str = paddle::string::Sprintf(
-      Core_Ops_Returns_MAP_TEMPLATE, core_ops_returns_info_init_str);
+      Core_Ops_Returns_MAP_TEMPLATE, core_ops_legacy_returns_info_init_str);
 
   return core_ops_info_str;
 }

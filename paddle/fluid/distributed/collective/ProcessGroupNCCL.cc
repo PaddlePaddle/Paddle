@@ -18,7 +18,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/api/include/api.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/place.h"
 
 DECLARE_bool(nccl_blocking_wait);
@@ -244,18 +244,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   SyncDefaultStream(places, places_to_events_[key], places_to_ctx_[key]);
 
   auto task = CreateTask(places, rank_, op_type, inputs);
-  task->SetOutputs(outputs);
 
   // construct uninitialize guard for device
   platform::CUDADeviceGuard cuda_guard;
-
-  if (FLAGS_use_stream_safe_cuda_allocator) {
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      cuda_guard.SetDevice(places[i]);
-      memory::RecordStream(inputs[i].Holder(),
-                           places_to_ctx_[key][i]->stream());
-    }
-  }
 
   {
     platform::NCCLGroupGuard nccl_guard;
@@ -263,6 +254,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
       cuda_guard.SetDevice(places[i]);
       const auto& nccl_stream = places_to_ctx_[key][i]->stream();
       fn(inputs[i], outputs[i], nccl_comms[i]->GetNcclComm(), nccl_stream);
+    }
+  }
+
+  if (FLAGS_use_stream_safe_cuda_allocator) {
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      cuda_guard.SetDevice(places[i]);
+      memory::RecordStream(inputs[i].Holder(),
+                           places_to_ctx_[key][i]->stream());
     }
   }
 
@@ -428,9 +427,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Barrier(
   platform::CUDADeviceGuard gpuGuard;
   for (auto& place : places) {
     gpuGuard.SetDeviceIndex(place.GetDeviceId());
-    auto dt = full({1}, 0, phi::DataType::FLOAT32, place);
-    barrierTensors.push_back(
-        *std::dynamic_pointer_cast<phi::DenseTensor>(dt.impl()));
+    phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim({1}));
+    auto allocator = std::unique_ptr<phi::Allocator>(
+        new paddle::experimental::DefaultAllocator(place));
+    barrierTensors.emplace_back(allocator.get(), meta);
   }
   auto task = ProcessGroupNCCL::AllReduce(barrierTensors, barrierTensors);
   auto nccl_task = dynamic_cast<ProcessGroupNCCL::NCCLTask*>(task.get());
@@ -893,6 +893,16 @@ void ProcessGroupNCCL::GroupStart() {
 
 void ProcessGroupNCCL::GroupEnd() {
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+}
+
+ncclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
+  std::vector<Place> places = {place};
+  const auto& iter = places_to_ncclcomm_.find(GetKeyFromPlaces(places));
+  PADDLE_ENFORCE_NE(iter,
+                    places_to_ncclcomm_.end(),
+                    platform::errors::InvalidArgument(
+                        "Cannot find nccl comm in process group."));
+  return iter->second[0]->GetNcclComm();
 }
 
 }  //  namespace distributed

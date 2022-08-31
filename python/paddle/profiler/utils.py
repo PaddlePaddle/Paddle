@@ -138,7 +138,6 @@ def load_profiler_result(filename: str):
 
     Examples:
         .. code-block:: python
-            :name: code-example1
 
             # required: gpu
             import paddle.profiler as profiler

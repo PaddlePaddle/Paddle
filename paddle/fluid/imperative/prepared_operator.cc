@@ -183,8 +183,8 @@ PreparedOp PrepareImpl(
 
   const phi::KernelSignature* default_kernel_signature = nullptr;
   phi::KernelSignature kernel_signature;
-  phi::KernelKey pt_kernel_key;
-  std::string pt_kernel_name;
+  phi::KernelKey phi_kernel_key;
+  std::string phi_kernel_name;
 #if defined(PADDLE_WITH_XPU)
   bool is_xpu_unsupport =
       paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
@@ -213,7 +213,7 @@ PreparedOp PrepareImpl(
 
   if (has_phi_kernel) {
     VLOG(6) << kernel_signature;
-    pt_kernel_name = kernel_signature.name;
+    phi_kernel_name = kernel_signature.name;
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
@@ -236,34 +236,35 @@ PreparedOp PrepareImpl(
         auto expected_kernel_key_library_type =
             expected_kernel_key.library_type_;
         expected_kernel_key.library_type_ = paddle::framework::LibraryType::kKP;
-        VLOG(3) << "modifing XPU KP kernel: " << pt_kernel_name
+        VLOG(3) << "modifing XPU KP kernel: " << phi_kernel_name
                 << ", using_kernel_key:" << expected_kernel_key;
 
-        phi::KernelKey try_pt_kernel_key =
+        phi::KernelKey try_phi_kernel_key =
             TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
-        if (!phi_kernel_factory.HasKernel(pt_kernel_name, try_pt_kernel_key)) {
+        if (!phi_kernel_factory.HasKernel(phi_kernel_name,
+                                          try_phi_kernel_key)) {
           expected_kernel_key.library_type_ = expected_kernel_key_library_type;
-          VLOG(3) << "modify XPU KP kernel: " << pt_kernel_name
+          VLOG(3) << "modify XPU KP kernel: " << phi_kernel_name
                   << " in dynamic graph is failed " << expected_kernel_key;
         } else {
-          VLOG(3) << "modify XPU KP kernel: " << pt_kernel_name
+          VLOG(3) << "modify XPU KP kernel: " << phi_kernel_name
                   << " in dynamic graph is succeed " << expected_kernel_key;
         }
       }
     }
 #endif
 
-    pt_kernel_key = TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
+    phi_kernel_key = TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
     auto& phi_kernel =
-        phi_kernel_factory.SelectKernel(pt_kernel_name, pt_kernel_key);
+        phi_kernel_factory.SelectKernel(phi_kernel_name, phi_kernel_key);
 
     if (phi_kernel.IsValid()
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
         && !is_xpu_unsupport
 #endif
     ) {
-      VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
-              << " | kernel key: " << pt_kernel_key
+      VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << phi_kernel_name
+              << " | kernel key: " << phi_kernel_key
               << " | kernel: " << phi_kernel;
 
       if (expected_kernel_key.place_ != place) {
@@ -279,7 +280,7 @@ PreparedOp PrepareImpl(
                         phi_kernel,
                         dev_ctx);
     } else {
-      VLOG(6) << "Dynamic mode ChoosePhiKernel - kernel `" << pt_kernel_name
+      VLOG(6) << "Dynamic mode ChoosePhiKernel - kernel `" << phi_kernel_name
               << "` not found.";
     }
   }
@@ -316,23 +317,23 @@ PreparedOp PrepareImpl(
 #endif
   ) {
     if (has_phi_kernel) {
-      auto pt_cpu_kernel_key =
-          FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
-      auto& pt_cpu_kernel =
-          phi_kernel_factory.SelectKernel(pt_kernel_name, pt_cpu_kernel_key);
-      if (pt_cpu_kernel.IsValid()) {
-        VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
-                << " | kernel key: " << pt_cpu_kernel_key
-                << " | kernel: " << pt_cpu_kernel;
+      auto phi_cpu_kernel_key =
+          FallBackToCpu(expected_kernel_key, phi_kernel_key, op);
+      auto& phi_cpu_kernel =
+          phi_kernel_factory.SelectKernel(phi_kernel_name, phi_cpu_kernel_key);
+      if (phi_cpu_kernel.IsValid()) {
+        VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << phi_kernel_name
+                << " | kernel key: " << phi_cpu_kernel_key
+                << " | kernel: " << phi_cpu_kernel;
         auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
         return PreparedOp(
             op,
             empty_ctx,
-            framework::TransPhiKernelKeyToOpKernelType(pt_cpu_kernel_key),
+            framework::TransPhiKernelKeyToOpKernelType(phi_cpu_kernel_key),
             arg_map_fn,
             default_kernel_signature,
             std::move(kernel_signature),
-            pt_cpu_kernel,
+            phi_cpu_kernel,
             cpu_ctx);
       }
     }
@@ -610,7 +611,7 @@ static void PreparedOpRunPtImpl(
 
     PreparePhiData<VarType>(phi_kernel, kernel_signature, ins);
 
-    phi::KernelContext pt_kernel_context;
+    phi::KernelContext phi_kernel_context;
     BuildDygraphPhiKernelContext<VarType>(kernel_signature,
                                           phi_kernel,
                                           ins,
@@ -618,9 +619,9 @@ static void PreparedOpRunPtImpl(
                                           attrs,
                                           default_attrs,
                                           dev_ctx,
-                                          &pt_kernel_context);
+                                          &phi_kernel_context);
 
-    phi_kernel(&pt_kernel_context);
+    phi_kernel(&phi_kernel_context);
   }
 
   if (FLAGS_check_nan_inf) {

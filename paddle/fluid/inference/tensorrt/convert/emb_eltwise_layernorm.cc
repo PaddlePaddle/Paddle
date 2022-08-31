@@ -133,6 +133,15 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       return weight;
     };
 
+    auto GetFp16Weight = [&](const std::string& var_name,
+                             framework::DDim* dim) -> TensorRTEngine::Weight {
+      auto* temp_var = scope.FindVar(var_name);
+      auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+      *dim = temp_tensor->dims();
+      auto weight = engine_->GetFp16TrtWeight(var_name, *temp_tensor);
+      return weight;
+    };
+
     auto GetFp32Weight = [&](const std::string& var_name,
                              framework::DDim* dim) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
@@ -141,7 +150,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       auto weight = engine_->GetFp32TrtWeight(var_name, *temp_tensor);
       return weight;
     };
-
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     int hidden = 0;
     for (int i = 0; i < input_num; i++) {
       framework::DDim emb_dims;
@@ -149,7 +158,11 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       if (flag_varseqlen) {
         weight = GetWeight(emb_names[i], &emb_dims);
       } else {
-        weight = GetFp32Weight(emb_names[i], &emb_dims);
+        if (with_fp16) {
+          weight = GetFp16Weight(emb_names[i], &emb_dims);
+        } else {
+          weight = GetFp32Weight(emb_names[i], &emb_dims);
+        }
       }
       input_embs.push_back(weight.get());
       emb_sizes.push_back(weight.get().count);
@@ -167,8 +180,15 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       bias_weight = GetWeight(op_desc.Input("Bias").front(), &bias_dims);
       scale_weight = GetWeight(op_desc.Input("Scale").front(), &scale_dims);
     } else {
-      bias_weight = GetFp32Weight(op_desc.Input("Bias").front(), &bias_dims);
-      scale_weight = GetFp32Weight(op_desc.Input("Scale").front(), &scale_dims);
+      if (with_fp16) {
+        bias_weight = GetFp16Weight(op_desc.Input("Bias").front(), &bias_dims);
+        scale_weight =
+            GetFp16Weight(op_desc.Input("Scale").front(), &scale_dims);
+      } else {
+        bias_weight = GetFp32Weight(op_desc.Input("Bias").front(), &bias_dims);
+        scale_weight =
+            GetFp32Weight(op_desc.Input("Scale").front(), &scale_dims);
+      }
     }
 
     int64_t bias_size = phi::product(bias_dims);
@@ -282,21 +302,18 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
                                  test_mode);
       }
     } else {
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       float eps = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
       plugin::DynamicPluginTensorRT* plugin = nullptr;
-      std::vector<float*> input_embs_data;
+      std::vector<void*> input_embs_data;
       for (size_t i = 0; i < input_embs.size(); ++i) {
-        input_embs_data.push_back(const_cast<float*>(
-            static_cast<const float*>(input_embs[i].values)));
+        input_embs_data.push_back(const_cast<void*>(
+            reinterpret_cast<const void*>(input_embs[i].values)));
       }
       plugin = new plugin::EmbEltwiseLayernormPluginDynamic(
           input_embs_data,
-          const_cast<float*>(
-              static_cast<const float*>(bias_weight.get().values)),
-          const_cast<float*>(
-              static_cast<const float*>(scale_weight.get().values)),
+          const_cast<void*>(static_cast<const void*>(bias_weight.get().values)),
+          const_cast<void*>(
+              static_cast<const void*>(scale_weight.get().values)),
           emb_sizes,
           bias_size,
           scale_size,

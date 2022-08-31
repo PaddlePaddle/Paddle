@@ -86,9 +86,9 @@ def to_opmaker_name(s):
 
 def to_opmaker_name_cstr(s):
     if s.endswith("_grad"):
-        return '"{}@GRAD"'.format(to_pascal_case(s[:-5]))
+        return '"{}@GRAD"'.format(s[:-5])
     else:
-        return '"{}"'.format(to_pascal_case(s))
+        return '"{}"'.format(s)
 
 
 def to_pascal_case(s):

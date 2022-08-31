@@ -20,7 +20,7 @@ import numpy as np
 import six
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 import paddle.fluid as fluid
 from paddle import compat as cpt
 from paddle.fluid import core, framework, executor
@@ -114,7 +114,10 @@ class RunProgramOpTest(unittest.TestCase):
 
         # Step 2. compare output
         for expect_v, actual_v in six.moves.zip(self.expect_outs, actual_outs):
-            self.assertTrue(np.allclose(expect_v, actual_v.numpy(), atol=1e-5))
+            np.testing.assert_allclose(expect_v,
+                                       actual_v.numpy(),
+                                       rtol=1e-05,
+                                       atol=1e-05)
 
     def check_grad_with_place(self, place):
         # Step 1. calc grads
@@ -124,7 +127,10 @@ class RunProgramOpTest(unittest.TestCase):
         for expect_v, actual_v in six.moves.zip(self.expect_grads,
                                                 actual_grads):
             np.testing.assert_array_almost_equal(expect_v, actual_v)
-            self.assertTrue(np.allclose(expect_v, actual_v, atol=1e-5))
+            np.testing.assert_allclose(expect_v,
+                                       actual_v,
+                                       rtol=1e-05,
+                                       atol=1e-05)
 
     def prepare_dygraph_input(self, place, return_param_list=False):
 
@@ -194,9 +200,9 @@ class RunProgramOpTest(unittest.TestCase):
             inputs = self.prepare_dygraph_input(place)
             outputs = self.prepare_dygraph_output()
 
-            _C_ops.run_program(inputs['X'], inputs['Params'], outputs['Out'],
-                               outputs['OutScope'], outputs['DOut'], None,
-                               *self.attrs)
+            _legacy_C_ops.run_program(inputs['X'], inputs['Params'],
+                                      outputs['Out'], outputs['OutScope'],
+                                      outputs['DOut'], None, *self.attrs)
             return outputs['Out']
 
     def calc_dygraph_grad(self, place):
@@ -208,9 +214,9 @@ class RunProgramOpTest(unittest.TestCase):
             inputs, input_param_list = self.prepare_dygraph_input(place, True)
             outputs = self.prepare_dygraph_output()
 
-            _C_ops.run_program(inputs['X'], inputs['Params'], outputs['Out'],
-                               outputs['OutScope'], outputs['DOut'], None,
-                               *self.attrs)
+            _legacy_C_ops.run_program(inputs['X'], inputs['Params'],
+                                      outputs['Out'], outputs['OutScope'],
+                                      outputs['DOut'], None, *self.attrs)
 
             for param in input_param_list:
                 var_type = self._get_grad_vartype(param.name)

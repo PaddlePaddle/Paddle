@@ -112,16 +112,16 @@ class TestBatchNorm(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1, g1 = compute_baseline(x)
             y2, g2 = compute_1d(x)
-            self.assertTrue(np.allclose(g1, g2))
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(g1, g2, rtol=1e-05)
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
             # [N, C, L]
             shape = [1000000, 4, 4]
             x = np.random.randn(*shape).astype("float32")
             y1, g1 = compute_baseline(x)
             y2, g2 = compute_1d(x)
-            self.assertTrue(np.allclose(g1, g2))
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(g1, g2, rtol=1e-05)
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_eager_api(self):
         places = [fluid.CPUPlace()]
@@ -154,8 +154,8 @@ class TestBatchNorm(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1, g1 = compute_v1(x)
             y2, g2 = compute_v2(x)
-            self.assertTrue(np.allclose(g1, g2))
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(g1, g2, rtol=1e-05)
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
@@ -212,8 +212,8 @@ class TestBatchNorm(unittest.TestCase):
             y2 = compute_v2(x)
             y3 = compute_v3(x, False, False)
             y4 = compute_v4(x)
-            self.assertTrue(np.allclose(y1, y2))
-            self.assertTrue(np.allclose(y3, y4))
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
+            np.testing.assert_allclose(y3, y4, rtol=1e-05)
 
     def test_static(self):
         places = [fluid.CPUPlace()]
@@ -247,7 +247,7 @@ class TestBatchNorm(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x, False, False)
             y2 = compute_v2(x)
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
 
 class TestBatchNormChannelLast(unittest.TestCase):
@@ -280,10 +280,14 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 y2 = paddle.transpose(y2, [0, 2, 1])
                 if core.is_compiled_with_rocm():
                     # HIP will fail if no atol
-                    self.assertEqual(
-                        np.allclose(y1.numpy(), y2.numpy(), atol=1e-07), True)
+                    np.testing.assert_allclose(y1.numpy(),
+                                               y2.numpy(),
+                                               rtol=1e-05,
+                                               atol=1e-07)
                 else:
-                    self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
+                    np.testing.assert_allclose(y1.numpy(),
+                                               y2.numpy(),
+                                               rtol=1e-05)
 
     def test_2d(self):
         for p in self.places:
@@ -299,10 +303,14 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 y2 = paddle.transpose(y2, [0, 2, 3, 1])
                 if core.is_compiled_with_rocm():
                     # HIP will fail if no atol
-                    self.assertEqual(
-                        np.allclose(y1.numpy(), y2.numpy(), atol=1e-07), True)
+                    np.testing.assert_allclose(y1.numpy(),
+                                               y2.numpy(),
+                                               rtol=1e-05,
+                                               atol=1e-07)
                 else:
-                    self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
+                    np.testing.assert_allclose(y1.numpy(),
+                                               y2.numpy(),
+                                               rtol=1e-05)
 
     def test_3d(self):
         for p in self.places:
@@ -318,10 +326,43 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 y2 = paddle.transpose(y2, [0, 2, 3, 4, 1])
                 if core.is_compiled_with_rocm():
                     # HIP will fail if no atol
-                    self.assertEqual(
-                        np.allclose(y1.numpy(), y2.numpy(), atol=1e-07), True)
+                    np.testing.assert_allclose(y1.numpy(),
+                                               y2.numpy(),
+                                               rtol=1e-05,
+                                               atol=1e-07)
                 else:
-                    self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
+                    np.testing.assert_allclose(y1.numpy(),
+                                               y2.numpy(),
+                                               rtol=1e-05)
+
+    def test_1d_opt(self):
+        with fluid.dygraph.guard():
+            batch_size = 13700
+            channels = 16
+            shape = (batch_size, channels)
+            x = paddle.randn(shape)
+            x_4d = x.reshape((batch_size, channels, 1, 1))
+
+            x.stop_gradient = False
+            x_4d.stop_gradient = False
+
+            bn1d = paddle.nn.BatchNorm1D(channels)
+            bn2d = paddle.nn.BatchNorm2D(channels)
+
+            y = bn1d(x)
+            y2 = bn2d(x_4d)
+
+            y.backward()
+            y2.backward()
+
+            assert np.allclose(y.numpy().flatten(),
+                               y2.numpy().flatten(),
+                               atol=1e-5,
+                               rtol=1e-5)
+            assert np.allclose(bn1d.weight.grad.numpy().flatten(),
+                               bn2d.weight.grad.numpy().flatten(),
+                               atol=1e-5,
+                               rtol=1e-5)
 
 
 class TestBatchNormUseGlobalStats(unittest.TestCase):
@@ -356,7 +397,7 @@ class TestBatchNormUseGlobalStats(unittest.TestCase):
                     net2.training = False
                 y1 = net1(x)
                 y2 = net2(x)
-                self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
+                np.testing.assert_allclose(y1.numpy(), y2.numpy(), rtol=1e-05)
 
 
 class TestBatchNormUseGlobalStatsCase1(TestBatchNormUseGlobalStats):

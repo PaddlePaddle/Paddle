@@ -15,7 +15,7 @@
 # limitations under the License.
 
 set -e
-export FLAGS_START_PORT=35789
+export PADDLE_START_PORT=35789
 
 #local_ip=`ip route get 1 | awk '{print $NF;exit}'`
 file_0="fleet_nproc_0.check_0.log"
@@ -23,7 +23,7 @@ file_0="fleet_nproc_0.check_0.log"
 function test_nproc_0(){
     gpus=$1
     rm -f ${file_0}
-    distributed_args="--log_dir=testlog --nproc_per_node=1"
+    distributed_args="--log_dir=testlog --nproc_per_node=1 --ips=127.0.0.1"
     # nproc_per_node=1, each with 2 gpus
     python -m paddle.distributed.launch ${distributed_args} nproc_process.py  fleet_nproc_0
 
@@ -62,7 +62,7 @@ function test_nproc_1_gpu(){
     file_1="fleet_nproc_1.check_1.log"
     rm -f ${file_0} ${file_1}
 
-    distributed_args="--log_dir=testlog --nproc_per_node=2"
+    distributed_args="--log_dir=testlog --nproc_per_node=2 --ips=127.0.0.1"
     python -m paddle.distributed.launch ${distributed_args} nproc_process.py  fleet_nproc_1
 
     str0="selected_devices:0 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790 trainers_num:2 current_endpoint:127.0.0.1:35789 trainer_id:0"
@@ -94,7 +94,7 @@ function test_nproc_1_cpu(){
     file_1="fleet_nproc_1.check_1.log"
     rm -f ${file_0} ${file_1}
 
-    distributed_args="--log_dir=testlog --nproc_per_node=2"
+    distributed_args="--log_dir=testlog --nproc_per_node=2 --ips=127.0.0.1"
     python -m paddle.distributed.launch ${distributed_args} nproc_process.py  fleet_nproc_1
 
     str0="selected_devices: worker_endpoints:127.0.0.1:35789,127.0.0.1:35790 trainers_num:2 current_endpoint:127.0.0.1:35789 trainer_id:0"
@@ -127,7 +127,7 @@ function test_nproc_1_xpu(){
     file_1="fleet_nproc_1.check_1.log"
     rm -f ${file_0} ${file_1}
 
-    distributed_args="--log_dir=testlog --nproc_per_node=2"
+    distributed_args="--log_dir=testlog --nproc_per_node=2 --ips=127.0.0.1"
     python -m paddle.distributed.launch ${distributed_args} nproc_process.py  fleet_nproc_1
 
     str0="selected_devices:0 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790 trainers_num:2 current_endpoint:127.0.0.1:35789 trainer_id:0"

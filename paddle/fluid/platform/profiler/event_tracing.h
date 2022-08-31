@@ -48,6 +48,7 @@ struct RecordInstantEvent {
 // Chrome Trace Viewer Format: Duration Event/Complte Event
 class RecordEvent {
  public:
+  static bool IsEnabled();
   /**
    * @param name: If your string argument has a longer lifetime (e.g.: string
    * literal, static variables, etc) than the event, use 'const char* name'.

@@ -13,8 +13,6 @@
 // limitations under the License.
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 
 namespace paddle {
@@ -23,15 +21,11 @@ namespace framework {
 class InterpreterCoreFastGarbageCollector
     : public InterpreterCoreGarbageCollector {
  public:
-  void Add(Variable* var) override;
-  void Add(Variable* var,
-           platform::DeviceEvent* event,
-           const platform::DeviceContext* ctx) override;
+  void Add(Variable* var, const Instruction& instr) override;
 
  private:
+  void Add(Variable* var);
   void Add(Garbage garbage);
 };
 }  // namespace framework
 }  // namespace paddle
-
-#endif

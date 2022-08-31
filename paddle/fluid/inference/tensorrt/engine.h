@@ -206,7 +206,7 @@ class TensorRTEngine {
 
   TensorRTEngine(
       int max_batch,
-      int max_workspace,
+      int64_t max_workspace,
       AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
       TRTInt8Calibrator* calibrator = nullptr,
       int device_id = 0,
@@ -420,6 +420,10 @@ class TensorRTEngine {
   void SetTensorDynamicRange(nvinfer1::ITensor* tensor, float range) {
     quant_dynamic_range_[tensor] = range;
   }
+
+  // Get fp16 trt weight. If src weight is not fp16, we will cast.
+  Weight GetFp16TrtWeight(const std::string& name,
+                          const framework::Tensor& weight_tensor);
 
   // Get fp32 trt weight. If src weight is not fp32, we will cast.
   Weight GetFp32TrtWeight(const std::string& name,
@@ -672,7 +676,7 @@ class TensorRTEngine {
   // the runtime batch size
   static int runtime_batch_;
   // the max memory size the engine uses
-  int max_workspace_;
+  int64_t max_workspace_;
 
   AnalysisConfig::Precision precision_;
   TRTInt8Calibrator* calibrator_;
@@ -767,7 +771,7 @@ class TRTEngineManager {
   TensorRTEngine* Create(
       std::string name,
       int max_batch,
-      int max_workspace,
+      int64_t max_workspace,
       AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
       TRTInt8Calibrator* calibrator = nullptr,
       int device_id = 0,

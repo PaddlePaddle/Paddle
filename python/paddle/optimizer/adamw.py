@@ -25,7 +25,7 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.clip import GradientClipBase
 from ..fluid.dygraph import base as imperative_base
 from collections.abc import Callable
-from .. import _C_ops
+from .. import _C_ops, _legacy_C_ops
 import paddle
 
 __all__ = []
@@ -443,14 +443,14 @@ class AdamW(Optimizer):
 
             if framework.in_dygraph_mode():
                 found_inf = self._get_auxiliary_var('found_inf')
-                _, _, _, _, _, _ = _C_ops.final_state_adamw(
+                _, _, _, _, _, _ = _C_ops.adamw_(
                     param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                     beta1_pow_acc, beta2_pow_acc, master_weight, found_inf,
                     _beta1, _beta2, self._epsilon, lr_ratio_,
                     self._weight_decay, with_decay, self._lazy_mode, 1000,
                     find_master, False)
             else:
-                _, _, _, _, _, _ = _C_ops.adamw(
+                _, _, _, _, _, _ = _legacy_C_ops.adamw(
                     param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                     beta1_pow_acc, beta2_pow_acc, master_weight,
                     param_and_grad[0], moment1, moment2, beta1_pow_acc,

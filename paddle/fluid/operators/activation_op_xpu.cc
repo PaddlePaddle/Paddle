@@ -405,6 +405,49 @@ struct XPULogGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct XPUMishFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const auto *x = ctx.Input<Tensor>("X");
+    auto *y = ctx.Output<Tensor>("Out");
+    const T *x_data = x->data<T>();
+    T *y_data = y->mutable_data<T>(ctx.GetPlace());
+
+    float threshold = ctx.Attr<float>("threshold");
+
+    auto xpu_context =
+        ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
+    int r = xpu::mish(xpu_context, x_data, y_data, x->numel(), threshold);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "mish");
+  }
+};
+
+template <typename T>
+struct XPUMishGradFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const auto *x = ctx.Input<Tensor>("X");
+    auto *dOut = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto *dX = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    const T *x_data = x->data<T>();
+    const T *y_grad = dOut->data<T>();
+    T *x_grad = dX->mutable_data<T>(ctx.GetPlace());
+
+    float threshold = ctx.Attr<float>("threshold");
+
+    auto xpu_context =
+        ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
+    int r = xpu::mish_grad(xpu_context,
+                           reinterpret_cast<const float *>(x_data),
+                           reinterpret_cast<const float *>(
+                               x_data),  // mish_grad do not need y_data
+                           reinterpret_cast<const float *>(y_grad),
+                           reinterpret_cast<float *>(x_grad),
+                           dX->numel(),
+                           threshold);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "mish_grad");
+  }
+};
+
+template <typename T>
 struct XPUPowFunctor : public BaseActivationFunctor<T> {
   void operator()(const framework::ExecutionContext &ctx) const {
     const auto *x = ctx.Input<Tensor>("X");
@@ -589,6 +632,7 @@ REGISTER_ACTIVATION_XPU_KERNEL(hard_swish,
 REGISTER_ACTIVATION_XPU_KERNEL(leaky_relu,
                                XPULeakyReluFunctor,
                                XPULeakyReluGradFunctor)
+REGISTER_ACTIVATION_XPU_KERNEL(mish, XPUMishFunctor, XPUMishGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(reciprocal,
                                XPUReciprocalFunctor,
                                XPUReciprocalGradFunctor)

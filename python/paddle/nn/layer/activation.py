@@ -140,11 +140,10 @@ class GELU(Layer):
 
     Examples:
         .. code-block:: python
-
+        
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[-1, 0.5],[1, 1.5]]))
+            x = paddle.to_tensor([[-1, 0.5],[1, 1.5]])
 
             m = paddle.nn.GELU()
             out = m(x) # [-0.158655 0.345731 0.841345 1.39979]
@@ -486,7 +485,6 @@ class RReLU(Layer):
 
     Examples:
         .. code-block:: python
-            :name: RReLU-example
 
             import paddle
 
