@@ -21,31 +21,47 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ReverseArrayKernel(const Context& dev_ctx,
-                        const TensorArray& x,
-                        const IntArray& axis,
-                        TensorArray* out) {
+void ReverseVecTensorKernel(const Context& dev_ctx,
+                            const std::vector<const DenseTensor*>& x,
+                            const IntArray& axis,
+                            std::vector<DenseTensor*> out) {
   PADDLE_ENFORCE_EQ(
       x.size(),
-      out->size(),
+      out.size(),
       phi::errors::InvalidArgument("The input size(%d) and output size(%d) of "
                                    "ReverseArrayKernel is different.",
                                    x.size(),
-                                   out->size()));
+                                   out.size()));
   for (size_t offset = 0; offset < x.size(); ++offset) {
-    auto& x_tensor = x.at(offset);
+    auto* x_tensor = x.at(offset);
     PADDLE_ENFORCE_GT(
-        x_tensor.memory_size(),
+        x_tensor->memory_size(),
         0,
         phi::errors::PreconditionNotMet(
             "The input LoDTensorArray X[%d] holds no memory.", offset));
     auto out_offset = x.size() - offset - 1;
-    auto& out_tensor = out->at(out_offset);
+    auto* out_tensor = out.at(out_offset);
 
-    out_tensor.set_lod(x_tensor.lod());
+    out_tensor->set_lod(x_tensor->lod());
     phi::Copy<Context>(
-        dev_ctx, x_tensor, dev_ctx.GetPlace(), false, &out_tensor);
+        dev_ctx, *x_tensor, dev_ctx.GetPlace(), false, out_tensor);
   }
+}
+
+template <typename T, typename Context>
+void ReverseTensorArrayKernel(const Context& dev_ctx,
+                              const TensorArray& x,
+                              const IntArray& axis,
+                              TensorArray* out) {
+  std::vector<const DenseTensor*> inputs;
+  std::vector<DenseTensor*> outputs;
+  for (auto& input : x) {
+    inputs.push_back(&input);
+  }
+  for (auto& output : *out) {
+    outputs.push_back(&output);
+  }
+  ReverseVecTensorKernel<T, Context>(dev_ctx, inputs, axis, outputs);
 }
 
 }  // namespace phi
@@ -53,22 +69,46 @@ void ReverseArrayKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(reverse_array,
                    CPU,
                    ALL_LAYOUT,
-                   phi::ReverseArrayKernel,
+                   phi::ReverseVecTensorKernel,
                    int,
                    uint8_t,
                    int64_t,
                    bool,
                    float,
                    double) {}
+
+PD_REGISTER_KERNEL(reverse_tensor_array,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ReverseTensorArrayKernel,
+                   int,
+                   uint8_t,
+                   int64_t,
+                   bool,
+                   float,
+                   double) {}
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(reverse_array,
                    GPU,
                    ALL_LAYOUT,
-                   phi::ReverseArrayKernel,
+                   phi::ReverseVecTensorKernel,
                    int,
                    uint8_t,
                    int64_t,
                    bool,
                    float,
                    double) {}
+
+PD_REGISTER_KERNEL(reverse_tensor_array,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ReverseTensorArrayKernel,
+                   int,
+                   uint8_t,
+                   int64_t,
+                   bool,
+                   float,
+                   double) {}
+
 #endif

@@ -18,7 +18,7 @@ namespace phi {
 
 KernelSignature ReverseOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorVectorInput("X")) {
-    return KernelSignature("reverse_array", {"X"}, {"axis"}, {"Out"});
+    return KernelSignature("reverse_tensor_array", {"X"}, {"axis"}, {"Out"});
   } else {
     return KernelSignature("reverse", {"X"}, {"axis"}, {"Out"});
   }

@@ -29,9 +29,15 @@ void ReverseKernel(const Context& dev_ctx,
                    DenseTensor* out);
 
 template <typename T, typename Context>
-void ReverseArrayKernel(const Context& dev_ctx,
-                        const TensorArray& x,
-                        const IntArray& axis,
-                        TensorArray* out);
+void ReverseTensorArrayKernel(const Context& dev_ctx,
+                              const TensorArray& x,
+                              const IntArray& axis,
+                              TensorArray* out);
+
+template <typename T, typename Context>
+void ReverseVecTensorKernel(const Context& dev_ctx,
+                            const std::vector<const DenseTensor*>& x,
+                            const IntArray& axis,
+                            std::vector<DenseTensor*> out);
 
 }  // namespace phi
