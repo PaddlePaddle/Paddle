@@ -22,6 +22,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #ifdef PADDLE_WITH_ONNXRUNTIME
 #include "onnxruntime_c_api.h"    // NOLINT
 #include "onnxruntime_cxx_api.h"  // NOLINT
@@ -378,7 +379,7 @@ void Tensor::CopyToCpuImpl(T *data,
   if (paddle::platform::is_cpu_place(t_place)) {
 #ifdef PADDLE_WITH_MKLDNN
     if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN)
-      paddle::framework::innerTransDataLayoutFromMKLDNN(
+      phi::funcs::innerTransDataLayoutFromMKLDNN(
           tensor->layout(),
           paddle::platform::MKLDNNDeviceContext::tls()
               .get_cur_paddle_data_layout(),
@@ -854,7 +855,7 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
   if (paddle::platform::is_cpu_place(t_place)) {
 #ifdef PADDLE_WITH_MKLDNN
     if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN)
-      paddle::framework::innerTransDataLayoutFromMKLDNN(
+      phi::funcs::innerTransDataLayoutFromMKLDNN(
           tensor->layout(),
           paddle::platform::MKLDNNDeviceContext::tls()
               .get_cur_paddle_data_layout(),

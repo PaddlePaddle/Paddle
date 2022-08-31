@@ -23,6 +23,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using framework::DataLayout;
+using phi::funcs::MKLDNNMemDesc;
 
 inline dnnl::memory::dims GetWeightsTz(const Tensor* filter, const int groups) {
   auto weights_tz = phi::vectorize(filter->dims());
@@ -148,11 +149,10 @@ class ConvTransposeMKLDNNHandlerT
         std::is_same<T_out, platform::bfloat16>::value)
       data_type = dnnl::memory::data_type::bf16;
 
-    const auto src_md =
-        platform::MKLDNNMemDesc(src_tz, data_type, chosen_memory_format);
+    const auto src_md = MKLDNNMemDesc(src_tz, data_type, chosen_memory_format);
     const auto weights_md =
-        platform::MKLDNNMemDesc(weights_tz, data_type, chosen_memory_format);
-    const auto dst_md = platform::MKLDNNMemDesc(
+        MKLDNNMemDesc(weights_tz, data_type, chosen_memory_format);
+    const auto dst_md = MKLDNNMemDesc(
         dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
 
     const dnnl::primitive_attr conv_trans_attr = CreateConvAttrs(ctx);
@@ -161,7 +161,7 @@ class ConvTransposeMKLDNNHandlerT
     if (bias) {
       std::vector<int64_t> bias_tz = phi::vectorize(bias->dims());
       const auto bias_md =
-          platform::MKLDNNMemDesc(bias_tz, data_type, MKLDNNMemoryFormat::x);
+          MKLDNNMemDesc(bias_tz, data_type, MKLDNNMemoryFormat::x);
       this->AcquireForwardPrimitiveDescriptor(
           conv_trans_attr,
           fwd_prop_kind,
@@ -235,7 +235,7 @@ class ConvTransposeMKLDNNHandlerT
     auto weights_tz = GetWeightsTz(filter, groups);
     int g = std::max(groups, 1);
 
-    auto user_src_md = platform::MKLDNNMemDesc(
+    auto user_src_md = MKLDNNMemDesc(
         weights_tz,
         platform::MKLDNNGetDataType<K>(),
         (g == 1) ? MKLDNNMemoryFormat::iohw : MKLDNNMemoryFormat::giohw);
@@ -333,10 +333,9 @@ class ConvTransposeMKLDNNHandlerT
       const std::string& key,
       const framework::Tensor* bias) {
     const K* bias_data = bias->data<K>();
-    auto user_bias_md =
-        platform::MKLDNNMemDesc(phi::vectorize(bias->dims()),
-                                platform::MKLDNNGetDataType<K>(),
-                                MKLDNNMemoryFormat::x);
+    auto user_bias_md = MKLDNNMemDesc(phi::vectorize(bias->dims()),
+                                      platform::MKLDNNGetDataType<K>(),
+                                      MKLDNNMemoryFormat::x);
     return this->AcquireMemoryWithReorder(dev_ctx,
                                           user_bias_md,
                                           this->fwd_pd_->bias_desc(),

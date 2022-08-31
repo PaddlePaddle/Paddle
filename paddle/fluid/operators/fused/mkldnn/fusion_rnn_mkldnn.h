@@ -23,7 +23,6 @@ using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
 using paddle::platform::CreateKey;
 using paddle::platform::MKLDNNGetDataType;
-using paddle::platform::MKLDNNMemDesc;
 using phi::CPUContext;
 using platform::to_void_cast;
 

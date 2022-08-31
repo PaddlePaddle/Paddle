@@ -21,10 +21,10 @@ using paddle::framework::ExecutionContext;
 using paddle::platform::GetMKLDNNFormat;
 using paddle::platform::MatMulV2MKLDNNHandler;
 using paddle::platform::MKLDNNDeviceContext;
-using paddle::platform::MKLDNNFormatForSize;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::to_void_cast;
 using phi::vectorize;
+using phi::funcs::MKLDNNFormatForSize;
 using Tensor = paddle::framework::Tensor;
 using paddle::framework::GradVarName;
 using phi::make_ddim;
@@ -57,7 +57,7 @@ static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext &dev_ctx,
   auto output_dims = vectorize(output.dims());
 
   memory::data_type input_type = phi::funcs::ToMKLDNNDataType(input->dtype());
-  paddle::platform::ReorderMKLDNNHandler reorder_handler(
+  phi::funcs::ReorderMKLDNNHandler reorder_handler(
       output_dims, input->dtype(), input_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(

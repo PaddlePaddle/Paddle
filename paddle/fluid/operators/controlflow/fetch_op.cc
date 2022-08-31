@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 namespace paddle {
 namespace operators {
@@ -34,7 +35,7 @@ static void DataCopy(const framework::LoDTensor &src_item,
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
       VLOG(4) << "innerTransDataLayoutFromMKLDNN";
-      framework::innerTransDataLayoutFromMKLDNN(
+      phi::funcs::innerTransDataLayoutFromMKLDNN(
           src_item.layout(),
           fetch_var_name == framework::GradVarName("Filter")
               ? framework::DataLayout::kNCHW

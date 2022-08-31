@@ -71,7 +71,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
           DNNL_ARG_SRC, mask, {static_cast<int32_t>(quantization_shift)});
     }
 
-    platform::ReorderMKLDNNHandler reorder_handler(
+    phi::funcs::ReorderMKLDNNHandler reorder_handler(
         x_tz,
         x_paddle_dtype,
         phi::funcs::ToMKLDNNDataType(x_paddle_dtype),

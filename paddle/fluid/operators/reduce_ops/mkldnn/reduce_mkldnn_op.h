@@ -74,7 +74,7 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
     // PaddlePaddle reduce op
     if (x_tz == out_tz) {
       dnnl::memory::data_type x_type = phi::funcs::ToMKLDNNDataType(x->dtype());
-      platform::ReorderMKLDNNHandler reorder_handler(
+      phi::funcs::ReorderMKLDNNHandler reorder_handler(
           x_tz, x->dtype(), x_type, onednn_engine);
 
       auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(

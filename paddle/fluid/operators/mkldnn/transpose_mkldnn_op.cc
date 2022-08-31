@@ -44,7 +44,7 @@ class TransposeMKLDNNHandler {
     }
 
     auto src_md = fmt != MKLDNNMemoryFormat::nchw
-                      ? platform::MKLDNNMemDesc(
+                      ? phi::funcs::MKLDNNMemDesc(
                             dims_, platform::MKLDNNGetDataType<T>(), fmt)
                       : Axis2MemoryDesc(dims_, logical_axis_);
     return std::make_shared<dnnl::memory>(src_md, engine_, ptr);

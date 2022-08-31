@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/transfer_layout_op.h"
-
 #include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
@@ -49,7 +47,7 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
     auto *in_tensor = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in);
     // NOTE(zhiqiu): hot fix, allow empty tensor of kMKLDNN layout to run this
     // op
-    if (in_tensor->layout() != DataLayout::kMKLDNN) {
+    if (in_tensor->layout() != framework::DataLayout::kMKLDNN) {
       PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(),
                         true,
                         platform::errors::PreconditionNotMet(
@@ -76,20 +74,6 @@ class TransferLayoutInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
     ctx->SyncTypeAndDataType("X", "Out");
-  }
-};
-
-class TransferLayoutKernel {
- public:
-  void operator()(const framework::ExecutionContext &ctx) const {
-    auto *x = ctx.InputVar("X");
-    auto *out = ctx.OutputVar("Out");
-    auto &dev_ctx = ctx.device_context();
-    auto src_layout = ctx.Attr<int>("src_layout");
-    auto dst_layout = ctx.Attr<int>("dst_layout");
-    auto input_name = ctx.InputName("X");
-    TransferLayoutFunctor(
-        x, out, dev_ctx, src_layout, dst_layout, input_name)();
   }
 };
 

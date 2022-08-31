@@ -25,6 +25,8 @@ namespace paddle {
 namespace operators {
 namespace {
 
+using phi::funcs::MKLDNNMemDesc;
+
 inline MKLDNNMemoryFormat GetWeightsFormat(const int groups,
                                            const bool is_conv3d) {
   if (is_conv3d) {
@@ -209,21 +211,20 @@ class ConvMKLDNNHandlerT
 
       dnnl::memory::desc src_md, weights_md;
       if (platform::is_int8<T>()) {
-        src_md = platform::MKLDNNMemDesc(
-            src_tz,
-            framework::ToMKLDNNDataType(
-                framework::TransToProtoVarType(input->dtype())),
-            chosen_memory_format);
-        weights_md = platform::MKLDNNMemDesc(
+        src_md =
+            MKLDNNMemDesc(src_tz,
+                          framework::ToMKLDNNDataType(
+                              framework::TransToProtoVarType(input->dtype())),
+                          chosen_memory_format);
+        weights_md = MKLDNNMemDesc(
             weights_tz, dnnl::memory::data_type::s8, chosen_memory_format);
       } else {
-        src_md =
-            platform::MKLDNNMemDesc(src_tz, data_type, chosen_memory_format);
-        weights_md = platform::MKLDNNMemDesc(
-            weights_tz, data_type, MKLDNNMemoryFormat::any);
+        src_md = MKLDNNMemDesc(src_tz, data_type, chosen_memory_format);
+        weights_md =
+            MKLDNNMemDesc(weights_tz, data_type, MKLDNNMemoryFormat::any);
       }
 
-      const auto dst_md = platform::MKLDNNMemDesc(
+      const auto dst_md = MKLDNNMemDesc(
           dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
       const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
                                          : dnnl::prop_kind::forward_training;
@@ -234,11 +235,10 @@ class ConvMKLDNNHandlerT
         auto bias_tz = phi::vectorize(bias->dims());
         dnnl::memory::desc bias_md;
         if (platform::is_int8<T>()) {
-          bias_md = platform::MKLDNNMemDesc(
+          bias_md = MKLDNNMemDesc(
               bias_tz, dnnl::memory::data_type::s32, MKLDNNMemoryFormat::x);
         } else {
-          bias_md = platform::MKLDNNMemDesc(
-              bias_tz, data_type, MKLDNNMemoryFormat::x);
+          bias_md = MKLDNNMemDesc(bias_tz, data_type, MKLDNNMemoryFormat::x);
         }
 
         this->AcquireForwardPrimitiveDescriptor(
@@ -356,17 +356,17 @@ class ConvMKLDNNHandlerT
       const auto chosen_memory_format = MKLDNNMemoryFormat::any;
       const auto weights_format = MKLDNNMemoryFormat::any;
 
-      auto src_md = platform::MKLDNNMemDesc(
+      auto src_md = MKLDNNMemDesc(
           src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
-      const auto dst_md = platform::MKLDNNMemDesc(
+      const auto dst_md = MKLDNNMemDesc(
           dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
-      auto diff_src_md = platform::MKLDNNMemDesc(
+      auto diff_src_md = MKLDNNMemDesc(
           src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
-      auto weights_md = platform::MKLDNNMemDesc(
+      auto weights_md = MKLDNNMemDesc(
           weights_tz, platform::MKLDNNGetDataType<T>(), weights_format);
-      auto diff_weights_md = platform::MKLDNNMemDesc(
+      auto diff_weights_md = MKLDNNMemDesc(
           weights_tz, platform::MKLDNNGetDataType<T>(), weights_format);
-      auto diff_dst_md = platform::MKLDNNMemDesc(
+      auto diff_dst_md = MKLDNNMemDesc(
           dst_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
 
       auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
@@ -383,10 +383,10 @@ class ConvMKLDNNHandlerT
         auto bias_tz = phi::vectorize(bias->dims());
         dnnl::memory::desc bias_md;
         if (platform::is_int8<T>()) {
-          bias_md = platform::MKLDNNMemDesc(
+          bias_md = MKLDNNMemDesc(
               bias_tz, dnnl::memory::data_type::s32, MKLDNNMemoryFormat::x);
         } else {
-          bias_md = platform::MKLDNNMemDesc(
+          bias_md = MKLDNNMemDesc(
               bias_tz, dnnl::memory::data_type::f32, MKLDNNMemoryFormat::x);
         }
 
@@ -573,10 +573,9 @@ class ConvMKLDNNHandlerT
     auto weights_tz = phi::vectorize(filter->dims());
     platform::GetGroupConvWeightsTz(weights_tz, groups);
 
-    auto user_src_md =
-        platform::MKLDNNMemDesc(weights_tz,
-                                platform::MKLDNNGetDataType<K>(),
-                                GetWeightsFormat(groups, is_conv3d));
+    auto user_src_md = MKLDNNMemDesc(weights_tz,
+                                     platform::MKLDNNGetDataType<K>(),
+                                     GetWeightsFormat(groups, is_conv3d));
 
     return this->AcquireMemoryWithReorder(
         user_src_md,
@@ -670,10 +669,9 @@ class ConvMKLDNNHandlerT
       auto weights_tz = phi::vectorize(filter->dims());
       platform::GetGroupConvWeightsTz(weights_tz, groups);
 
-      auto user_src_md =
-          platform::MKLDNNMemDesc(weights_tz,
-                                  platform::MKLDNNGetDataType<K>(),
-                                  GetWeightsFormat(groups, is_conv3d));
+      auto user_src_md = MKLDNNMemDesc(weights_tz,
+                                       platform::MKLDNNGetDataType<K>(),
+                                       GetWeightsFormat(groups, is_conv3d));
 
       return this->AcquireMemoryWithReorder(
           user_src_md,
@@ -689,10 +687,9 @@ class ConvMKLDNNHandlerT
       auto weights_tz = phi::vectorize(filter->dims());
       platform::GetGroupConvWeightsTz(weights_tz, groups);
 
-      auto user_src_md =
-          platform::MKLDNNMemDesc(weights_tz,
-                                  platform::MKLDNNGetDataType<T>(),
-                                  GetWeightsFormat(groups, is_conv3d));
+      auto user_src_md = MKLDNNMemDesc(weights_tz,
+                                       platform::MKLDNNGetDataType<T>(),
+                                       GetWeightsFormat(groups, is_conv3d));
 
       return this->AcquireMemoryWithReorder(
           user_src_md,
@@ -1067,7 +1064,7 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
         dnnl::memory::format_tag out_format =
             weights_tz.size() == 6 ? dnnl::memory::format_tag::goidhw
                                    : dnnl::memory::format_tag::goihw;
-        platform::ReorderMKLDNNHandler handler(
+        phi::funcs::ReorderMKLDNNHandler handler(
             weights_tz, filter->dtype(), in_type, mkldnn_engine);
         auto reorder_dst_memory_p =
             handler.AcquireDstMemory(filter_grad, out_format, ctx.GetPlace());

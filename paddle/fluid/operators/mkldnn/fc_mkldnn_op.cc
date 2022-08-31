@@ -172,10 +172,10 @@ class FCPrimitiveFactory {
       if (in_format == MKLDNNMemoryFormat::nwc ||
           in_format == MKLDNNMemoryFormat::nhwc) {
         out->set_format(
-            platform::MKLDNNFormatForSize(dim_num, MKLDNNMemoryFormat::nhwc));
+            phi::funcs::MKLDNNFormatForSize(dim_num, MKLDNNMemoryFormat::nhwc));
       } else {
         out->set_format(
-            platform::MKLDNNFormatForSize(dim_num, MKLDNNMemoryFormat::nchw));
+            phi::funcs::MKLDNNFormatForSize(dim_num, MKLDNNMemoryFormat::nchw));
       }
       // In any other case we overwrite the output format with the input one.
     } else {
@@ -346,7 +346,7 @@ class FCPrimitiveFactory {
   template <typename T>
   static dnnl::memory::desc CreateMemDescriptor(
       const std::vector<int64_t>& dims, MKLDNNMemoryFormat format) {
-    return platform::MKLDNNMemDesc(
+    return phi::funcs::MKLDNNMemDesc(
         dims, platform::MKLDNNGetDataType<T>(), format);
   }
 

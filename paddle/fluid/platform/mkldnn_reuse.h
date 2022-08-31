@@ -35,9 +35,6 @@ using framework::Tensor;
 using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = dnnl::memory;
 
-// TODO(lvyongkang): remove when its dependency has migrated.
-auto& MKLDNNMemDesc = phi::funcs::MKLDNNMemDesc;
-
 template <typename T,
           typename TForward,
           typename TBackward = mkldnn_dummy_primitive,
@@ -989,13 +986,13 @@ static void SetDstMemoryQuantized(
                         "Dst memory for quantization can not have "
                         "dims > 5. But received dst_dims is %d.",
                         dst_dims));
-  dst_fmt = platform::MKLDNNFormatForSize(dst_dims, output_format);
+  dst_fmt = phi::funcs::MKLDNNFormatForSize(dst_dims, output_format);
 
   auto tmp_dst_md =
-      platform::MKLDNNMemDesc({dst_tz},
-                              paddle::framework::ToMKLDNNDataType(
-                                  framework::DataTypeTrait<T>::DataType()),
-                              dst_fmt);
+      phi::funcs::MKLDNNMemDesc({dst_tz},
+                                paddle::framework::ToMKLDNNDataType(
+                                    framework::DataTypeTrait<T>::DataType()),
+                                dst_fmt);
   dst_md.reset(new dnnl::memory::desc(tmp_dst_md));
   dst_memory.reset(
       new dnnl::memory(*dst_md, engine, to_void_cast<T>(output_data)));

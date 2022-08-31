@@ -80,8 +80,8 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
 
     dnnl::memory::data_type x_type = phi::funcs::ToMKLDNNDataType(x->dtype());
 
-    platform::ReorderMKLDNNHandler reorder_handler(
-        x_vec_dims, x->dtype() s, x_type, onednn_engine);
+    phi::funcs::ReorderMKLDNNHandler reorder_handler(
+        x_vec_dims, x->dtype(), x_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->mem_desc(), platform::to_void_cast(x->data<T>()));
@@ -177,7 +177,7 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
     dnnl::memory::data_type dout_type =
         phi::funcs::ToMKLDNNDataType(dout->dtype());
 
-    platform::ReorderMKLDNNHandler reorder_handler(
+    phi::funcs::ReorderMKLDNNHandler reorder_handler(
         slice_dims, dout->dtype(), dout_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(

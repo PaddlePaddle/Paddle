@@ -301,7 +301,7 @@ endif()
 cc_library(
   data_layout_transform
   SRCS data_layout_transform.cc
-  DEPS tensor math_function)
+  DEPS tensor math_function phi_data_layout_transform)
 cc_test(
   data_layout_transform_test
   SRCS data_layout_transform_test.cc

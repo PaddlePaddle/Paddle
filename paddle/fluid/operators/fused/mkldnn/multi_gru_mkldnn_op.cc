@@ -16,7 +16,7 @@ limitations under the License. */
 #include <iostream>
 #include <memory>
 
-#include "dnnl.hpp"
+#include "dnnl.hpp"  //NOLINT
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fused/multi_gru_op.h"
@@ -30,9 +30,9 @@ using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
 using paddle::platform::CreateKey;
 using paddle::platform::MKLDNNGetDataType;
-using paddle::platform::MKLDNNMemDesc;
 using phi::CPUContext;
 using phi::vectorize;
+using phi::funcs::MKLDNNMemDesc;
 using platform::to_void_cast;
 using Direction = dnnl::rnn_direction;
 

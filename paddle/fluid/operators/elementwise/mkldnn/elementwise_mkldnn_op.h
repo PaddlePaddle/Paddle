@@ -162,7 +162,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
 
     auto tz = phi::vectorize<int64_t>(dout->dims());
 
-    platform::ReorderMKLDNNHandler reorder_handler(
+    phi::funcs::ReorderMKLDNNHandler reorder_handler(
         tz,
         dout->dtype(),
         phi::funcs::ToMKLDNNDataType(dout->dtype()),

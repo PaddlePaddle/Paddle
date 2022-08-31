@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
+#include "paddle/phi/kernels/funcs/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -34,13 +35,23 @@ class CastMKLDNNKernel : public framework::OpKernel<T> {
     int in_dtype = ctx.Attr<int>("in_dtype");
     int out_dtype = ctx.Attr<int>("out_dtype");
 
-    dnnl::memory::data_type x_type = phi::funcs::ToMKLDNNDataType(in_dtype);
-    dnnl::memory::data_type out_type = phi::funcs::ToMKLDNNDataType(out_dtype);
+    auto x_paddle_type = framework::TransToPhiDataType(
+        framework::proto::VarType::Type(in_dtype));
+    auto out_paddle_type = framework::TransToPhiDataType(
+        framework::proto::VarType::Type(out_dtype));
+    dnnl::memory::data_type x_type =
+        phi::funcs::ToMKLDNNDataType(x_paddle_type);
+    dnnl::memory::data_type out_type =
+        phi::funcs::ToMKLDNNDataType(out_paddle_type);
 
     auto x_tz = phi::vectorize(x->dims());
 
-    platform::ReorderMKLDNNHandler reorder_handler(
-        x_tz, in_dtype, x_type, out_dtype, out_type, dev_ctx.GetEngine());
+    phi::funcs::ReorderMKLDNNHandler reorder_handler(x_tz,
+                                                     x_paddle_type,
+                                                     x_type,
+                                                     out_paddle_type,
+                                                     out_type,
+                                                     dev_ctx.GetEngine());
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->mem_desc(), platform::to_void_cast(x->data<T>()));

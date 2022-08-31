@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "dnnl.hpp"
+#include "dnnl.hpp"  //NOLINT
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/requantize_op.h"
@@ -90,10 +90,12 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
           framework::TransToProtoVarType(input->dtype()));
       auto dst_dt = with_shift ? framework::MKLDNNDataType::u8 : src_dt;
 
-      auto src_md = platform::MKLDNNMemDesc({src_tz}, src_dt, input->format());
+      auto src_md =
+          phi::funcs::MKLDNNMemDesc({src_tz}, src_dt, input->format());
       src_memory = std::make_shared<dnnl::memory>(
           src_md, engine, to_void_cast<T>(input_data));
-      auto dst_md = platform::MKLDNNMemDesc({dst_tz}, dst_dt, input->format());
+      auto dst_md =
+          phi::funcs::MKLDNNMemDesc({dst_tz}, dst_dt, input->format());
 
       dnnl::primitive_attr attri;
       int mask = 0;

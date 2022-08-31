@@ -33,9 +33,6 @@ using MKLDNNMemoryFormat = dnnl::memory::format_tag;
 #endif
 namespace platform {
 
-// TODO(lvyongkang): remove when its dependency has migrated.
-auto& MKLDNNFormatForSize = phi::funcs::MKLDNNFormatForSize;
-
 using MKLDNNStream = dnnl::stream;
 using MKLDNNEngine = dnnl::engine;
 using MKLDNNMemory = dnnl::memory;

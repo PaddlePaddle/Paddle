@@ -85,7 +85,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
       out_paddle_dtype = phi::DataType::UINT8;
     }
 
-    platform::ReorderMKLDNNHandler reorder_handler(
+    phi::funcs::ReorderMKLDNNHandler reorder_handler(
         x_tz,
         x_paddle_dtype,
         phi::funcs::ToMKLDNNDataType(x_paddle_dtype),

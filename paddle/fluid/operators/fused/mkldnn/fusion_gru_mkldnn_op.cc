@@ -23,8 +23,8 @@ namespace operators {
 using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
 using paddle::platform::MKLDNNGetDataType;
-using paddle::platform::MKLDNNMemDesc;
 using phi::CPUContext;
+using phi::funcs::MKLDNNMemDesc;
 using platform::to_void_cast;
 
 template <typename T, typename T_out = T>

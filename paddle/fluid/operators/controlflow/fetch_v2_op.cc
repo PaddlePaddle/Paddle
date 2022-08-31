@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 namespace paddle {
 namespace framework {
@@ -41,7 +42,7 @@ static void DeepCopy(const framework::LoDTensor &src_item,
       framework::Tensor out;
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
-      framework::innerTransDataLayoutFromMKLDNN(
+      phi::funcs::innerTransDataLayoutFromMKLDNN(
           src_item.layout(),
           fetch_var_name == framework::GradVarName("Filter")
               ? framework::DataLayout::kNCHW
