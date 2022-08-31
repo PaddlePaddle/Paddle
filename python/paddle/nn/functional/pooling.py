@@ -662,7 +662,7 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
             output_size = utils._convert_to_tensor_list(output_size)
         else:
             for i, var in enumerate(output_size):
-                if isinstance(var, core.eager.Tensor):
+                if isinstance(var, Variable):
                     output_size[i] = var.numpy()[0]
         ret = output_size
     else:
