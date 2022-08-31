@@ -813,14 +813,13 @@ class TRTEngineManager {
     return p;
   }
 
-  // not used
-  // void DeleteAll() {
-  //   std::unique_lock<std::mutex> lock(mutex_);
-  //   for (auto& item : engines_) {
-  //     item.second.reset(nullptr);
-  //   }
-  //   engines_.clear();
-  // }
+  void DeleteAll() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    for (auto& item : engines_) {
+      item.second.reset(nullptr);
+    }
+    engines_.clear();
+  }
 
   void DeleteKey(const std::string& key) {
     std::unique_lock<std::mutex> lock(mutex_);
@@ -831,16 +830,29 @@ class TRTEngineManager {
     }
   }
 
+  void updateContextMemorySize(size_t mem_size, TensorRTEngine* trt_engine) {
+    if (trt_engine) {
+      releaseContextMemory(trt_engine->predictor_id_per_thread);
+    }
+    std::unique_lock<std::mutex> lock(mutex_);
+    max_ctx_mem_size_ = std::max(max_ctx_mem_size_, mem_size);
+  }
+
   void* getContextMemory(TensorRTEngine* trt_engine,
                          const phi::GPUPlace& place,
                          const phi::Stream& stream) {
     std::unique_lock<std::mutex> lock(mutex_);
     auto predictor_id = trt_engine->predictor_id_per_thread;
-    auto context_memory_size = trt_engine->engine()->getDeviceMemorySize();
-    if ((context_memorys_.count(predictor_id) == 0) ||
-        max_context_memory_size_ < context_memory_size) {
-      max_context_memory_size_ = context_memory_size;
-      auto memory_addr = memory::Alloc(place, max_context_memory_size_, stream);
+    if (context_memorys_.count(predictor_id) == 0) {
+      auto memory_addr = memory::Alloc(place, max_ctx_mem_size_, stream);
+      if (memory_addr == nullptr) {
+        PADDLE_ENFORCE_EQ(
+            max_ctx_mem_size_,
+            0,
+            platform::errors::InvalidArgument(
+                "The context memory size is non-zero, but the "
+                "memory address we applied for is NULL, we failed to set it."));
+      }
       // context_memory_[predictor_id].reset(memory_addr.release());
       context_memorys_[predictor_id] = std::move(memory_addr);
     }
@@ -858,7 +870,7 @@ class TRTEngineManager {
 
  private:
   mutable std::mutex mutex_;
-  size_t max_context_memory_size_{0};
+  size_t max_ctx_mem_size_{0};
   std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
 };
