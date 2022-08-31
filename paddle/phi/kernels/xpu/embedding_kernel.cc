@@ -28,7 +28,7 @@ void EmbeddingKernel(const Context &ctx,
   auto *ids_t = &inputx;  // int
   auto *output_t = out;   // float
   PADDLE_ENFORCE_EQ(
-      (std::is_same<DeviceContext, XPUContext>::value),
+      (std::is_same<Context, XPUContext>::value),
       true,
       phi::errors::PreconditionNotMet("Unsupported place! only support "
                                       "xpu place , please check your "
