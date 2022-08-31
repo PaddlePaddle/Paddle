@@ -32,11 +32,29 @@ void MaximumGradKernel(const Context& dev_ctx,
   XPUElementwiseGrad<T, XPUType>(dev_ctx,x,y,dout,axis,dx,dy,xpu::broadcast_max_grad<XPUType>, true);
 }
 
+template <typename T, typename Context>
+void MinimumGradKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       const DenseTensor& dout,
+                       int axis,
+                       DenseTensor* dx,
+                       DenseTensor* dy){
+  using XPUType = typename XPUTypeTrait<T>::Type; 
+  XPUElementwiseGrad<T, XPUType>(dev_ctx,x,y,dout,axis,dx,dy,xpu::broadcast_min_grad<XPUType>, true);            
+}
+
 }//namespace phi
 
 PD_REGISTER_KERNEL(maximum_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::MaximumGradKernel,
+                   float,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(minimum_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::MinimumGradKernel,
                    float,
                    phi::dtype::float16) {}

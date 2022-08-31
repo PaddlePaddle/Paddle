@@ -182,4 +182,10 @@ PD_REGISTER_KERNEL(maximum,
                    phi::MaximumKernel,
                    float,
                    phi::dtype::float16) {}
+PD_REGISTER_KERNEL(minimum,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::MinimumKernel,
+                   float,
+                   phi::dtype::float16) {}
 #endif
