@@ -842,8 +842,8 @@ class TRTEngineManager {
                          const phi::GPUPlace& place,
                          const phi::Stream& stream) {
     std::unique_lock<std::mutex> lock(mutex_);
-    size_t ctx_mem_size = trt_engine->engine()->getDeviceMemorySize();
     auto predictor_id = trt_engine->predictor_id_per_thread;
+    size_t ctx_mem_size = trt_engine->engine()->getDeviceMemorySize();
     if (context_memorys_.count(predictor_id) == 0 ||
         max_ctx_mem_size_ < ctx_mem_size) {
       max_ctx_mem_size_ = std::max(max_ctx_mem_size_, ctx_mem_size);
