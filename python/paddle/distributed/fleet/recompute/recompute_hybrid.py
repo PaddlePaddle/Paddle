@@ -37,7 +37,7 @@ def _split_activation(tensor, mp_group):
 
     tensor_numel = paddle.numel(tensor)
     assert tensor_numel != 0, "can't recompute zero element"
-    assert tensor_numel % mp_degree == 0, "The capacity of the activation () cannot be divisible by mp_degree()".format(
+    assert tensor_numel % mp_degree == 0, "The capacity of the activation ({}) cannot be divisible by mp_degree({})".format(
         tensor_numel, mp_degree)
 
     # use inplace operation to save memory
