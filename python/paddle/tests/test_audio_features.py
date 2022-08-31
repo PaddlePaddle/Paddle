@@ -15,10 +15,12 @@ import unittest
 
 import librosa
 import numpy as np
+import os
 import paddle
 
 import paddle.audio
 from audio_base import get_wav_data
+from scipy import signal
 
 
 class TestFeatures(unittest.TestCase):
@@ -45,6 +47,44 @@ class TestFeatures(unittest.TestCase):
                                        normalize=False,
                                        num_frames=self.duration * self.sr)
         self.waveform = waveform_tensor.numpy() * 0.1
+
+    def test_window(self):
+        window_types = [
+            "hamming", "hann", "triang", "bohman", "blackman", "cosine",
+            "tukey", "taylor"
+        ]
+        for window_type in window_types:
+            window_scipy = signal.get_window(window_type, self.n_fft)
+            window_paddle = paddle.audio.functional.get_window(
+                window_type, self.n_fft)
+            np.testing.assert_array_almost_equal(window_scipy,
+                                                 window_paddle.numpy(),
+                                                 decimal=5)
+
+        window_scipy_gaussain = signal.windows.gaussian(self.n_fft, std=7)
+        window_paddle_gaussian = paddle.audio.functional.get_window(
+            ('gaussian', 7), self.n_fft, False)
+        np.testing.assert_array_almost_equal(window_scipy_gaussain,
+                                             window_paddle_gaussian.numpy(),
+                                             decimal=5)
+        window_scipy_exp = signal.windows.exponential(self.n_fft)
+        window_paddle_exp = paddle.audio.functional.get_window(
+            ('exponential', None, 1), self.n_fft, False)
+        np.testing.assert_array_almost_equal(window_scipy_exp,
+                                             window_paddle_exp.numpy(),
+                                             decimal=5)
+
+        try:
+            window_paddle = paddle.audio.functional.get_window(("kaiser", 1.0),
+                                                               self.n_fft)
+        except NotImplementedError:
+            pass
+
+        try:
+            window_paddle = paddle.audio.functional.get_window(
+                "fake_window", self.n_fft)
+        except ValueError:
+            pass
 
     def test_stft(self):
         if len(self.waveform.shape) == 2:  # (C, T)

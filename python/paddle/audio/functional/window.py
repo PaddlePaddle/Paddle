@@ -343,7 +343,7 @@ def get_window(window: Union[str, Tuple[str, float]],
 
     try:
         winfunc = eval('_' + winstr)
-    except KeyError as e:
+    except NameError as e:
         raise ValueError("Unknown window type.") from e
 
     params = (win_length, ) + args
