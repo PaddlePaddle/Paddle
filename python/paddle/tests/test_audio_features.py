@@ -51,12 +51,12 @@ class TestFeatures(unittest.TestCase):
     def test_audio_function(self):
         mel1 = paddle.audio.functional.hz_to_mel(2.0, True)
         mel2 = paddle.audio.functional.hz_to_mel(paddle.to_tensor([9.0]))
-        print(mel1)
-        print(mel2)
+        self.assertTrue(mel1 == 3.215392139848255)
+        self.assertTrue(mel2 == paddle.to_tensor([0.13499999]))
         hz1 = paddle.audio.functional.mel_to_hz(paddle.to_tensor([9.0]), True)
         hz2 = paddle.audio.functional.mel_to_hz(25.0)
-        print(hz1)
-        print(hz2)
+        self.assertTrue(hz1, paddle.to_tensor(5.61244488))
+        self.assertTrue(hz2, 1988.77281)
         try:
             paddle.audio.functional.power_to_db(paddle.to_tensor([9.0]), amin=0)
         except Exception:
