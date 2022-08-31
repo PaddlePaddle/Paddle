@@ -27,6 +27,17 @@ namespace funcs {
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 
+enum BroadcastType {
+  kNoUse = 0,   // no broadcast
+  kCommon = 1,  // broadcast with div and mod operation
+  kOneData = 2  // directly fetch the only one src data.
+};
+
+/*
+ * Sometimes, tenosrs` shape for binay or tenery operation within broadcast
+ * condition can be simplfied for better performance. A bunch of method has
+ * been packed into DimensionsTransform for shape simplification.
+ */
 struct DimensionsTransform {
   using DimVector = std::vector<int64_t>;
   typedef void (*MergeFunctor)(
@@ -261,13 +272,16 @@ __device__ __forceinline__ void LoadData(
     const kps::details::BroadcastConfig &config,
     int numel,
     int num,
-    int need_broadcast,
+    BroadcastType broadcast_type,
     int read_lens) {
   // numel : whole num of output
   // num: how many data will be deal with in this time
-  if (need_broadcast) {
+  if (broadcast_type == BroadcastType::kCommon) {
     kps::ReadDataBc<T, VecSize, 1, IsBoundary>(
         dst, src, block_offset, config, numel, read_lens);
+  } else if (broadcast_type == BroadcastType::kOneData) {
+    kps::ReadOneData<T, VecSize, 1, IsBoundary>(
+        dst, src, block_offset, numel, read_lens);
   } else {
     kps::ReadData<T, VecSize, 1, IsBoundary>(
         dst, src + block_offset, num, read_lens);
@@ -284,13 +298,13 @@ template <typename InT,
 __device__ void VectorizedBroadcastKernelImpl(
     const phi::Array<const _ptr_ InT *__restrict__, Arity> &ins,
     phi::Array<_ptr_ OutT *, NumOuts> outs,
-    const phi::Array<int, Arity> &use_broadcast,
+    const phi::Array<BroadcastType, Arity> &broadcast_types,
     uint32_t numel,
     const phi::Array<kps::details::BroadcastConfig, Arity> &configs,
-    int num,
-    int block_offset,
-    int read_lens,
-    Functor func) {
+    const int num,
+    const int block_offset,
+    const int read_lens,
+    const Functor func) {
   __simd__ InT args[Arity][VecSize];
   __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
 
@@ -303,7 +317,7 @@ __device__ void VectorizedBroadcastKernelImpl(
                                        configs[i],
                                        numel,
                                        num,
-                                       use_broadcast[i],
+                                       broadcast_types[i],
                                        read_lens);
   }
   constexpr bool kCallElementwiseAny =
@@ -327,15 +341,15 @@ template <typename InT,
           int NumOuts,
           int VecSize>
 __global__ void VectorizedBroadcastKernel(
-    phi::Array<const _ptr_ InT *__restrict__, Arity> ins,
+    const phi::Array<const _ptr_ InT *__restrict__, Arity> ins,
     phi::Array<_ptr_ OutT *, NumOuts> outs,
-    phi::Array<int, Arity> use_broadcast,
-    uint32_t numel,
-    phi::Array<kps::details::BroadcastConfig, Arity> configs,
-    int main_offset,
-    int tail_tid,
-    int read_lens,
-    Functor func) {
+    const phi::Array<BroadcastType, Arity> broadcast_types,
+    const uint32_t numel,
+    const phi::Array<kps::details::BroadcastConfig, Arity> configs,
+    const int main_offset,
+    const int tail_tid,
+    const int read_lens,
+    const Functor func) {
   int block_offset = BLOCK_ID_X * BLOCK_NUM_X * read_lens;
   int stride = BLOCK_NUM_X * GRID_NUM_X * read_lens;
 
@@ -349,7 +363,7 @@ __global__ void VectorizedBroadcastKernel(
                                   VecSize,
                                   false>(ins,
                                          outs,
-                                         use_broadcast,
+                                         broadcast_types,
                                          numel,
                                          configs,
                                          BLOCK_NUM_X * read_lens,
@@ -367,7 +381,7 @@ __global__ void VectorizedBroadcastKernel(
                                   VecSize,
                                   true>(ins,
                                         outs,
-                                        use_broadcast,
+                                        broadcast_types,
                                         numel,
                                         configs,
                                         num,
@@ -385,7 +399,7 @@ __global__ void VectorizedBroadcastKernel(
                                   VecSize,
                                   false>(ins,
                                          outs,
-                                         use_broadcast,
+                                         broadcast_types,
                                          numel,
                                          configs,
                                          BLOCK_NUM_X * VecSize,
@@ -401,7 +415,7 @@ __global__ void VectorizedBroadcastKernel(
                                   VecSize,
                                   true>(ins,
                                         outs,
-                                        use_broadcast,
+                                        broadcast_types,
                                         numel,
                                         configs,
                                         tail_tid,
@@ -424,8 +438,8 @@ void LaunchBroadcastKernel(
     std::vector<DenseTensor *> *outs,
     Functor func,
     const phi::Array<kps::details::BroadcastConfig, Arity> &configs) {
-  int numel = (*outs)[0]->numel();
-  phi::Array<int, Arity> use_broadcast;
+  auto numel = (*outs)[0]->numel();
+  phi::Array<BroadcastType, Arity> broadcast_types;
   phi::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
   phi::Array<_ptr_ OutT *, NumOuts> outs_data;
 
@@ -434,7 +448,12 @@ void LaunchBroadcastKernel(
   }
 
   for (int i = 0; i < Arity; i++) {
-    use_broadcast[i] = (ins[i]->numel() != numel);
+    if (ins[i]->numel() != numel) {
+      broadcast_types[i] = (ins[i]->numel() != 1) ? BroadcastType::kCommon
+                                                  : BroadcastType::kOneData;
+    } else {
+      broadcast_types[i] = BroadcastType::kNoUse;
+    }
     ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
   }
 
@@ -459,7 +478,7 @@ void LaunchBroadcastKernel(
   VectorizedBroadcastKernel<InT, OutT, Functor, Arity, NumOuts, VecSize>
       <<<blocks, threads, 0, stream>>>(ins_data,
                                        outs_data,
-                                       use_broadcast,
+                                       broadcast_types,
                                        numel,
                                        configs,
                                        main_offset,
