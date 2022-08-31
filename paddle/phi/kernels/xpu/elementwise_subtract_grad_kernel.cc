@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_subtract_grad_kernel.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
-#include "paddle/phi/backends/xpu/xpu_header.h"
 
 namespace phi {
 template <typename T, typename Context>
@@ -27,15 +27,24 @@ void SubtractGradKernel(const Context& dev_ctx,
                         const DenseTensor& dout,
                         int axis,
                         DenseTensor* dx,
-                        DenseTensor* dy){
-    using XPUType = typename XPUTypeTrait<T>::Type;
-    phi::XPUElementwiseGrad<T, XPUType>(dev_ctx, 
-        x, y, dout, axis, dx, dy, xpu::broadcast_sub_grad<XPUType>,false);
+                        DenseTensor* dy) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  phi::XPUElementwiseGrad<T, XPUType>(dev_ctx,
+                                      x,
+                                      y,
+                                      dout,
+                                      axis,
+                                      dx,
+                                      dy,
+                                      xpu::broadcast_sub_grad<XPUType>,
+                                      false);
 }
-
 
 }  // namespace phi
 
-
-PD_REGISTER_KERNEL(
-    substract_grad, XPU, ALL_LAYOUT, phi::SubtractGradKernel, phi::dtype::float16, float) {}
+PD_REGISTER_KERNEL(substract_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SubtractGradKernel,
+                   phi::dtype::float16,
+                   float) {}

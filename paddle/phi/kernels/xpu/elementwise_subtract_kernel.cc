@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
-#include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
 namespace phi {
 
@@ -27,18 +27,28 @@ void SubtractRawKernel(const Context& dev_ctx,
                        DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   phi::XPUElementwise<T, XPUType>(
-  dev_ctx, x, y, axis, out, xpu::broadcast_sub<XPUType>);
+      dev_ctx, x, y, axis, out, xpu::broadcast_sub<XPUType>);
 }
 
 template <typename T, typename Context>
 void SubtractKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
-                    DenseTensor* out){
-	SubtractRawKernel<T, Context>(dev_ctx, x, y, -1, out);
+                    DenseTensor* out) {
+  SubtractRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL(subtract_raw, XPU, ALL_LAYOUT,phi::SubtractRawKernel,float,phi::dtype::float16) {}
+PD_REGISTER_KERNEL(subtract_raw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SubtractRawKernel,
+                   float,
+                   phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(substract, XPU, ALL_LAYOUT, phi::SubtractKernel,float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(substract,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SubtractKernel,
+                   float,
+                   phi::dtype::float16) {}
