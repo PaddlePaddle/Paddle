@@ -685,7 +685,7 @@ class TensorRTEngine {
 
   // use for subengine context memory sharing
   cudaStream_t stream_{0};
-  bool context_memory_shared_{false};
+  bool context_memory_shared_{true};
 
   int device_id_;
   int max_profile_num_{1};
