@@ -296,7 +296,7 @@ class PostTrainingQuantization(object):
             batch_generator, data_loader]), "The sample_generator, batch_generator " \
             "and data_loader cannot be None in the same time."
         if data_loader is not None:
-            assert isinstance(data_loader, (io.DataLoader, type(isgeneratorfunction))), \
+            assert isinstance(data_loader, (io.DataLoader, type(isgeneratorfunction), fluid.reader.GeneratorLoader)), \
                 "data_loader only accepts `paddle.io.DataLoader` or Generator instance."
         assert batch_size > 0, "The batch_size should be greater than 0."
         assert algo in self._support_algo_type, \
@@ -1055,11 +1055,11 @@ class PostTrainingQuantization(object):
                     max_scale = None
                     tmp_tensor_list = []
                     for tensor_name in tensor_list:
-                        if tensor_name not in scale_dict.keys():
-                            continue
                         if '#' in tensor_name:
                             real_tensor_name, opera, scalar = tensor_name.split(
                                 '#')
+                            if real_tensor_name not in scale_dict.keys():
+                                continue
                             if opera == '*':
                                 scale_dict[real_tensor_name] = float(
                                     scale_dict[real_tensor_name]) * float(
@@ -1072,16 +1072,18 @@ class PostTrainingQuantization(object):
                                 real_tensor_name] if max_scale is None else max(
                                     max_scale, scale_dict[real_tensor_name])
                         else:
+                            if tensor_name not in scale_dict.keys():
+                                continue
                             max_scale = scale_dict[
                                 tensor_name] if max_scale is None else max(
                                     max_scale, scale_dict[tensor_name])
 
                     for tensor_name in tensor_list:
-                        if tensor_name not in scale_dict.keys():
-                            continue
                         if '#' in tensor_name:
                             real_tensor_name, opera, scalar = tensor_name.split(
                                 '#')
+                            if real_tensor_name not in scale_dict.keys():
+                                continue
                             if opera == '*':
                                 scale_dict[
                                     real_tensor_name] = max_scale / float(
@@ -1091,6 +1093,8 @@ class PostTrainingQuantization(object):
                                     real_tensor_name] = max_scale * float(
                                         scalar)
                         else:
+                            if tensor_name not in scale_dict.keys():
+                                continue
                             scale_dict[tensor_name] = max_scale
             self._scale_dict = scale_dict
 
