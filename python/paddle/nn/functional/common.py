@@ -26,7 +26,7 @@ from ...tensor.manipulation import unsqueeze
 from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
-from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
+from ...fluid.data_feeder import check_variable_and_dtype, check_dtype, check_type
 from ...fluid.framework import _varbase_creator, _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 
 from ...fluid import dygraph_utils
@@ -1477,6 +1477,10 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             'complex128'
         ], "pad")
 
+        check_type(pad_value, 'pad_value', (float, int, Variable), 'pad')
+        if isinstance(pad_value, int):
+            pad_value = float(pad_value)
+
         helper = LayerHelper('pad', **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
@@ -1485,7 +1489,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                          outputs={'Out': out},
                          attrs={
                              'paddings': paddings,
-                             'pad_value': float(pad_value)
+                             'pad_value': pad_value
                          })
         return out
 
