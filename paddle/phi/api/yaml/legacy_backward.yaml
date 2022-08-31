@@ -1092,6 +1092,17 @@
   output : Tensor(x_grad)
   invoke : imag_grad_impl(out_grad, x_grad)
 
+- backward_api : index_add_grad
+  forward : index_add(Tensor x, Tensor index,  Tensor add_value, int axis) -> Tensor(out)
+  args : (Tensor index, Tensor add_value, Tensor out_grad, int axis)
+  output : Tensor(x_grad), Tensor(add_value_grad)
+  infer_meta :
+    func : IndexAddGradInferMeta
+  kernel :
+    func : index_add_grad
+    data_type : out_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_api : index_sample_grad
   forward : index_sample (Tensor x, Tensor index) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad)
