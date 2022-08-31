@@ -184,27 +184,19 @@ def fluid_softmax_with_cross_entropy(logits,
     1) Hard label (one-hot label, so every sample has exactly one class)
 
     .. math::
-
-        loss_j =  -\\text{logits}_{label_j} +
-        \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{logits}_i)\\right), j = 1,..., K
+        \\loss_j=-\text{logits}_{label_j} +\log\left(\sum_{i=0}^{K}\exp(\text{logits}_i)\right), j = 1,..., K
 
     2) Soft label (each sample can have a distribution over all classes)
 
     .. math::
-
-        loss_j =  -\\sum_{i=0}^{K}\\text{label}_i
-        \\left(\\text{logits}_i - \\log\\left(\\sum_{i=0}^{K}
-        \\exp(\\text{logits}_i)\\right)\\right), j = 1,...,K
+        \\loss_j= -\sum_{i=0}^{K}\text{label}_i\left(\text{logits}_i - \log\left(\sum_{i=0}^{K}\exp(\text{logits}_i)\right)\right), j = 1,...,K
 
     3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated first by:
 
     .. math::
-
-        max_j &= \\max_{i=0}^{K}{\\text{logits}_i}
-
-        log\\_max\\_sum_j &= \\log\\sum_{i=0}^{K}\\exp(logits_i - max_j)
-
-        softmax_j &= \\exp(logits_j - max_j - {log\\_max\\_sum}_j)
+        \\max_j&=\max_{i=0}^{K}{\text{logits}_i} \\
+                log\_max\_sum_j &= \log\sum_{i=0}^{K}\exp(logits_i - max_j)\\
+                softmax_j &= \exp(logits_j - max_j - {log\_max\_sum}_j)
 
     and then cross entropy loss is calculated by softmax and label.
 
@@ -2049,27 +2041,19 @@ def softmax_with_cross_entropy(logits,
     1) Hard label (one-hot label, so every sample has exactly one class)
 
     .. math::
-
-        loss_j =  -\\text{logits}_{label_j} +
-        \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{logits}_i)\\right), j = 1,..., K
+        \\loss_j=-\text{logits}_{label_j} +\log\left(\sum_{i=0}^{K}\exp(\text{logits}_i)\right), j = 1,..., K
 
     2) Soft label (each sample can have a distribution over all classes)
 
     .. math::
-
-        loss_j =  -\\sum_{i=0}^{K}\\text{label}_i
-        \\left(\\text{logits}_i - \\log\\left(\\sum_{i=0}^{K}
-        \\exp(\\text{logits}_i)\\right)\\right), j = 1,...,K
+        \\loss_j= -\sum_{i=0}^{K}\text{label}_i\left(\text{logits}_i - \log\left(\sum_{i=0}^{K}\exp(\text{logits}_i)\right)\right), j = 1,...,K
 
     3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated first by:
 
     .. math::
-
-        max_j &= \\max_{i=0}^{K}{\\text{logits}_i}
-
-        log\\_max\\_sum_j &= \\log\\sum_{i=0}^{K}\\exp(logits_i - max_j)
-
-        softmax_j &= \\exp(logits_j - max_j - {log\\_max\\_sum}_j)
+        \\max_j&=\max_{i=0}^{K}{\text{logits}_i} \\
+                log\_max\_sum_j &= \log\sum_{i=0}^{K}\exp(logits_i - max_j)\\
+                softmax_j &= \exp(logits_j - max_j - {log\_max\_sum}_j)
 
     and then cross entropy loss is calculated by softmax and label.
 
