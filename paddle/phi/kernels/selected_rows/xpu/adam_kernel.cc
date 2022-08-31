@@ -19,8 +19,6 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace phi {
@@ -184,7 +182,7 @@ void AdamDenseParamSparseGradKernel(
   if (is_strict_sorted) {
     grad_merge_ptr = &grad;
   } else {
-    paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+    paddle::operators::math::scatter::MergeAdd<Context, float> merge_func;
     merge_func(dev_ctx, grad, &tmp_grad_merge, true);
 
     xpu_wait(dev_ctx.x_context()->xpu_stream);

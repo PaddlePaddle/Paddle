@@ -20,6 +20,9 @@
 #include "paddle/phi/kernels/funcs/algorithm.h"
 
 #ifdef PADDLE_WITH_XPU
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #endif
 
@@ -70,25 +73,25 @@ static void GetDataPointer(const phi::DenseTensor& tensorData,
     const float16* real_data = tensorData.template data<float16>();
     int len = tensorData.numel();
 
-    int r =
-        ConvertDataByType<float16, T>(real_data, result, len, true, dev_ctx);
+    int r = ConvertDataByType<Context, float16, T>(
+        real_data, result, len, true, dev_ctx);
     PADDLE_ENFORCE_EQ(
         r,
         xpu::Error_t::SUCCESS,
         errors::External("execute function ConvertDataByType failed with [%d]",
                          r));
   }
+}
 
-  template <typename Context, typename T>
-  static void GetOutDataPointer(DenseTensor * tensorData,
-                                DenseTensor * out,
-                                T * *result,
-                                const Context& dev_ctx) {
-    if (tensorData->dtype() == DataType::FLOAT16) {
-      *result = dev_ctx.template Alloc<T>(out);
-    } else {
-      *result = dev_ctx.template Alloc<T>(tensorData);
-    }
+template <typename Context, typename T>
+static void GetOutDataPointer(DenseTensor* tensorData,
+                              DenseTensor* out,
+                              T** result,
+                              const Context& dev_ctx) {
+  if (tensorData->dtype() == DataType::FLOAT16) {
+    *result = dev_ctx.template Alloc<T>(out);
+  } else {
+    *result = dev_ctx.template Alloc<T>(tensorData);
   }
 }
 
@@ -101,7 +104,7 @@ static void CopyOutData(const DenseTensor& srcTensor,
     float16* out_data = dev_ctx.template Alloc<float16>(dstTensor);
     int len = srcTensor.numel();
 
-    int r = ConvertDataByType<T, float16>(
+    int r = ConvertDataByType<Context, T, float16>(
         xpu_out_data, &out_data, len, false, dev_ctx);
     PADDLE_ENFORCE_EQ(
         r,
@@ -144,7 +147,7 @@ static void Scale(phi::DenseTensor* beta_pow_out,
                                                beta_pow_out->dims());
   xpu_beta_pow_out.set_meta(meta_beta_pow_out);
 
-  T* beta_pow_out_ptr = dev_ctx.template Alloc<T>(xpu_beta_pow_out);
+  T* beta_pow_out_ptr = dev_ctx.template Alloc<T>(&xpu_beta_pow_out);
 
   int r = xpu::scale(dev_ctx.x_context(),
                      beta_pow_ptr,
@@ -161,7 +164,7 @@ static void Scale(phi::DenseTensor* beta_pow_out,
                        XPUAPIErrorMsg[r]));
 
   const float* xpu_beta_pow_out_data =
-      dev_ctx.template Alloc<T>(xpu_beta_pow_out);
+      dev_ctx.template Alloc<T>(&xpu_beta_pow_out);
   int len = xpu_beta_pow_out.numel();
 
   r = ConvertDataByType<Context, T, float16>(

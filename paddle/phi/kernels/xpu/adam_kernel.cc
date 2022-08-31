@@ -20,9 +20,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/memory/memcpy.h"
 
 namespace phi {
 
@@ -234,8 +231,8 @@ void AdamDenseKernel(const Context& dev_ctx,
             beta2_pow_out, beta2_pow, beta2_pow_ptr, beta2_, dev_ctx);
       } else {
         const float* beta2_pow_data = beta2_pow.template data<float>();
-        beta2_pow_out_p1 = dev_ctx.template Alloc<float>(beta2_pow_out) r =
-            xpu::scale(dev_ctx.x_context(),
+        beta2_pow_out_p1 = dev_ctx.template Alloc<float>(beta2_pow_out);
+        r = xpu::scale(dev_ctx.x_context(),
                        beta2_pow_data,
                        beta2_pow_out_p1,
                        beta2_pow.numel(),
