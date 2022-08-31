@@ -838,7 +838,7 @@ struct MergeAverage<phi::CPUContext, T> {
 };
 
 #ifdef PADDLE_WITH_XPU
-template struct MergeAdd<phi::CPUContext, float>;
+template struct MergeAdd<phi::XPUContext, float>;
 #endif
 
 template struct MergeAverage<phi::CPUContext, int>;
