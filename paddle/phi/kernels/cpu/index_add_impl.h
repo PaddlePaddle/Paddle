@@ -34,6 +34,16 @@ void IndexAddInner(const Context& ctx,
   auto index_size = index.dims()[0];
   auto add_value_dim = add_value->dims();
 
+  PADDLE_ENFORCE_EQ(
+      input_dim_size,
+      add_value_dim.size(),
+      phi::errors::InvalidArgument(
+          "input_dim size expected == value_dim size, "
+          "but got input_dim size is %ld and value_dim size is %ld. "
+          "Please check inputs. ",
+          input_dim_size,
+          add_value_dim.size()));
+
   const IndexT* index_data = index.data<IndexT>();
 
   ctx.template Alloc<T>(output);
@@ -101,9 +111,45 @@ void IndexAddBaseKernel(const Context& dev_ctx,
                         const DenseTensor& add_value,
                         DenseTensor* output) {
   const auto& index_type = index.dtype();
+  bool index_type_match =
+      index_type == phi::DataType::INT64 || index_type == phi::DataType::INT32;
+  PADDLE_ENFORCE_EQ(index_type_match,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Input(Index) holds the wrong type, it holds %s, but "
+                        "desires to be %s or %s",
+                        index_type,
+                        phi::DataType::INT32,
+                        phi::DataType::INT64));
+
+  PADDLE_ENFORCE_EQ(
+      axis < x.dims().size() && axis > -(x.dims().size()),
+      true,
+      phi::errors::InvalidArgument("axis expected < %ld, and > %ld, "
+                                   "but got %ld. Please check the axis input. ",
+                                   x.dims().size(),
+                                   -(x.dims().size()),
+                                   axis));
+
   if (axis < 0) {
     axis += x.dims().size();
   }
+
+  for (int i = 0; i < x.dims().size(); i++) {
+    if (i != axis) {
+      PADDLE_ENFORCE_EQ(
+          x.dims()[i],
+          add_value.dims()[i],
+          phi::errors::InvalidArgument(
+              "The value.dims[i] should be equal to x.dims[i] when i != axis. "
+              "but got value.dims[%d] = %ld, x.dims[%d] = %ld",
+              i,
+              add_value.dims()[i],
+              i,
+              x.dims()[i]));
+    }
+  }
+
   auto inputs = x;
   auto add_values = add_value;
   if (index_type == phi::DataType::INT32) {
