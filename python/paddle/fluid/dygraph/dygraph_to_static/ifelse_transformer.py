@@ -92,7 +92,7 @@ class IfElseTransformer(BaseTransformer):
         """
         self.generic_visit(node)
 
-        new_node = create_convert_ifelse_node(None, node.test, node.body,
+        new_node = create_convert_ifelse_node(None, None, node.test, node.body,
                                               node.orelse, None, None, True)
         # Note: A blank line will be added separately if transform gast.Expr
         # into source code. Using gast.Expr.value instead to avoid syntax error

@@ -227,6 +227,20 @@ def monkey_patch_variable():
                 .format(self.type))
         array_write(x=var, i=array_length(self), array=self)
 
+    @static_only
+    def pop(self, *args):
+        """
+         **Notes**:
+            **The type variable must be LoD Tensor Array.
+        
+        """
+        from paddle.fluid.dygraph.dygraph_to_static.convert_operators import _run_paddle_pop
+        if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            raise TypeError(
+                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}"
+                .format(self.type))
+        return _run_paddle_pop(self, *args)
+
     def _scalar_op_(var, scale, bias):
         block = current_block(var)
         out = create_new_tmp_var(block, var.dtype)
@@ -395,6 +409,7 @@ def monkey_patch_variable():
         ('cpu', cpu),
         ('cuda', cuda),
         ('append', append),
+        ('pop', pop),
         ('dim', lambda x: len(x.shape)),
         ('ndimension', lambda x: len(x.shape)),
         ('ndim', _ndim_),

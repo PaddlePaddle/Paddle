@@ -37,11 +37,15 @@ class TestGetterSetterHelper(unittest.TestCase):
         print(helper.union())
         expect_union = ['a', 'b', 'd', 'e', 'f']
         assert helper.union() == expect_union
-        assert helper.get(expect_union) == [1, 2, 3, 4, 5]
+        assert helper.get(expect_union) == (1, 2, 3, 4, 5)
         helper.set(['a', 'b'], [1, 1])
         assert vars == [1, 1, 3, 4, 5]
         helper.set(['f', 'e'], [12, 10])
         assert vars == [1, 1, 3, 10, 12]
+        helper.set(None, None)
+        assert vars == [1, 1, 3, 10, 12]
+        assert helper.get(None) == tuple()
+        assert helper.get([]) == tuple()
 
 
 if __name__ == '__main__':

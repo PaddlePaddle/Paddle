@@ -1357,6 +1357,7 @@ class GetterSetterHelper:
     """
 
     def __init__(self, getter_func, setter_func, *name_lists):
+        name_lists = map(lambda x: [] if x is None else x, name_lists)
         name_sets = map(lambda x: set(x), name_lists)
         self._union = list(reduce(lambda x, y: x | y, name_sets, set()))
         self._union.sort()
@@ -1368,17 +1369,23 @@ class GetterSetterHelper:
         return self._union
 
     def get(self, names):
+        if names is None: names = []
+        vars = self.getter()
+        if vars is None: return tuple()
         for n in names:
             assert n in self.name2id, "the name `{}` not in name union set`{}`.".format(
                 n, self.name2id.keys())
-        vars = self.getter()
         return tuple(map(lambda n: vars[self.name2id[n]], names))
 
     def set(self, names, values):
+        if names is None: names = []
+        if values is None: values = []
+        vars = self.getter()
+        if vars is None: return
         for n in names:
             assert n in self.name2id, "the name `{}` not in name union set`{}`.".format(
                 n, self.name2id.keys())
-        vars = list(self.getter())
+        vars = list(vars)
         indices = list(map(lambda n: self.name2id[n], names))
         for i, v in zip(indices, values):
             vars[i] = v

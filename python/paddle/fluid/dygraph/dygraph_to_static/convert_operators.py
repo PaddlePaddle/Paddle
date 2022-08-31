@@ -95,8 +95,6 @@ def convert_while_loop(cond,
 
     # NOTE: It may be slower if cond is very expensive, but usually cond is just O(1).
     # If loop_vars is changed during cond callable, then it causes bug, but current logical_and/logical_not/... doesn't change the loop_vars.
-    if push_pop_names is None:
-        push_pop_names = []
     pred = cond()
     if isinstance(pred, Variable):
         _run_paddle_while(cond, body, getter, setter, return_name_ids,
@@ -105,10 +103,26 @@ def convert_while_loop(cond,
         _run_py_while(cond, body, getter, setter)
 
 
+def _convert_tensor_arrray_if_necessary(setterhelper, push_pop_names):
+    push_pop_vars = setterhelper.get(push_pop_names)
+    if push_pop_vars is None:
+        return
+
+    def maybe_to_tensor_array(v):
+        if isinstance(v, list):
+            return create_array("float32", initialized_list=v)
+        else:
+            return v
+
+    setterhelper.set(push_pop_names,
+                     [maybe_to_tensor_array(v) for v in push_pop_vars])
+
+
 def _run_paddle_while(cond, body, getter, setter, return_name_ids,
                       push_pop_names):
     # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Tensors.
     helper = GetterSetterHelper(getter, setter, return_name_ids, push_pop_names)
+    _convert_tensor_arrray_if_necessary(helper, push_pop_names)
 
     def new_body_fn(*args):
         """ wrap the body() and add return value for `while_loop`
@@ -126,16 +140,6 @@ def _run_paddle_while(cond, body, getter, setter, return_name_ids,
         return cond()
 
     # UndefinedVar will become data layer not check variable with value=NO_VALUE_MAGIC.
-    push_pop_vars = helper.get(push_pop_names)
-
-    def maybe_to_tensor_array(v):
-        if isinstance(v, list):
-            return create_array("float32", initialized_list=v)
-        else:
-            return v
-
-    helper.set(push_pop_names,
-               [maybe_to_tensor_array(v) for v in push_pop_vars])
     loop_vars = [
         to_static_variable(var) if not isinstance(var, UndefinedVar) else var
         for var in helper.get(return_name_ids)
@@ -308,10 +312,6 @@ def convert_ifelse(pred,
         ``true_fn()`` if the predicate ``pred`` is true else ``false_fn()`` .
 
     """
-    if push_pop_names is None:
-        push_pop_names = []
-    if return_name_ids is None:
-        return_name_ids = []
     if isinstance(pred, Variable):
         out = _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
                                return_name_ids, push_pop_names)
@@ -329,6 +329,7 @@ def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
     """
     helper = GetterSetterHelper(get_args, set_args, return_name_ids,
                                 push_pop_names)
+    _convert_tensor_arrray_if_necessary(helper, push_pop_names)
     pred = cast_bool_if_necessary(pred)
     init_args = helper.get(return_name_ids)
 
