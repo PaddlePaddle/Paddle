@@ -285,11 +285,6 @@ framework::OpKernelType ConvOp::GetKernelTypeForVar(
 }
 
 void Conv2DOpMaker::Make() {
-  AddAttr<bool>("is_test",
-                "(bool, default false) Set to true for inference only, false "
-                "for training. Some layers may run faster when this is true.")
-      .SetDefault(false)
-      .AsExtra();
   AddInput("Input",
            "(Tensor) The input tensor of convolution operator. "
            "The format of input tensor is NCHW or NHWC, where N is batch size, "
@@ -399,11 +394,6 @@ class DepthwiseConv2DOpMaker : public Conv2DOpMaker {
 };
 
 void Conv3DOpMaker::Make() {
-  AddAttr<bool>("is_test",
-                "(bool, default false) Set to true for inference only, false "
-                "for training. Some layers may run faster when this is true.")
-      .SetDefault(false)
-      .AsExtra();
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution operator. "
