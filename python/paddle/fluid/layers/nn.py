@@ -4214,6 +4214,10 @@ def conv2d_transpose(input,
     if filter_size is None:
         if output_size is None:
             raise ValueError("output_size must be set when filter_size is None")
+        if not _non_static_mode() and isinstance(output_size, Variable):
+            raise ValueError(
+                "filter_size should not be None when output_size is Variable in static mode."
+            )
         if isinstance(output_size, int):
             output_size = [output_size, output_size]
 
@@ -4236,6 +4240,8 @@ def conv2d_transpose(input,
         output_size = []
     elif isinstance(output_size, (list, tuple, int)):
         output_size = utils.convert_to_list(output_size, 2, 'output_size')
+    elif isinstance(output_size, Variable):
+        pass
     else:
         raise ValueError("output_size should be int, list[int] or tuple[int]")
 

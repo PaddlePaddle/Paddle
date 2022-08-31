@@ -541,10 +541,10 @@
   backward : conv2d_grad
 
 - api : conv2d_transpose
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
+  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(out)
   infer_meta :
-    func : ConvTransposeInferMeta
+    func : Conv2dTransposeInferMeta
   kernel :
     func : conv2d_transpose
     use_gpudnn : true
@@ -665,10 +665,10 @@
   backward : depthwise_conv2d_grad
 
 - api : depthwise_conv2d_transpose
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
+  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(out)
   infer_meta :
-    func : ConvTransposeInferMeta
+    func : Conv2dTransposeInferMeta
   kernel :
     func : depthwise_conv2d_transpose
   backward : depthwise_conv2d_transpose_grad

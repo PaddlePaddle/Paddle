@@ -1133,9 +1133,11 @@ def conv2d_transpose(x,
                              'output_size')
         if isinstance(output_size, (list, tuple, int)):
             output_size = convert_to_list(output_size, 2, 'output_size')
+        elif isinstance(output_size, Variable):
+            pass
         else:
             raise ValueError(
-                "output_size should be int, or list, tuple of ints")
+                "output_size should be int or Tensor or list, tuple of ints")
 
     if output_padding == 0:
         output_padding = []
