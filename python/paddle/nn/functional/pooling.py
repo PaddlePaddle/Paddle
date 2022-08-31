@@ -1045,7 +1045,7 @@ def max_pool2d(x,
                ceil_mode=False,
                data_format="NCHW",
                name=None):
-    """
+    r"""
     This API implements max pooling 2d operation.
     See more details in :ref:`api_nn_pooling_MaxPool2d` .
     Args:
@@ -1078,13 +1078,14 @@ def max_pool2d(x,
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
-   Raises:
+    Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
         ShapeError: If the output's shape calculated is not greater than 0.
 
     Examples:
         .. code-block:: python
+        
             import paddle
             import paddle.nn.functional as F
             import numpy as np
