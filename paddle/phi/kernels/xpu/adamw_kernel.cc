@@ -139,10 +139,10 @@ void AdamwDenseKernel(const Context& dev_ctx,
     if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
       const float* beta1_pow_p = beta1_pow.template data<float>();
       dev_ctx.template HostAlloc<float>(beta1_pow_out)[0] =
-          beta1 * beta1_pow_p[0];
+          beta1_ * beta1_pow_p[0];
       const float* beta2_pow_p = beta2_pow.template data<float>();
       dev_ctx.template HostAlloc<float>(beta2_pow_out)[0] =
-          beta2 * beta2_pow_p[0];
+          beta2_ * beta2_pow_p[0];
       xpu_wait(dev_ctx.x_context()->xpu_stream);
     } else {
       float* beta1_pow_out_p = dev_ctx.template Alloc<float>(beta1_pow_out);
