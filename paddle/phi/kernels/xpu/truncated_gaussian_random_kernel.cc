@@ -33,7 +33,7 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    int seed,
                                    DataType dtype,
                                    DenseTensor* out) {
-  dev_ctx.template Alloc<T>(out);
+  T* data = dev_ctx.template Alloc<T>(out);
 
   std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
                                          1.0);
@@ -54,7 +54,7 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
   }
 
   paddle::memory::Copy(dev_ctx.GetPlace(),
-                       out,
+                       data,
                        phi::CPUPlace(),
                        reinterpret_cast<void*>(data_cpu.get()),
                        size * sizeof(T));
