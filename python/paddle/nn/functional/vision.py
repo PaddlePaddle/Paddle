@@ -276,6 +276,9 @@ def grid_sample(x,
         x.stop_gradient = False
         grid.stop_gradient = False
 
+    if len(grid.shape) == 5:
+        use_cudnn = False
+
     if in_dygraph_mode():
         return _C_ops.final_state_grid_sample(x, grid, mode, padding_mode,
                                               align_corners)

@@ -69,8 +69,8 @@ class GridSampleOpMaker : public framework::OpProtoAndCheckerMaker {
               "D, H ,W]");
     AddAttr<bool>(
         "use_cudnn",
-        "(bool, default false) Only used in cudnn kernel, need install cudnn")
-        .SetDefault(false)
+        "(bool, default true) Only used in cudnn kernel, need install cudnn")
+        .SetDefault(true)
         .AsExtra();
 
     AddAttr<bool>(
