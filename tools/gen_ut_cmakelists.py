@@ -455,7 +455,6 @@ class CMakeGenerator():
     def _gen_cmakelists(self, current_work_dir, depth=0):
         if depth == 0:
             self.processed_dirs.clear()
-        # print("procfessing dir:", current_work_dir)
         if current_work_dir == "":
             current_work_dir = "."
 
@@ -496,14 +495,13 @@ class CMakeGenerator():
 
         for sub in sub_dirs:
             cmds += f"add_subdirectory({sub})\n"
-        # print(cmds, end="")
+
+        # check whether the generated file are thge same with the existing file, ignoring the blank chars
+        # if the are same, skip the weiting process
         with open(f"{current_work_dir}/CMakeLists.txt", "r") as old_cmake_file:
             char_seq = old_cmake_file.read().split()
         char_seq = "".join(char_seq)
-        # print(char_seq, file=open(f"{current_work_dir}/txt1.txt", "w"))
-        # print("".join(cmds.split()),
-        #       file=open(f"{current_work_dir}/txt2.txt", "w"))
-        # print("len:", len(char_seq), len("".join(cmds.split())))
+
         if char_seq != "".join(cmds.split()):
             assert f"{current_work_dir}/CMakeLists.txt" not in self.modified_or_created_files, \
                 f"the file {current_work_dir}/CMakeLists.txt are modified twice, which may cause some error"
@@ -563,5 +561,7 @@ if __name__ == "__main__":
     cmake_generator = CMakeGenerator(current_work_dirs, args.ignore_cmake_dirs)
     cmake_generator.prepare_dist_ut_port()
     created = cmake_generator.parse_csvs()
+
+    # summary the modified files
     for f in created:
         print("modified/new:", f)
