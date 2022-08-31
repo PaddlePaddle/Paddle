@@ -842,12 +842,11 @@ class TRTEngineManager {
                          const phi::GPUPlace& place,
                          const phi::Stream& stream) {
     std::unique_lock<std::mutex> lock(mutex_);
-#ifdef PADDLE_WITH_TESTING
     size_t ctx_mem_size = trt_engine->engine()->getDeviceMemorySize();
-    max_ctx_mem_size_ = std::max(max_ctx_mem_size_, ctx_mem_size);
-#endif
     auto predictor_id = trt_engine->predictor_id_per_thread;
-    if (context_memorys_.count(predictor_id) == 0) {
+    if (context_memorys_.count(predictor_id) == 0 ||
+        max_ctx_mem_size_ < ctx_mem_size) {
+      max_ctx_mem_size_ = std::max(max_ctx_mem_size_, ctx_mem_size);
       auto memory_addr = memory::Alloc(place, max_ctx_mem_size_, stream);
       if (memory_addr == nullptr) {
         PADDLE_ENFORCE_EQ(
