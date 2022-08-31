@@ -28,6 +28,7 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
+#if 0
 enum Type { kRule, kNnz, kIdx, kNormalInt, kNormalFloat };
 template <typename IntT>
 __global__ void print(const IntT* p, int len, Type t = kRule) {
@@ -70,6 +71,7 @@ __global__ void print(const IntT* p, int len, Type t = kRule) {
     }
   }
 }
+#endif
 
 template <typename T, typename IntT>
 void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
@@ -159,6 +161,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                                         h_offsets_ptr);
     rulebook_ptr = tmp_rulebook.data<IntT>();
 
+#if 0
     std::cout << "counter,offset:" << std::endl;
     for (int i = 0; i < kernel_size; i++) {
       printf("%d,%d\n", h_counter_ptr[i], h_offsets_ptr[i]);
@@ -172,11 +175,13 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   std::cout<<"tmp value:"<<std::endl;
   print<<<1,1>>>(tmp_rulebook.data<IntT>(),(int)tmp_rulebook.dims().at(1),kRule);
   cudaDeviceSynchronize();
+#endif
 
     phi::funcs::sparse::SaveToTable(
         dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
   }
 
+#if 0
   std::cout<<"rule size: "<<rulebook->dims().size()<<std::endl;
   std::cout<<"rule : "<<rulebook->dims().at(0)<<","<<rulebook->dims().at(1)<<std::endl;
 
@@ -190,7 +195,41 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   std::cout<<"nnz idx:"<<x.non_zero_indices().numel()/4<<std::endl;
   print<<<1,1>>>(x.non_zero_indices().data<IntT>(),x.non_zero_indices().numel()/4,kIdx);
   cudaDeviceSynchronize();
+#endif
 
+  auto* out_values = out->mutable_non_zero_elements();
+  T* out_values_ptr = out_values->data<T>();
+  phi::funcs::SetConstant<GPUContext, T> set_zero;
+  set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
+
+  const T* kernel_ptr = kernel.data<T>();
+  for (int i = 0; i < kernel_size; i++) {
+    if (h_counter_ptr[i] <= 0) {
+      continue;
+    }
+
+    const int M = h_counter_ptr[i];
+    const int K = in_channels;
+    const int N = out_channels;
+    const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
+    const IntT* gather_indices = rulebook_ptr+h_offsets_ptr[i];
+    const IntT* scatter_indices = rulebook_ptr+rulebook_len+h_offsets_ptr[i];
+
+    gather_gemm_scatter<T, T, T, T, T>(x.non_zero_elements().data<T>(),
+                                       tmp_kernel_ptr,
+                                       out_values_ptr,
+                                       out_values_ptr,
+                                       M,
+                                       N,
+                                       K,
+                                       gather_indices,
+                                       scatter_indices,
+                                       h_counter_ptr[i],
+                                       static_cast<T>(1),
+                                       static_cast<T>(1));
+  }
+
+#if 0
   // 2. gather
   phi::DenseTensor in_features =
       phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
@@ -260,7 +299,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
               tmp_out_ptr);
   }
 
-
+#if 0
     std::cout<<"out_indices:" << out->non_zero_indices().numel() / 4 << std::endl;
     print<<<1, 1>>>(out->non_zero_indices().data<IntT>(), out->non_zero_indices().numel() / 4, kIdx);
     cudaDeviceSynchronize();
@@ -277,20 +316,24 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
     std::cout << "out_features:" << out_features.numel() << std::endl;
     print<<<1, 1>>>(out_features.data<T>(), out_features.numel(), kNnz);
     cudaDeviceSynchronize();
-    // 4. scatter
-    phi::funcs::sparse::ScatterV2<T>(dev_ctx,
-                                     out_features_ptr,
-                                     out_index.data<int>(),
-                                     unique_value.data<int>(),
-                                     out->nnz(),
-                                     kernel_size,
-                                     out_channels,
-                                     1,
-                                     out_values_ptr);
-    cudaDeviceSynchronize();
-    std::cout << "out:" << out_values->numel() << std::endl;
-    print<<<1, 1>>>(out_values->data<T>(), out_values->numel(), kNnz);
-    cudaDeviceSynchronize();
+#endif
+  // 4. scatter
+  phi::funcs::sparse::ScatterV2<T>(dev_ctx,
+                                   out_features_ptr,
+                                   out_index.data<int>(),
+                                   unique_value.data<int>(),
+                                   out->nnz(),
+                                   kernel_size,
+                                   out_channels,
+                                   1,
+                                   out_values_ptr);
+#if 0
+  cudaDeviceSynchronize();
+  std::cout << "out:" << out_values->numel() << std::endl;
+  print<<<1, 1>>>(out_values->data<T>(), out_values->numel(), kNnz);
+  cudaDeviceSynchronize();
+#endif
+#endif
 }
 
 /**
@@ -313,9 +356,11 @@ void Conv3dCooKernel(const Context& dev_ctx,
                      SparseCooTensor* out,
                      DenseTensor* rulebook,
                      DenseTensor* counter) {
+#if 0
   PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "Conv3dCooGPUKernel", ([&] {
-        Conv3dCooGPUKernel<T, data_t>(dev_ctx,
+#endif
+        Conv3dCooGPUKernel<T, int32_t>(dev_ctx,
                                       x,
                                       kernel,
                                       paddings,
@@ -327,7 +372,9 @@ void Conv3dCooKernel(const Context& dev_ctx,
                                       out,
                                       rulebook,
                                       counter);
+      #if 0
       }));
+      #endif
 }
 
 }  // namespace sparse
@@ -337,8 +384,10 @@ PD_REGISTER_KERNEL(conv3d_coo,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::Conv3dCooKernel,
-                   float,
+                   float) {
+#if 0
                    double,
                    phi::dtype::float16) {
+#endif
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

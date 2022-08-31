@@ -44,6 +44,10 @@ def generate_data(config):
         idx.append(random.randrange(0, config['y']))
         idx.append(random.randrange(0, config['z']))
         indices.append(idx)
+    #indices=[[0,1,2,3],[0,1,2,4]]
+    #values=[[8,9,10,11],[12,13,14,15]]
+    #indices=[[0,1,2,3],[0,1,2,4]]
+    #values=[[8],[12]]
     return values, indices
 
 
@@ -53,9 +57,9 @@ class TestSparseConv(unittest.TestCase):
         with _test_eager_guard():
             config = {
                 'batch_size': 8,
-                'x': 100,
-                'y': 100,
-                'z': 100,
+                'x': 41,
+                'y': 160,
+                'z': 250,
                 'kernel_size': (3, 3, 3),
                 'in_channels': 4,
                 'out_channels': 16,
@@ -104,8 +108,8 @@ class TestSparseConv(unittest.TestCase):
 
             p_dense = p_out.to_dense()
             s_dense = s_out.dense()
+            print("spconv time:", t1-t0)
+            print("paddle time:", t3-t2)
 
             assert np.allclose(s_dense.cpu().detach().numpy().transpose(0,2,3,4,1).flatten(), p_dense.numpy().flatten(), atol=1e-3, rtol=1e-3)
 
-            print("spconv time:", t1-t0)
-            print("paddle time:", t3-t2)
