@@ -1081,8 +1081,11 @@ int QkvToContextPluginDynamic::enqueue(
     
     half *qkptr = reinterpret_cast<half *>(workspace);
     half *tptr = qkptr + scratch_size;
-    auto * temp_qk_bias = reinterpret_cast<half *>(workspace)+qk_temp_ptr_size;
-    auto * cublaslt_workspace_qk = temp_qk_bias + batch* head_number_* seq_len* seq_len;
+    // auto * temp_qk_bias = reinterpret_cast<half *>(workspace)+qk_temp_ptr_size;
+    
+    auto * temp_qk_bias = qkptr;
+
+    auto * cublaslt_workspace_qk = reinterpret_cast<half *>(workspace)+qk_temp_ptr_size;
     auto * cublaslt_workspace_qkv = cublaslt_workspace_qk + 4*1024*1024;
     // printf("@@@ qkptr address: %X, scratch_size: %X, tptr address: %X, qkptr address end: %X \r\n",
     //       qkptr,scratch_size,tptr, qkptr + scratch_size + input_num);
@@ -1225,17 +1228,17 @@ int QkvToContextPluginDynamic::enqueue(
       operation_desc_qk_,
       q_desc_,
       k_desc_,
-      qk_bias_desc_,
+      qk_desc_,
       qk_desc_,
       qptr,
       kptr,
-      input1_data,
+      qkptr,
       qkptr,
       static_cast<half>(scale_),
       static_cast<half>(1.0f),
       algo_,
-      nullptr,
-      0,
+      cublaslt_workspace_qk,
+      4*1024*1024,
       stream,
       batch,
       head_number_,
@@ -1271,8 +1274,8 @@ int QkvToContextPluginDynamic::enqueue(
       static_cast<half>(1.0f),
       static_cast<half>(0.0f),
       algo_qkv_,
-      nullptr,
-      0,
+      cublaslt_workspace_qkv,
+      4*1024*1024,
       stream
     );
     // MatMulWithHeadQKV<half>(

@@ -681,7 +681,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           // no need to add shuffle after fc, just change it in
           // QkvToContextPluginDynamic
-
           // add qkv to context
           int head_size = hidden_out / head_number;
           float scale = PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"));

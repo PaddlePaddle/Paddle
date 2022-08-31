@@ -70,7 +70,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     ptr->k_desc_=k_desc_;
     ptr->v_desc_=v_desc_;
     ptr->qk_desc_=qk_desc_;
-    ptr->qk_bias_desc_=qk_bias_desc_;
+    // ptr->qk_bias_desc_=qk_bias_desc_;
     ptr->qkv_desc_=qkv_desc_;
     ptr->algo_=algo_;
     ptr->algo_qkv_=algo_qkv_;
@@ -125,7 +125,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
           platform::CUDAPlace(device_id)));
       const phi::GPUContext &dev_ctx = *device_ctx;
       auto stream = dev_ctx.stream();
-      printf("@@@ in configPlugin, do algo choose \r\n");
+      printf("@@@ in qkv_to_context-->fp16, configPlugin, do algo choose \r\n");
       platform::dynload::cublasLtCreate(&cublas_);
       int seq_len = in[0].desc.dims.d[1];
       const int padding_num=8;
@@ -148,6 +148,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
       cublasOperation_t transk = k_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
       cublasOperation_t transqk = qk_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
       cublasOperation_t transv = v_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
+      size_t workspace_size=4*1024*1024;
 
       int64_t q_M = q_trans ? head_size_ : seq_len;
       int64_t q_K = q_trans ? seq_len : head_size_;
@@ -159,14 +160,13 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
       int64_t v_K = q_trans ? seq_len : head_size_;
 
 
-      cudaDataType_t q_type, k_type, qk_type, scale_type, qk_bias_type, v_type, qkv_type;
+      cudaDataType_t q_type, k_type, qk_type, scale_type, v_type, qkv_type;
       cublasComputeType_t compute_type;
       compute_type=CUBLAS_COMPUTE_16F;
       q_type=CUDA_R_16F;
       k_type=CUDA_R_16F;
       v_type=CUDA_R_16F;
       qk_type=CUDA_R_16F;
-      qk_bias_type=CUDA_R_16F;
       qkv_type=CUDA_R_16F;
       scale_type=CUDA_R_16F;
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
@@ -253,28 +253,6 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
           &(strideqk),
           sizeof(strideqk)));
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-          &qk_bias_desc_,
-          qk_bias_type,
-          seq_len, seq_len, seq_len));
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
-          qk_bias_desc_,
-          CUBLASLT_MATRIX_LAYOUT_TYPE,
-          &qk_bias_type,
-          sizeof(qk_bias_type)));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatrixLayoutSetAttribute(
-        qk_bias_desc_, CUBLASLT_MATRIX_LAYOUT_ORDER, &rowOrder, sizeof( rowOrder ) ) );
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
-          qk_bias_desc_, 
-          CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT, 
-          &(batchNum), 
-          sizeof(batchNum)));
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
-          qk_bias_desc_,
-          CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
-          &(strideqk),
-          sizeof(strideqk)));
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
         &qkv_desc_, qkv_type, v_M, v_K, head_size_));
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutSetAttribute(
         qkv_desc_,
@@ -323,15 +301,14 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
       cublasLtMatmulPreference_t preference;
       PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cublasLtMatmulPreferenceCreate(&preference));
-      // int qk_workspace_size=4*1024*1024;
-      // PADDLE_ENFORCE_GPU_SUCCESS(
-      //   platform::dynload::cublasLtMatmulPreferenceSetAttribute(
-      //     preference,
-      //     CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
-      //     &qk_workspace_size,
-      //     sizeof(qk_workspace_size)));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulPreferenceSetAttribute(
+          preference,
+          CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+          &workspace_size,
+          sizeof(workspace_size)));
       int returned_results = 0;
-      const int requested_algo_count = 10;
+      const int requested_algo_count = 20;
       std::vector<cublasLtMatmulHeuristicResult_t> heuristic_results(
           requested_algo_count);
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -340,7 +317,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
           operation_desc_qk_,
           q_desc_,
           k_desc_,
-          qk_bias_desc_,
+          qk_desc_,
           qk_desc_,
           preference,
           requested_algo_count,
@@ -354,15 +331,14 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
       cublasLtMatmulPreference_t preference_qkv;
       PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cublasLtMatmulPreferenceCreate(&preference_qkv));
-      // int qk_workspace_size=4*1024*1024;
-      // PADDLE_ENFORCE_GPU_SUCCESS(
-      //   platform::dynload::cublasLtMatmulPreferenceSetAttribute(
-      //     preference,
-      //     CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
-      //     &qk_workspace_size,
-      //     sizeof(qk_workspace_size)));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulPreferenceSetAttribute(
+          preference_qkv,
+          CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+          &workspace_size,
+          sizeof(workspace_size)));
       int returned_results_qkv = 0;
-      const int requested_algo_count_qkv = 10;
+      const int requested_algo_count_qkv = 20;
       std::vector<cublasLtMatmulHeuristicResult_t> heuristic_results_qkv(
           requested_algo_count_qkv);
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -382,27 +358,28 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
           0,
           platform::errors::Unavailable("No GEMM epilogue algorithm support!"));
       algo_qkv_ = heuristic_results_qkv[0].algo;
-      framework::Tensor q_t,k_t,v_t,biasqk_t,qkv_t,qk_t;
+
+      framework::Tensor q_t,k_t,v_t,qkv_t,qk_t;
+      framework::Tensor test_workspace_t;
       q_t.Resize({batchNum,head_number_,seq_len,head_size_});
       k_t.Resize({batchNum,head_number_,seq_len,head_size_});
       qk_t.Resize({batchNum,head_number_,seq_len,seq_len});
       v_t.Resize({batchNum,head_number_,seq_len,head_size_});
-      biasqk_t.Resize({batchNum,head_number_,seq_len,seq_len});
       qkv_t.Resize({batchNum,head_number_,seq_len,head_size_});
+      test_workspace_t.Resize({(long)workspace_size});
       auto * q_d=reinterpret_cast<half *>(q_t.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
       auto * k_d=reinterpret_cast<half *>(k_t.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
       auto * qk_d=reinterpret_cast<half *>(qk_t.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
       auto * v_d=reinterpret_cast<half *>(v_t.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
-      auto * biasqk_d=reinterpret_cast<half *>(biasqk_t.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
       auto * qkv_d=reinterpret_cast<half *>(qkv_t.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
-
+      auto * test_workspace_d = reinterpret_cast<half *>(test_workspace_t.mutable_data<int8_t>(platform::CUDAPlace(device_id)));
       // algo for qk
       cublasStatus_t status = CUBLAS_STATUS_SUCCESS;
       float qk_algo_time=1E20; // TODO
       float qkv_algo_time=1E20; // TODO
       half alpha_qk=static_cast<half>(1.0f);
       half beta_qk=static_cast<half>(1.0f);
-      for (int algoIto = 0; algoIto<requested_algo_count; algoIto++ ){
+      for (int algoIto = 0; algoIto<returned_results; algoIto++ ){
         const int warmup_time=10;
         cudaEvent_t start;
         cudaEvent_t stop; 
@@ -418,13 +395,13 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
             k_d,
             k_desc_,
             &beta_qk,
-            biasqk_d,
-            qk_bias_desc_,
+            qk_d,
+            qk_desc_,
             qk_d,
             qk_desc_,
             &heuristic_results[algoIto].algo,
-            nullptr,
-            0,
+            test_workspace_d,
+            workspace_size,
             stream);
         }
         const int test_time=100; // 
@@ -440,13 +417,13 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
             k_d,
             k_desc_,
             &beta_qk,
-            biasqk_d,
-            qk_bias_desc_,
+            qk_d,
+            qk_desc_,
             qk_d,
             qk_desc_,
             &heuristic_results[algoIto].algo,
-            nullptr,
-            0,
+            test_workspace_d,
+            workspace_size,
             stream);            
         };
         PADDLE_ENFORCE_GPU_SUCCESS(
@@ -464,12 +441,12 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
           algo_ = heuristic_results[algoIto].algo;
         }
       }
-      printf("@@@ fast time for qk gemm algo %f ms\r\n",qk_algo_time);
+      printf("@@@ fast time for qk gemm algo %f ms\r\n ========== \r\n",qk_algo_time);
 
       half alpha_qkv=static_cast<half>(1.0f);
       half beta_qkv=static_cast<half>(0.0f);
 
-      for (int algoIto = 0; algoIto<requested_algo_count_qkv; algoIto++ ){
+      for (int algoIto = 0; algoIto<returned_results_qkv; algoIto++ ){
         const int warmup_time=10;
         cudaEvent_t start;
         cudaEvent_t stop; 
@@ -490,8 +467,8 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
             qkv_d,
             qkv_desc_,
             &heuristic_results_qkv[algoIto].algo,
-            nullptr,
-            0,
+            test_workspace_d,
+            workspace_size,
             stream);
         }
         const int test_time=100; // 
@@ -512,8 +489,8 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
             qkv_d,
             qkv_desc_,
             &heuristic_results_qkv[algoIto].algo,
-            nullptr,
-            0,
+            test_workspace_d,
+            workspace_size,
             stream);            
         };
         PADDLE_ENFORCE_GPU_SUCCESS(
@@ -549,12 +526,11 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     seq_len = (seq_len + padding_num - 1) / padding_num * padding_num;
     const int input_num = batch * seq_len * 3 * head_number_ * head_size_;
     const size_t qk_temp_ptr_size = batch * head_number_ * seq_len * seq_len + input_num;
-    const size_t biasqk_size =  batch * head_number_* seq_len* seq_len;
     const size_t cublaslt_workspace_size=4*1024*1024; // workspace for cublaslt, 4M for now
     if(with_fp16_){
-      return sizeof(half)*(qk_temp_ptr_size+biasqk_size+2*cublaslt_workspace_size);
+      return sizeof(half)*(qk_temp_ptr_size)+2*cublaslt_workspace_size;
     } else {
-      return sizeof(float)*(qk_temp_ptr_size+biasqk_size+2*cublaslt_workspace_size);
+      return sizeof(float)*(qk_temp_ptr_size)+2*cublaslt_workspace_size;
     }
     // return 0;
   }
@@ -591,7 +567,6 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   cublasLtMatrixLayout_t k_desc_ = NULL;
   cublasLtMatrixLayout_t v_desc_ = NULL;
   cublasLtMatrixLayout_t qk_desc_ = NULL;
-  cublasLtMatrixLayout_t qk_bias_desc_ = NULL;
   cublasLtMatrixLayout_t qkv_desc_ = NULL;
   cublasLtMatmulAlgo_t algo_;
   cublasLtMatmulAlgo_t algo_qkv_;
