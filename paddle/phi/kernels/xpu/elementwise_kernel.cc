@@ -18,16 +18,17 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace phi{
+namespace phi {
 
 template <typename T, typename Context>
 void FloorDivideRawKernel(const Context& dev_ctx,
-                                const DenseTensor& x,
-                                const DenseTensor& y,
-                                int axis,
-                                DenseTensor* out){
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          int axis,
+                          DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, xpu::broadcast_floordiv<XPUType>);
+  XPUElementwise<T, XPUType>(
+      dev_ctx, x, y, axis, out, xpu::broadcast_floordiv<XPUType>);
 }
 
 template <typename T, typename Context>
@@ -35,9 +36,10 @@ void MaximumRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       int axis,
-                      DenseTensor* out){
+                      DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, xpu::broadcast_max<XPUType>);          
+  XPUElementwise<T, XPUType>(
+      dev_ctx, x, y, axis, out, xpu::broadcast_max<XPUType>);
 }
 
 template <typename T, typename Context>
@@ -45,23 +47,25 @@ void MinimumRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       int axis,
-                      DenseTensor* out){
+                      DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, xpu::broadcast_min<XPUType>);          
+  XPUElementwise<T, XPUType>(
+      dev_ctx, x, y, axis, out, xpu::broadcast_min<XPUType>);
 }
-}//namespace phi
+}  // namespace phi
 
 PD_REGISTER_KERNEL(floor_divide_raw,
-                   XPU, 
+                   XPU,
                    ALL_LAYOUT,
-                   phi::FloorDivideRawKernel, 
-                   float, phi::dtype::float16) {}
+                   phi::FloorDivideRawKernel,
+                   float,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(maximum_raw,
                    XPU,
                    ALL_LAYOUT,
                    phi::MaximumRawKernel,
                    float,
-                   phi::dtype::float16) {}               
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(minimum_raw,
                    XPU,
                    ALL_LAYOUT,

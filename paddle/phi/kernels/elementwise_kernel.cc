@@ -174,18 +174,14 @@ PD_REGISTER_KERNEL(elementwise_pow,
 #endif
 
 #if defined PADDLE_WITH_XPU
+PD_REGISTER_KERNEL(floor_divide,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::FloorDivideKernel,
+                   float,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
-    floor_divide, XPU, ALL_LAYOUT, phi::FloorDivideKernel, float, phi::dtype::float16) {}
-PD_REGISTER_KERNEL(maximum,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::MaximumKernel,
-                   float,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(minimum,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::MinimumKernel,
-                   float,
-                   phi::dtype::float16) {}
+    maximum, XPU, ALL_LAYOUT, phi::MaximumKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    minimum, XPU, ALL_LAYOUT, phi::MinimumKernel, float, phi::dtype::float16) {}
 #endif

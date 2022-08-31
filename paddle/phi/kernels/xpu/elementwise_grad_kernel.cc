@@ -18,7 +18,7 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace phi{
+namespace phi {
 
 template <typename T, typename Context>
 void MaximumGradKernel(const Context& dev_ctx,
@@ -27,9 +27,17 @@ void MaximumGradKernel(const Context& dev_ctx,
                        const DenseTensor& dout,
                        int axis,
                        DenseTensor* dx,
-                       DenseTensor* dy){
-  using XPUType = typename XPUTypeTrait<T>::Type; 
-  XPUElementwiseGrad<T, XPUType>(dev_ctx,x,y,dout,axis,dx,dy,xpu::broadcast_max_grad<XPUType>, true);
+                       DenseTensor* dy) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  XPUElementwiseGrad<T, XPUType>(dev_ctx,
+                                 x,
+                                 y,
+                                 dout,
+                                 axis,
+                                 dx,
+                                 dy,
+                                 xpu::broadcast_max_grad<XPUType>,
+                                 true);
 }
 
 template <typename T, typename Context>
@@ -39,12 +47,20 @@ void MinimumGradKernel(const Context& dev_ctx,
                        const DenseTensor& dout,
                        int axis,
                        DenseTensor* dx,
-                       DenseTensor* dy){
-  using XPUType = typename XPUTypeTrait<T>::Type; 
-  XPUElementwiseGrad<T, XPUType>(dev_ctx,x,y,dout,axis,dx,dy,xpu::broadcast_min_grad<XPUType>, true);            
+                       DenseTensor* dy) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  XPUElementwiseGrad<T, XPUType>(dev_ctx,
+                                 x,
+                                 y,
+                                 dout,
+                                 axis,
+                                 dx,
+                                 dy,
+                                 xpu::broadcast_min_grad<XPUType>,
+                                 true);
 }
 
-}//namespace phi
+}  // namespace phi
 
 PD_REGISTER_KERNEL(maximum_grad,
                    XPU,
