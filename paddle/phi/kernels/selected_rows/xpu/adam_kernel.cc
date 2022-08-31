@@ -128,8 +128,7 @@ void AdamDenseParamSparseGradKernel(
     paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
-  // skip_update=true, just copy input to output, and TensorCopy will call
-  // mutable_data
+
   if (skip_update_) {
     VLOG(4) << "Adam skip update";
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
