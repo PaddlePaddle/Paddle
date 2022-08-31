@@ -309,6 +309,7 @@ PD_REGISTER_KERNEL(divide,
 #endif
 
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
+
 PD_REGISTER_KERNEL(
     divide, XPU, ALL_LAYOUT, phi::DivideKernel, phi::dtype::float16, float) {}
 
