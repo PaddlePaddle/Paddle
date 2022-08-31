@@ -27,7 +27,7 @@ void ArgMaxKernel(const Context& dev_ctx,
                   bool keepdims,
                   bool flatten,
                   int dtype,
-                  DenseTensor* out){
+                  DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       (dtype < 0 || dtype == 2 || dtype == 3),
       true,
@@ -51,8 +51,11 @@ void ArgMaxKernel(const Context& dev_ctx,
     if (axis_val < 0) axis_val += x_dims.size();
   }
   auto xdims_vec = phi::vectorize<int>(x_dims);
-  int r = xpu::argmax(
-      dev_ctx.x_context(), x.data<T>(), out->data<int64_t>(), xdims_vec, axis_val);
+  int r = xpu::argmax(dev_ctx.x_context(),
+                      x.data<T>(),
+                      out->data<int64_t>(),
+                      xdims_vec,
+                      axis_val);
   PADDLE_ENFORCE_EQ(
       r,
       XPU_SUCCESS,
@@ -61,9 +64,4 @@ void ArgMaxKernel(const Context& dev_ctx,
                        XPUAPIErrorMsg[r]));
 }
 }  // namespace phi
-
-PD_REGISTER_KERNEL(arg_max,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::ArgMaxKernel,
-                   float) {}
+PD_REGISTER_KERNEL(arg_max, XPU, ALL_LAYOUT, phi::ArgMaxKernel, float) {}
