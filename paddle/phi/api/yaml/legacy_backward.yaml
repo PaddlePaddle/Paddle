@@ -2726,7 +2726,6 @@
   kernel:
     func: unpool3d_grad
     data_type: x
-  no_need_buffer : x
 
 - backward_api: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding,  int[] output_size, str data_format) -> Tensor(out)
@@ -2738,4 +2737,3 @@
   kernel:
     func: unpool_grad
     data_type: x
-  no_need_buffer : x
