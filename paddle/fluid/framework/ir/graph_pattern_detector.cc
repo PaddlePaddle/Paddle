@@ -1090,15 +1090,17 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
                          ->assert_is_op_output("fc", "Out");
 
   std::vector<PDNode *> links_from{input_var, fc_weight_var, fc_bias_var};
-
+  std::vector<PDNode *> links_to{fc_out_var};
   if (with_residual_data) {
     auto res_fc_var = pattern->NewNode(residual_data_repr())
-                          ->AsOutput()
-                          ->assert_is_op_output("fc", "ResidualData");
+                          ->AsInput()
+                          ->assert_is_op_input("fc");
+    // assert_is_op_input with two arguments doesn't work because ResidualData
+    // in FC is set as output with SetOutput
     links_from.push_back(res_fc_var);
   }
 
-  fc_op->LinksFrom(links_from).LinksTo({fc_out_var});
+  fc_op->LinksFrom(links_from).LinksTo(links_to);
   return fc_out_var;
 }
 
