@@ -100,7 +100,7 @@ void SliceRawKernel(const Context& ctx,
   int r = xpu::slice<XPUType>(
       ctx.x_context(),
       reinterpret_cast<const XPUType*>(input.data<T>()),
-      reinterpret_cast<XPUType*>(out->mutable_data<T>(ctx.GetPlace())),
+      reinterpret_cast<XPUType*>(out->data<T>(ctx.GetPlace())),
       shape,
       starts_extension,
       ends_extension);
