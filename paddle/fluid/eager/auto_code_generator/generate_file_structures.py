@@ -124,7 +124,7 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
                 ".tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes"
                 + str(i + 1) + ".cc\"\n")
 
-        f.write("  DEPENDS eager_codegen\n")
+        f.write("  DEPENDS legacy_eager_codegen\n")
         f.write("  VERBATIM)\n")
 
         f.write("cc_library(dygraph_node SRCS ")
@@ -154,7 +154,7 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
         f.write(
             "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_returns_info.tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_returns_info.cc\"\n"
         )
-        f.write("  DEPENDS eager_codegen\n")
+        f.write("  DEPENDS legacy_eager_codegen\n")
         f.write("  VERBATIM)\n")
 
         f.write("cc_library(dygraph_function SRCS ")

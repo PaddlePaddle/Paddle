@@ -71,21 +71,21 @@ __device__ void GetBlockCountImpl(const InT *in,
   int store_fix = BLOCK_ID_X + repeat * GRID_NUM_X;
 
   kps::Init<InT, VecSize>(&in_data[0], static_cast<InT>(0.0f));
-  kps::ReadData<InT, VecSize, 1, 1, IsBoundary>(&in_data[0], in, num);
-  kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Cast>(
+  kps::ReadData<InT, VecSize, 1, IsBoundary>(&in_data[0], in, num);
+  kps::ElementwiseUnary<InT, OutT, VecSize, 1, Cast>(
       &temp[0], &in_data[0], Cast());
-  kps::Reduce<OutT, VecSize, 1, 1, Add, Mode::kLocalMode>(
+  kps::Reduce<OutT, VecSize, 1, Add, Mode::kLocalMode>(
       &result, &temp[0], Add(), true);
-  kps::Reduce<OutT, 1, 1, 1, Add, Mode::kGlobalMode>(
+  kps::Reduce<OutT, 1, 1, Add, Mode::kGlobalMode>(
       &result, &result, Add(), true);
   if (store_fix == 0) {
     // first block's fix_size = 0;
     OutT tmp = static_cast<OutT>(0.0f);
-    kps::WriteData<OutT, 1, 1, 1, true>(out + store_fix, &tmp, 1);
+    kps::WriteData<OutT, 1, 1, true>(out + store_fix, &tmp, 1);
   }
 
   // store num of this block
-  kps::WriteData<OutT, 1, 1, 1, true>(out + store_fix + 1, &result, 1);
+  kps::WriteData<OutT, 1, 1, true>(out + store_fix + 1, &result, 1);
 }
 
 // Count how many data is not zero in current block
@@ -132,12 +132,12 @@ __device__ void CumsumImpl(
   // set pre_cumsum
   kps::Init<OutT, VecSize>(&temp[0], *pre_cumsum);
   // load data to arg
-  kps::ReadData<InT, InT, VecSize, 1, 1, IsBoundary>(
+  kps::ReadData<InT, InT, VecSize, 1, IsBoundary>(
       &arg[0], in, num, 1, BLOCK_NUM_X, 1);
   // block cumsum
-  kps::Cumsum<InT, OutT, 1, Functor>(&result[0], &arg[0], func);
+  kps::Cumsum<InT, OutT, Functor>(&result[0], &arg[0], func);
   // result = cumsum_result + pre_cumsum
-  kps::ElementwiseBinary<OutT, OutT, VecSize, 1, 1, Functor>(
+  kps::ElementwiseBinary<OutT, OutT, VecSize, 1, Functor>(
       &result[0], &result[0], &temp[0], func);
   // get the last prefix sum
   if ((THREAD_ID_X == BLOCK_NUM_X - 1) && !IsBoundary) {
@@ -146,7 +146,7 @@ __device__ void CumsumImpl(
   __syncthreads();
   // update pre_cumsum
   *pre_cumsum = max_thread_data;
-  kps::WriteData<OutT, OutT, VecSize, 1, 1, IsBoundary>(
+  kps::WriteData<OutT, OutT, VecSize, 1, IsBoundary>(
       out, &result[0], num, 1, BLOCK_NUM_X, 1);
 }
 
@@ -189,7 +189,7 @@ struct SelectCaller {
     int64_t in_data[VecSize];
     OutT store_data[VecSize * phi::DDim::kMaxRank];
     // set index
-    kps::InitWithDataIndex<int64_t, VecSize, 1, 1>(&in_data[0], data_offset);
+    kps::InitWithDataIndex<int64_t, VecSize, 1>(&in_data[0], data_offset);
     // Get store data according to mask_idt
     kps::OperatorTernary<MT, int64_t, OutT, Functor>(
         store_data, mask_data, &in_data[0], func, VecSize);
@@ -215,7 +215,7 @@ struct SelectCaller<OutT, MT, InT, Functor, VecSize, IsBoundary, 1> {
                                     int num) {
     InT in_data[VecSize];
     OutT store_data[VecSize * phi::DDim::kMaxRank];
-    kps::ReadData<InT, VecSize, 1, 1, IsBoundary>(&in_data[0], in, num);
+    kps::ReadData<InT, VecSize, 1, IsBoundary>(&in_data[0], in, num);
     // Get store data according to mask_idt
     kps::OperatorTernary<MT, InT, OutT, Functor>(
         store_data, mask_data, &in_data[0], func, VecSize);
@@ -244,7 +244,7 @@ struct SelectCaller<OutT, MT, InT, Functor, VecSize, IsBoundary, 2> {
     kps::details::ReadData<InT>(&in_data[0], in + thread_fix, store_num);
     kps::OperatorTernary<MT, InT, OutT, Functor>(
         store_data, mask_data, &in_data[0], func, VecSize);
-    kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(out, &store_data[0], num);
+    kps::WriteData<OutT, VecSize, 1, IsBoundary>(out, &store_data[0], num);
   }
 };
 
@@ -285,16 +285,16 @@ __device__ void SelectKernelImpl(OutT *out,
   kps::Init<IdT, kCVecSize>(&num_thread[0], init_idx);
   kps::Init<MT, VecSize>(&mask_data[0], init_mask);
   // Load mask
-  kps::ReadData<MT, VecSize, 1, 1, IsBoundary>(&mask_data[0], mask, num);
+  kps::ReadData<MT, VecSize, 1, IsBoundary>(&mask_data[0], mask, num);
   // Cast from MT to int
-  kps::ElementwiseUnary<MT, IdT, VecSize, 1, 1, Cast>(
+  kps::ElementwiseUnary<MT, IdT, VecSize, 1, Cast>(
       &mask_idt[0], &mask_data[0], Cast());
   // Get the num of thread only num_thread[1] has data
-  kps::Reduce<IdT, VecSize, 1, 1, Add, Mode::kLocalMode>(
+  kps::Reduce<IdT, VecSize, 1, Add, Mode::kLocalMode>(
       &num_thread[0], &mask_idt[0], Add(), true);
   // Get cumsum_thread cumsum from 0 to num_thread cumsum_thread[0] is the
   // thread_fix
-  kps::Cumsum<IdT, IdT, 1, Add>(&cumsum_thread[0], &num_thread[0], Add());
+  kps::Cumsum<IdT, IdT, Add>(&cumsum_thread[0], &num_thread[0], Add());
   // get thread_fix
   int thread_fix =
       (static_cast<int>(cumsum_thread[0] - num_thread[0]) * store_rank);
