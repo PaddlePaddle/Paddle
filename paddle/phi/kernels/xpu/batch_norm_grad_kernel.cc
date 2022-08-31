@@ -125,7 +125,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
           x_dims.size()));
 
   int N = -1, C = -1, H = -1, W = -1, D = -1;
-  funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+  funcs::ExtractNCWHD(x_dims, data_layout_val, &N, &C, &H, &W, &D);
   N = (N == 0) ? 1 : N;
   C = (C == 0) ? 1 : C;
   H = (H == 0) ? 1 : H;
@@ -191,21 +191,21 @@ void BatchNormGradKernel(const Context &dev_ctx,
                                               r1,
                                               XPUAPIErrorMsg[r1]));
     }
-    auto px = *x;
+
     auto *inv_std_data =
         use_global_stats ? global_inv_std_data : saved_variance.data<float>();
     auto mean_data = use_global_stats ? global_mean->data<float>()
                                       : saved_mean.data<float>();
     int r2 = CalculateInvBNY(dev_ctx.x_context(),
-                             px.mutable_data<T>(ctx.GetPlace()),
-                             scale->data<float>(),
-                             bias->data<float>(),
+                             x.data<T>(),
+                             scale.data<float>(),
+                             bias.data<float>(),
                              mean_data,
                              inv_std_data,
                              N,
                              C,
                              H * W,
-                             x->data<T>());
+                             x.data<T>());
     PADDLE_ENFORCE_EQ(r2,
                       XPU_SUCCESS,
                       phi::errors::External("XPU API(batch_norm_grad "
