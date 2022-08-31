@@ -123,7 +123,7 @@ static void FullTopK(Type input_height,
 template <typename T, typename Context>
 void TopkKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const Scalar& k_scalar,
+                const DenseTensor& k_list,
                 int axis,
                 bool largest,
                 bool sorted,
@@ -138,8 +138,11 @@ void TopkKernel(const Context& dev_ctx,
     axis += in_dims.size();
   }
 
-  int k = k_scalar.to<int>();
-  if (k_scalar.FromTensor()) {
+  const auto* k_list_data = k_list.data<int>();
+  int k_largest = -1;
+  k_largest = k_list_data[0];
+  int k = k_largest;
+  if (k_list.numel() > 1) {
     auto out_dims = out->dims();
     // accroding to axis to set K value in the dim
     out_dims[axis] = k;

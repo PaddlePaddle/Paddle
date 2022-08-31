@@ -37,23 +37,59 @@ namespace ops = paddle::operators;
   FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);  \
   FIXED_BLOCK_DIM_BASE(32, ##__VA_ARGS__)
 
+template <typename T>
+__global__ void print_tensor(const T* t, int size, const char* name) {
+  printf("tensor %s:[", name);
+  for (int i = 0; i < size; i++) {
+    if (i != size - 1) {
+      printf("%f, ", static_cast<float>(t[i]));
+    } else {
+      printf("%f]\n", static_cast<float>(t[i]));
+    }
+  }
+}
+
 template <typename T, typename Context>
 void TopkKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const Scalar& k_scalar,
+                const DenseTensor& k_list,
                 int axis,
                 bool largest,
                 bool sorted,
                 DenseTensor* out,
                 DenseTensor* indices) {
+  if (x.dtype() != DataType::INT64) {
+    printf("x_dtype not int64\n");
+  }
+  printf("in topk Kernel\n");
   const auto* input = &x;
   // get the input dims
   const auto& in_dims = input->dims();
   // calcluate the real axis
   if (axis < 0) axis += in_dims.size();
+  printf("in topk Kernel2\n");
+  VLOG(0) << "x:" << x;
+  VLOG(0) << "k_list:" << k_list;
 
-  int k = k_scalar.to<int>();
-  if (k_scalar.FromTensor()) {
+  DenseTensor k_largest_tensor;
+  auto* k_largest_data =
+      k_largest_tensor.mutable_data<int64_t>({1}, dev_ctx.GetPlace());
+  // phi::DDim k_largest_dim = phi::make_ddim({1});
+  // k_largest_tensor.Resize(k_largest_dim);
+  // dev_ctx.template Alloc<int64_t>(&k_largest_tensor);
+  // int64_t *k_largest_tensor_data = k_largest_tensor.data<int64_t>();
+  // k_largest_tensor_data[0] = -1;
+  VLOG(0) << "k_largest_tensor_data1:" << k_largest_tensor;
+  // k_largest = -1; //k_list.data<int64_t>()[0];
+  printf("k_list.numel():%d\n", k_list.numel());
+  // printf("k_largest1: %d\n", k_largest);
+  ops::getMaxK<256><<<1, 256, 0, dev_ctx.stream()>>>(
+      k_list.data<int64_t>(), k_largest_data, k_list.numel());
+  cudaDeviceSynchronize();
+  VLOG(0) << "k_largest_tensor_data2:" << k_largest_tensor;
+
+  int64_t k = 3;
+  if (k_list.numel() > 1) {
     phi::DDim out_dims = out->dims();
     out_dims[axis] = k;
     out->Resize(out_dims);
@@ -61,11 +97,11 @@ void TopkKernel(const Context& dev_ctx,
   }
 
   const auto& out_dims = out->dims();
-
-  const T* input_data = input->data<T>();
+  printf("in topk Kernel3\n");
+  const T* input_data = x.data<T>();
+  printf("in topk Kernel4\n");
   T* output_data = dev_ctx.template Alloc<T>(out);
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
-
   if (axis == in_dims.size() - 1) {
     // if get the topK from the last axis
     const int64_t& input_height =
@@ -158,6 +194,7 @@ void TopkKernel(const Context& dev_ctx,
     // NOTE: old matrix implementation of stride is different to eigen.
     const int kMaxHeight = 2048;
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
+    printf("gridx%d\n", gridx);
     switch (ops::GetDesiredBlockDim(input_width)) {
 #ifdef PADDLE_WITH_HIP
       FIXED_BLOCK_DIM(
@@ -171,6 +208,8 @@ void TopkKernel(const Context& dev_ctx,
                                                       static_cast<int>(k),
                                                       gridx,
                                                       input_height,
+                                                      nullptr,
+                                                      1,
                                                       largest));
 #else
       FIXED_BLOCK_DIM(
@@ -184,6 +223,8 @@ void TopkKernel(const Context& dev_ctx,
                                                       static_cast<int>(k),
                                                       gridx,
                                                       input_height,
+                                                      nullptr,
+                                                      1,
                                                       largest));
 #endif
       default:
@@ -272,6 +313,8 @@ void TopkKernel(const Context& dev_ctx,
                                                       static_cast<int>(k),
                                                       gridx,
                                                       input_height,
+                                                      nullptr,
+                                                      1,
                                                       largest));
 #else
       FIXED_BLOCK_DIM(
@@ -285,6 +328,8 @@ void TopkKernel(const Context& dev_ctx,
                                                       static_cast<int>(k),
                                                       gridx,
                                                       input_height,
+                                                      nullptr,
+                                                      1,
                                                       largest));
 #endif
       default:

@@ -22,9 +22,9 @@ namespace phi {
 template <typename T, typename Context>
 void TopkGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
+                    const DenseTensor& k_list,
                     const DenseTensor& indices,
                     const DenseTensor& out_grad,
-                    const Scalar& k,
                     int axis,
                     bool largest,
                     bool sorted,

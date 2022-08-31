@@ -86,7 +86,7 @@ class DenseTensor : public TensorBase,
   const DDim& dims() const noexcept override { return meta_.dims; }
 
   /// \brief Returns the lod of the tensor.
-  /// \return The lod of the tensor.
+  /// \return The lod of the tensor.xfDenseTensor
   const LoD& lod() const noexcept { return meta_.lod; }
 
   /// \brief Returns the data type of the tensor.

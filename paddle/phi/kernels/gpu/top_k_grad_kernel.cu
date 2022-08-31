@@ -26,9 +26,9 @@ namespace ops = paddle::operators;
 template <typename T, typename Context>
 void TopkGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
+                    const DenseTensor& k_list,
                     const DenseTensor& indices,
                     const DenseTensor& out_grad,
-                    const Scalar& k_scalar,
                     int axis,
                     bool largest,
                     bool sorted,
@@ -36,7 +36,11 @@ void TopkGradKernel(const Context& dev_ctx,
   const auto& in_dims = x.dims();
   const auto& out_dims = indices.dims();
 
-  int k = k_scalar.to<int>();
+  const int64_t* k_list_data = k_list.data<int64_t>();
+  int64_t k_largest = -1;
+  ops::getMaxK<256><<<1, 256, 0, dev_ctx.stream()>>>(
+      k_list_data, &k_largest, k_list.numel());
+  int64_t k = k_largest;
 
   // get the real the axis and the k
   if (axis < 0) {

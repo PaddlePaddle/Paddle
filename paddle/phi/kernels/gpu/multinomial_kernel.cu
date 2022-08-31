@@ -197,8 +197,15 @@ void MultinomialKernel(const Context& dev_ctx,
     } else {
       std::vector<int64_t> out_dim_vec = vectorize<int64_t>(out->dims());
       DenseTensor value = Empty<T, Context>(dev_ctx, IntArray(out_dim_vec));
+
+      DenseTensor num_samples_tensor;
+      phi::DDim num_samples_dim = phi::make_ddim({1});
+      num_samples_tensor.Resize(num_samples_dim);
+      dev_ctx.template Alloc<int>(&num_samples_tensor);
+      int* num_samples_data = num_samples_tensor.data<int>();
+      num_samples_data[0] = num_samples;
       TopkKernel<T, Context>(
-          dev_ctx, rand, Scalar(num_samples), -1, true, true, &value, out);
+          dev_ctx, rand, num_samples_tensor, -1, true, true, &value, out);
     }
     return;
   }

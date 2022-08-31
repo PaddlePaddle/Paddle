@@ -212,8 +212,14 @@ void ProcessMedianKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<int64_t>(&sort_indices);
   int64_t* sort_indices_ptr = sort_indices.data<int64_t>();
 
+  DenseTensor sort_k_tensor;
+  phi::DDim sort_k_dim = phi::make_ddim({1});
+  sort_k_tensor.Resize(sort_k_dim);
+  dev_ctx.template Alloc<int>(&sort_k_tensor);
+  int* sort_k_data = sort_k_tensor.data<int>();
+  sort_k_data[0] = static_cast<int>(sort_k);
   TopkKernel<T, Context>(
-      dev_ctx, x, Scalar(sort_k), -1, false, true, &sort_out, &sort_indices);
+      dev_ctx, x, sort_k_tensor, -1, false, true, &sort_out, &sort_indices);
 
   T div_factor = static_cast<T>(2.0);
   T nan_val = std::numeric_limits<T>::quiet_NaN();

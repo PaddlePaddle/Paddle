@@ -2652,7 +2652,7 @@
   backward : tile_grad
 
 - api : top_k
-  args : (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true)
+  args : (Tensor x, Tensor k, int axis = -1, bool largest = true, bool sorted = true)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : TopKInferMeta
