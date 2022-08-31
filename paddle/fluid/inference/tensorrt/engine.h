@@ -42,6 +42,8 @@ limitations under the License. */
 #include "paddle/phi/core/stream.h"
 #include "paddle/utils/any.h"
 
+#include "paddle/fluid/platform/dynload/nvtx.h"
+
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -669,8 +671,6 @@ class TensorRTEngine {
   // freshDeviceId().
   void freshDeviceId();
 
-  void setStream(cudaStream_t stream) { stream_ = stream; }
-
   // the max batch size
   int max_batch_;
   // the runtime batch size
@@ -683,9 +683,13 @@ class TensorRTEngine {
   // batch size of the current data, will be updated each Executation.
   int batch_size_{-1};
 
+// (liuyuanle) is responsible for skip ci.
+#ifdef PADDLE_WITH_TESTING
+  bool context_memory_shared_{false};
+#else
   // use for subengine context memory sharing
-  cudaStream_t stream_{0};
   bool context_memory_shared_{true};
+#endif
 
   int device_id_;
   int max_profile_num_{1};
@@ -814,7 +818,7 @@ class TRTEngineManager {
   }
 
   void DeleteAll() {
-    std::unique_lock<std::mutex> lock(mutex_);
+    // std::unique_lock<std::mutex> lock(mutex_);
     for (auto& item : engines_) {
       item.second.reset(nullptr);
     }
@@ -838,15 +842,11 @@ class TRTEngineManager {
     max_ctx_mem_size_ = std::max(max_ctx_mem_size_, mem_size);
   }
 
-  void* getContextMemory(TensorRTEngine* trt_engine,
+  void* getContextMemory(PredictorID predictor_id,
                          const phi::GPUPlace& place,
                          const phi::Stream& stream) {
     std::unique_lock<std::mutex> lock(mutex_);
-    auto predictor_id = trt_engine->predictor_id_per_thread;
-    size_t ctx_mem_size = trt_engine->engine()->getDeviceMemorySize();
-    if (context_memorys_.count(predictor_id) == 0 ||
-        max_ctx_mem_size_ < ctx_mem_size) {
-      max_ctx_mem_size_ = std::max(max_ctx_mem_size_, ctx_mem_size);
+    if (context_memorys_.count(predictor_id) == 0) {
       auto memory_addr = memory::Alloc(place, max_ctx_mem_size_, stream);
       if (memory_addr == nullptr) {
         PADDLE_ENFORCE_EQ(
