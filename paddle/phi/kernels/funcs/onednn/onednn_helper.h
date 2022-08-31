@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <thread>
 #include "dnnl.hpp"  // NOLINT
 #include "glog/logging.h"
 
@@ -94,6 +95,33 @@ inline dnnl::memory::format_tag GetPlainOneDNNFormat(int tensor_rank) {
   }
 }
 
+template <typename Type>
+dnnl::memory::data_type oneDNNGetDataType() {
+  return dnnl::memory::data_type::undef;
+}
+
+template <>
+inline dnnl::memory::data_type oneDNNGetDataType<float>() {
+  return dnnl::memory::data_type::f32;
+}
+template <>
+inline dnnl::memory::data_type oneDNNGetDataType<int32_t>() {
+  return dnnl::memory::data_type::s32;
+}
+template <>
+inline dnnl::memory::data_type oneDNNGetDataType<int8_t>() {
+  return dnnl::memory::data_type::s8;
+}
+template <>
+inline dnnl::memory::data_type oneDNNGetDataType<uint8_t>() {
+  return dnnl::memory::data_type::u8;
+}
+
+template <>
+inline dnnl::memory::data_type oneDNNGetDataType<dtype::bfloat16>() {
+  return dnnl::memory::data_type::bf16;
+}
+
 inline void MatchShapeToLayout(DenseTensor* tensor_in,
                                DataLayout from,
                                DataLayout to) {
@@ -117,28 +145,28 @@ inline void MatchShapeToLayout(DenseTensor* tensor_in,
   // at last nhwC, so for dim==2 these layouts are the same and nothing should
   // be done. Similarly for dim==1 when you have just one possible combination.
   if (tensor_in->dims().size() < 3) {
-    VLOG(3) << "Keeping MKLDNN/NHWC/NDHWC output_shape"
+    VLOG(3) << "Keeping ONEDNN/NHWC/NDHWC output_shape"
             << print_dims(phi::vectorize<int>(tensor_in->dims()));
     return;
   }
 
   switch (from) {
-    case DataLayout::MKLDNN:
+    case DataLayout::ONEDNN:
       if ((to == DataLayout::NHWC) || (to == DataLayout::NDHWC)) {
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
         tensor_in->Resize(phi::make_ddim(dims));
-        VLOG(3) << "Rotating Shape from: MKLDNN to: NHWC/NDHWC output_shape"
+        VLOG(3) << "Rotating Shape from: ONEDNN to: NHWC/NDHWC output_shape"
                 << print_dims(dims);
       }
       break;
     case DataLayout::NHWC:
     case DataLayout::NDHWC:
-      if (to == DataLayout::MKLDNN) {
+      if (to == DataLayout::ONEDNN) {
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
         tensor_in->Resize(phi::make_ddim(dims));
-        VLOG(3) << "Rotating Shape from: NHWC/NDHWC to: MKLDNN output_shape"
+        VLOG(3) << "Rotating Shape from: NHWC/NDHWC to: ONEDNN output_shape"
                 << print_dims(dims);
       }
       break;
@@ -156,6 +184,23 @@ inline dnnl::memory::desc OneDNNMemDesc(const std::vector<int64_t>& dims,
                                         dnnl::memory::data_type data_type,
                                         OneDNNMemoryFormat format) {
   return dnnl::memory::desc({dims}, data_type, format);
+}
+
+inline std::string ThreadIDasStr(void) {
+  return std::to_string(
+      std::hash<std::thread::id>()(std::this_thread::get_id()));
+}
+
+inline std::string ExtendKeyWithThreadInfoIfNeeded(const OneDNNContext& dev_ctx,
+                                                   const std::string& key) {
+  return (OneDNNContext::tls().is_tid_used_in_key() == true)
+             ? key + "-t:" + ThreadIDasStr()
+             : key;
+}
+
+template <typename T>
+bool constexpr is_int8() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
 }
 
 }  // namespace funcs
