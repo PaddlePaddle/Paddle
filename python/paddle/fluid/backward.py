@@ -667,8 +667,10 @@ def _remove_no_grad_branch_(op_descs,
         return False
 
     # Remove ops whose outputs are all in no_grad_dict
-    target_grad_var_names = set(
-        [var.name + core.grad_var_suffix() for var in target_vars])
+    target_grad_var_names = set([
+        var.name + core.grad_var_suffix() for var in target_vars
+        if not var.stop_gradient
+    ])
     op_descs = [
         op_desc for op_desc in op_descs
         if not _op_can_be_removed_(op_desc, no_grad_set)
