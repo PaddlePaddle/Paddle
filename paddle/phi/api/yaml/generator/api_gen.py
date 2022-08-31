@@ -156,11 +156,11 @@ class ForwardAPI(BaseAPI):
                 assert self.outputs['out_size_expr'][0] is not None, \
                      f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
                 output_create = output_create + f"""
-{code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, kernel_backend, &api_output);"""
+{code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, &api_output);"""
 
             else:
                 output_create = output_create + f"""
-{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &api_output);"""
+{code_indent}  auto kernel_out = {set_out_func}(&api_output);"""
 
             if not inplace_flag and self.view_map is not None and self.outputs[
                     'names'][0] in self.view_map:
@@ -207,11 +207,11 @@ class ForwardAPI(BaseAPI):
                             set_out_func = "SetInplaceOptionalVectorKernelOutput"
                             get_out_code = f"std::get<{i}>(api_output)"
                     output_create = output_create + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, kernel_backend, {get_out_code});"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
 
                 else:
                     output_create = output_create + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, {get_out_code});"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({get_out_code});"""
 
                 if not inplace_flag and self.view_map is not None and self.outputs[
                         'names'][i] in self.view_map:
