@@ -66,8 +66,8 @@ repos:
             )$
 -   repo: local
     hooks:
-    -   id: auto-generat-cmakelists
-        name: auto-generat-cmakelists
+    -   id: auto-generate-cmakelists
+        name: auto-generate-cmakelists
         entry: bash ./tools/gen_ut_cmakelists.hook
         language: system
         files: testslist.csv$
