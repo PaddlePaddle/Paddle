@@ -167,6 +167,11 @@
   outputs :
     out : Out
 
+- api : inplace_abn
+  backward : inplace_abn_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
+
 - api : lgamma
   inputs :
     x : X
