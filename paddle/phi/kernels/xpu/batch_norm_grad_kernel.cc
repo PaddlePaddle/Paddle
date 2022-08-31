@@ -194,8 +194,8 @@ void BatchNormGradKernel(const Context &dev_ctx,
 
     auto *inv_std_data =
         use_global_stats ? global_inv_std_data : saved_variance.data<float>();
-    auto mean_data = use_global_stats ? global_mean->data<float>()
-                                      : saved_mean.data<float>();
+    auto *mean_data = use_global_stats ? global_mean->data<float>()
+                                       : saved_mean.data<float>();
     int r2 = CalculateInvBNY(dev_ctx.x_context(),
                              x.data<T>(),
                              scale.data<float>(),
