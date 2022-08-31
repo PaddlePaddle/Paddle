@@ -2972,7 +2972,7 @@
   backward: uniform_random_inplace_grad
 
 - api: unpool
-  args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)
+  args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, IntArray output_size, str data_format)
   output: Tensor(out)
   infer_meta:
     func: UnpoolInferMeta
