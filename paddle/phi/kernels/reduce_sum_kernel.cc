@@ -22,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,
-               const std::vector<int64_t>& dims,
+               const IntArray& dims,
                DataType out_dtype,
                bool keep_dim,
                DenseTensor* out) {

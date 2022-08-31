@@ -53,6 +53,22 @@ struct SetConstant {
                   T num);
 };
 
+#ifdef PADDLE_WITH_XPU
+template <typename T>
+struct SetConstant<XPUContext, T> {
+  void operator()(const XPUContext& context,
+                  paddle::framework::Tensor* tensor,
+                  T num);
+};
+
+template <typename T>
+struct SetConstant<paddle::platform::XPUDeviceContext, T> {
+  void operator()(const paddle::platform::XPUDeviceContext& context,
+                  paddle::framework::Tensor* tensor,
+                  T num);
+};
+#endif
+
 template <typename Place>
 void set_constant_with_place(const paddle::platform::DeviceContext& context,
                              paddle::framework::Tensor* tensor,

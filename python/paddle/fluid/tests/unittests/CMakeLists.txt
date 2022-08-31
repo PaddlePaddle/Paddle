@@ -1052,6 +1052,7 @@ endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_ssa_graph_inference_feed_partial_data
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_crf PROPERTIES TIMEOUT 120)
@@ -1282,6 +1283,11 @@ set_tests_properties(test_renorm_op_without_eager PROPERTIES TIMEOUT 120)
 py_test_modules(
   test_eager_deletion_padding_rnn_for_interpretercore MODULES
   test_eager_deletion_padding_rnn ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+
+set_tests_properties(
+  test_buffer_shared_memory_reuse_pass
+  test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
+  PROPERTIES ENVIRONMENT FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
 
 # ExecutionStrategy is deprecated in standalone executor
 set_tests_properties(test_parallel_executor_dry_run

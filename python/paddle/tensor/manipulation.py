@@ -1839,8 +1839,10 @@ def split(x, num_or_sections, axis=0, name=None):
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
         if in_dygraph_mode():
-            return _C_ops.split(input, [num_or_sections] if isinstance(
-                num_or_sections, int) else num_or_sections, dim)
+            if isinstance(num_or_sections, int):
+                return _C_ops.split_with_num(input, num_or_sections, dim)
+            else:
+                return _C_ops.split(input, num_or_sections, dim)
         elif _in_legacy_dygraph():
             out = [_varbase_creator() for n in range(num)]
             _legacy_C_ops.split(input, out, *attrs)
@@ -3580,7 +3582,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
                 result = [ [2], ]
 
     Args:
-        x (Tensor): An N-D ``Tensor``. The data type is ``bool``, ``float32``, ``float64``, ``int32`` or ``int64``.
+        x (Tensor): An N-D ``Tensor``. The data type is ``bool``, ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
         axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
                             It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
         starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of                                                                                          it should be integers or Tensors with shape [1]. If ``starts`` is an Tensor, it should be an 1-D Tensor.                                                                                    It represents starting indices of corresponding axis in ``axes``.
@@ -3619,9 +3621,9 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
 
     helper = LayerHelper('strided_slice', **locals())
 
-    check_variable_and_dtype(x, 'x',
-                             ['bool', 'float32', 'float64', 'int32', 'int64'],
-                             'strided_slice')
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'strided_slice')
     check_type(axes, 'axes', (list, tuple), 'strided_slice')
     check_type(starts, 'starts', (list, tuple, Variable), 'strided_slice')
     check_type(ends, 'ends', (list, tuple, Variable), 'strided_slice')
@@ -4384,6 +4386,120 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
         return _C_ops.put_along_axis_(arr, indices, values, axis, reduce)
     return _legacy_C_ops.put_along_axis_(arr, indices, values, "Axis", axis,
                                          "Reduce", reduce)
+
+
+def _index_add_params_check(x, index, input_axis, add_value):
+    dims = len(x.shape)
+    add_value_dims = len(add_value.shape)
+
+    if input_axis >= 0:
+        axis = input_axis
+    else:
+        axis = input_axis + dims
+
+    check_axis = axis
+    if check_axis >= dims or check_axis < -dims:
+        raise ValueError("Axis should be in range [-rank(x), rank(x)).")
+
+    if isinstance(index, Variable):
+        if index.dtype not in [paddle.int64, paddle.int32]:
+            raise TypeError("The index dtype should be int32 or int64.")
+        if len(index.shape) != 1:
+            raise ValueError("The index should be a 1-D Tensor.")
+
+    if dims != add_value_dims:
+        raise ValueError(
+            "The add_value does not support broadcast now. It must have the same dimension as x."
+        )
+    for i in range(dims):
+        if i != axis and x.shape[i] != add_value.shape[i]:
+            raise ValueError(
+                "The add_value.shape[i] should be equal to x.shape[i] when i != axis."
+            )
+
+
+def index_add(x, index, axis, value, name=None):
+    """
+    Adds the elements of the input tensor with value tensor by selecting the indices in the order given in index.
+
+    Args:
+        x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
+        index (Tensor): The 1-D Tensor containing the indices to index.
+            The data type of ``index`` must be int32 or int64.
+        axis (int): The dimension in which we index. 
+        value (Tensor): The tensor used to add the elements along the target axis.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor: same dimention and dtype with x.
+
+    Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle
+
+            input_tensor = paddle.to_tensor(paddle.ones((3, 3)), dtype="float32")
+            index = paddle.to_tensor([0, 2], dtype="int32")
+            value = paddle.to_tensor([[1, 1, 1], [1, 1, 1]], dtype="float32")
+            outplace_res = paddle.index_add(input_tensor, index, 0, value)
+            print(outplace_res.numpy())
+            # [[2 2 2]
+            #  [1 1 1]
+            #  [2 2 2]]
+    """
+    _index_add_params_check(x, index, axis, value)
+
+    if in_dygraph_mode():
+        return _C_ops.index_add(x, index, value, axis)
+
+    helper = LayerHelper("index_add", **locals())
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'paddle.tensor.manipulation.index_add')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'],
+                             'paddle.tensor.manipulation.index_add')
+    check_variable_and_dtype(
+        value, 'add_value', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'paddle.tensor.manipulation.index_add')
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+
+    helper.append_op(type='index_add',
+                     inputs={
+                         'X': x,
+                         'Index': index,
+                         'AddValue': value,
+                     },
+                     outputs={'Out': out},
+                     attrs={'axis': axis})
+    return out
+
+
+@inplace_apis_in_dygraph_only
+def index_add_(x, index, axis, value, name=None):
+    """
+    Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_index_add`.
+    
+    Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle
+
+            input_tensor = paddle.to_tensor(paddle.ones((3, 3)), dtype="float32")
+            index = paddle.to_tensor([0, 2], dtype="int32")
+            value = paddle.to_tensor([[1, 1], [1, 1], [1, 1]], dtype="float32")
+            inplace_res = paddle.index_add_(input_tensor, index, 1, value)
+            print(inplace_res.numpy())
+            # [[2, 1, 2]
+            #  [2, 1, 2]
+            #  [2, 1, 2]]
+    """
+
+    _index_add_params_check(x, index, axis, value)
+    return _C_ops.index_add_(x, index, value, axis)
 
 
 # TODO(dev): We need avoid implementing it by this way.
