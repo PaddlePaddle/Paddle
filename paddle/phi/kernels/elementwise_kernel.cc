@@ -184,4 +184,18 @@ PD_REGISTER_KERNEL(
     maximum, XPU, ALL_LAYOUT, phi::MaximumKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
     minimum, XPU, ALL_LAYOUT, phi::MinimumKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(remainder,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::RemainderKernel,
+                   float,
+                   phi::dtype::float16,
+                   int32_t,
+                   int64_t) {}
+PD_REGISTER_KERNEL(elementwise_pow,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ElementwisePowKernel,
+                   float,
+                   phi::dtype::float16) {}
 #endif
