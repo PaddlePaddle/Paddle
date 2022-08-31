@@ -272,5 +272,13 @@ if((WITH_GPU
   )
   set_tests_properties(test_gen_nccl_id_op PROPERTIES RUN_SERIAL 1)
 endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
+    test_communication_stream_allreduce_api MODULES
+    test_communication_stream_allreduce_api ENVS
+    "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
+  set_tests_properties(test_communication_stream_allreduce_api
+                       PROPERTIES TIMEOUT "120" RUN_SERIAL 1)
+endif()
 add_subdirectory(fleet)
 add_subdirectory(multinode)
