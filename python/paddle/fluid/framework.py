@@ -5865,6 +5865,12 @@ class Program(object):
         ]
         res._sync_with_cpp()
 
+        # Note: The op_role and op_role_var cann't be deleted currently,
+        # and we will try to remove them in the future.
+        common_clipped_attrs_list = [
+            'op_namescope', 'op_callstack', 'op_device', 'with_quant_attr'
+        ]
+
         for i in six.moves.range(res.desc.num_blocks()):
             block = res.desc.block(i)
             for var in block.all_vars():
@@ -5878,12 +5884,6 @@ class Program(object):
                     continue
 
                 extra_attrs_map = core.get_op_extra_attrs(op.type())
-                if len(extra_attrs_map) > 0:
-                    for name in op.attr_names():
-                        if name in extra_attrs_map:
-                            op.remove_attr(name)
-                            continue
-                    continue
 
                 proto = OpProtoHolder.instance().get_op_proto(op.type())
                 remove_input_list = []
@@ -5932,6 +5932,10 @@ class Program(object):
                             continue
                         if name.endswith("_threshold"):
                             continue
+                    if len(extra_attrs_map) > 0:
+                        if name in extra_attrs_map or name in common_clipped_attrs_list:
+                            op.remove_attr(name)
+                        continue
                     find = False
                     for attr_proto in proto.attrs:
                         if attr_proto.name != name:
