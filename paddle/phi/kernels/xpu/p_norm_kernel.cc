@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/p_norm_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
