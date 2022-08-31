@@ -162,7 +162,7 @@ void MemcpyKernel(const Context& dev_ctx,
       break;
     default:
       PADDLE_THROW(errors::Unimplemented(
-          "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
+          "memcpy dst_place_type: %d is not supported yet.", dst_place_type));
       break;
   }
 }
