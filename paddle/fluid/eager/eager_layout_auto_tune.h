@@ -17,6 +17,7 @@
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/eager_layout_transformer.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 namespace egr {
 
 // layout_agnostic_ops_
@@ -118,7 +119,6 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
 
   if (paddle::imperative::LayoutAutoTune::Instance().IsHeavilyLayoutSensitive(
           op_name)) {
-    VLOG(3) << " Optimze Layout heavily op: " << op_name;
     auto heavily_transposer =
         std::make_shared<EagerHeavilyLayoutSensitiveOpTransformer>(op_name,
                                                                    attr);

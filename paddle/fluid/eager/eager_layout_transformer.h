@@ -23,8 +23,7 @@ inline paddle::experimental::Tensor EagerTraceTransposeOp(
     const paddle::experimental::DataLayout layout,
     const paddle::experimental::Tensor& in) {
   if (in.shape().size() != 4) {
-    VLOG(4) << "Tensor's shape is " << in.shape().size()
-            << " can't transpose to"
+    VLOG(4) << "Shape is " << in.shape().size() << " can't transpose to"
             << paddle::framework::DataLayoutToString(layout);
     return in;
   }
@@ -66,7 +65,6 @@ class EagerLayoutTransformer {
         }
       }
     }
-
     VLOG(4) << op_name_ << "final_layout_ is  " << final_layout_;
   }
 
@@ -87,20 +85,17 @@ class EagerLayoutTransformer {
   TransInTensor(
       const std::string& in_name,
       const paddle::optional<std::vector<paddle::experimental::Tensor>>& in) {
-    VLOG(4) << op_name_ << "is is agnostic, final_layout_ is " << final_layout_;
     return in;
   }
 
   virtual std::vector<paddle::experimental::Tensor> TransInTensor(
       const std::string& in_name,
       const std::vector<paddle::experimental::Tensor>& in) {
-    VLOG(4) << op_name_ << "is is agnostic, final_layout_ is " << final_layout_;
     return in;
   }
 
   virtual paddle::experimental::Tensor TransInTensor(
       const std::string& in_name, const paddle::experimental::Tensor& in) {
-    VLOG(4) << op_name_ << "is is agnostic, final_layout_ is " << final_layout_;
     return in;
   }
 
@@ -253,8 +248,7 @@ class EagerLightlyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
 
     if (final_layout_ == input_layout && in.shape().size() == 4) {
       VLOG(4) << op_name_ << "'s " << in_name << " need transpose from "
-              << input_layout << " to "
-              << paddle::framework::DataLayoutToString(default_layout);
+              << input_layout << " to default_layout";
       auto out_tensor = EagerTraceTransposeOp(
           paddle::experimental::DataLayout::UNDEFINED, in);
       phi::DenseTensorUtils::GetMutableMeta(
@@ -262,8 +256,7 @@ class EagerLightlyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
           ->layout = default_layout;
       return out_tensor;
     }
-    VLOG(4) << op_name_ << "'s " << in_name << "'s layout is " << input_layout
-            << " shape is " << in.shape().size();
+    VLOG(4) << in_name << "'s layout is " << input_layout;
     return in;
   }
 
@@ -279,8 +272,7 @@ class EagerLightlyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
       auto in_tensor = in[i];
       if (in_tensor.layout() == desired_layout) {
         VLOG(4) << op_name_ << "'s " << in_name << " need transpose from "
-                << final_layout_ << " to "
-                << paddle::framework::DataLayoutToString(default_layout);
+                << final_layout_ << " to default_layout";
         auto out_tensor = EagerTraceTransposeOp(
             paddle::experimental::DataLayout::UNDEFINED, in_tensor);
         phi::DenseTensorUtils::GetMutableMeta(
@@ -298,11 +290,8 @@ class EagerLightlyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
     auto out_layout = out_tensor->layout();
     auto default_layout =
         paddle::imperative::LayoutAutoTune::Instance().GetDefaultLayout();
-
     if (out_layout != default_layout) {
-      VLOG(4) << op_name_ << "'s out need transpose from "
-              << paddle::framework::DataLayoutToString(out_layout) << " to "
-              << paddle::framework::DataLayoutToString(default_layout);
+      VLOG(4) << op_name_ << "'s out need transpose to default_layout";
       phi::DenseTensorUtils::GetMutableMeta(
           static_cast<phi::DenseTensor*>(out_tensor->impl().get()))
           ->layout = default_layout;
@@ -312,7 +301,7 @@ class EagerLightlyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
   void SetOutTensorLayout(
       std::vector<paddle::experimental::Tensor*>* out_tensor) {
     for (size_t i = 0; i < out_tensor->size(); i++) {
-      VLOG(4) << "EagerFlattenOpTransformer's out layout is"
+      VLOG(4) << "out layout is"
               << paddle::framework::DataLayoutToString(
                      (*out_tensor)[i]->layout());
       SetOutTensorLayout((*out_tensor)[i]);
@@ -324,11 +313,7 @@ class EagerLightlyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
     auto default_layout =
         paddle::imperative::LayoutAutoTune::Instance().GetDefaultLayout();
     for (size_t i = 0; i < out_tensor->size(); i++) {
-      VLOG(4) << op_name_ << "'s out_tensor layout from "
-              << paddle::framework::DataLayoutToString(
-                     (*out_tensor)[i].layout())
-              << " to "
-              << paddle::framework::DataLayoutToString(default_layout);
+      VLOG(4) << " out_tensor layout trans to default ";
       phi::DenseTensorUtils::GetMutableMeta(
           static_cast<phi::DenseTensor*>((*out_tensor)[i].impl().get()))
           ->layout = default_layout;
