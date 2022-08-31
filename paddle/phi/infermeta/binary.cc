@@ -1507,6 +1507,63 @@ void IndexSelectInferMeta(const MetaTensor& x,
   output->share_lod(x);
 }
 
+void IndexAddInferMeta(const MetaTensor& x,
+                       const MetaTensor& index,
+                       const MetaTensor& add_value,
+                       int axis,
+                       MetaTensor* output) {
+  auto input_dim = x.dims();
+  auto index_dim = index.dims();
+  auto add_value_dim = add_value.dims();
+
+  PADDLE_ENFORCE_EQ(
+      axis < input_dim.size() && axis >= (0 - input_dim.size()),
+      true,
+      phi::errors::OutOfRange(
+          "Attr(dim) is out of range, It's expected "
+          "to be in range of [-%d, %d]. But received Attr(axis) = %d.",
+          input_dim.size(),
+          input_dim.size() - 1,
+          axis));
+
+  int real_axis = axis >= 0 ? axis : axis + input_dim.size();
+
+  PADDLE_ENFORCE_EQ(index_dim.size() == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The 'shape' of Input(Index) must be 1-D tensor. "
+                        "But received: the 'shape' of Input(Index) is [%s], "
+                        "the dimension of Input(Index) is [%d].",
+                        index_dim,
+                        index_dim.size()));
+
+  PADDLE_ENFORCE_EQ(
+      index_dim[0] != 0,
+      true,
+      phi::errors::InvalidArgument("The length of Input(Index) can't be 0."));
+
+  // Note, add_value does not support broadcast now.
+  PADDLE_ENFORCE_EQ(input_dim.size() == add_value_dim.size(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The add_value must be the same dimension as x."));
+  for (int i = 0; i < input_dim.size(); i++) {
+    if (i != real_axis) {
+      PADDLE_ENFORCE_EQ(input_dim[i] == add_value_dim[i],
+                        true,
+                        phi::errors::InvalidArgument(
+                            "The add_value parameter does not supported "
+                            "broadcast, so input_dim[i] must be equal to "
+                            "add_value_dim[i] when i != axis."));
+    }
+  }
+
+  output->set_dims(x.dims());
+  output->set_dtype(x.dtype());
+  output->set_layout(x.layout());
+  output->share_lod(x);
+}
+
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto dim_x = x.dims();
   auto dim_y = y.dims();
