@@ -1161,7 +1161,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     using U = LayerNormParamType<T>;
-    auto place = ctx.GetPlace();
     auto &dev_ctx = ctx.cuda_device_context();
 
     auto *time_step = ctx.Input<Tensor>("TimeStep");

@@ -125,7 +125,6 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
         ctx, bsz_seq, d_model, dropout_param2, epsilon2);
 
-    auto place = ctx.GetPlace();
     using U = LayerNormParamType<T>;
     const framework::Tensor* in = &x;
 
@@ -247,7 +246,6 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     DropoutParam dropout_param2(context, 2);
 
     using U = LayerNormParamType<T>;
-    auto place = context.GetPlace();
     dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
     dev_ctx.Alloc<uint8_t>(dropout1_mask,
                            dropout1_mask->numel() * sizeof(uint8_t));
@@ -378,7 +376,6 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
         ctx, bsz_seq, d_model, dropout_param2, epsilon2);
 
-    auto place = ctx.GetPlace();
     using U = LayerNormParamType<T>;
     const U* ln1_gamma_ptr =
         ln1_gamma == nullptr ? nullptr : ln1_gamma->data<U>();
@@ -562,7 +559,6 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     DropoutParam dropout_param1(context, 1);
     DropoutParam dropout_param2(context, 2);
 
-    auto place = context.GetPlace();
     dev_ctx.Alloc<T>(d_x, d_x->numel() * sizeof(T));
     if (d_ln1_scale) {
       dev_ctx.Alloc<U>(d_ln1_scale, d_ln1_scale->numel() * sizeof(U));
