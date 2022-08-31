@@ -403,11 +403,13 @@ class EagerArgmaxOpTransformer
       : op_name_(op_name) {
     VLOG(3) << "Optimze Layout lightly " << op_name;
   }
-  void SetAttr(int64_t* axis, bool is_nhwc) {
-    std::vector<int> perm_nchw = {0, 2, 3, 1};
+
+  void SetAttr(paddle::experimental::Scalar* axis, bool is_nhwc) {
     std::vector<int> perm_nhwc = {0, 3, 1, 2};
+    std::vector<int> perm_nchw = {0, 2, 3, 1};
     auto perm = is_nhwc ? perm_nhwc : perm_nchw;
-    (*axis) = perm[(*axis)];
+    int axes = axis->to<int>();
+    (*axis) = static_cast<paddle::experimental::Scalar>(perm[axes]);
   }
 
   void SetOutTensorLayout(paddle::experimental::Tensor* out_tensor) {

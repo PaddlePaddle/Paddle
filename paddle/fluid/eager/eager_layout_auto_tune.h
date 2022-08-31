@@ -94,6 +94,11 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     if (op_name != "conv2d") {
       return transposer;
     } else {
+      if (paddle::platform::is_gpu_place(tensors_vector[0][0].place()) &&
+          !phi::backends::gpu::TensorCoreAvailable()) {
+        paddle::imperative::LayoutAutoTune::Instance().DisableLayoutAutoTune();
+        return transposer;
+      }
       auto data_type = tensors_vector[0][0].dtype();
       bool is_tune_fp32 =
           (data_type == paddle::experimental::DataType::FLOAT32) &&
@@ -175,11 +180,11 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
 // lightly int argmax
 template <>
 inline std::shared_ptr<EagerLayoutTransformer>
-EagerLayoutAutotune<int64_t, bool>(
+EagerLayoutAutotune<paddle::experimental::Scalar, bool>(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
-    int64_t* axis,
+    paddle::experimental::Scalar* axis,
     bool* keep_dim) {
   if (paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout() ==
       paddle::experimental::DataLayout::UNDEFINED) {
