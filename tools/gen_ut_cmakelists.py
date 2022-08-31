@@ -342,14 +342,20 @@ class CMakeGenerator():
         self.processed_dirs = set()
         self.port_manager = DistUTPortManager(ignore_dirs)
         self.current_dirs = _norm_dirs(current_dirs)
+        self.modified_or_created_files = []
 
     def prepare_dist_ut_port(self):
         for c in self._find_root_dirs():
             self.port_manager.parse_assigned_dist_ut_ports(c, depth=0)
 
     def parse_csvs(self):
+        '''
+        parse csv files, return the lists of craeted or modified files
+        '''
+        self.modified_or_created_files = []
         for c in self.current_dirs:
             self._gen_cmakelists(c)
+        return self.modified_or_created_files
 
     def _find_root_dirs(self):
         root_dirs = []
@@ -449,7 +455,7 @@ class CMakeGenerator():
     def _gen_cmakelists(self, current_work_dir, depth=0):
         if depth == 0:
             self.processed_dirs.clear()
-        print("procfessing dir:", current_work_dir)
+        # print("procfessing dir:", current_work_dir)
         if current_work_dir == "":
             current_work_dir = "."
 
@@ -490,9 +496,21 @@ class CMakeGenerator():
 
         for sub in sub_dirs:
             cmds += f"add_subdirectory({sub})\n"
-        print(cmds, end="")
-        with open(f"{current_work_dir}/CMakeLists.txt", "w") as cmake_file:
-            print(cmds, end="", file=cmake_file)
+        # print(cmds, end="")
+        with open(f"{current_work_dir}/CMakeLists.txt", "r") as old_cmake_file:
+            char_seq = old_cmake_file.read().split()
+        char_seq = "".join(char_seq)
+        # print(char_seq, file=open(f"{current_work_dir}/txt1.txt", "w"))
+        # print("".join(cmds.split()),
+        #       file=open(f"{current_work_dir}/txt2.txt", "w"))
+        # print("len:", len(char_seq), len("".join(cmds.split())))
+        if char_seq != "".join(cmds.split()):
+            assert f"{current_work_dir}/CMakeLists.txt" not in self.modified_or_created_files, \
+                f"the file {current_work_dir}/CMakeLists.txt are modified twice, which may cause some error"
+            self.modified_or_created_files.append(
+                f"{current_work_dir}/CMakeLists.txt")
+            with open(f"{current_work_dir}/CMakeLists.txt", "w") as cmake_file:
+                print(cmds, end="", file=cmake_file)
 
 
 if __name__ == "__main__":
@@ -544,4 +562,6 @@ if __name__ == "__main__":
 
     cmake_generator = CMakeGenerator(current_work_dirs, args.ignore_cmake_dirs)
     cmake_generator.prepare_dist_ut_port()
-    cmake_generator.parse_csvs()
+    created = cmake_generator.parse_csvs()
+    for f in created:
+        print("modified/new:", f)
