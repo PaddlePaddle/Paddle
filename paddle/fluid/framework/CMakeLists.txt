@@ -367,6 +367,12 @@ cc_library(
   SRCS shape_inference.cc
   DEPS ddim attribute)
 
+# every source file that includes "dnnl.h" must depends on mkldnn
+# or, the first one should depends on mkldnn
+if(WITH_MKLDNN)
+  add_dependencies(shape_inference mkldnn)
+endif()
+
 cc_test(
   no_need_buffer_vars_inference_test
   SRCS no_need_buffer_vars_inference_test.cc
