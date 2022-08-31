@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #include "paddle/phi/kernels/funcs/onednn/onednn_helper.h"
 
 namespace phi {
@@ -38,8 +39,8 @@ using MKLDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T,
           typename TForward,
-          typename TBackward = mkldnn_dummy_primitive,
-          typename TBackward_params = mkldnn_dummy_primitive>
+          typename TBackward = onednn_dummy_primitive,
+          typename TBackward_params = onednn_dummy_primitive>
 class MKLDNNHandlerNoCachingT {
  public:
   MKLDNNHandlerNoCachingT(dnnl::engine engine, Place cpu_place)
@@ -250,12 +251,12 @@ class MKLDNNHandlerNoCachingT {
 };
 
 template <typename T>
-class ActivationMKLDNNHandler
+class ActivationOneDNNHandler
     : public MKLDNNHandlerNoCachingT<T,
                                      dnnl::eltwise_forward,
                                      dnnl::eltwise_backward> {
  public:
-  ActivationMKLDNNHandler(dnnl::algorithm algorithm,
+  ActivationOneDNNHandler(dnnl::algorithm algorithm,
                           float alpha,
                           float beta,
                           const dnnl::engine engine,
@@ -271,7 +272,7 @@ class ActivationMKLDNNHandler
                                             beta);
   }
 
-  ActivationMKLDNNHandler(dnnl::algorithm algorithm,
+  ActivationOneDNNHandler(dnnl::algorithm algorithm,
                           float alpha,
                           float beta,
                           const dnnl::engine engine,
@@ -298,9 +299,9 @@ class ActivationMKLDNNHandler
   }
 };
 
-class ReorderMKLDNNHandler {
+class ReorderOneDNNHandler {
  public:
-  ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
+  ReorderOneDNNHandler(std::vector<int64_t>& dims,  // NOLINT
                        DataType ptype,
                        dnnl::memory::data_type dtype,
                        dnnl::engine engine)
@@ -311,7 +312,7 @@ class ReorderMKLDNNHandler {
         dtype_dst_(dtype),
         engine_(engine) {}
 
-  ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
+  ReorderOneDNNHandler(std::vector<int64_t>& dims,  // NOLINT
                        DataType ptype,
                        dnnl::memory::data_type dtype,
                        DataType ptype_dst,
@@ -348,7 +349,7 @@ class ReorderMKLDNNHandler {
   std::shared_ptr<dnnl::memory> AcquireDstMemory(DenseTensor* output,
                                                  const MKLDNNMemoryFormat& fmt,
                                                  Place place) {
-    auto dst_md = MKLDNNMemDesc(dims_, dtype_dst_, fmt);
+    auto dst_md = OneDNNMemDesc(dims_, dtype_dst_, fmt);
     auto dst_data = output->mutable_data(place, ptype_dst_, dst_md.get_size());
     return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
   }
@@ -373,7 +374,7 @@ class ReorderMKLDNNHandler {
       const std::vector<int64_t>& dims,
       const MKLDNNMemoryFormat& fmt,
       Place place) {
-    auto dst_md = MKLDNNMemDesc(dims, dtype_dst_, fmt);
+    auto dst_md = OneDNNMemDesc(dims, dtype_dst_, fmt);
     auto dst_data = output->mutable_data(place, ptype_dst_, dst_md.get_size());
     return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
   }

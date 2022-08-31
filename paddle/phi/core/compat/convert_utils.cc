@@ -123,7 +123,7 @@ const std::string& TransToFluidOpName(const std::string& phi_kernel_name) {
 }
 
 #ifdef PADDLE_WITH_MKLDNN
-dnnl::memory::data_type TransToMKLDNNDataType(
+dnnl::memory::data_type TransToOneDNNDataType(
     const paddle::experimental::DataType& dtype) {
   switch (dtype) {
     case DataType::FLOAT32:
