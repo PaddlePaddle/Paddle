@@ -23,17 +23,16 @@ import scipy
 from numpy.lib.stride_tricks import as_strided
 from scipy import signal
 from scipy import fftpack
+import paddle
 
 from ..utils import ParameterError
+from ..functional import mel_frequencies
+from ..functional import power_to_db
 
 __all__ = [
     # dsp
     'stft',
     'mfcc',
-    'hz_to_mel',
-    'mel_to_hz',
-    'mel_frequencies',
-    'power_to_db',
     'compute_fbank_matrix',
     'melspectrogram',
     'spectrogram',
@@ -138,108 +137,6 @@ def _check_audio(y, mono=True) -> bool:
     return True
 
 
-def hz_to_mel(frequencies: Union[float, List[float], np.ndarray],
-              htk: bool = False) -> np.ndarray:
-    """Convert Hz to Mels.
-
-    Args:
-        frequencies (Union[float, List[float], np.ndarray]): Frequencies in Hz.
-        htk (bool, optional): Use htk scaling. Defaults to False.
-
-    Returns:
-        np.ndarray: Frequency in mels.
-    """
-    freq = np.asanyarray(frequencies)
-
-    if htk:
-        return 2595.0 * np.log10(1.0 + freq / 700.0)
-
-    # Fill in the linear part
-    f_min = 0.0
-    f_sp = 200.0 / 3
-
-    mels = (freq - f_min) / f_sp
-
-    # Fill in the log-scale part
-
-    min_log_hz = 1000.0  # beginning of log region (Hz)
-    min_log_mel = (min_log_hz - f_min) / f_sp  # same (Mels)
-    logstep = np.log(6.4) / 27.0  # step size for log region
-
-    if freq.ndim:
-        # If we have array data, vectorize
-        log_t = freq >= min_log_hz
-        mels[log_t] = min_log_mel + \
-            np.log(freq[log_t] / min_log_hz) / logstep
-    elif freq >= min_log_hz:
-        # If we have scalar data, heck directly
-        mels = min_log_mel + np.log(freq / min_log_hz) / logstep
-
-    return mels
-
-
-def mel_to_hz(mels: Union[float, List[float], np.ndarray],
-              htk: int = False) -> np.ndarray:
-    """Convert mel bin numbers to frequencies.
-
-    Args:
-        mels (Union[float, List[float], np.ndarray]): Frequency in mels.
-        htk (bool, optional): Use htk scaling. Defaults to False.
-
-    Returns:
-        np.ndarray: Frequencies in Hz.
-    """
-    mel_array = np.asanyarray(mels)
-
-    if htk:
-        return 700.0 * (10.0**(mel_array / 2595.0) - 1.0)
-
-    # Fill in the linear scale
-    f_min = 0.0
-    f_sp = 200.0 / 3
-    freqs = f_min + f_sp * mel_array
-
-    # And now the nonlinear scale
-    min_log_hz = 1000.0  # beginning of log region (Hz)
-    min_log_mel = (min_log_hz - f_min) / f_sp  # same (Mels)
-    logstep = np.log(6.4) / 27.0  # step size for log region
-
-    if mel_array.ndim:
-        # If we have vector data, vectorize
-        log_t = mel_array >= min_log_mel
-        freqs[log_t] = min_log_hz * \
-            np.exp(logstep * (mel_array[log_t] - min_log_mel))
-    elif mel_array >= min_log_mel:
-        # If we have scalar data, check directly
-        freqs = min_log_hz * np.exp(logstep * (mel_array - min_log_mel))
-
-    return freqs
-
-
-def mel_frequencies(n_mels: int = 128,
-                    fmin: float = 0.0,
-                    fmax: float = 11025.0,
-                    htk: bool = False) -> np.ndarray:
-    """Compute mel frequencies.
-
-    Args:
-        n_mels (int, optional): Number of mel bins. Defaults to 128.
-        fmin (float, optional): Minimum frequency in Hz. Defaults to 0.0.
-        fmax (float, optional): Maximum frequency in Hz. Defaults to 11025.0.
-        htk (bool, optional): Use htk scaling. Defaults to False.
-
-    Returns:
-        np.ndarray: Vector of n_mels frequencies in Hz with shape `(n_mels,)`.
-    """
-    # 'Center freqs' of mel bands - uniformly spaced between limits
-    min_mel = hz_to_mel(fmin, htk=htk)
-    max_mel = hz_to_mel(fmax, htk=htk)
-
-    mels = np.linspace(min_mel, max_mel, n_mels)
-
-    return mel_to_hz(mels, htk=htk)
-
-
 def fft_frequencies(sr: int, n_fft: int) -> np.ndarray:
     """Compute fourier frequencies.
 
@@ -291,7 +188,11 @@ def compute_fbank_matrix(sr: int,
     fftfreqs = fft_frequencies(sr=sr, n_fft=n_fft)
 
     # 'Center freqs' of mel bands - uniformly spaced between limits
-    mel_f = mel_frequencies(n_mels + 2, fmin=fmin, fmax=fmax, htk=htk)
+    mel_f_t = mel_frequencies(n_mels=n_mels + 2,
+                              f_min=fmin,
+                              f_max=fmax,
+                              htk=htk)
+    mel_f = mel_f_t.numpy()
 
     fdiff = np.diff(mel_f)
     ramps = np.subtract.outer(mel_f, fftfreqs)
@@ -396,52 +297,6 @@ def stft(x: np.ndarray,
     return stft_matrix
 
 
-def power_to_db(spect: np.ndarray,
-                ref: float = 1.0,
-                amin: float = 1e-10,
-                top_db: Optional[float] = 80.0) -> np.ndarray:
-    """Convert a power spectrogram (amplitude squared) to decibel (dB) units. The function computes the scaling `10 * log10(x / ref)` in a numerically stable way.
-
-    Args:
-        spect (np.ndarray): STFT power spectrogram of an input waveform.
-        ref (float, optional): The reference value. If smaller than 1.0, the db level of the signal will be pulled up accordingly. Otherwise, the db level is pushed down. Defaults to 1.0.
-        amin (float, optional): Minimum threshold. Defaults to 1e-10.
-        top_db (Optional[float], optional): Threshold the output at `top_db` below the peak. Defaults to 80.0.
-
-    Returns:
-        np.ndarray: Power spectrogram in db scale.
-    """
-    spect = np.asarray(spect)
-
-    if amin <= 0:
-        raise ParameterError("amin must be strictly positive")
-
-    if np.issubdtype(spect.dtype, np.complexfloating):
-        warnings.warn(
-            "power_to_db was called on complex input so phase "
-            "information will be discarded. To suppress this warning, "
-            "call power_to_db(np.abs(D)**2) instead.")
-        magnitude = np.abs(spect)
-    else:
-        magnitude = spect
-
-    if callable(ref):
-        # User supplied a function to calculate reference power
-        ref_value = ref(magnitude)
-    else:
-        ref_value = np.abs(ref)
-
-    log_spec = 10.0 * np.log10(np.maximum(amin, magnitude))
-    log_spec -= 10.0 * np.log10(np.maximum(amin, ref_value))
-
-    if top_db is not None:
-        if top_db < 0:
-            raise ParameterError("top_db must be non-negative")
-        log_spec = np.maximum(log_spec, log_spec.max() - top_db)
-
-    return log_spec
-
-
 def mfcc(x: np.ndarray,
          sr: int = 16000,
          spect: Optional[np.ndarray] = None,
@@ -542,7 +397,12 @@ def melspectrogram(x: np.ndarray,
                                      fmax=fmax)
     mel_spect = np.matmul(fb_matrix, spect_power)
     if to_db:
-        return power_to_db(mel_spect, ref=ref, amin=amin, top_db=top_db)
+        result = power_to_db(paddle.to_tensor(mel_spect),
+                             ref_value=ref,
+                             amin=amin,
+                             top_db=top_db)
+        return result.numpy()
+        #return power_to_db(mel_spect, ref=ref, amin=amin, top_db=top_db)
     else:
         return mel_spect
 

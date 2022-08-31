@@ -48,31 +48,68 @@ class TestFeatures(unittest.TestCase):
                                        num_frames=self.duration * self.sr)
         self.waveform = waveform_tensor.numpy() * 0.1
 
+    def test_audio_function(self):
+        mel1 = paddle.audio.functional.hz_to_mel(2.0, True)
+        mel2 = paddle.audio.functional.hz_to_mel(paddle.to_tensor([9.0]))
+        print(mel1)
+        print(mel2)
+        hz1 = paddle.audio.functional.mel_to_hz(paddle.to_tensor([9.0]), True)
+        hz2 = paddle.audio.functional.mel_to_hz(25.0)
+        print(hz1)
+        print(hz2)
+        try:
+            paddle.audio.functional.power_to_db(paddle.to_tensor([9.0]), amin=0)
+        except Exception:
+            pass
+
+        try:
+            paddle.audio.functional.power_to_db(paddle.to_tensor([9.0]),
+                                                ref_value=0)
+
+        except Exception:
+            pass
+
+        try:
+            paddle.audio.functional.power_to_db(paddle.to_tensor([9.0]),
+                                                top_db=-1)
+        except Exception:
+            pass
+
     def test_window(self):
         window_types = [
             "hamming", "hann", "triang", "bohman", "blackman", "cosine",
             "tukey", "taylor"
         ]
         for window_type in window_types:
-            window_scipy = signal.get_window(window_type, self.n_fft)
-            window_paddle = paddle.audio.functional.get_window(
-                window_type, self.n_fft)
-            np.testing.assert_array_almost_equal(window_scipy,
-                                                 window_paddle.numpy(),
+            for n_fft in [1, self.n_fft]:
+                window_scipy = signal.get_window(window_type, n_fft)
+                window_paddle = paddle.audio.functional.get_window(
+                    window_type, n_fft)
+                np.testing.assert_array_almost_equal(window_scipy,
+                                                     window_paddle.numpy(),
+                                                     decimal=5)
+
+        for n_fft in [1, self.n_fft]:
+            window_scipy_gaussain = signal.windows.gaussian(n_fft, std=7)
+            window_paddle_gaussian = paddle.audio.functional.get_window(
+                ('gaussian', 7), n_fft, False)
+            np.testing.assert_array_almost_equal(window_scipy_gaussain,
+                                                 window_paddle_gaussian.numpy(),
+                                                 decimal=5)
+            window_scipy_general_gaussain = signal.windows.general_gaussian(
+                n_fft, 1, 7)
+            window_paddle_general_gaussian = paddle.audio.functional.get_window(
+                ('general_gaussian', 1, 7), n_fft, False)
+            np.testing.assert_array_almost_equal(window_scipy_gaussain,
+                                                 window_paddle_gaussian.numpy(),
                                                  decimal=5)
 
-        window_scipy_gaussain = signal.windows.gaussian(self.n_fft, std=7)
-        window_paddle_gaussian = paddle.audio.functional.get_window(
-            ('gaussian', 7), self.n_fft, False)
-        np.testing.assert_array_almost_equal(window_scipy_gaussain,
-                                             window_paddle_gaussian.numpy(),
-                                             decimal=5)
-        window_scipy_exp = signal.windows.exponential(self.n_fft)
-        window_paddle_exp = paddle.audio.functional.get_window(
-            ('exponential', None, 1), self.n_fft, False)
-        np.testing.assert_array_almost_equal(window_scipy_exp,
-                                             window_paddle_exp.numpy(),
-                                             decimal=5)
+            window_scipy_exp = signal.windows.exponential(n_fft)
+            window_paddle_exp = paddle.audio.functional.get_window(
+                ('exponential', None, 1), n_fft, False)
+            np.testing.assert_array_almost_equal(window_scipy_exp,
+                                                 window_paddle_exp.numpy(),
+                                                 decimal=5)
 
         try:
             window_paddle = paddle.audio.functional.get_window(("kaiser", 1.0),
@@ -81,8 +118,18 @@ class TestFeatures(unittest.TestCase):
             pass
 
         try:
+            window_paddle = paddle.audio.functional.get_window("hann", -1)
+        except ValueError:
+            pass
+
+        try:
             window_paddle = paddle.audio.functional.get_window(
                 "fake_window", self.n_fft)
+        except ValueError:
+            pass
+
+        try:
+            window_paddle = paddle.audio.functional.get_window(1043, self.n_fft)
         except ValueError:
             pass
 
@@ -271,7 +318,7 @@ class TestFeatures(unittest.TestCase):
             fmin=self.fmin)
         np.testing.assert_array_almost_equal(feature_librosa,
                                              feature_compliance,
-                                             decimal=5)
+                                             decimal=4)
 
     def test_mfcc(self):
         if len(self.waveform.shape) == 2:  # (C, T)
