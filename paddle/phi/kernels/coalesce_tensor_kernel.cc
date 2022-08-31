@@ -24,6 +24,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/kernels/funcs/math_function_impl.h"
 #endif
 
 namespace phi {
@@ -47,13 +48,8 @@ struct FillConstantVisitor {
   void apply(typename std::enable_if<!(std::is_same<T, int8_t>::value ||
                                        std::is_same<T, int16_t>::value)>::type
                  * = nullptr) const {
-#ifdef PADDLE_WITH_XPU
-    phi::funcs::SetConstant<phi::XPUContext, T> set_constant;
-    set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
-#else
     phi::funcs::SetConstant<Context, T> set_constant;
     set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
-#endif
   }
 
   const Context &dev_ctx_;
