@@ -54,42 +54,8 @@ void IndexAddKernel(const Context& ctx,
   auto output_dim = output->dims();
   auto add_value_dim = add_value.dims();
   const auto& index_type = index.dtype();
-  bool index_type_match =
-      index_type == phi::DataType::INT64 || index_type == phi::DataType::INT32;
-  PADDLE_ENFORCE_EQ(index_type_match,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "Input(Index) holds the wrong type, it holds %s, but "
-                        "desires to be %s or %s",
-                        index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
-
-  PADDLE_ENFORCE_EQ(
-      axis < x.dims().size() && axis > -(x.dims().size()),
-      true,
-      phi::errors::InvalidArgument("axis expected < %ld, and > %ld, "
-                                   "but got %ld. Please check the axis input. ",
-                                   x.dims().size(),
-                                   -(x.dims().size()),
-                                   axis));
-
   int dim = axis;
   dim = dim >= 0 ? dim : dim + input_dim.size();
-  for (int i = 0; i < x.dims().size(); i++) {
-    if (dim != i) {
-      PADDLE_ENFORCE_EQ(
-          x.dims()[i],
-          add_value.dims()[i],
-          phi::errors::InvalidArgument(
-              "The value.dims[i] should be equal to x.dims[i] when i != axis. "
-              "but got value.dims[%d] = %ld, x.dims[%d] = %ld",
-              i,
-              add_value.dims()[i],
-              x.dims()[i]));
-    }
-  }
-
   auto stride_dim = phi::stride(input_dim);
   int64_t stride = stride_dim[dim];
   int64_t size = add_value_dim[dim];
