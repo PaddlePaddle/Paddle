@@ -20,6 +20,7 @@
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace phi {
@@ -67,7 +68,7 @@ void AdamDenseParamSparseGradKernel(
   const float* beta1_const_pow_ptr = nullptr;
   if (beta1_pow.place() == CPUPlace()) {
     DenseTensor xpu_beta1_pow;
-    phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, xpu_beta1_pow);
+    phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, &xpu_beta1_pow);
     if (xpu_beta1_pow.dtype() == DataType::FLOAT16)
       funcs::GetDataPointer<Context, float>(
           xpu_beta1_pow, &beta1_pow_ptr, dev_ctx);
@@ -84,7 +85,7 @@ void AdamDenseParamSparseGradKernel(
   const float* beta2_const_pow_ptr = nullptr;
   if (beta2_pow.place() == CPUPlace()) {
     DenseTensor xpu_beta2_pow;
-    phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, xpu_beta2_pow);
+    phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, &xpu_beta2_pow);
     if (xpu_beta2_pow.dtype() == DataType::FLOAT16)
       funcs::GetDataPointer<Context, float>(
           xpu_beta2_pow, &beta2_pow_ptr, dev_ctx);
@@ -104,7 +105,7 @@ void AdamDenseParamSparseGradKernel(
   funcs::GetOutDataPointer<Context, float>(
       param_out, &xpu_param_out, &param_out_ptr, dev_ctx);
 
-  Tensor xpu_mom1_out;
+  DenseTensor xpu_mom1_out;
   float* mom1_out_ptr = nullptr;
   const phi::DenseTensorMeta meta_mom1(DataType::FLOAT32, moment1_out->dims());
   xpu_mom1_out.set_meta(meta_mom1);
@@ -247,9 +248,11 @@ void AdamDenseParamSparseGradKernel(
   if (!use_global_beta_pow) {
     // update in cpu and then copy to xpu
     if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
-      funcs::SetBetaData<Context, float>(beta1_pow, beta1_pow_out, beta1_);
+      funcs::SetBetaData<Context, float>(
+          beta1_pow, beta1_pow_out, beta1_, dev_ctx);
 
-      funcs::SetBetaData<Context, float>(beta2_pow, beta2_pow_out, beta2_);
+      funcs::SetBetaData<Context, float>(
+          beta2_pow, beta2_pow_out, beta2_, dev_ctx);
     } else {
       float* beta1_pow_out_p1 = nullptr;
 
@@ -300,8 +303,8 @@ void AdamDenseParamSparseGradKernel(
     }
   }
   funcs::FreeData<float>(param, param_ptr);
-  funcs::FreeData<float>(mom1, mom1_ptr);
-  funcs::FreeData<float>(mom2, mom2_ptr);
+  funcs::FreeData<float>(moment1, mom1_ptr);
+  funcs::FreeData<float>(moment2, mom2_ptr);
   funcs::FreeData<float>(learning_rate, lr_ptr);
 }
 }  // namespace sr

@@ -78,10 +78,22 @@ static void GetDataPointer(const phi::DenseTensor& tensorData,
         errors::External("execute function ConvertDataByType failed with [%d]",
                          r));
   }
+
+  template <typename Context, typename T>
+  static void GetOutDataPointer(DenseTensor * tensorData,
+                                DenseTensor * out,
+                                T * *result,
+                                const Context& dev_ctx) {
+    if (tensorData->dtype() == DataType::FLOAT16) {
+      *result = dev_ctx.template Alloc<T>(out);
+    } else {
+      *result = dev_ctx.template Alloc<T>(tensorData);
+    }
+  }
 }
 
 template <typename Context, typename T>
-static void CopyOutData(const Tensor& srcTensor,
+static void CopyOutData(const DenseTensor& srcTensor,
                         phi::DenseTensor* dstTensor,
                         const Context& dev_ctx) {
   if (dstTensor->dtype() == DataType::FLOAT16) {
@@ -127,7 +139,7 @@ static void Scale(phi::DenseTensor* beta_pow_out,
                   const Context& dev_ctx) {
   float16* beta_pow_out_p2 = dev_ctx.template Alloc<float16>(beta_pow_out);
 
-  Tensor xpu_beta_pow_out;
+  DenseTensor xpu_beta_pow_out;
   const phi::DenseTensorMeta meta_beta_pow_out(DataType::FLOAT32,
                                                beta_pow_out->dims());
   xpu_beta_pow_out.set_meta(meta_beta_pow_out);
