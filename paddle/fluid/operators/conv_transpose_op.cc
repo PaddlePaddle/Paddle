@@ -146,40 +146,6 @@ void Conv2DTransposeOpMaker::Make() {
       "(vector<int> default:{0, 0}), the paddings(h_pad, w_pad) of convolution "
       "transpose operator.")
       .SetDefault({0, 0});
-  AddAttr<bool>(
-      "use_cudnn",
-      "(bool, default false) Only used in cudnn kernel, need install cudnn")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>("force_fp32_output",
-                "(bool, default false) Force BF16 kernel output FP32, only "
-                "used in MKL-DNN BF16")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<std::string>(
-      "mkldnn_data_type",
-      "(string, default \"float32\"). Data type of mkldnn kernel")
-      .SetDefault("float32")
-      .InEnum({"float32", "bfloat16"})
-      .AsExtra();
-  AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<std::string>("fuse_activation",
-                       "(string, default \"\") Only used in mkldnn kernel")
-      .SetDefault("")
-      .AsExtra();
-  AddAttr<float>("fuse_alpha",
-                 "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f)
-      .AsExtra();
-  AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f)
-      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -193,14 +159,6 @@ void Conv2DTransposeOpMaker::Make() {
       "\"SAME\",\"VALID\". Set to \"EXPLICIT\" for explicit padding. "
       "Set to \"SAME\" or \"VALID\" for algorithm of padding. ")
       .SetDefault("EXPLICIT");
-  AddAttr<int>("workspace_size_MB",
-               "Used in cudnn kernel only. workspace size for cudnn, in MB, "
-               "workspace is a section of GPU memory which will be "
-               "allocated/freed each time the operator runs, larger "
-               "workspace size can increase performance but also requires "
-               "better hardward. This size should be carefully set.")
-      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB())
-      .AsExtra();
   AddComment(R"DOC(
 Convolution2D Transpose Operator.
 
@@ -280,15 +238,6 @@ void Conv3DTransposeOpMaker::Make() {
                "(int default:1), the groups number of the convolution3d "
                "transpose operator. ")
       .SetDefault(1);
-  AddAttr<bool>(
-      "use_cudnn",
-      "(bool, default false) Only used in cudnn kernel, need install cudnn")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
-      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -302,14 +251,6 @@ void Conv3DTransposeOpMaker::Make() {
       "\"SAME\",\"VALID\". Set to \"EXPLICIT\" for explicit padding. "
       "Set to \"SAME\" or \"VALID\" for algorithm of padding. ")
       .SetDefault("EXPLICIT");
-  AddAttr<int>("workspace_size_MB",
-               "Used in cudnn kernel only. workspace size for cudnn, in MB, "
-               "workspace is a section of GPU memory which will be "
-               "allocated/freed each time the operator runs, larger "
-               "workspace size can increase performance but also requires "
-               "better hardward. This size should be carefully set.")
-      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB())
-      .AsExtra();
   AddComment(R"DOC(
 Convolution3D Transpose Operator.
 
