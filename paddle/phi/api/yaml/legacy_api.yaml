@@ -1257,6 +1257,17 @@
     func : increment
   inplace : (x -> out)
 
+- api : index_add
+  args : (Tensor x, Tensor index,  Tensor add_value, int axis)
+  output : Tensor(out)
+  infer_meta :
+    func : IndexAddInferMeta
+  kernel :
+    func : index_add
+    data_type : x
+  inplace : (x -> out)
+  backward : index_add_grad
+
 - api : index_sample
   args : (Tensor x, Tensor index)
   output : Tensor
@@ -2490,10 +2501,22 @@
   backward : spectral_norm_grad
 
 - api : split
-  args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)
-  output : Tensor[]
-  invoke : split_impl(x, num_or_sections, axis)
+  args : (Tensor x, IntArray sections, Scalar(int) axis)
+  output : Tensor[]{sections.size()}
+  infer_meta :
+    func : SplitInferMeta
+  kernel :
+    func : split
   backward : split_grad
+
+- api : split_with_num
+  args : (Tensor x, int num, Scalar(int) axis)
+  output : Tensor[]{num}
+  infer_meta :
+    func : SplitWithNumInferMeta
+  kernel :
+    func : split_with_num
+  backward : split_with_num_grad
 
 - api : sqrt
   args : (Tensor x)

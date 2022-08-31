@@ -128,6 +128,8 @@ from .manipulation import put_along_axis_  # noqa: F401
 from .manipulation import as_real  # noqa: F401
 from .manipulation import moveaxis  # noqa: F401
 from .manipulation import repeat_interleave  # noqa: F401
+from .manipulation import index_add  # noqa: F401
+from .manipulation import index_add_  # noqa: F401
 from .math import abs  # noqa: F401
 from .math import acos  # noqa: F401
 from .math import asin  # noqa: F401
@@ -506,6 +508,8 @@ tensor_method_func = [  # noqa
     'put_along_axis_',
     'exponential_',
     'heaviside',
+    'index_add',
+    "index_add_",
     'take',
     'bucketize',
     'sgn',
