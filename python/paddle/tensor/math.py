@@ -784,6 +784,24 @@ def remainder(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+@inplace_apis_in_dygraph_only
+def remainder_(x, y, name=None):
+    r"""
+    Inplace version of ``remainder`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_remainder`.
+    """
+    op_type = 'elementwise_mod_'
+    axis = -1
+
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape))
+
+    return _elementwise_op_in_dygraph(x, y, axis=axis, op_name=op_type)
+
+
 mod = remainder  # noqa: F841
 floor_mod = remainder  # noqa: F841
 
