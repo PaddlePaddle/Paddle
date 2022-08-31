@@ -262,7 +262,6 @@ class DistUTPortManager():
         # if root(depth==0), convert the ignores to abs paths
         if depth == 0:
             self.processed_dirs.clear()
-            ignores = [os.path.abspath(i) for i in ignores]
 
         self.processed_dirs.add(current_work_dir)
         contents = os.listdir(current_work_dir)
@@ -331,7 +330,7 @@ class CMakeGenerator():
     def __init__(self, current_dirs):
         self.processed_dirs = set()
         self.port_manager = DistUTPortManager()
-        self.current_dirs = current_dirs
+        self.current_dirs = self._norm_dirs(current_dirs)
 
     def prepare_dist_ut_port(self):
         for c in self._find_root_dirs():
@@ -340,24 +339,29 @@ class CMakeGenerator():
 
     def parse_csvs(self):
         for c in self.current_dirs:
-            c = os.path.abspath(c)
             self._gen_cmakelists(c)
+
+    def _norm_dirs(self, dirs):
+        # reform all dirs' path as normal absolute path
+        norm_dirs = []
+        for d in dirs:
+            norm_dirs.append(os.path.abspath(os.path.normpath(d)))
+        return norm_dirs
 
     def _find_root_dirs(self):
         root_dirs = []
         # for each current directory, find its highest ancient directory (at least itself)
         # which includes CMakeLists.txt or testslist.csv.txt in the filesys tree
         for c in self.current_dirs:
-            c = os.path.abspath(c)
             while True:
                 ppath = os.path.dirname(c)
-                if os.path.abspath(ppath) == os.path.abspath(c):
+                if ppath == c:
                     break
                 cmake = os.path.join(ppath, "CMakeLists.txt")
                 csv = os.path.join(ppath, "testslist.csv.txt")
                 if not (os.path.isfile(cmake) or os.path.isfile(csv)):
                     break
-                c = os.path.abspath(ppath)
+                c = ppath
             if c not in root_dirs:
                 root_dirs.append(c)
         return root_dirs
