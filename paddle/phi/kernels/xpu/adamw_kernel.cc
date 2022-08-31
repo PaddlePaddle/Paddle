@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -104,12 +105,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
                        epsilon_,
                        coeff,
                        param.numel());
-    PADDLE_ENFORCE_EQ(
-        r,
-        xpu::SUCCESS,
-        errors::External("XPU kernel adamw occur error in adamw error code ",
-                         r,
-                         XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
   } else {
     int r = xpu::adam(dev_ctx.x_context(),
                       grad.template data<T>(),
@@ -126,12 +122,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       beta2_,
                       epsilon_,
                       param.numel());
-    PADDLE_ENFORCE_EQ(
-        r,
-        xpu::SUCCESS,
-        errors::External("XPU kernel adam occur error in adamw error code ",
-                         r,
-                         XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
   }
 
   if (!use_global_beta_pow) {
@@ -154,12 +145,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
                          false,
                          beta1_,
                          0.0f);
-      PADDLE_ENFORCE_EQ(
-          r,
-          xpu::SUCCESS,
-          errors::External("XPU kernel scale occur error in adamw error code ",
-                           r,
-                           XPUAPIErrorMsg[r]));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
       r = xpu::scale(dev_ctx.x_context(),
                      beta2_pow_ptr,
                      beta2_pow_out_p,
@@ -167,12 +153,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
                      false,
                      beta2_,
                      0.0f);
-      PADDLE_ENFORCE_EQ(
-          r,
-          xpu::SUCCESS,
-          errors::External("XPU kernel scale occur error in adamw error code ",
-                           r,
-                           XPUAPIErrorMsg[r]));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
     }
   }
 }
