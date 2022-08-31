@@ -97,12 +97,15 @@ class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
 
 class TestRemainderOp(unittest.TestCase):
 
+    def _executed_api(self, x, y, name=None):
+        return paddle.remainder(x, y, name)
+
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="int64")
             y = fluid.data(name='y', shape=[2, 3], dtype='int64')
 
-            y_1 = paddle.remainder(x, y, name='div_res')
+            y_1 = self._executed_api(x, y, name='div_res')
             self.assertEqual(('div_res' in y_1.name), True)
 
     def test_dygraph(self):
@@ -111,7 +114,7 @@ class TestRemainderOp(unittest.TestCase):
             np_y = np.array([1, 5, 3, 3]).astype('int64')
             x = paddle.to_tensor(np_x)
             y = paddle.to_tensor(np_y)
-            z = paddle.remainder(x, y)
+            z = self._executed_api(x, y)
             np_z = z.numpy()
             z_expected = np.array([0, 3, 2, 1])
             self.assertEqual((np_z == z_expected).all(), True)
@@ -131,6 +134,45 @@ class TestRemainderOp(unittest.TestCase):
             z = x % y
             z_expected = np.array([0, 1, 1, -1])
             np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
+
+
+class TestRemainderInplaceOp(TestRemainderOp):
+
+    def _executed_api(self, x, y, name=None):
+        return x.remainder_(y, name)
+
+
+class TestRemainderInplaceBroadcastSuccess(unittest.TestCase):
+
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 3, 4).astype('float')
+        self.y_numpy = np.random.rand(3, 4).astype('float')
+
+    def test_broadcast_success(self):
+        paddle.disable_static()
+        self.init_data()
+        x = paddle.to_tensor(self.x_numpy)
+        y = paddle.to_tensor(self.y_numpy)
+        inplace_result = x.remainder_(y)
+        numpy_result = self.x_numpy % self.y_numpy
+        self.assertEqual((inplace_result.numpy() == numpy_result).all(), True)
+        paddle.enable_static()
+
+
+class TestRemainderInplaceBroadcastSuccess2(TestRemainderInplaceBroadcastSuccess
+                                            ):
+
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 2, 3, 1).astype('float')
+        self.y_numpy = np.random.rand(3, 1).astype('float')
+
+
+class TestRemainderInplaceBroadcastSuccess3(TestRemainderInplaceBroadcastSuccess
+                                            ):
+
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float')
+        self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float')
 
 
 if __name__ == '__main__':

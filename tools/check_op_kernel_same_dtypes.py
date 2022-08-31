@@ -65,6 +65,13 @@ def print_diff(op_type, op_kernel_dtype_set, grad_op_kernel_dtype_set):
               format(op_type + "_grad", " ".join(lack_dtypes)))
 
 
+def contain_current_op(op_type, op_info_dict):
+    if not op_type.endswith("_grad"):
+        return op_type + "_grad" in op_info_dict
+    else:
+        return op_type.rstrip("_grad") in op_info_dict
+
+
 def check_change_or_add_op_kernel_dtypes_valid():
     origin = read_file(sys.argv[1])
     new = read_file(sys.argv[2])
@@ -84,14 +91,19 @@ def check_change_or_add_op_kernel_dtypes_valid():
         if op_type in origin_all_kernel_dtype_dict:
             origin_dtype_set = origin_all_kernel_dtype_dict[op_type]
             # op kernel changed
-            if origin_dtype_set != dtype_set:
+            if origin_dtype_set != dtype_set and not contain_current_op(
+                    op_type, added_or_changed_op_info):
                 added_or_changed_op_info[op_type] = dtype_set
             else:
                 # do nothing
                 continue
         else:
             # op kernel added
-            added_or_changed_op_info[op_type] = dtype_set
+            if not contain_current_op(op_type, added_or_changed_op_info):
+                added_or_changed_op_info[op_type] = dtype_set
+            else:
+                # do nothing
+                continue
 
     for op_type, dtype_set in added_or_changed_op_info.items():
         # if changed forward op

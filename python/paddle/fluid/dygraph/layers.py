@@ -38,6 +38,7 @@ from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import _non_static_mode, convert_np_dtype_to_dtype_, in_dygraph_mode
+from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
@@ -1730,6 +1731,18 @@ class Layer(object):
 
         self._dtype = dtype
         return self
+
+    def _startup_program(self):
+        """
+        Return starup program containing initialization operations of all parameters.
+
+        NOTE(dev): This is a very low level API and only for inner developer.
+        """
+        startup_program = Program()
+        for param in self.parameters():
+            param._create_init_op(startup_program.global_block())
+
+        return startup_program
 
     # [aliases] Compatible with old method names
     set_dict = set_state_dict

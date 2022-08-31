@@ -15,7 +15,7 @@
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
 from paddle.tensor.linalg import matmul
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 
 def fused_matmul_bias(x,
@@ -57,8 +57,9 @@ def fused_matmul_bias(x,
     if bias is None:
         return matmul(x, y, transpose_x, transpose_y, name)
     if _non_static_mode():
-        return _C_ops.fused_gemm_epilogue(x, y, bias, 'trans_x', transpose_x,
-                                          'trans_y', transpose_y)
+        return _legacy_C_ops.fused_gemm_epilogue(x, y, bias, 'trans_x',
+                                                 transpose_x, 'trans_y',
+                                                 transpose_y)
 
     helper = LayerHelper('fused_matmul_bias', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
