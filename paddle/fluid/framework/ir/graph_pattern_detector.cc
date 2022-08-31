@@ -1087,7 +1087,8 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
   // Output
   auto *fc_out_var = pattern->NewNode(output_repr())
                          ->AsOutput()
-                         ->assert_is_op_output("fc", "Out");
+                         ->assert_is_op_output("fc", "Out")
+                         ->assert_is_only_output_of_op("fc");
 
   std::vector<PDNode *> links_from{input_var, fc_weight_var, fc_bias_var};
   if (with_residual_data) {
