@@ -182,9 +182,7 @@ void AdamDenseKernel(const Context& dev_ctx,
       param.numel());
 
   xpu_wait(dev_ctx.x_context()->xpu_stream);
-  PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS,
-                    true,
-                    errors::External("XPU API return wrong value[%d],", r));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
 
   funcs::FreeData<float>(grad, grad_c);
 
@@ -217,12 +215,7 @@ void AdamDenseKernel(const Context& dev_ctx,
                        beta1_,
                        0.0f);
         xpu_wait(dev_ctx.x_context()->xpu_stream);
-        PADDLE_ENFORCE_EQ(
-            r,
-            xpu::SUCCESS,
-            errors::External("XPU kernel scale occur error in adam error code ",
-                             r,
-                             XPUAPIErrorMsg[r]));
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
       }
 
       float* beta2_pow_out_p1 = nullptr;
@@ -240,12 +233,7 @@ void AdamDenseKernel(const Context& dev_ctx,
                        beta2_,
                        0.0f);
         xpu_wait(dev_ctx.x_context()->xpu_stream);
-        PADDLE_ENFORCE_EQ(
-            r,
-            xpu::SUCCESS,
-            errors::External("XPU kernel scale occur error in adam error code ",
-                             r,
-                             XPUAPIErrorMsg[r]));
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
       }
     }
   }

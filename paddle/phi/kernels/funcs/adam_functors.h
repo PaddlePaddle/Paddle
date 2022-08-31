@@ -20,6 +20,7 @@
 #include "paddle/phi/kernels/funcs/algorithm.h"
 
 #ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -40,12 +41,7 @@ static int ConvertDataByType(
   int r = 0;
   if (allocateFlag) {
     r = xpu_malloc(reinterpret_cast<void**>(y), sizeof(T2) * len);
-
-    PADDLE_ENFORCE_EQ(
-        r,
-        xpu::Error_t::SUCCESS,
-        errors::External("Alloc memory in xpu for result data failed with [%d]",
-                         r));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
   }
 
   T1* cpu_data = reinterpret_cast<T1*>(malloc(sizeof(T1) * len));
@@ -75,11 +71,7 @@ static void GetDataPointer(const phi::DenseTensor& tensorData,
 
     int r = ConvertDataByType<Context, float16, T>(
         real_data, result, len, true, dev_ctx);
-    PADDLE_ENFORCE_EQ(
-        r,
-        xpu::Error_t::SUCCESS,
-        errors::External("execute function ConvertDataByType failed with [%d]",
-                         r));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
   }
 }
 
@@ -106,11 +98,7 @@ static void CopyOutData(const DenseTensor& srcTensor,
 
     int r = ConvertDataByType<Context, T, float16>(
         xpu_out_data, &out_data, len, false, dev_ctx);
-    PADDLE_ENFORCE_EQ(
-        r,
-        xpu::Error_t::SUCCESS,
-        errors::External("execute function ConvertDataByType failed with[%d]",
-                         r));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
   }
 }
 
@@ -156,12 +144,7 @@ static void Scale(phi::DenseTensor* beta_pow_out,
                      false,
                      beta,
                      0.0f);
-  PADDLE_ENFORCE_EQ(
-      r,
-      xpu::SUCCESS,
-      errors::External("XPU kernel scale occur error in adam error code ",
-                       r,
-                       XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
 
   const float* xpu_beta_pow_out_data =
       dev_ctx.template Alloc<T>(&xpu_beta_pow_out);
@@ -169,11 +152,7 @@ static void Scale(phi::DenseTensor* beta_pow_out,
 
   r = ConvertDataByType<Context, T, float16>(
       xpu_beta_pow_out_data, &beta_pow_out_p2, len, false, dev_ctx);
-  PADDLE_ENFORCE_EQ(
-      r,
-      xpu::Error_t::SUCCESS,
-      errors::External("execute function ConvertDataByType failed with [%d]",
-                       r));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
 }
 #endif
 
