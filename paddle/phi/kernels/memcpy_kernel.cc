@@ -155,7 +155,7 @@ void MemcpyKernel(const Context& dev_ctx,
       Copy(dev_ctx, x, CPUPlace(), true, out);
       break;
     case 1: /* CUDAPlace */
-      Copy(dev_ctx, x, GPUPlace()(), false, out);
+      Copy(dev_ctx, x, GPUPlace(), false, out);
       break;
     case 2: /* CUDAPinnedPlace */
       Copy(dev_ctx, x, GPUPinnedPlace(), false, out);
