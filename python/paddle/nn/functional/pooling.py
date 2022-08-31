@@ -1076,15 +1076,15 @@ def max_pool2d(x,
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
-   Returns:
+    Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
-   Raises:
+    Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
         ShapeError: If the output's shape calculated is not greater than 0.
 
-   Examples:
+    Examples:
         .. code-block:: python
 
             import paddle
