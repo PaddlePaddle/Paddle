@@ -1381,6 +1381,11 @@ py_test_modules(
   test_eager_deletion_padding_rnn_for_interpretercore MODULES
   test_eager_deletion_padding_rnn ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
 
+set_tests_properties(
+  test_buffer_shared_memory_reuse_pass
+  test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
+  PROPERTIES ENVIRONMENT FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+
 # ExecutionStrategy is deprecated in standalone executor
 set_tests_properties(test_parallel_executor_dry_run
                      PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
