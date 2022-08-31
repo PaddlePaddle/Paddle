@@ -15,6 +15,7 @@
 #pragma once
 
 #include <ThreadPool.h>
+
 #include <algorithm>
 #include <fstream>
 #include <memory>
@@ -408,6 +409,7 @@ class SlotRecordDataset : public DatasetImpl<SlotRecord> {
   virtual void GetRandomData(
       const std::unordered_set<uint16_t>& slots_to_replace,
       std::vector<SlotRecord>* result);
+
   virtual void GlobalShuffle(int thread_num = -1);
   virtual void DynamicAdjustChannelNum(int channel_num,
                                        bool discard_remaining_ins);

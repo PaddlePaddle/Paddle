@@ -91,12 +91,6 @@ template <typename T>
 struct SlotValues {
   std::vector<T> slot_values;
   std::vector<uint32_t> slot_offsets;
-  std::vector<uint64_t> slot_pos;
-
-  // get the position of uint slot in all slot info
-  void add_slot_pos(const std::vector<uint64_t>& slot_position) {
-    slot_pos.assign(slot_position.begin(), slot_position.end());
-  }
 
   void add_values(const T* values, uint32_t num) {
     if (slot_offsets.empty()) {
@@ -1532,28 +1526,36 @@ struct SlotRecordCandidate {
       const SlotRecord& rec,
       const std::unordered_set<uint16_t>& slot_index_to_replace) {
     int cnt = 0;
-    for (const auto& fea : rec->slot_uint64_feasigns_.slot_pos) {
+    int base = 0;
+    for (auto fea = 0;
+         fea < static_cast<int>(rec->slot_uint64_feasigns_.slot_offsets.size());
+         ++fea) {
       if (slot_index_to_replace.find(fea) != slot_index_to_replace.end()) {
         for (auto i = rec->slot_uint64_feasigns_.slot_offsets.at(cnt);
              i < rec->slot_uint64_feasigns_.slot_offsets.at(cnt + 1);
              i++) {
-          feas_.insert({cnt, rec->slot_uint64_feasigns_.slot_values.at(i)});
+          feas_.insert(
+              {cnt, rec->slot_uint64_feasigns_.slot_values.at(base + i)});
         }
       }
       ++cnt;
+      base += static_cast<int>(rec->slot_uint64_feasigns_.slot_offsets.at(fea));
     }
   }
   SlotRecordCandidate& operator=(const SlotRecord& rec) {
     feas_.clear();
     ins_id_ = rec->ins_id_;
-    int len_slot = static_cast<int>(rec->slot_uint64_feasigns_.slot_pos.size());
+    int base = 0;
+    int len_slot =
+        static_cast<int>(rec->slot_uint64_feasigns_.slot_offsets.size());
     for (auto cnt = 0; cnt < len_slot; ++cnt) {
       for (auto i = rec->slot_uint64_feasigns_.slot_offsets.at(cnt);
            i < rec->slot_uint64_feasigns_.slot_offsets.at(cnt + 1);
            i++) {
         feas_.insert({rec->slot_uint64_feasigns_.slot_offsets.at(cnt),
-                      rec->slot_uint64_feasigns_.slot_values.at(i)});
+                      rec->slot_uint64_feasigns_.slot_values.at(base + i)});
       }
+      base += static_cast<int>(rec->slot_uint64_feasigns_.slot_offsets.at(cnt));
     }
     return *this;
   }

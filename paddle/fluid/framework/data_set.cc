@@ -1621,22 +1621,26 @@ void SlotRecordDataset::GetRandomData(
     SlotRecordCandidate rand_rec;
     SlotRecord new_rec = rec;
     slots_record_shuffle_rclist_.AddAndGet(rec, &rand_rec);
-    for (auto it = new_rec->slot_uint64_feasigns_.slot_pos.begin();
-         it != new_rec->slot_uint64_feasigns_.slot_pos.end();) {
+    for (auto it = 0;
+         it < static_cast<int>(
+                  new_rec->slot_uint64_feasigns_.slot_offsets.size());) {
       auto slot_it = slots_to_replace.begin();
       int pos_slot = 0;
       for (; slot_it != slots_to_replace.end(); ++slot_it, ++pos_slot) {
-        if (*slot_it == *it) break;
+        if (*slot_it == it) break;
       }
       if (slot_it != slots_to_replace.end()) {
         int erase_begin =
             new_rec->slot_uint64_feasigns_.slot_offsets.at(pos_slot);
         int erase_end =
             new_rec->slot_uint64_feasigns_.slot_offsets.at(pos_slot + 1);
+        auto slot_v_it = new_rec->slot_uint64_feasigns_.slot_values.begin();
         for (int idx = erase_begin;
-             it != new_rec->slot_uint64_feasigns_.slot_pos.end() &&
-             idx < erase_end;) {
-          it = new_rec->slot_uint64_feasigns_.slot_values.erase(it);
+             slot_v_it != new_rec->slot_uint64_feasigns_.slot_values.end() &&
+             idx < erase_end;
+             ++idx) {
+          slot_v_it =
+              new_rec->slot_uint64_feasigns_.slot_values.erase(slot_v_it + idx);
           debug_erase_cnt += 1;
         }
         auto range = rand_rec.feas_.equal_range(pos_slot);
@@ -1672,6 +1676,120 @@ void SlotRecordDataset::GetRandomData(
   }
   VLOG(2) << "erase feasign num: " << debug_erase_cnt
           << " repush feasign num: " << debug_push_cnt;
+}
+
+void SlotRecordDataset::PreprocessChannel(
+    const std::set<std::string>& slots_to_replace,
+    std::unordered_set<uint16_t>& index_slots) {  // NOLINT
+  int out_channel_size = 0;
+  if (cur_channel_ == 0) {
+    for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+      out_channel_size += multi_output_channel_[i]->Size();
+    }
+  } else {
+    for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
+      out_channel_size += multi_consume_channel_[i]->Size();
+    }
+  }
+  VLOG(2) << "DatasetImpl<T>::SlotsShuffle() begin with input channel size: "
+          << input_channel_->Size()
+          << " output channel size: " << out_channel_size;
+
+  if ((!input_channel_ || input_channel_->Size() == 0) &&
+      slots_shuffle_original_data_.size() == 0 && out_channel_size == 0) {
+    VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end, no data to slots shuffle";
+    return;
+  }
+
+  auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
+  int i_u = 0;  // wangzhen38  i
+  for (int i = 0; i < multi_slot_desc.slots_size(); ++i, ++i_u) {
+    std::string cur_slot_type = multi_slot_desc.slots(i).type();
+    if (cur_slot_type[0] == 'f') continue;
+    std::string cur_slot = multi_slot_desc.slots(i).name();
+    if (slots_to_replace.find(cur_slot) != slots_to_replace.end()) {
+      index_slots.insert(i_u);
+    }
+  }
+  VLOG(0) << "(GPUPS)int_slot's num is : " << i_u;
+  if (slots_shuffle_original_data_.size() == 0) {
+    // before first slots shuffle, instances could be in
+    // input_channel, oupput_channel or consume_channel
+    if (input_channel_ && input_channel_->Size() != 0) {
+      slots_shuffle_original_data_.reserve(input_channel_->Size());
+      input_channel_->Close();
+      input_channel_->ReadAll(slots_shuffle_original_data_);
+    } else {
+      CHECK(out_channel_size > 0);  // NOLINT
+      if (cur_channel_ == 0) {
+        for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+          std::vector<SlotRecord> vec_data;
+          multi_output_channel_[i]->Close();
+          multi_output_channel_[i]->ReadAll(vec_data);
+          slots_shuffle_original_data_.reserve(
+              slots_shuffle_original_data_.size() + vec_data.size());
+          slots_shuffle_original_data_.insert(
+              slots_shuffle_original_data_.end(),
+              std::make_move_iterator(vec_data.begin()),
+              std::make_move_iterator(vec_data.end()));
+          vec_data.clear();
+          vec_data.shrink_to_fit();
+          multi_output_channel_[i]->Clear();
+        }
+      } else {
+        for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
+          std::vector<SlotRecord> vec_data;
+          multi_consume_channel_[i]->Close();
+          multi_consume_channel_[i]->ReadAll(vec_data);
+          slots_shuffle_original_data_.reserve(
+              slots_shuffle_original_data_.size() + vec_data.size());
+          slots_shuffle_original_data_.insert(
+              slots_shuffle_original_data_.end(),
+              std::make_move_iterator(vec_data.begin()),
+              std::make_move_iterator(vec_data.end()));
+          vec_data.clear();
+          vec_data.shrink_to_fit();
+          multi_consume_channel_[i]->Clear();
+        }
+      }
+    }
+  } else {
+    // if already have original data for slots shuffle, clear channel
+    input_channel_->Clear();
+    if (cur_channel_ == 0) {
+      for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+        if (!multi_output_channel_[i]) {
+          continue;
+        }
+        multi_output_channel_[i]->Clear();
+      }
+    } else {
+      for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
+        if (!multi_consume_channel_[i]) {
+          continue;
+        }
+        multi_consume_channel_[i]->Clear();
+      }
+    }
+  }
+  int end_size = 0;
+  if (cur_channel_ == 0) {
+    for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+      if (!multi_output_channel_[i]) {
+        continue;
+      }
+      end_size += multi_output_channel_[i]->Size();
+    }
+  } else {
+    for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
+      if (!multi_consume_channel_[i]) {
+        continue;
+      }
+      end_size += multi_consume_channel_[i]->Size();
+    }
+  }
+  CHECK(input_channel_->Size() == 0)
+      << "input channel should be empty before slots shuffle";
 }
 
 void MultiSlotDataset::PreprocessChannel(
@@ -1731,116 +1849,6 @@ void MultiSlotDataset::PreprocessChannel(
       } else {
         for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
           std::vector<Record> vec_data;
-          multi_consume_channel_[i]->Close();
-          multi_consume_channel_[i]->ReadAll(vec_data);
-          slots_shuffle_original_data_.reserve(
-              slots_shuffle_original_data_.size() + vec_data.size());
-          slots_shuffle_original_data_.insert(
-              slots_shuffle_original_data_.end(),
-              std::make_move_iterator(vec_data.begin()),
-              std::make_move_iterator(vec_data.end()));
-          vec_data.clear();
-          vec_data.shrink_to_fit();
-          multi_consume_channel_[i]->Clear();
-        }
-      }
-    }
-  } else {
-    // if already have original data for slots shuffle, clear channel
-    input_channel_->Clear();
-    if (cur_channel_ == 0) {
-      for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
-        if (!multi_output_channel_[i]) {
-          continue;
-        }
-        multi_output_channel_[i]->Clear();
-      }
-    } else {
-      for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
-        if (!multi_consume_channel_[i]) {
-          continue;
-        }
-        multi_consume_channel_[i]->Clear();
-      }
-    }
-  }
-  int end_size = 0;
-  if (cur_channel_ == 0) {
-    for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
-      if (!multi_output_channel_[i]) {
-        continue;
-      }
-      end_size += multi_output_channel_[i]->Size();
-    }
-  } else {
-    for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
-      if (!multi_consume_channel_[i]) {
-        continue;
-      }
-      end_size += multi_consume_channel_[i]->Size();
-    }
-  }
-  CHECK(input_channel_->Size() == 0)
-      << "input channel should be empty before slots shuffle";
-}
-
-void SlotRecordDataset::PreprocessChannel(
-    const std::set<std::string>& slots_to_replace,
-    std::unordered_set<uint16_t>& index_slots) {  // NOLINT
-  int out_channel_size = 0;
-  if (cur_channel_ == 0) {
-    for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
-      out_channel_size += multi_output_channel_[i]->Size();
-    }
-  } else {
-    for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
-      out_channel_size += multi_consume_channel_[i]->Size();
-    }
-  }
-  VLOG(2) << "DatasetImpl<T>::SlotsShuffle() begin with input channel size: "
-          << input_channel_->Size()
-          << " output channel size: " << out_channel_size;
-
-  if ((!input_channel_ || input_channel_->Size() == 0) &&
-      slots_shuffle_original_data_.size() == 0 && out_channel_size == 0) {
-    VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end, no data to slots shuffle";
-    return;
-  }
-
-  auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
-  for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
-    std::string cur_slot = multi_slot_desc.slots(i).name();
-    if (slots_to_replace.find(cur_slot) != slots_to_replace.end()) {
-      index_slots.insert(i);
-    }
-  }
-  if (slots_shuffle_original_data_.size() == 0) {
-    // before first slots shuffle, instances could be in
-    // input_channel, oupput_channel or consume_channel
-    if (input_channel_ && input_channel_->Size() != 0) {
-      slots_shuffle_original_data_.reserve(input_channel_->Size());
-      input_channel_->Close();
-      input_channel_->ReadAll(slots_shuffle_original_data_);
-    } else {
-      CHECK(out_channel_size > 0);  // NOLINT
-      if (cur_channel_ == 0) {
-        for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
-          std::vector<SlotRecord> vec_data;
-          multi_output_channel_[i]->Close();
-          multi_output_channel_[i]->ReadAll(vec_data);
-          slots_shuffle_original_data_.reserve(
-              slots_shuffle_original_data_.size() + vec_data.size());
-          slots_shuffle_original_data_.insert(
-              slots_shuffle_original_data_.end(),
-              std::make_move_iterator(vec_data.begin()),
-              std::make_move_iterator(vec_data.end()));
-          vec_data.clear();
-          vec_data.shrink_to_fit();
-          multi_output_channel_[i]->Clear();
-        }
-      } else {
-        for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
-          std::vector<SlotRecord> vec_data;
           multi_consume_channel_[i]->Close();
           multi_consume_channel_[i]->ReadAll(vec_data);
           slots_shuffle_original_data_.reserve(

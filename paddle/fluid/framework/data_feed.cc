@@ -2465,7 +2465,7 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
 
   int float_total_slot_num = 0;
   int uint64_total_slot_num = 0;
-  std::vector<uint64_t> uint_slot_pos;
+
   for (size_t i = 0; i < all_slots_info_.size(); ++i) {
     auto& info = all_slots_info_[i];
     int num = strtol(&str[pos], &endptr, 10);
@@ -2488,7 +2488,6 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
           ++float_total_slot_num;
         }
       } else if (info.type[0] == 'u') {  // uint64
-        uint_slot_pos.push_back(i);
         auto& slot_fea = slot_uint64_feasigns[info.slot_value_idx];
         slot_fea.clear();
         for (int j = 0; j < num; ++j) {
@@ -2512,7 +2511,6 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
                                               float_total_slot_num);
   rec->slot_uint64_feasigns_.add_slot_feasigns(slot_uint64_feasigns,
                                                uint64_total_slot_num);
-  rec->slot_uint64_feasigns_.add_slot_pos(std::move(uint_slot_pos));
 
   return (uint64_total_slot_num > 0);
 }
