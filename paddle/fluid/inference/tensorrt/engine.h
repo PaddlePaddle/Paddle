@@ -307,6 +307,10 @@ class TensorRTEngine {
       // It's ok. We will set it later.
       infer_context_[predictor_id_per_thread].reset(
           infer_engine_->createExecutionContext());
+      PADDLE_ENFORCE_NOT_NULL(
+          infer_context_[predictor_id_per_thread],
+          platform::errors::InvalidArgument(
+              "TensorRT engine can not build execution context."));
       if (with_dynamic_shape_) {
         // need new profile if it's not the first
         if (cur_profile_num_ > 0) {
