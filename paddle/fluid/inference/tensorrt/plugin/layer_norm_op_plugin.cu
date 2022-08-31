@@ -28,11 +28,11 @@ namespace plugin {
 
 int LayerNormPlugin::initialize() TRT_NOEXCEPT {
   if (with_fp16_) {
-    auto scale_d_ptr = new half[scale_.size()];
+    half *scale_d_ptr = new half[scale_.size()];
     for (int i = 0; i < scale_.size(); i++) {
       scale_d_ptr[i] = static_cast<half>(scale_.data()[i]);
     }
-    auto bias_d_ptr = new half[bias_.size()];
+    half *bias_d_ptr = new half[bias_.size()];
     for (int i = 0; i < bias_.size(); i++) {
       bias_d_ptr[i] = static_cast<half>(bias_.data()[i]);
     }
@@ -46,17 +46,19 @@ int LayerNormPlugin::initialize() TRT_NOEXCEPT {
                bias_d_ptr,
                sizeof(half) * bias_.size(),
                cudaMemcpyHostToDevice);
+    delete[] scale_d_ptr;
+    delete[] bias_d_ptr;
   } else {
     cudaMalloc(&bias_gpu_, sizeof(float) * bias_.size());
     cudaMemcpy(bias_gpu_,
-              bias_.data(),
-              bias_.size() * sizeof(float),
-              cudaMemcpyHostToDevice);
+               bias_.data(),
+               bias_.size() * sizeof(float),
+               cudaMemcpyHostToDevice);
     cudaMalloc(&scale_gpu_, sizeof(float) * scale_.size());
     cudaMemcpy(scale_gpu_,
-              scale_.data(),
-              scale_.size() * sizeof(float),
-              cudaMemcpyHostToDevice);
+               scale_.data(),
+               scale_.size() * sizeof(float),
+               cudaMemcpyHostToDevice);
   }
   return 0;
 }
@@ -203,11 +205,11 @@ int LayerNormPlugin::enqueue(int batch_size,
 
 int LayerNormPluginDynamic::initialize() TRT_NOEXCEPT {
   if (with_fp16_) {
-    auto scale_d_ptr = new half[scale_.size()];
+    half *scale_d_ptr = new half[scale_.size()];
     for (int i = 0; i < scale_.size(); i++) {
       scale_d_ptr[i] = static_cast<half>(scale_.data()[i]);
     }
-    auto bias_d_ptr = new half[bias_.size()];
+    half *bias_d_ptr = new half[bias_.size()];
     for (int i = 0; i < bias_.size(); i++) {
       bias_d_ptr[i] = static_cast<half>(bias_.data()[i]);
     }
@@ -221,17 +223,19 @@ int LayerNormPluginDynamic::initialize() TRT_NOEXCEPT {
                bias_d_ptr,
                sizeof(half) * bias_.size(),
                cudaMemcpyHostToDevice);
+    delete[] scale_d_ptr;
+    delete[] bias_d_ptr;
   } else {
     cudaMalloc(&bias_gpu_, sizeof(float) * bias_.size());
     cudaMemcpy(bias_gpu_,
-              bias_.data(),
-              bias_.size() * sizeof(float),
-              cudaMemcpyHostToDevice);
+               bias_.data(),
+               bias_.size() * sizeof(float),
+               cudaMemcpyHostToDevice);
     cudaMalloc(&scale_gpu_, sizeof(float) * scale_.size());
     cudaMemcpy(scale_gpu_,
-              scale_.data(),
-              scale_.size() * sizeof(float),
-              cudaMemcpyHostToDevice);
+               scale_.data(),
+               scale_.size() * sizeof(float),
+               cudaMemcpyHostToDevice);
   }
   return 0;
 }
@@ -396,15 +400,15 @@ int LayerNormPluginDynamic::enqueue(
 
     phi::LayerNormDirectCUDAFunctor<float> layer_norm;
     layer_norm(stream,
-              input,
-              input_shape,
-              bias_d,
-              scale_d,
-              output,
-              mean_d,
-              variance_d,
-              begin_norm_axis,
-              eps);
+               input,
+               input_shape,
+               bias_d,
+               scale_d,
+               output,
+               mean_d,
+               variance_d,
+               begin_norm_axis,
+               eps);
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp16";
     const half *input = reinterpret_cast<const half *>(inputs[0]);
@@ -418,15 +422,15 @@ int LayerNormPluginDynamic::enqueue(
 
     phi::LayerNormDirectCUDAFunctor<half> layer_norm;
     layer_norm(stream,
-              input,
-              input_shape,
-              bias_d,
-              scale_d,
-              output,
-              mean_d,
-              variance_d,
-              begin_norm_axis,
-              eps);
+               input,
+               input_shape,
+               bias_d,
+               scale_d,
+               output,
+               mean_d,
+               variance_d,
+               begin_norm_axis,
+               eps);
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "The LayerNorm TRT Plugin's input type should be float or half."));

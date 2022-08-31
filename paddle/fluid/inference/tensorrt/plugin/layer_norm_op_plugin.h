@@ -102,14 +102,14 @@ class LayerNormPlugin : public PluginTensorRT {
 
   LayerNormPlugin* clone() const TRT_NOEXCEPT override {
     auto ptr = new LayerNormPlugin(bias_.data(),
-                               bias_.size(),
-                               scale_.data(),
-                               scale_.size(),
-                               begin_norm_axis_,
-                               eps_,
-                               mean_shape_,
-                               variance_shape_,
-                               with_fp16_);
+                                   bias_.size(),
+                                   scale_.data(),
+                                   scale_.size(),
+                                   begin_norm_axis_,
+                                   eps_,
+                                   mean_shape_,
+                                   variance_shape_,
+                                   with_fp16_);
     ptr->bias_gpu_ = bias_gpu_;
     ptr->scale_gpu_ = scale_gpu_;
     return ptr;
@@ -188,14 +188,14 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
     auto ptr = new LayerNormPluginDynamic(bias_.data(),
-                                      bias_.size(),
-                                      scale_.data(),
-                                      scale_.size(),
-                                      begin_norm_axis_,
-                                      eps_,
-                                      mean_shape_,
-                                      variance_shape_,
-                                      with_fp16_);
+                                          bias_.size(),
+                                          scale_.data(),
+                                          scale_.size(),
+                                          begin_norm_axis_,
+                                          eps_,
+                                          mean_shape_,
+                                          variance_shape_,
+                                          with_fp16_);
     ptr->bias_gpu_ = bias_gpu_;
     ptr->scale_gpu_ = scale_gpu_;
     return ptr;
