@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/compare_kernel.h"
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -41,13 +42,7 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
 
   int ret =
       func(dev_ctx.x_context(), x_data, y_data, out_data, x_shape, y_shape);
-  PADDLE_ENFORCE_EQ(
-      ret,
-      xpu::SUCCESS,
-      errors::External(
-          "XPU kernel compare op occur error[%d %s] in XPUCompare.",
-          ret,
-          XPUAPIErrorMsg[ret]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "compare op");
 }
 
 #define DEFINE_XPU_COMPARE_KERNEL(compare_kernel, functor)                  \
