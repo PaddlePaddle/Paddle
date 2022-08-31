@@ -214,10 +214,7 @@ class MatMulMKLDNNHandler
     }
     astream.wait();
 
-    auto format =
-        MKLDNNFormatForSize(out->dims().size(), dnnl::memory::format_tag::nchw);
-    out->set_format(format);
-    out->set_layout(DataLayout::kMKLDNN);
+    out->set_mem_desc(dst_memory_p->get_desc().reshape(out->dims()));
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(
@@ -651,10 +648,15 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
   auto &astream = MKLDNNDeviceContext::tls().get_stream();
   matmul_p->execute(astream, matmul_args);
   astream.wait();
-  auto format =
-      MKLDNNFormatForSize(out->dims().size(), dnnl::memory::format_tag::nchw);
-  out->set_format(format);
-  out->set_layout(DataLayout::kMKLDNN);
+
+  auto axis = ctx.Attr<std::vector<int>>("fused_transpose_Out");
+  if (ctx.HasAttr("fused_transpose_Out") && (axis.empty() == false)) {
+    auto reshape_out = ctx.Attr<std::vector<int>>("fused_reshape_Out");
+    out->set_mem_desc(dst_memory_p->get_desc().permute_axes(axis).reshape(
+        phi::vectorize<int64_t>(out->dims())));
+  } else {
+    out->set_mem_desc(dst_memory_p->get_desc());
+  }
 }
 
 template <typename T>
@@ -836,8 +838,7 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
     reduction_p->execute(astream, reduction_args);
     astream.wait();
 
-    dx->set_format(paddle::platform::GetMKLDNNFormat(
-        dst_memory_p->get_desc().reshape(squeezed_dims)));
+    dx->set_mem_desc(dst_memory_p->get_desc().reshape(squeezed_dims));
   }
 
   std::vector<int64_t> ExtendDimsWithOnes(const std::vector<int64_t> &dims,
@@ -1119,9 +1120,8 @@ void MatMulGradMKLDNNKernel<T>::ExecuteMatMulGrad(
   matmul_p->execute(astream, matmul_args);
   astream.wait();
 
-  out->set_layout(framework::DataLayout::kMKLDNN);
-  out->set_format(platform::GetMKLDNNFormat(
-      dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims()))));
+  out->set_mem_desc(
+      dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
 }
 
 template <typename T>
@@ -1184,13 +1184,13 @@ void MatMulGradMKLDNNKernel<T>::RunKernel(const ExecutionContext &ctx) const {
   if (dx) {
     if (dx_dims != x.dims()) {
       dx->Resize(dx_dims);
-      dx->set_format(x.format());
+      dx->set_mem_desc(x.mem_desc());
     }
   }
   if (dy) {
     if (dy_dims != y.dims()) {
       dy->Resize(dy_dims);
-      dy->set_format(y.format());
+      dy->set_mem_desc(y.mem_desc());
     }
   }
 }
