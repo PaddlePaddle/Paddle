@@ -186,6 +186,8 @@ from .tensor.manipulation import as_complex  # noqa: F401
 from .tensor.manipulation import as_real  # noqa: F401
 from .tensor.manipulation import moveaxis  # noqa: F401
 from .tensor.manipulation import repeat_interleave  # noqa: F401
+from .tensor.manipulation import index_add  # noqa: F401
+from .tensor.manipulation import index_add_  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -237,6 +239,7 @@ from .tensor.math import mm  # noqa: F401
 from .tensor.math import divide  # noqa: F401
 from .tensor.math import floor_divide  # noqa: F401
 from .tensor.math import remainder  # noqa: F401
+from .tensor.math import remainder_  # noqa: F401
 from .tensor.math import mod  # noqa: F401
 from .tensor.math import floor_mod  # noqa: F401
 from .tensor.math import multiply  # noqa: F401
@@ -655,6 +658,8 @@ __all__ = [  # noqa
     'put_along_axis',
     'heaviside',
     'tril_indices',
+    'index_add',
+    "index_add_",
     'sgn',
     'triu_indices',
     'take',
