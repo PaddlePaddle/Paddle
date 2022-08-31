@@ -64,9 +64,8 @@ class ReduceOp:
             import paddle
             import paddle.distributed as dist
 
-            paddle.set_device('gpu:%d' % dist.ParallelEnv().dev_id)
             dist.init_parallel_env()
-            if dist.ParallelEnv().local_rank == 0:
+            if dist.get_rank() == 0:
                 data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             else:
                 data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
@@ -714,15 +713,14 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
             import paddle
             import paddle.distributed as dist
 
-            paddle.set_device('gpu:%d' % dist.ParallelEnv().dev_id)
             dist.init_parallel_env()
-            if dist.ParallelEnv().local_rank == 0:
+            if dist.get_rank() == 0:
                 data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             else:
                 data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            dist.broadcast(data, 1)
+            dist.broadcast(data, src=1)
             print(data)
-            # [[1, 2, 3], [1, 2, 3]]
+            # [[1, 2, 3], [1, 2, 3]] (2 GPUs)
     """
 
     if group is not None and not group.is_member():
@@ -799,9 +797,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             import paddle
             import paddle.distributed as dist
 
-            paddle.set_device('gpu:%d' % dist.ParallelEnv().dev_id)
             dist.init_parallel_env()
-            if dist.ParallelEnv().local_rank == 0:
+            if dist.get_rank() == 0:
                 data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             else:
                 data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
@@ -898,15 +895,15 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             import paddle
             import paddle.distributed as dist
 
-            paddle.set_device('gpu:%d' % dist.ParallelEnv().dev_id)
             dist.init_parallel_env()
-            if dist.ParallelEnv().local_rank == 0:
+            if dist.get_rank() == 0:
                 data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             else:
                 data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            dist.reduce(data, 0)
+            dist.reduce(data, dst=0)
             print(data)
-            # [[5, 7, 9], [5, 7, 9]] (2 GPUs)
+            # [[5, 7, 9], [5, 7, 9]] (2 GPUs, out for rank 0)
+            # [[1, 2, 3], [1, 2, 3]] (2 GPUs, out for rank 1)
     """
     if group is not None and not group.is_member():
         return
@@ -1006,10 +1003,9 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
             import paddle
             import paddle.distributed as dist
 
-            paddle.set_device('gpu:%d' % dist.ParallelEnv().dev_id)
             dist.init_parallel_env()
             tensor_list = []
-            if dist.ParallelEnv().local_rank == 0:
+            if dist.get_rank() == 0:
                 data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             else:
                 data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
@@ -1125,10 +1121,9 @@ def all_gather_object(object_list, obj, group=None):
             import paddle
             import paddle.distributed as dist
 
-            paddle.set_device('gpu:%d' % dist.ParallelEnv().dev_id)
             dist.init_parallel_env()
             object_list = []
-            if dist.ParallelEnv().local_rank == 0:
+            if dist.get_rank() == 0:
                 obj = {"foo": [1, 2, 3]}
             else:
                 obj = {"bar": [4, 5, 6]}
@@ -1191,9 +1186,8 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
             import paddle
             import paddle.distributed as dist
 
-            paddle.set_device('gpu:%d' % dist.ParallelEnv().dev_id)
             dist.init_parallel_env()
-            if dist.ParallelEnv().local_rank == 0:
+            if dist.get_rank() == 0:
                 data1 = paddle.to_tensor([7, 8, 9])
                 data2 = paddle.to_tensor([10, 11, 12])
                 dist.scatter(data1, src=1)
@@ -1202,7 +1196,8 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
                 data2 = paddle.to_tensor([4, 5, 6])
                 dist.scatter(data1, tensor_list=[data1, data2], src=1)
             print(data1, data2)
-            # [1, 2, 3] [10, 11, 12] (2 GPUs) 
+            # [1, 2, 3] [10, 11, 12] (2 GPUs, out for rank 0)
+            # [4, 5, 6] [4, 5, 6] (2 GPUs, out for rank 1)
     """
     if group is not None and not group.is_member():
         return
@@ -2029,7 +2024,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
 
             dist.init_parallel_env()
             out_tensor_list = []
-            if dist.ParallelEnv().rank == 0:
+            if dist.get_rank() == 0:
                 data1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
                 data2 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]])
             else:
@@ -2037,8 +2032,8 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
                 data2 = paddle.to_tensor([[19, 20, 21], [22, 23, 24]])
             dist.alltoall([data1, data2], out_tensor_list)
             print(out_tensor_list)
-            # out for rank 0: [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]
-            # out for rank 1: [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]]
+            # [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]] (2 GPUs, out for rank 0)
+            # [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]] (2 GPUs, out for rank 1)
     """
     if group is not None and not group.is_member():
         return
@@ -2212,12 +2207,14 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
             import paddle.distributed as dist
 
             dist.init_parallel_env()
-            if dist.ParallelEnv().rank == 0:
+            if dist.get_rank() == 0:
                 data = paddle.to_tensor([7, 8, 9])
                 dist.send(data, dst=1)
             else:
                 data = paddle.to_tensor([1, 2, 3])
                 dist.recv(data, src=0)
+            print(data)
+            # [7, 8, 9] (2 GPUs)
     """
     if group is not None and not group.is_member():
         return
@@ -2275,12 +2272,14 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
             import paddle.distributed as dist
 
             dist.init_parallel_env()
-            if dist.ParallelEnv().rank == 0:
+            if dist.get_rank() == 0:
                 data = paddle.to_tensor([7, 8, 9])
                 dist.send(data, dst=1)
             else:
                 data = paddle.to_tensor([1, 2, 3])
                 dist.recv(data, src=0)
+            print(data)
+            # [7, 8, 9] (2 GPUs)
     """
     if group is not None and not group.is_member():
         return
