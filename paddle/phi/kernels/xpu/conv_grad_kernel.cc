@@ -74,7 +74,7 @@ void ConvGradKernel(const Context& dev_ctx,
   const XPUT* input_data = reinterpret_cast<const XPUT*>(input.data<T>());
   const XPUT* filter_data = reinterpret_cast<const XPUT*>(filter.data<T>());
   const XPUT* output_grad_data =
-      reinterpret_cast<const XPUT*>(out_grad->data<T>());
+      reinterpret_cast<const XPUT*>(out_grad.data<T>());
   XPUT* input_grad_data = nullptr;
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);
