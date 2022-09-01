@@ -1208,6 +1208,13 @@ else()
     SRCS convert_utils.cc
     DEPS data_type place)
 endif()
+
+# every source file that includes "dnnl.h" must depends on mkldnn
+# or, the first one should depends on mkldnn
+if(WITH_MKLDNN)
+  add_dependencies(fluid_convert_utils mkldnn)
+endif()
+
 cc_test(
   convert_utils_test
   SRCS convert_utils_test.cc
