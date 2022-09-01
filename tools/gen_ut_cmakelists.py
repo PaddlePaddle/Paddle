@@ -168,6 +168,17 @@ def _process_name(name, curdir):
     return name
 
 
+def _norm_dirs(dirs):
+    # reform all dirs' path as normal absolute path
+    # abspath() can automatically normalize the path format
+    norm_dirs = []
+    for d in dirs:
+        d = os.path.abspath(d)
+        if d not in norm_dirs:
+            norm_dirs.append(d)
+    return norm_dirs
+
+
 def _process_run_type(run_type):
     rt = run_type.strip()
     # completely match one of the strings: 'NIGHTLY', 'EXCLUSIVE', 'CINN', 'DIST', 'GPUPS', 'INFER', 'EXCLUSIVE:NIGHTLY' and 'DIST:NIGHTLY'
@@ -179,13 +190,14 @@ def _process_run_type(run_type):
 
 class DistUTPortManager():
 
-    def __init__(self):
+    def __init__(self, ignore_dirs=[]):
         self.dist_ut_port = 21200
         self.assigned_ports = dict()
         self.last_test_name = ""
         self.last_test_cmake_file = ""
         self.no_cmake_dirs = []
         self.processed_dirs = set()
+        self.ignore_dirs = _norm_dirs(ignore_dirs)
 
     def reset_current_port(self, port=None):
         self.dist_ut_port = 21200 if port is None else port
@@ -251,7 +263,7 @@ class DistUTPortManager():
                     self.last_test_name = name
                     self.last_test_cmake_file = cmake_file_name
 
-    def parse_assigned_dist_ut_ports(self, current_work_dir, ignores, depth=0):
+    def parse_assigned_dist_ut_ports(self, current_work_dir, depth=0):
         '''
         Desc:
             get all assigned dist ports to keep port of unmodified test fixed.
@@ -259,10 +271,9 @@ class DistUTPortManager():
         if current_work_dir in self.processed_dirs:
             return
 
-        # if root(depth==0), convert the ignores to abs paths
+        # if root(depth==0)
         if depth == 0:
             self.processed_dirs.clear()
-            ignores = [os.path.abspath(i) for i in ignores]
 
         self.processed_dirs.add(current_work_dir)
         contents = os.listdir(current_work_dir)
@@ -270,7 +281,7 @@ class DistUTPortManager():
         csv = cmake_file.replace("CMakeLists.txt", 'testslist.csv')
 
         if os.path.isfile(csv) or os.path.isfile(cmake_file):
-            if current_work_dir not in ignores:
+            if current_work_dir not in self.ignore_dirs:
                 if os.path.isfile(cmake_file) and os.path.isfile(csv):
                     self._init_dist_ut_ports_from_cmakefile(cmake_file)
                 elif not os.path.isfile(cmake_file):
@@ -281,8 +292,7 @@ class DistUTPortManager():
             for c in contents:
                 c_path = os.path.join(current_work_dir, c)
                 if os.path.isdir(c_path):
-                    self.parse_assigned_dist_ut_ports(c_path, ignores,
-                                                      depth + 1)
+                    self.parse_assigned_dist_ut_ports(c_path, depth + 1)
 
         if depth == 0:
             # After all directories are scanned and processed
@@ -328,19 +338,17 @@ class DistUTPortManager():
 
 class CMakeGenerator():
 
-    def __init__(self, current_dirs):
+    def __init__(self, current_dirs, ignore_dirs):
         self.processed_dirs = set()
-        self.port_manager = DistUTPortManager()
-        self.current_dirs = current_dirs
+        self.port_manager = DistUTPortManager(ignore_dirs)
+        self.current_dirs = _norm_dirs(current_dirs)
 
     def prepare_dist_ut_port(self):
         for c in self._find_root_dirs():
-            self.port_manager.parse_assigned_dist_ut_ports(
-                c, ignores=args.ignore_cmake_dirs, depth=0)
+            self.port_manager.parse_assigned_dist_ut_ports(c, depth=0)
 
     def parse_csvs(self):
         for c in self.current_dirs:
-            c = os.path.abspath(c)
             self._gen_cmakelists(c)
 
     def _find_root_dirs(self):
@@ -348,16 +356,15 @@ class CMakeGenerator():
         # for each current directory, find its highest ancient directory (at least itself)
         # which includes CMakeLists.txt or testslist.csv.txt in the filesys tree
         for c in self.current_dirs:
-            c = os.path.abspath(c)
             while True:
                 ppath = os.path.dirname(c)
-                if os.path.abspath(ppath) == os.path.abspath(c):
+                if ppath == c:
                     break
                 cmake = os.path.join(ppath, "CMakeLists.txt")
                 csv = os.path.join(ppath, "testslist.csv.txt")
                 if not (os.path.isfile(cmake) or os.path.isfile(csv)):
                     break
-                c = os.path.abspath(ppath)
+                c = ppath
             if c not in root_dirs:
                 root_dirs.append(c)
         return root_dirs
@@ -535,6 +542,6 @@ if __name__ == "__main__":
     if len(args.dirpaths) >= 1:
         current_work_dirs = current_work_dirs + [d for d in args.dirpaths]
 
-    cmake_generator = CMakeGenerator(current_work_dirs)
+    cmake_generator = CMakeGenerator(current_work_dirs, args.ignore_cmake_dirs)
     cmake_generator.prepare_dist_ut_port()
     cmake_generator.parse_csvs()
