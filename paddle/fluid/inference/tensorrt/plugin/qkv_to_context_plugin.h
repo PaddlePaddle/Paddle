@@ -97,7 +97,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
                        int nb_inputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nb_outputs) TRT_NOEXCEPT override {}
+                       int nb_outputs) TRT_NOEXCEPT override;
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
                           int nb_inputs,
@@ -127,6 +127,8 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   int head_number_;
   int head_size_;
   float scale_;
+  framework::Tensor mask_tensor;
+  half* mask_half_;
 };
 
 class QkvToContextPluginDynamicCreator : public nvinfer1::IPluginCreator {
