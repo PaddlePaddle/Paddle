@@ -21,10 +21,10 @@
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #endif
 
 namespace phi {
