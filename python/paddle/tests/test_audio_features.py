@@ -19,7 +19,6 @@ import os
 import paddle
 
 import paddle.audio
-from audio_base import get_wav_data
 from scipy import signal
 
 
@@ -29,6 +28,13 @@ class TestFeatures(unittest.TestCase):
         self.initParmas()
 
     def initParmas(self):
+
+        def get_wav_data(dtype: str, num_channels: int, num_frames: int):
+            dtype_ = getattr(paddle, dtype)
+            base = paddle.linspace(-1.0, 1.0, num_frames, dtype=dtype_) * 0.1
+            data = base.tile([num_channels, 1])
+            return data
+
         self.n_fft = 512
         self.hop_length = 128
         self.n_mels = 40
@@ -44,9 +50,8 @@ class TestFeatures(unittest.TestCase):
         self.window_size = 1024
         waveform_tensor = get_wav_data(self.dtype,
                                        self.num_channels,
-                                       normalize=False,
                                        num_frames=self.duration * self.sr)
-        self.waveform = waveform_tensor.numpy() * 0.1
+        self.waveform = waveform_tensor.numpy()
 
     def test_audio_function(self):
         mel1 = paddle.audio.functional.hz_to_mel(2.0, True)
