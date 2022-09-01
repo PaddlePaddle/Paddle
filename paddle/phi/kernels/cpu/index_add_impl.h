@@ -104,7 +104,6 @@ void IndexAddBaseKernel(const Context& dev_ctx,
   if (axis < 0) {
     axis += x.dims().size();
   }
-
   auto inputs = x;
   auto add_values = add_value;
   if (index_type == phi::DataType::INT32) {
