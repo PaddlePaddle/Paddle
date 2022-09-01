@@ -58,7 +58,7 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
         Ids_var.shape
     ) == 3, "input Ids to lookup_table should have 3 dimensions but got [{}] with shape [{}]".format(
         Ids_var.name, Ids_var.shape)
-    if Ids_var.stop_gradient:
+    if not Ids_var.stop_gradient:
         raise NotImplementedError(
             'Requiring the gradient of Ids of lookup_table(v1）dist op is not currently supported. Please open an issue with details on your use case so that we can prioritize adding this (for instance, adversarial training for language model).'
         )
@@ -98,11 +98,15 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
     op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
     Ids_var_dist_attr = op_dist_attr.get_input_dist_attr(Ids_var.name)
     assert Ids_var_dist_attr is not None
-    set_var_dist_attr(ctx, intermediate_var_0, Ids_var_dist_attr.dims_mapping,
-                      Ids_var_dist_attr.process_mesh)
+    intermediate_var_0_dist_attr = set_var_dist_attr(
+        ctx, intermediate_var_0, Ids_var_dist_attr.dims_mapping,
+        Ids_var_dist_attr.process_mesh)
     set_var_dist_attr(ctx, xshape_var,
                       [-1] + list(Ids_var_dist_attr.dims_mapping),
                       Ids_var_dist_attr.process_mesh)
+    op_dist_attr.del_input_dist_attr(Ids_var.name)
+    op_dist_attr.set_input_dist_attr(intermediate_var_0.name,
+                                     intermediate_var_0_dist_attr)
 
     new_op_dist_attr = OperatorDistributedAttribute()
     new_op_dist_attr.process_mesh = Ids_var_dist_attr.process_mesh
@@ -115,6 +119,8 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
     new_op_dist_attr.set_output_dims_mapping(
         xshape_var.name, [-1] + list(Ids_var_dist_attr.dims_mapping))
     ctx.set_op_dist_attr_for_program(reshape_op, new_op_dist_attr)
+
+    return intermediate_var_0
 
 
 # RowParallel
@@ -323,7 +329,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
 
         # support lookup_table_v1
         if src_op.type == 'lookup_table':
-            adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var)
+            Ids_var = adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var)
 
         # got dist attribute info
         embedding_row_dim_mapping = op_dist_attr.get_input_dims_mapping(

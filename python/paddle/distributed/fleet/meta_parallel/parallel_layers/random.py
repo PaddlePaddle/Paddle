@@ -15,7 +15,7 @@
 import paddle
 import contextlib
 import numpy as np
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import _non_static_mode, default_main_program, Variable
@@ -205,9 +205,10 @@ def dropout(x,
 
     # dygraph using tracker, doesn't need determinate seed
     if _non_static_mode():
-        out, mask = _C_ops.dropout(x, 'dropout_prob', p, 'is_test',
-                                   not training, 'fix_seed', False, 'seed', 0,
-                                   'dropout_implementation', mode)
+        out, mask = _legacy_C_ops.dropout(x, 'dropout_prob', p, 'is_test',
+                                          not training, 'fix_seed', False,
+                                          'seed', 0, 'dropout_implementation',
+                                          mode)
         return out
 
     seed = determinate_seed(rng_name)

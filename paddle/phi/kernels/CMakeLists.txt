@@ -66,7 +66,8 @@ set(COMMON_KERNEL_DEPS
     phi_dynload_warpctc
     sequence_padding
     sequence_scale
-    fft)
+    fft
+    phi_data_layout_transform)
 
 set(COMMON_KERNEL_DEPS
     ${COMMON_KERNEL_DEPS}
@@ -82,7 +83,8 @@ set(COMMON_KERNEL_DEPS
     custom_kernel
     string_infermeta
     gpc
-    utf8proc)
+    utf8proc
+    device_memory_aligment)
 
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup)
 if(WITH_NCCL OR WITH_RCCL)

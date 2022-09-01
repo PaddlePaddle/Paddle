@@ -120,6 +120,7 @@ message TableParameter {
   optional bool enable_sparse_table_cache = 10 [ default = true ];
   optional double sparse_table_cache_rate = 11 [ default = 0.00055 ];
   optional uint32 sparse_table_cache_file_num = 12 [ default = 16 ];
+  // for patch model
   optional bool enable_revert = 13 [ default = false ];
   optional float shard_merge_rate = 14 [ default = 1.0 ];
 }
@@ -167,6 +168,7 @@ message CtrAccessorParameter {
   optional int32 ssd_unseenday_threshold = 9
       [ default = 1 ]; // threshold to save ssd
   optional bool show_scale = 10 [ default = true ];
+  optional bool zero_init = 11 [ default = true ];
 }
 
 message TensorAccessorParameter {
@@ -189,6 +191,7 @@ message CommonAccessorParameter {
   optional bool sync = 9;
   optional uint32 table_num = 10;
   optional uint32 table_dim = 11;
+  optional string attr = 12;
 }
 
 message TableAccessorSaveParameter {
