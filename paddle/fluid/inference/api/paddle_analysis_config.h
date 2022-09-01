@@ -778,7 +778,6 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \brief Turn off MKLDNN fc passes.
   ///
-  ///
   void DisableMkldnnFcPasses();
 
   ///

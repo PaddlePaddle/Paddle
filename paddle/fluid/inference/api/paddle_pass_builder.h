@@ -208,6 +208,7 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
     use_mkldnn_quantizer_ = other.use_mkldnn_quantizer_;
     use_mkldnn_bfloat16_ = other.use_mkldnn_bfloat16_;
     use_mkldnn_int8_ = other.use_mkldnn_int8_;
+    disable_mkldnn_fc_passes_ = other.disable_mkldnn_fc_passes_;
   }
   /// \brief Default destructor.
   virtual ~CpuPassStrategy() = default;
@@ -228,7 +229,7 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   void EnableMkldnnInt8() override;
 
   /// \brief Disable MKLDNN fc passes.
-  virtual void DisableMkldnnFcPasses() {}
+  void DisableMkldnnFcPasses() override;
 
  protected:
 
@@ -274,8 +275,8 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   /// \brief Not supported in GPU mode yet.
   void EnableMkldnnInt8() override;
 
-  /// \brief Disable MKLDNN fc passes. ? Not supported in GPU mode yet.
-  virtual void DisableMkldnnFcPasses() {}
+  /// \brief Disable MKLDNN fc passes.
+  void DisableMkldnnFcPasses() override;
 
   /// \brief Default destructor.
   virtual ~GpuPassStrategy() = default;

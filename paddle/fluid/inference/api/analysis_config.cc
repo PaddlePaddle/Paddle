@@ -739,7 +739,7 @@ void AnalysisConfig::Update() {
 #endif
   }
 
-    if (disable_mkldnn_fc_passes_) {
+  if (disable_mkldnn_fc_passes_) {
 #ifdef PADDLE_WITH_MKLDNN
     pass_builder()->DisableMkldnnFcPasses();
 #endif

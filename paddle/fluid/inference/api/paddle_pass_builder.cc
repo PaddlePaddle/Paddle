@@ -353,8 +353,8 @@ void CpuPassStrategy::EnableMkldnnQuantizer() {
 void CpuPassStrategy::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
   if (!use_mkldnn_bfloat16_) {
-    // passes_.push_back("fc_mkldnn_pass");
-    // passes_.push_back("fc_act_mkldnn_fuse_pass");
+    passes_.push_back("fc_mkldnn_pass");
+    passes_.push_back("fc_act_mkldnn_fuse_pass");
     passes_.push_back("fc_elementwise_add_mkldnn_fuse_pass");
 
     passes_.push_back("cpu_bfloat16_placement_pass");
@@ -434,16 +434,16 @@ void CpuPassStrategy::DisableMkldnnFcPasses() {
   }
   disable_mkldnn_fc_passes_ = true;
 #else
-  enable_mkldnn_fc_passes_ = false;
+  disable_mkldnn_fc_passes_ = false;
 #endif
 }
 
 void CpuPassStrategy::EraseFcMkldnnPasses() {
-  std::vector<std::string> fc_passes({"fc_mkldnn_pass", "fc_act_mkldnn_fuse_pass"});
-  for (const auto &pass : fc_passes) {
+  std::vector<std::string> fc_passes_to_erase({"fc_mkldnn_pass", "fc_act_mkldnn_fuse_pass"});
+  for (const auto &pass : fc_passes_to_erase) {
     int idx = GetPassIndex(pass);
     if (idx != -1) {
-      passes_.erase(std::begin(passes_) + idx + 1);
+      passes_.erase(std::begin(passes_) + idx);
     }
   }
 }
