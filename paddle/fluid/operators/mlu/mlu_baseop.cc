@@ -1033,6 +1033,7 @@ MLURNNDesc::~MLURNNDesc() {
                                    const cnnlTensorDescriptor_t output_desc,
                                    void* output) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlCycleOp(handle,
                                          cycle_optype,
                                          input1_desc,

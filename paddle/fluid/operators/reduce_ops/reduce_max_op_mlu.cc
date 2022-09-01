@@ -30,6 +30,7 @@ class ReduceMaxMLUKernel : public framework::OpKernel<T> {
     auto input_dims = input->dims();
     const auto& input_dim_size = input->dims().size();
     std::vector<int> reduce_dims;
+
     if (reduce_all) {
       for (int i = 0; i < input_dims.size(); i++) {
         reduce_dims.push_back(static_cast<int>(i));
