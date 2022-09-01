@@ -83,11 +83,13 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     if (op_name != "conv2d") {
       return transposer;
     } else {
+#if defined(PADDLE_WITH_CUDA)
       if (paddle::platform::is_gpu_place(tensors_vector[0][0].place()) &&
           !phi::backends::gpu::TensorCoreAvailable()) {
         paddle::imperative::LayoutAutoTune::Instance().DisableLayoutAutoTune();
         return transposer;
       }
+#endif
       auto data_type = tensors_vector[0][0].dtype();
       bool is_tune_fp32 =
           (data_type == paddle::experimental::DataType::FLOAT32) &&
