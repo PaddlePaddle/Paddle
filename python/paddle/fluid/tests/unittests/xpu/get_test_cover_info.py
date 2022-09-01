@@ -88,6 +88,7 @@ xpu_test_op_type_white_list = [
     'dropout_float16',
     'dropout_grad_float16',
     "grad_add_float32",  # no api for grad_add, skip
+    "lamb_float16",
     "lars_momentum_float32",
     "resnet_unit",
     "resnet_unit_grad"
