@@ -495,6 +495,37 @@ LayernormShiftPartitionPluginDynamic::LayernormShiftPartitionPluginDynamic(
   }
 }
 
+LayernormShiftPartitionPluginDynamic::LayernormShiftPartitionPluginDynamic(
+    void const *serialData, size_t serialLength) {
+  DeserializeValue(&serialData, &serialLength, &beta_);
+  DeserializeValue(&serialData, &serialLength, &gamma_);
+  DeserializeValue(&serialData, &serialLength, &param_num_);
+  DeserializeValue(&serialData, &serialLength, &with_fp16_);
+  DeserializeValue(&serialData, &serialLength, &shift_size_);
+  DeserializeValue(&serialData, &serialLength, &window_size_);
+  DeserializeValue(&serialData, &serialLength, &input_resolution_);
+  DeserializeValue(&serialData, &serialLength, &eps_);
+  int type_size = with_fp16_ ? sizeof(half) : sizeof(float);
+  {
+    void *p;
+    cudaMalloc(reinterpret_cast<void **>(&p), param_num_ * type_size);
+    gamma_dev_.reset(p, [](void *ptr) { cudaFree(ptr); });
+    if (with_fp16_)
+      convertAndCopy(gamma_, reinterpret_cast<half *>(p));
+    else
+      convertAndCopy(gamma_, reinterpret_cast<float *>(p));
+  }
+  {
+    void *p;
+    cudaMalloc(reinterpret_cast<void **>(&p), param_num_ * type_size);
+    beta_dev_.reset(p, [](void *ptr) { cudaFree(ptr); });
+    if (with_fp16_)
+      convertAndCopy(beta_, reinterpret_cast<half *>(p));
+    else
+      convertAndCopy(beta_, reinterpret_cast<float *>(p));
+  }
+}
+
 bool LayernormShiftPartitionPluginDynamic::supportsFormatCombination(
     int pos,
     const nvinfer1::PluginTensorDesc *in_out,

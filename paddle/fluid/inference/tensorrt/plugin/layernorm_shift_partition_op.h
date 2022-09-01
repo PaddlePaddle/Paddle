@@ -43,19 +43,11 @@ class LayernormShiftPartitionPluginDynamic : public DynamicPluginTensorRT {
       std::shared_ptr<void> beta_dev = nullptr);
 
   LayernormShiftPartitionPluginDynamic(void const* serialData,
-                                       size_t serialLength) {
-    DeserializeValue(&serialData, &serialLength, &beta_);
-    DeserializeValue(&serialData, &serialLength, &gamma_);
-    DeserializeValue(&serialData, &serialLength, &param_num_);
-    DeserializeValue(&serialData, &serialLength, &with_fp16_);
-    DeserializeValue(&serialData, &serialLength, &shift_size_);
-    DeserializeValue(&serialData, &serialLength, &window_size_);
-    DeserializeValue(&serialData, &serialLength, &input_resolution_);
-    DeserializeValue(&serialData, &serialLength, &eps_);
-  }
+                                       size_t serialLength);
+
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new LayernormShiftPartitionPluginDynamic(beta_.data(),
-                                                    gamma_.data(),
+    return new LayernormShiftPartitionPluginDynamic(gamma_.data(),
+                                                    beta_.data(),
                                                     beta_.size(),
                                                     shift_size_,
                                                     window_size_,
