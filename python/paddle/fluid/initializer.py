@@ -839,8 +839,7 @@ class MSRAInitializer(Initializer):
             if var.dtype == VarDesc.VarType.FP16 or (
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
                 if in_dygraph_mode():
-                    var_tmp = _C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                          'out_dtype', var.dtype)
+                    var_tmp = _C_ops.cast(out_var, var.dtype)
                 elif _in_legacy_dygraph():
                     var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype',
                                                  out_var.dtype, 'out_dtype',
