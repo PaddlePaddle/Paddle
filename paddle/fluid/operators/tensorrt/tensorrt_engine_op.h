@@ -384,6 +384,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
             anc = &scope;
           }
           PrepareTRTEngine(*anc, trt_engine);
+          inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+              .updateContextMemorySize(
+                  trt_engine->engine()->getDeviceMemorySize(), trt_engine);
           // update shape_range_info_pbtxt
           if (!shape_range_info_path_.empty()) {
             inference::UpdateShapeRangeInfo(shape_range_info_path_,
