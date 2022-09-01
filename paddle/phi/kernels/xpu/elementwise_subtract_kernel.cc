@@ -46,7 +46,7 @@ PD_REGISTER_KERNEL(subtract_raw,
                    float,
                    phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(substract,
+PD_REGISTER_KERNEL(subtract,
                    XPU,
                    ALL_LAYOUT,
                    phi::SubtractKernel,
