@@ -18,7 +18,7 @@ import time
 
 from paddle.fluid import core
 from paddle.fluid import framework
-from .utils import print_program_with_dist_attr, _is_gradient_clip_op
+from .utils import print_program_with_dist_attr, is_gradient_clip_op
 from .utils import _copy_tensor_dist_attr_from_cpp, _copy_tensor_dist_attr_to_cpp
 from .utils import _copy_op_dist_attr_from_cpp, _copy_op_dist_attr_to_cpp
 from .utils import _copy_dist_attr_from_cpp_for_graph
