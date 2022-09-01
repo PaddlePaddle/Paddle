@@ -25,7 +25,11 @@ class TensorArray : public TensorBase,
   /// \param vec The vector DenseTensor used to init TensorArray.
   explicit TensorArray(const std::vector<DenseTensor>& vec);
 
-  explicit TensorArray(size_t n) { tensors_.resize(n); }
+  explicit TensorArray(size_t n) {
+    for (size_t i = 0; i < n; i++) {
+      tensors_.emplace_back();
+    }
+  }
 
   TensorArray() = default;
 

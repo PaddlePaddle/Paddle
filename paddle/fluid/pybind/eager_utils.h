@@ -67,8 +67,6 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
 framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<framework::LoDTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
                                                                ssize_t arg_pos);
-framework::LoDTensorArray CastPyArg2FrameworkTensorArray(PyObject* obj,
-                                                         ssize_t arg_pos);
 std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
 std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos);
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
