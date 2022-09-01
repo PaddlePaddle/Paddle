@@ -53,6 +53,9 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
     const std::vector<OpVariant> &while_ops,
     const std::vector<OpVariant> &while_grad_ops);
 
+void PrepareSafeEagerDeletionOnWhileOpForProgram(
+    const framework::ProgramDesc &program);
+
 bool GetCondData(const framework::LoDTensor &cond);
 
 bool StrInVaraiableNameMap(const std::string &,

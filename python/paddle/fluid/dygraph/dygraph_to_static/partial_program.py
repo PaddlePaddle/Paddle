@@ -536,6 +536,30 @@ class PartialProgramLayer:
 
         self._cast_fp16_if_pure_fp16(in_vars)
 
+        print("====>1origin_program:")
+        print(self.program)
+        print("====>1forward_program:")
+        print(self.forward_program)
+        print("====>1backward_program:")
+        print(self.backward_program)
+        print("=======2=========")
+        print("====>2origin_program:")
+        core.parse_safe_eager_deletion_conditional_op_and_conditional_grad_op(
+            self.program.desc)
+        core.parse_safe_eager_deletion_while_op_and_while_grad_op(
+            self.program.desc)
+        core.parse_safe_eager_deletion_recurrent_op_and_recurrent_grad_op(
+            self.program.desc)
+        print(self.program)
+        print("====>1forward_program:")
+        print(split_program(self.program, 0, self._get_end_op_index()))
+        print("====>1backward_program:")
+        print(
+            split_program(
+                self.program,
+                self._get_end_op_index() + 2 * len(self._outputs.var_ids),
+                self.program.desc.block(0).op_size()))
+
         attrs = [
             'global_block',
             self.program.desc.block(0), 'start_op_index', 0, 'end_op_index',
@@ -612,14 +636,33 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _get_forward_backward_program_form(self, whole_program,
                                            forward_end_op_index):
-        forward_builded_program = add_build_strategy_for(
-            whole_program, 0, forward_end_op_index, self._build_strategy)
-        backward_start_op_index = forward_end_op_index + 2 * len(
-            self._outputs.var_ids)
-        backward_end_op_index = whole_program.desc.block(0).op_size()
-        backward_builded_program = add_build_strategy_for(
-            whole_program, backward_start_op_index, backward_end_op_index,
-            self._build_strategy)
+        if core.is_compiled_with_npu():
+            # update control op attr: skip_eager_deletion_vars
+            core.parse_safe_eager_deletion_conditional_op_and_conditional_grad_op(
+                whole_program.desc)
+            core.parse_safe_eager_deletion_while_op_and_while_grad_op(
+                whole_program.desc)
+            core.parse_safe_eager_deletion_recurrent_op_and_recurrent_grad_op(
+                whole_program.desc)
+            # get forward program
+            forward_builded_program = split_program(whole_program, 0,
+                                                    forward_end_op_index)
+            # get backward program
+            backward_start_op_index = forward_end_op_index + 2 * len(
+                self._outputs.var_ids)
+            backward_end_op_index = whole_program.desc.block(0).op_size()
+            backward_builded_program = split_program(whole_program,
+                                                     backward_start_op_index,
+                                                     backward_end_op_index)
+        else:
+            forward_builded_program = add_build_strategy_for(
+                whole_program, 0, forward_end_op_index, self._build_strategy)
+            backward_start_op_index = forward_end_op_index + 2 * len(
+                self._outputs.var_ids)
+            backward_end_op_index = whole_program.desc.block(0).op_size()
+            backward_builded_program = add_build_strategy_for(
+                whole_program, backward_start_op_index, backward_end_op_index,
+                self._build_strategy)
         self._apply_inplace_pass(forward_builded_program,
                                  backward_builded_program)
         return [forward_builded_program, backward_builded_program]
@@ -924,3 +967,33 @@ def add_build_strategy_for(program,
     else:
         builded_program = program
     return builded_program
+
+
+@switch_to_static_graph
+def split_program(whole_program, start_op_index, end_op_index):
+    split_program = whole_program.clone()
+    # Delete unuesd ops:
+    # (1) del ops of [end_op_index+1, whole_program.op_size]
+    # (2) del ops of [0, start_op_index-1]
+    whole_program_op_size = whole_program.desc.block(0).op_size()
+    if (whole_program_op_size - end_op_index) > 0:
+        for _ in range(whole_program_op_size - end_op_index):
+            split_program.block(0)._remove_op(
+                split_program.desc.block(0).op_size() - 1)
+    if start_op_index > 0:
+        for _ in range(start_op_index):
+            split_program.block(0)._remove_op(0)
+
+    # Delete unused vars
+    for b_i, block in enumerate(split_program.blocks):
+        used_var_set = set()
+        for op in block.ops:
+            for name in op.input_arg_names:
+                used_var_set.add(name)
+            for name in op.output_arg_names:
+                used_var_set.add(name)
+        for var_key in whole_program.block(b_i).vars.keys():
+            if var_key not in used_var_set:
+                block._remove_var(var_key)
+
+    return split_program

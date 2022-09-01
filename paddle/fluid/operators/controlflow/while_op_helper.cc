@@ -219,6 +219,23 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
       program, &fwd_ops, &bwd_ops);
 }
 
+void PrepareSafeEagerDeletionOnWhileOpForProgram(
+    const framework::ProgramDesc &program) {
+  std::vector<OpVariant> fwd_ops, bwd_ops;
+
+  auto &block = program.Block(0);
+  for (size_t i = 0; i < block.OpSize(); ++i) {
+    auto *op = block.Op(i);
+    if (op->Type() == "while") {
+      fwd_ops.emplace_back(op);
+    } else if (op->Type() == "while_grad") {
+      bwd_ops.emplace_back(op);
+    }
+  }
+  PrepareSafeEagerDeletionOnWhileOpAndWhileGradOpImpl(
+      program, &fwd_ops, &bwd_ops);
+}
+
 // Make while_op could run on GPU place
 bool GetCondData(const framework::LoDTensor &cond) {
   if (platform::is_cpu_place(cond.place())) {

@@ -71,6 +71,9 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
+#include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
+#include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -2173,6 +2176,15 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("parse_safe_eager_deletion_skip_vars",
         paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet);
+
+  m.def("parse_safe_eager_deletion_conditional_op_and_conditional_grad_op",
+        paddle::operators::PrepareSafeEagerDeletionOnConditionalOpForProgram);
+
+  m.def("parse_safe_eager_deletion_while_op_and_while_grad_op",
+        paddle::operators::PrepareSafeEagerDeletionOnWhileOpForProgram);
+
+  m.def("parse_safe_eager_deletion_recurrent_op_and_recurrent_grad_op",
+        paddle::operators::PrepareSafeEagerDeletionOnRecurrentOpForProgram);
 
 #ifdef PADDLE_WITH_IPU
   py::class_<platform::ipu::IpuBackend,

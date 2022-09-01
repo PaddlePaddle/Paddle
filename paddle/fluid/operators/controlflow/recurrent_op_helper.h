@@ -55,5 +55,8 @@ void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
     const std::vector<std::unique_ptr<paddle::framework::OperatorBase>>
         &all_ops);
 
+void PrepareSafeEagerDeletionOnRecurrentOpForProgram(
+    const framework::ProgramDesc &program);
+
 }  // namespace operators
 }  // namespace paddle

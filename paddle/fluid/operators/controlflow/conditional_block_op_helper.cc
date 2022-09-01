@@ -139,6 +139,24 @@ static void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(
   }
 }
 
+void PrepareSafeEagerDeletionOnConditionalOpForProgram(
+    const framework::ProgramDesc &program) {
+  std::vector<OpVariant> fwd_ops, bwd_ops;
+
+  auto &block = program.Block(0);
+  for (size_t i = 0; i < block.OpSize(); ++i) {
+    auto *op = block.Op(i);
+    if (op->Type() == "conditional_block") {
+      fwd_ops.emplace_back(op);
+    } else if (op->Type() == "conditional_block_grad") {
+      bwd_ops.emplace_back(op);
+    }
+  }
+
+  PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(
+      program, &fwd_ops, &bwd_ops);
+}
+
 void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
     const framework::ProgramDesc &program,
     int block_id,

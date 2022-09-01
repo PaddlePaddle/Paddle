@@ -46,5 +46,8 @@ void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
     const std::vector<OpVariant> &ifelse_ops,
     const std::vector<OpVariant> &ifelse_grad_ops);
 
+void PrepareSafeEagerDeletionOnConditionalOpForProgram(
+    const framework::ProgramDesc &program);
+
 }  // namespace operators
 }  // namespace paddle

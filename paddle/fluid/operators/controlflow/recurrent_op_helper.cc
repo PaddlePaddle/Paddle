@@ -287,5 +287,20 @@ void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
   }
 }
 
+void PrepareSafeEagerDeletionOnRecurrentOpForProgram(
+    const framework::ProgramDesc &program) {
+  OpAndGradOpPair op_pair;
+  auto &block = program.Block(0);
+  for (size_t i = 0; i < block.OpSize(); ++i) {
+    auto *op = block.Op(i);
+    if (op->Type() == "recurrent") {
+      op_pair.first.emplace(op);
+    } else if (op->Type() == "recurrent_grad") {
+      op_pair.second.emplace(op);
+    }
+  }
+  PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(program, &op_pair);
+}
+
 }  // namespace operators
 }  // namespace paddle
