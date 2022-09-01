@@ -235,12 +235,13 @@ class PipelineLayer(Layer):
 
         if recompute_interval > 0:
             assert recompute_ctx is not None, "recompute_ctx must be not None for recompute."
-            _initialize_recompute_setting(recompute_ctx.get('offload', False),
-                                          recompute_ctx.get('partition', False))
+
+            offload = recompute_ctx.get('offload', False)
+            partition = recompute_ctx.get('partition', False)
+            _initialize_recompute_setting(offload, partition)
             logger.info(
                 "Start Recompute for PipeLineParallel. recompute_offload: {}, recompute_partition: {}"
-                .format(recompute_ctx.get('offload', False),
-                        recompute_ctx.get('partition', False)))
+                .format(offload, partition))
 
         world_size = dist.get_world_size()
         self.global_rank = dist.get_rank()
