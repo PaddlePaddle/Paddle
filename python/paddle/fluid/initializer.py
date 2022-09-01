@@ -279,9 +279,8 @@ class UniformInitializer(Initializer):
 
         if framework._non_static_mode():
             if in_dygraph_mode():
-                out_var = _C_ops.uniform_random(var.shape, out_dtype,
-                                                float(min), float(max),
-                                                self._seed,
+                out_var = _C_ops.uniform_random(var.shape, out_dtype, self._low,
+                                                self._high, self._seed,
                                                 _current_expected_place())
             elif _in_legacy_dygraph():
                 out_var = _legacy_C_ops.uniform_random(
