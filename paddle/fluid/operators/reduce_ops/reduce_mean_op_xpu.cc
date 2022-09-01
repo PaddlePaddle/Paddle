@@ -90,6 +90,7 @@ class ReduceMeanGradXPUKernel : public framework::OpKernel<T> {
 
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
+    bool keep_dim = ctx.Attr<bool>("keep_dim");
 
     std::vector<int> xdims;
     for (int i = 0; i < input->dims().size(); i++) {
@@ -112,7 +113,13 @@ class ReduceMeanGradXPUKernel : public framework::OpKernel<T> {
         d = d + xdims.size();
       }
       reduce_numel *= xdims[d];
-      ydims.insert(ydims.begin() + d, 1);
+    }
+
+    if (keep_dim != true) {
+      sort(reduce_dims.begin(), reduce_dims.end());
+      for (auto& d : reduce_dims) {
+        ydims.insert(ydims.begin() + d, 1);
+      }
     }
 
     float val = 1.0f / static_cast<float>(reduce_numel);

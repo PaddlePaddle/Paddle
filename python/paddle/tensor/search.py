@@ -162,9 +162,9 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
             print(out4)
             # [[2, 2, 0, 1]]
     """
-    if axis is not None and not isinstance(axis, int):
+    if axis is not None and not isinstance(axis, (int, Variable)):
         raise TypeError(
-            "The type of 'axis'  must be int or None in argmax, but received %s."
+            "The type of 'axis'  must be int or Tensor or None in argmax, but received %s."
             % (type(axis)))
 
     if dtype is None:
@@ -244,9 +244,9 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             print(out4)
             # [[1, 1, 1, 2]]
     """
-    if axis is not None and not isinstance(axis, int):
+    if axis is not None and not isinstance(axis, (int, Variable)):
         raise TypeError(
-            "The type of 'axis'  must be int or None in argmin, but received %s."
+            "The type of 'axis'  must be int or Tensor or None in argmin, but received %s."
             % (type(axis)))
 
     if dtype is None:

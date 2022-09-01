@@ -2840,6 +2840,7 @@ class Operator(object):
                                 arg.op = self
                     self.desc.set_output(out_proto.name, out_arg_names)
 
+            extra_attrs_map = core.get_op_extra_attrs(type)
             if op_attrs is not None:
                 if not isinstance(op_attrs, dict):
                     raise TypeError("'attrs' should be a dict.")
@@ -2850,6 +2851,13 @@ class Operator(object):
                         continue
                     attr_val = op_attrs[attr_name]
                     self._update_desc_attr(attr_name, attr_val)
+                for attr_name in extra_attrs_map.keys():
+                    if (attr_name
+                            not in op_attrs) or (op_attrs[attr_name] is None):
+                        self._update_desc_attr(attr_name,
+                                               extra_attrs_map[attr_name])
+                    else:
+                        self._update_desc_attr(attr_name, op_attrs[attr_name])
 
             # proto.attrs doesn't include ipu_index
             if core.is_compiled_with_ipu():
@@ -3130,7 +3138,7 @@ class Operator(object):
         Returns:
             core.AttrType: the attribute type.
         """
-        return self.desc.attr_type(name)
+        return self.desc.attr_type(name, True)
 
     def _set_attr(self, name, val):
         """
@@ -3282,6 +3290,41 @@ class Operator(object):
 
         return self.desc._blocks_attr_ids(name)
 
+    def _var_attr(self, name):
+        """
+        Get the Variable attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            Variable: the Variable attribute.
+        """
+        attr_type = self.desc.attr_type(name, True)
+        assert attr_type == core.AttrType.VAR, "Required type attr({}) is Variable, but received {}".format(
+            name, attr_type)
+        attr_var_name = self.desc.attr(name, True).name()
+        return self.block._var_recursive(attr_var_name)
+
+    def _vars_attr(self, name):
+        """
+        Get the Variables attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            Variables: the Variables attribute.
+        """
+        attr_type = self.desc.attr_type(name, True)
+        assert attr_type == core.AttrType.VARS, "Required type attr({}) is list[Variable], but received {}".format(
+            name, attr_type)
+        attr_vars = [
+            self.block._var_recursive(var.name())
+            for var in self.desc.attr(name, True)
+        ]
+        return attr_vars
+
     def all_attrs(self):
         """
         Get the attribute dict.
@@ -3292,16 +3335,17 @@ class Operator(object):
         attr_names = self.attr_names
         attr_map = {}
         for n in attr_names:
-            attr_type = self.desc.attr_type(n)
+            attr_type = self.desc.attr_type(n, True)
             if attr_type == core.AttrType.BLOCK:
                 attr_map[n] = self._block_attr(n)
-                continue
-
-            if attr_type == core.AttrType.BLOCKS:
+            elif attr_type == core.AttrType.BLOCKS:
                 attr_map[n] = self._blocks_attr(n)
-                continue
-
-            attr_map[n] = self.attr(n)
+            elif attr_type == core.AttrType.VAR:
+                attr_map[n] = self._var_attr(n)
+            elif attr_type == core.AttrType.VARS:
+                attr_map[n] = self._vars_attr(n)
+            else:
+                attr_map[n] = self.attr(n)
 
         return attr_map
 
@@ -5821,6 +5865,12 @@ class Program(object):
         ]
         res._sync_with_cpp()
 
+        # Note: The op_role and op_role_var cann't be deleted currently,
+        # and we will try to remove them in the future.
+        common_clipped_attrs_list = [
+            'op_namescope', 'op_callstack', 'op_device', 'with_quant_attr'
+        ]
+
         for i in six.moves.range(res.desc.num_blocks()):
             block = res.desc.block(i)
             for var in block.all_vars():
@@ -5832,6 +5882,9 @@ class Program(object):
                 op = block.op(op_idx)
                 if op.type() not in OpProtoHolder.instance().op_proto_map:
                     continue
+
+                extra_attrs_map = core.get_op_extra_attrs(op.type())
+
                 proto = OpProtoHolder.instance().get_op_proto(op.type())
                 remove_input_list = []
                 for name in op.input_names():
@@ -5879,6 +5932,10 @@ class Program(object):
                             continue
                         if name.endswith("_threshold"):
                             continue
+                    if len(extra_attrs_map) > 0:
+                        if name in extra_attrs_map or name in common_clipped_attrs_list:
+                            op.remove_attr(name)
+                        continue
                     find = False
                     for attr_proto in proto.attrs:
                         if attr_proto.name != name:

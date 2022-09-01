@@ -64,6 +64,13 @@ repos:
             (?x)^(
                 paddle/utils/.*
             )$
+-   repo: local
+    hooks:
+    -   id: auto-generate-cmakelists
+        name: auto-generate-cmakelists
+        entry: bash ./tools/gen_ut_cmakelists.hook
+        language: system
+        files: testslist.csv$
 -   repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13
     hooks:

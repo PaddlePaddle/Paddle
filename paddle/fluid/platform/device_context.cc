@@ -40,68 +40,6 @@ limitations under the License. */
 #endif
 
 namespace paddle {
-namespace memory {
-
-AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
-  auto place = dev_ctx.GetPlace();
-  if (size == 0) {
-    return Alloc(place, size);
-  }
-
-  if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto* default_dev_ctx = static_cast<phi::GPUContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    auto& desired_dev_ctx = static_cast<const phi::GPUContext&>(dev_ctx);
-    if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
-      return paddle::memory::Alloc(desired_dev_ctx.GetPlace(),
-                                   size,
-                                   phi::Stream(reinterpret_cast<phi::StreamId>(
-                                       desired_dev_ctx.stream())));
-    } else {
-      return allocation::GPUContextAllocatorPool::Instance().Alloc(
-          desired_dev_ctx, size);
-    }
-#else
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Paddle can't use CUDA device since it's not compiled with CUDA,"
-        "Please recompile or reinstall Paddle with GPU support."));
-#endif
-  } else if (platform::is_xpu_place(place)) {
-#ifdef PADDLE_WITH_XPU
-    // TODO(liuyuhui): Consider xpu stream later
-    return Alloc(place, size);
-#else
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Paddle can't use XPU device since it's not compiled with XPU,"
-        "Please recompile or reinstall Paddle with XPU support."));
-#endif
-  } else if (platform::is_mlu_place(place)) {
-#ifdef PADDLE_WITH_MLU
-    auto* default_dev_ctx = static_cast<platform::MLUDeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    auto& desired_dev_ctx =
-        static_cast<const platform::MLUDeviceContext&>(dev_ctx);
-    if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
-      return Alloc(place, size);
-    } else {
-      return allocation::MLUDeviceContextAllocatorPool::Instance().Alloc(
-          desired_dev_ctx, size);
-    }
-#else
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Paddle can't use MLU device since it's not compiled with MLU,"
-        "Please recompile or reinstall Paddle with MLU support."));
-#endif
-  } else {
-    return Alloc(place, size);
-  }
-}
-
-}  // namespace memory
-}  // namespace paddle
-
-namespace paddle {
 namespace platform {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

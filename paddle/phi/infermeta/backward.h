@@ -398,4 +398,11 @@ void Yolov3LossGradInferMeta(const MetaTensor& x,
                              MetaTensor* gt_label_grad,
                              MetaTensor* gt_score_grad);
 
+void IndexAddGradInferMeta(const MetaTensor& index,
+                           const MetaTensor& add_value,
+                           const MetaTensor& out_grad,
+                           int axis,
+                           MetaTensor* x_grad,
+                           MetaTensor* add_tensor_grad);
+
 }  // namespace phi

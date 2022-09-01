@@ -369,6 +369,10 @@ cc_test(
   test_generate_pass_cc
   SRCS generate_pass_tester.cc
   DEPS generate_pass pass_desc_proto)
+cc_test(
+  test_delete_dropout_pass_cc
+  SRCS delete_dropout_op_pass_test.cc
+  DEPS delete_dropout_op_pass)
 if(WITH_GPU OR WITH_ROCM)
   cc_test(
     test_embedding_eltwise_layernorm_fuse_pass
