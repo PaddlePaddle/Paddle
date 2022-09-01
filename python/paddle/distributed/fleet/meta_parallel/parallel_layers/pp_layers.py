@@ -203,8 +203,7 @@ class PipelineLayer(Layer):
                  loss_fn=None,
                  seg_method="uniform",
                  recompute_interval=0,
-                 recompute_offload=False,
-                 recompute_partition=False,
+                 recompute_ctx=None,
                  num_virtual_pipeline_stages=None):
         super(PipelineLayer, self).__init__()
         if num_stages is None and topology is None:
@@ -233,14 +232,15 @@ class PipelineLayer(Layer):
         self._loss_fn = loss_fn
         self._topo = topology
         self._recompute_interval = recompute_interval
-        self._recompute_offload = recompute_offload
-        self._recompute_partition = recompute_partition
 
         if recompute_interval > 0:
+            assert recompute_ctx is not None, "recompute_ctx must be not None for recompute."
+            _initialize_recompute_setting(recompute_ctx.get('offload', False),
+                                          recompute_ctx.get('partition', False))
             logger.info(
                 "Start Recompute for PipeLineParallel. recompute_offload: {}, recompute_partition: {}"
-                .format(recompute_offload, recompute_partition))
-        _initialize_recompute_setting(recompute_offload, recompute_partition)
+                .format(recompute_ctx.get('offload', False),
+                        recompute_ctx.get('partition', False)))
 
         world_size = dist.get_world_size()
         self.global_rank = dist.get_rank()

@@ -310,10 +310,12 @@ class MoELayer(nn.Layer):
                  gate=None,
                  moe_group=None,
                  mp_group=None,
+                 recompute_ctx=None,
                  **kwargs):
         super(MoELayer, self).__init__()
 
         recompute_interval = kwargs.get("recompute_interval", 0)
+        self.recompute_ctx = recompute_ctx
 
         if gate is None:
             gate = dict()

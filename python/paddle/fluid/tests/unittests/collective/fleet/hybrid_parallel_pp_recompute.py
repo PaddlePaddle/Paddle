@@ -120,13 +120,20 @@ class ModelPipe(PipelineLayer):
         for x in range(2):
             self.descs.append(LayerDesc(TransformerNetPipe))
 
-        super().__init__(layers=self.descs,
-                         loss_fn=CriterionPipe(),
-                         topology=topology,
-                         seg_method="layer:TransformerNetPipe",
-                         recompute_interval=1,
-                         recompute_partition=False,
-                         recompute_offload=False)
+        super().__init__(
+            layers=self.descs,
+            loss_fn=CriterionPipe(),
+            topology=topology,
+            seg_method="layer:TransformerNetPipe",
+            recompute_interval=1,
+            recompute_ctx={
+                "mp_group":
+                fleet.get_hybrid_communicate_group().get_model_parallel_group(),
+                "offload":
+                False,
+                "partition":
+                False
+            })
 
 
 class TestDistPPTraning(unittest.TestCase):
