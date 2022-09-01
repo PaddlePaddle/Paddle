@@ -1,19 +1,23 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/phi/kernels/uniform_random_kernel.h"
 
+#include <string>
+
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/uniform_real_distribution.h"
 
@@ -32,7 +36,10 @@ void UniformRandomRawKernel(const Context &dev_ctx,
                             DenseTensor *out) {
   out->Resize(phi::make_ddim(shape.GetData()));
   T *data = dev_ctx.template Alloc<T>(out);
-  auto size = out->numel();
+  int64_t size = out->numel();
+
+  std::unique_ptr<T[]> data_cpu(new T[size]);
+
   std::shared_ptr<std::mt19937_64> engine;
   if (seed) {
     engine = std::make_shared<std::mt19937_64>();
@@ -41,7 +48,7 @@ void UniformRandomRawKernel(const Context &dev_ctx,
     engine = dev_ctx.GetGenerator()->GetCPUEngine();
   }
   UniformRealDistribution<T>(
-      data, size, min.to<float>(), max.to<float>(), engine);
+      data_cpu.get(), size, min.to<float>(), max.to<float>(), engine);
   if (diag_num > 0) {
     PADDLE_ENFORCE_GT(
         size,
@@ -56,17 +63,18 @@ void UniformRandomRawKernel(const Context &dev_ctx,
             size));
     for (int64_t i = 0; i < diag_num; ++i) {
       int64_t pos = i * diag_step + i;
-      data[pos] = diag_val;
+      data_cpu[pos] = diag_val;
     }
   }
+
+  paddle::memory::Copy(dev_ctx.GetPlace(),
+                       data,
+                       phi::CPUPlace(),
+                       reinterpret_cast<void *>(data_cpu.get()),
+                       size * sizeof(T));
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(uniform_random_raw,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::UniformRandomRawKernel,
-                   float,
-                   double,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    uniform_random_raw, XPU, ALL_LAYOUT, phi::UniformRandomRawKernel, float) {}
