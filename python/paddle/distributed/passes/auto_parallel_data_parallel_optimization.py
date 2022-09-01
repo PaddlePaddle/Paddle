@@ -13,12 +13,13 @@
 # limitations under the License.
 
 from collections import OrderedDict
+import numpy as np
 
 import paddle
 from paddle.fluid.framework import default_main_program
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.distributed.auto_parallel.operators.common import is_data_parallel_scale_op, is_data_parallel_reduce_op
-from paddle.distributed.auto_parallel.utils import is_loss_grad_op, is_optimize_op, ring_id_to_process_group
+from paddle.distributed.auto_parallel.utils import is_loss_grad_op, is_optimize_op, is_backward_op, ring_id_to_process_group, find_higher_order_backward_op
 from .pass_base import PassBase, PassType, register_pass
 
 # add new optimizers supporting rescale_grad here
@@ -29,6 +30,10 @@ __rescale_grad_supported_opts__ = [
 
 # a heuristic number
 __max_stream_num_allow__ = 16
+
+
+def numel(var):
+    return np.prod(list(var.shape))
 
 
 @register_pass("auto_parallel_data_parallel_optimization")
@@ -76,7 +81,9 @@ class DataParallelOptimizationPass(PassBase):
             self._analyze_program()
             self._prune_grad_scaling()
             self._calc_comm_overlap()
-            self._fuse_allreduce()
+            grad_group = self._fuse_allreduce()
+
+        self.summary(grad_group)
 
     def _prune_grad_scaling(self):
 
@@ -97,7 +104,13 @@ class DataParallelOptimizationPass(PassBase):
         self._calc_wait_comms()
 
     def _fuse_allreduce(self):
-        pass
+
+        if not self._could_be_fuse():
+            return []
+
+        grad_group = self._group_grads()
+
+        return grad_group
 
     def _analyze_program(self):
         """
@@ -312,3 +325,166 @@ class DataParallelOptimizationPass(PassBase):
                                                   'op_role': OpRole.Backward,
                                                   'ring_id': ring_id
                                               })
+
+    def _could_be_fuse(self):
+        # TODO  support gradient fuse higher order gradient.
+        # should analyse the dependencies of gradient in backward.
+        if find_higher_order_backward_op(default_main_program()):
+            return False
+
+        return True
+
+    def _group_grads(self):
+        """
+        conditions for gradients to be grouped:
+        1. group size < max_fuse_numel
+        2. same dp group 
+        3. same dtype
+        4. dependency: grad would NOT be used by other ops within group segment 
+
+        gradients inside same group would be fuse into one coalesce tensor
+        """
+
+        block = default_main_program().global_block()
+        ops = block.ops
+
+        # group individual grad vars
+        # TODO consider fuse gradient for sharding reduce
+        # TODO let user to set fuse_grad_size
+        # emb = 50000 * h, ffn = 8 * h * h, mha = 4 * h * h
+        h = 2048
+        ffn_numel = 2 * (4 * h) * h
+        mha_numel = 3 * h * h + h * h
+        max_fuse_numel = ffn_numel + mha_numel
+        grad_groups = []
+        cur_group = GradientsGroup(ops, max_fuse_numel)
+        grouped_grad_names = set()
+
+        def collect_group(cur_group, grad_var, ring_id, i):
+            if len(cur_group.gradients) == 0:
+                cur_group = None
+            elif len(cur_group.gradients) == 1:
+                grouped_grad_names.remove(cur_group.gradients[0].name)
+            else:
+                cur_group.finalize()
+                grad_groups.append(cur_group)
+
+            new_group = GradientsGroup(ops, max_fuse_numel)
+            grouped_grad_names.add(grad_name)
+            if grad_var:
+                new_group.add(grad_var, ring_id, i)
+            return new_group
+
+        def op_depend_on_group(op, group):
+            vars_ = set(op.input_arg_names + op.output_arg_names)
+            grad_names = set([grad.name for grad in group.gradients])
+            return len(vars_.intersection(grad_names)) > 0
+
+        for i, op in enumerate(ops):
+            if is_data_parallel_reduce_op(op):
+                ring_id = op.attr("ring_id")
+                grad_name = op.output_arg_names[0]
+                grad_var = block.var(grad_name)
+                grad_numel = numel(grad_var)
+
+                if cur_group.acceptable(grad_var, ring_id):
+                    assert grad_name not in grouped_grad_names
+                    grouped_grad_names.add(grad_name)
+                    cur_group.add(grad_var, ring_id, i)
+                else:
+                    cur_group = collect_group(cur_group, grad_var, ring_id, i)
+            else:
+                if op_depend_on_group(op, cur_group):
+                    cur_group = collect_group(cur_group, grad_var, ring_id, i)
+
+        collect_group(cur_group, None, None, None)
+
+        return grad_groups
+
+    def summary(self, grad_groups=[]):
+        # TODO: add logger module
+        import logging
+        self._logger = logging.getLogger()
+        self._logger.propagate = False
+        if not self._logger.handlers:
+            self._logger.setLevel(logging.INFO)
+            log_handler = logging.StreamHandler()
+            log_format = logging.Formatter(
+                '[%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s'
+            )
+            log_handler.setFormatter(log_format)
+            self._logger.addHandler(log_handler)
+
+        if len(grad_groups) > 0:
+            self._logger.info(
+                "origin {} allreduce ops are fused into {} coalecse allreduce ops."
+                .format(len(self._grad_name_to_group_map.keys()),
+                        len(grad_groups)))
+            self._logger.info("gradient fusing group are following: ")
+            fused_grads = set()
+            for i, group in enumerate(grad_groups):
+                self._logger.info(
+                    "coalecse gradient [{}] is composed by: {}".format(
+                        i, [grad.name for grad in group.gradients]))
+                fused_grads.update([grad.name for grad in group.gradients])
+            individual_grads = set(
+                self._grad_name_to_group_map.keys()) - set(fused_grads)
+            self._logger.info(
+                "the following [{}] gradients are not fused: ".format(
+                    len(individual_grads)))
+            self._logger.info("individual gradient {}".format(individual_grads))
+
+
+class GradientsGroup(object):
+
+    def __init__(self, ops, max_group_size):
+        self.max_group_size = max_group_size
+        self.ops = ops
+
+        self.gradients = []
+        self.numel = 0
+        self.dtype = None
+        self.ring_id = None
+        self.fuse_var_name = None
+        self.coalesce_op_idx = -1
+        self.allreduce_op_idx = -1
+        self.scale_op_idx = -1
+        self.remove_wait_op_indices = []
+        self.remove_allreduce_op_indices = []
+        self.remove_scale_op_indices = []
+
+    def acceptable(self, grad_var, ring_id):
+        if len(self.gradients) == 0:
+            return True
+        if ring_id != self.ring_id:
+            return False
+        if numel(grad_var) + self.numel > self.max_group_size:
+            return False
+        if grad_var.dtype != grad_var.dtype:
+            return False
+
+        return True
+
+    def add(self, grad_var, ring_id, i):
+        self.gradients.append(grad_var)
+        self.ring_id = ring_id
+        self.dtype = grad_var.dtype
+        self.numel += numel(grad_var)
+
+        # remove auxiliary ops in non-fuse dp allreduce
+        self.remove_allreduce_op_indices.append(i)
+
+        # NOTE this pass rely on the original synchronization add in previous passes
+        # (same stream or calc_sync_comm & comm_sync_calc)
+        # to guarantee the correctness of comm_calc execution order.
+        if i > 0 and self.ops[i - 1].type == 'c_wait_compute':
+            self.remove_wait_op_indices.append(i - 1)
+        if i + 1 < len(self.ops) and is_data_parallel_scale_op(self.ops[i - 1]):
+            self.remove_scale_op_indices.append(i + 1)
+
+    def finalize(self):
+        self.allreduce_op_idx = self.remove_allreduce_op_indices.pop()
+        if len(self.remove_wait_op_indices) > 1:
+            self.remove_wait_op_indices.pop()
+        if len(self.remove_scale_op_indices) > 1:
+            self.scale_op_idx = self.remove_scale_op_indices.pop()
