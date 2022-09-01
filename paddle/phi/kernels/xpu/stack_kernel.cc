@@ -25,7 +25,6 @@ void StackKernel(const Context& dev_ctx,
                  int axis,
                  DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  int axis = ctx.Attr<int>("axis");
   if (axis < 0) {
     axis += x[0]->dims().size() + 1;
   }

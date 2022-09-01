@@ -34,7 +34,6 @@ void StackGradKernel(const Context& dev_ctx,
       }
     }
   }
-  auto axis = ctx.Attr<int>("axis");
   auto dy_dims = out->dims();
 
   if (axis < 0) axis += dy_dims.size() + 1;
