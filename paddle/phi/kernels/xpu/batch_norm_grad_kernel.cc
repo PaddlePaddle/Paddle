@@ -192,12 +192,15 @@ void BatchNormGradKernel(const Context &dev_ctx,
                                               XPUAPIErrorMsg[r1]));
     }
 
+    // Here is a trick, x is a const input,
+    // but trans to a non-const var, is it risky?
+    auto px = x;
     auto *inv_std_data =
         use_global_stats ? global_inv_std_data : saved_variance.data<float>();
     auto *mean_data = use_global_stats ? global_mean->data<float>()
                                        : saved_mean.data<float>();
     int r2 = CalculateInvBNY(dev_ctx.x_context(),
-                             x.data<T>(),
+                             px.data<T>(),
                              scale.data<float>(),
                              bias.data<float>(),
                              mean_data,
