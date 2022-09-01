@@ -1861,8 +1861,8 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
 
     if in_dynamic_mode():
         if in_dygraph_mode():
-            pool_out = _C_ops.max_pool3d_with_index(x, output_size, {1, 1, 1},
-                                                    {0, 0, 0}, False, True)
+            pool_out = _C_ops.max_pool3d_with_index(x, output_size, [1, 1, 1],
+                                                    [0, 0, 0], False, True)
         elif _in_legacy_dygraph():
             pool_out = _legacy_C_ops.max_pool3d_with_index(
                 x, 'pooling_type', 'max', 'ksize', output_size, 'adaptive',
