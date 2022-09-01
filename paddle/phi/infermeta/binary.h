@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
 
@@ -405,7 +406,7 @@ void UnpoolInferMeta(const MetaTensor& x,
                      const std::vector<int>& ksize,
                      const std::vector<int>& strides,
                      const std::vector<int>& paddings,
-                     const std::vector<int>& output_size,
+                     const IntArray& output_size,
                      const std::string& data_format,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
