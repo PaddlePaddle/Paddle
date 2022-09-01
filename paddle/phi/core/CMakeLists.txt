@@ -76,7 +76,7 @@ cc_library(
 cc_library(
   serialization
   SRCS serialization.cc
-  DEPS tensor selected_rows_utils phi_device_context)
+  DEPS version tensor phi_device_context)
 
 cc_library(
   custom_kernel
