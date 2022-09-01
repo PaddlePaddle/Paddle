@@ -586,15 +586,16 @@ def destroy_process_group(group=None):
 
             # required: distributed
             import paddle
+            import paddle.distributed as dist
 
-            paddle.distributed.init_parallel_env()
-            group = paddle.distributed.new_group([0, 1])
+            dist.init_parallel_env()
+            group = dist.new_group([0, 1])
 
-            paddle.distributed.destroy_process_group(group)
-            print(paddle.distributed.is_initialized())
+            dist.destroy_process_group(group)
+            print(dist.is_initialized())
             # True
-            paddle.distributed.destroy_process_group()
-            print(paddle.distributed.is_initialized())
+            dist.destroy_process_group()
+            print(dist.is_initialized())
             # False
 
     """
@@ -2338,7 +2339,7 @@ def isend(tensor, dst, group=None):
 
     Args:
         tensor (Tensor): The Tensor to send. Its data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         dst (int): The destination rank.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
     
@@ -2356,21 +2357,15 @@ def isend(tensor, dst, group=None):
             import paddle.distributed as dist
 
             dist.init_parallel_env()
-            rank = dist.get_rank()
-            world_size = dist.get_world_size()
-
-            if rank == 0:
+            if dist.get_rank() == 0:
                 data = paddle.to_tensor([7, 8, 9])
-                task = paddle.distributed.isend(data, dst=1)
+                task = dist.isend(data, dst=1)
             else:
                 data = paddle.to_tensor([1, 2, 3])
-                task = paddle.distributed.irecv(data, src=0)
-
+                task = dist.irecv(data, src=0)
             task.wait()
-
             print(data)
-            # paddle.tensor([7, 8, 9])     # Rank-0
-            # paddle.tensor([7, 8, 9])     # Rank-1
+            # [7, 8, 9] (2 GPUs)
 
     """
     _check_single_tensor(tensor, "tensor")
@@ -2379,6 +2374,8 @@ def isend(tensor, dst, group=None):
 
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
+        backend = _group_map_backend[group]
+        assert backend != 'gloo', ("backend gloo is not supported yet")
         group_dst_rank = group.get_group_rank(dst)
         assert group_dst_rank >= 0, ("dst rank out of group, need global rank")
         return group.process_group.send(tensor, group_dst_rank)
@@ -2392,12 +2389,12 @@ def irecv(tensor, src=None, group=None):
 
     Args:
         tensor (Tensor): The Tensor to receive. Its data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         src (int): The source rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
 
     Returns:
-         A distributed task object.
+        A distributed task object.
 
     Warning:    
         This API only supports the dygraph mode.
@@ -2410,21 +2407,15 @@ def irecv(tensor, src=None, group=None):
             import paddle.distributed as dist
 
             dist.init_parallel_env()
-            rank = dist.get_rank()
-            world_size = dist.get_world_size()
-
-            if rank == 0:
+            if dist.get_rank() == 0:
                 data = paddle.to_tensor([7, 8, 9])
-                task = paddle.distributed.isend(data, dst=1)
+                task = dist.isend(data, dst=1)
             else:
                 data = paddle.to_tensor([1, 2, 3])
-                task = paddle.distributed.irecv(data, src=0)
-
+                task = dist.irecv(data, src=0)
             task.wait()
-
             print(data)
-            # paddle.tensor([7, 8, 9])     # Rank-0
-            # paddle.tensor([7, 8, 9])     # Rank-1
+            # [7, 8, 9] (2 GPUs)
     """
     _check_single_tensor(tensor, "tensor")
     if group is not None and not group.is_member():
@@ -2432,6 +2423,8 @@ def irecv(tensor, src=None, group=None):
 
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
+        backend = _group_map_backend[group]
+        assert backend != 'gloo', ("backend gloo is not supported yet")
         group_src_rank = group.get_group_rank(src)
         assert group_src_rank >= 0, ("src rank out of group, need global rank")
         return group.process_group.recv(tensor, group_src_rank)
