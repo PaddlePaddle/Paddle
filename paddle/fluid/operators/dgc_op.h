@@ -51,12 +51,12 @@ inline float get_period_sparcity(const std::vector<float>& sparsity,
 }
 
 template <typename DeviceContext, typename T>
-void DGCOpFunction(const framework::ExecutionContext& ctx) {
-  auto u = ctx.Input<framework::Tensor>("U");
-  auto v = ctx.Input<framework::Tensor>("V");
-  auto g = ctx.Input<framework::Tensor>("Grad");
+bool DGCOpFunction(const framework::ExecutionContext& ctx) {
+  auto u = ctx.Input<phi::DenseTensor>("U");
+  auto v = ctx.Input<phi::DenseTensor>("V");
+  auto g = ctx.Input<phi::DenseTensor>("Grad");
 
-  auto grad_out = ctx.Output<framework::Tensor>("Grad_out");
+  auto grad_out = ctx.Output<phi::DenseTensor>("Grad_out");
 
   // attrs
   float m = ctx.Attr<float>("m");
@@ -66,7 +66,7 @@ void DGCOpFunction(const framework::ExecutionContext& ctx) {
   auto rampup_step = ctx.Attr<float>("rampup_step");
 
   // nranks
-  auto nranks_tensor = ctx.Input<framework::Tensor>("nranks");
+  auto nranks_tensor = ctx.Input<phi::DenseTensor>("nranks");
   const int nranks = static_cast<const int>(*nranks_tensor->data<float>());
   PADDLE_ENFORCE_GT(nranks, 1,
                     platform::errors::PreconditionNotMet(
@@ -74,7 +74,7 @@ void DGCOpFunction(const framework::ExecutionContext& ctx) {
                         "use multi card or multi machine GPU"));
 
   // regularization
-  auto p = ctx.Input<framework::Tensor>("Param");
+  auto p = ctx.Input<phi::DenseTensor>("Param");
   float regular_coeff = ctx.Attr<float>("regular_coeff");
   int regular_type = ctx.Attr<int>("regular_type");
 
@@ -107,7 +107,7 @@ void DGCOpFunction(const framework::ExecutionContext& ctx) {
   }
 
   // current step
-  auto current_step_tensor = ctx.Input<framework::Tensor>("current_step");
+  auto current_step_tensor = ctx.Input<phi::DenseTensor>("current_step");
   const float* current_step = current_step_tensor->data<float>();
 
   if (static_cast<int>(*current_step) < static_cast<int>(rampup_begin_step)) {
@@ -118,31 +118,14 @@ void DGCOpFunction(const framework::ExecutionContext& ctx) {
     bool do_allreduce = ctx.Attr<bool>("do_allreduce");
     if (do_allreduce) {
       // stream
-      const int ring_id = ctx.Attr<int>("ring_id");
-      auto comm =
-          platform::NCCLCommContext::Instance().Get(ring_id, ctx.GetPlace());
-      gpuStream_t stream = comm->stream();
-      gpuStream_t compute_stream = dev_ctx.stream();
-      ncclDataType_t dtype =
-          platform::ToNCCLDataType(framework::TransToProtoVarType(g->dtype()));
-
-#ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          hipEventRecord(comm->compute_event(), dev_ctx.stream()));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          hipStreamWaitEvent(stream, comm->compute_event(), 0));
-#else
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          cudaEventRecord(comm->compute_event(), dev_ctx.stream()));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          cudaStreamWaitEvent(stream, comm->compute_event(), 0));
-#endif
-
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-          grad_out->data<T>(), grad_out->data<T>(), grad_out->numel(), dtype,
-          ncclSum, comm->comm(), stream));
+      const int rid = ctx.Attr<int>("ring_id");
+      auto map = distributed::ProcessGroupMapFromGid::getInstance();
+      distributed::ProcessGroup* pg = map->get(rid);
+      std::vector<phi::DenseTensor> in_tensor = {*g};
+      std::vector<phi::DenseTensor> out_tensor = {*grad_out};
+      pg->AllReduce(in_tensor, out_tensor);
     }
-    return;
+    return false;
   }
 
   float ratio =
@@ -163,14 +146,19 @@ void DGCOpFunction(const framework::ExecutionContext& ctx) {
            << ",  current_step:" << *current_step << ", ratio:" << ratio
            << ", k:" << k << ", nranks:" << nranks;
 
-  auto k_out = ctx.Output<framework::Tensor>("k");
+  auto k_out = ctx.Output<phi::DenseTensor>("k");
   T* k_out_data = k_out->data<T>();
   *k_out_data = k;
 
-  auto u_out = ctx.Output<framework::Tensor>("U_out");
-  auto v_out = ctx.Output<framework::Tensor>("V_out");
-  auto encode_grad_out = ctx.Output<framework::Tensor>("EncodeGrad");
-  auto gather_buff = ctx.Output<framework::Tensor>("GatherBuff");
+  LOG(INFO) << "=========UUUUUUU======" << *u;
+
+  auto u_out = ctx.Output<phi::DenseTensor>("U_out");
+  auto v_out = ctx.Output<phi::DenseTensor>("V_out");
+  u_out->mutable_data<T>(u->dims(), ctx.GetPlace()); 
+  v_out->mutable_data<T>(v->dims(), ctx.GetPlace()); 
+
+  auto encode_grad_out = ctx.Output<phi::DenseTensor>("EncodeGrad");
+  auto gather_buff = ctx.Output<phi::DenseTensor>("GatherBuff");
 
   // FIXME(gongwb): use cublas.
   auto u_out_e = framework::EigenVector<T>::Flatten(*u_out);
@@ -202,6 +190,8 @@ void DGCOpFunction(const framework::ExecutionContext& ctx) {
         ctx, u, v, 0, phi::funcs::AddFunctor<T>(), v_out);
   }
 
+  LOG(INFO) << "=========UUUUUUU_outoutout======" << *u_out;
+
   T* v_out_data = v_out->mutable_data<T>(ctx.GetPlace());
   T* u_out_data = u_out->mutable_data<T>(ctx.GetPlace());
   T* encode_grad_out_data =
@@ -223,6 +213,8 @@ void DGCOpFunction(const framework::ExecutionContext& ctx) {
 
   phi::funcs::SetConstant<DeviceContext, T> tset;
   tset(dev_ctx, grad_out, static_cast<T>(0));
+
+  return true;
 }
 
 template <typename DeviceContext, typename T>

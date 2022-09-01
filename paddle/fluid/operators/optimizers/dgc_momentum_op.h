@@ -49,6 +49,10 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
 
     const framework::Tensor* g = context.Input<framework::Tensor>("Grad");
     framework::Tensor* g_out = context.Output<framework::Tensor>("Grad_out");
+    // static and dygraph are consistency
+    if(not g_out->initialized()){
+        g_out->mutable_data<T>(g->dims(), context.GetPlace());
+    }
     auto g_e = framework::EigenVector<T>::Flatten(*g);
     auto g_out_e = framework::EigenVector<T>::Flatten(*g_out);
 
@@ -71,6 +75,12 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       auto* velocity = context.Input<framework::Tensor>("Velocity");
       auto* param_out = context.Output<framework::Tensor>("ParamOut");
       auto* velocity_out = context.Output<framework::Tensor>("VelocityOut");
+      LOG(INFO) << "=========ppppppppppp_out==========" << param_out->initialized();
+      if(not param_out->initialized()){
+      
+      }
+      //param_out->mutable_data<T>(param->dims(), context.GetPlace());
+      //velocity_out->mutable_data<T>(velocity->dims(), context.GetPlace());
       auto* master_param_out =
           context.Output<framework::Tensor>("MasterParamOut");
       paddle::optional<framework::Tensor> master_param_opt(paddle::none);
@@ -84,6 +94,9 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       if (grad_var->IsType<framework::Tensor>()) {
         // sgd_dense
         auto* grad = context.Input<framework::Tensor>("Grad");
+
+	LOG(INFO) << "====pppppppppppppp_shape=====" << param->dims();
+	LOG(INFO) << "====gggggggggggggg_shape=====" << grad->dims();
         phi::MomentumDenseKernel<T>(
             static_cast<const typename framework::ConvertToPhiContext<
                 DeviceContext>::TYPE&>(dev_ctx),

@@ -32,8 +32,10 @@ template <typename DeviceContext, typename T>
 class DGCFuseOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    auto g = ctx.Input<phi::DenseTensor>("Grad");
     auto grad_out = ctx.Output<framework::Tensor>("Grad_out");
     auto place = ctx.GetPlace();
+    grad_out->mutable_data<T>(g->dims(), place);
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     // nranks
@@ -44,68 +46,58 @@ class DGCFuseOpKernel : public framework::OpKernel<T> {
                           "DGC is not useful when num_trainers <= 1. Please "
                           "use multi card or multi machine GPU"));
     // stream
-    const int ring_id = ctx.Attr<int>("ring_id");
-    auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-    gpuStream_t stream = comm->stream();
-    gpuStream_t compute_stream = dev_ctx.stream();
-
-    ncclDataType_t dtype = platform::ToNCCLDataType(
-        framework::TransToProtoVarType(grad_out->dtype()));
-
+    const int rid = ctx.Attr<int>("ring_id");
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    PADDLE_ENFORCE_EQ(
+    map->has(rid), true,
+    platform::errors::InvalidArgument("dgc only nomally work after PaddlePaddle==2.3.1"));
     bool is_use_dgc = ctx.Attr<bool>("is_use_dgc");
     if (!is_use_dgc) {
-#ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          hipEventRecord(comm->compute_event(), dev_ctx.stream()));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          hipStreamWaitEvent(stream, comm->compute_event(), 0));
-#else
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          cudaEventRecord(comm->compute_event(), dev_ctx.stream()));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          cudaStreamWaitEvent(stream, comm->compute_event(), 0));
-#endif
-
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-          grad_out->data<T>(), grad_out->data<T>(), grad_out->numel(), dtype,
-          ncclSum, comm->comm(), stream));
-
-      return;
+        distributed::ProcessGroup* pg = map->get(rid);
+        std::vector<phi::DenseTensor> in_tensor = {*g};
+        std::vector<phi::DenseTensor> out_tensor = {*grad_out};
+        pg->AllReduce(in_tensor, out_tensor);
+        return;
     }
-
+    
+    LOG(INFO) << "========33333333333=========";
     // reuse dgc op
-    DGCOpFunction<DeviceContext, T>(ctx);
+    if (!DGCOpFunction<DeviceContext, T>(ctx)){
+	    return;
+    }
+    LOG(INFO) << "========44444444444=========";
 
     auto encode_grad_out = ctx.Output<framework::Tensor>("EncodeGrad");
     auto gather_buff = ctx.Output<framework::Tensor>("GatherBuff");
-    T* encode_grad_out_data = encode_grad_out->data<T>();
 
+
+    LOG(INFO) << "========5555555555=========";
     auto k_out = ctx.Output<framework::Tensor>("k");
     int64_t k = static_cast<int64_t>(*k_out->data<T>());
 
-#ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        hipEventRecord(comm->compute_event(), dev_ctx.stream()));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        hipStreamWaitEvent(stream, comm->compute_event(), 0));
-#else
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaEventRecord(comm->compute_event(), dev_ctx.stream()));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaStreamWaitEvent(stream, comm->compute_event(), 0));
-#endif
-
+    LOG(INFO) << "======nnnnnnnnn========";
     // do dgc comm
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
-        encode_grad_out_data, gather_buff->data<T>(), 2 * k, dtype,
-        comm->comm(), stream));
+    distributed::ProcessGroup* pg = map->get(rid);
+    std::vector<phi::DenseTensor> in_tensor;
+    std::vector<phi::DenseTensor> out_tensor;
+    in_tensor.push_back(*encode_grad_out);
+    out_tensor.push_back(*gather_buff);
+
+    LOG(INFO) << "======6666666666========";
+    pg->AllGather(in_tensor, out_tensor);
+    
+    LOG(INFO) << "======+AAAAAAAAA=========";
+    std::vector<std::unique_ptr<phi::GPUContext>> ctxs = pg->GetDeviceContext(in_tensor);
 
     PADDLE_ENFORCE_EQ(
         paddle::communication::dgc::sparseReduce(
             static_cast<void*>(gather_buff->data()), k, grad_out->data<T>(),
-            grad_out->numel(), nranks, stream),
+            grad_out->numel(), nranks, ctxs[0]->stream()),
         true, platform::errors::Unavailable("Calling sparseReduce() failed."));
+
+    LOG(INFO) << "======BBBBBBBBBBB=========";
   }
+
 };
 }  // namespace operators
 }  // namespace paddle

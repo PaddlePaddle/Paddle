@@ -25,7 +25,7 @@ from paddle.fluid.layers import collective, tensor
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.initializer import Constant
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.distributed.collective import _get_default_group
 from paddle.optimizer.lr import LRScheduler
 from .optimizer import Optimizer
@@ -176,6 +176,7 @@ class DGCMomentumOptimizer(Optimizer):
 
             if self.reduce_order == self.reduce_count:
                 _C_ops.dgc_wait_comm([grad], self.new_group.id)
+                print("=======wait all===========")
 
         @imperative_base.no_grad
         def reduce_grad(gg):
@@ -213,6 +214,9 @@ class DGCMomentumOptimizer(Optimizer):
             regular_type, regular_coeff = self._get_regularization_param(
                 param_var.regularizer)
 
+        u_out, v_out, k_out, encoded_out, gather_out = [paddle.empty([])] * 5
+        in_out = [(u_var, u_out), (v_var,v_out), (k_var, k_out), (encoded_var, encoded_out), (gather_var, gather_out)]
+
         paddle.fluid.framework._dygraph_tracer().trace_op(
             type="dgc_fuse",
             inputs={
@@ -224,12 +228,12 @@ class DGCMomentumOptimizer(Optimizer):
                 "nranks": self._nranks_var,
             },
             outputs={
-                "U_out": u_var,
-                "V_out": v_var,
-                "EncodeGrad": encoded_var,
-                "k": k_var,
+                "U_out": u_out,
+                "V_out": v_out,
+                "EncodeGrad": encoded_out,
+                "k": k_out,
                 "Grad_out": grad_var,
-                "GatherBuff": gather_var,
+                "GatherBuff": gather_out,
             },
             attrs={
                 "m": self._momentum,
@@ -241,6 +245,8 @@ class DGCMomentumOptimizer(Optimizer):
                 "regular_type": int(regular_type),
                 "is_use_dgc": is_use_dgc
             })
+
+        map(lambda y: y[0].reconstruct_from_(y[1], False), filter(lambda x: sum(x[1].shape), in_out))
 
     def _clip_by_norm(self, x, max_norm, name=None):
         args = {'x': x, 'max_norm': max_norm, 'name': name}
@@ -403,7 +409,13 @@ class DGCMomentumOptimizer(Optimizer):
         return k_var, encoded_var, gather_var
 
     def clear_grad(self, set_to_zero=True):
-        core.clear_gradients(self.trainable_params, set_to_zero)
+        for p in self.trainable_params:
+            try:
+                p.clear_gradient(set_to_zero)
+            except Exception as e:
+                print(p.name, "=======ERROR=========", e)
+                print(p.grad)
+                raise e
 
     @imperative_base.no_grad
     def step(self):
@@ -428,6 +440,7 @@ class DGCMomentumOptimizer(Optimizer):
                 #regularation
                 grad = self._create_regularization_of_grad(param, grad)
 
+                opt_type = "momentum"
                 inputs = {
                     "Param": param,
                     "Grad": grad,
@@ -447,6 +460,7 @@ class DGCMomentumOptimizer(Optimizer):
                                           self._momentum, 'use_nesterov',
                                           self._use_nesterov)
             else:
+                print(param.name, "===========dgc_momentum========")
                 opt_type = "dgc_momentum"
                 inputs = {
                     "Param": param,
@@ -466,13 +480,15 @@ class DGCMomentumOptimizer(Optimizer):
                     "use_nesterov": self._use_nesterov,
                     "rampup_begin_step": float(self._rampup_begin_step)
                 }
+                _, _, _ = _legacy_C_ops.dgc_momentum(param, grad, velocity_acc, lr, self._global_step_var, self._nranks_var,
+                                                    'mu',self._momentum, 'use_nesterov', self._use_nesterov, 'rampup_begin_step',float(self._rampup_begin_step))
 
-                with paddle.no_grad():
-                    paddle.fluid.framework._dygraph_tracer().trace_op(
-                        type=opt_type,
-                        inputs=inputs,
-                        outputs=outputs,
-                        attrs=attrs)
+            #with paddle.no_grad():
+            #    paddle.fluid.framework._dygraph_tracer().trace_op(
+            #        type=opt_type,
+            #        inputs=inputs,
+            #        outputs=outputs,
+            #        attrs=attrs)
 
         self._global_step_var = _C_ops.increment(self._global_step_var, 'step',
                                                  1)

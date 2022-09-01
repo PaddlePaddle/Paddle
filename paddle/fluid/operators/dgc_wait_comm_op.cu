@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/dgc_wait_comm_op.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -32,16 +33,26 @@ class DGCWaitCommOpCUDAKernel : public framework::OpKernel<T> {
             place.DebugString()));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    int ring_id = ctx.Attr<int>("ring_id");
+    auto x = ctx.Input<framework::Tensor>("X");
+    int rid = ctx.Attr<int>("ring_id");
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    PADDLE_ENFORCE_EQ(
+    map->has(rid), true,
+    platform::errors::InvalidArgument("dgc only nomally work after PaddlePaddle==2.3.1"));
+    distributed::ProcessGroup* pg = map->get(rid);
+    std::vector<phi::DenseTensor> in_tensor = {*x};
+    std::vector<std::unique_ptr<phi::GPUContext>> ctxs = pg->GetDeviceContext(in_tensor);
+
     auto compute_stream =
         static_cast<phi::GPUContext*>(
             platform::DeviceContextPool::Instance().Get(place))
             ->stream();
-    auto comm_stream =
-        platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
+    auto comm_stream = ctxs[0]->stream();
 
-    auto event =
-        platform::NCCLCommContext::Instance().Get(ring_id, place)->comm_event();
+    gpuEvent_t event; 
+
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaEventCreate(&event, cudaEventDisableTiming));
 
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, comm_stream));

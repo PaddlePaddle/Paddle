@@ -82,6 +82,12 @@ class ProcessGroup {
 
   virtual const std::string GetBackendName() const = 0;
 
+  virtual std::vector<std::unique_ptr<phi::GPUContext>>  GetDeviceContext(std::vector<phi::DenseTensor>& inputs){
+    PADDLE_ENFORCE_EQ(GetBackendName() == "NCLL", true,
+                    platform::errors::PreconditionNotMet("GetDeviceContext only support NCCL backend for getting stream."));
+    return std::vector<std::unique_ptr<phi::GPUContext>>{};
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& /* input tensors */,   // NOLINT
       std::vector<phi::DenseTensor>& /* output tensors */,  // NOLINT
