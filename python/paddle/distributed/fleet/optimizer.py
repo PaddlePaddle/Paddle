@@ -22,6 +22,7 @@ from .base.distributed_strategy import DistributedStrategy
 from .meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
 from paddle.fluid import core
 from paddle.distributed import fleet
+from paddle.optimizer import DGCMomentumOptimizer
 
 
 def _dygraph_distributed_optimizer(optimizer, strategy=None):
@@ -61,6 +62,15 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
         fleet_env._user_defined_strategy = copy.deepcopy(strategy)
 
     fleet_env._context = {}
+
+    if strategy.dgc:
+        dgc_config = strategy.dgc_configs
+        return DGCMomentumOptimizer(
+            optimizer._parameter_list, optimizer._learning_rate,
+            optimizer._momentum, dgc_config["rampup_begin_step"],
+            dgc_config["rampup_step"], dgc_config["sparsity"],
+            optimizer._use_nesterov, optimizer.regularization,
+            optimizer._grad_clip)
 
     if fleet_env.worker_num() > 1:
         if fleet_env._user_defined_strategy.heter_ccl_mode == False:

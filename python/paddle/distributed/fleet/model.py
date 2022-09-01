@@ -127,6 +127,10 @@ def distributed_model(model):
     amp_enable = False
     recompute_enable = False
     strategy = fleet_env._user_defined_strategy
+
+    if strategy.dgc:
+        return model
+
     if strategy.amp == True:
         amp_enable = True
         amp_level = "O2" if strategy.amp_configs['use_pure_fp16'] else "O1"
