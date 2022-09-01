@@ -461,7 +461,7 @@ class GradientsGroup(object):
             return False
         if numel(grad_var) + self.numel > self.max_group_size:
             return False
-        if grad_var.dtype != grad_var.dtype:
+        if grad_var.dtype != self.dtype:
             return False
 
         return True
