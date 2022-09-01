@@ -951,6 +951,10 @@ void Reducer::MarkGroupReady(size_t group_index) {
     UNUSED auto &group = groups_[next_group_];
     UNUSED const int run_order = next_group_ % nrings_;
 
+    auto *tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
+    tensor->Resize(phi::make_ddim({group.all_length_}))
+        .mutable_data(place_, framework::TransToPhiDataType(group.dtype_));
+
     // For CUDA or XPU, compute_stream --> comm_stream.
     // For CPU, do nothing.
     // NOTE. Because concat uses the comm_stream,
@@ -976,9 +980,6 @@ void Reducer::FusedAllReduceSchedule(const int run_order,
   } else {
     VLOG(3) << "dense group [" << curr_group_index
             << "] start allreduce in ring[" << run_order << "]";
-    auto *tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
-    tensor->Resize(phi::make_ddim({group.all_length_}))
-        .mutable_data(place_, framework::TransToPhiDataType(group.dtype_));
     // Select common commstream to concat tensors
     // group.dense_tensors ---> group.dense_contents_
     group.ConcatTensors(dev_context);
