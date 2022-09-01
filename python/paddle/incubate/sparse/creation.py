@@ -175,7 +175,7 @@ def sparse_coo_tensor(indices,
         inputs = {'Values': values, 'Indices': indices}
         attrs = {'dense_shape': shape}
         helper = LayerHelper('sparse_coo_tensor')
-        out = helper.create_variable_for_type_inference(dtype)
+        out = helper.create_sparse_variable_for_type_inference(dtype)
         helper.append_op(type='sparse_coo_tensor',
                          inputs=inputs,
                          outputs={'Out': out},

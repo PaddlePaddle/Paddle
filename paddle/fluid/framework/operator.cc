@@ -2705,6 +2705,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
         } else if (var->template IsType<phi::SelectedRows>()) {
           tensor_out = var->template GetMutable<phi::SelectedRows>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<phi::SparseCooTensor>()) {
+          tensor_out = var->template GetMutable<phi::SparseCooTensor>();
+          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<framework::LoDTensorArray>()) {
           paddle::small_vector<phi::TensorBase*> tensor_vector;
           auto* tensor_array =

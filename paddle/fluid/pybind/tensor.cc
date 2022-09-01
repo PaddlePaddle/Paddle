@@ -1105,6 +1105,21 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         std::copy(rows.begin(), rows.end(), std::back_inserter(new_rows));
         return new_rows;
       });
+
+  py::class_<phi::SparseCooTensor>(m, "SparseCooTensor")
+      .def("__init__",
+           [](phi::SparseCooTensor &instance) {
+             new (&instance) phi::SparseCooTensor();
+           })
+      .def("numel",
+           [](phi::SparseCooTensor &self) -> int64_t { return self.numel(); })
+      .def("values",
+           [](phi::SparseCooTensor &self) -> framework::Tensor {
+             return self.values();
+           })
+      .def("indices", [](phi::SparseCooTensor &self) -> framework::Tensor {
+        return self.indices();
+      });
 }
 
 }  // namespace pybind

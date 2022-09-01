@@ -41,7 +41,8 @@ set(PYBIND_DEPS
     new_profiler
     auto_parallel
     jit_layer
-    jit_property)
+    jit_property
+    sparse_coo_tensor)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -565,6 +566,7 @@ if(WITH_PYTHON)
     paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+  message("=============" ${PYBIND_SRCS})
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_dependencies(paddle_pybind eager_codegen)

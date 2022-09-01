@@ -536,6 +536,7 @@ PYBIND11_MODULE(core_noavx, m) {
   BindImperative(&m);
   BindEager(&m);
   BindEagerStringTensor(&m);
+  // BindEagerSparseCooTensor(&m);
   BindCudaStream(&m);
   BindJit(&m);
 
@@ -1793,6 +1794,9 @@ All parameter, weight, gradient are variables in Paddle.
             for (size_t i = 0; i < self.size(); ++i) {
               if (data_is_lod_tensor(self[i])) {
                 auto &data = PADDLE_GET(LoDTensor, self[i]);
+                res[i] = py::cast(std::move(data));
+              } else if (data_is_sparse_coo_tensor(self[i])) {
+                auto &data = PADDLE_GET(phi::SparseCooTensor, self[i]);
                 res[i] = py::cast(std::move(data));
               } else {
                 auto &data = PADDLE_GET(LoDTensorArray, self[i]);

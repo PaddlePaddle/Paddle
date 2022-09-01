@@ -21,6 +21,13 @@ SparseCooTensor::SparseCooTensor() {
   this->SetMember(non_zero_indices, non_zero_elements, {1}, true);
 }
 
+SparseCooTensor::SparseCooTensor(SparseCooTensor&& other) {
+  this->non_zero_elements_ = other.non_zero_elements_;
+  this->non_zero_indices_ = other.non_zero_indices_;
+  this->coalesced_ = other.coalesced_;
+  set_meta(other.meta());
+}
+
 SparseCooTensor::SparseCooTensor(const DenseTensor& non_zero_indices,
                                  const DenseTensor& non_zero_elements,
                                  const DDim& dims)

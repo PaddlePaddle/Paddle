@@ -183,7 +183,7 @@ cc_test(
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS selected_rows_utils framework_proto scope)
+  DEPS selected_rows_utils framework_proto scope sparse_coo_tensor)
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()

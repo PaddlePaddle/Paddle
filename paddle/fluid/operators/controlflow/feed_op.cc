@@ -61,6 +61,20 @@ class FeedVariableVisitor {
     *out_str = in_str;
   }
 
+  void operator()(const phi::SparseCooTensor &in_tensor) const {
+    phi::SparseCooTensor *out_tensor =
+        out_var_->GetMutable<phi::SparseCooTensor>();
+    if (platform::is_same_place(in_tensor.place(), place_)) {
+      // out_tensor->ShareDataWith(in_tensor);
+      *out_tensor = in_tensor;
+    } else {
+      // platform::DeviceContext *context =
+      //     platform::DeviceContextPool::Instance().Get(place_);
+      // framework::TensorCopy(in_tensor, place_, *context, out_tensor);
+    }
+    // out_tensor->set_lod(in_tensor.lod());
+  }
+
  private:
   framework::Variable *out_var_;
   const platform::Place &place_;
