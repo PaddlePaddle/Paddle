@@ -599,8 +599,6 @@ static PyObject* eager_api_register_saved_tensors_hooks(PyObject* self,
   EAGER_TRY
   auto pack_hook = PyTuple_GET_ITEM(args, 0);
   auto unpack_hook = PyTuple_GET_ITEM(args, 1);
-  std::cout << "eager_api_register_saved_tensors_hooks " << pack_hook << " "
-            << unpack_hook << std::endl;
   egr::SavedTensorsHooks::GetInstance().set_hooks(pack_hook, unpack_hook);
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL

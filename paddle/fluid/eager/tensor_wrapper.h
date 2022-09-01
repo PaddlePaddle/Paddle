@@ -34,6 +34,8 @@ class TensorWrapper {
   TensorWrapper() = default;
   explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
                          bool no_need_buffer = false);
+  TensorWrapper(const TensorWrapper& other);
+  TensorWrapper& operator=(const TensorWrapper& other);
   ~TensorWrapper();
 
   paddle::experimental::Tensor recover();
@@ -50,7 +52,7 @@ class TensorWrapper {
   paddle::experimental::Tensor intermidiate_tensor_;
   std::weak_ptr<egr::GradNodeBase> weak_grad_node_;
   uint32_t inplace_version_snapshot_ = 0;
-  PyObject* padked_tensor_info_{nullptr};
+  PyObject* packed_tensor_info_{nullptr};
   PyObject* unpack_hook_{nullptr};
 };
 }  // namespace egr
