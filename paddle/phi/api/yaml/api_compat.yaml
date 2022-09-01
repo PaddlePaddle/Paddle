@@ -64,9 +64,8 @@
              float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
              int workspace_size_MB = 512, bool exhaustive_search = false]
 
-- api : diag
-  op_name : diag_v2
-  grad_op_name : diag_v2_grad
+- api : diag (diag_v2)
+  backward : diag_grad (diag_v2_grad)
   inputs :
     x : X
   outputs :
