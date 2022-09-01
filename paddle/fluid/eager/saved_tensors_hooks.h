@@ -32,6 +32,7 @@ class SavedTensorsHooks {
                           "paddle.autograd.saved_tensors_hooks only one pair "
                           "of hooks is allowed at a time."));
 
+    std::cout << "set_hooks " << pack_hook << " " << unpack_hook << std::endl;
     pack_hook_ = pack_hook;
     unpack_hook_ = unpack_hook;
     Py_XINCREF(pack_hook_);

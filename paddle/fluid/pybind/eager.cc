@@ -37,6 +37,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/string_tensor.h"
+
+extern PyTypeObject* p_tensor_type_tensor_wrapper;
+
 namespace paddle {
 namespace pybind {
 
@@ -1157,6 +1160,7 @@ void BindEager(pybind11::module* module) {
   type->tp_as_async = &heap_type->as_async;
 #endif
   p_tensor_type = type;
+  p_tensor_type_tensor_wrapper = type;
 
   if (PyType_Ready(type) < 0) {
     PADDLE_THROW(platform::errors::Fatal(

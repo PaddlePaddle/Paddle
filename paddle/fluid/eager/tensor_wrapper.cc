@@ -31,9 +31,26 @@
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "pybind11/pybind11.h"
 #include "pybind11/pytypes.h"
 
+PyTypeObject* p_tensor_type_tensor_wrapper = nullptr;
 namespace egr {
+
+PyObject* ToPyObject(const paddle::experimental::Tensor& value) {
+  PyObject* obj = nullptr;
+  obj = p_tensor_type_tensor_wrapper->tp_alloc(p_tensor_type_tensor_wrapper, 0);
+  if (obj) {
+    auto v = reinterpret_cast<paddle::pybind::TensorObject*>(obj);
+    new (&(v->tensor)) paddle::experimental::Tensor();
+    v->tensor = value;
+  } else {
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "tp_alloc return null, can not new a PyObject."));
+  }
+  return obj;
+}
+
 TensorWrapper::TensorWrapper(const paddle::experimental::Tensor& tensor,
                              bool no_need_buffer) {
   // set inplace_version_snapshot_ according to tensor's current inplace
@@ -69,6 +86,8 @@ TensorWrapper::TensorWrapper(const paddle::experimental::Tensor& tensor,
           "Unrecognized tensor type for no_need_buffer feature"));
     }
   } else {
+    std::cout << "SavedTensorsHooks::GetInstance().is_enable() = "
+              << SavedTensorsHooks::GetInstance().is_enable() << std::endl;
     if (SavedTensorsHooks::GetInstance().is_enable() &&
         tensor.is_dense_tensor()) {
       phi::DenseTensor* dense_tensor =
@@ -82,9 +101,9 @@ TensorWrapper::TensorWrapper(const paddle::experimental::Tensor& tensor,
       Py_XINCREF(unpack_hook_);
       bool grad_tmp = egr::Controller::Instance().HasGrad();
       egr::Controller::Instance().SetHasGrad(false);
-      // pybind11::gil_scoped_acquire gil;
+      ::pybind11::gil_scoped_acquire gil;
       padked_tensor_info_ =
-          PyObject_Call(pack_hook, paddle::pybind::ToPyObject(tensor), nullptr);
+          PyObject_Call(pack_hook, ToPyObject(tensor), nullptr);
       egr::Controller::Instance().SetHasGrad(grad_tmp);
     } else {
       intermidiate_tensor_.set_impl(tensor.impl());
@@ -121,10 +140,13 @@ paddle::experimental::Tensor TensorWrapper::recover() {
     egr::Controller::Instance().SetHasGrad(false);
     PyObject* py_tensor = nullptr;
     {
-      // pybind11::gil_scoped_acquire gil;
+      ::pybind11::gil_scoped_acquire gil;
       py_tensor = PyObject_Call(unpack_hook_, padked_tensor_info_, nullptr);
     }
-    if (paddle::pybind::IsEagerTensor(py_tensor)) {
+    if (p_tensor_type_tensor_wrapper &&
+        PyObject_IsInstance(
+            py_tensor,
+            reinterpret_cast<PyObject*>(p_tensor_type_tensor_wrapper))) {
       auto src_dense_tensor = static_cast<phi::DenseTensor*>(
           reinterpret_cast<paddle::pybind::TensorObject*>(py_tensor)
               ->tensor.impl()
