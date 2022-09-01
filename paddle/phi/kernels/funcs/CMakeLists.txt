@@ -17,6 +17,11 @@ math_library(segment_pooling)
 math_library(sequence2batch)
 math_library(matrix_solve DEPS dense_tensor eigen3 blas math_function)
 
+cc_library(
+  phi_data_layout_transform
+  SRCS data_layout_transform.cc
+  DEPS tensor)
+
 if(WITH_GPU OR WITH_ROCM)
   if(MKL_FOUND AND WITH_ONEMKL)
     math_library(fft spectral_op.cu DEPS dynload_cuda dynload_mklrt
