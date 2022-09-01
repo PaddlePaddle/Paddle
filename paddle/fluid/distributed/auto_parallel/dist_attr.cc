@@ -30,11 +30,13 @@ std::vector<std::string> TensorDistAttr::fields_{
     "process_mesh", "dims_mapping", "batch_dim", "dynamic_dims"};
 
 TensorDistAttr::TensorDistAttr(const VarDesc& tensor) : tensor_(&tensor) {
-  VLOG(4) << "TensorDistAttr: construct " << tensor_->Name();
+  VLOG(4) << "[TensorDistAttr constructor] tensor name: " << tensor_->Name();
   if (tensor_->GetType() == framework::proto::VarType::READER) return;
   if (tensor_->GetType() == framework::proto::VarType::LOD_TENSOR_ARRAY) return;
   if (tensor_->GetType() == framework::proto::VarType::STEP_SCOPES) return;
   tensor_shape_ = tensor_->GetShape();
+  VLOG(4) << "[TensorDistAttr constructor] tensor shape: "
+          << str_join(tensor_shape_);
   set_default_dims_mapping();
   for (std::size_t i = 0; i < tensor_shape_.size(); ++i) {
     dynamic_dims_.push_back(false);
@@ -47,15 +49,13 @@ TensorDistAttr::TensorDistAttr(const TensorDistAttr& dist_attr) {
     tensor_shape_ = dist_attr.tensor_shape_;
   }
   if (tensor_ != nullptr) {
-    VLOG(4) << "TensorDistAttr: copy construct " << tensor_->Name();
+    VLOG(4) << "[TensorDistAttr copy constructor] tensor name:  "
+            << tensor_->Name() << ", tensro shape: " << str_join(tensor_shape_);
   } else {
-    VLOG(4) << "TensorDistAttr: copy construct none tensor";
+    VLOG(4) << "[TensorDistAttr copy constructor] tensor name:  None"
+            << ", tensro shape: " << str_join(tensor_shape_);
   }
-  set_process_mesh(dist_attr.process_mesh());
-  set_dims_mapping(dist_attr.dims_mapping());
-  set_batch_dim(dist_attr.batch_dim());
-  set_dynamic_dims(dist_attr.dynamic_dims());
-  set_annotated(dist_attr.annotated());
+  copy_from(dist_attr);
 }
 
 TensorDistAttr& TensorDistAttr::operator=(const TensorDistAttr& dist_attr) {
@@ -64,16 +64,22 @@ TensorDistAttr& TensorDistAttr::operator=(const TensorDistAttr& dist_attr) {
     tensor_shape_ = dist_attr.tensor_shape_;
   }
   if (tensor_ != nullptr) {
-    VLOG(4) << "TensorDistAttr: assign construct " << tensor_->Name();
+    VLOG(4) << "[TensorDistAttr assign constructor] tensor name:  "
+            << tensor_->Name() << ", tensro shape: " << str_join(tensor_shape_);
   } else {
-    VLOG(4) << "TensorDistAttr: assign construct none tensor";
+    VLOG(4) << "[TensorDistAttr assign constructor] tensor name:  None"
+            << ", tensro shape: " << str_join(tensor_shape_);
   }
+  copy_from(dist_attr);
+  return *this;
+}
+
+void TensorDistAttr::copy_from(const TensorDistAttr& dist_attr) {
   set_process_mesh(dist_attr.process_mesh());
   set_dims_mapping(dist_attr.dims_mapping());
   set_batch_dim(dist_attr.batch_dim());
   set_dynamic_dims(dist_attr.dynamic_dims());
   set_annotated(dist_attr.annotated());
-  return *this;
 }
 
 void TensorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
@@ -315,10 +321,11 @@ std::vector<std::string> OperatorDistAttr::fields_{
     "process_mesh", "impl_type", "impl_idx"};
 
 OperatorDistAttr::OperatorDistAttr(const OpDesc& op) : op_(&op) {
-  VLOG(4) << "OperatorDistAttr: construct " << op_->Type();
+  VLOG(4) << "[OperatorDistAttr constructor] op type: " << op_->Type();
   for (std::string name : op_->InputArgumentNames()) {
     VarDesc* input = op_->Block()->FindVarRecursive(name);
-    VLOG(4) << "OperatorDistAttr: construct input dist attr : " << name;
+    VLOG(4) << "[OperatorDistAttr constructor] create input dist attr of "
+            << name;
     inputs_[name] = input;
     if (input == nullptr || op_->Type() == "create_py_reader") {
       input_dist_attrs_[name] = TensorDistAttr();
@@ -329,7 +336,8 @@ OperatorDistAttr::OperatorDistAttr(const OpDesc& op) : op_(&op) {
   for (std::string name : op_->OutputArgumentNames()) {
     VarDesc* output = op_->Block()->FindVarRecursive(name);
     outputs_[name] = output;
-    VLOG(4) << "OperatorDistAttr: construct output dist attr : " << name;
+    VLOG(4) << "[OperatorDistAttr constructor] create output dist attr of "
+            << name;
     if (output == nullptr) {
       output_dist_attrs_[name] = TensorDistAttr();
     } else {
@@ -343,10 +351,12 @@ OperatorDistAttr::OperatorDistAttr(const OpDesc& op) : op_(&op) {
 OperatorDistAttr::OperatorDistAttr(const OperatorDistAttr& dist_attr) {
   if (op_ == nullptr) {
     op_ = dist_attr.op();
-    VLOG(4) << "OperatorDistAttr: copy construct " << op_->Type();
+    VLOG(4) << "[OperatorDistAttr copy constructor] op type: " << op_->Type();
     for (std::string name : op_->InputArgumentNames()) {
       VarDesc* input = op_->Block()->FindVarRecursive(name);
-      VLOG(4) << "OperatorDistAttr: construct input dist attr : " << name;
+      VLOG(4)
+          << "[OperatorDistAttr copy constructor] create input dist attr of "
+          << name;
       inputs_[name] = input;
       if (input == nullptr || op_->Type() == "create_py_reader") {
         input_dist_attrs_[name] = TensorDistAttr();
@@ -357,7 +367,9 @@ OperatorDistAttr::OperatorDistAttr(const OperatorDistAttr& dist_attr) {
     for (std::string name : op_->OutputArgumentNames()) {
       VarDesc* output = op_->Block()->FindVarRecursive(name);
       outputs_[name] = output;
-      VLOG(4) << "OperatorDistAttr: construct output dist attr : " << name;
+      VLOG(4)
+          << "[OperatorDistAttr copy constructor] create output dist attr of "
+          << name;
       if (output == nullptr) {
         output_dist_attrs_[name] = TensorDistAttr();
       } else {
@@ -365,26 +377,19 @@ OperatorDistAttr::OperatorDistAttr(const OperatorDistAttr& dist_attr) {
       }
     }
   }
-  for (const auto& item : dist_attr.input_dist_attrs()) {
-    set_input_dist_attr(item.first, item.second);
-  }
-  for (const auto& item : dist_attr.output_dist_attrs()) {
-    set_output_dist_attr(item.first, item.second);
-  }
-  set_process_mesh(dist_attr.process_mesh());
-  set_impl_type(dist_attr.impl_type());
-  set_impl_idx(dist_attr.impl_idx());
-  set_annotated(dist_attr.annotated());
+  copy_from(dist_attr);
 }
 
 OperatorDistAttr& OperatorDistAttr::operator=(
     const OperatorDistAttr& dist_attr) {
   if (op_ == nullptr) {
     op_ = dist_attr.op();
-    VLOG(4) << "OperatorDistAttr: assign " << op_->Type();
+    VLOG(4) << "[OperatorDistAttr assign constructor] op type: " << op_->Type();
     for (std::string name : op_->InputArgumentNames()) {
       VarDesc* input = op_->Block()->FindVarRecursive(name);
-      VLOG(4) << "OperatorDistAttr: construct input dist attr : " << name;
+      VLOG(4)
+          << "[OperatorDistAttr assign constructor] create input dist attr of "
+          << name;
       inputs_[name] = input;
       if (input == nullptr || op_->Type() == "create_py_reader") {
         input_dist_attrs_[name] = TensorDistAttr();
@@ -394,7 +399,9 @@ OperatorDistAttr& OperatorDistAttr::operator=(
     }
     for (std::string name : op_->OutputArgumentNames()) {
       VarDesc* output = op_->Block()->FindVarRecursive(name);
-      VLOG(4) << "OperatorDistAttr: construct output dist attr : " << name;
+      VLOG(4)
+          << "[OperatorDistAttr assgin constructor] create output dist attr of "
+          << name;
       outputs_[name] = output;
       if (output == nullptr) {
         output_dist_attrs_[name] = TensorDistAttr();
@@ -403,17 +410,43 @@ OperatorDistAttr& OperatorDistAttr::operator=(
       }
     }
   }
-  for (const auto& item : dist_attr.input_dist_attrs()) {
-    set_input_dist_attr(item.first, item.second);
-  }
-  for (const auto& item : dist_attr.output_dist_attrs()) {
-    set_output_dist_attr(item.first, item.second);
-  }
+  copy_from(dist_attr);
+  return *this;
+}
+
+void OperatorDistAttr::copy_from(const OperatorDistAttr& dist_attr) {
+  set_input_dist_attrs(dist_attr.input_dist_attrs());
+  set_output_dist_attrs(dist_attr.output_dist_attrs());
   set_process_mesh(dist_attr.process_mesh());
   set_impl_type(dist_attr.impl_type());
   set_impl_idx(dist_attr.impl_idx());
   set_annotated(dist_attr.annotated());
-  return *this;
+}
+
+void OperatorDistAttr::set_input_dist_attrs(
+    const std::map<std::string, TensorDistAttr>& dist_attrs) {
+  if (op_ == nullptr) {
+    for (const auto& item : dist_attrs) {
+      set_input_dist_attr(item.first, item.second);
+    }
+  } else {
+    for (const auto& item : input_dist_attrs_) {
+      set_input_dist_attr(item.first, dist_attrs.at(item.first));
+    }
+  }
+}
+
+void OperatorDistAttr::set_output_dist_attrs(
+    const std::map<std::string, TensorDistAttr>& dist_attrs) {
+  if (op_ == nullptr) {
+    for (const auto& item : dist_attrs) {
+      set_output_dist_attr(item.first, item.second);
+    }
+  } else {
+    for (const auto& item : output_dist_attrs_) {
+      set_output_dist_attr(item.first, dist_attrs.at(item.first));
+    }
+  }
 }
 
 void OperatorDistAttr::set_input_dist_attrs(
@@ -626,6 +659,44 @@ bool OperatorDistAttr::verify() const {
     }
   }
   return true;
+}
+
+void OperatorDistAttr::rename_input(const std::string& old_name,
+                                    const std::string& new_name) {
+  for (auto& item : input_dist_attrs_) {
+    if (item.first == old_name) {
+      VarDesc* new_input = op_->Block()->FindVarRecursive(new_name);
+      inputs_[new_name] = new_input;
+      if (new_input == nullptr) {
+        input_dist_attrs_[new_name] = TensorDistAttr();
+      } else {
+        input_dist_attrs_[new_name] = TensorDistAttr(*new_input);
+        input_dist_attrs_[new_name].copy_from(input_dist_attrs_[old_name]);
+      }
+      inputs_.erase(old_name);
+      input_dist_attrs_.erase(old_name);
+      break;
+    }
+  }
+}
+
+void OperatorDistAttr::rename_output(const std::string& old_name,
+                                     const std::string& new_name) {
+  for (auto& item : output_dist_attrs_) {
+    if (item.first == old_name) {
+      VarDesc* new_output = op_->Block()->FindVarRecursive(new_name);
+      outputs_[new_name] = new_output;
+      if (new_output == nullptr) {
+        output_dist_attrs_[new_name] = TensorDistAttr();
+      } else {
+        output_dist_attrs_[new_name] = TensorDistAttr(*new_output);
+        output_dist_attrs_[new_name].copy_from(output_dist_attrs_[old_name]);
+      }
+      outputs_.erase(old_name);
+      output_dist_attrs_.erase(old_name);
+      break;
+    }
+  }
 }
 
 std::string OperatorDistAttr::to_string() const {

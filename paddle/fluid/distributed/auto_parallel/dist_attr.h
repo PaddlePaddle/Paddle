@@ -56,6 +56,8 @@ class TensorDistAttr {
 
   TensorDistAttr& operator=(const TensorDistAttr& dist_attr);
 
+  void copy_from(const TensorDistAttr& dist_attr);
+
   const VarDesc* tensor() const { return tensor_; }
 
   const ProcessMesh& process_mesh() const { return process_mesh_; }
@@ -140,6 +142,8 @@ class OperatorDistAttr {
   OperatorDistAttr(const OperatorDistAttr& dist_attr);
 
   OperatorDistAttr& operator=(const OperatorDistAttr& dist_attr);
+
+  void copy_from(const OperatorDistAttr& dist_attr);
 
   const OpDesc* op() const { return op_; }
 
@@ -230,6 +234,10 @@ class OperatorDistAttr {
   bool verify_annotated(const std::map<std::string, bool>& annotated) const;
 
   bool verify() const;
+
+  void rename_input(const std::string& old_name, const std::string& new_name);
+
+  void rename_output(const std::string& old_name, const std::string& new_name);
 
   // OperatorDistAttr from_string(const std::string& dist_str);
   std::string to_string() const;

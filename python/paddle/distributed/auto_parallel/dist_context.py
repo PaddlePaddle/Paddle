@@ -24,6 +24,7 @@ from .dist_attribute import OperatorDistributedAttribute
 from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperator
 from .process_mesh import ProcessMesh
+from .utils import _copy_dist_attr_to_cpp
 from .utils import is_loss_grad_op, is_loss_op
 from .utils import _copy_dist_attr_to_cpp
 

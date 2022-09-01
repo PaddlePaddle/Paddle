@@ -3138,7 +3138,7 @@ class Operator(object):
         Returns:
             core.AttrType: the attribute type.
         """
-        return self.desc.attr_type(name)
+        return self.desc.attr_type(name, True)
 
     def _set_attr(self, name, val):
         """
@@ -3290,6 +3290,41 @@ class Operator(object):
 
         return self.desc._blocks_attr_ids(name)
 
+    def _var_attr(self, name):
+        """
+        Get the Variable attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            Variable: the Variable attribute.
+        """
+        attr_type = self.desc.attr_type(name, True)
+        assert attr_type == core.AttrType.VAR, "Required type attr({}) is Variable, but received {}".format(
+            name, attr_type)
+        attr_var_name = self.desc.attr(name, True).name()
+        return self.block._var_recursive(attr_var_name)
+
+    def _vars_attr(self, name):
+        """
+        Get the Variables attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            Variables: the Variables attribute.
+        """
+        attr_type = self.desc.attr_type(name, True)
+        assert attr_type == core.AttrType.VARS, "Required type attr({}) is list[Variable], but received {}".format(
+            name, attr_type)
+        attr_vars = [
+            self.block._var_recursive(var.name())
+            for var in self.desc.attr(name, True)
+        ]
+        return attr_vars
+
     def all_attrs(self):
         """
         Get the attribute dict.
@@ -3300,16 +3335,17 @@ class Operator(object):
         attr_names = self.attr_names
         attr_map = {}
         for n in attr_names:
-            attr_type = self.desc.attr_type(n)
+            attr_type = self.desc.attr_type(n, True)
             if attr_type == core.AttrType.BLOCK:
                 attr_map[n] = self._block_attr(n)
-                continue
-
-            if attr_type == core.AttrType.BLOCKS:
+            elif attr_type == core.AttrType.BLOCKS:
                 attr_map[n] = self._blocks_attr(n)
-                continue
-
-            attr_map[n] = self.attr(n)
+            elif attr_type == core.AttrType.VAR:
+                attr_map[n] = self._var_attr(n)
+            elif attr_type == core.AttrType.VARS:
+                attr_map[n] = self._vars_attr(n)
+            else:
+                attr_map[n] = self.attr(n)
 
         return attr_map
 
@@ -5831,26 +5867,23 @@ class Program(object):
 
         # Note: The op_role and op_role_var cann't be deleted currently,
         # and we will try to remove them in the future.
-        common_clipped_attrs_list = ['op_namescope', 'op_callstack']
+        common_clipped_attrs_list = [
+            'op_namescope', 'op_callstack', 'op_device', 'with_quant_attr'
+        ]
 
         for i in six.moves.range(res.desc.num_blocks()):
             block = res.desc.block(i)
             for var in block.all_vars():
                 var.clear_is_parameter()
                 var.clear_stop_gradient()
+            if not clip_extra:
+                continue
             for op_idx in range(0, block.op_size()):
                 op = block.op(op_idx)
                 if op.type() not in OpProtoHolder.instance().op_proto_map:
                     continue
 
-                if not clip_extra:
-                    continue
-
                 extra_attrs_map = core.get_op_extra_attrs(op.type())
-                for name in op.attr_names():
-                    if name in extra_attrs_map:
-                        op.remove_attr(name)
-                        continue
 
                 proto = OpProtoHolder.instance().get_op_proto(op.type())
                 remove_input_list = []
@@ -5865,9 +5898,8 @@ class Program(object):
                         break
                     if not find:
                         remove_input_list.append(name)
-                # The extra input of op will be removed in the future
-                # for name in remove_input_list:
-                #     op.remove_input(name)
+                for name in remove_input_list:
+                    op.remove_input(name)
 
                 remove_output_list = []
                 for name in op.output_names():
@@ -5881,10 +5913,10 @@ class Program(object):
                         break
                     if not find:
                         remove_output_list.append(name)
-                # The extra input of op will be removed in the future
-                # for name in remove_output_list:
-                #     op.remove_output(name)
+                for name in remove_output_list:
+                    op.remove_output(name)
 
+                remove_attr_list = []
                 op_quant_name = core.op_proto_and_checker_maker.kOpWithQuantAttrName(
                 )
                 quant = bool(op.attr(op_quant_name)
@@ -5894,21 +5926,22 @@ class Program(object):
                     "activation_bits", "bit_length", "quantize_weight_bits",
                     "weight_quant_scale"
                 ]
-                remove_attr_list = []
                 for name in op.attr_names():
                     if quant:
                         if name in quant_attrs:
                             continue
                         if name.endswith("_threshold"):
                             continue
-                    if name in common_clipped_attrs_list:
-                        remove_attr_list.append(name)
+                    if len(extra_attrs_map) > 0:
+                        if name in extra_attrs_map or name in common_clipped_attrs_list:
+                            op.remove_attr(name)
                         continue
-
                     find = False
                     for attr_proto in proto.attrs:
                         if attr_proto.name != name:
                             continue
+                        if attr_proto.extra:
+                            remove_attr_list.append(name)
                         find = True
                         break
                     if not find:
