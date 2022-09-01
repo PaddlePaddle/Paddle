@@ -843,6 +843,15 @@ class MLUCnnl {
                      const cnnlTensorDescriptor_t ouput_desc,
                      void* output);
 
+  static void CycleOp(const ExecutionContext& ctx,
+                      const cnnlCycleOp_t cycle_optype,
+                      const cnnlTensorDescriptor_t input1_desc,
+                      const void* input1,
+                      const cnnlTensorDescriptor_t input2_desc,
+                      const void* input2,
+                      const cnnlTensorDescriptor_t output_desc,
+                      void* output);
+
   static void BroadcastTo(const ExecutionContext& ctx,
                           const cnnlTensorDescriptor_t input_desc,
                           const void* input,

@@ -1024,6 +1024,25 @@ MLURNNDesc::~MLURNNDesc() {
                                         output));
 }
 
+/* static */ void MLUCnnl::CycleOp(const ExecutionContext& ctx,
+                                   const cnnlCycleOp_t cycle_optype,
+                                   const cnnlTensorDescriptor_t input1_desc,
+                                   const void* input1,
+                                   const cnnlTensorDescriptor_t input2_desc,
+                                   const void* input2,
+                                   const cnnlTensorDescriptor_t output_desc,
+                                   void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlCycleOp(handle,
+                                         cycle_optype,
+                                         input1_desc,
+                                         input1,
+                                         input2_desc,
+                                         input2,
+                                         output_desc,
+                                         output));
+}
+
 /* static */ void MLUCnnl::BroadcastTo(const ExecutionContext& ctx,
                                        const cnnlTensorDescriptor_t input_desc,
                                        const void* input,
