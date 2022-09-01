@@ -71,7 +71,7 @@ class StringsAPI(ForwardAPI):
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
   {return_type} api_output{inplace_assign};
-  {tensor_type}* kernel_out = dynamic_cast<{tensor_type}*>(SetStringsKernelOutput(kernel_backend, &api_output, {kernel_tensor_out_type}));"""
+  {tensor_type}* kernel_out = dynamic_cast<{tensor_type}*>(SetStringsKernelOutput(&api_output, {kernel_tensor_out_type}));"""
 
         elif len(out_dtype_list) > 1:
             output_create = f"""

@@ -19,10 +19,12 @@ import time
 from paddle.fluid import core
 from paddle.fluid import framework
 
+
 from .utils import print_program_with_dist_attr, _is_gradient_clip_op
 from .utils import _copy_tensor_dist_attr_from_cpp, _copy_tensor_dist_attr_to_cpp
 from .utils import _copy_op_dist_attr_from_cpp, _copy_op_dist_attr_to_cpp
 from .utils import _copy_dist_attr_from_cpp_for_graph
+
 from .operators import find_compatible_distributed_operator_impls
 from .dist_context import get_default_distributed_context, _node_id
 from .dist_tensor import DistributedTensor
@@ -1287,11 +1289,7 @@ class Completer:
             # TODO to add attribute for moment var
             op = ops[idx]
             if int(op.attr('op_role')) == int(OpRole.Optimize):
-                # TODO:
-                # 1. move `generate_optimizer` before `partitioner`
-                # 2. implement grad_clip completion by `dist_op`
-                # 3. allreduce dist_gloabl_norm (mp-group) and no_dist_global_norm (pp-group, sharding-group)
-                if _is_gradient_clip_op(op):
+                if is_gradient_clip_op(op):
                     if op.type in [
                             "sum", "sqrt", "fill_constant", "elementwise_max",
                             "elementwise_div"
@@ -1315,7 +1313,6 @@ class Completer:
                                 out_var, out_dist_attr)
                             op_dist_attr.set_output_dist_attr(
                                 out_name, out_dist_attr)
-                        remove_no_need_in_op(op, self._dist_context)
                     else:
                         in_var = vars[op.input("X")[0]]
                         in_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
@@ -1324,8 +1321,8 @@ class Completer:
                         ref_process_mesh = in_dist_attr.process_mesh
                         ref_dims_mapping = in_dist_attr.dims_mapping
 
-                        if op.type == "cast" and ops[
-                                idx + 1].type == "elementwise_mul":
+                        if op.type == "cast" and \
+                            ops[idx + 1].type == "elementwise_mul":
                             ref_var = vars[ops[idx + 1].input("X")[0]]
                             ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
                                 ref_var)
@@ -1498,20 +1495,3 @@ class Completer:
                             break
                         else:
                             dist_op.dist_attr = backup_op_dist_attr
-
-
-def remove_no_need_in_op(op, dist_context):
-    if op.type == "fill_constant":
-        return
-
-    filter_vars = []
-    main_block = op.block
-    rank_id = dist_context.dist_op_context.rank_id
-    for varname in op.input("X"):
-        if rank_id in dist_context.get_tensor_dist_attr_for_program(
-                main_block.var(varname)).process_mesh.processes:
-            filter_vars.append(varname)
-
-    if not filter_vars:
-        return
-    op.desc.set_input('X', filter_vars)
