@@ -543,9 +543,6 @@ void Reducer::InitializeGroups(
     } else {
       // process the dense gradient.
       InitializeDenseGroups(variable_indices_, &group);
-      auto tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
-      tensor->Resize(phi::make_ddim({group.all_length_}))
-          .mutable_data(place_, framework::TransToPhiDataType(group.dtype_));
     }
 
     // map variables to this group by VariableLocator
@@ -979,6 +976,9 @@ void Reducer::FusedAllReduceSchedule(const int run_order,
   } else {
     VLOG(3) << "dense group [" << curr_group_index
             << "] start allreduce in ring[" << run_order << "]";
+    auto *tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
+    tensor->Resize(phi::make_ddim({group.all_length_}))
+        .mutable_data(place_, framework::TransToPhiDataType(group.dtype_));
     // Select common commstream to concat tensors
     // group.dense_tensors ---> group.dense_contents_
     group.ConcatTensors(dev_context);
@@ -1114,6 +1114,12 @@ void Reducer::FinalizeBackward() {
   // Must prevent compute_stream_ starting until all comm streams have finished
   for (int i = 0; i < nrings_; ++i) {
     parallel_ctx_->WaitComm(i);
+  }
+
+  for (auto &group : groups_) {
+    if (!group.is_sparse_) {
+      group.dense_contents_.Clear();
+    }
   }
 
   if (NeedRebuildGroup()) {
