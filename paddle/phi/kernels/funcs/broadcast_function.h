@@ -28,9 +28,9 @@ namespace funcs {
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 
 enum BroadcastType {
-  kNoUse = 0,   // no broadcast
-  kCommon = 1,  // broadcast with div and mod operation
-  kOneData = 2  // directly fetch the only one src data.
+  kNoBroadcast = 0,  // no broadcast
+  kCommon = 1,       // broadcast with div and mod operation
+  kOneToMany = 2     // directly fetch the only one src data.
 };
 
 /*
@@ -279,8 +279,8 @@ __device__ __forceinline__ void LoadData(
   if (broadcast_type == BroadcastType::kCommon) {
     kps::ReadDataBc<T, VecSize, 1, IsBoundary>(
         dst, src, block_offset, config, numel, read_lens);
-  } else if (broadcast_type == BroadcastType::kOneData) {
-    kps::ReadOneData<T, VecSize, 1, IsBoundary>(
+  } else if (broadcast_type == BroadcastType::kOneToMany) {
+    kps::ReadOneToMany<T, VecSize, 1, IsBoundary>(
         dst, src, block_offset, numel, read_lens);
   } else {
     kps::ReadData<T, VecSize, 1, IsBoundary>(
@@ -450,9 +450,9 @@ void LaunchBroadcastKernel(
   for (int i = 0; i < Arity; i++) {
     if (ins[i]->numel() != numel) {
       broadcast_types[i] = (ins[i]->numel() != 1) ? BroadcastType::kCommon
-                                                  : BroadcastType::kOneData;
+                                                  : BroadcastType::kOneToMany;
     } else {
-      broadcast_types[i] = BroadcastType::kNoUse;
+      broadcast_types[i] = BroadcastType::kNoBroadcast;
     }
     ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
   }
