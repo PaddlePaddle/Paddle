@@ -21,9 +21,16 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/phi/core/selected_rows_impl.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 
 namespace phi {
+
+class SelectedRowsImpl;
+
 class SelectedRows : public TensorBase,
                      public TypeInfoTraits<TensorBase, SelectedRows> {
   /*
@@ -46,31 +53,31 @@ class SelectedRows : public TensorBase,
 
   SelectedRows();
 
-  const DenseTensor& value() const { return impl_->value(); }
+  const DenseTensor& value() const;
 
-  DenseTensor* mutable_value() { return impl_->mutable_value(); }
+  DenseTensor* mutable_value();
 
-  int64_t height() const { return impl_->height(); }
+  int64_t height() const;
 
-  void set_height(int64_t height) { impl_->set_height(height); }
+  void set_height(int64_t height);
 
-  const std::vector<int64_t>& rows() const { return impl_->rows(); }
+  const std::vector<int64_t>& rows() const;
 
-  std::vector<int64_t>* mutable_rows() { return impl_->mutable_rows(); }
+  std::vector<int64_t>* mutable_rows();
 
-  void set_rows(const std::vector<int64_t>& rows) { impl_->set_rows(rows); }
+  void set_rows(const std::vector<int64_t>& rows);
   /*
    * @brief Get the index of key in rows
    *
    * @return -1 if the key does not exists.
    */
-  int64_t Index(int64_t key) const { return impl_->Index(key); }
+  int64_t Index(int64_t key) const;
   /*
    * @brief whether has the specified key in the table.
    *
    * @return true if the key is exists.
    */
-  bool HasKey(int64_t key) const { return impl_->HasKey(key); }
+  bool HasKey(int64_t key) const;
 
   /*
    * @brief Get value by the key list.
@@ -84,15 +91,11 @@ class SelectedRows : public TensorBase,
   void Get(const DenseTensor& ids,
            DenseTensor* value,
            bool auto_grown = false,
-           bool is_test = false) {
-    impl_->Get(ids, value, auto_grown, is_test);
-  }
+           bool is_test = false);
 
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
-                     size_t requested_size = 0) override {
-    return impl_->AllocateFrom(allocator, dtype, requested_size);
-  }
+                     size_t requested_size = 0) override;
 
   /*
    * @brief Get the index of the key from id_to_index_ map. If the key not
@@ -105,22 +108,18 @@ class SelectedRows : public TensorBase,
    *
    * @return index of the key.
    */
-  int64_t AutoGrownIndex(int64_t key, bool auto_grown, bool is_test = false) {
-    return impl_->AutoGrownIndex(key, auto_grown, is_test);
-  }
+  int64_t AutoGrownIndex(int64_t key, bool auto_grown, bool is_test = false);
 
   /*
    * @brief Get the index of the key from id_to_index_ map.
    */
-  inline int64_t GetIndexFromId(int64_t key) const {
-    return impl_->GetIndexFromId(key);
-  }
+  int64_t GetIndexFromId(int64_t key) const;
 
-  void SyncIndex() { impl_->SyncIndex(); }
+  void SyncIndex();
   /*
    * @brief Get complete Dims before
    */
-  DDim GetCompleteDims() const { return impl_->GetCompleteDims(); }
+  DDim GetCompleteDims() const;
 
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
@@ -128,34 +127,31 @@ class SelectedRows : public TensorBase,
 
   /// \brief Returns the number of elements contained in tensor.
   /// \return The number of elements contained in tensor.
-  int64_t numel() const override { return impl_->numel(); };
+  int64_t numel() const override;
 
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
-  const DDim& dims() const noexcept override {
-    return impl_->dims();
-    // return phi::make_ddim(dims);
-  }
+  const DDim& dims() const noexcept override;
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
-  DataType dtype() const noexcept override { return impl_->dtype(); }
+  DataType dtype() const noexcept override;
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
-  DataLayout layout() const noexcept override { return impl_->layout(); }
+  DataLayout layout() const noexcept override;
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.
-  const Place& place() const override { return impl_->place(); };
+  const Place& place() const override;
 
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
-  bool valid() const noexcept override { return impl_->valid(); }
+  bool valid() const noexcept override;
 
   /// \brief Test whether the storage is allocated.
   /// return Whether the storage is allocated.
-  bool initialized() const override { return impl_->initialized(); }
+  bool initialized() const override;
 
  private:
   std::shared_ptr<phi::SelectedRowsImpl> impl_{nullptr};

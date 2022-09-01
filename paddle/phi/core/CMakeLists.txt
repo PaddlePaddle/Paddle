@@ -67,7 +67,7 @@ cc_library(
   DEPS meta_tensor)
 cc_library(
   selected_rows
-  SRCS selected_rows_impl.cc selected_rows.cc
+  SRCS selected_rows.cc
   DEPS tensor_base dense_tensor phi_enforce ddim)
 cc_library(
   phi_device_context
