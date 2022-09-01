@@ -152,14 +152,19 @@ void MemcpyKernel(const Context& dev_ctx,
                          dst_place_type));
   switch (dst_place_type) {
     case 0: /* CPUPlace */
+      dev_ctx.HostAlloc(out, out->dtype());
       Copy(dev_ctx, x, CPUPlace(), true, out);
       break;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case 1: /* CUDAPlace */
-      Copy(dev_ctx, x, GPUPlace(), false, out);
+      out->mutable_data(dev_ctx.GetPlace());
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
       break;
     case 2: /* CUDAPinnedPlace */
+      out->mutable_data(GPUPinnedPlace());
       Copy(dev_ctx, x, GPUPinnedPlace(), false, out);
       break;
+#endif
     default:
       PADDLE_THROW(errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type));
