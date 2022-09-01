@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/eager/custom_operator/custom_operator_node.h"
 
+#include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"

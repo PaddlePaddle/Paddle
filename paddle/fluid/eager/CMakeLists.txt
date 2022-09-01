@@ -75,7 +75,13 @@ cc_library(
        memcpy
        scale_op
        autograd_meta
-       hook_utils)
+       hook_utils
+       tensor_wrapper)
+
+cc_library(
+  tensor_wrapper
+  SRCS tensor_wrapper.cc
+  DEPS phi_tensor python pybind)
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   add_subdirectory(tests)
