@@ -56,6 +56,9 @@ function init() {
         SCRIPT_NAME=$0
     fi
 
+    # automatically generate cmakelists.txt files
+    python ${PADDLE_ROOT}/tools/tools/gen_ut_cmakelists.py -d ${PADDLE_ROOT}/python/paddle/fluid/tests/unittests
+
     ENABLE_MAKE_CLEAN=${ENABLE_MAKE_CLEAN:-ON}
 
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 

@@ -1,3 +1,0 @@
-
-set -e
-python tools/gen_ut_cmakelists.py -f $*
