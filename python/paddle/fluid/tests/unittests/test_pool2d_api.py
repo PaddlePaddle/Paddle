@@ -343,7 +343,7 @@ class TestPool2D_API(unittest.TestCase):
             self.check_max_dygraph_ceilmode_results(place)
             self.check_max_dygraph_nhwc_results(place)
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with _test_eager_guard():
             self.test_pool2d()
 
@@ -539,7 +539,7 @@ class TestPool2DError_API(unittest.TestCase):
 
         self.assertRaises(ValueError, run_stride_out_of_range)
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with _test_eager_guard():
             self.test_error_api()
 

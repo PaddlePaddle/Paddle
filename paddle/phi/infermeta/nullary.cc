@@ -51,12 +51,25 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
   out->set_layout(layout);
 }
 
-void EyeInferMeta(int64_t num_rows,
-                  int64_t num_columns,
+void EyeInferMeta(const Scalar& num_rows,
+                  const Scalar& num_columns,
                   DataType dtype,
-                  MetaTensor* out) {
-  if (num_columns == -1) num_columns = num_rows;
-  out->set_dims({num_rows, num_columns});
+                  MetaTensor* out,
+                  MetaConfig config) {
+  int64_t rows, columns;
+  if (!config.is_runtime && num_rows.FromTensor()) {
+    rows = -1;
+  } else {
+    rows = num_rows.to<int64_t>();
+  }
+
+  if (!config.is_runtime && num_columns.FromTensor()) {
+    columns = -1;
+  } else {
+    columns = num_columns.to<int64_t>();
+    if (columns == -1) columns = rows;
+  }
+  out->set_dims({rows, columns});
   out->set_dtype(dtype);
 }
 
@@ -79,9 +92,6 @@ void RandpermInferMeta(int n, DataType dtype, MetaTensor* out) {
 
 void UniformRandomInferMeta(const IntArray& shape,
                             DataType dtype,
-                            float min,
-                            float max,
-                            int seed,
                             MetaTensor* out) {
   auto out_dims = phi::make_ddim(shape.GetData());
   out->set_dims(out_dims);
@@ -148,6 +158,35 @@ void TrilIndicesInferMeta(
     tril_size += diff_row * cols;
   }
   std::vector<int64_t> tmp = {2, tril_size};
+  auto out_dims = phi::make_ddim(tmp);
+  out->set_dims(out_dims);
+  out->set_dtype(dtype);
+}
+
+void TriuIndicesInferMeta(
+    int row, int col, int offset, DataType dtype, MetaTensor* out) {
+  // number of elements in the first row of the tril,bounded by [0, cols]
+  // use total item number minus bottom rectangle item number to get
+  // the above rectangle item number
+  //     triu_size = rows * cols - tril_size
+  // so the `offset` need to be set as `offset-1` in order to include
+  // the item on the diagonal line
+  offset = offset - 1;
+  auto n_first_row =
+      offset > 0 ? std::min<int64_t>(col, 1 + offset) : row + offset > 0;
+  // number of elements in the last row of the tril, bounded by [0, cols]
+  auto n_last_row = std::max<int64_t>(0, std::min<int64_t>(col, row + offset));
+  // number of rows, bounded by [0, rows]
+  auto n_row_all = std::max<int64_t>(0, std::min<int64_t>(row, row + offset));
+  auto n_row_trapezoid = (n_last_row - n_first_row + 1);
+  // calculate # of elements in the top trapezoid
+  auto tril_size = (n_first_row + n_last_row) * n_row_trapezoid >> 1;
+  // calculate # of elements in the bottom rectangle if there is any
+  auto diff_row = n_row_all - n_row_trapezoid;
+  if (diff_row > 0) {
+    tril_size += diff_row * col;
+  }
+  std::vector<int64_t> tmp = {2, row * col - tril_size};
   auto out_dims = phi::make_ddim(tmp);
   out->set_dims(out_dims);
   out->set_dtype(dtype);

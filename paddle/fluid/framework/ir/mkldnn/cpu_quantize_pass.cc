@@ -733,11 +733,11 @@ void CPUQuantizePass::QuantizeImmutable(Graph* graph,
   LogQuantizedOpsCounter(immutable_type, quantize_immutable_count);
 }
 
-void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
+void CPUQuantizePass::QuantizeMatmul(Graph* graph, bool with_residual) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::MatmulWithInputOps matmul_pattern{pattern, name_scope_};
-  matmul_pattern();
+  matmul_pattern(with_residual);
 
   int quantize_matmul_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -754,7 +754,7 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(prev_op_y, prev_op_y, matmul_pattern);
 
     // skip if prev ops are not quantized
-    if (!IsOpDequantized(prev_op_x) || !IsOpDequantized(prev_op_y)) {
+    if (!IsOpDequantized(prev_op_x) && !IsOpDequantized(prev_op_y)) {
       MarkAndLogCannotQuantizeOp(matmul_op,
                                  "No other quantizable operators nearby");
       return;
@@ -762,6 +762,15 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_x, matmul_in_x, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_y, matmul_in_y, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, matmul_pattern);
+
+    auto has_output_scale = AreScalesPresentForNodes({matmul_out});
+    if (with_residual && !has_output_scale) {
+      MarkAndLogCannotQuantizeOp(
+          matmul_op,
+          "Matmul op with ResidualData input cannot be quantized "
+          "without output scale.");
+      return;
+    }
 
     if (!AreScalesPresentForNodes({matmul_in_x, matmul_in_y})) {
       MarkAndLogCannotQuantizeOp(matmul_op,
@@ -780,6 +789,28 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
                           "are different: x(%d), y(%d).",
                           is_x_unsigned,
                           is_y_unsigned));
+
+    if (with_residual) {
+      GET_IR_NODE_FROM_SUBGRAPH(
+          matmul_residual_data, matmul_residual_data, matmul_pattern);
+      if (!AreScalesPresentForNodes({matmul_residual_data})) {
+        MarkAndLogCannotQuantizeOp(matmul_op,
+                                   "No scale available for the operator");
+        return;
+      }
+      bool is_residual_unsigned{false};
+      auto residual_scale =
+          GetScaleValueForNode(matmul_residual_data, &is_residual_unsigned);
+
+      QuantizeInput(g,
+                    matmul_op,
+                    matmul_residual_data,
+                    "ResidualData",
+                    residual_scale,
+                    is_residual_unsigned,
+                    "Scale_in_eltwise");
+    }
+
     QuantizeInput(g,
                   matmul_op,
                   matmul_in_x,
@@ -814,7 +845,9 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
   };
   gpd(graph, handler);
   AddStatis(quantize_matmul_count);
-  LogQuantizedOpsCounter("matmul", quantize_matmul_count);
+  LogQuantizedOpsCounter("matmul",
+                         quantize_matmul_count,
+                         (with_residual ? "with residual connection" : ""));
 }
 
 void CPUQuantizePass::QuantizeElementwise(
@@ -1132,7 +1165,8 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeConcat(graph);
   QuantizePriorBox(graph);
   QuantizeFc(graph);
-  QuantizeMatmul(graph);
+  QuantizeMatmul(graph, false /* with_residual_data */);
+  QuantizeMatmul(graph, true /* with_residual_data */);
   QuantizeImmutable(graph, "reshape2", "X");
   QuantizeImmutable(graph, "transpose2", "X");
   QuantizeImmutable(graph, "slice", "Input");

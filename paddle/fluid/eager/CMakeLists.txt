@@ -41,7 +41,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     grad_tensor_holder
     SRCS grad_tensor_holder.cc
     DEPS grad_node_info gradient_accumulator)
-  add_dependencies(grad_tensor_holder eager_final_state_codegen)
+  add_dependencies(grad_tensor_holder eager_codegen)
   cc_library(
     backward
     SRCS backward.cc

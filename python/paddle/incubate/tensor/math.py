@@ -14,12 +14,17 @@
 
 from paddle.fluid.layer_helper import LayerHelper, _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+import paddle.utils.deprecated as deprecated
 
 __all__ = []
 
 
+@deprecated(since="2.4.0",
+            update_to="paddle.geometric.segment_sum",
+            level=1,
+            reason="paddle.incubate.segment_sum will be removed in future")
 def segment_sum(data, segment_ids, name=None):
     r"""
     Segment Sum Operator.
@@ -52,9 +57,10 @@ def segment_sum(data, segment_ids, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_segment_pool(data, segment_ids, "SUM")[0]
+        return _C_ops.segment_pool(data, segment_ids, "SUM")[0]
     if _in_legacy_dygraph():
-        out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "SUM")
+        out, tmp = _legacy_C_ops.segment_pool(data, segment_ids, 'pooltype',
+                                              "SUM")
         return out
 
     check_variable_and_dtype(data, "X",
@@ -79,6 +85,10 @@ def segment_sum(data, segment_ids, name=None):
     return out
 
 
+@deprecated(since="2.4.0",
+            update_to="paddle.geometric.segment_mean",
+            level=1,
+            reason="paddle.incubate.segment_mean will be removed in future")
 def segment_mean(data, segment_ids, name=None):
     r"""
     Segment mean Operator.
@@ -113,9 +123,10 @@ def segment_mean(data, segment_ids, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_segment_pool(data, segment_ids, "MEAN")[0]
+        return _C_ops.segment_pool(data, segment_ids, "MEAN")[0]
     if _non_static_mode():
-        out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "MEAN")
+        out, tmp = _legacy_C_ops.segment_pool(data, segment_ids, 'pooltype',
+                                              "MEAN")
         return out
 
     check_variable_and_dtype(data, "X",
@@ -140,6 +151,10 @@ def segment_mean(data, segment_ids, name=None):
     return out
 
 
+@deprecated(since="2.4.0",
+            update_to="paddle.geometric.segment_min",
+            level=1,
+            reason="paddle.incubate.segment_min will be removed in future")
 def segment_min(data, segment_ids, name=None):
     r"""
     Segment min operator.
@@ -173,10 +188,11 @@ def segment_min(data, segment_ids, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_segment_pool(data, segment_ids, "MIN")[0]
+        return _C_ops.segment_pool(data, segment_ids, "MIN")[0]
 
     if _non_static_mode():
-        out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "MIN")
+        out, tmp = _legacy_C_ops.segment_pool(data, segment_ids, 'pooltype',
+                                              "MIN")
         return out
 
     check_variable_and_dtype(data, "X",
@@ -201,6 +217,10 @@ def segment_min(data, segment_ids, name=None):
     return out
 
 
+@deprecated(since="2.4.0",
+            update_to="paddle.geometric.segment_max",
+            level=1,
+            reason="paddle.incubate.segment_max will be removed in future")
 def segment_max(data, segment_ids, name=None):
     r"""
     Segment max operator.
@@ -234,11 +254,12 @@ def segment_max(data, segment_ids, name=None):
     """
 
     if in_dygraph_mode():
-        out, tmp = _C_ops.final_state_segment_pool(data, segment_ids, "MAX")
+        out, tmp = _C_ops.segment_pool(data, segment_ids, "MAX")
         return out
 
     if _non_static_mode():
-        out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "MAX")
+        out, tmp = _legacy_C_ops.segment_pool(data, segment_ids, 'pooltype',
+                                              "MAX")
         return out
 
     check_variable_and_dtype(data, "X",

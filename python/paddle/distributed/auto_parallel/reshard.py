@@ -30,7 +30,7 @@ from .cost import build_comm_desc, CommContext
 from .cost import AllgatherOpCost, SendOpCost
 from .cost import SliceOpCost, SplitOpCost, ConcatOpCost
 from .cluster import Cluster
-from .utils import print_program_with_dist_attr, _is_gradient_clip_op
+from .utils import print_program_with_dist_attr, is_gradient_clip_op
 
 # NOTE: If op in _g_special_ops or _g_gradient_clip_ops, it will not be resharded.
 _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
@@ -685,7 +685,8 @@ class Remover:
                 block._remove_op(idx)
 
     @staticmethod
-    def remove_no_need_vars(auto_parallel_main_prog, dist_params_grads):
+    def remove_no_need_vars(auto_parallel_main_prog, dist_params_grads,
+                            feed_var_names):
         """Remove no need vars in the main program"""
         for block_idx, block in enumerate(auto_parallel_main_prog.blocks):
             remove_vars = set()
@@ -731,7 +732,7 @@ class Remover:
                     idx += 1
 
             for var in remove_vars:
-                if block.vars[var].is_data:
+                if var in feed_var_names:
                     continue
                 block._remove_var(var)
 
@@ -743,7 +744,12 @@ class Remover:
                                    rank_id)
         Resharder.change_while_op_input_and_output(auto_parallel_main_prog,
                                                    dist_context)
-        Remover.remove_no_need_vars(auto_parallel_main_prog, dist_params_grads)
+        # 'feed_var_names' cannot be removed from auto_parallel_main_prog
+        feed_var_names = []
+        for var in sum(list(dist_context.serial_feed_vars.values()), []):
+            feed_var_names.append(var.name)
+        Remover.remove_no_need_vars(auto_parallel_main_prog, dist_params_grads,
+                                    feed_var_names)
 
     @staticmethod
     def remove_no_need_in_startup(auto_parallel_main_prog,
@@ -1082,7 +1088,7 @@ class Resharder:
         global _g_special_ops, _g_gradient_clip_ops
         if op.type in _g_special_ops:
             return True
-        if _is_gradient_clip_op(op) and op.type in _g_gradient_clip_ops:
+        if is_gradient_clip_op(op) and op.type in _g_gradient_clip_ops:
             return True
         return False
 
