@@ -685,7 +685,7 @@ def _remove_no_grad_branch_(op_descs,
                 new_op_desc = _create_op_desc_("fill_any_like", {"X": [x_in]},
                                                {"Out": [arg]}, {
                                                    'value': 0,
-                                                   'dtype': x_in.dtype
+                                                   'dtype': -1
                                                })
                 # update the mapping between fwd and bwd
                 if grad_op_id_to_fwd_op is not None and grad_op_id_to_fwd_op.get(
