@@ -1552,17 +1552,22 @@ class Executor(object):
                               UserWarning)
                 return False
 
-            compiled = isinstance(program, compiler.CompiledProgram)
+            compiled = isinstance(program,
+                                  compiler.CompiledProgram) or isinstance(
+                                      program._graph, compiler.CompiledProgram)
             if compiled:
+                compiled_program = program if isinstance(
+                    program, compiler.CompiledProgram) else program._graph
                 # Unsupported case 1 : the CompiledProgram is constructed by Graph
-                if program._program is None:
+                if compiled_program._program is None:
                     warnings.warn("Standalone executor is not used for Graph",
                                   UserWarning)
                     return False
 
                 # Unsupported case 2: data parallel
-                if program._is_data_parallel and len(
-                        program._get_places(place, program._places)) != 1:
+                if compiled_program._is_data_parallel and len(
+                        compiled_program._get_places(
+                            place, compiled_program._places)) != 1:
                     warnings.warn(
                         "Standalone executor is not used for data parallel",
                         UserWarning)
@@ -1578,36 +1583,28 @@ class Executor(object):
                     return False
 
                 # Unsupported case 4: inference
-                if program._is_inference:
+                if compiled_program._is_inference:
                     warnings.warn(
                         "Standalone executor is not used for inference",
                         UserWarning)
                     return False
 
                 # Unsupported case 5: CUDA Graph
-                if program._build_strategy is not None and program._build_strategy.allow_cuda_graph_capture:
+                if compiled_program._build_strategy is not None and compiled_program._build_strategy.allow_cuda_graph_capture:
                     warnings.warn(
                         "Standalone executor is not used for CUDA Graph",
                         UserWarning)
                     return False
 
-                # Unsupported case 6: distributed
-                if program._build_strategy is not None and (
-                        program._build_strategy.is_distribution
-                        or program._build_strategy.num_trainers > 1):
+                # Unsupported case 6: async mode
+                if compiled_program._build_strategy is not None and compiled_program._build_strategy.async_mode:
                     warnings.warn(
-                        "Standalone executor is not used for distribution",
+                        "Standalone executor is not used for async mode",
                         UserWarning)
                     return False
 
                 return use_standalone_executor_for_compiled_program
             else:
-                if isinstance(
-                        program._graph, compiler.CompiledProgram
-                ) and not use_standalone_executor_for_compiled_program:
-                    warnings.warn("Standalone executor is not used for Graph",
-                                  UserWarning)
-                    return False
                 assert isinstance(program, Program)
                 return True
 
