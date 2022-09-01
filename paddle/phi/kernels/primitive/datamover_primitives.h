@@ -795,7 +795,7 @@ __device__ __forceinline__ void ReadDataBc(
 
 template <typename T, int NX>
 __device__ __forceinline__ void ReadOneToMany(T* dst,
-                                              const T* __restrict__ src, ) {
+                                              const T* __restrict__ src) {
   T src_data = src[0];
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {

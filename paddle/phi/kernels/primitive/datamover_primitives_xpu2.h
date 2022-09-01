@@ -1212,9 +1212,9 @@ __device__ __inline__ void ReadDataBc(T* dst,
 }
 
 template <typename T, int NX>
-__device__ __forceinline__ void ReadOneToMany(T* dst,
-                                              const T _global_ptr_* src) {
-  T src_data = src[0];
+__device__ __inline__ void ReadOneToMany(T* dst, const T _global_ptr_* src) {
+  T src_data;
+  GM2LM(src, &src_data, sizeof(T));
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {
     dst[nx] = src_data;
