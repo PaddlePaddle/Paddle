@@ -90,6 +90,7 @@ static PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs)
   PyThreadState *tstate = nullptr;
   try {{
     VLOG(6) << "Running Eager Final State API: {}";
+    print_mem_info_guard guard("{}");
     // Get EagerTensors from args
 {}
     // Parse Attributes if needed
@@ -365,7 +366,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         # Generate Python-C Function Definetion
         self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
             forward_api_name, pythonc_record_event_str, forward_api_name,
-            get_eager_tensor_str, parse_attributes_str, set_device_str,
+            forward_api_name, get_eager_tensor_str, parse_attributes_str, set_device_str,
             noamp_dygraph_function_str, return_str)
 
         # Set prefix of forward_api_name to avoid conflicts
@@ -398,7 +399,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             # Generate Python-C Function Definetion
             python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
                 inplaced_forward_api_name, pythonc_record_event_str,
-                inplaced_forward_api_name, get_eager_tensor_str,
+                inplaced_forward_api_name, inplaced_forward_api_name, get_eager_tensor_str,
                 parse_attributes_str, set_device_str,
                 inplace_noamp_dygraph_function_str, return_str)
 

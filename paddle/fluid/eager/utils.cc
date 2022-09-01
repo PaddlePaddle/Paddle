@@ -26,6 +26,7 @@
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/memory/stats.h"
 
 PADDLE_DEFINE_EXPORTED_bool(retain_grad_for_all_tensor,
                             false,
@@ -529,6 +530,13 @@ void EagerUtils::FillZeroForEmptyGradInput(
   for (size_t i = 0; i < in_grads->size(); i++) {
     FillZeroForEmptyGradInput(&in_grads->at(i), grad_in_metas[i]);
   }
+}
+
+void print_mem_info3(const std::string& info) {
+  auto allocated = paddle::memory::DeviceMemoryStatCurrentValue("Allocated", 0);
+  // auto reserved = paddle::memory::DeviceMemoryStatCurrentValue("Reserved", 0);
+  std::cout << info << ", allocated = " << allocated << std::endl;
+            // << ", reserved = " << reserved << std::endl;
 }
 
 }  // namespace egr

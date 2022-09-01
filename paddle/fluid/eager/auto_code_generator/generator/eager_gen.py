@@ -151,6 +151,7 @@ GRAD_FUNCTION_TEMPLATE = \
 """
 paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
   // Fill Zero For GradIn Tensors
+  egr::print_mem_info_guard3 guard("{}");
 {}
   // Apply Gradient Hooks
   auto hooked_grads = ApplyGradientHooks(grads);
@@ -1732,7 +1733,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         grad_node_name = GetGradNodeName(self.backward_api_name)
 
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
-            grad_node_name, fill_zero_str, get_grad_in_args_str,
+            grad_node_name, forward_api_name + "_grad", fill_zero_str, get_grad_in_args_str,
             grad_function_prepare_str, compute_require_next_grad_str,
             inplace_check_str, inplace_for_grad_outs_str, grad_node_name,
             grad_function_call_str, check_nan_inf_str,

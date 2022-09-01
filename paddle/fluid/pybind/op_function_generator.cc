@@ -132,6 +132,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
   PyThreadState *tstate = nullptr;
   try
   {
+    print_mem_info_guard guard("%s");
     std::string op_type = "%s";
     platform::RecordEvent op_type_record_event("%s pybind_imperative_func");
     %s
@@ -407,7 +408,7 @@ std::string GenerateOpFunctionsBody(
   auto op_function_str = paddle::string::Sprintf(
       OP_FUNCTION_TEMPLATE,
       func_name,
-      op_type,
+      op_type, op_type,
       op_type,
       ins_cast_str,
       input_args_num,
