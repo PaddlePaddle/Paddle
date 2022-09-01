@@ -66,8 +66,8 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
         info.Creator()(type, inputs, outputs, attrs));
   }
   const auto& extra_attr_checkers =
-        operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(type);
-  if(!extra_attr_checkers.empty()) {
+      operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(type);
+  if (!extra_attr_checkers.empty()) {
     auto op_runtime_attr_map = runtime_attrs;
     for (const auto& checker : extra_attr_checkers) {
       checker(&op_runtime_attr_map, false);
