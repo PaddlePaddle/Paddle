@@ -795,16 +795,10 @@ __device__ __forceinline__ void ReadDataBc(
 
 template <typename T, int NX>
 __device__ __forceinline__ void ReadOneToMany(T* dst,
-                                              const T* __restrict__ src,
-                                              uint32_t block_offset,
-                                              int total_num_output,
-                                              int read_lens = NX) {
-  uint32_t thread_offset = block_offset + threadIdx.x * NX;
+                                              const T* __restrict__ src, ) {
   T src_data = src[0];
-
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {
-    uint32_t index_output = thread_offset + nx;
     dst[nx] = src_data;
   }
 }
