@@ -1681,7 +1681,6 @@ def zeros_like(x, out=None):
           data = fluid.layers.zeros_like(x) # [0.0, 0.0, 0.0]
 
     """
-    print(1111)
     check_variable_and_dtype(x, "x",
                              ['bool', 'float32', 'float64', 'int32', 'int64'],
                              'zeros_like')
