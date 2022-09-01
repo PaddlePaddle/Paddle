@@ -1474,6 +1474,15 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         if output_size[1] == None:
             output_size[1] = in_w
 
+    if _non_static_mode():
+        output_size = [
+            item.numpy().item(0) if isinstance(item, Variable) else item
+            for item in output_size
+        ]
+    # output_size support Variable in static mode
+    elif utils._contain_var(output_size):
+        output_size = utils._convert_to_tensor_list(output_size)
+
     if in_dygraph_mode():
         return _C_ops.pool2d_gpudnn_unused(x, output_size, [1, 1], [0, 0],
                                            False, True, data_format, 'avg',
