@@ -18,13 +18,10 @@ import time
 
 from paddle.fluid import core
 from paddle.fluid import framework
-
-
 from .utils import print_program_with_dist_attr, _is_gradient_clip_op
 from .utils import _copy_tensor_dist_attr_from_cpp, _copy_tensor_dist_attr_to_cpp
 from .utils import _copy_op_dist_attr_from_cpp, _copy_op_dist_attr_to_cpp
 from .utils import _copy_dist_attr_from_cpp_for_graph
-
 from .operators import find_compatible_distributed_operator_impls
 from .dist_context import get_default_distributed_context, _node_id
 from .dist_tensor import DistributedTensor
