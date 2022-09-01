@@ -41,6 +41,10 @@ def _append_activation_in_dygraph(input,
     if use_mkldnn:
         attrs += ('use_mkldnn', use_mkldnn)
 
+    if not use_cudnn and not use_mkldnn and in_dygraph_mode():
+        act_op = getattr(_C_ops, act)
+        return act_op(input)
+
     act_op = getattr(_legacy_C_ops, act)
     return act_op(input, *attrs)
 
