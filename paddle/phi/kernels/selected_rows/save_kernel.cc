@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/selected_rows/save_kernel.h"
 
+#include <fstream>
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 
