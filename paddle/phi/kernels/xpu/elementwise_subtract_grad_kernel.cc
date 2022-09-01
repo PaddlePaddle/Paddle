@@ -42,7 +42,7 @@ void SubtractGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(substract_grad,
+PD_REGISTER_KERNEL(subtract_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::SubtractGradKernel,
