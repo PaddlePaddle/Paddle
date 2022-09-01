@@ -37,8 +37,16 @@ void ScaleKernel(const Context& dev_ctx,
                                             &x);
 
   auto src_memory_p = handler.AcquireSrcMemory(&x);
-  auto dst_memory_p = handler.AcquireDstMemory(out);
   auto activation_p = handler.AcquireForwardPrimitive();
+
+  bool is_inplaced = x.IsSharedBufferWith(*out);
+  std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
+  if (is_inplaced) {
+    dst_memory_p = src_memory_p;
+    dev_ctx.template Alloc<T>(out);
+  } else {
+    dst_memory_p = handler.AcquireDstMemory(out);
+  }
 
   auto& astream = OneDNNContext::tls().get_stream();
   activation_p->execute(
