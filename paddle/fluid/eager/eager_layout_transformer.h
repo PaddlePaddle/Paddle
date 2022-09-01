@@ -112,21 +112,6 @@ class EagerLayoutTransformer {
   }
 
   virtual void SetOutTensorLayout(
-      std::vector<paddle::experimental::Tensor*>* out_tensor) {
-    bool use_default = (final_layout_ == "Undefined(AnyLayout)" ||
-                        final_layout_ == ("UNDEFINED"));
-    auto layout = paddle::framework::StringToDataLayout(final_layout_);
-    if (!use_default) {
-      for (size_t i = 0; i < out_tensor->size(); i++) {
-        phi::DenseTensorUtils::GetMutableMeta(
-            static_cast<phi::DenseTensor*>((*out_tensor)[i]->impl().get()))
-            ->layout = layout;
-      }
-    }
-    VLOG(4) << op_name_ << "is is agnostic, use_default " << use_default;
-  }
-
-  virtual void SetOutTensorLayout(
       std::vector<paddle::experimental::Tensor>* out_tensor) {
     bool use_default = (final_layout_ == "Undefined(AnyLayout)" ||
                         final_layout_ == ("UNDEFINED"));
