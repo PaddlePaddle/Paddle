@@ -261,7 +261,7 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         res = self.run_new_executor(feed)
         gt = self.run_raw_executor(feed)
         for x, y in zip(gt, res):
-            self.assertTrue(np.array_equal(x, y))
+            np.testing.assert_array_equal(x, y)
 
     def test_with_error(self):
         feed = [{'a': np.ones([2, 2], dtype="float32")}]
@@ -277,7 +277,7 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         res = self.run_new_executor(feed, use_compiled=True)
         gt = self.run_raw_executor(feed, use_compiled=True)
         for x, y in zip(gt, res):
-            self.assertTrue(np.array_equal(x, y))
+            np.testing.assert_array_equal(x, y)
 
     def test_compiled_program_convert_graph_to_program(self):
         data = np.ones([2, 2], dtype="float32")
@@ -286,7 +286,7 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         res = self.run_new_executor(feed, use_compiled=True)
         gt = self.run_raw_executor(feed, use_compiled=True)
         for x, y in zip(gt, res):
-            self.assertTrue(np.array_equal(x, y))
+            np.testing.assert_array_equal(x, y)
 
     def test_empty_program(self):
         program = paddle.static.Program()

@@ -31,7 +31,7 @@ template <typename Tx,
           template <typename>
           class ReduceOp,
           typename TransformOp>
-void TensorReduceImpl(const platform::CUDADeviceContext& dev_ctx,
+void TensorReduceImpl(const phi::GPUContext& dev_ctx,
                       const framework::Tensor& x,
                       framework::Tensor* y,
                       const TransformOp& transform,

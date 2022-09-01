@@ -140,11 +140,10 @@ class GELU(Layer):
 
     Examples:
         .. code-block:: python
-
+        
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[-1, 0.5],[1, 1.5]]))
+            x = paddle.to_tensor([[-1, 0.5],[1, 1.5]])
 
             m = paddle.nn.GELU()
             out = m(x) # [-0.158655 0.345731 0.841345 1.39979]
@@ -385,19 +384,18 @@ class PReLU(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
             paddle.set_default_dtype("float64")
 
-            data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
-                            [ 3.0, -4.0,  5.0, -6.0],
-                            [-7.0, -8.0,  8.0,  9.0]],
-                            [[ 1.0, -2.0, -3.0,  4.0],
-                            [-5.0,  6.0,  7.0, -8.0],
-                            [ 6.0,  7.0,  8.0,  9.0]]]], 'float64')
-            x = paddle.to_tensor(data)
+            data = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
+                                    [ 3.0, -4.0,  5.0, -6.0],
+                                    [-7.0, -8.0,  8.0,  9.0]],
+                                    [[ 1.0, -2.0, -3.0,  4.0],
+                                    [-5.0,  6.0,  7.0, -8.0],
+                                    [ 6.0,  7.0,  8.0,  9.0]]]])
+
             m = paddle.nn.PReLU(1, 0.25)
-            out = m(x)
+            out = m(data)
+            print(out)
             # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
             #    [ 3.  , -1.  ,  5.  , -1.5 ],
             #    [-1.75, -2.  ,  8.  ,  9.  ]],
@@ -486,7 +484,6 @@ class RReLU(Layer):
 
     Examples:
         .. code-block:: python
-            :name: RReLU-example
 
             import paddle
 
@@ -498,7 +495,8 @@ class RReLU(Layer):
                                             [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
 
             rrelu_layer = paddle.nn.RReLU(0.1, 0.3)
-            output = rrelu_layer(input_tensor)
+            out = rrelu_layer(input_tensor)
+            print(out)
             #[[[[-0.20000899  3.         -0.88108218  5.        ]
             #   [ 3.         -0.55175185  5.         -1.07761011]
             #   [-1.06806871 -1.98962009  8.          9.        ]]
@@ -548,7 +546,9 @@ class ReLU(Layer):
 
             x = paddle.to_tensor([-2., 0., 1.])
             m = paddle.nn.ReLU()
-            out = m(x) # [0., 0., 1.]
+            out = m(x)
+            print(out)
+            # [0., 0., 1.]
     """
 
     def __init__(self, name=None):
@@ -583,11 +583,12 @@ class ReLU6(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
+            x = paddle.to_tensor([-1., 0.3, 6.5])
             m = paddle.nn.ReLU6()
-            out = m(x) # [0, 0.3, 6]
+            out = m(x)
+            print(out)
+            # [0, 0.3, 6]
     """
 
     def __init__(self, name=None):
@@ -630,11 +631,12 @@ class SELU(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
+            x = paddle.to_tensor([[0.0, 1.0],[2.0, 3.0]])
             m = paddle.nn.SELU()
-            out = m(x) # [[0, 1.050701],[2.101402, 3.152103]]
+            out = m(x)
+            print(out)
+            # [[0, 1.050701],[2.101402, 3.152103]]
     """
 
     def __init__(self,

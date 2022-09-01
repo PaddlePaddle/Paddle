@@ -17,6 +17,11 @@
 namespace paddle {
 namespace inference {
 
+/*
+ * this model is unreasonable, it set a middle-tensor persistable, so
+ * ridiculous! so I disable constant_folding_pass
+ */
+
 using paddle::PaddleTensor;
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -25,6 +30,8 @@ void SetInt8Config(AnalysisConfig *cfg,
   cfg->SetModel(FLAGS_infer_model);
   cfg->EnableMKLDNN();
   cfg->EnableMkldnnQuantizer();
+  auto pass_builder = cfg->pass_builder();
+  pass_builder->DeletePass("constant_folding_pass");
   auto warmup_data = std::make_shared<std::vector<PaddleTensor>>(data);
   cfg->mkldnn_quantizer_config()->SetWarmupData(warmup_data);
   cfg->mkldnn_quantizer_config()->SetWarmupBatchSize(FLAGS_batch_size);

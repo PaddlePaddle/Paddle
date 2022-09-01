@@ -1,4 +1,4 @@
 cc_library(
-  dependency_utils
-  SRCS dependency_utils.cc
+  dependency_builder
+  SRCS dependency_builder.cc
   DEPS operator)

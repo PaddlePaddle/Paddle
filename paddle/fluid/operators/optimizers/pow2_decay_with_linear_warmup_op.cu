@@ -20,5 +20,5 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     pow2_decay_with_linear_warmup,
-    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CUDADeviceContext, double>,
-    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CUDADeviceContext, float>);
+    ops::Pow2DecayWithLinearWarmupOpKernel<phi::GPUContext, double>,
+    ops::Pow2DecayWithLinearWarmupOpKernel<phi::GPUContext, float>);

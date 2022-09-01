@@ -157,7 +157,7 @@ std::vector<std::string> localfs_list(const std::string& path) {
   std::shared_ptr<FILE> pipe;
   int err_no = 0;
   pipe = shell_popen(
-      string::format_string("find %s -type f -maxdepth 1", path.c_str()),
+      string::format_string("find %s -type f -maxdepth 1 | sort", path.c_str()),
       "r",
       &err_no);
   string::LineFileReader reader;

@@ -253,6 +253,19 @@ class GradNodeBase {
    * **/
   inline bool GradientHooksRegistered() { return !gradient_hooks_.empty(); }
 
+  std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
+  GetGradientHookFuntions() {
+    VLOG(6) << "GetGradientHookFuntions ";
+    return gradient_hooks_;
+  }
+
+  void SetGradientHookFuntions(
+      std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
+          hooks) {
+    VLOG(6) << "SetGradientHookFuntions ";
+    gradient_hooks_ = hooks;
+  }
+
   paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                        kSlotSmallVectorSize>
   ApplyGradientHooks(

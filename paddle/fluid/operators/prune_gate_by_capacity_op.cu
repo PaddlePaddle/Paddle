@@ -130,4 +130,4 @@ class PruneGateByCapacityCUDAKernel : public framework::OpKernel<T> {
 
 REGISTER_OP_CUDA_KERNEL(
     prune_gate_by_capacity,
-    ops::PruneGateByCapacityCUDAKernel<plat::CUDADeviceContext, int64_t>);
+    ops::PruneGateByCapacityCUDAKernel<phi::GPUContext, int64_t>);

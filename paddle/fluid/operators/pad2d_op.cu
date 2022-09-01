@@ -508,8 +508,8 @@ class Pad2dGradCUDAKernel : public framework::OpKernel<T> {
     const T* d_out_data = d_out->data<T>();
     T* d_in_data = d_in->mutable_data<T>(context.GetPlace());
 
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
-    set_zero(context.template device_context<platform::CUDADeviceContext>(),
+    phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
+    set_zero(context.template device_context<phi::GPUContext>(),
              d_in,
              static_cast<T>(0));
 

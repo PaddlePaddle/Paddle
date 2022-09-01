@@ -12,9 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/detection/nms_op.h"
-
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -65,23 +69,6 @@ class NMSOpMaker : public framework::OpProtoAndCheckerMaker {
 class NMSOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Boxes"), "Input", "Boxes", "NMS");
-    OP_INOUT_CHECK(
-        ctx->HasOutput("KeepBoxesIdxs"), "Output", "KeepBoxesIdxs", "NMS");
-
-    auto boxes_dim = ctx->GetInputDim("Boxes");
-    PADDLE_ENFORCE_EQ(boxes_dim.size(),
-                      2,
-                      platform::errors::InvalidArgument(
-                          "The Input Boxes must be 2-dimention "
-                          "whose shape must be [N, 4] "
-                          "N is the number of boxes "
-                          "in last dimension in format [x1, x2, y1, y2]. "));
-    auto num_boxes = boxes_dim[0];
-
-    ctx->SetOutputDim("KeepBoxesIdxs", {num_boxes});
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -92,64 +79,20 @@ class NMSOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-static void NMS(const T* boxes_data,
-                int64_t* output_data,
-                float threshold,
-                int64_t num_boxes) {
-  auto num_masks = CeilDivide(num_boxes, 64);
-  std::vector<uint64_t> masks(num_masks, 0);
-
-  for (int64_t i = 0; i < num_boxes; ++i) {
-    if (masks[i / 64] & 1ULL << (i % 64)) continue;
-    T box_1[4];
-    for (int k = 0; k < 4; ++k) {
-      box_1[k] = boxes_data[i * 4 + k];
-    }
-    for (int64_t j = i + 1; j < num_boxes; ++j) {
-      if (masks[j / 64] & 1ULL << (j % 64)) continue;
-      T box_2[4];
-      for (int k = 0; k < 4; ++k) {
-        box_2[k] = boxes_data[j * 4 + k];
-      }
-      bool is_overlap = CalculateIoU<T>(box_1, box_2, threshold);
-      if (is_overlap) {
-        masks[j / 64] |= 1ULL << (j % 64);
-      }
-    }
-  }
-
-  int64_t output_data_idx = 0;
-  for (int64_t i = 0; i < num_boxes; ++i) {
-    if (masks[i / 64] & 1ULL << (i % 64)) continue;
-    output_data[output_data_idx++] = i;
-  }
-
-  for (; output_data_idx < num_boxes; ++output_data_idx) {
-    output_data[output_data_idx] = 0;
-  }
-}
-
-template <typename T>
-class NMSKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* boxes = context.Input<Tensor>("Boxes");
-    Tensor* output = context.Output<Tensor>("KeepBoxesIdxs");
-    int64_t* output_data = output->mutable_data<int64_t>(context.GetPlace());
-    auto threshold = context.template Attr<float>("iou_threshold");
-    NMS<T>(boxes->data<T>(), output_data, threshold, boxes->dims()[0]);
-  }
-};
+class NMSKernel : public framework::OpKernel<T> {};
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(nms,
+                            NMSInferMetaFunctor,
+                            PD_INFER_META(phi::NMSInferMeta));
 
 REGISTER_OPERATOR(
     nms,
     ops::NMSOp,
     ops::NMSOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(nms, ops::NMSKernel<float>, ops::NMSKernel<double>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    NMSInferMetaFunctor);

@@ -26,6 +26,15 @@ namespace operators {
 class ReverseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class ReverseOpVarTypeInference : public framework::VarTypeInference {
@@ -42,7 +51,8 @@ class ReverseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The LoDTensor to be flipped.");
     AddOutput("Out", "The LoDTensor after flipping.");
     AddAttr<std::vector<int>>(
-        "axis", "The axises that along which order of elements is reversed.");
+        "axis", "The axises that along which order of elements is reversed.")
+        .SupportTensor();
     AddComment(R"DOC(
       Reverse Operator.
 

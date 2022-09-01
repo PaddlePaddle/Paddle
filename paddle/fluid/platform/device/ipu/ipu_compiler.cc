@@ -18,13 +18,13 @@
 #include <popart/adaptive.hpp>
 #include <popart/optimizer.hpp>
 #include <popart/sgd.hpp>
-
-#include "paddle/utils/blank.h"
+#include <popart/voiddata.hpp>
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/device/ipu/ipu_names.h"
 #include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
 #include "paddle/fluid/platform/device/ipu/ipu_utils.h"
+#include "paddle/utils/blank.h"
 
 namespace paddle {
 namespace platform {
@@ -42,6 +42,7 @@ struct CustomOpAttrVisitor {
 
   void operator()(int v) const { attrs_->emplace(attr_name_, v); }
   void operator()(float v) const { attrs_->emplace(attr_name_, v); }
+  void operator()(double v) const { attrs_->emplace(attr_name_, v); }
   void operator()(const std::string& v) const {
     attrs_->emplace(attr_name_, v);
   }
@@ -79,6 +80,16 @@ struct CustomOpAttrVisitor {
     PADDLE_THROW(platform::errors::Unavailable(
         "Unsupported calling method for `paddle::blank` type when extracting "
         "custom operator attributes."));
+  }
+  void operator()(framework::VarDesc*) const {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported calling method for `VarDesc*` type when extracting "
+        "custom operator attributes."));
+  }
+  void operator()(const std::vector<framework::VarDesc*>&) const {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported calling method for `std::vector<framework::VarDesc*>` "
+        "type when extracting custom operator attributes."));
   }
 };
 
@@ -124,6 +135,7 @@ struct ConstantOpAttrVisitor {
       platform::errors::InvalidArgument("Constant value must be a vector"))
   void operator()(int v) const { RAISE_ERROR; }
   void operator()(float v) const { RAISE_ERROR; }
+  void operator()(double v) const { RAISE_ERROR; }
   void operator()(const std::string& v) const { RAISE_ERROR; }
   void operator()(const std::vector<std::string>& v) const { RAISE_ERROR; }
   void operator()(bool v) const { RAISE_ERROR; }
@@ -131,6 +143,10 @@ struct ConstantOpAttrVisitor {
   void operator()(const std::vector<BlockDesc*>& v) const { RAISE_ERROR; }
   void operator()(int64_t v) const { RAISE_ERROR; }
   void operator()(paddle::blank) const { RAISE_ERROR; }
+  void operator()(framework::VarDesc*) const { RAISE_ERROR; }
+  void operator()(const std::vector<framework::VarDesc*>&) const {
+    RAISE_ERROR;
+  }
 #undef RAISE_ERROR
 };
 
@@ -300,7 +316,7 @@ void Compiler::RegisterOpFunc() {
 #define INT32 std::int32_t
 #define BOOL bool
 #define STRING std::string
-#define STRING_VEC std::vector<std::string*>
+#define STRING_VEC std::vector<std::string>
 #define NONE
 
 #define ARG(Type, Name) , GetAttrAllowNull<Type>(#Name, op_desc)

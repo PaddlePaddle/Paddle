@@ -71,6 +71,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -97,6 +98,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
+#include "paddle/fluid/pybind/auto_parallel_py.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
@@ -331,8 +333,9 @@ bool SupportsVNNI() {
 bool IsCompiledWithBrpc() {
 #ifndef PADDLE_WITH_DISTRIBUTE
   return false;
-#endif
+#else
   return true;
+#endif
 }
 
 bool IsCompiledWithDIST() {
@@ -426,7 +429,7 @@ static std::vector<std::string> inline GetNameList(
   return vec_res;
 }
 
-static void inline CreateVariableIfNotExit(
+static void inline CreateVariableIfNotExist(
     const py::handle &py_handle,
     const framework::Scope &scope,
     const framework::Executor *exe = nullptr) {
@@ -627,7 +630,7 @@ PYBIND11_MODULE(core_noavx, m) {
         [](const py::handle &vec_var_list,
            const Scope &scope,
            const Executor *executor) {
-          CreateVariableIfNotExit(vec_var_list, scope, executor);
+          CreateVariableIfNotExist(vec_var_list, scope, executor);
         });
 
   m.def("save_op_version_info", [](framework::ProgramDesc &desc) {
@@ -1066,6 +1069,23 @@ All parameter, weight, gradient are variables in Paddle.
           }
           return res;
         });
+  m.def(
+      "get_op_extra_attrs",
+      [](const std::string &op_type)
+          -> const paddle::framework::AttributeMap & {
+        return operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(op_type);
+      });
+
+  m.def(
+      "get_attrtibute_type",
+      [](const std::string &op_type,
+         const std::string &attr_name) -> paddle::framework::proto::AttrType {
+        const auto &defalut_val =
+            operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(op_type).at(
+                attr_name);
+        return static_cast<paddle::framework::proto::AttrType>(
+            defalut_val.index() - 1);
+      });
   m.def("get_grad_op_desc",
         [](const OpDesc &op_desc,
            const std::unordered_set<std::string> &no_grad_set,
@@ -1166,34 +1186,33 @@ All parameter, weight, gradient are variables in Paddle.
       .def("empty", []() { return kEmptyVarName; })
       .def("temp", []() { return kTempVarName; });
 
-  // clang-format off
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
       .def_static("create",
-                  [](paddle::platform::CPUPlace& place)
-                      -> paddle::platform::DeviceContext* {
-    auto* context = new phi::CPUContext();
-    context->SetAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-        .GetAllocator(place)
-        .get());
-    context->SetHostAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-        .GetAllocator(paddle::platform::CPUPlace())
-        .get());
-    context->SetZeroAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-        .GetZeroAllocator(place)
-        .get());
-    return context;
+                  [](paddle::platform::CPUPlace &place)
+                      -> paddle::platform::DeviceContext * {
+                    auto *context = new phi::CPUContext();
+                    context->SetAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(place)
+                            .get());
+                    context->SetHostAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(paddle::platform::CPUPlace())
+                            .get());
+                    context->SetZeroAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetZeroAllocator(place)
+                            .get());
+                    return context;
                   })
-      .def_static("create",
-                  [](paddle::platform::XPUPlace& place)
-                      -> paddle::platform::DeviceContext* {
+      .def_static(
+          "create",
+          [](paddle::platform::XPUPlace &place)
+              -> paddle::platform::DeviceContext * {
 #ifndef PADDLE_WITH_XPU
-             PADDLE_THROW(
-                 platform::errors::PermissionDenied(
-                 "Cannot use XPUPlace in CPU/GPU version, "
-                 "Please recompile or reinstall Paddle with XPU support."));
+            PADDLE_THROW(platform::errors::PermissionDenied(
+                "Cannot use XPUPlace in CPU/GPU version, "
+                "Please recompile or reinstall Paddle with XPU support."));
 #else
       auto* context = new paddle::platform::XPUDeviceContext(place);
       context->SetAllocator(
@@ -1210,54 +1229,53 @@ All parameter, weight, gradient are variables in Paddle.
           .get());
       return context;
 #endif
-                  })
-        .def_static("create",
-                  [](paddle::platform::MLUPlace& place)
-                      -> paddle::platform::DeviceContext* {
+          })
+      .def_static(
+          "create",
+          [](paddle::platform::MLUPlace &place)
+              -> paddle::platform::DeviceContext * {
 #ifndef PADDLE_WITH_MLU
-             PADDLE_THROW(
-                 platform::errors::PermissionDenied(
-                 "Cannot use MLUPlace in CPU/GPU version, "
-                 "Please recompile or reinstall Paddle with MLU support."));
+            PADDLE_THROW(platform::errors::PermissionDenied(
+                "Cannot use MLUPlace in CPU/GPU version, "
+                "Please recompile or reinstall Paddle with MLU support."));
 #else
                     return new paddle::platform::MLUDeviceContext(place);
 #endif
-                  })
-        .def_static("create",
-                    [](paddle::platform::NPUPlace& place)
-                        -> paddle::platform::DeviceContext* {
+          })
+      .def_static(
+          "create",
+          [](paddle::platform::NPUPlace &place)
+              -> paddle::platform::DeviceContext * {
 #ifndef PADDLE_WITH_ASCEND_CL
-             PADDLE_THROW(
-                 platform::errors::PermissionDenied(
-                 "Cannot use NPUPlace in CPU/GPU/XPU version, "
-                 "Please recompile or reinstall Paddle with NPU support."));
+            PADDLE_THROW(platform::errors::PermissionDenied(
+                "Cannot use NPUPlace in CPU/GPU/XPU version, "
+                "Please recompile or reinstall Paddle with NPU support."));
 #else
                 return new paddle::platform::NPUDeviceContext(place);
 #endif
-        })
-        .def_static("create",
-                    [](paddle::platform::CustomPlace& place)
-                        -> paddle::platform::DeviceContext* {
+          })
+      .def_static("create",
+                  [](paddle::platform::CustomPlace &place)
+                      -> paddle::platform::DeviceContext * {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
-             PADDLE_THROW(
-                 platform::errors::PermissionDenied(
-                 "Cannot use CustomPlace in CPU/GPU/XPU version, "
-                 "Please recompile or reinstall Paddle with "
-                 "CustomDevice support."));
+                    PADDLE_THROW(platform::errors::PermissionDenied(
+                        "Cannot use CustomPlace in CPU/GPU/XPU version, "
+                        "Please recompile or reinstall Paddle with "
+                        "CustomDevice support."));
 #else
                 return new paddle::platform::CustomDeviceContext(place);
 #endif
-        })
-      .def_static("create",
-                  [](paddle::platform::CUDAPlace& place)
-                      -> paddle::platform::DeviceContext* {
+                  })
+      .def_static(
+          "create",
+          [](paddle::platform::CUDAPlace &place)
+              -> paddle::platform::DeviceContext * {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-             PADDLE_THROW(
-                 platform::errors::PermissionDenied(
-                 "Cannot use CUDAPlace in CPU only version, "
-                 "Please recompile or reinstall Paddle with CUDA support."));
+            PADDLE_THROW(platform::errors::PermissionDenied(
+                "Cannot use CUDAPlace in CPU only version, "
+                "Please recompile or reinstall Paddle with CUDA support."));
 #else
-      auto* context = new paddle::platform::CUDADeviceContext(place);
+      auto* context = new phi::GPUContext(place);
       context->SetAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(place, context->stream())
@@ -1277,20 +1295,19 @@ All parameter, weight, gradient are variables in Paddle.
       context->PartialInitWithAllocator();
       return context;
 #endif
-                  })
-          .def_static("create",
-                [](paddle::platform::CUDAPinnedPlace& place)
-                        -> paddle::platform::DeviceContext* {
+          })
+      .def_static(
+          "create",
+          [](paddle::platform::CUDAPinnedPlace &place)
+              -> paddle::platform::DeviceContext * {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-             PADDLE_THROW(
-                 platform::errors::PermissionDenied(
-                 "Cannot use CUDAPinnedPlace in CPU only version, "
-                 "Please recompile or reinstall Paddle with CUDA support."));
+            PADDLE_THROW(platform::errors::PermissionDenied(
+                "Cannot use CUDAPinnedPlace in CPU only version, "
+                "Please recompile or reinstall Paddle with CUDA support."));
 #else
                   return new paddle::platform::CUDAPinnedDeviceContext(place);
 #endif
-                });;
-// clang-format on
+          });
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
@@ -1700,9 +1717,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindCostModel(&m);
   BindConstValue(&m);
   BindGlobalValueGetterSetter(&m);
-  BindProcessMeshDesc(&m);
   BindFleetExecutor(&m);
   BindTCPStore(&m);
+  BindAutoParallel(&m);
   BindJitProperty(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
@@ -2135,6 +2152,12 @@ All parameter, weight, gradient are variables in Paddle.
       .value("PythonUserDefined",
              paddle::platform::TracerEventType::PythonUserDefined);
   m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
+  m.def("enable_memory_recorder", &paddle::platform::EnableMemoryRecorder);
+  m.def("disable_memory_recorder", &paddle::platform::DisableMemoryRecorder);
+  m.def("enable_input_shape_recorder",
+        &paddle::platform::EnableInputShapeRecorder);
+  m.def("disable_input_shape_recorder",
+        &paddle::platform::DisableInputShapeRecorder);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
@@ -2142,8 +2165,14 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_cudnn_switch", platform::SetAllowTF32Cudnn);
   m.def("get_cudnn_switch", platform::AllowTF32Cudnn);
 #endif  // PADDLE_WITH_CUDA
-  m.def("clear_executor_cache",
-        []() { framework::ExecutorInfoCache::Instance().Finalize(); });
+  m.def("clear_executor_cache", []() {
+    pybind11::gil_scoped_release release;
+    framework::ExecutorInfoCache::Instance().Finalize();
+    framework::InterpreterCoreInfoCache::Instance().Finalize();
+  });
+
+  m.def("parse_safe_eager_deletion_skip_vars",
+        paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet);
 
 #ifdef PADDLE_WITH_IPU
   py::class_<platform::ipu::IpuBackend,

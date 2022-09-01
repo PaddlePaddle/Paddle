@@ -203,13 +203,11 @@ class TestDygraphSimpleNet(unittest.TestCase):
                                 static_param_updated[static_param_name_list[
                                     k - 1]] = out[k]
 
-                self.assertTrue(np.array_equal(static_loss_value,
-                                               dy_loss_value))
+                np.testing.assert_array_equal(static_loss_value, dy_loss_value)
                 for key, value in six.iteritems(static_param_init):
-                    self.assertTrue(np.array_equal(value, dy_param_init[key]))
+                    np.testing.assert_array_equal(value, dy_param_init[key])
                 for key, value in six.iteritems(static_param_updated):
-                    self.assertTrue(np.array_equal(value,
-                                                   dy_param_updated[key]))
+                    np.testing.assert_array_equal(value, dy_param_updated[key])
 
 
 if __name__ == '__main__':

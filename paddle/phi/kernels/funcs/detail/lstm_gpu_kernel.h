@@ -243,9 +243,7 @@ void gpu_lstm_forward(const paddle::platform::DeviceContext& context,
     grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 16 - 1) / 16);
   }
 
-  auto stream =
-      reinterpret_cast<const paddle::platform::CUDADeviceContext&>(context)
-          .stream();
+  auto stream = reinterpret_cast<const phi::GPUContext&>(context).stream();
   if (batch_size == 1) {
     KeLstmForward<T,
                   Op,
@@ -297,9 +295,7 @@ void gpu_lstm_backward(const paddle::platform::DeviceContext& context,
     grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 16 - 1) / 16);
   }
 
-  auto stream =
-      reinterpret_cast<const paddle::platform::CUDADeviceContext&>(context)
-          .stream();
+  auto stream = reinterpret_cast<const phi::GPUContext&>(context).stream();
   if (batch_size == 1) {
     KeLstmBackward<T,
                    Op,

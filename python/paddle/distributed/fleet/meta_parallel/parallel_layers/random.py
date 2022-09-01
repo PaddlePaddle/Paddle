@@ -15,10 +15,10 @@
 import paddle
 import contextlib
 import numpy as np
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import _non_static_mode, default_main_program
+from paddle.fluid.framework import _non_static_mode, default_main_program, Variable
 from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
@@ -187,11 +187,12 @@ def dropout(x,
     if rng_name is None:
         return paddle.nn.functional.dropout(x, p, axis, training, mode, name)
 
-    # fast return for p == 0
-    if p == 0: return x
+    if not isinstance(p, (float, int, Variable)):
+        raise TypeError("p argument should be a number(int|float) or Variable")
 
-    assert isinstance(p, (float, int)), \
-        TypeError("p argument should be a number")
+    # fast return for p == 0
+    if isinstance(p, (int, float)) and p == 0: return x
+
     assert 0 <= p <= 1, ValueError("p argument should between 0 and 1")
     assert mode in ('downscale_in_infer', 'upscale_in_train'), \
         ValueError(
@@ -204,12 +205,18 @@ def dropout(x,
 
     # dygraph using tracker, doesn't need determinate seed
     if _non_static_mode():
-        out, mask = _C_ops.dropout(x, 'dropout_prob', p, 'is_test',
-                                   not training, 'fix_seed', False, 'seed', 0,
-                                   'dropout_implementation', mode)
+        out, mask = _legacy_C_ops.dropout(x, 'dropout_prob', p, 'is_test',
+                                          not training, 'fix_seed', False,
+                                          'seed', 0, 'dropout_implementation',
+                                          mode)
         return out
 
     seed = determinate_seed(rng_name)
+
+    if isinstance(p, Variable) and not p.shape != [1]:
+        raise TypeError(
+            "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}"
+            .format(p.shape))
 
     helper = LayerHelper('dropout', **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
