@@ -163,10 +163,12 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
     if (op_type != "conv2d") {
       return ins;
     } else {
+#if defined(PADDLE_WITH_CUDA)
       if (!phi::backends::gpu::TensorCoreAvailable()) {
         LayoutAutoTune::Instance().DisableLayoutAutoTune();
         return ins;
       }
+#endif
       auto conv_in_type = framework::proto::VarType::FP32;
       auto& in_vars = ins.at("Input")[0];
       if (GetDataType<VarType>(in_vars) == framework::proto::VarType::FP16) {
