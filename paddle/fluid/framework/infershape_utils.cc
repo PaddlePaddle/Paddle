@@ -497,9 +497,17 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               infer_meta_context.EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(float, attr)));
               break;
+            case framework::proto::AttrType::FLOAT64:
+              infer_meta_context.EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(double, attr)));
+              break;
             case framework::proto::AttrType::INT:
               infer_meta_context.EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(int, attr)));
+              break;
+            case framework::proto::AttrType::LONG:
+              infer_meta_context.EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(int64_t, attr)));
               break;
             case framework::proto::AttrType::STRING:
               infer_meta_context.EmplaceBackAttr(
@@ -665,6 +673,10 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           switch (attr_defs[i].type_index) {
             case phi::AttributeType::FLOAT32:
               infer_meta_context.EmplaceBackAttr(PADDLE_GET_CONST(float, attr));
+              break;
+            case phi::AttributeType::FLOAT64:
+              infer_meta_context.EmplaceBackAttr(
+                  PADDLE_GET_CONST(double, attr));
               break;
             case phi::AttributeType::INT32:
               infer_meta_context.EmplaceBackAttr(PADDLE_GET_CONST(int, attr));

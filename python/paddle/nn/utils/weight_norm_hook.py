@@ -19,7 +19,7 @@ from ...fluid import layers as F
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...framework import in_dygraph_mode
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = []
 
@@ -29,8 +29,7 @@ def l2_norm(x, axis, epsilon=1e-12, name=None):
         axis = 0
 
     if in_dygraph_mode():
-        out, norm = _C_ops.final_state_norm(x, 1 if axis is None else axis,
-                                            epsilon, False)
+        out, norm = _C_ops.norm(x, 1 if axis is None else axis, epsilon, False)
         return paddle.squeeze(norm, axis=[axis])
 
     check_variable_and_dtype(x, "X", ("float32", "float64"), "norm")

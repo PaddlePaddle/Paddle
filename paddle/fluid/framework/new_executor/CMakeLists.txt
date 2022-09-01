@@ -18,6 +18,7 @@ set(STANDALONE_EXECUTOR_DEPS
     scope
     framework_proto
     data_feed_proto
+    ops_extra_info
     heter_service_proto
     trainer_desc_proto
     glog

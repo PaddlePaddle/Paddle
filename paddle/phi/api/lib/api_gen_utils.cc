@@ -156,7 +156,7 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 
 /* ------------------ for output ----------------------- */
 
-phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
+phi::DenseTensor* SetKernelOutput(Tensor* out) {
   if (out) {
     if (out->impl() == nullptr) {
       out->set_impl(std::make_shared<phi::DenseTensor>());
@@ -167,7 +167,6 @@ phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
 }
 
 std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
-                                               Backend backend,
                                                std::vector<Tensor>* out) {
   out->reserve(out_size);
   std::vector<phi::DenseTensor*> results(out_size);
@@ -181,7 +180,7 @@ std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
 }
 
 std::vector<phi::DenseTensor*> SetInplaceVectorKernelOutput(
-    size_t out_size, Backend backend, std::vector<Tensor>* out) {
+    size_t out_size, std::vector<Tensor>* out) {
   std::vector<phi::DenseTensor*> results(out->size(), nullptr);
   for (size_t i = 0; i < out->size(); ++i) {
     results[i] = static_cast<phi::DenseTensor*>(out->at(i).impl().get());
@@ -190,9 +189,7 @@ std::vector<phi::DenseTensor*> SetInplaceVectorKernelOutput(
 }
 
 std::vector<phi::DenseTensor*> SetInplaceOptionalVectorKernelOutput(
-    size_t out_size,
-    Backend backend,
-    const paddle::optional<std::vector<Tensor>>& out) {
+    size_t out_size, const paddle::optional<std::vector<Tensor>>& out) {
   std::vector<phi::DenseTensor*> results;
   if (out) {
     results = std::vector<phi::DenseTensor*>(out->size(), nullptr);
@@ -215,7 +212,7 @@ std::vector<phi::DenseTensor*> SetKernelOutput(std::vector<Tensor*>* out) {
   return results;
 }
 
-phi::SelectedRows* SetSelectedRowsKernelOutput(Backend backend, Tensor* out) {
+phi::SelectedRows* SetSelectedRowsKernelOutput(Tensor* out) {
   if (!out->initialized()) {
     auto select_rows = std::make_shared<phi::SelectedRows>();
     out->set_impl(select_rows);
@@ -248,9 +245,7 @@ phi::TensorBase* SetSparseKernelOutput(Tensor* out, TensorType type) {
   return out->impl().get();
 }
 
-phi::TensorBase* SetStringsKernelOutput(Backend backend,
-                                        Tensor* out,
-                                        TensorType type) {
+phi::TensorBase* SetStringsKernelOutput(Tensor* out, TensorType type) {
   if (!out->initialized()) {
     if (type == TensorType::STRING_TENSOR) {
       if (out->impl() == nullptr) {

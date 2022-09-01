@@ -72,8 +72,12 @@ void DeserializeFromStream(std::istream& is,
   }
   {
     // the 2st field, rows information
-    uint64_t size;
+    uint64_t size = 0;
     is.read(reinterpret_cast<char*>(&size), sizeof(size));
+    PADDLE_ENFORCE_EQ(
+        is.good(),
+        true,
+        platform::errors::Unavailable("Cannot read the number of rows."));
     auto& rows = *selected_rows->mutable_rows();
     rows.resize(size);
     for (uint64_t i = 0; i < size; ++i) {

@@ -522,7 +522,7 @@ void DotSdd(const phi::GPUContext& ctx,
       gpu_type,
       CUSPARSE_SDDMM_ALG_DEFAULT,
       &buffer_size);
-  auto d_buffer_ptr = paddle::memory::Alloc(ctx, buffer_size);
+  auto d_buffer_ptr = paddle::memory::Alloc(ctx.GetPlace(), buffer_size);
   void* d_buffer = static_cast<void*>(d_buffer_ptr->ptr());
 
   platform::dynload::cusparseSDDMM(handle,
@@ -616,7 +616,7 @@ void DotDsd(const phi::GPUContext& ctx,
                                              gpu_type,
                                              CUSPARSE_SPMM_ALG_DEFAULT,
                                              &buffer_size);
-  auto d_buffer_ptr = paddle::memory::Alloc(ctx, buffer_size);
+  auto d_buffer_ptr = paddle::memory::Alloc(ctx.GetPlace(), buffer_size);
   void* d_buffer = static_cast<void*>(d_buffer_ptr->ptr());
 
   platform::dynload::cusparseSpMM(handle,

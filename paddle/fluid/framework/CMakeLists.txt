@@ -73,7 +73,8 @@ cc_library(
 cc_library(
   data_type
   SRCS data_type.cc
-  DEPS framework_proto ddim device_context)
+  DEPS framework_proto)
+
 cc_test(
   data_type_test
   SRCS data_type_test.cc
@@ -183,7 +184,7 @@ cc_test(
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS selected_rows_utils framework_proto scope sparse_coo_tensor)
+  DEPS framework_proto scope sparse_coo_tensor)
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
@@ -348,7 +349,7 @@ cc_test(
 cc_library(
   op_proto_maker
   SRCS op_proto_maker.cc
-  DEPS framework_proto attribute glog)
+  DEPS framework_proto attribute ops_extra_info glog)
 cc_test(
   op_proto_maker_test
   SRCS op_proto_maker_test.cc
@@ -364,7 +365,13 @@ cc_library(
 cc_library(
   shape_inference
   SRCS shape_inference.cc
-  DEPS ddim attribute device_context)
+  DEPS ddim attribute)
+
+# every source file that includes "dnnl.h" must depends on mkldnn
+# or, the first one should depends on mkldnn
+if(WITH_MKLDNN)
+  add_dependencies(shape_inference mkldnn)
+endif()
 
 cc_test(
   no_need_buffer_vars_inference_test
@@ -483,6 +490,7 @@ cc_library(
   proto_desc
   SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc
   DEPS attribute
+       ops_extra_info
        shape_inference
        op_info
        operator
@@ -498,7 +506,7 @@ endif()
 cc_library(
   op_registry
   SRCS op_registry.cc
-  DEPS op_proto_maker op_info operator glog proto_desc)
+  DEPS op_proto_maker op_info operator ops_extra_info glog proto_desc)
 
 cc_library(
   op_call_stack
@@ -1004,7 +1012,7 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor)
+  DEPS parallel_executor standalone_executor)
 if(WITH_PSCORE)
   get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
   if(WITH_HETERPS)
