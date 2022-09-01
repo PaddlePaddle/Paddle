@@ -199,17 +199,33 @@ bool DGCOpFunction(const framework::ExecutionContext& ctx) {
   gather_buff->mutable_data<T>(framework::DDim{2 * k * nranks}, ctx.GetPlace());
 
   int buf_size = paddle::communication::dgc::get_buffer_size(k);
-  auto tmp_ious_data = memory::Alloc(dev_ctx, buf_size);
-  void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
+  paddle::memory::allocation::AllocationPtr tmp_ious_data;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (platform::is_gpu_place(dev_ctx.GetPlace())) {
+      tmp_ious_data = memory::Alloc(
+          dev_ctx.GetPlace(),
+          buf_size,
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+    }
+#endif
+    if (platform::is_cpu_place(dev_ctx.GetPlace())) {
+      tmp_ious_data = memory::Alloc(dev_ctx.GetPlace(), buf_size);
+    }
 
-  if (!paddle::communication::dgc::k_select(
-          static_cast<void*>(encode_grad_out_data), k, v_out_data,
-          static_cast<int>(v_out->numel()), buf, dev_ctx.stream(),
-          u_out_data)) {
-    // TODO(weihang): owner should polish this error message
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "V_out numel error, V_out numel is %d.", v_out->numel()));
-  }
+    void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
+
+    if (!paddle::communication::dgc::k_select(
+            static_cast<void*>(encode_grad_out_data),
+            k,
+            v_out_data,
+            static_cast<int>(v_out->numel()),
+            buf,
+            dev_ctx.stream(),
+            u_out_data)) {
+      // TODO(weihang): owner should polish this error message
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "V_out numel error, V_out numel is %d.", v_out->numel()));
+    }
 
   phi::funcs::SetConstant<DeviceContext, T> tset;
   tset(dev_ctx, grad_out, static_cast<T>(0));
