@@ -21,6 +21,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/place.h"
 
 // TODO(chenweihang): this file may need to be removed
