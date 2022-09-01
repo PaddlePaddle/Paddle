@@ -280,8 +280,7 @@ __device__ __forceinline__ void LoadData(
     kps::ReadDataBc<T, VecSize, 1, IsBoundary>(
         dst, src, block_offset, config, numel, read_lens);
   } else if (broadcast_type == BroadcastType::kOneToMany) {
-    kps::ReadOneToMany<T, VecSize, 1, IsBoundary>(
-        dst, src, block_offset, numel, read_lens);
+    kps::ReadOneToMany<T, VecSize>(dst, src, block_offset, numel, read_lens);
   } else {
     kps::ReadData<T, VecSize, 1, IsBoundary>(
         dst, src + block_offset, num, read_lens);

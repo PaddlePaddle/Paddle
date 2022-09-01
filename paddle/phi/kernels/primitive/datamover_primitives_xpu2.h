@@ -1211,7 +1211,7 @@ __device__ __inline__ void ReadDataBc(T* dst,
   }
 }
 
-template <typename T, int NX, int NY, bool IsBoundary = false>
+template <typename T, int NX>
 __device__ __inline__ void ReadOneToMany(T* dst,
                                          const T* _global_ptr_ src,
                                          uint32_t block_offset,
@@ -1223,11 +1223,6 @@ __device__ __inline__ void ReadOneToMany(T* dst,
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {
     uint32_t index_output = thread_offset + nx;
-    if (IsBoundary) {
-      if (index_output >= total_num_output) {
-        break;
-      }
-    }
     dst[nx] = src_data;
   }
 }
