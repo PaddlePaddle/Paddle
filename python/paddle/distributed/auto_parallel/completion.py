@@ -201,8 +201,7 @@ class Completer:
                                 tensor_desc.name(), compatible_dims_mapping)
                             changed = True
             # Copy dist attr from cpp to dist op for finding the dist impls
-            _copy_op_dist_attr_from_cpp(op_node.op().dist_attr,
-                                        dist_op.dist_attr)
+            _copy_op_dist_attr_from_cpp(op_dist_attr, dist_op.dist_attr)
             # Find the most compatible implemenetations from the distributed operator
             op_dist_impls = find_compatible_distributed_operator_impls(dist_op,
                                                                        fwd=True)
@@ -231,10 +230,10 @@ class Completer:
                                                     dist_op.dist_attr)
                         changed = backup_changed
                 if not_compatible:
-                    op_dist_attr = original_op_dist_attr
+                    op_node.op().dist_attr = original_op_dist_attr
                     changed = False
             else:
-                op_dist_attr = original_op_dist_attr
+                op_node.op().dist_attr = original_op_dist_attr
                 changed = False
         else:
             for tensor_node in op_node.outputs:
@@ -262,8 +261,7 @@ class Completer:
                                 tensor_desc.name(), compatible_dims_mapping)
                             changed = True
             # Copy dist attr from cpp to dist op for finding the dist impls
-            _copy_op_dist_attr_from_cpp(op_node.op().dist_attr,
-                                        dist_op.dist_attr)
+            _copy_op_dist_attr_from_cpp(op_dist_attr, dist_op.dist_attr)
             # Find the most compatible implemenetations from the distributed operator
             op_dist_impls = find_compatible_distributed_operator_impls(
                 dist_op, fwd=False)
@@ -292,10 +290,10 @@ class Completer:
                                                     dist_op.dist_attr)
                         changed = backup_changed
                 if not_compatible:
-                    op_dist_attr = original_op_dist_attr
+                    op_node.op().dist_attr = original_op_dist_attr
                     changed = False
             else:
-                op_dist_attr = original_op_dist_attr
+                op_node.op().dist_attr = original_op_dist_attr
                 changed = False
         return changed
 

@@ -56,6 +56,8 @@ class TensorDistAttr {
 
   TensorDistAttr& operator=(const TensorDistAttr& dist_attr);
 
+  void copy_from(const TensorDistAttr& dist_attr);
+
   const VarDesc* tensor() const { return tensor_; }
 
   const ProcessMesh& process_mesh() const { return process_mesh_; }
@@ -101,7 +103,7 @@ class TensorDistAttr {
   // TensorDistAttr from_string(const std::string& dist_str);
   std::string to_string() const;
 
-  static TensorDistAttr from_proto(const TensorDistAttrProto& proto);
+  void from_proto(const TensorDistAttrProto& proto);
 
   TensorDistAttrProto to_proto() const;
 
@@ -136,6 +138,8 @@ class OperatorDistAttr {
   OperatorDistAttr(const OperatorDistAttr& dist_attr);
 
   OperatorDistAttr& operator=(const OperatorDistAttr& dist_attr);
+
+  void copy_from(const OperatorDistAttr& dist_attr);
 
   const OpDesc* op() const { return op_; }
 
@@ -227,10 +231,14 @@ class OperatorDistAttr {
 
   bool verify() const;
 
+  void rename_input(const std::string& old_name, const std::string& new_name);
+
+  void rename_output(const std::string& old_name, const std::string& new_name);
+
   // OperatorDistAttr from_string(const std::string& dist_str);
   std::string to_string() const;
 
-  static OperatorDistAttr from_proto(const OperatorDistAttrProto& proto);
+  void from_proto(const OperatorDistAttrProto& proto);
 
   OperatorDistAttrProto to_proto() const;
 

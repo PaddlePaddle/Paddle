@@ -216,11 +216,12 @@ def get_program():
         pred = mlp_start(input)
 
         input_array = fluid.layers.array_write(pred, i)
-        auto.shard_tensor(input_array,
-                          dist_attr={
-                              "process_mesh": _g_process_mesh,
-                              "dims_mapping": [-1, -1, -1]
-                          })
+        # TODO: check whether this annotation is needed
+        # auto.shard_tensor(input_array,
+        #                   dist_attr={
+        #                       "process_mesh": _g_process_mesh,
+        #                       "dims_mapping": [-1, -1, -1]
+        #                   })
 
         cond = fluid.layers.less_than(x=i, y=loop_len)
         auto.shard_tensor(cond,
