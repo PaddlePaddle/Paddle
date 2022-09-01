@@ -149,7 +149,7 @@ class FetchV2Kernel {
       if (!src_item.IsInitialized()) {
         return;
       }
-      auto *dst_item = &(BOOST_GET(framework::LoDTensor, fetch_list->at(col)));
+      auto *dst_item = &(PADDLE_GET(framework::LoDTensor, fetch_list->at(col)));
       bool check_place = platform::is_cpu_place(src_item.place()) ||
                          platform::is_cuda_pinned_place(src_item.place());
       PADDLE_ENFORCE_EQ(
@@ -168,7 +168,7 @@ class FetchV2Kernel {
       framework::LoDTensorArray tmp(src_item.size());
       fetch_list->at(col) = tmp;
       auto &dst_item =
-          BOOST_GET(framework::LoDTensorArray, fetch_list->at(col));
+          PADDLE_GET(framework::LoDTensorArray, fetch_list->at(col));
       for (size_t i = 0; i < src_item.size(); ++i) {
         PADDLE_ENFORCE_EQ(platform::is_cpu_place(src_item[i].place()),
                           true,

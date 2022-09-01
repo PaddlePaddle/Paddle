@@ -282,7 +282,7 @@ class TestGatherNdAPI(unittest.TestCase):
         output = paddle.fluid.layers.gather(input, index)
         output_np = output.numpy()
         expected_output = np.array([3, 4])
-        self.assertTrue(np.allclose(output_np, expected_output))
+        np.testing.assert_allclose(output_np[0], expected_output)
         paddle.enable_static()
 
 

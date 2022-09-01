@@ -21,7 +21,6 @@
 #include <utility>
 #include <vector>
 
-#include "boost/optional.hpp"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -147,6 +146,10 @@ struct BuildStrategy {
   bool enable_addto_{false};
 
   bool allow_cuda_graph_capture_{false};
+
+  // Inference pass
+  bool inference_{false};  // switch for infernce pass
+  bool del_dropout_{false};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if

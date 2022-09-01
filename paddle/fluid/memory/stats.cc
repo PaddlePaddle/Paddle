@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/stats.h"
 
 #include "paddle/fluid/memory/allocation/spin_lock.h"
-#include "paddle/fluid/platform/variant.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace memory {

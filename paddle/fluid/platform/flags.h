@@ -21,7 +21,7 @@
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/utils/variant.h"
 
 namespace paddle {

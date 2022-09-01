@@ -17,20 +17,25 @@ from __future__ import print_function
 import unittest
 
 import paddle
-from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import FunctionNameLivenessAnalysis
+from paddle.fluid.dygraph.dygraph_to_static.utils import FunctionNameLivenessAnalysis
 from paddle.utils import gast
 import inspect
 
 
 class JudgeVisitor(gast.NodeVisitor):
 
-    def __init__(self, ans):
+    def __init__(self, ans, mod):
         self.ans = ans
+        self.mod = mod
 
     def visit_FunctionDef(self, node):
         scope = node.pd_scope
         expected = self.ans.get(node.name, set())
-        assert scope.created_vars() == expected, "Not Equals."
+        exp_mod = self.mod.get(node.name, set())
+        assert scope.existed_vars() == expected, "Not Equals."
+        assert scope.modified_vars(
+        ) == exp_mod, "Not Equals in function:{} . expect {} , but get {}".format(
+            node.name, exp_mod, scope.modified_vars())
         self.generic_visit(node)
 
 
@@ -108,12 +113,31 @@ class TestClosureAnalysis(unittest.TestCase):
             },
         ]
 
+        self.modified_var = [
+            {
+                'func': set('ki'),
+                'test_nonlocal': set('i')
+            },
+            {
+                'func': set({'i'}),
+                'test_global': set({"t"})
+            },
+            {
+                'func': set('i'),
+            },
+            {
+                'func': set('i'),
+                'test_normal_argument': set('x')
+            },
+        ]
+
     def test_main(self):
-        for ans, func in zip(self.answer, self.all_dygraph_funcs):
+        for mod, ans, func in zip(self.modified_var, self.answer,
+                                  self.all_dygraph_funcs):
             test_func = inspect.getsource(func)
             gast_root = gast.parse(test_func)
             name_visitor = FunctionNameLivenessAnalysis(gast_root)
-            JudgeVisitor(ans).visit(gast_root)
+            JudgeVisitor(ans, mod).visit(gast_root)
 
 
 def TestClosureAnalysis_Attribute_func():
@@ -128,6 +152,10 @@ class TestClosureAnalysis_Attribute(TestClosureAnalysis):
 
         self.all_dygraph_funcs = [TestClosureAnalysis_Attribute_func]
         self.answer = [{"TestClosureAnalysis_Attribute_func": set({'i'})}]
+        self.modified_var = [{
+            "TestClosureAnalysis_Attribute_func":
+            set({'i', 'self.current.function'})
+        }]
 
 
 if __name__ == '__main__':

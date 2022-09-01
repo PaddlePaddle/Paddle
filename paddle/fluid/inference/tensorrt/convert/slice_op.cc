@@ -31,18 +31,18 @@ class SliceOpConverter : public OpConverter {
 
     float out_scale = 1;
     if (op_desc.HasAttr("out_threshold")) {
-      out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+      out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
       engine_->SetTensorDynamicRange(input, out_scale);
     }
 
     std::vector<int> axes =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
     std::vector<int> starts =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("starts"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("starts"));
     std::vector<int> ends =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
     std::vector<int> decrease_axises =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("decrease_axis"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("decrease_axis"));
 
     auto input_dims = input->getDimensions();
     if (!engine_->with_dynamic_shape()) {

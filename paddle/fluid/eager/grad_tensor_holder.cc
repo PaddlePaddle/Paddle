@@ -24,6 +24,7 @@
 namespace egr {
 
 void GradTensorHolder::SetBufferSlotRankZeros(size_t slot_id, size_t rank) {
+  // Set not grad var to zero and set stop gradient as default value: true
   buffer_[slot_id][rank] =
       paddle::experimental::zeros_like(buffer_[slot_id][rank]);
 }
@@ -59,8 +60,15 @@ void GradTensorHolder::CopyValueFromTensor(
     if ((!buffer_tensor.defined() || !buffer_tensor.initialized())) {
       // Perform deep copy here
       buffer_tensor.copy_(t, t.place(), false);
-      buffer_tensor.set_autograd_meta(t.mutable_autograd_meta());
-
+      auto* meta = egr::EagerUtils::autograd_meta(&buffer_tensor);
+      auto* origin_meta = egr::EagerUtils::nullable_autograd_meta(t);
+      if (origin_meta) {
+        auto grad_node = origin_meta->GetMutableGradNode();
+        if (grad_node && grad_node.get()) {
+          meta->SetGradNode(origin_meta->GetMutableGradNode());
+        }
+        meta->WeakGrad() = origin_meta->WeakGrad();
+      }
     } else {
       PADDLE_THROW(paddle::platform::errors::Fatal(
           "Cannot copy grad_tensors' value to grad tensor holders,"
@@ -81,10 +89,10 @@ void GradTensorHolder::CopyValueFromTensor(
             "Only Support DENSE_TENSOR, SPARSE_COO_TENSOR, SPARSE_CSR_TENSOR "
             "now."));
       }
-      egr::EagerUtils::autograd_meta(&(buffer_[slot_id][rank]))
-          ->SetStopGradient(false);
     }
   }
+  egr::EagerUtils::autograd_meta(&(buffer_[slot_id][rank]))
+      ->SetStopGradient(false);
 }
 
 void GradTensorHolder::add(size_t slot_id,
@@ -135,7 +143,7 @@ void GradTensorHolder::add(size_t slot_id,
     if (t.is_dense_tensor()) {
       if (buffer_tensor.is_dense_tensor()) {
         if (create_graph || t.is_custom_device()) {
-          buffer_tensor = add_final_state_dygraph_function(t, buffer_tensor);
+          buffer_tensor = add_dygraph_function(t, buffer_tensor);
         } else {
           paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
               t, &buffer_tensor);
@@ -162,8 +170,7 @@ void GradTensorHolder::add(size_t slot_id,
             std::make_shared<phi::DenseTensor>(
                 buffer_sparse->non_zero_elements()));
         if (create_graph || t.is_custom_device()) {
-          buffer_values =
-              add_final_state_dygraph_function(t_values, buffer_values);
+          buffer_values = add_dygraph_function(t_values, buffer_values);
         } else {
           paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
               t_values, &buffer_values);

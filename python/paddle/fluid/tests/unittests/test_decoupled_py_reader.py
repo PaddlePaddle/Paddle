@@ -61,7 +61,7 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
             predict_label = fluid.layers.fc(hidden,
                                             size=CLASS_NUM,
                                             act='softmax')
-            loss = fluid.layers.mean(
+            loss = paddle.mean(
                 fluid.layers.cross_entropy(input=predict_label, label=label))
 
             optimizer = fluid.optimizer.Adam()

@@ -50,7 +50,10 @@ using pybind11::return_value_policy;
 namespace paddle {
 namespace pybind {
 void BindGraph(py::module *m) {
-  m->def("graph_safe_remove_nodes", GraphSafeRemoveNodes);
+  m->def("graph_safe_remove_nodes",
+         [](Graph *graph, const std::unordered_set<const Node *> &nodes) {
+           return GraphSafeRemoveNodes(graph, nodes);
+         });
   m->def("has_circle", HasCircle);
   m->def("graph_num", GraphNum);
   m->def(
@@ -64,6 +67,7 @@ void BindGraph(py::module *m) {
       "The graph is a Directed Acyclic Single Static Assignment Graph, see "
       "`paddle::ir::Graph` for details.")
       .def(py::init<const ProgramDesc &>())
+      .def(py::init<const ProgramDesc &, int64_t, int64_t>())
       .def("clone", &Graph::Clone)
       .def("has", &Graph::Has)
       .def("get_bool", &Graph::Get<bool>)

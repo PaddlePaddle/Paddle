@@ -17,9 +17,10 @@ from __future__ import print_function
 from paddle.utils import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 
-class PrintTransformer(gast.NodeTransformer):
+class PrintTransformer(BaseTransformer):
     """
     This class transforms python print function to fluid.layers.Print.
     """

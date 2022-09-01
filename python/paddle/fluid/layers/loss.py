@@ -28,7 +28,7 @@ from ..param_attr import ParamAttr
 from ..initializer import NumpyArrayInitializer, Constant
 from .. import core
 import warnings
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'center_loss',
@@ -266,8 +266,9 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
         return cross_entropy2(input, label, ignore_index)
 
     if _non_static_mode():
-        return _C_ops.cross_entropy(input, label, "soft_label", soft_label,
-                                    "ignore_index", ignore_index)
+        return _legacy_C_ops.cross_entropy(input, label, "soft_label",
+                                           soft_label, "ignore_index",
+                                           ignore_index)
 
     inputs = {'X': [input], 'Label': [label]}
     attrs = {"soft_label": soft_label, "ignore_index": ignore_index}
@@ -285,8 +286,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
 
 def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
     if _non_static_mode():
-        loss, _, _ = _C_ops.cross_entropy2(input, label, 'ignore_index',
-                                           ignore_index)
+        loss, _, _ = _legacy_C_ops.cross_entropy2(input, label, 'ignore_index',
+                                                  ignore_index)
         return loss
 
     inputs = {'X': [input], 'Label': [label]}
@@ -311,7 +312,7 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
 def square_error_cost(input, label):
     r"""
 
-    This op accepts input predictions and target label and returns the
+    Accept input predictions and target label and returns the
     squared error cost.
 
     For predictions label, and target label, the equation is:
@@ -325,10 +326,8 @@ def square_error_cost(input, label):
         label (Tensor): Label tensor, the data type should be float32.
 
     Returns:
-        The tensor storing the element-wise squared error \
-                  difference between input and label.
-
-    Return type: Tensor.
+        Tensor, The tensor storing the element-wise squared 
+        error difference between input and label.
 
     Examples:
 
@@ -546,12 +545,20 @@ def warpctc(input,
                                   fetch_list=[cost.name])
             print(output)
     """
+    if in_dygraph_mode():
+        if input_length is None or label_length is None:
+            raise ValueError(
+                "input_length and label_length must not be None in dygraph mode!"
+            )
+        loss_out = _C_ops.warpctc(input, label, input_length, label_length,
+                                  blank, norm_by_times)
+        return loss_out
     if _non_static_mode():
         if input_length is None or label_length is None:
             raise ValueError(
                 "input_length and label_length must not be None in dygraph mode!"
             )
-        grad, loss_out = _C_ops.warpctc(
+        grad, loss_out = _legacy_C_ops.warpctc(
             input,
             label,
             input_length,
@@ -1051,16 +1058,16 @@ def sampled_softmax_with_cross_entropy(logits,
                                'uniq', True, 'remove_accidental_hits',
                                remove_accidental_hits, 'num_samples',
                                num_samples, 'seed', seed)
-        _, _, _, _, sampled_logits_out, sampled_label_out = _C_ops.sample_logits(
+        _, _, _, _, sampled_logits_out, sampled_label_out = _legacy_C_ops.sample_logits(
             logits, label, *sample_logits_attrs)
         depth = num_samples + 1
-        sampled_softlabel_out = _C_ops.one_hot(sampled_label_out, 'depth',
-                                               depth)
+        sampled_softlabel_out = _legacy_C_ops.one_hot(sampled_label_out,
+                                                      'depth', depth)
 
         softmax_with_cross_entropy_attrs = ('soft_label', True,
                                             'numeric_stable_mode', False)
 
-        _, loss = _C_ops.softmax_with_cross_entropy(
+        _, loss = _legacy_C_ops.softmax_with_cross_entropy(
             sampled_logits_out, sampled_softlabel_out,
             *softmax_with_cross_entropy_attrs)
         return loss / num_true
@@ -1230,6 +1237,63 @@ def softmax_with_cross_entropy(logits,
         return_softmax, axis)
 
 
+def identity_loss(x, reduction="none"):
+    r"""Marks a tensor as being part of the loss calculation for IPU.
+
+    This operator is used to handle on the (final) loss of a model so that
+    it is used as the start of backpropagation.
+
+    When `reduction` is `none`, return raw `Out`.
+    
+    When `reduction` is `mean`, return
+
+    .. math::
+        Out = MEAN(Out)
+
+    When `reduction` is `sum`, return
+
+    .. math::
+        Out = SUM(Out)
+
+    Parameters:
+        x (Variable): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of
+             additional dimensions. It's data type should be float32, float64 on CPU and float16, float32 on IPU.
+        reduction(str|int, optional): Reduce the loss output. Supported string values are: 'sum', 'mean', 'none'
+                            the corresponding int values are 0, 1, 2 respectively. The default value is "none".
+
+    Returns:
+        Variable: The loss ``Tensor`` with the specified reduction applied.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+            loss = fluid.data(name="loss", shape=[-1, 1], dtype="float32")
+            out = paddle.incubate.identity_loss(loss, reduction=1)
+    """
+    if isinstance(reduction, str):
+        reduction = {"sum": 0, "mean": 1, "none": 2}.get(reduction.lower())
+        if reduction is None:
+            raise Exception("Unsupported reduction type.")
+
+    if _non_static_mode():
+        return _legacy_C_ops.identity_loss(x, "reduction", reduction)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "identity_loss")
+    attrs = {'reduction': reduction}
+    helper = LayerHelper('identity_loss', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type="identity_loss",
+                     inputs={"X": x},
+                     outputs={"Out": out},
+                     attrs=attrs)
+    return out
+
+
 def rank_loss(label, left, right, name=None):
     r"""
 
@@ -1391,8 +1455,8 @@ def sigmoid_cross_entropy_with_logits(x,
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_sigmoid_cross_entropy_with_logits(
-            x, label, normalize, int(ignore_index))
+        return _C_ops.sigmoid_cross_entropy_with_logits(x, label, normalize,
+                                                        int(ignore_index))
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              'sigmoid_cross_entropy_with_logits')
 
@@ -1521,7 +1585,7 @@ def huber_loss(input, label, delta):
         print(HuberLoss)  #[[1.5], [0.5], [0.5], [0. ]], dtype=float32
     """
     if in_dygraph_mode():
-        out, residual = _C_ops.final_state_huber_loss(input, label, delta)
+        out, residual = _C_ops.huber_loss(input, label, delta)
         return out
 
     helper = LayerHelper('huber_loss', **locals())

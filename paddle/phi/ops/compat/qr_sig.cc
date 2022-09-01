@@ -20,6 +20,12 @@ KernelSignature QrOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("qr", {"X"}, {"mode"}, {"Q", "R"});
 }
 
+KernelSignature QrGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "qr_grad", {"X", "Q", "R", "Q@GRAD", "R@GRAD"}, {"mode"}, {"X@GRAD"});
+}
+
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(qr, phi::QrOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(qr_grad, phi::QrGradOpArgumentMapping);

@@ -35,7 +35,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {
@@ -216,7 +216,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_use_dla, TensorRtUseDLA, bool);
   DECL_ARGUMENT_FIELD(tensorrt_dla_core, TensorRtDLACore, int);
   DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);
-  DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int);
+  DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int64_t);
   DECL_ARGUMENT_FIELD(tensorrt_min_subgraph_size, TensorRtMinSubgraphSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_disabled_ops,
                       TensorRtDisabledOPs,
@@ -331,6 +331,9 @@ struct Argument {
 
   // mixed precision related
   DECL_ARGUMENT_FIELD(model_precision, ModelPrecision, int);
+  DECL_ARGUMENT_FIELD(mixed_black_list,
+                      MixedBlackList,
+                      std::unordered_set<std::string>);
 
  private:
   std::unordered_set<std::string> valid_fields_;

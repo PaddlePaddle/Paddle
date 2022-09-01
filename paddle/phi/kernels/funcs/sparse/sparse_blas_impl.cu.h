@@ -48,6 +48,15 @@ inline cusparseOperation_t GetTransposeOperation(const bool trans) {
   }
 }
 
+inline cusparseSpMMAlg_t GetSpMMAlgorithm(const SparseCsrTensor& x) {
+  // TODO(zhouwei): will change to 'CUSPARSE_SPMM_CSR_ALG2' when support batch
+  return CUSPARSE_SPMM_CSR_ALG2;
+}
+
+inline cusparseSpMMAlg_t GetSpMMAlgorithm(const SparseCooTensor& x) {
+  return CUSPARSE_SPMM_ALG_DEFAULT;
+}
+
 /************* SPARSE MATRIX DESCRIPTOR (COO/CSR) ************/
 
 template <typename T, typename IntT>
@@ -165,7 +174,7 @@ class CuSparseSpMatDescriptor {
   explicit CuSparseSpMatDescriptor(const phi::SparseCsrTensor& x,
                                    const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
-    PD_VISIT_INTEGRAL_TYPES(
+    PD_VISIT_BASE_INTEGRAL_TYPES(
         x.non_zero_crows().dtype(), "Csr CuSparseSpMatDescriptor", ([&] {
           CreateCsrDescriptor<T, data_t>(x, dev_ctx_, &descriptor_);
         }));
@@ -175,7 +184,7 @@ class CuSparseSpMatDescriptor {
   explicit CuSparseSpMatDescriptor(const phi::SparseCooTensor& x,
                                    const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
-    PD_VISIT_INTEGRAL_TYPES(
+    PD_VISIT_BASE_INTEGRAL_TYPES(
         x.non_zero_indices().dtype(), "Coo CuSparseSpMatDescriptor", ([&] {
           CreateCooDescriptor<T, data_t>(x, dev_ctx_, &descriptor_);
         }));
@@ -298,6 +307,7 @@ class CuSparseDnVecDescriptor {
   cusparseDnVecDescr_t descriptor_;
 };
 
+/************* SPARSE*DENSE->DENSE MATMUL ************/
 template <>
 template <typename T, typename TensorType>
 void SparseBlas<phi::GPUContext>::SPMM(bool transa,
@@ -323,12 +333,14 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                           &beta,
                                           out_descriptor.descriptor(),
                                           gpu_type,
-                                          CUSPARSE_SPMM_ALG_DEFAULT,
+                                          GetSpMMAlgorithm(mat_a),
                                           &buffer_size);
   });
 
-  paddle::memory::allocation::AllocationPtr tmp_buffer =
-      paddle::memory::Alloc(dev_ctx_, buffer_size);
+  paddle::memory::allocation::AllocationPtr tmp_buffer = paddle::memory::Alloc(
+      dev_ctx_.GetPlace(),
+      buffer_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
   void* tmp_buffer_ptr = tmp_buffer->ptr();
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseSpMM(handle,
@@ -340,11 +352,12 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                &beta,
                                out_descriptor.descriptor(),
                                gpu_type,
-                               CUSPARSE_SPMM_ALG_DEFAULT,
+                               GetSpMMAlgorithm(mat_a),
                                tmp_buffer_ptr);
   });
 }
 
+/************* SPARSE*DENSE->DENSE MV ************/
 template <>
 template <typename T, typename TensorType>
 void SparseBlas<phi::GPUContext>::SPMV(bool transa,
@@ -372,8 +385,10 @@ void SparseBlas<phi::GPUContext>::SPMV(bool transa,
                                           &buffer_size);
   });
 
-  paddle::memory::allocation::AllocationPtr tmp_buffer =
-      paddle::memory::Alloc(dev_ctx_, buffer_size);
+  paddle::memory::allocation::AllocationPtr tmp_buffer = paddle::memory::Alloc(
+      dev_ctx_.GetPlace(),
+      buffer_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
   void* tmp_buffer_ptr = tmp_buffer->ptr();
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseSpMV(handle,
@@ -389,6 +404,7 @@ void SparseBlas<phi::GPUContext>::SPMV(bool transa,
   });
 }
 
+/************* DENSE*DENSE->SPARSE MATMUL ************/
 #if CUDA_VERSION >= 11030
 template <>
 template <typename T, typename TensorType>
@@ -419,8 +435,10 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
                                            &buffer_size);
   });
 
-  paddle::memory::allocation::AllocationPtr tmp_buffer =
-      paddle::memory::Alloc(dev_ctx_, buffer_size);
+  paddle::memory::allocation::AllocationPtr tmp_buffer = paddle::memory::Alloc(
+      dev_ctx_.GetPlace(),
+      buffer_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
   void* tmp_buffer_ptr = tmp_buffer->ptr();
 
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {

@@ -191,7 +191,6 @@ class PD_INFER_DECL Tensor {
 #ifdef PADDLE_WITH_ONNXRUNTIME
   bool is_ort_tensor_{false};
   std::vector<int64_t> shape_;
-  std::weak_ptr<std::vector<int8_t>> buffer_;
   std::weak_ptr<Ort::IoBinding> binding_;
   int idx_{-1};
 
@@ -199,7 +198,8 @@ class PD_INFER_DECL Tensor {
 
   void SetOrtBinding(const std::shared_ptr<Ort::IoBinding> binding);
 
-  void SetOrtBuffer(const std::shared_ptr<std::vector<int8_t>> buffer);
+  template <typename T>
+  T* ORTGetMutableData();
 
   template <typename T>
   void ORTCopyFromCpu(const T* data);

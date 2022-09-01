@@ -252,7 +252,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
         smem[warp_m * WARPS_N + warp_n] = mu_local;
       }
       __syncthreads();
-      if (tidx == 0) {
+      if (tidx % THREADS_PER_ROW == 0) {
         mu_local = 0.f;
 #pragma unroll
         for (int it = 0; it < WARPS_N; ++it) {
@@ -289,7 +289,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
         smem[warp_m * WARPS_N + warp_n] = var_local;
       }
       __syncthreads();
-      if (tidx == 0) {
+      if (tidx % THREADS_PER_ROW == 0) {
         var_local = 0.f;
 #pragma unroll
         for (int it = 0; it < WARPS_N; ++it) {
@@ -1815,10 +1815,14 @@ static void LayerNormBackward(
         constexpr int part_size = BDIMY2 * VPT;
         const dim3 blocks2((feature_size + BDIMX2 - 1) / BDIMX2, part_size, 1);
 
-        auto part_grad_gamma_ptr =
-            memory::Alloc(dev_ctx, part_size * feature_size * sizeof(U));
-        auto part_grad_beta_ptr =
-            memory::Alloc(dev_ctx, part_size * feature_size * sizeof(U));
+        auto part_grad_gamma_ptr = memory::Alloc(
+            dev_ctx.GetPlace(),
+            part_size * feature_size * sizeof(U),
+            phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+        auto part_grad_beta_ptr = memory::Alloc(
+            dev_ctx.GetPlace(),
+            part_size * feature_size * sizeof(U),
+            phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
         U *part_grad_gamma = reinterpret_cast<U *>(part_grad_gamma_ptr->ptr());
         U *part_grad_beta = reinterpret_cast<U *>(part_grad_beta_ptr->ptr());
 

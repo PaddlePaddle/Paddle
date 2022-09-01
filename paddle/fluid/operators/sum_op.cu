@@ -77,8 +77,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   const size_t in_num = in_vars.size();
 
   constexpr size_t theory_sm_threads = 1024;
-  auto &dev_ctx =
-      context.template device_context<platform::CUDADeviceContext>();
+  auto &dev_ctx = context.template device_context<phi::GPUContext>();
   auto stream = dev_ctx.stream();
 
   auto max_threads = dev_ctx.GetMaxPhysicalThreadCount();
@@ -138,11 +137,10 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
 
   int start = in_place ? 1 : 0;
   if (!in_place) {
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> constant_functor;
-    constant_functor(
-        context.template device_context<platform::CUDADeviceContext>(),
-        out,
-        static_cast<T>(0));
+    phi::funcs::SetConstant<phi::GPUContext, T> constant_functor;
+    constant_functor(context.template device_context<phi::GPUContext>(),
+                     out,
+                     static_cast<T>(0));
   }
 
   std::vector<const T *> in_data;
@@ -202,8 +200,10 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
       }
     }
     if (!sr_in_out_data.empty()) {
-      auto tmp_sr_in_out_array =
-          memory::Alloc(dev_ctx, sr_in_out_data.size() * sizeof(T *));
+      auto tmp_sr_in_out_array = memory::Alloc(
+          dev_ctx.GetPlace(),
+          sr_in_out_data.size() * sizeof(T *),
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
       memory::Copy(dev_ctx.GetPlace(),
                    tmp_sr_in_out_array->ptr(),
@@ -223,7 +223,10 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   }
   // if indata not null, merge into one kernel call.
   if (!in_data.empty()) {
-    auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
+    auto tmp_in_array = memory::Alloc(
+        dev_ctx.GetPlace(),
+        in_data.size() * sizeof(T *),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
     memory::Copy(dev_ctx.GetPlace(),
                  tmp_in_array->ptr(),
@@ -243,8 +246,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
 }
 
 template <typename T>
-class SumKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class SumKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto out_var = context.OutputVar("Out");
@@ -252,9 +254,9 @@ class SumKernel<platform::CUDADeviceContext, T>
     if (out_var->IsType<framework::LoDTensor>()) {
       SumToLoDTensor<T>(context);
     } else if (out_var->IsType<phi::SelectedRows>()) {
-      SelectedRowsCompute<platform::CUDADeviceContext, T>(context);
+      SelectedRowsCompute<phi::GPUContext, T>(context);
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
-      LodTensorArrayCompute<platform::CUDADeviceContext, T>(context);
+      LodTensorArrayCompute<phi::GPUContext, T>(context);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Expected type of Output(out) must be Tensor,  SelectedRows or "
@@ -269,11 +271,10 @@ class SumKernel<platform::CUDADeviceContext, T>
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    sum,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, plat::float16>,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, plat::bfloat16>);
+REGISTER_OP_CUDA_KERNEL(sum,
+                        ops::SumKernel<phi::GPUContext, float>,
+                        ops::SumKernel<phi::GPUContext, double>,
+                        ops::SumKernel<phi::GPUContext, int>,
+                        ops::SumKernel<phi::GPUContext, int64_t>,
+                        ops::SumKernel<phi::GPUContext, plat::float16>,
+                        ops::SumKernel<phi::GPUContext, plat::bfloat16>);

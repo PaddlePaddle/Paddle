@@ -91,7 +91,7 @@ def get_loss(cos_q_pt, cos_q_nt):
                                                    shape=[-1, 1],
                                                    value=0.0,
                                                    dtype='float32'), loss_op2)
-    avg_cost = fluid.layers.mean(loss_op3)
+    avg_cost = paddle.mean(loss_op3)
     return avg_cost
 
 

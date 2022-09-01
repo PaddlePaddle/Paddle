@@ -21,14 +21,13 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
 #include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/stream/cuda_stream.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/NCCLTools.h"
@@ -46,18 +45,23 @@ namespace paddle {
 namespace distributed {
 
 using Place = paddle::platform::Place;
-using CUDAStream = platform::stream::CUDAStream;
-using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
-class ProcessGroupNCCL : public ProcessGroup {
+class ProcessGroupNCCL : public ProcessGroupStream {
  public:
-  class NCCLTask : public ProcessGroup::Task,
+  class NCCLTask : public ProcessGroupStream::TaskStream,
                    public std::enable_shared_from_this<NCCLTask> {
    public:
     NCCLTask(const std::vector<Place>& places,
              int rank,
              CommType CommType,
              const std::vector<phi::DenseTensor>& inputs);
+
+    NCCLTask(const std::vector<Place>& places,
+             int rank,
+             CommType comm_type,
+             const std::vector<phi::DenseTensor>& inputs,
+             bool is_sync,
+             bool use_calc_stream);
 
     bool IsCompleted();
 
@@ -93,6 +97,14 @@ class ProcessGroupNCCL : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
+      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
+      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+      const AllreduceOptions& options,
+      bool sync_op,
+      bool use_calc_stream) override;
+
+  // TODO(liyurui): This API will be moved later
+  std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
       const AllreduceOptions& = AllreduceOptions()) override;
@@ -125,9 +137,21 @@ class ProcessGroupNCCL : public ProcessGroup {
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      int offset,
+      int length) override;
+
   std::shared_ptr<ProcessGroup::Task> AllToAll(
       std::vector<phi::DenseTensor>& in,
       std::vector<phi::DenseTensor>& out) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllToAll_Single(
+      std::vector<phi::DenseTensor>& in,
+      std::vector<phi::DenseTensor>& out,
+      std::vector<int64_t>& in_sizes,
+      std::vector<int64_t>& out_sizes) override;
 
   std::shared_ptr<ProcessGroup::Task> Reduce(
       std::vector<phi::DenseTensor>& tensors,
@@ -138,6 +162,17 @@ class ProcessGroupNCCL : public ProcessGroup {
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
       const ScatterOptions&) override;
+
+  std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
+      phi::DenseTensor&,  // NOLINT
+      phi::DenseTensor&,  // NOLINT
+      const ReduceScatterOptions&) override;
+
+  static void GroupStart();
+
+  static void GroupEnd();
+
+  ncclComm_t NCCLComm(const Place& place) const;
 
  protected:
   virtual std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
@@ -155,15 +190,14 @@ class ProcessGroupNCCL : public ProcessGroup {
 
   std::unordered_map<std::string, std::vector<EventManager>> places_to_events_;
 
-  std::unordered_map<std::string,
-                     std::vector<std::unique_ptr<CUDADeviceContext>>>
+  std::unordered_map<std::string, std::vector<std::unique_ptr<phi::GPUContext>>>
       places_to_ctx_;
 
   std::set<int> used_place_ids_;
 
  private:
-  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids,
-                   int root,  // NOLINT
+  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids,  // NOLINT
+                   int root,                             // NOLINT
                    int server_fd);
 
   void BroadcastUniqueNCCLID(std::vector<ncclUniqueId>& nccl_ids);  // NOLINT
@@ -174,6 +208,15 @@ class ProcessGroupNCCL : public ProcessGroup {
       std::vector<phi::DenseTensor>& outputs,  // NOLINT
       Fn fn,
       CommType op_type);
+
+  template <typename Fn>
+  std::shared_ptr<ProcessGroupStream::Task> Collective(
+      std::vector<phi::DenseTensor>& inputs,   // NOLINT
+      std::vector<phi::DenseTensor>& outputs,  // NOLINT
+      Fn fn,
+      CommType comm_type,
+      bool sync_op,
+      bool use_calc_stream);
 
   template <typename Fn>
   void Collective(const phi::DenseTensor*,
@@ -190,6 +233,9 @@ class ProcessGroupNCCL : public ProcessGroup {
 
   void CreateNCCLManagerCache(const std::string& places_key,
                               const std::vector<Place>& places);
+
+  void CheckSplitSizes(std::vector<int64_t>* split_sizes,
+                       std::vector<int64_t> tensor_shape);
 };
 
 }  //  namespace distributed

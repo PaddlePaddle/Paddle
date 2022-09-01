@@ -16,7 +16,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
 
@@ -53,6 +53,7 @@ class TestSparseConv(unittest.TestCase):
                 groups=1,
                 data_format="NDHWC")
             out.backward(out)
+            out = paddle.incubate.sparse.coalesce(out)
             assert np.array_equal(correct_out_values, out.values().numpy())
 
     def test_subm_conv3d(self):
@@ -66,7 +67,7 @@ class TestSparseConv(unittest.TestCase):
                 indices, values, dense_shape, stop_gradient=True)
             weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
             y = paddle.incubate.sparse.nn.functional.subm_conv3d(
-                sparse_x, weight)
+                sparse_x, weight, key='subm_conv')
             assert np.array_equal(sparse_x.indices().numpy(),
                                   y.indices().numpy())
 
@@ -90,7 +91,7 @@ class TestSparseConv(unittest.TestCase):
             with self.assertRaises(ValueError):
                 #Currently, only support data_format='NDHWC'
                 conv3d = paddle.incubate.sparse.nn.SubmConv3D(
-                    1, 1, (1, 3, 3), data_format='NCDHW')
+                    1, 1, (1, 3, 3), data_format='NCDHW', key='subm_conv')
 
     def test_SubmConv3D(self):
         with _test_eager_guard():
@@ -104,7 +105,7 @@ class TestSparseConv(unittest.TestCase):
                 indices, values, dense_shape, False)
 
             subm_conv3d = paddle.incubate.sparse.nn.SubmConv3D(
-                1, 1, (1, 3, 3), data_format='NDHWC')
+                1, 1, (1, 3, 3), data_format='NDHWC', key='subm_conv')
             # test extra_repr
             print(subm_conv3d.extra_repr())
 
@@ -116,7 +117,7 @@ class TestSparseConv(unittest.TestCase):
             with self.assertRaises(ValueError):
                 #Currently, only support data_format='NDHWC'
                 conv3d = paddle.incubate.sparse.nn.SubmConv3D(
-                    1, 1, (1, 3, 3), data_format='NCDHW')
+                    1, 1, (1, 3, 3), data_format='NCDHW', key='subm_conv')
 
     def test_Conv3D_bias(self):
         with _test_eager_guard():

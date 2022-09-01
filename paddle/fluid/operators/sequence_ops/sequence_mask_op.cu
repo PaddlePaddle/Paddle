@@ -16,11 +16,7 @@
 
 REGISTER_OP_CUDA_KERNEL(
     sequence_mask,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CUDADeviceContext,
-                                          int>,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CUDADeviceContext,
-                                          int64_t>,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CUDADeviceContext,
-                                          float>,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CUDADeviceContext,
-                                          double>);
+    paddle::operators::SequenceMaskKernel<phi::GPUContext, int>,
+    paddle::operators::SequenceMaskKernel<phi::GPUContext, int64_t>,
+    paddle::operators::SequenceMaskKernel<phi::GPUContext, float>,
+    paddle::operators::SequenceMaskKernel<phi::GPUContext, double>);

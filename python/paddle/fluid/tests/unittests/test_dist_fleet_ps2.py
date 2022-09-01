@@ -70,7 +70,7 @@ class TestPSPassWithBow(unittest.TestCase):
                                                            value=0.0,
                                                            dtype='float32'),
                 loss_op2)
-            avg_cost = fluid.layers.mean(loss_op3)
+            avg_cost = paddle.mean(loss_op3)
             return avg_cost
 
         is_distributed = False
@@ -93,6 +93,7 @@ class TestPSPassWithBow(unittest.TestCase):
         # vsum
         q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
         q_ss = fluid.layers.softsign(q_sum)
+        q_ss = fluid.layers.data_norm(input=q_ss)
         # fc layer after conv
         q_fc = fluid.layers.fc(
             input=q_ss,
@@ -183,6 +184,10 @@ class TestPSPassWithBow(unittest.TestCase):
 
         configs = {}
         configs['__emb__'] = {
+            "table_parameters.__emb__.enable_sparse_table_cache":
+            True,
+            "table_parameters.__emb__.shard_merge_rate":
+            1,
             "table_parameters.__emb__.accessor.embed_sgd_param.name":
             "SparseNaiveSGDRule",
             "table_parameters.__emb__.accessor.embedx_sgd_param.name":

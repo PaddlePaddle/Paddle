@@ -185,35 +185,35 @@ class TestTensordotAPIFloat64(TestTensordotAPI):
         self.dtype = np.float64
 
 
-class TestTensordotAPIBroadcastCase1(TestTensordotAPI):
+class TestTensordotAPIBroadcastCase1(TestTensordotAPIFloat64):
 
     def set_input_shape(self):
         self.x_shape = [1, 1, 1, 5]
         self.y_shape = [1, 5, 1, 1]
 
 
-class TestTensordotAPIBroadcastCase2(TestTensordotAPI):
+class TestTensordotAPIBroadcastCase2(TestTensordotAPIFloat64):
 
     def set_input_shape(self):
         self.x_shape = [1, 5, 5, 5]
         self.y_shape = [1, 1, 1, 5]
 
 
-class TestTensordotAPIBroadcastCase3(TestTensordotAPI):
+class TestTensordotAPIBroadcastCase3(TestTensordotAPIFloat64):
 
     def set_input_shape(self):
         self.x_shape = [5, 5, 5, 1]
         self.y_shape = [5, 5, 1, 5]
 
 
-class TestTensordotAPIBroadcastCase4(TestTensordotAPI):
+class TestTensordotAPIBroadcastCase4(TestTensordotAPIFloat64):
 
     def set_input_shape(self):
         self.x_shape = [5, 5, 5, 1]
         self.y_shape = [1, 1, 1, 1]
 
 
-class TestTensordotAPIBroadcastCase5(TestTensordotAPI):
+class TestTensordotAPIBroadcastCase5(TestTensordotAPIFloat64):
 
     def set_input_shape(self):
         self.x_shape = [1, 1, 5, 5]

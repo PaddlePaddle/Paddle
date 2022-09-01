@@ -206,7 +206,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         out = fluid.layers.l2_normalize(x=emb, axis=-1)
 
         cost = fluid.layers.square_error_cost(input=out, label=label)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
 
@@ -368,7 +368,7 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
                                           name='X',
                                           dtype='float32')
             hidden = paddle.static.nn.fc(x=data, size=10)
-            loss = paddle.fluid.layers.mean(hidden)
+            loss = paddle.mean(hidden)
             optimizer.minimize(loss)
         exe.run(startup_program)
 
@@ -391,23 +391,24 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
         "Test dygraph mode"
         output1_dy, params1_dy = self.dygraph_sgd_mp(mp=True)
         output2_dy, params2_dy = self.dygraph_sgd_mp(mp=False)
-        self.assertEqual(
-            np.allclose(output1_dy.astype('float32').numpy(),
-                        output2_dy.astype('float32').numpy(),
-                        atol=1e-01), True)
+        np.testing.assert_allclose(output1_dy.astype('float32').numpy(),
+                                   output2_dy.astype('float32').numpy(),
+                                   rtol=1e-05,
+                                   atol=0.1)
         for idx in range(len(params1_dy)):
-            self.assertEqual(
-                np.allclose(params1_dy[idx].astype('float32').numpy(),
-                            params2_dy[idx].astype('float32').numpy(),
-                            atol=1e-01), True)
+            np.testing.assert_allclose(
+                params1_dy[idx].astype('float32').numpy(),
+                params2_dy[idx].astype('float32').numpy(),
+                rtol=1e-05,
+                atol=0.1)
         "Test static mode"
         output1_st = self.static_sgd_mp(mp=True)
         output2_st = self.static_sgd_mp(mp=False)
         for idx in range(len(output1_st)):
-            self.assertEqual(
-                np.allclose(output1_st[idx].astype('float32'),
-                            output2_st[idx].astype('float32'),
-                            atol=1e-01), True)
+            np.testing.assert_allclose(output1_st[idx].astype('float32'),
+                                       output2_st[idx].astype('float32'),
+                                       rtol=1e-05,
+                                       atol=0.1)
 
 
 class TestSGDMultiPrecision1_0(unittest.TestCase):
@@ -470,7 +471,7 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
                                           name='X',
                                           dtype='float32')
             hidden = paddle.static.nn.fc(x=data, size=10)
-            loss = paddle.fluid.layers.mean(hidden)
+            loss = paddle.mean(hidden)
             optimizer.minimize(loss)
         exe.run(startup_program)
 
@@ -493,23 +494,24 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
         "Test dygraph mode"
         output1_dy, params1_dy = self.dygraph_sgd_mp(mp=True)
         output2_dy, params2_dy = self.dygraph_sgd_mp(mp=False)
-        self.assertEqual(
-            np.allclose(output1_dy.astype('float32').numpy(),
-                        output2_dy.astype('float32').numpy(),
-                        atol=1e-01), True)
+        np.testing.assert_allclose(output1_dy.astype('float32').numpy(),
+                                   output2_dy.astype('float32').numpy(),
+                                   rtol=1e-05,
+                                   atol=0.1)
         for idx in range(len(params1_dy)):
-            self.assertEqual(
-                np.allclose(params1_dy[idx].astype('float32').numpy(),
-                            params2_dy[idx].astype('float32').numpy(),
-                            atol=1e-01), True)
+            np.testing.assert_allclose(
+                params1_dy[idx].astype('float32').numpy(),
+                params2_dy[idx].astype('float32').numpy(),
+                rtol=1e-05,
+                atol=0.1)
         "Test static mode"
         output1_st = self.static_sgd_mp(mp=True)
         output2_st = self.static_sgd_mp(mp=False)
         for idx in range(len(output1_st)):
-            self.assertEqual(
-                np.allclose(output1_st[idx].astype('float32'),
-                            output2_st[idx].astype('float32'),
-                            atol=1e-01), True)
+            np.testing.assert_allclose(output1_st[idx].astype('float32'),
+                                       output2_st[idx].astype('float32'),
+                                       rtol=1e-05,
+                                       atol=0.1)
 
 
 if __name__ == "__main__":

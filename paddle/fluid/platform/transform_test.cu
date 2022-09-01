@@ -40,9 +40,9 @@ using paddle::memory::Alloc;
 using paddle::memory::Copy;
 
 using paddle::platform::CPUPlace;
-using paddle::platform::CUDADeviceContext;
 using paddle::platform::CUDAPlace;
 using phi::CPUContext;
+using phi::GPUContext;
 
 using paddle::platform::Transform;
 
@@ -58,7 +58,7 @@ TEST(Transform, CPUUnary) {
 
 TEST(Transform, GPUUnary) {
   CUDAPlace gpu0(0);
-  CUDADeviceContext ctx(gpu0);
+  phi::GPUContext ctx(gpu0);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(gpu0, ctx.stream())
                        .get());
@@ -67,7 +67,7 @@ TEST(Transform, GPUUnary) {
   auto gpu_allocation = Alloc(gpu0, sizeof(float) * 4);
   float* gpu_buf = static_cast<float*>(gpu_allocation->ptr());
   Copy(gpu0, gpu_buf, CPUPlace(), cpu_buf, sizeof(cpu_buf), ctx.stream());
-  Transform<CUDADeviceContext> trans;
+  Transform<phi::GPUContext> trans;
   trans(ctx, gpu_buf, gpu_buf + 4, gpu_buf, Scale<float>(10));
   ctx.Wait();
   Copy(CPUPlace(), cpu_buf, gpu0, gpu_buf, sizeof(cpu_buf), ctx.stream());
@@ -89,7 +89,7 @@ TEST(Transform, CPUBinary) {
 TEST(Transform, GPUBinary) {
   int buf[4] = {1, 2, 3, 4};
   CUDAPlace gpu0(0);
-  CUDADeviceContext ctx(gpu0);
+  phi::GPUContext ctx(gpu0);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(gpu0, ctx.stream())
                        .get());
@@ -97,7 +97,7 @@ TEST(Transform, GPUBinary) {
   auto gpu_allocation = Alloc(gpu0, sizeof(buf));
   int* gpu_buf = static_cast<int*>(gpu_allocation->ptr());
   Copy(gpu0, gpu_buf, CPUPlace(), buf, sizeof(buf), ctx.stream());
-  Transform<CUDADeviceContext> trans;
+  Transform<phi::GPUContext> trans;
   trans(ctx, gpu_buf, gpu_buf + 4, gpu_buf, gpu_buf, Multiply<int>());
   ctx.Wait();
   Copy(CPUPlace(), buf, gpu0, gpu_buf, sizeof(buf), ctx.stream());

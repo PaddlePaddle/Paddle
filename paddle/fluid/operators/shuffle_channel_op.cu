@@ -129,12 +129,9 @@ class ShuffleChannelGradOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     shuffle_channel,
-    ops::ShuffleChannelOpCUDAKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ShuffleChannelOpCUDAKernel<paddle::platform::CUDADeviceContext,
-                                    double>);
+    ops::ShuffleChannelOpCUDAKernel<phi::GPUContext, float>,
+    ops::ShuffleChannelOpCUDAKernel<phi::GPUContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     shuffle_channel_grad,
-    ops::ShuffleChannelGradOpCUDAKernel<paddle::platform::CUDADeviceContext,
-                                        float>,
-    ops::ShuffleChannelGradOpCUDAKernel<paddle::platform::CUDADeviceContext,
-                                        double>);
+    ops::ShuffleChannelGradOpCUDAKernel<phi::GPUContext, float>,
+    ops::ShuffleChannelGradOpCUDAKernel<phi::GPUContext, double>);

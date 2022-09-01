@@ -6,4 +6,12 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   set(fluid_manual_nodes
       ${fluid_manual_nodes}
       PARENT_SCOPE)
+
+  add_subdirectory(eager_manual)
+  set(eager_manual_functions
+      ${eager_manual_functions}
+      PARENT_SCOPE)
+  set(eager_manual_nodes
+      ${eager_manual_nodes}
+      PARENT_SCOPE)
 endif()

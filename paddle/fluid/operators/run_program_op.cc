@@ -119,6 +119,17 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int64_t>("cuda_graph_pool_id",
                      "(int64_t, default 0) The CUDA Graph memory pool ID.")
         .SetDefault(0);
+    AddAttr<bool>("use_interpretorcore",
+                  "(bool, default false) Set to true for use interpretercore.")
+        .SetDefault(false);
+    AddAttr<BlockDesc*>("forward_global_block",
+                        "(BlockDesc *)"
+                        "The global block of executed forward program desc.")
+        .SetDefault(nullptr);
+    AddAttr<BlockDesc*>("backward_global_block",
+                        "(BlockDesc *)"
+                        "The global block of executed backward program desc.")
+        .SetDefault(nullptr);
     AddComment(R"DOC(
 RunProgram operator.
 
@@ -212,7 +223,7 @@ class RunProgramGradOpMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
 
     auto block_desc =
-        BOOST_GET_CONST(BlockDesc*, this->GetAttr("global_block"));
+        PADDLE_GET_CONST(BlockDesc*, this->GetAttr("global_block"));
     auto params_grad = this->InputGrad("Params");
     FilterHelper<T>::filter(block_desc, &params_grad);  // filter the vector.
     grad_op->SetOutput(framework::GradVarName("Params"), params_grad);

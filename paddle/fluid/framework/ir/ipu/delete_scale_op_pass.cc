@@ -45,8 +45,8 @@ void DeleteScaleOpPass::ApplyImpl(ir::Graph* graph) const {
       auto input_var_node = node->inputs[0];
       auto output_var_node = node->outputs[0];
       // only optimize scale *1 + 0
-      auto scale = BOOST_GET_CONST(float, op->GetAttr("scale"));
-      auto bias = BOOST_GET_CONST(float, op->GetAttr("bias"));
+      auto scale = PADDLE_GET_CONST(float, op->GetAttr("scale"));
+      auto bias = PADDLE_GET_CONST(float, op->GetAttr("bias"));
       if (scale != 1 || bias != 0) {
         return;
       }

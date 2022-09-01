@@ -50,7 +50,7 @@ class GeluOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (op_desc.HasAttr("approximate") &&
-        BOOST_GET_CONST(bool, op_desc.GetAttr("approximate"))) {
+        PADDLE_GET_CONST(bool, op_desc.GetAttr("approximate"))) {
 #if IS_TRT_VERSION_GE(7000)
       nvinfer1::Dims input_shape;
       input_shape.nbDims = input->getDimensions().nbDims;

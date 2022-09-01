@@ -33,7 +33,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.param_attr import ParamAttr
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 
 def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
@@ -170,7 +170,7 @@ class ResNetUnit(Layer):
         self._is_test = is_test
 
         # check format
-        valid_format = {'NHWC'}
+        valid_format = {'NHWC', 'NCHW'}
         if data_format not in valid_format:
             raise ValueError(
                 "conv_format must be one of {}, but got conv_format='{}'".
@@ -181,11 +181,25 @@ class ResNetUnit(Layer):
             std = (2.0 / filter_elem_num)**0.5
             return I.Normal(0.0, std)
 
+        is_nchw = (data_format == 'NCHW')
         # initial filter
         bn_param_dtype = fluid.core.VarDesc.VarType.FP32
-        bn_param_shape = [1, 1, 1, num_filters]
-        filter_x_shape = [num_filters, filter_size, filter_size, num_channels_x]
-        filter_z_shape = [num_filters, filter_size, filter_size, num_channels_z]
+        if not is_nchw:
+            bn_param_shape = [1, 1, 1, num_filters]
+            filter_x_shape = [
+                num_filters, filter_size, filter_size, num_channels_x
+            ]
+            filter_z_shape = [
+                num_filters, filter_size, filter_size, num_channels_z
+            ]
+        else:
+            bn_param_shape = [1, num_filters, 1, 1]
+            filter_x_shape = [
+                num_filters, num_channels_x, filter_size, filter_size
+            ]
+            filter_z_shape = [
+                num_filters, num_channels_z, filter_size, filter_size
+            ]
 
         self.filter_x = self.create_parameter(
             shape=filter_x_shape,

@@ -143,6 +143,10 @@ class SuggestionDict(object):
         return self.suggestion_dict[key]
 
 
+class Dy2StKeyError(Exception):
+    pass
+
+
 class ErrorData(object):
     """
     Error data attached to an exception which is raised in un-transformed code.
@@ -159,7 +163,10 @@ class ErrorData(object):
 
     def create_exception(self):
         message = self.create_message()
-        new_exception = self.error_type(message)
+        if self.error_type is KeyError:
+            new_exception = Dy2StKeyError(message)
+        else:
+            new_exception = self.error_type(message)
         setattr(new_exception, ERROR_DATA, self)
         return new_exception
 
@@ -274,19 +281,25 @@ class ErrorData(object):
         bottom_error_message = error_value_lines[empty_line_idx + 1:]
         revise_suggestion = self._create_revise_suggestion(bottom_error_message)
 
-        user_filepath = ''
         error_traceback = []
         user_code_traceback_index = []
         pattern = 'File "(?P<filepath>.+)", line (?P<lineno>.+), in (?P<function_name>.+)'
+
+        # Distinguish user code and framework code using static_info_map
+        static_info_map = {}
+        for k, v in self.origin_info_map.items():
+            origin_filepath = v.location.filepath
+            origin_lineno = v.location.lineno
+            static_info_map[(origin_filepath, origin_lineno)] = k
+
         for i in range(0, len(error_value_lines_strip), 2):
             if error_value_lines_strip[i].startswith("File "):
                 re_result = re.search(pattern, error_value_lines_strip[i])
                 tmp_filepath, lineno_str, function_name = re_result.groups()
                 code = error_value_lines_strip[
                     i + 1] if i + 1 < len(error_value_lines_strip) else ''
-                if i == 0:
-                    user_filepath = tmp_filepath
-                if tmp_filepath == user_filepath:
+
+                if static_info_map.get((tmp_filepath, int(lineno_str))):
                     user_code_traceback_index.append(len(error_traceback))
 
                 error_traceback.append(

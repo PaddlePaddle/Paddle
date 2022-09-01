@@ -132,6 +132,13 @@ class OpRegistry {
                                                 const VariableNameMap& outputs,
                                                 const AttributeMap& attrs,
                                                 bool attr_check = true);
+  static std::unique_ptr<OperatorBase> CreateOp(
+      const std::string& type,
+      const VariableNameMap& inputs,
+      const VariableNameMap& outputs,
+      const AttributeMap& attrs,
+      const AttributeMap& runtime_attrs,
+      bool attr_check = true);
 
   static std::unique_ptr<OperatorBase> CreateOp(const proto::OpDesc& op_desc);
 
@@ -405,6 +412,12 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
 #define REGISTER_OP_MLU_KERNEL_FUNCTOR(op_type, ...)                  \
   REGISTER_OP_KERNEL_EX(                                              \
       op_type, MLU, ::paddle::platform::MLUPlace, DEFAULT_TYPE,       \
+      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
+      __VA_ARGS__)
+
+#define REGISTER_OP_IPU_KERNEL_FUNCTOR(op_type, ...)                  \
+  REGISTER_OP_KERNEL_EX(                                              \
+      op_type, IPU, ::paddle::platform::IPUPlace, DEFAULT_TYPE,       \
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
 

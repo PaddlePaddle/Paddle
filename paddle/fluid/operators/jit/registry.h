@@ -22,7 +22,7 @@
 #include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/operators/jit/kernel_pool.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/variant.h"  // for UNUSED
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace operators {

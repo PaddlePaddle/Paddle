@@ -94,7 +94,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                     initializer=fluid.initializer.Constant(value=0.1)))
             cost = fluid.layers.cross_entropy(input=predict_word,
                                               label=words[4])
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
             return avg_cost, predict_word
 
         word_dict = paddle.dataset.imikolov.build_dict()

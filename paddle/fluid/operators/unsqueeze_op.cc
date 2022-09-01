@@ -347,7 +347,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnsqueezeGradOpNoNeedBufferVarInferer, "X");
 
 DECLARE_INFER_SHAPE_FUNCTOR(unsqueeze2,
                             Unsqueeze2InferShapeFunctor,
-                            PD_INFER_META(phi::UnsqueezeInferMeta));
+                            PD_INFER_META(phi::UnsqueezeWithXShapeInferMeta));
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(unsqueeze,

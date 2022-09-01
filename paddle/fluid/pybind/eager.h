@@ -29,7 +29,7 @@ typedef struct {
 typedef struct {
   PyObject_HEAD PyObject* container;
   PyObject* non_differentiable;
-  PyObject* dirty_tensors;
+  PyObject* not_inplace_tensors;
   bool materialize_grads;
   std::vector<bool> forward_input_tensor_is_duplicable;
   std::vector<bool> forward_output_tensor_is_duplicable;
@@ -40,6 +40,7 @@ void BindEager(pybind11::module* m);
 void BindEagerStringTensor(pybind11::module* module);
 void BindFunctions(PyObject* module);
 void BindEagerPyLayer(PyObject* module);
-
+void BindEagerOpFunctions(pybind11::module* module);
+void BindFinalStateEagerOpFunctions(pybind11::module* module);
 }  // namespace pybind
 }  // namespace paddle

@@ -29,9 +29,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -47,19 +49,33 @@ using Tensor = framework::Tensor;
 template <typename T>
 static void AllReduce(framework::Tensor &tensor,  // NOLINT
                       const int ring_id,
-                      const platform::CUDADeviceContext &ctx) {
+                      const phi::GPUContext &ctx) {
   if (ring_id == -1) return;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  auto dtype =
-      platform::ToNCCLDataType(framework::TransToProtoVarType(tensor.dtype()));
-  int64_t numel = tensor.numel();
-  const void *sendbuff = tensor.data<T>();
-  auto place = ctx.GetPlace();
-  void *recvbuff = tensor.mutable_data<T>(place);
-  auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-  auto stream = ctx.stream();
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-      sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
+  auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
+
+  if (map->has(ring_id)) {
+    paddle::distributed::ProcessGroup *pg = map->get(ring_id);
+    std::vector<phi::DenseTensor> in_tensor;
+    std::vector<phi::DenseTensor> out_tensor;
+    in_tensor.push_back(tensor);
+    out_tensor.push_back(tensor);
+    paddle::distributed::AllreduceOptions opts;
+    opts.reduce_op = distributed::ReduceOp::SUM;
+    auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+    task->Wait();
+  } else {
+    auto dtype = platform::ToNCCLDataType(
+        framework::TransToProtoVarType(tensor.dtype()));
+    int64_t numel = tensor.numel();
+    const void *sendbuff = tensor.data<T>();
+    auto place = ctx.GetPlace();
+    void *recvbuff = tensor.mutable_data<T>(place);
+    auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+    auto stream = ctx.stream();
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
+  }
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
@@ -294,6 +310,52 @@ inline __device__ uint4 mul(uint4 a, uint4 b) {
   return c;
 }
 
+template <>
+inline __device__ uint32_t mul(uint32_t a, float b) {
+  float2 tmp = half2_to_float2(a);
+  float2 tmp_res;
+  tmp_res.x = tmp.x * b;
+  tmp_res.y = tmp.y * b;
+  uint32_t res = float2_to_half2(tmp_res);
+  return res;
+}
+
+template <>
+inline __device__ uint2 mul(uint2 a, float b) {
+  uint2 res;
+  res.x = mul<uint32_t, uint32_t, float>(a.x, b);
+  res.y = mul<uint32_t, uint32_t, float>(a.y, b);
+  return res;
+}
+
+template <>
+inline __device__ uint4 mul(uint4 a, float b) {
+  uint4 res;
+  res.x = mul<uint32_t, uint32_t, float>(a.x, b);
+  res.y = mul<uint32_t, uint32_t, float>(a.y, b);
+  res.z = mul<uint32_t, uint32_t, float>(a.z, b);
+  res.w = mul<uint32_t, uint32_t, float>(a.w, b);
+  return res;
+}
+
+template <>
+inline __device__ float2 mul(float2 a, float b) {
+  float2 res;
+  res.x = a.x * b;
+  res.y = a.y * b;
+  return res;
+}
+
+template <>
+inline __device__ float4 mul(float4 a, float b) {
+  float4 res;
+  res.x = a.x * b;
+  res.y = a.y * b;
+  res.z = a.z * b;
+  res.w = a.w * b;
+  return res;
+}
+
 inline __device__ float sum(float v) { return v; }
 inline __device__ float sum(float2 v) { return v.x + v.y; }
 inline __device__ float sum(float4 v) { return v.x + v.y + v.z + v.w; }
@@ -445,11 +507,15 @@ inline __device__ Float8_ cast_to_float(uint4 u) {
 }
 
 template <int THREADS_PER_KEY, typename K_vec, int N>
-inline __device__ float qk_dot_(const K_vec (&q)[N], const K_vec (&k)[N]) {
-  K_vec qk_vec = mul<K_vec, K_vec, K_vec>(q[0], k[0]);
+inline __device__ float qk_dot_(const K_vec (&q)[N],
+                                const K_vec (&k)[N],
+                                float inv_sqrt_dh) {
+  K_vec inv_q = mul<K_vec, K_vec, float>(q[0], inv_sqrt_dh);
+  K_vec qk_vec = mul<K_vec, K_vec, K_vec>(inv_q, k[0]);
 #pragma unroll
   for (int ii = 1; ii < N; ++ii) {
-    qk_vec = fma(q[ii], k[ii], qk_vec);
+    inv_q = mul<K_vec, K_vec, float>(q[ii], inv_sqrt_dh);
+    qk_vec = fma(inv_q, k[ii], qk_vec);
   }
 
   float qk = sum(qk_vec);
@@ -463,8 +529,10 @@ inline __device__ float qk_dot_(const K_vec (&q)[N], const K_vec (&k)[N]) {
 template <typename T, int THREADS_PER_KEY>
 struct Qk_dot {
   template <typename K_vec, int N>
-  static inline __device__ float dot(const K_vec (&q)[N], const K_vec (&k)[N]) {
-    return qk_dot_<THREADS_PER_KEY>(q, k);
+  static inline __device__ float dot(const K_vec (&q)[N],
+                                     const K_vec (&k)[N],
+                                     float inv_sqrt_dh) {
+    return qk_dot_<THREADS_PER_KEY>(q, k, inv_sqrt_dh);
   }
 };
 
@@ -706,7 +774,9 @@ __global__ void masked_multihead_attention_kernel(
       }
     }
 
-    float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k) * params.inv_sqrt_dh;
+    // NOTE(liyurui): We should multiple q with inv_sqrt_dh first, for dot(q, k)
+    // may overflow with FP16 in large model.
+    float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k, params.inv_sqrt_dh);
 
     // bool is_mask = false;
     if (ti < params.timestep && tid % THREADS_PER_KEY == 0) {
@@ -926,7 +996,7 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
 }
 
 template <typename T>
-void fmha(const platform::CUDADeviceContext &dev_ctx,
+void fmha(const phi::GPUContext &dev_ctx,
           const Tensor &qkv_tensor,
           const Tensor &qkv_bias_tensor,
           const Tensor &src_mask_tensor,
@@ -1048,7 +1118,7 @@ __global__ void write_cache_v_kernel(T *cache_v,
 }
 
 template <typename T>
-void write_cache_kv(const platform::CUDADeviceContext &dev_ctx,
+void write_cache_kv(const phi::GPUContext &dev_ctx,
                     T *cache_k,
                     T *cache_v,
                     const T *k,
@@ -1209,9 +1279,12 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto ffn_ln_scales = ctx.MultiInput<Tensor>("FFNLnScale");
     auto ffn_ln_biases = ctx.MultiInput<Tensor>("FFNLnBias");
     Tensor bias_dropout_residual_out, dropout_mask_out;
-    auto *bias_dropout_residual_out_data =
-        bias_dropout_residual_out.mutable_data<T>({bsz, seq_len, dim_embed},
-                                                  place);
+    T *bias_dropout_residual_out_data = nullptr;
+    if (pre_layer_norm) {
+      bias_dropout_residual_out_data =
+          bias_dropout_residual_out.mutable_data<T>({bsz, seq_len, dim_embed},
+                                                    place);
+    }
     auto *dropout_mask_out_data = dropout_mask_out.mutable_data<uint8_t>(
         {bsz, seq_len, dim_embed}, place);
 
@@ -1263,14 +1336,19 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // step1: buf1 --> buf0
     // step2: buf0 --> buf1
     int layers = qkv_weights.size();
-    if (layers & 1) {
-      // odd, set buf1 as out
+    if (pre_layer_norm) {
+      if (layers & 1) {
+        // odd, set buf1 as out
+        buf0 = &tmp_out;
+        buf1 = out;
+      } else {
+        // even, set buf0 as out
+        buf0 = out;
+        buf1 = &tmp_out;
+      }
+    } else {
       buf0 = &tmp_out;
       buf1 = out;
-    } else {
-      // even, set buf0 as out
-      buf0 = out;
-      buf1 = &tmp_out;
     }
 
     for (int i = 0; i < layers; ++i) {
@@ -1285,9 +1363,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                   buf1->data<T>(),
                                   ln_mean_data,
                                   ln_var_data);
-      } else if (!pre_layer_norm) {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unimplemented post_layer_norm for now."));
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step1";
@@ -1297,8 +1372,13 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       const Tensor *qkv_bias = qkv_biases.size() > 0 ? qkv_biases[i] : nullptr;
       // NOTE: in decoder stage, bias is fused in fmha
       const Tensor *bias = time_step ? nullptr : qkv_bias;
-      qkv_compute.ComputeForward(
-          qkv_weights[i], buf1, bias, &qkv_out, &qkv_out);
+      if (!pre_layer_norm && i == 0) {
+        qkv_compute.ComputeForward(
+            qkv_weights[i], input_x, bias, &qkv_out, &qkv_out);
+      } else {
+        qkv_compute.ComputeForward(
+            qkv_weights[i], buf1, bias, &qkv_out, &qkv_out);
+      }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step2";
 #endif
@@ -1381,10 +1461,15 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       VLOG(0) << "step3";
 #endif
 
-      // step4. out_linear
-      out_linear_compute.ComputeForward(
-          out_linear_weights[i], &fmha_out, nullptr, buf1, nullptr);
-      AllReduce<T>(*buf1, ring_id, dev_ctx);
+      if (pre_layer_norm) {
+        out_linear_compute.ComputeForward(
+            out_linear_weights[i], &fmha_out, nullptr, buf1, nullptr);
+        AllReduce<T>(*buf1, ring_id, dev_ctx);
+      } else {
+        out_linear_compute.ComputeForward(
+            out_linear_weights[i], &fmha_out, nullptr, buf0, nullptr);
+        AllReduce<T>(*buf0, ring_id, dev_ctx);
+      }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step4";
 #endif
@@ -1409,6 +1494,22 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
             ln_mean_data,
             ln_var_data);
       } else {
+        auto *ln_scale_data = ln_scales[i]->data<U>();
+        auto *ln_bias_data = ln_biases[i]->data<U>();
+        auto *out_linear_bias_data = out_linear_biases[i]->data<T>();
+        auto *residual_data = (i == 0 ? x_data : buf1->data<T>());
+        fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
+            dev_ctx,
+            buf0->data<T>(),
+            residual_data,
+            out_linear_bias_data,
+            ln_scale_data,
+            ln_bias_data,
+            buf0->data<T>(),
+            dropout_mask_out_data,
+            buf1->data<T>(),
+            ln_mean_data,
+            ln_var_data);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step5";
@@ -1434,13 +1535,22 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #endif
 
       // step8. ffn matmul2
-      ffn2_linear_compute.ComputeForward(
-          ffn2_weights[i], &ffn1_dropout_out, nullptr, buf1, nullptr);
+      if (pre_layer_norm) {
+        ffn2_linear_compute.ComputeForward(
+            ffn2_weights[i], &ffn1_dropout_out, nullptr, buf1, nullptr);
+      } else {
+        ffn2_linear_compute.ComputeForward(
+            ffn2_weights[i], &ffn1_dropout_out, nullptr, buf0, nullptr);
+      }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step8.0";
 #endif
 
-      AllReduce<T>(*buf1, ring_id, dev_ctx);
+      if (pre_layer_norm) {
+        AllReduce<T>(*buf1, ring_id, dev_ctx);
+      } else {
+        AllReduce<T>(*buf0, ring_id, dev_ctx);
+      }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step8.1";
 #endif
@@ -1473,12 +1583,28 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
               dropout_mask_out_data);
         }
       } else {
+        auto *ln_scale_data = ffn_ln_scales[i]->data<U>();
+        auto *ln_bias_data = ffn_ln_biases[i]->data<U>();
+        ffn2_fused_dropout_helper.LayernormResidualDropoutBias(
+            dev_ctx,
+            buf0->data<T>(),
+            buf1->data<T>(),
+            ffn2_biases[i]->data<T>(),
+            ln_scale_data,
+            ln_bias_data,
+            buf0->data<T>(),
+            dropout_mask_out_data,
+            buf1->data<T>(),
+            ln_mean_data,
+            ln_var_data);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step9";
 #endif
-      x_data = buf1->data<T>();
-      std::swap(buf0, buf1);
+      if (pre_layer_norm) {
+        x_data = buf1->data<T>();
+        std::swap(buf0, buf1);
+      }
     }
   }
 };

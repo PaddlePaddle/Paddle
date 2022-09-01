@@ -309,22 +309,10 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
 };
 
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CUDADeviceContext,
-                             float>;
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CUDADeviceContext,
-                             double>;
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                              phi::GPUContext,
                              float>;
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                              phi::GPUContext,
-                             double>;
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CUDADeviceContext,
-                             float>;
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CUDADeviceContext,
                              double>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                              phi::GPUContext,
@@ -577,24 +565,12 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
 };
 
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CUDADeviceContext,
-                             float>;
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CUDADeviceContext,
-                             double>;
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                              phi::GPUContext,
                              float>;
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                              phi::GPUContext,
                              double>;
 
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CUDADeviceContext,
-                             float>;
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CUDADeviceContext,
-                             double>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                              phi::GPUContext,
                              float>;

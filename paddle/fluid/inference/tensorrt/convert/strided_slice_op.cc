@@ -42,13 +42,13 @@ class StridedSliceOpConverter : public OpConverter {
     nvinfer1::Dims input_dims = input->getDimensions();
     auto output_name = op_desc.Output("Out")[0];
     std::vector<int> axes =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
     std::vector<int> starts =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("starts"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("starts"));
     std::vector<int> ends =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
     std::vector<int> strides =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
     int axes_size = axes.size();
     nvinfer1::Dims start;
     nvinfer1::Dims stride;

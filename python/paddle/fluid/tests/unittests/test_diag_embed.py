@@ -27,11 +27,12 @@ class TestDiagEmbedOp(OpTest):
 
     def setUp(self):
         self.op_type = "diag_embed"
+        self.python_api = F.diag_embed
         self.init_config()
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def init_config(self):
         self.case = np.random.randn(2, 3).astype('float32')
@@ -68,8 +69,8 @@ class TestDiagEmbedAPICase(unittest.TestCase):
             [np.stack([np.diag(s, 0) for s in r], 0) for r in diag_embed], 0)
         target2 = np.stack(
             [np.stack([np.diag(s, 1) for s in r], 0) for r in diag_embed], 0)
-        self.assertTrue(np.allclose(results[0], target1))
-        self.assertTrue(np.allclose(results[1], target2))
+        np.testing.assert_allclose(results[0], target1, rtol=1e-05)
+        np.testing.assert_allclose(results[1], target2, rtol=1e-05)
 
 
 if __name__ == "__main__":

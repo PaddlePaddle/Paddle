@@ -42,7 +42,7 @@ class TestLookAhead(unittest.TestCase):
             with fluid.unique_name.guard():
                 data = fluid.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = fluid.layers.fc(input=data, size=10)
-                loss = fluid.layers.mean(hidden)
+                loss = paddle.mean(hidden)
 
                 optimizer = paddle.optimizer.SGD(learning_rate=SGD_LR)
                 lookahead = paddle.incubate.optimizer.LookAhead(

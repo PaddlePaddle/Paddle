@@ -46,7 +46,7 @@ class MishOpConverter : public OpConverter {
 
     const float threshold =
         op_desc.HasAttr("threshold")
-            ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
+            ? PADDLE_GET_CONST(float, op_desc.GetAttr("threshold"))
             : 20.0f;
 
     nvinfer1::ILayer* layer = nullptr;

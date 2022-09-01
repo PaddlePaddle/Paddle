@@ -20,7 +20,7 @@ import random
 import unittest
 import warnings
 import numpy as np
-
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.framework import Program, Block
@@ -56,7 +56,7 @@ class PassTest(unittest.TestCase):
 
     def append_gradients(self, outs):
         with fluid.program_guard(self.main_program, self.startup_program):
-            loss = fluid.layers.mean(outs)
+            loss = paddle.mean(outs)
             fluid.backward.append_backward(loss)
 
     def check_output(self, startup_on_cpu=False, atol=1e-5):

@@ -210,9 +210,9 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
                 y.stop_gradient = False
                 res = x**y
                 res.backward()
-                self.assertTrue(np.array_equal(res.gradient(), self.grad_res))
-                self.assertTrue(np.array_equal(x.gradient(), self.grad_x))
-                self.assertTrue(np.array_equal(y.gradient(), self.grad_y))
+                np.testing.assert_array_equal(res.gradient(), self.grad_res)
+                np.testing.assert_array_equal(x.gradient(), self.grad_x)
+                np.testing.assert_array_equal(y.gradient(), self.grad_y)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 

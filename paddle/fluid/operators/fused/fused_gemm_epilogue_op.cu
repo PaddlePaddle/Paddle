@@ -29,7 +29,7 @@ template <typename DeviceContext, typename T>
 class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     const Tensor* x = ctx.Input<Tensor>("X");
     const Tensor* y = ctx.Input<Tensor>("Y");
@@ -320,7 +320,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
   template <bool TransX, bool TransY>
   static void ComputeImpl(const framework::ExecutionContext& ctx) {
     using Trait = FusedGEMMGradTrait<TransX, TransY>;
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     const Tensor* dout = ctx.Input<Tensor>("DOut");
     const Tensor* x = ctx.Input<Tensor>("X");
     const Tensor* y = ctx.Input<Tensor>("Y");
@@ -677,17 +677,14 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     fused_gemm_epilogue,
-    ops::FusedGemmEpilogueKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FusedGemmEpilogueKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FusedGemmEpilogueKernel<paddle::platform::CUDADeviceContext,
-                                 paddle::platform::float16>);
+    ops::FusedGemmEpilogueKernel<phi::GPUContext, float>,
+    ops::FusedGemmEpilogueKernel<phi::GPUContext, double>,
+    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
     fused_gemm_epilogue_grad,
-    ops::FusedGemmEpilogueGradKernel<paddle::platform::CUDADeviceContext,
-                                     float>,
-    ops::FusedGemmEpilogueGradKernel<paddle::platform::CUDADeviceContext,
-                                     double>,
-    ops::FusedGemmEpilogueGradKernel<paddle::platform::CUDADeviceContext,
+    ops::FusedGemmEpilogueGradKernel<phi::GPUContext, float>,
+    ops::FusedGemmEpilogueGradKernel<phi::GPUContext, double>,
+    ops::FusedGemmEpilogueGradKernel<phi::GPUContext,
                                      paddle::platform::float16>);
 #endif

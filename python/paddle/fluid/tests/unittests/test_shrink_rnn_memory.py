@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 import paddle.fluid.layers as layers
@@ -47,7 +48,7 @@ class TestShrinkRNNMemoryBase(unittest.TestCase):
         i = layers.increment(x=i)
         i.stop_gradient = True
         self.mem3 = shrink_memory(x=self.mem2, i=i, table=table)
-        mem3_mean = layers.mean(self.mem3)
+        mem3_mean = paddle.mean(self.mem3)
         append_backward(loss=mem3_mean)
         self.x_grad = self.main_program.global_block().var('x@GRAD')
 
@@ -80,9 +81,9 @@ class TestShrinkRNNMemoryReferLoD(TestShrinkRNNMemoryBase):
             },
             fetch_list=[self.mem1, self.mem2, self.mem3, self.x_grad],
             return_numpy=False)
-        self.assertTrue(np.allclose(tensor_np[0:6], outs[0]))
-        self.assertTrue(np.allclose(tensor_np[0:5], outs[1]))
-        self.assertTrue(np.allclose(tensor_np[0:2], outs[2]))
+        np.testing.assert_allclose(tensor_np[0:6], outs[0], rtol=1e-05)
+        np.testing.assert_allclose(tensor_np[0:5], outs[1], rtol=1e-05)
+        np.testing.assert_allclose(tensor_np[0:2], outs[2], rtol=1e-05)
         self.assertAlmostEqual(1.0, self.sum_lodtensor(outs[3]), delta=0.01)
 
 
@@ -107,9 +108,9 @@ class TestShrinkRNNMemoryNoLoD(TestShrinkRNNMemoryBase):
             },
             fetch_list=[self.mem1, self.mem2, self.mem3, self.x_grad],
             return_numpy=False)
-        self.assertTrue(np.allclose(tensor_np[0:3], outs[0]))
-        self.assertTrue(np.allclose(tensor_np[0:2], outs[1]))
-        self.assertTrue(np.allclose(tensor_np[0:1], outs[2]))
+        np.testing.assert_allclose(tensor_np[0:3], outs[0], rtol=1e-05)
+        np.testing.assert_allclose(tensor_np[0:2], outs[1], rtol=1e-05)
+        np.testing.assert_allclose(tensor_np[0:1], outs[2], rtol=1e-05)
         self.assertAlmostEqual(1.0, self.sum_lodtensor(outs[3]), delta=0.01)
 
 

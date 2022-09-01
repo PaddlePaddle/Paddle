@@ -359,6 +359,7 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
 
     std::vector<int64_t> skip_layernorm_x_shape =
         skip_layernorm_x->Var()->GetShape();
+    check_flag = true;
     if (skip_layernorm_x_shape.size() != multihead_matmul_input_shape.size()) {
       check_flag = false;
       VLOG(3) << "Transformer model remove_padding shape check failed, return "
@@ -395,6 +396,7 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc_op, fc);
 
     std::vector<int64_t> fc_input_shape = fc_input->Var()->GetShape();
+    check_flag = true;
     if ((fc_input_shape.size() != multihead_matmul_input_shape.size()) ||
         (fc_input_shape.size() != 3)) {
       check_flag = false;
@@ -413,7 +415,7 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
       check_flag = false;
     }
 
-    if (BOOST_GET_CONST(int, fc_op->Op()->GetAttr("in_num_col_dims")) != 2) {
+    if (PADDLE_GET_CONST(int, fc_op->Op()->GetAttr("in_num_col_dims")) != 2) {
       check_flag = false;
     }
     if (!check_flag) {
@@ -446,11 +448,13 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
 
     std::vector<int64_t> activation_input_shape =
         activation_input->Var()->GetShape();
+    check_flag = true;
     if ((activation_input_shape.size() !=
          multihead_matmul_input_shape.size()) ||
         (activation_input_shape.size() != 3)) {
       check_flag = false;
-      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+      VLOG(3) << "Activation: Transformer model remove_padding "
+                 "shape(activation_input_shape.size()) check failed, return "
                  "remove_padding pass.";
       return;
     }
@@ -465,7 +469,8 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
       check_flag = false;
     }
     if (!check_flag) {
-      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+      VLOG(3) << "Activation: Transformer model remove_padding "
+                 "shape(activation_input_shape[i]) check failed, return "
                  "remove_padding pass.";
       return;
     }
@@ -530,6 +535,7 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
 
     std::vector<int64_t> skip_layernorm_x_shape =
         preln_skip_layernorm_x->Var()->GetShape();
+    check_flag = true;
     if (skip_layernorm_x_shape.size() != multihead_matmul_input_shape.size()) {
       check_flag = false;
       VLOG(3) << "Transformer model remove_padding shape check failed, return "

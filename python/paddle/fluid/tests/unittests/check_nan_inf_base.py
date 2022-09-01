@@ -70,7 +70,7 @@ def net():
     cost, y_predict = fluid.layers.softmax_with_cross_entropy(
         hidden, y, return_softmax=True)
     acc_top1 = fluid.layers.accuracy(input=y_predict, label=y, k=1)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.05)
     sgd_optimizer.minimize(avg_cost)

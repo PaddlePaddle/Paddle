@@ -18,14 +18,13 @@ import paddle
 from paddle.framework import core
 from paddle.fluid import unique_name
 from .pass_base import register_pass
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
 from paddle.distributed.auto_parallel.utils import set_var_dist_attr, naive_set_dist_op_attr_for_program_by_mesh_and_mapping
 from paddle.distributed.auto_parallel.process_group import get_world_process_group
 from paddle.fluid.contrib.mixed_precision.fp16_utils import AutoMixedPrecisionLists
 from paddle.fluid.contrib.mixed_precision.fp16_utils import _keep_layer_norm_scale_bias_to_fp32, _need_keep_fp32, _valid_types, _dtype_to_str
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
-from paddle.distributed.auto_parallel.utils import is_forward_op, is_backward_op
+from paddle.distributed.auto_parallel.utils import is_forward_op, is_backward_op, OP_ROLE_KEY, OpRole
 from .auto_parallel_amp import AMPPass
 
 world_process_group = get_world_process_group()
@@ -331,6 +330,7 @@ class FP16State(object):
                             attrs={
                                 "in_dtype": in_var.dtype,
                                 "out_dtype": cast_var.dtype,
+                                OP_ROLE_KEY: OpRole.Forward
                             })
                         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                             cast_op, ref_mesh, ref_mapping, dist_context)
@@ -409,6 +409,7 @@ class FP16State(object):
                 attrs={
                     "in_dtype": dst_dtype,
                     "out_dtype": src_dtype,
+                    OP_ROLE_KEY: OpRole.Backward
                 })
             grad.desc.set_dtype(src_dtype)
 
@@ -489,6 +490,50 @@ def _set_op_dist_attr_with_ranks(new_op, ranks, block, dist_context):
         new_op_dist_attr.set_output_dims_mapping(var_name,
                                                  var_dist_attr.dims_mapping)
     dist_context.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
+
+
+def _get_memcopy_idx(block, found_inf_var):
+    # use reduce_any op for check_nan_inf as the anchor for now
+    for idx, op in enumerate(block.ops):
+        if op.type == 'reduce_any' and op.output_arg_names[
+                0] == found_inf_var.name:
+            return idx + 1
+
+    raise RuntimeError(
+        "not found the correct location for memcopy for found_inf_var.")
+
+
+def _insert_memcopy(block, idx, src_var, dist_context, direction="D2H"):
+    src_name = src_var.name
+    output_var = block.create_var(name=unique_name.generate_with_ignorable_key(
+        src_name.join(['memcopy_'])),
+                                  dtype=src_var.dtype,
+                                  shape=src_var.shape,
+                                  type=core.VarDesc.VarType.LOD_TENSOR,
+                                  persistable=False,
+                                  stop_gradient=src_var.stop_gradient)
+
+    set_var_dist_attr(dist_context, output_var, [-1], world_process_group.ranks)
+
+    # TODO to support CUDAPinned/NPU/XPU Places
+    if direction == "D2H":
+        dst_place_type = 0
+    elif direction == "D2H":
+        dst_place_type = 1
+    else:
+        raise NotImplementedError(
+            "direction [{}] is not supported yet.".format(direction))
+
+    attrs = {'dst_place_type': dst_place_type}
+    new_op = block._insert_op_without_sync(index=idx,
+                                           type='memcpy',
+                                           inputs={'X': [src_var]},
+                                           outputs={'Out': [output_var]},
+                                           attrs=attrs)
+    _set_op_dist_attr_with_ranks(new_op, world_process_group.ranks, block,
+                                 dist_context)
+    block._sync_with_cpp()
+    return output_var
 
 
 @register_pass("auto_parallel_fp16")
@@ -577,9 +622,12 @@ class FP16Pass(AMPPass):
             if isinstance(
                     base_opt,
                 (paddle.fluid.optimizer.Adam, paddle.optimizer.AdamW)):
-                # with main_program._optimized_guard([]):
-                #     found_inf = paddle.tensor.creation._memcpy(
-                #         found_inf, paddle.CPUPlace())
+                with main_program._optimized_guard([]):
+                    # found_inf = paddle.tensor.creation._memcpy(
+                    #     found_inf, paddle.CPUPlace())
+                    insert_idx = _get_memcopy_idx(block, found_inf)
+                    found_inf = _insert_memcopy(block, insert_idx, found_inf,
+                                                self.dist_context)
                 base_opt._set_auxiliary_var('found_inf', found_inf.name)
             elif hasattr(base_opt, "_set_auxiliary_var"):
                 base_opt._set_auxiliary_var('found_inf', found_inf.name)

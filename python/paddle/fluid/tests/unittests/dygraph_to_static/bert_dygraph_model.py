@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import absolute_import, division, print_function
-
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Embedding, Layer, Linear
 from paddle.fluid.dygraph.jit import declarative
@@ -357,7 +357,7 @@ class PretrainModelLayer(Layer):
 
         mask_lm_loss = fluid.layers.softmax_with_cross_entropy(logits=fc_out,
                                                                label=mask_label)
-        mean_mask_lm_loss = fluid.layers.mean(mask_lm_loss)
+        mean_mask_lm_loss = paddle.mean(mask_lm_loss)
 
         next_sent_fc_out = self.next_sent_fc(next_sent_feat)
 
@@ -367,7 +367,7 @@ class PretrainModelLayer(Layer):
         next_sent_acc = fluid.layers.accuracy(input=next_sent_softmax,
                                               label=labels)
 
-        mean_next_sent_loss = fluid.layers.mean(next_sent_loss)
+        mean_next_sent_loss = paddle.mean(next_sent_loss)
 
         loss = mean_next_sent_loss + mean_mask_lm_loss
         return next_sent_acc, mean_mask_lm_loss, loss

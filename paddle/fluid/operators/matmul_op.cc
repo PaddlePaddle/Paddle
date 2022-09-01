@@ -65,7 +65,9 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto &y = GET_DATA_SAFELY(
         context.Input<framework::Tensor>("Y"), "Input", "Y", "MatMul");
     auto *out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
+
+    auto &dev_ctx = context.template device_context<DeviceContext>();
+    dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(
@@ -358,58 +360,7 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
                         "shape of Input(%s) = [%s].",
                         dim));
 
-  // if mkldnn reshape+transpose+matmul fuse activated
   if (!shape.empty() && !axis.empty()) {
-    PADDLE_ENFORCE_GE(
-        shape.size(),
-        2,
-        platform::errors::InvalidArgument(
-            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
-            "or 4 dimensions.",
-            input_name));
-    PADDLE_ENFORCE_LE(
-        shape.size(),
-        4,
-        platform::errors::InvalidArgument(
-            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
-            "or 4 dimensions.",
-            input_name));
-    PADDLE_ENFORCE_EQ(
-        shape.size(),
-        axis.size(),
-        platform::errors::InvalidArgument(
-            "Ranks of shape_%s and axis_%s attributes of MatMulOp "
-            "must be equal.",
-            input_name,
-            input_name));
-
-    int num_negative = std::count(shape.begin(), shape.end(), -1);
-    PADDLE_ENFORCE_LE(num_negative,
-                      1,
-                      platform::errors::InvalidArgument(
-                          "The max number of -1 in fused_reshape_%s is 1 "
-                          "but received %d.",
-                          input_name,
-                          num_negative));
-
-    auto it_zero = std::find(shape.begin(), shape.end(), 0);
-    if (it_zero != shape.end()) {
-      for (uint64_t i = 0; i < shape.size(); i++) {
-        if (shape[i] == 0) {
-          PADDLE_ENFORCE_LT(i,
-                            dim.size(),
-                            platform::errors::InvalidArgument(
-                                "The index of 0 in fused_reshape_%s ",
-                                "should be less than output dim size, ",
-                                "but the index is %d and output dim size is %d",
-                                input_name,
-                                i,
-                                dim.size()));
-          shape[i] = dim.at(i);
-        }
-      }
-    }
-
     dim = dim.reshape(shape).transpose(axis);
   }
   return dim;
@@ -732,14 +683,11 @@ class MatMulOp : public framework::OperatorWithKernel {
     framework::DDim ddim_out = phi::make_ddim(dim_out);
 
 #ifdef PADDLE_WITH_MKLDNN
-    //  if mkldnn matmul+transpose+reshape fuse activated
-    auto reshape_out =
-        context->Attrs().Get<std::vector<int>>("fused_reshape_Out");
-    auto transpose_out =
-        context->Attrs().Get<std::vector<int>>("fused_transpose_Out");
+    auto shape = context->Attrs().Get<std::vector<int>>("fused_reshape_Out");
+    auto axis = context->Attrs().Get<std::vector<int>>("fused_transpose_Out");
 
-    if (!reshape_out.empty() && !transpose_out.empty()) {
-      ddim_out = ddim_out.transpose(transpose_out).reshape(reshape_out);
+    if (!shape.empty() && !axis.empty()) {
+      ddim_out = ddim_out.transpose(axis).reshape(shape);
     }
 #endif
     context->SetOutputDim("Out", ddim_out);
@@ -1055,20 +1003,17 @@ REGISTER_OP_CPU_KERNEL(matmul_grad_grad,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     matmul,
-    ops::MatMulKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MatMulKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::MatMulKernel<paddle::platform::CUDADeviceContext,
-                      paddle::platform::float16>);
+    ops::MatMulKernel<phi::GPUContext, float>,
+    ops::MatMulKernel<phi::GPUContext, double>,
+    ops::MatMulKernel<phi::GPUContext, paddle::platform::float16>);
 REGISTER_OP_CUDA_KERNEL(
     matmul_grad,
-    ops::MatMulGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MatMulGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::MatMulGradKernel<paddle::platform::CUDADeviceContext,
-                          paddle::platform::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    matmul_grad_grad,
-    ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::MatMulGradKernel<phi::GPUContext, float>,
+    ops::MatMulGradKernel<phi::GPUContext, double>,
+    ops::MatMulGradKernel<phi::GPUContext, paddle::platform::float16>);
+REGISTER_OP_CUDA_KERNEL(matmul_grad_grad,
+                        ops::MatMulDoubleGradKernel<phi::GPUContext, float>,
+                        ops::MatMulDoubleGradKernel<phi::GPUContext, double>);
 #endif
 
 REGISTER_OP_VERSION(matmul).AddCheckpoint(

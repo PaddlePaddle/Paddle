@@ -18,7 +18,10 @@ limitations under the License. */
 #include <stack>
 
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/program_utils.h"
 
 DECLARE_bool(convert_all_blocks);
 PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir,
@@ -446,12 +449,46 @@ std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
   return ret;
 }
 
+void RemoveControlDepInputAndOuput(OpDesc *op_desc) {
+  auto remove_control_dep_var = [](VariableNameMap *var_name_map) {
+    for (auto &pair : *var_name_map) {
+      std::vector<std::string> &var_names = pair.second;
+      auto it = var_names.begin();
+      while (it != var_names.end()) {
+        if (it->find(ir::Node::kControlDepVarName) != std::string::npos) {
+          it = var_names.erase(it);
+          VLOG(6) << "Remove var " << *it;
+        } else {
+          ++it;
+        }
+      }
+    }
+  };
+
+  remove_control_dep_var(op_desc->MutableInputs());
+  remove_control_dep_var(op_desc->MutableOutputs());
+  op_desc->Flush();
+}
+
 static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
   desc->SetType("fill_constant");
+  desc->SetAttr("shape", std::vector<int64_t>({1}));
+  desc->SetAttr("value", 1.0f);
+
+  if (node.IsWrappedBy<details::OpHandleBase>()) {
+    details::OpHandleBase &op_hander =
+        const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
+    desc->SetAttr(
+        "dtype",
+        dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)->DType());
+  }
+
+  desc->SetAttr("force_cpu", false);
   desc->SetAttr(
       OpProtoAndCheckerMaker::OpRoleAttrName(),
       (static_cast<int>(OpRole::kBackward) | static_cast<int>(OpRole::kLoss)));
-  desc->SetAttr("value", 1.0f);
+  // TODO(Ruibiao) : Set OpDeviceAttrName when needed
+
   std::vector<std::string> output_names;
   for (auto out : node.outputs) {
     output_names.emplace_back(out->Name());
@@ -460,8 +497,38 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
   return desc;
 }
 
+void UpdateControlOpSkipEagerDeletionVars(const Node &node,
+                                          const Graph &graph,
+                                          const size_t graph_idx,
+                                          const std::string &control_type) {
+  // Node(zhangbo): SkipEagerDeletionVars pass policy for control flow class op:
+  // 1) if op is in main_block: SkipEagerDeletionVars information will be
+  // writted into Graph OpNode which wrapped by OpHandleBase; 2) if op is in
+  // sub_block: SkipEagerDeletionVars information will be writted into graph's
+  // OriginProgram OpDesc. Please refer to
+  // FindAllConditionalBlockAndConditionalBlockGradOp in
+  // "paddle/fluid/operators/controlflow/conditional_block_op_helper.cc"
+  if (graph_idx != 0) {
+    auto origin_program = graph.OriginProgram();
+    auto &block = origin_program.Block(graph_idx);
+    for (size_t j = 0; j < block.OpSize(); ++j) {
+      auto *op = block.Op(j);
+      if (op->Type() == control_type &&
+          op->HasAttr("skip_eager_deletion_vars")) {
+        if (op->InputArgumentNames() == node.Op()->InputArgumentNames() &&
+            op->OutputArgumentNames() == node.Op()->OutputArgumentNames()) {
+          node.Op()->SetAttr("skip_eager_deletion_vars",
+                             op->GetAttr("skip_eager_deletion_vars"));
+        }
+      }
+    }
+  }
+}
+
 static void GetGraphOpDesc(const std::vector<Node *> &nodes,
-                           std::vector<OpDesc> *ops) {
+                           std::vector<OpDesc> *ops,
+                           const Graph &graph,
+                           const size_t graph_idx) {
   auto is_fused_opt = [](Node *n) -> bool {
     auto op_type = n->Op()->Type();
     auto is_opt =
@@ -481,12 +548,12 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
 
     // create fill_constant op
     if (n->Name() == "scale_loss_grad") {
+      VLOG(4) << "convert op node scale_loss_grad to desc fill_constant";
       ops->emplace_back();
       auto &desc = ops->back();
       ReplaceScaleLossGradOp(*n, &desc);
     } else if (n->Op()) {
       VLOG(4) << "convert op node to desc " << n->Op()->Type();
-      VLOG(4) << n->ToString();
       if (is_fused_opt(n)) {
         OpDesc depend_desc(n->Op()->Block());
 
@@ -505,15 +572,36 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
         ops->emplace_back(depend_desc);
         VLOG(4) << "add depend op";
       }
+      if (n->Name() == "while" || n->Name() == "while_grad" ||
+          n->Name() == "conditional_block" ||
+          n->Name() == "conditional_block_grad" || n->Name() == "recurrent" ||
+          n->Name() == "recurrent_grad") {
+        VLOG(1) << "Update control op attr: skip_eager_deletion_vars";
+        UpdateControlOpSkipEagerDeletionVars(*n, graph, graph_idx, n->Name());
+      }
       ops->emplace_back(*n->Op());
+      VLOG(4) << n->ToString();
     }
     // delete no OpDesc op
   }
 }
 
+template <class T = Node *>
+static void GetGraphVarDesc(const Graph &graph,
+                            const std::unordered_set<T> &nodes,
+                            std::vector<proto::VarDesc> *vars) {
+  for (T node : nodes) {
+    if (node->IsVar() && node->Var() &&
+        node->GetVarNodeBlockId() == graph.GetBlockId()) {
+      vars->emplace_back(*node->Var()->Proto());
+    }
+  }
+}
+
 static void GraphToBlock(const Graph &graph,
                          proto::BlockDesc *block,
-                         const SortKind *sort_kind) {
+                         const SortKind *sort_kind,
+                         const size_t graph_idx) {
   // Remove the unneeded variables after memory optimization.
   std::unordered_set<std::string> vars2remove;
   if (graph.Has(kGraphToProgramVarsToRemove)) {
@@ -523,20 +611,27 @@ static void GraphToBlock(const Graph &graph,
             << vars2remove.size() << " nodes";
   }
 
+  std::vector<proto::VarDesc> vars_in_graph;
+  GetGraphVarDesc<Node *>(graph, graph.Nodes(), &vars_in_graph);
+  if (graph.Has(details::kRemovedVars)) {
+    auto &removed_vars = graph.Get<details::RemovedVars>(details::kRemovedVars);
+    GetGraphVarDesc<std::shared_ptr<ir::Node>>(
+        graph, removed_vars, &vars_in_graph);
+  }
+
+  // add vars_in_graph to blcok
   block->clear_vars();
   std::unordered_set<std::string> visited_vars;
-  for (Node *n : graph.Nodes()) {
-    if (n->IsVar()) {
-      if (n->Var() && visited_vars.count(n->Var()->Name()) == 0 &&
-          !vars2remove.count(n->Var()->Name()) &&
-          n->GetVarNodeBlockId() == graph.GetBlockId()) {
-        visited_vars.insert(n->Var()->Name());
-        block->add_vars()->MergeFrom(*n->Var()->Proto());
-      }
+  for (proto::VarDesc &var : vars_in_graph) {
+    const std::string &var_name = var.name();
+    if (visited_vars.find(var_name) == visited_vars.end() &&
+        vars2remove.find(var_name) == vars2remove.end()) {
+      block->add_vars()->MergeFrom(var);
+      visited_vars.insert(var_name);
     }
   }
-  block->clear_ops();
 
+  block->clear_ops();
   std::vector<Node *> nodes;
   if (sort_kind != nullptr) {
     // Inference Memory Optimize relays on this branch.
@@ -550,8 +645,10 @@ static void GraphToBlock(const Graph &graph,
   }
 
   std::vector<OpDesc> ops;
-  GetGraphOpDesc(nodes, &ops);
+  GetGraphOpDesc(nodes, &ops, graph, graph_idx);
+
   for (auto &op : ops) {
+    RemoveControlDepInputAndOuput(&op);
     block->add_ops()->MergeFrom(*op.Proto());
   }
 }
@@ -574,7 +671,10 @@ void GraphToProgram(const Graph &graph,
   block->set_idx(kRootBlockIndex);
 
   if (FLAGS_convert_all_blocks) {
-    GraphToBlock(*graph.GetSubGraph(kRootBlockIndex), block, sort_kind);
+    GraphToBlock(*graph.GetSubGraph(kRootBlockIndex),
+                 block,
+                 sort_kind,
+                 graph.GetSubGraph(kRootBlockIndex)->GetBlockId());
 
     VLOG(3) << "Graph to program need convert " << graph.SubGraphsSize()
             << " sub graph";
@@ -585,13 +685,23 @@ void GraphToProgram(const Graph &graph,
       block = program_pb.add_blocks();
       block->set_idx(idx);
       block->set_parent_idx(kRootBlockIndex);
-      GraphToBlock(*graph.GetSubGraph(idx), block, sort_kind);
+      GraphToBlock(*graph.GetSubGraph(idx),
+                   block,
+                   sort_kind,
+                   graph.GetSubGraph(idx)->GetBlockId());
     }
   } else {
-    GraphToBlock(graph, block, sort_kind);
+    GraphToBlock(graph, block, sort_kind, graph.GetBlockId());
   }
 
   program->CopyFrom(program_pb);
+
+  if (graph.Has(details::kProgramDescs)) {
+    details::ProgramDescs program_descs =
+        graph.Get<details::ProgramDescs>(details::kProgramDescs);
+    VLOG(8) << "Merge main programs";
+    MergePrograms(program, program_descs, /*append=*/false);
+  }
 }
 
 static std::vector<std::vector<ir::Node::Dep>> GetOpDependencies(

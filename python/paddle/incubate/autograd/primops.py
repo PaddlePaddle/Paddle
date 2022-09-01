@@ -14,6 +14,7 @@
 
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
+
 from .primreg import REGISTER_FN
 
 
@@ -119,6 +120,21 @@ def sqrt(x, out=None):
 @REGISTER_FN('tanh_p', 'X', 'Y')
 def tanh(x, out=None):
     return _simple_unop(LayerHelper('tanh_p', **locals()))
+
+
+@REGISTER_FN('sin_p', 'X', 'Y')
+def sin(x, out=None):
+    return _simple_unop(LayerHelper('sin_p', **locals()))
+
+
+@REGISTER_FN('cos_p', 'X', 'Y')
+def cos(x, out=None):
+    return _simple_unop(LayerHelper('cos_p', **locals()))
+
+
+@REGISTER_FN('exp_p', 'X', 'Y')
+def exp(x, out=None):
+    return _simple_unop(LayerHelper('exp_p', **locals()))
 
 
 @REGISTER_FN('reshape_p', 'X', 'Y')
@@ -294,3 +310,53 @@ def scatter_add(x, y, indextensor, axis, out=None):
                      outputs={'Z': out},
                      attrs=attrs)
     return out
+
+
+@REGISTER_FN('log_p', 'X', 'Y')
+def log(x, out=None):
+    return _simple_unop(LayerHelper('log_p', **locals()))
+
+
+@REGISTER_FN('select_p', 'Condition', 'X', 'Y', 'Z')
+def select(cond, x, y, out=None):
+    if len(cond.shape) != len(x.shape):
+        raise ValueError(
+            "len(cond.shape) should be equal to len(x.shape), but len(cond.shape)={} and len(x.shape)={}."
+            .format(len(cond.shape), len(x.shape)))
+
+    if len(x.shape) != len(y.shape):
+        raise ValueError(
+            "len(x.shape) should be equal to len(y.shape), but len(x.shape)={} and len(y.shape)={}."
+            .format(len(x.shape), len(y.shape)))
+
+    helper = LayerHelper('select_p', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type=helper.layer_type,
+                     inputs={
+                         'Condition': cond,
+                         'X': x,
+                         'Y': y
+                     },
+                     outputs={'Z': out})
+    return out
+
+
+@REGISTER_FN('eq_p', 'X', 'Y', 'Z')
+def eq(x, y, out=None):
+    return _simple_binop(LayerHelper('eq_p', **locals()))
+
+
+@REGISTER_FN('pow_p', 'X', 'Y', 'Z')
+def pow(x, y, out=None):
+    return _simple_binop(LayerHelper('pow_p', **locals()))
+
+
+@REGISTER_FN('max_p', 'X', 'Y', 'Z')
+def max(x, y, out=None):
+    return _simple_binop(LayerHelper('max_p', **locals()))
+
+
+@REGISTER_FN('erf_p', 'X', 'Y')
+def erf(x, out=None):
+    return _simple_unop(LayerHelper('erf_p', **locals()))

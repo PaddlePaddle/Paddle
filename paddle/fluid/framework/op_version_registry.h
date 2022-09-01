@@ -22,6 +22,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_version_proto.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/macros.h"
 #include "paddle/utils/none.h"
 
 namespace paddle {

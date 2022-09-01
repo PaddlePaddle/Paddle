@@ -23,6 +23,7 @@
 #include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/imperative/op_base.h"
+#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/platform/denormal.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -141,6 +142,15 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Paddle can't use NPU device since it's not compiled with NPU,"
           "Please recompile or reinstall Paddle with NPU support."));
 #endif
+    } else if (platform::is_ipu_place(place)) {
+#if defined(PADDLE_WITH_IPU)
+      gc.reset(new framework::IPUGarbageCollector(place, 0));
+      VLOG(10) << "Created GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use IPU device since it's not compiled with IPU,"
+          "Please recompile or reinstall Paddle with IPU support."));
+#endif
     } else if (platform::is_mlu_place(place)) {
 #if defined(PADDLE_WITH_MLU)
       gc.reset(new framework::MLUDefaultStreamGarbageCollector(place, 0));
@@ -152,8 +162,14 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 #endif
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-      gc.reset(new framework::CustomDefaultStreamGarbageCollector(place, 0));
-      VLOG(10) << "Created GarbageCollector at " << place;
+      if (framework::IsFastEagerDeletionModeEnabled()) {
+        gc.reset(
+            new framework::CustomDeviceUnsafeFastGarbageCollector(place, 0));
+        VLOG(10) << "Created UnsafeFastGarbageCollector at " << place;
+      } else {
+        gc.reset(new framework::CustomDefaultStreamGarbageCollector(place, 0));
+        VLOG(10) << "Created GarbageCollector at " << place;
+      }
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Paddle can't use CustomDevice since it's not compiled with "
@@ -224,6 +240,11 @@ void Tracer::TraceOpImpl(const std::string& type,
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {
     attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
+  }
+  const auto& extra_attr_checkers =
+      operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(type);
+  for (const auto& checker : extra_attr_checkers) {
+    checker(&attrs, true);
   }
 
   static paddle::framework::AttributeMap empty_attrs_map = {};

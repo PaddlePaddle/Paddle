@@ -2,12 +2,12 @@ if(WITH_GPU)
   nv_library(
     phi_place
     SRCS place.cc
-    DEPS phi_gpu_info)
+    DEPS phi_backends)
 elseif(WITH_ROCM)
   hip_library(
     phi_place
     SRCS place.cc
-    DEPS phi_gpu_info)
+    DEPS phi_backends)
 else()
   cc_library(phi_place SRCS place.cc)
 endif()

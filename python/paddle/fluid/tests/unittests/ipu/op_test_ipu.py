@@ -67,9 +67,6 @@ class IPUTest(unittest.TestCase):
         random.seed(cls.SEED)
         paddle.seed(cls.SEED)
 
-        # Enable paddle static graph mode
-        paddle.enable_static()
-
     @classmethod
     def tearDownClass(cls):
         """Restore random seeds"""
@@ -86,42 +83,36 @@ class IPUTest(unittest.TestCase):
             if flag.upper() in ['1', "TRUE"]:
                 return True
 
-    # Decorator for static graph building
-    def static_graph(builder):
 
-        def wrapper(self, *args, **kwargs):
-            self.scope = paddle.static.Scope()
-            self.main_prog = paddle.static.Program()
-            self.startup_prog = paddle.static.Program()
-            self.main_prog.random_seed = self.SEED
-            self.startup_prog.random_seed = self.SEED
-            with paddle.static.scope_guard(self.scope):
-                with paddle.utils.unique_name.guard(
-                        paddle.utils.unique_name.generate('')):
-                    with paddle.static.program_guard(self.main_prog,
-                                                     self.startup_prog):
-                        builder(self, *args, **kwargs)
-
-        return wrapper
-
-    # Cast a fp32 model to a full-fp16 model
-    @classmethod
-    def cast_model_to_fp16(cls, main_program):
-        amp_list = paddle.static.amp.CustomOpLists()
-        amp_list.unsupported_list = {}
-        to_fp16_var_names = paddle.static.amp.cast_model_to_fp16(
-            main_program, amp_list, use_fp16_guard=False)
-        paddle.static.amp.cast_parameters_to_fp16(
-            paddle.CPUPlace(),
-            main_program,
-            to_fp16_var_names=to_fp16_var_names)
-
-
-class IPUOpTest(IPUTest):
+@unittest.skipIf(not paddle.is_compiled_with_ipu(),
+                 "core is not compiled with IPU")
+class IPUD2STest(IPUTest):
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+
+        # Disable paddle static graph mode
+        paddle.disable_static()
+
+    def tearDown(self):
+        # Manual reset when using ipumodel
+        if self.use_ipumodel():
+            paddle.framework.core.IpuBackend.get_instance().reset()
+
+
+@unittest.skipIf(not paddle.is_compiled_with_ipu(),
+                 "core is not compiled with IPU")
+class IPUOpTest(IPUTest):
+    """Base Class for single op unit tests using static graph on IPU.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+
+        # Enable paddle static graph mode
+        paddle.enable_static()
 
         # Items that a op_tester needs
         cls.main_prog: paddle.static.Program = None
@@ -165,6 +156,36 @@ class IPUOpTest(IPUTest):
     def set_training(self):
         self.is_training = False
         self.epoch = 1
+
+    # Decorator for static graph building
+    def static_graph(builder):
+
+        def wrapper(self, *args, **kwargs):
+            self.scope = paddle.static.Scope()
+            self.main_prog = paddle.static.Program()
+            self.startup_prog = paddle.static.Program()
+            self.main_prog.random_seed = self.SEED
+            self.startup_prog.random_seed = self.SEED
+            with paddle.static.scope_guard(self.scope):
+                with paddle.utils.unique_name.guard(
+                        paddle.utils.unique_name.generate('')):
+                    with paddle.static.program_guard(self.main_prog,
+                                                     self.startup_prog):
+                        builder(self, *args, **kwargs)
+
+        return wrapper
+
+    # Cast a fp32 model to a full-fp16 model
+    @classmethod
+    def cast_model_to_fp16(cls, main_program):
+        amp_list = paddle.static.amp.CustomOpLists()
+        amp_list.unsupported_list = {'scale'}
+        to_fp16_var_names = paddle.static.amp.cast_model_to_fp16(
+            main_program, amp_list, use_fp16_guard=False)
+        paddle.static.amp.cast_parameters_to_fp16(
+            paddle.CPUPlace(),
+            main_program,
+            to_fp16_var_names=to_fp16_var_names)
 
     def run_op_test(self, exec_mode, ipu_strategy=None):
         # NOTE: some op has no inputs
@@ -216,42 +237,54 @@ class IPUOpTest(IPUTest):
             raise ValueError("output_dict is empty")
         cpu_fp32 = output_dict[ExecutionMode.CPU_FP32]
         ipu_fp32 = output_dict[ExecutionMode.IPU_FP32]
-        cpu_fp32 = np.asarray(cpu_fp32).astype(np.float32).flatten()
-        ipu_fp32 = np.asarray(ipu_fp32).astype(np.float32).flatten()
-        pass_check = np.allclose(ipu_fp32,
-                                 cpu_fp32,
-                                 rtol=self.rtol,
-                                 atol=self.atol)
-        if not pass_check:
-            max_atol = np.abs(ipu_fp32 - cpu_fp32).max()
-            cpu_fp32_abs = np.abs(cpu_fp32)
-            cpu_fp32_abs[cpu_fp32_abs == 0.0] = 1e-20
-            max_rtol = (np.abs(ipu_fp32 - cpu_fp32) / cpu_fp32_abs).max()
-            raise AssertionError(
-                f"ipu_fp32 check failed. max_atol is {max_atol}, max_rtol is {max_rtol}"
-            )
-
-        if check_shape:
-            self.assertTrue(cpu_fp32.shape == ipu_fp32.shape)
-
-        if ExecutionMode.IPU_FP16 in output_dict.keys():
-            ipu_fp16 = output_dict[ExecutionMode.IPU_FP16]
-            ipu_fp16 = np.asarray(ipu_fp16).astype(np.float32).flatten()
-            pass_check = np.allclose(ipu_fp16,
-                                     cpu_fp32,
-                                     rtol=self.rtol_fp16,
-                                     atol=self.atol_fp16)
+        if len(cpu_fp32) != len(ipu_fp32):
+            raise ValueError("different outputs number between ipu and cpu.")
+        for cpu_fp32_res, ipu_fp32_res in zip(cpu_fp32, ipu_fp32):
+            cpu_fp32_res = np.asarray(cpu_fp32_res).astype(np.float32).flatten()
+            ipu_fp32_res = np.asarray(ipu_fp32_res).astype(np.float32).flatten()
+            pass_check = np.allclose(ipu_fp32_res,
+                                     cpu_fp32_res,
+                                     rtol=self.rtol,
+                                     atol=self.atol)
             if not pass_check:
-                max_atol = np.abs(ipu_fp16 - cpu_fp32).max()
-                cpu_fp32_abs = np.abs(cpu_fp32)
+                max_atol = np.abs(ipu_fp32_res - cpu_fp32_res).max()
+                cpu_fp32_abs = np.abs(cpu_fp32_res)
                 cpu_fp32_abs[cpu_fp32_abs == 0.0] = 1e-20
-                max_rtol = (np.abs(ipu_fp16 - cpu_fp32) / cpu_fp32_abs).max()
+                max_rtol = (np.abs(ipu_fp32_res - cpu_fp32_res) /
+                            cpu_fp32_abs).max()
                 raise AssertionError(
-                    f"ipu_fp16 check failed. max_atol is {max_atol}, max_rtol is {max_rtol}"
+                    f"ipu_fp32 check failed. max_atol is {max_atol}, max_rtol is {max_rtol}"
                 )
 
             if check_shape:
-                self.assertTrue(ipu_fp16.shape == cpu_fp32.shape)
+                self.assertTrue(cpu_fp32_res.shape == ipu_fp32_res.shape)
+
+        if ExecutionMode.IPU_FP16 in output_dict.keys():
+            ipu_fp16 = output_dict[ExecutionMode.IPU_FP16]
+            if len(cpu_fp32) != len(ipu_fp16):
+                raise ValueError(
+                    "different outputs number between ipu and cpu.")
+            for cpu_fp32_res, ipu_fp16_res in zip(cpu_fp32, ipu_fp16):
+                cpu_fp32_res = np.asarray(cpu_fp32_res).astype(
+                    np.float32).flatten()
+                ipu_fp16_res = np.asarray(ipu_fp16_res).astype(
+                    np.float32).flatten()
+                pass_check = np.allclose(ipu_fp16_res,
+                                         cpu_fp32_res,
+                                         rtol=self.rtol_fp16,
+                                         atol=self.atol_fp16)
+                if not pass_check:
+                    max_atol = np.abs(ipu_fp16_res - cpu_fp32_res).max()
+                    cpu_fp32_abs = np.abs(cpu_fp32_res)
+                    cpu_fp32_abs[cpu_fp32_abs == 0.0] = 1e-20
+                    max_rtol = (np.abs(ipu_fp16_res - cpu_fp32_res) /
+                                cpu_fp32_abs).max()
+                    raise AssertionError(
+                        f"ipu_fp16 check failed. max_atol is {max_atol}, max_rtol is {max_rtol}"
+                    )
+
+                if check_shape:
+                    self.assertTrue(ipu_fp16_res.shape == cpu_fp32_res.shape)
 
     # Execution Mode
     class ExecutionMode(IntEnum):

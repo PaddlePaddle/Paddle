@@ -145,7 +145,7 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
 
     // UNDERSTAND: allocate memories for temporaries
     sampled_logits->mutable_data<T>(samples_dim, context.GetPlace());
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
     set_zero(dev_ctx, sampled_logits, static_cast<T>(0));
 
     auto sampled_labels_data =
@@ -244,7 +244,7 @@ class SampleLogitsGradCUDAKernel : public framework::OpKernel<T> {
     logits_grad->mutable_data<T>(context.GetPlace());
 
     auto& dev_ctx = context.cuda_device_context();
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
     set_zero(dev_ctx, logits_grad, static_cast<T>(0));
 
     // UNDERSTAND: scatter it back to logit_grad

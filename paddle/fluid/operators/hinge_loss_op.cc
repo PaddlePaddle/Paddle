@@ -155,9 +155,7 @@ REGISTER_OP_CPU_KERNEL(hinge_loss,
 REGISTER_OP_CPU_KERNEL(hinge_loss_grad,
                        ops::HingeLossGradKernel<phi::CPUContext, float>);
 
-REGISTER_OP_CUDA_KERNEL(
-    hinge_loss,
-    ops::HingeLossKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    hinge_loss_grad,
-    ops::HingeLossGradKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(hinge_loss,
+                        ops::HingeLossKernel<phi::GPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(hinge_loss_grad,
+                        ops::HingeLossGradKernel<phi::GPUContext, float>);

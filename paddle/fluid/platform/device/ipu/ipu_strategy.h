@@ -112,6 +112,12 @@ class IpuStrategy {
   // Custom ops
   std::vector<IpuCustomOpIdentifier> custom_ops;
 
+  // lr for dynamic2static
+  float lr = 0.0;
+
+  // whether in dynamic mode
+  bool is_dynamic = false;
+
  public:
   void AddBoolOption(const std::string &option, bool value);
   void AddUint64Option(const std::string &option, std::uint64_t value);
@@ -153,8 +159,8 @@ class IpuStrategy {
       const std::string &type_str) {
     auto it = options.find(key);
     PADDLE_ENFORCE_NE(
-        it,
-        options.end(),
+        it == options.end(),
+        true,
         platform::errors::InvalidArgument("Cannot find option: %s, type: %s "
                                           "when setting IpuStrategy options",
                                           key,
@@ -168,8 +174,8 @@ class IpuStrategy {
       std::map<std::string, std::function<ValueType()>> &options) {  // NOLINT
     auto it = options.find(key);
     PADDLE_ENFORCE_NE(
-        it,
-        options.end(),
+        it == options.end(),
+        true,
         platform::errors::InvalidArgument(
             "Cannot find option name: %s when trying to get IpuStrategy option",
             key));

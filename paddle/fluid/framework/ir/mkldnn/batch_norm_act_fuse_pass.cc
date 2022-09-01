@@ -112,7 +112,7 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     auto *bn_op = batch_norm->Op();
     if (bn_op->HasAttr("trainable_statistics")) {
       PADDLE_ENFORCE(
-          !BOOST_GET_CONST(bool, bn_op->GetAttr("trainable_statistics")),
+          !PADDLE_GET_CONST(bool, bn_op->GetAttr("trainable_statistics")),
           platform::errors::PreconditionNotMet(
               "The BatchNorm+Act fusion may happen only when mean and variance "
               "are not calculated by current batch statistics."));
@@ -120,7 +120,7 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
 
     if (bn_op->HasAttr("is_test")) {
       PADDLE_ENFORCE(
-          BOOST_GET_CONST(bool, bn_op->GetAttr("is_test")),
+          PADDLE_GET_CONST(bool, bn_op->GetAttr("is_test")),
           platform::errors::PreconditionNotMet(
               "The BatchNorm+Act fusion may happen only during inference."));
     }

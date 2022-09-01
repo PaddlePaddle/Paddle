@@ -1,57 +1,59 @@
 add_subdirectory(dynload)
 
-add_subdirectory(cpu)
-
-add_subdirectory(custom)
+set(BACKENDS_SRCS all_context.cc cpu/cpu_context.cc)
+set(BACKENDS_DEPS enforce place flags eigen3 phi_device_context)
 
 if(WITH_GPU OR WITH_ROCM)
-  add_subdirectory(gpu)
+  list(APPEND BACKENDS_SRCS gpu/gpu_context.cc gpu/gpu_info.cc
+       gpu/gpu_resources.cc)
+  if(WITH_GPU)
+    list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc)
+  endif()
+  if(WITH_ROCM)
+    list(APPEND BACKENDS_SRCS gpu/rocm/rocm_info.cc)
+  endif()
+  list(APPEND BACKENDS_DEPS phi_dynload_cuda)
 endif()
 
 if(WITH_XPU)
-  add_subdirectory(xpu)
+  list(APPEND BACKENDS_SRCS xpu/xpu_context.cc xpu/xpu_info.cc)
 endif()
 
-cc_library(
-  phi_context
-  SRCS all_context.cc
-  DEPS device_context cpu_context)
-
-if(WITH_XPU)
-  add_dependencies(phi_context xpu_context)
-endif()
-
-if(WITH_GPU)
-  add_dependencies(phi_context gpu_context)
+if(WITH_MKLDNN)
+  list(APPEND BACKENDS_SRCS onednn/onednn_context.cc)
+  list(APPEND BACKENDS_DEPS mkldnn)
 endif()
 
 if(WITH_CUSTOM_DEVICE)
-  add_dependencies(phi_context custom_context)
-  cc_library(
-    callback_manager
-    SRCS callback_manager.cc
-    DEPS enforce place)
-  cc_library(
-    device_guard
-    SRCS device_guard.cc
-    DEPS enforce place)
-  cc_library(
-    stream
-    SRCS stream.cc
-    DEPS callback_manager)
-  cc_library(
-    event
-    SRCS event.cc
-    DEPS enforce place)
-  cc_library(
-    device_base
-    SRCS device_base.cc
-    DEPS stream event callback_manager device_guard device_context flags)
-  cc_library(
-    device_manager
-    SRCS device_manager.cc
-    DEPS custom_device)
-  set(GLOB_DEV_LIB
-      device_manager custom_device
-      CACHE INTERNAL "Global DEV library")
+  list(
+    APPEND
+    BACKENDS_SRCS
+    callback_manager.cc
+    device_guard.cc
+    stream.cc
+    event.cc
+    device_base.cc
+    device_manager.cc
+    custom/custom_context.cc
+    custom/custom_device.cc)
+endif()
+
+add_library(phi_backends "${BACKENDS_SRCS}")
+target_link_libraries(phi_backends ${BACKENDS_DEPS})
+add_dependencies(phi_backends eigen3)
+
+# for inference library
+get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
+set(phi_modules ${phi_modules} phi_backends)
+set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")
+
+if(WITH_CUSTOM_DEVICE)
+  cc_test(
+    custom_device_test
+    SRCS custom/custom_device_test.cc
+    DEPS phi_backends phi_device_context gradient_accumulator)
+  cc_test(
+    capi_test
+    SRCS custom/capi_test.cc
+    DEPS phi_capi)
 endif()

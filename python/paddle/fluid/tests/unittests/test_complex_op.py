@@ -58,6 +58,7 @@ class TestComplexOp(OpTest):
 
     def setUp(self):
         self.op_type = "complex"
+        self.python_api = paddle.complex
         self.init_spec()
         x = np.random.randn(*self.x_shape).astype(self.dtype)
         y = np.random.randn(*self.y_shape).astype(self.dtype)
@@ -141,7 +142,7 @@ class TestComplexAPI(unittest.TestCase):
             x = paddle.to_tensor(self.x)
             y = paddle.to_tensor(self.y)
             out_np = paddle.complex(x, y).numpy()
-        self.assertTrue(np.allclose(self.out, out_np))
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
     def test_static(self):
         mp, sp = static.Program(), static.Program()
@@ -158,7 +159,7 @@ class TestComplexAPI(unittest.TestCase):
                                "y": self.y
                            },
                            fetch_list=[out])
-        self.assertTrue(np.allclose(self.out, out_np))
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
     def test_eager(self):
         with _test_eager_guard():

@@ -55,23 +55,6 @@ void QuantDequantMkldnnPass::MarkSkipQuantizedOps(
   }
 }
 
-void QuantDequantMkldnnPass::MarkSkipQuantizedPool2d(ir::Graph* graph) const {
-  VLOG(3) << "mark avg pool2d as skip quantized op";
-  for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
-    if (!op_node->IsOp()) continue;
-
-    if (op_node->Name() == "pool2d") {
-      auto* op_desc = op_node->Op();
-      auto pool_type =
-          BOOST_GET_CONST(std::string, op_desc->GetAttr("pooling_type"));
-      if (pool_type == "avg") {
-        op_node->Op()->SetAttr("skip_quant", 1);
-      }
-    }
-  }
-}
-
 void QuantDequantMkldnnPass::CollectInfoFromFake(
     ir::Graph* graph,
     Scope* scope,
@@ -89,7 +72,7 @@ void QuantDequantMkldnnPass::CollectInfoFromFake(
 
       if (op_desc->HasAttr("max_range")) {
         const float max_range =
-            BOOST_GET_CONST(float, op_desc->GetAttr("max_range"));
+            PADDLE_GET_CONST(float, op_desc->GetAttr("max_range"));
         std::vector<float> thresholds = {127 * 127 / max_range};
         weight_thresholds->insert(std::make_pair(x_var_name, thresholds));
       } else {
@@ -128,7 +111,7 @@ void QuantDequantMkldnnPass::CollectInputScalesFromFake(
         fake_quantize_types.count(op_node->Name())) {
       auto* op_desc = op_node->Op();
       const int bit_length =
-          BOOST_GET_CONST(int, op_desc->GetAttr("bit_length"));
+          PADDLE_GET_CONST(int, op_desc->GetAttr("bit_length"));
       PADDLE_ENFORCE_EQ(bit_length,
                         8,
                         platform::errors::InvalidArgument(
@@ -177,7 +160,7 @@ void QuantDequantMkldnnPass::CollectOutputScalesFromAttr(
     auto* op_desc = op_node->Op();
     if (op_desc->HasAttr("out_threshold")) {
       const float attr_scale =
-          BOOST_GET_CONST(float, op_desc->GetAttr("out_threshold"));
+          PADDLE_GET_CONST(float, op_desc->GetAttr("out_threshold"));
       if (attr_scale == 0.0) continue;
       float scale = 1.0 / attr_scale;
       std::vector<float> scale_v = {scale};
@@ -548,7 +531,6 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
 
   auto* scope = param_scope();
   MarkSkipQuantizedOps(graph, skip_ops);
-  MarkSkipQuantizedPool2d(graph);
   CollectInfoFromFake(graph, scope, fake_dequantize_types, &weight_thresholds);
   CollectInputScalesFromFake(
       graph, scope, fake_quantize_types, &var_quant_scales);

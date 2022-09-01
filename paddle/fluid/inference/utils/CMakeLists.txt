@@ -18,6 +18,13 @@ cc_test(
   infer_io_utils_tester
   SRCS io_utils_tester.cc
   DEPS infer_io_utils)
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(infer_io_utils_tester)
+endif()
+
 cc_library(table_printer SRCS table_printer.cc)
 cc_test(
   test_table_printer

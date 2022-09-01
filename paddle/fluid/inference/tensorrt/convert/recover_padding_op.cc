@@ -62,7 +62,7 @@ class RecoverPadding : public OpConverter {
            output_name + ")")
               .c_str());
       float out_scale =
-          BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
       engine_->SetTensorDynamicRange(transpose_output, out_scale);
       plugin_inputs.push_back(transpose_output);
     } else {

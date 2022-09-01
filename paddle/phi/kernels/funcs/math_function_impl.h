@@ -27,20 +27,27 @@ using paddle::framework::To32BitIndex;
 template <typename DeviceContext, typename T>
 void SetConstant<DeviceContext, T>::operator()(
     const DeviceContext& context, paddle::framework::Tensor* tensor, T num) {
-  bool xpu_place = false;
-#ifdef PADDLE_WITH_XPU
-  if (paddle::platform::is_xpu_place(context.GetPlace())) {
-    xpu_place = true;
-    phi::VisitDataType(
-        tensor->dtype(),
-        TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
-  }
-#endif
-  if (!xpu_place) {
-    auto t = paddle::framework::EigenVector<T>::Flatten(*tensor);
-    t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
-  }
+  auto t = paddle::framework::EigenVector<T>::Flatten(*tensor);
+  t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
 }
+
+#ifdef PADDLE_WITH_XPU
+template <typename T>
+void SetConstant<XPUContext, T>::operator()(const XPUContext& context,
+                                            paddle::framework::Tensor* tensor,
+                                            T num) {
+  phi::VisitDataType(tensor->dtype(),
+                     TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
+}
+template <typename T>
+void SetConstant<paddle::platform::XPUDeviceContext, T>::operator()(
+    const paddle::platform::XPUDeviceContext& context,
+    paddle::framework::Tensor* tensor,
+    T num) {
+  phi::VisitDataType(tensor->dtype(),
+                     TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
+}
+#endif
 
 template <typename DeviceContext, typename T, int Rank>
 void Transpose<DeviceContext, T, Rank>::operator()(

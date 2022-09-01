@@ -22,8 +22,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 @unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
 class TestBase(IPUOpTest):
 
@@ -36,6 +34,7 @@ class TestBase(IPUOpTest):
         self.model_path = os.path.join(self.temp_dir.name, "weight_decay")
 
     def tearDown(self):
+        super().tearDown()
         self.temp_dir.cleanup()
 
     def set_atol(self):
@@ -84,7 +83,7 @@ class TestBase(IPUOpTest):
 
                 loss = paddle.mean(conv1)
                 opt = paddle.optimizer.Lamb(
-                    learning_rate=1e-1,
+                    learning_rate=1e-3,
                     lamb_weight_decay=self.attrs['weight_decay'],
                     exclude_from_weight_decay_fn=exclude_fn)
                 opt.minimize(loss)
@@ -122,7 +121,10 @@ class TestBase(IPUOpTest):
         ipu_loss = self._test_optimizer(True).flatten()
         cpu_loss = self._test_optimizer(False).flatten()
 
-        self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=self.atol))
+        np.testing.assert_allclose(ipu_loss,
+                                   cpu_loss,
+                                   rtol=1e-05,
+                                   atol=self.atol)
 
 
 if __name__ == "__main__":

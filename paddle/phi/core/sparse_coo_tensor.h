@@ -63,10 +63,16 @@ class SparseCooTensor : public TensorBase,
 
   /// \brief Returns the indices of non zero elemetns in original dense tensor.
   /// \return The indices of non zero elemetns in original dense tensor.
+  const DenseTensor& indices() const { return non_zero_indices_; }
+
+  /// Note: This function will removed soon. It is recommended to use indices()
   const DenseTensor& non_zero_indices() const { return non_zero_indices_; }
 
   /// \brief Returns the non zero elemetns in original dense tensor.
   /// \return The non zero elemetns in original dense tensor.
+  const DenseTensor& values() const { return non_zero_elements_; }
+
+  /// Note: This function will removed soon. It is recommended to use values()
   const DenseTensor& non_zero_elements() const { return non_zero_elements_; }
 
   /// \brief Returns whether the indices has coalesced
@@ -136,10 +142,18 @@ class SparseCooTensor : public TensorBase,
 
   /// \brief Get a mutable pointer of non_zero_indices_.
   /// return a mutable pointer of non_zero_indices_.
+  DenseTensor* mutable_indices() { return &non_zero_indices_; }
+
+  /// Note: This function will removed soon. It is recommended to use
+  /// mutable_indices()
   DenseTensor* mutable_non_zero_indices() { return &non_zero_indices_; }
 
   /// \brief Get a mutable pointer of non_zero_elements.
   /// return a mutable pointer of non_zero_elements.
+  DenseTensor* mutable_values() { return &non_zero_elements_; }
+
+  /// Note: This function will removed soon. It is recommended to use
+  /// mutable_values()
   DenseTensor* mutable_non_zero_elements() { return &non_zero_elements_; }
 
   /// \brief This function is not recommended
@@ -156,6 +170,48 @@ class SparseCooTensor : public TensorBase,
   /// \brief get the dnese dim
   int32_t dense_dim() const;
 
+  /// \brief query table according to key
+  const std::pair<DenseTensor, DenseTensor>* IndicesPairs(
+      const std::string& key) const {
+    if (indices_dict_ == nullptr) {
+      return nullptr;
+    }
+    const auto& iter = indices_dict_->find(key);
+    if (iter == indices_dict_->end()) {
+      return nullptr;
+    }
+    return &iter->second;
+  }
+
+  /// \brief save (key, indices_pairs)
+  void SaveIndicesPairs(
+      const std::string& key,
+      const std::pair<DenseTensor, DenseTensor>& indices_pairs) {
+    if (indices_dict_ == nullptr) {
+      indices_dict_ = std::make_shared<
+          std::map<std::string, std::pair<DenseTensor, DenseTensor>>>();
+    }
+    auto ret = indices_dict_->insert({key, indices_pairs});
+    if (ret.second == false) {
+      ret.first->second = indices_pairs;
+    }
+  }
+
+  /// \brief get indices_dict_
+  const std::shared_ptr<
+      std::map<std::string, std::pair<DenseTensor, DenseTensor>>>&
+  GetIndicesDict() const {
+    return indices_dict_;
+  }
+
+  /// \brief set indices_dict_
+  void SetIndicesDict(
+      const std::shared_ptr<
+          std::map<std::string, std::pair<DenseTensor, DenseTensor>>>&
+          indices_dict) {
+    indices_dict_ = indices_dict;
+  }
+
  private:
   // save the indices of non zero elements in original dense tensor
   DenseTensor non_zero_indices_;
@@ -165,6 +221,14 @@ class SparseCooTensor : public TensorBase,
   bool coalesced_ = false;
   // save the number of non zero elements in each batch
   DDim dims_;
+
+  // for submanifold conv
+  // SubmConv will generate a rulebook and a counter, which can be
+  // reused by different SubmConv.
+  // refer to sparse/gpu/convolution_kernel.cu.
+  std::shared_ptr<std::map<std::string, std::pair<DenseTensor, DenseTensor>>>
+      indices_dict_ = nullptr;
+
   /* --------------------------- */
   /*   example: non zero element is scalar */
   /* --------------------------- */
