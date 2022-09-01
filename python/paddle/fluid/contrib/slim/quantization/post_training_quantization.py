@@ -15,10 +15,10 @@
 import os
 import re
 import math
-import fluid
 import shutil
 import logging
 import numpy as np
+import paddle.fluid as fluid
 
 try:
     from tqdm import tqdm
