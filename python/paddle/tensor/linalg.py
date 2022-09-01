@@ -830,10 +830,10 @@ def cond(x, p=None, name=None):
         keepdim = False
 
         if in_dygraph_mode():
-            pow_out = _legacy_C_ops.pow(input, 'factor', porder)
+            pow_out = _C_ops.pow(input, porder)
             sum_out_1 = _C_ops.sum(pow_out, axis, None, keepdim)
             sum_out_2 = _C_ops.sum(sum_out_1, axis, None, keepdim)
-            return _legacy_C_ops.pow(sum_out_2, 'factor', float(1. / porder))
+            return _C_ops.pow(sum_out_2, float(1. / porder))
         elif paddle.in_dynamic_mode():
             pow_out = _legacy_C_ops.pow(input, 'factor', porder)
             sum_out_1 = _legacy_C_ops.reduce_sum(pow_out, 'dim', axis,
