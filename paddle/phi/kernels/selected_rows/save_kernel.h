@@ -16,23 +16,25 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
+namespace sr {
 
 template <typename T, typename Context>
 void SaveKernel(const Context& dev_ctx,
-                const DenseTensor& x,
+                const SelectedRows& x,
                 const std::string& file_path,
                 bool overwrite,
                 bool save_as_fp16);
 
 template <typename T, typename Context>
 void SaveCombineKernel(const Context& dev_ctx,
-                       const DenseTensor& x,
+                       const SelectedRows& x,
                        const std::string& file_path,
                        bool overwrite,
                        bool save_as_fp16,
                        bool save_to_memory);
 
+}  // namespace sr
 }  // namespace phi

@@ -15,8 +15,11 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-USE_CPU_ONLY_OP(save);
+USE_OP_ITSELF(save);
+PD_DECLARE_KERNEL(save, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(cast, CPU, ALL_LAYOUT);
 USE_CPU_ONLY_OP(load);
 
 TEST(SaveLoadOp, CPU) {

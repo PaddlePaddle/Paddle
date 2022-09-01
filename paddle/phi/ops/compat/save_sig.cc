@@ -17,8 +17,15 @@
 namespace phi {
 
 KernelSignature SaveOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "save", {"X"}, {"file_path", "overwrite", "save_as_fp16"}, {});
+  if (ctx.IsDenseTensorInput("X")) {
+    return KernelSignature(
+        "save", {"X"}, {"file_path", "overwrite", "save_as_fp16"}, {});
+  } else if (ctx.IsSelectedRowsInput("X")) {
+    return KernelSignature(
+        "save_sr", {"X"}, {"file_path", "overwrite", "save_as_fp16"}, {});
+  } else {
+    return KernelSignature("unregistered", {}, {}, {});
+  }
 }
 
 }  // namespace phi

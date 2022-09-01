@@ -12,18 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/save_kernel.h"
+#include "paddle/phi/kernels/selected_rows/save_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 
-#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 
 namespace phi {
+namespace sr {
 
 template <typename T, typename Context>
 void SaveKernel(const Context& dev_ctx,
-                const DenseTensor& x,
+                const SelectedRows& x,
                 const std::string& file_path,
                 bool overwrite,
                 bool save_as_fp16) {
@@ -44,25 +45,17 @@ void SaveKernel(const Context& dev_ctx,
       static_cast<bool>(fout),
       true,
       phi::errors::Unavailable("Cannot open %s to save variables.", file_path));
-
-  auto in_dtype = x.dtype();
-  auto out_dtype = save_as_fp16 ? DataType::FLOAT16 : in_dtype;
-
-  if (in_dtype != out_dtype) {
-    auto out = Cast<T>(dev_ctx, x, out_dtype);
-    paddle::framework::SerializeToStream(fout, out, dev_ctx);
-  } else {
-    paddle::framework::SerializeToStream(fout, x, dev_ctx);
-  }
+  paddle::framework::SerializeToStream(fout, x, dev_ctx);
   fout.close();
 }
 
+}  // namespace sr
 }  // namespace phi
 
-PD_REGISTER_KERNEL(save,
+PD_REGISTER_KERNEL(save_sr,
                    CPU,
                    ALL_LAYOUT,
-                   phi::SaveKernel,
+                   phi::sr::SaveKernel,
                    float,
                    double,
                    int,
