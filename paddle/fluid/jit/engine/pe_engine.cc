@@ -31,7 +31,7 @@ static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
   auto device_type = platform::Place2DeviceType(place);
   switch (device_type) {
     case platform::DeviceType::CPU: {
-      execution_strategy.num_threads_ = 2;
+      execution_strategy.num_threads_ = 1;
       break;
     }
     case platform::DeviceType::CUDA: {
@@ -74,6 +74,8 @@ PEEngine::PEEngine(const std::shared_ptr<FunctionInfo> &info,
 
 void PEEngine::CreateGraphAndPE() {
   framework::details::BuildStrategy build_strategy;
+  build_strategy.inference_ = true;
+  build_strategy.del_dropout_ = true;
   auto execution_strategy = GetExecutionStrategy(place_);
 
   auto &program_desc = info_->ProgramDesc();

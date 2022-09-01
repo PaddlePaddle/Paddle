@@ -176,9 +176,10 @@ int32_t CtrDoubleAccessor::Create(float** values, size_t num) {
     *reinterpret_cast<double*>(value + CtrDoubleFeatureValue::ShowIndex()) = 0;
     *(double*)(value + CtrDoubleFeatureValue::ClickIndex()) = 0;
     value[CtrDoubleFeatureValue::SlotIndex()] = -1;
-    _embed_sgd_rule->InitValue(
-        value + CtrDoubleFeatureValue::EmbedWIndex(),
-        value + CtrDoubleFeatureValue::EmbedG2SumIndex());
+    bool zero_init = _config.ctr_accessor_param().zero_init();
+    _embed_sgd_rule->InitValue(value + CtrDoubleFeatureValue::EmbedWIndex(),
+                               value + CtrDoubleFeatureValue::EmbedG2SumIndex(),
+                               zero_init);
     _embedx_sgd_rule->InitValue(
         value + CtrDoubleFeatureValue::EmbedxWIndex(),
         value + CtrDoubleFeatureValue::EmbedxG2SumIndex(),

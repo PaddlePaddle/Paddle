@@ -85,7 +85,10 @@ void FlipKernel(const Context& dev_ctx,
   std::vector<int64_t> x_stride_v = phi::vectorize(x_stride);
 
   int bytes = total_dims * sizeof(int64_t);
-  auto x_strides_array_tmp = paddle::memory::Alloc(dev_ctx, bytes);
+  auto x_strides_array_tmp = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int64_t* x_strides_array_gpu =
       reinterpret_cast<int64_t*>(x_strides_array_tmp->ptr());
   paddle::memory::Copy(gplace,
@@ -95,7 +98,10 @@ void FlipKernel(const Context& dev_ctx,
                        bytes,
                        dev_ctx.stream());
 
-  auto x_shape_array_tmp = paddle::memory::Alloc(dev_ctx, bytes);
+  auto x_shape_array_tmp = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int64_t* x_shape_array_gpu =
       reinterpret_cast<int64_t*>(x_shape_array_tmp->ptr());
   paddle::memory::Copy(gplace,
@@ -106,7 +112,10 @@ void FlipKernel(const Context& dev_ctx,
                        dev_ctx.stream());
 
   bytes = flip_dims_size * sizeof(int);
-  auto flip_dims_array_tmp = paddle::memory::Alloc(dev_ctx, bytes);
+  auto flip_dims_array_tmp = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int* flip_dims_array_gpu = reinterpret_cast<int*>(flip_dims_array_tmp->ptr());
   paddle::memory::Copy(gplace,
                        flip_dims_array_gpu,

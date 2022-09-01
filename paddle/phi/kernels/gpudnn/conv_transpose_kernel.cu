@@ -205,7 +205,9 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
                                    strides,
                                    padding_common,
                                    dilations_,
-                                   dtype};
+                                   dtype,
+                                   groups,
+                                   data_layout};
   args.handle = handle;
   args.idesc.set(transformed_out, iwo_groups);
   args.wdesc.set(filter, layout_tensor, iwo_groups);

@@ -14,13 +14,16 @@
 
 from __future__ import print_function
 
+import os
 import unittest
+import tempfile
 import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+import paddle.inference as paddle_infer
 
 
 class TestCumsumOp(unittest.TestCase):
@@ -316,6 +319,65 @@ class BadInputTest(unittest.TestCase):
                 result = fluid.layers.cumsum(data, axis=0)
 
             self.assertRaises(TypeError, test_bad_x)
+
+
+class TestTensorAxis(unittest.TestCase):
+
+    def setUp(self):
+        paddle.seed(2022)
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.save_path = os.path.join(self.temp_dir.name, 'tensor_axis_cumsum')
+        self.place = paddle.CUDAPlace(
+            0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        x = np.random.randn(5, 6)
+        axis = 1
+        np_out = np.cumsum(x, axis)
+        pd_out = paddle.cumsum(paddle.to_tensor(x),
+                               axis=paddle.to_tensor([axis], dtype='int32'))
+        np.testing.assert_allclose(np_out, pd_out.numpy())
+
+    def test_static_and_infer(self):
+        paddle.enable_static()
+        np_x = np.random.randn(9, 10, 11).astype('float32')
+        main_prog = paddle.static.Program()
+        starup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, starup_prog):
+            # run static
+            x = paddle.static.data(shape=np_x.shape, name='x', dtype=np_x.dtype)
+            print(x)
+            linear = paddle.nn.Linear(np_x.shape[-1], np_x.shape[-1])
+            linear_out = linear(x)
+            relu_out = paddle.nn.functional.relu(linear_out)
+            axis = paddle.full([1], 2, dtype='int64')
+            out = paddle.cumsum(relu_out, axis=axis)
+
+            exe = paddle.static.Executor(self.place)
+            exe.run(starup_prog)
+            static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
+
+            # run infer
+            paddle.static.save_inference_model(self.save_path, [x], [out], exe)
+            config = paddle_infer.Config(self.save_path + '.pdmodel',
+                                         self.save_path + '.pdiparams')
+            if paddle.is_compiled_with_cuda():
+                config.enable_use_gpu(100, 0)
+            else:
+                config.disable_gpu()
+
+            predictor = paddle_infer.create_predictor(config)
+            input_names = predictor.get_input_names()
+            input_handle = predictor.get_input_handle(input_names[0])
+            fake_input = np_x
+            input_handle.reshape(np_x.shape)
+            input_handle.copy_from_cpu(fake_input)
+            predictor.run()
+            output_names = predictor.get_output_names()
+            output_handle = predictor.get_output_handle(output_names[0])
+            infer_out = output_handle.copy_to_cpu()
+            np.testing.assert_allclose(static_out[0], infer_out)
 
 
 if __name__ == '__main__':
