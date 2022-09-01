@@ -171,7 +171,8 @@ class SqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("axes",
                               "(std::vector<int>). List of integers,"
                               " indicating the dimensions to squeeze.")
-        .SetDefault({});
+        .SetDefault({})
+        .SupportTensor();
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)

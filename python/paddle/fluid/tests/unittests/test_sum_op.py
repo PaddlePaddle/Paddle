@@ -25,7 +25,7 @@ from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (OpTest,
                                                   convert_float_to_uint16,
                                                   convert_uint16_to_float)
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -112,11 +112,9 @@ class TestSelectedRowsSumOp(unittest.TestCase):
 
         if has_data_w_num > 0:
             self.assertEqual(len(out.rows()), 7)
-            self.assertTrue(
-                np.array_equal(
-                    np.array(out.get_tensor()),
-                    self._get_array(self.rows, self.row_numel) *
-                    has_data_w_num))
+            np.testing.assert_array_equal(
+                np.array(out.get_tensor()),
+                self._get_array(self.rows, self.row_numel) * has_data_w_num)
         else:
             self.assertEqual(len(out.rows()), 0)
 
@@ -252,13 +250,10 @@ class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
 
         out_t = np.array(out)
         self.assertEqual(out_t.shape[0], self.height)
-        self.assertTrue(
-            np.array_equal(
-                out_t,
-                self._get_array([i
-                                 for i in range(self.height)], self.row_numel) *
-                np.tile(
-                    np.array(result).reshape(self.height, 1), self.row_numel)))
+        np.testing.assert_array_equal(
+            out_t,
+            self._get_array([i for i in range(self.height)], self.row_numel) *
+            np.tile(np.array(result).reshape(self.height, 1), self.row_numel))
 
     def create_lod_tensor(self, scope, place, var_name):
         var = scope.var(var_name)
@@ -363,7 +358,7 @@ class API_Test_Add_n(unittest.TestCase):
 
             self.assertEqual((sum_value.numpy() == expected_result).all(), True)
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with fluid.dygraph.guard():
             with _test_eager_guard():
                 input0 = paddle.ones(shape=[2, 3], dtype='float32')
@@ -403,9 +398,9 @@ class API_Test_Add_n(unittest.TestCase):
             expected_dx = np.array([[1, 1, 1], [1, 1, 1]])
             expected_dy = np.array([[1, 1, 1], [1, 1, 1]])
 
-            self.assertTrue(np.allclose(out, expected_out))
-            self.assertTrue(np.allclose(dx, expected_dx))
-            self.assertTrue(np.allclose(dy, expected_dy))
+            np.testing.assert_allclose(out, expected_out, rtol=1e-05)
+            np.testing.assert_allclose(dx, expected_dx, rtol=1e-05)
+            np.testing.assert_allclose(dy, expected_dy, rtol=1e-05)
 
 
 class TestRaiseSumError(unittest.TestCase):
@@ -475,11 +470,11 @@ class TestSumOpError(unittest.TestCase):
 
         def test_empty_list_input():
             with fluid.dygraph.guard():
-                fluid._C_ops.sum([])
+                fluid._legacy_C_ops.sum([])
 
         def test_list_of_none_input():
             with fluid.dygraph.guard():
-                fluid._C_ops.sum([None])
+                fluid._legacy_C_ops.sum([None])
 
         self.assertRaises(Exception, test_empty_list_input)
         self.assertRaises(Exception, test_list_of_none_input)

@@ -15,7 +15,7 @@
 import paddle
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
@@ -67,22 +67,22 @@ def pairwise_distance(x, y, p=2., epsilon=1e-6, keepdim=False, name=None):
     check_type(epsilon, 'epsilon', (float), 'PairwiseDistance')
     check_type(keepdim, 'keepdim', (bool), 'PairwiseDistance')
     if in_dygraph_mode():
-        sub = _C_ops.elementwise_sub(x, y)
+        sub = _C_ops.subtract(x, y)
         # p_norm op has not uesd epsilon, so change it to the following.
         if epsilon != 0.0:
             epsilon = paddle.fluid.dygraph.base.to_variable([epsilon],
                                                             dtype=sub.dtype)
-            sub = _C_ops.elementwise_add(sub, epsilon)
-        return _C_ops.final_state_p_norm(sub, p, -1, 0., keepdim, False)
+            sub = _C_ops.add(sub, epsilon)
+        return _C_ops.p_norm(sub, p, -1, 0., keepdim, False)
 
     if _in_legacy_dygraph():
-        sub = _C_ops.elementwise_sub(x, y)
+        sub = _legacy_C_ops.elementwise_sub(x, y)
         if epsilon != 0.0:
             epsilon = paddle.fluid.dygraph.base.to_variable([epsilon],
                                                             dtype=sub.dtype)
-            sub = _C_ops.elementwise_add(sub, epsilon)
-        return _C_ops.p_norm(sub, 'axis', -1, 'porder', p, 'keepdim', keepdim,
-                             'epsilon', 0.)
+            sub = _legacy_C_ops.elementwise_add(sub, epsilon)
+        return _legacy_C_ops.p_norm(sub, 'axis', -1, 'porder', p, 'keepdim',
+                                    keepdim, 'epsilon', 0.)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'PairwiseDistance')
     check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'PairwiseDistance')

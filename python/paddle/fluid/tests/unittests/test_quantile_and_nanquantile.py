@@ -39,7 +39,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             x = paddle.to_tensor(inp)
             paddle_res = func(x, q=0.5, axis=2)
             np_res = res_func(inp, q=0.5, axis=2)
-            self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
+            np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
             inp[0, 1, 2] = np.nan
 
     # Test correctness for default axis.
@@ -49,7 +49,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             x = paddle.to_tensor(inp)
             paddle_res = func(x, q=0.35)
             np_res = res_func(inp, q=0.35)
-            self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
+            np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
             inp[0, 2, 1] = np.nan
             inp[0, 1, 2] = np.nan
 
@@ -60,7 +60,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             x = paddle.to_tensor(inp)
             paddle_res = func(x, q=0.75, axis=[0, 2])
             np_res = res_func(inp, q=0.75, axis=[0, 2])
-            self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
+            np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
             inp[0, 5, 3] = np.nan
             inp[0, 6, 2] = np.nan
 
@@ -71,7 +71,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             x = paddle.to_tensor(inp)
             paddle_res = func(x, q=0.35, axis=2, keepdim=True)
             np_res = res_func(inp, q=0.35, axis=2, keepdims=True)
-            self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
+            np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
             inp[0, 3, 4] = np.nan
 
     # Test correctness when all parameters are set.
@@ -81,7 +81,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             x = paddle.to_tensor(inp)
             paddle_res = func(x, q=0.1, axis=[1, 2], keepdim=True)
             np_res = res_func(inp, q=0.1, axis=[1, 2], keepdims=True)
-            self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
+            np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
             inp[0, 6, 3] = np.nan
 
     # Test correctness when q = 0.
@@ -91,7 +91,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             x = paddle.to_tensor(inp)
             paddle_res = func(x, q=0, axis=1)
             np_res = res_func(inp, q=0, axis=1)
-            self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
+            np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
             inp[0, 2, 5] = np.nan
 
     # Test correctness when input includes NaN.
@@ -101,7 +101,10 @@ class TestQuantileAndNanquantile(unittest.TestCase):
         x = paddle.to_tensor(input_data)
         paddle_res = paddle.quantile(x, q=0.35, axis=0)
         np_res = np.quantile(input_data, q=0.35, axis=0)
-        self.assertTrue(np.allclose(paddle_res.numpy(), np_res, equal_nan=True))
+        np.testing.assert_allclose(paddle_res.numpy(),
+                                   np_res,
+                                   rtol=1e-05,
+                                   equal_nan=True)
 
     # Test correctness when input filled with NaN.
     def test_nanquantile_all_NaN(self):
@@ -110,7 +113,10 @@ class TestQuantileAndNanquantile(unittest.TestCase):
         x = paddle.to_tensor(input_data)
         paddle_res = paddle.nanquantile(x, q=0.35, axis=0)
         np_res = np.nanquantile(input_data, q=0.35, axis=0)
-        self.assertTrue(np.allclose(paddle_res.numpy(), np_res, equal_nan=True))
+        np.testing.assert_allclose(paddle_res.numpy(),
+                                   np_res,
+                                   rtol=1e-05,
+                                   equal_nan=True)
 
 
 class TestMuitlpleQ(unittest.TestCase):
@@ -125,13 +131,13 @@ class TestMuitlpleQ(unittest.TestCase):
         x = paddle.to_tensor(self.input_data)
         paddle_res = paddle.quantile(x, q=[0.3, 0.44], axis=-2)
         np_res = np.quantile(self.input_data, q=[0.3, 0.44], axis=-2)
-        self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
+        np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
 
     def test_quantile_multiple_axis(self):
         x = paddle.to_tensor(self.input_data)
         paddle_res = paddle.quantile(x, q=[0.2, 0.67], axis=[1, -1])
         np_res = np.quantile(self.input_data, q=[0.2, 0.67], axis=[1, -1])
-        self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
+        np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
 
     def test_quantile_multiple_axis_keepdim(self):
         x = paddle.to_tensor(self.input_data)
@@ -143,7 +149,7 @@ class TestMuitlpleQ(unittest.TestCase):
                              q=[0.1, 0.2, 0.3],
                              axis=[1, 2],
                              keepdims=True)
-        self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
+        np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
 
 
 class TestError(unittest.TestCase):
@@ -237,7 +243,9 @@ class TestQuantileRuntime(unittest.TestCase):
                     x = paddle.to_tensor(np_input_data, dtype=dtype)
                     paddle_res = func(x, q=0.5, axis=1)
                     np_res = res_func(np_input_data, q=0.5, axis=1)
-                    self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
+                    np.testing.assert_allclose(paddle_res.numpy(),
+                                               np_res,
+                                               rtol=1e-05)
 
     def test_static(self):
         paddle.enable_static()

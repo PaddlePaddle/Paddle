@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -446,6 +447,13 @@ OperatorBase::OperatorBase(const std::string& type,
   if (inputs_.size() > 0 || outputs_.size() > 0) {
     GenerateTemporaryNames();
     CheckAllInputOutputSet();
+  }
+  // In OperatorBase level, all attributes with VarDesc type will be considered
+  // as Input.
+  for (auto& attr : FilterAttrVar(attrs)) {
+    VLOG(3) << "found Attribute with Variable type: " << attr.first;
+    inputs_[attr.first] = std::move(AttrVarNames(attr.second));
+    attrs_.erase(attr.first);
   }
 }
 
@@ -2200,7 +2208,9 @@ Scope* OperatorWithKernel::PrepareData(
              (in_def->backend != phi::Backend::GPUDNN ||
               tensor_backend != phi::Backend::GPU) &&
              (in_def->backend != phi::Backend::KPS ||
-              tensor_backend != phi::Backend::XPU)) ||
+              tensor_backend != phi::Backend::XPU) &&
+             (in_def->backend != phi::Backend::ONEDNN ||
+              tensor_backend != phi::Backend::CPU)) ||
             tensor_in->place().GetType() == AllocationType::GPUPINNED) {
           new_expected_kernel_key = std::make_unique<OpKernelType>(
               expected_kernel_key.data_type_,
@@ -2723,6 +2733,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
   for (size_t i = 0; i < attr_names.size(); ++i) {
     VLOG(6) << "BuildPhiKernelContext: " << attr_names[i] << ": "
             << attr_defs[i].type_index;
+    // attribute with Variable type has been placed into Inputs(), and
+    // we can parse them from RuntimeContext.inputs.
     auto attr_iter = Attrs().find(attr_names[i]);
     switch (attr_defs[i].type_index) {
       case phi::AttributeType::SCALAR:
@@ -2733,13 +2745,25 @@ void OperatorWithKernel::BuildPhiKernelContext(
               phi_kernel_context->EmplaceBackAttr(std::move(
                   phi::Scalar(PADDLE_GET_CONST(float, attr_iter->second))));
               break;
+            case proto::AttrType::FLOAT64:
+              phi_kernel_context->EmplaceBackAttr(std::move(
+                  phi::Scalar(PADDLE_GET_CONST(double, attr_iter->second))));
+              break;
             case proto::AttrType::INT:
               phi_kernel_context->EmplaceBackAttr(std::move(
                   phi::Scalar(PADDLE_GET_CONST(int, attr_iter->second))));
               break;
+            case proto::AttrType::LONG:
+              phi_kernel_context->EmplaceBackAttr(std::move(
+                  phi::Scalar(PADDLE_GET_CONST(int64_t, attr_iter->second))));
+              break;
             case proto::AttrType::STRING:
               phi_kernel_context->EmplaceBackAttr(std::move(phi::Scalar(
                   PADDLE_GET_CONST(std::string, attr_iter->second))));
+              break;
+            case proto::AttrType::BOOLEAN:
+              phi_kernel_context->EmplaceBackAttr(std::move(
+                  phi::Scalar(PADDLE_GET_CONST(bool, attr_iter->second))));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -2867,6 +2891,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
           case phi::AttributeType::FLOAT32:
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(float, attr_iter->second));
+            break;
+          case phi::AttributeType::FLOAT64:
+            phi_kernel_context->EmplaceBackAttr(
+                PADDLE_GET_CONST(double, attr_iter->second));
             break;
           case phi::AttributeType::INT32:
             phi_kernel_context->EmplaceBackAttr(

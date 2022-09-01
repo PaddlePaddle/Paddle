@@ -22,7 +22,7 @@ import warnings
 from contextlib import contextmanager
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph import layers
@@ -346,7 +346,7 @@ def _split_tensors(coalesced_grads_and_grad_vars):
             attrs = ()
             attrs += ('sections', grad_var_len)
             attrs += ('axis', 0)
-            _C_ops.split(coalesced_grad, origin_grad_vars, *attrs)
+            _legacy_C_ops.split(coalesced_grad, origin_grad_vars, *attrs)
             for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
                 g_var.reshape_(shape=g_shape)
                 assert g_var.shape == g_shape
