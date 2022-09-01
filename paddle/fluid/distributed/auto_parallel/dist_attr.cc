@@ -449,20 +449,6 @@ void OperatorDistAttr::set_output_dist_attrs(
   }
 }
 
-void OperatorDistAttr::set_input_dist_attrs(
-    const std::map<std::string, TensorDistAttr>& dist_attrs) {
-  for (const auto& item : dist_attrs) {
-    set_input_dist_attr(item.first, item.second);
-  }
-}
-
-void OperatorDistAttr::set_output_dist_attrs(
-    const std::map<std::string, TensorDistAttr>& dist_attrs) {
-  for (const auto& item : dist_attrs) {
-    set_output_dist_attr(item.first, item.second);
-  }
-}
-
 void OperatorDistAttr::set_input_dist_attr(const std::string& name,
                                            const TensorDistAttr& dist_attr) {
   PADDLE_ENFORCE_EQ(
