@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 #endif
-
+#include "paddle/fluid/platform/timer_manager.h"
 namespace paddle {
 namespace framework {
 
@@ -625,14 +625,15 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   if (len == 0) {
     return;
   }
-
+  int dev_id = resource_->dev_id(num);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_ALL, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE1, dev_id);
   //platform::Timer timeline;
   //std::stringstream time_ss;
   //time_ss << "dev:" << num << ",key_len:" << len;
   //double total_time = 0.0;
   //timeline.Start();
 
-  int dev_id = resource_->dev_id(num);
 
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
@@ -644,6 +645,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   typedef int BfidType;
   typedef uint32_t FidType;
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE1, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE2, dev_id);
   //timeline.Pause();
   //total_time += timeline.ElapsedSec();
   //time_ss << ",init:" << timeline.ElapsedSec();
@@ -658,6 +661,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   //total_time += timeline.ElapsedSec();
   //time_ss << ",get_fidseq:" << timeline.ElapsedSec();
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE2, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE3, dev_id);
   //timeline.Start();
   auto d_fidseq_bucket_vals = memory::Alloc(place, bucket_mean_len * sizeof(ValType));
   ValType* d_fidseq_bucket_vals_ptr = reinterpret_cast<ValType*>(d_fidseq_bucket_vals->ptr());
@@ -666,6 +671,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   //total_time += timeline.ElapsedSec();
   //time_ss << ",reset_xpu_memory:" << timeline.ElapsedSec();
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE3, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE4, dev_id);
   // local search
   //timeline.Start();
   tables_[num]->get(place, reinterpret_cast<KeyType*>(d_fidseq_bucket_ptr),
@@ -676,6 +683,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   //total_time += timeline.ElapsedSec();
   //time_ss << ",search_fid_in_table:" << timeline.ElapsedSec();
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE4, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE5, dev_id);
   // allreduce
   //timeline.Start();
   FidType* d_all_fidseq_bucket_ptr = nullptr;
@@ -685,6 +694,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   //total_time += timeline.ElapsedSec();
   //time_ss << ",get_all_fidseq_bucket:" << timeline.ElapsedSec();
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE5, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE6, dev_id);
   //timeline.Start();
   auto d_all_fidseq_bucket_vals = memory::Alloc(place, all_fidseq_bucket_len * sizeof(ValType));
   ValType* d_all_fidseq_bucket_vals_ptr = reinterpret_cast<ValType*>(d_all_fidseq_bucket_vals->ptr());
@@ -693,6 +704,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   //total_time += timeline.ElapsedSec();
   //time_ss << ",reset_xpu_memory:" << timeline.ElapsedSec();
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE6, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE7, dev_id);
   if (resource_->total_device() > 1) {
     //timeline.Start();
 
@@ -716,6 +729,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     d_all_fidseq_bucket_vals_ptr = d_fidseq_bucket_vals_ptr;
   }
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE7, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE8, dev_id);
   // fill to d_val
   //timeline.Start();
 
@@ -724,6 +739,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   cache_mgr_->get_bfidseq(dev_id, &d_bfids_ptr, &bfid_len);
   PADDLE_ENFORCE_EQ(bfid_len, len);
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE8, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE9, dev_id);
   //timeline.Pause();
   //total_time += timeline.ElapsedSec();
   //time_ss << ",get_bfidseq:" << timeline.ElapsedSec();
@@ -732,12 +749,15 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   heter_comm_kernel_->fill_dvals_with_bfid(d_all_fidseq_bucket_vals_ptr, d_vals, d_bfids_ptr, len, stream);
   sync_stream(stream);
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE9, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE10, dev_id);
   //timeline.Pause();
   //total_time += timeline.ElapsedSec();
   //time_ss << ",fill_dvals_with_bfid:" << timeline.ElapsedSec();
 
   cache_mgr_->prepare_merge_grad(dev_id);
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE10, dev_id);
   //VLOG(0) << "pull_sparse time cost:" << total_time
   //       << " sec, detail:" << time_ss.str();
 #else
@@ -857,6 +877,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     destroy_storage(num, i);
   }
 #endif
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_ALL, dev_id);
 }
 
 #if defined(PADDLE_WITH_CUDA)
@@ -983,9 +1004,10 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   if (len == 0) {
     return;
   }
-
+  
   int dev_id = resource_->dev_id(dev_num);
-
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_HETER_ALL, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE1, dev_id);
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(dev_num, 0);
@@ -1015,6 +1037,8 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   cache_mgr_->get_bfidseq(dev_id, &d_bfids_ptr, &bfid_len);
   PADDLE_ENFORCE_EQ(bfid_len, len);
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE1, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE2, dev_id);
   //timeline.Pause();
   //total_time += timeline.ElapsedSec();
   //time_ss << ",alloc_merge_grad:" << timeline.ElapsedSec();
@@ -1035,6 +1059,8 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   //total_time += timeline.ElapsedSec();
   //time_ss << ",get_merge_grad_params:" << timeline.ElapsedSec();
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE2, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE3, dev_id);
   int* host_keys = (int*)malloc(sizeof(int) * len);
   FeaturePushValue* host_grads = (FeaturePushValue*)malloc(sizeof(FeaturePushValue) * len);
   FeaturePushValue* host_dest_ref = (FeaturePushValue*)malloc(sizeof(FeaturePushValue) * len);
@@ -1052,6 +1078,8 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   //time_ss << ",merge_grad:" << timeline.ElapsedSec();
   //timeline.Start();
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE3, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE4, dev_id);
   // all_gather
   auto d_all_grads = memory::Alloc(place, all_fidseq_bucket_len * sizeof(GradType));
   GradType* d_all_grads_ptr = reinterpret_cast<GradType*>(d_all_grads->ptr());
@@ -1076,6 +1104,8 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
     d_all_grads_ptr = d_all_fidseq_bucket_grads_ptr;
   }
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE4, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE5, dev_id);
   // update
   //timeline.Start();
 
@@ -1087,6 +1117,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   VLOG(3) << "heter comm inl push sparse update finish";
   sync_stream(stream);
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE5, dev_id);
   // timeline.Pause();
   // total_time += timeline.ElapsedSec();
   // time_ss << ",update:" << timeline.ElapsedSec();
@@ -1198,6 +1229,8 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
     destroy_storage(dev_num, i);
   }
 #endif
+
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_HETER_ALL, dev_id);
 }
 
 #endif

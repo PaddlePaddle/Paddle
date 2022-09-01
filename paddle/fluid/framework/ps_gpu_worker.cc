@@ -338,12 +338,15 @@ void PSGPUWorker::TrainFilesWithProfiler() {
     for (auto& op : ops_) {
       bool need_skip = false;
       //the following code should be opt
+
+      TIMER_MULTITHREAD_ENTER(platform::TIMER_WORKER_SKIP_OPS, thread_id_);
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
         if (op->Type().find(skip_ops_[t]) != std::string::npos) {
           need_skip = true;
           break;
         }
       }
+      TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_SKIP_OPS, thread_id_);
       if (!need_skip) {
         timeline.Start();
         VLOG(3) << "Going to run op " << op_name[run_op_idx];

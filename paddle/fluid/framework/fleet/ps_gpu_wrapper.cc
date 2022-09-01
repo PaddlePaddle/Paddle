@@ -1055,6 +1055,10 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                               const std::vector<float*>& values,
                               const std::vector<int64_t>& slot_lengths,
                               const int hidden_size) {
+  int d_id = place.GetDeviceId();
+  int thread_id = HeterPs_->get_index_by_devid(d_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_ALL, thread_id);
+ 
   platform::Timer all_timer;
   platform::Timer pull_gpups_timer;
   all_timer.Start();
@@ -1111,6 +1115,8 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
 #endif
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_KP
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_DO, thread_id);
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_DO_FIRST, thread_id);
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
     int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
@@ -1136,28 +1142,37 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                                           slot_lengths.size() * sizeof(int64_t),
                                           XPU_HOST_TO_DEVICE));
 
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_DO_FIRST, thread_id);
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_COPY, thread_id);
     this->CopyKeys(place, xpu_keys, total_keys, xpu_len,
                    static_cast<int>(slot_lengths.size()),
                    static_cast<int>(total_length));
     VLOG(3) << "Begin call PullSparseGPU in GPUPS, dev: " << devid_2_index
             << " len: " << total_length;
 
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_COPY, thread_id);
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_FID2BFID, thread_id);
     auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
     cache_manager->convert_fid2bfid(device_id, total_keys, static_cast<int>(total_length));
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_FID2BFID, thread_id);
 #endif
-
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_PULL, thread_id);
     pull_gpups_timer.Start();
     HeterPs_->pull_sparse(devid_2_index, total_keys, total_values_gpu,
                           static_cast<int>(total_length));
     pull_gpups_timer.Pause();
 
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_PULL, thread_id);
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_COPY_FOR_PULL, thread_id);
     VLOG(3) << "Begin Copy result to tensor, total_length[" << total_length
             << "]";
     this->CopyForPull(place, xpu_keys, values, total_values_gpu, xpu_len,
                       static_cast<int>(slot_lengths.size()), hidden_size,
                       total_length);
 
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_COPY_FOR_PULL, thread_id);
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_DO, thread_id);
 #endif
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -1168,6 +1183,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
           << " s, of which GPUPS costs: " << pull_gpups_timer.ElapsedSec()
           << " s";
   VLOG(3) << "End PullSparse";
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_ALL, thread_id);
 }
 
 void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
@@ -1176,6 +1192,9 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
                                   const std::vector<const float*>& grad_values,
                                   const std::vector<int64_t>& slot_lengths,
                                   const int hidden_size, const int batch_size) {
+  int d_id = place.GetDeviceId();
+  int thread_id = HeterPs_->get_index_by_devid(d_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_GRAD_ALL, thread_id);
   platform::Timer all_timer;
   platform::Timer push_gpups_timer;
   all_timer.Start();
@@ -1209,22 +1228,28 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
 #endif
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_KP
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_GRAD_DO, thread_id);
     int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
     LoDTensor& cached_total_keys_tensor = keys_tensor[devid_2_index];
     uint32_t* total_keys =
         reinterpret_cast<uint32_t*>(cached_total_keys_tensor.data<int32_t>());
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_GRAD_COPY, thread_id);
     VLOG(3) << "Begin copy grad tensor to xpups struct";
     this->CopyForPush(place, grad_values, total_grad_values_gpu, slot_lengths,
                       hidden_size, total_length, batch_size);
 
     VLOG(3) << "Begin call PushSparseXPU in XPUPS, dev: " << devid_2_index
             << " len: " << total_length;
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_GRAD_COPY, thread_id);
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_GRAD_PUSH, thread_id);
     push_gpups_timer.Start();
 
     HeterPs_->push_sparse(devid_2_index, total_keys, total_grad_values_gpu,
                           static_cast<int>(total_length));
     push_gpups_timer.Pause();
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_GRAD_PUSH, thread_id);
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_GRAD_DO, thread_id);
 #endif
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -1235,6 +1260,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
           << " s, of which GPUPS cost: " << push_gpups_timer.ElapsedSec()
           << " s";
   VLOG(3) << "End PushSparseGrad";
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_GRAD_ALL, thread_id);
 }
 
 }  // end namespace framework
