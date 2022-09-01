@@ -54,29 +54,22 @@ class QuantDequantMkldnnPass : public FusePassBase {
   void CollectWeightScalesInfoFromONNXFormatDequantize(
       ir::Graph* graph,
       Scope* scope,
-      const std::unordered_set<std::string>& onnx_format_dequantize_types,
       std::unordered_map<std::string, std::vector<float>>* weight_thresholds,
       std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
       bool* onnx_format_quantize_model) const;
 
-  void CollectInputScalesFromFake(
+  void CollectInputScalesFromQuantize(
       ir::Graph* graph,
       Scope* scope,
       const std::unordered_set<std::string>& fake_quantize_types,
       std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
       const;
 
-  ///
-  /// \brief collect scale info for act from onnx_format quantize_linear op
-  /// onnx_format_quantize_types: the onnx_format quantize op type
-  /// var_quant_scales: scale info for act
-  ///
-  void CollectInputScalesFromONNXFormatQuantize(
-      ir::Graph* graph,
-      Scope* scope,
-      const std::unordered_set<std::string>& onnx_format_quantize_types,
-      std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
-      const;
+  void ConvertFromINT8ToFP32(const std::vector<float>& scales,
+                             Tensor* weight_tensor,
+                             int8_t* int8_weight_data,
+                             float* fp32_weight_data,
+                             const std::string& weight_var_name) const;
 
   void CollectOutputScalesFromAttr(
       ir::Graph* graph,
