@@ -155,6 +155,8 @@ class ParallelExecutor {
   ParallelExecutorPrivate *member_;
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
   std::vector<VariableInfo> var_infos_;
+
+  bool is_run_{false};
 };
 }  // namespace framework
 }  // namespace paddle

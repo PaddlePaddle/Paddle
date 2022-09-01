@@ -157,6 +157,7 @@ class Executor {
 
  private:
   const platform::Place place_;
+  bool is_run_{false};
 };
 
 }  // namespace framework
