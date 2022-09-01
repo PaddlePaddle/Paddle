@@ -209,7 +209,7 @@ std::vector<std::vector<std::vector<std::string>>> GetEagerDeletionCleanVars(
 std::vector<std::vector<std::vector<std::string>>>
 GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
                                     const std::vector<std::string> &skip_vars,
-                                    const bool &for_partial_block) {
+                                    const bool for_partial_block) {
   ProgramDesc program{origin_program};
   size_t block_num = program.Size();
   PADDLE_ENFORCE_GE(block_num,

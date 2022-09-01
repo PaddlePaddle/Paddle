@@ -542,6 +542,13 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
     return is_opt && contains_fused_var;
   };
 
+  std::set<std::string> control_op{"while",
+                                   "while_grad",
+                                   "conditional_block",
+                                   "conditional_block_grad",
+                                   "recurrent",
+                                   "recurrent_grad"};
+
   for (Node *n : nodes) {
     // if node is not Op, skip
     if (!n->IsOp()) continue;
@@ -572,10 +579,7 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
         ops->emplace_back(depend_desc);
         VLOG(4) << "add depend op";
       }
-      if (n->Name() == "while" || n->Name() == "while_grad" ||
-          n->Name() == "conditional_block" ||
-          n->Name() == "conditional_block_grad" || n->Name() == "recurrent" ||
-          n->Name() == "recurrent_grad") {
+      if (control_op.find(n->Name()) != control_op.end()) {
         VLOG(1) << "Update control op attr: skip_eager_deletion_vars";
         UpdateControlOpSkipEagerDeletionVars(*n, graph, graph_idx, n->Name());
       }
