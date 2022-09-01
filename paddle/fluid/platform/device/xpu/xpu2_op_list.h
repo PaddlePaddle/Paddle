@@ -84,6 +84,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace())})},
+      {"c_embedding", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"c_identity",
        XPUKernelSet({pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace()),
