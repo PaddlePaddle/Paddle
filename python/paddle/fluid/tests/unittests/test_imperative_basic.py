@@ -159,8 +159,8 @@ class TestImperative(unittest.TestCase):
             out.backward()
             dy_grad2 = mlp._linear1.weight.gradient()
         self.assertFalse(fluid.dygraph.enabled())
-        self.assertTrue(np.array_equal(dy_out1, dy_out2))
-        self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
+        np.testing.assert_array_equal(dy_out1, dy_out2)
+        np.testing.assert_array_equal(dy_grad1, dy_grad2)
 
     def test_functional_dygraph_context(self):
         with _test_eager_guard():
@@ -190,8 +190,8 @@ class TestImperative(unittest.TestCase):
         dy_grad2 = mlp._linear1.weight.gradient()
         paddle.enable_static()
         self.assertFalse(paddle.in_dynamic_mode())
-        self.assertTrue(np.array_equal(dy_out1, dy_out2))
-        self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
+        np.testing.assert_array_equal(dy_out1, dy_out2)
+        np.testing.assert_array_equal(dy_grad1, dy_grad2)
 
     def test_functional_paddle_imperative_dygraph_context(self):
         with _test_eager_guard():
@@ -229,12 +229,12 @@ class TestImperative(unittest.TestCase):
             egr_tmp5 = fluid.core.eager.Tensor(value=x)
             egr_tmp6 = fluid.core.eager.Tensor(t)
 
-            self.assertTrue(np.array_equal(x, egr_tmp.numpy()))
-            self.assertTrue(np.array_equal(y, egr_tmp2.numpy()))
-            self.assertTrue(np.array_equal(x, egr_tmp3.numpy()))
-            self.assertTrue(np.array_equal(y, egr_tmp4.numpy()))
-            self.assertTrue(np.array_equal(x, egr_tmp5.numpy()))
-            self.assertTrue(np.array_equal(x, egr_tmp6.numpy()))
+            np.testing.assert_array_equal(x, egr_tmp.numpy())
+            np.testing.assert_array_equal(y, egr_tmp2.numpy())
+            np.testing.assert_array_equal(x, egr_tmp3.numpy())
+            np.testing.assert_array_equal(y, egr_tmp4.numpy())
+            np.testing.assert_array_equal(x, egr_tmp5.numpy())
+            np.testing.assert_array_equal(x, egr_tmp6.numpy())
         else:
             tmp = fluid.core.VarBase(value=x, place=fluid.core.CPUPlace())
             tmp2 = fluid.core.VarBase(y, fluid.core.CPUPlace())
@@ -243,12 +243,12 @@ class TestImperative(unittest.TestCase):
             tmp5 = fluid.core.VarBase(value=x)
             tmp6 = fluid.core.VarBase(t)
 
-            self.assertTrue(np.array_equal(x, tmp.numpy()))
-            self.assertTrue(np.array_equal(y, tmp2.numpy()))
-            self.assertTrue(np.array_equal(x, tmp3.numpy()))
-            self.assertTrue(np.array_equal(y, tmp4.numpy()))
-            self.assertTrue(np.array_equal(x, tmp5.numpy()))
-            self.assertTrue(np.array_equal(x, tmp6.numpy()))
+            np.testing.assert_array_equal(x, tmp.numpy())
+            np.testing.assert_array_equal(y, tmp2.numpy())
+            np.testing.assert_array_equal(x, tmp3.numpy())
+            np.testing.assert_array_equal(y, tmp4.numpy())
+            np.testing.assert_array_equal(x, tmp5.numpy())
+            np.testing.assert_array_equal(x, tmp6.numpy())
 
     def test_create_varbase(self):
         with fluid.dygraph.guard():
@@ -343,11 +343,11 @@ class TestImperative(unittest.TestCase):
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             loss2.backward()
 
-            self.assertTrue(np.allclose(ret.numpy(), x * 10))
-            self.assertTrue(np.allclose(inputs[0].gradient(), x))
-            self.assertTrue(np.allclose(ret2.numpy(), x * 10))
+            np.testing.assert_allclose(ret.numpy(), x * 10, rtol=1e-05)
+            np.testing.assert_allclose(inputs[0].gradient(), x, rtol=1e-05)
+            np.testing.assert_allclose(ret2.numpy(), x * 10, rtol=1e-05)
             a = inputs2[0].gradient()
-            self.assertTrue(np.allclose(inputs2[0].gradient(), x))
+            np.testing.assert_allclose(inputs2[0].gradient(), x, rtol=1e-05)
 
     def test_sum_op(self):
         with _test_eager_guard():
@@ -479,10 +479,10 @@ class TestImperative(unittest.TestCase):
                 feed={inp.name: np_inp},
                 fetch_list=[x.name, param_grads[1].name])
 
-        self.assertTrue(np.array_equal(dy_out, static_out))
-        self.assertTrue(np.array_equal(dy_grad, static_grad))
-        self.assertTrue(np.array_equal(dy_out2, static_out))
-        self.assertTrue(np.array_equal(dy_grad2, static_grad))
+        np.testing.assert_array_equal(dy_out, static_out)
+        np.testing.assert_array_equal(dy_grad, static_grad)
+        np.testing.assert_array_equal(dy_out2, static_out)
+        np.testing.assert_array_equal(dy_grad2, static_grad)
 
     def test_layer_in_out(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
@@ -526,10 +526,10 @@ class TestImperative(unittest.TestCase):
                 feed={inp.name: np_inp},
                 fetch_list=[out.name, param_grads[1].name])
 
-        self.assertTrue(np.allclose(dy_out, static_out))
-        self.assertTrue(np.allclose(dy_grad, static_grad))
-        self.assertTrue(np.allclose(dy_out2, static_out))
-        self.assertTrue(np.allclose(dy_grad2, static_grad))
+        np.testing.assert_allclose(dy_out, static_out, rtol=1e-05)
+        np.testing.assert_allclose(dy_grad, static_grad, rtol=1e-05)
+        np.testing.assert_allclose(dy_out2, static_out, rtol=1e-05)
+        np.testing.assert_allclose(dy_grad2, static_grad, rtol=1e-05)
 
         params = mlp.parameters(True)
         self.assertEqual("linear_0.w_0", params[0].name)
@@ -577,9 +577,9 @@ class TestImperative(unittest.TestCase):
                 loss2 = x * z
                 loss1.backward(retain_graph=True)
                 loss2.backward(retain_graph=True)
-                self.assertTrue(np.array_equal(x.grad.numpy(), [23.]))
-                self.assertTrue(np.array_equal(y.grad.numpy(), [25.]))
-                self.assertTrue(np.array_equal(z.grad.numpy(), [5.]))
+                np.testing.assert_array_equal(x.grad.numpy(), [23.0])
+                np.testing.assert_array_equal(y.grad.numpy(), [25.0])
+                np.testing.assert_array_equal(z.grad.numpy(), [5.0])
                 x.clear_grad()
                 y.clear_grad()
                 z.clear_grad()
@@ -592,13 +592,13 @@ class TestImperative(unittest.TestCase):
             loss = fun(x, y, z)
             loss.backward(retain_graph=True)
             # x.grad = 2*x*y + z + 2*y = 27
-            self.assertTrue(np.array_equal(x.grad.numpy(), [27]))
+            np.testing.assert_array_equal(x.grad.numpy(), [27])
 
             loss.backward(retain_graph=True)
-            self.assertTrue(np.array_equal(x.grad.numpy(), [54]))
+            np.testing.assert_array_equal(x.grad.numpy(), [54])
 
             loss.backward()
-            self.assertTrue(np.array_equal(x.grad.numpy(), [81]))
+            np.testing.assert_array_equal(x.grad.numpy(), [81])
 
             with self.assertRaises(RuntimeError):
                 loss.backward()
@@ -608,8 +608,8 @@ class TestImperative(unittest.TestCase):
             dx = paddle.grad([loss1], x, create_graph=True)[0]
             loss = loss1 + loss2 + dx
             loss.backward()
-            self.assertTrue(np.array_equal(dx.grad.numpy(), [1]))
-            self.assertTrue(np.array_equal(x.grad.numpy(), [108]))
+            np.testing.assert_array_equal(dx.grad.numpy(), [1])
+            np.testing.assert_array_equal(x.grad.numpy(), [108])
 
         def test_mlp(sort_sum_gradient):
             fluid.set_flags({'FLAGS_sort_sum_gradient': sort_sum_gradient})
@@ -641,22 +641,22 @@ class TestImperative(unittest.TestCase):
                 loss = mlp1(x)
                 loss.backward()
 
-                self.assertTrue(np.array_equal(loss.grad.numpy(), [1]))
-                self.assertTrue(
-                    np.allclose(mlp1._linear1.weight.grad.numpy(),
-                                expected_weight1_grad))
-                self.assertTrue(
-                    np.allclose(mlp1._linear1.bias.grad.numpy(),
-                                expected_bias1_grad))
-                self.assertTrue(
-                    np.allclose(mlp1._linear2.weight.grad.numpy(),
-                                expected_weight2_grad))
-                self.assertTrue(
-                    np.allclose(mlp1._linear2.bias.grad.numpy(),
-                                expected_bias2_grad))
+                np.testing.assert_array_equal(loss.grad.numpy(), [1])
+                np.testing.assert_allclose(mlp1._linear1.weight.grad.numpy(),
+                                           expected_weight1_grad,
+                                           rtol=1e-05)
+                np.testing.assert_allclose(mlp1._linear1.bias.grad.numpy(),
+                                           expected_bias1_grad,
+                                           rtol=1e-05)
+                np.testing.assert_allclose(mlp1._linear2.weight.grad.numpy(),
+                                           expected_weight2_grad,
+                                           rtol=1e-05)
+                np.testing.assert_allclose(mlp1._linear2.bias.grad.numpy(),
+                                           expected_bias2_grad,
+                                           rtol=1e-05)
 
                 mlp2.clear_gradients()
-                self.assertTrue(np.array_equal(clear_loss.grad.numpy(), [1]))
+                np.testing.assert_array_equal(clear_loss.grad.numpy(), [1])
                 if ((batch_id + 1) % 10) % 2 == 0:
                     mlp1.clear_gradients()
                     expected_weight1_grad = 0.
@@ -734,7 +734,7 @@ class TestImperative(unittest.TestCase):
                                         'inp2': np_inp2
                                     },
                                     fetch_list=out)[0]
-        self.assertTrue(np.allclose(dygraph_result, static_result))
+        np.testing.assert_allclose(dygraph_result, static_result, rtol=1e-05)
 
     def test_dygraph_vs_static(self):
         with _test_eager_guard():
@@ -785,14 +785,14 @@ class TestImperative(unittest.TestCase):
                     param_grads[1][1].name, param_grads[2][1].name
                 ])
 
-        self.assertTrue(np.array_equal(dy_out, static_out))
-        self.assertTrue(np.array_equal(dy_grad_h2o, static_grad_h2o))
-        self.assertTrue(np.array_equal(dy_grad_h2h, static_grad_h2h))
-        self.assertTrue(np.array_equal(dy_grad_i2h, static_grad_i2h))
-        self.assertTrue(np.array_equal(dy_out2, static_out))
-        self.assertTrue(np.array_equal(dy_grad_h2o2, static_grad_h2o))
-        self.assertTrue(np.array_equal(dy_grad_h2h2, static_grad_h2h))
-        self.assertTrue(np.array_equal(dy_grad_i2h2, static_grad_i2h))
+        np.testing.assert_array_equal(dy_out, static_out)
+        np.testing.assert_array_equal(dy_grad_h2o, static_grad_h2o)
+        np.testing.assert_array_equal(dy_grad_h2h, static_grad_h2h)
+        np.testing.assert_array_equal(dy_grad_i2h, static_grad_i2h)
+        np.testing.assert_array_equal(dy_out2, static_out)
+        np.testing.assert_array_equal(dy_grad_h2o2, static_grad_h2o)
+        np.testing.assert_array_equal(dy_grad_h2h2, static_grad_h2h)
+        np.testing.assert_array_equal(dy_grad_i2h2, static_grad_i2h)
 
     def test_rnn(self):
         with _test_eager_guard():
@@ -846,7 +846,7 @@ class TestDygraphUtils(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             res1 = func(a, act="hard_sigmoid")
             res2 = fluid.layers.hard_sigmoid(a)
-            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+            np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_append_activation_in_dygraph1(self):
         with _test_eager_guard():
@@ -860,7 +860,7 @@ class TestDygraphUtils(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             res1 = func(a, act="sigmoid", use_mkldnn=True, use_cudnn=True)
             res2 = fluid.layers.sigmoid(a)
-            self.assertTrue(np.allclose(res1.numpy(), res2.numpy()))
+            np.testing.assert_allclose(res1.numpy(), res2.numpy(), rtol=1e-05)
 
     def test_append_activation_in_dygraph2(self):
         with _test_eager_guard():
@@ -875,7 +875,7 @@ class TestDygraphUtils(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             res1 = func(a, act="sigmoid", use_cudnn=True)
             res2 = fluid.layers.sigmoid(a)
-            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+            np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_append_activation_in_dygraph3(self):
         with _test_eager_guard():
@@ -892,7 +892,7 @@ class TestDygraphUtils(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             res1 = func(a)
             res2 = fluid.layers.relu(a)
-            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+            np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_append_activation_in_dygraph_use_mkldnn(self):
         with _test_eager_guard():
@@ -911,7 +911,7 @@ class TestDygraphUtils(unittest.TestCase):
             finally:
                 fluid.set_flags({'FLAGS_use_mkldnn': False})
             res2 = fluid.layers.relu(a)
-        self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+        np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_append_activation_in_dygraph_global_use_mkldnn(self):
         with _test_eager_guard():
@@ -937,7 +937,7 @@ class TestDygraphUtils(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             res1 = func(a, bias=a)
             res2 = paddle.add(a, a)
-            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+            np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_append_bias_in_dygraph(self):
         with _test_eager_guard():

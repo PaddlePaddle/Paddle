@@ -272,10 +272,8 @@ class TestExpandDygraphAPI(unittest.TestCase):
             c = paddle.fluid.layers.expand(a,
                                            expand_times=paddle.to_tensor(
                                                [2, 3], dtype='int32'))
-            self.assertTrue(
-                np.array_equal(b.numpy(), np.tile(a.numpy(), [2, 3])))
-            self.assertTrue(
-                np.array_equal(c.numpy(), np.tile(a.numpy(), [2, 3])))
+            np.testing.assert_array_equal(b.numpy(), np.tile(a.numpy(), [2, 3]))
+            np.testing.assert_array_equal(c.numpy(), np.tile(a.numpy(), [2, 3]))
 
 
 if __name__ == "__main__":

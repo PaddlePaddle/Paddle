@@ -71,11 +71,8 @@ class TestAutoTune(unittest.TestCase):
         }
         if paddle.is_compiled_with_cuda():
             # Total 3 * num_iters cache accesses, only iter 2 hits the cache.
-            if enable_autotune and step_id >= 1:
-                expected_res["cache_size"] = 3
-            if enable_autotune and step_id == 2:
-                expected_res["cache_hit_rate"] = np.round(
-                    float(3) / float(9), 5)
+            expected_res["cache_size"] = 3
+            expected_res["cache_hit_rate"] = (step_id + 0.0) / (step_id + 1.0)
         return expected_res
 
     def test_autotune(self):
@@ -91,11 +88,11 @@ class TestAutoTune(unittest.TestCase):
     def check_status(self, expected_res):
         status = paddle.fluid.core.autotune_status()
         for key in status.keys():
+            v = status[key]
             if key == "cache_hit_rate":
-                v = np.round(status[key], 5)
+                np.testing.assert_allclose(v, expected_res[key])
             else:
-                v = status[key]
-            self.assertEqual(v, expected_res[key])
+                np.testing.assert_array_equal(v, expected_res[key])
 
 
 class TestDygraphAutoTuneStatus(TestAutoTune):

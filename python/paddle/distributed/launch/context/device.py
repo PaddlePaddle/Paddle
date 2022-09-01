@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import os
+import paddle.fluid as fluid
+from paddle.device import get_available_custom_device
 
 
 class DeviceType:
@@ -22,6 +24,7 @@ class DeviceType:
     NPU = 'npu'
     MLU = 'mlu'
     IPU = 'ipu'
+    CUSTOM_DEVICE = 'custom_device'
 
 
 class Device(object):
@@ -72,6 +75,8 @@ class Device(object):
             return 'FLAGS_selected_mlus'
         if self._dtype == DeviceType.IPU:
             return 'FLAGS_selected_ipus'
+        if self._dtype == DeviceType.CUSTOM_DEVICE:
+            return 'FLAGS_selected_{}s'.format(os.getenv('PADDLE_XCCL_BACKEND'))
         return 'FLAGS_selected_devices'
 
     def get_selected_devices(self, devices=''):
@@ -84,14 +89,25 @@ class Device(object):
             devs = [x.strip() for x in devices.split(',')]
             return [str(self._labels.index(d)) for d in devs]
 
+    def get_custom_device_envs(self):
+        return {
+            'PADDLE_DISTRI_BACKEND': 'xccl',
+            'PADDLE_XCCL_BACKEND': os.getenv('PADDLE_XCCL_BACKEND'),
+        }
+
     @classmethod
     def parse_device(self):
         dev = Device()
         visible_devices = None
-        if 'CUDA_VISIBLE_DEVICES' in os.environ or 'NVIDIA_VISIBLE_DEVICES' in os.environ:
+        if 'PADDLE_XCCL_BACKEND' in os.environ:
+            dev._dtype = DeviceType.CUSTOM_DEVICE
+            visible_devices_str = '{}_VISIBLE_DEVICES'.format(
+                os.getenv('PADDLE_XCCL_BACKEND').upper())
+            if visible_devices_str in os.environ:
+                visible_devices = os.getenv(visible_devices_str)
+        elif 'CUDA_VISIBLE_DEVICES' in os.environ:
             dev._dtype = DeviceType.GPU
-            visible_devices = os.getenv("CUDA_VISIBLE_DEVICES") or os.getenv(
-                "NVIDIA_VISIBLE_DEVICES")
+            visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
         elif 'XPU_VISIBLE_DEVICES' in os.environ:
             dev._dtype = DeviceType.XPU
             visible_devices = os.getenv("XPU_VISIBLE_DEVICES")
@@ -111,16 +127,30 @@ class Device(object):
 
     @classmethod
     def detect_device(self):
-        import paddle.fluid as fluid
+
+        def get_custom_devices_count(device_type):
+            all_custom_devices = get_available_custom_device()
+            all_custom_devices = [
+                device.split(':')[0] for device in all_custom_devices
+            ]
+            custom_devices_count = all_custom_devices.count(device_type)
+            return custom_devices_count
 
         dev = Device()
         num = 0
         visible_devices = None
-        if fluid.core.is_compiled_with_cuda():
+        if 'PADDLE_XCCL_BACKEND' in os.environ:
+            custom_device_type = os.getenv('PADDLE_XCCL_BACKEND')
+            dev._dtype = DeviceType.CUSTOM_DEVICE
+            num = get_custom_devices_count(custom_device_type)
+            visible_devices_str = '{}_VISIBLE_DEVICES'.format(
+                custom_device_type.upper())
+            if visible_devices_str in os.environ:
+                visible_devices = os.getenv(visible_devices_str)
+        elif fluid.core.is_compiled_with_cuda():
             dev._dtype = DeviceType.GPU
             num = fluid.core.get_cuda_device_count()
-            visible_devices = os.getenv("CUDA_VISIBLE_DEVICES") or os.getenv(
-                "NVIDIA_VISIBLE_DEVICES")
+            visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
         elif fluid.core.is_compiled_with_xpu():
             dev._dtype = DeviceType.XPU
             num = fluid.core.get_xpu_device_count()

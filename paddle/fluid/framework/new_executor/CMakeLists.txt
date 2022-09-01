@@ -18,6 +18,7 @@ set(STANDALONE_EXECUTOR_DEPS
     scope
     framework_proto
     data_feed_proto
+    ops_extra_info
     heter_service_proto
     trainer_desc_proto
     glog
@@ -39,14 +40,9 @@ set(STANDALONE_EXECUTOR_DEPS
     scope
     glog
     workqueue
-    interpretercore_event_garbage_collector
+    interpretercore_garbage_collector
     ${DEVICE_EVENT_LIBS}
     glog)
-
-if(WITH_GPU OR WITH_ROCM)
-  set(STANDALONE_EXECUTOR_DEPS ${STANDALONE_EXECUTOR_DEPS}
-                               interpretercore_fast_garbage_collector)
-endif()
 
 cc_library(
   standalone_executor

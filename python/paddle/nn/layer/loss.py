@@ -295,7 +295,7 @@ class CrossEntropyLoss(Layer):
         - **input** (Tensor)
 
             Input tensor, the data type is float32, float64. Shape is
-	    :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
+        :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
 
             Note: 
 
@@ -303,7 +303,7 @@ class CrossEntropyLoss(Layer):
                 output of softmax operator, which will produce incorrect results.
 
                 2. when use_softmax=False, it expects the output of softmax operator.
- 
+
 
         - **label** (Tensor)
 
@@ -313,7 +313,7 @@ class CrossEntropyLoss(Layer):
 
             2. If soft_label=True, the shape and data type should be same with ``input`` , 
             and the sum of the labels for each sample should be 1.
- 
+
         - **output** (Tensor)
 
             Return the softmax cross_entropy loss of ``input`` and ``label``.
@@ -328,10 +328,11 @@ class CrossEntropyLoss(Layer):
 
             2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
 
-     Example1(hard labels):
+    Examples:
 
         .. code-block:: python
             
+            # hard labels
             import paddle
             paddle.seed(99999)
             N=100
@@ -348,11 +349,9 @@ class CrossEntropyLoss(Layer):
                                        label)
             print(dy_ret.numpy()) #[5.41993642]
 
-
-    Example2(soft labels):
-
         .. code-block:: python
-            
+
+            # soft labels
             import paddle
             paddle.seed(99999)
             axis = -1
@@ -603,8 +602,7 @@ class MSELoss(Layer):
                                                        'MSELoss')
 
         if in_dygraph_mode():
-            square_out = paddle._C_ops.final_state_square(
-                paddle.subtract(input, label))
+            square_out = paddle._C_ops.square(paddle.subtract(input, label))
         else:
             square_out = paddle.square(paddle.subtract(input, label))
         if self.reduction == 'none':
@@ -796,7 +794,7 @@ class NLLLoss(Layer):
     This class accepts input and target label and returns negative log likelihood
     cross error. It is useful to train a classification problem with C classes.
 
-    The input for the loss is epected to contain log-probabilities of
+    The input for the loss is expected to contain log-probabilities of
     each classes. It has to be a Tensor of size either (batch_size, C) or
     (batch_size, C, d1, d2, ..., dK) with K >= 1 for the K-dimensional case.
     The label for the loss should be a class index in the range [0, C-1]
@@ -814,7 +812,7 @@ class NLLLoss(Layer):
 
         \ell(x, y) = L = \{l_1,\dots,l_N\}^\top, \quad
         l_n = - w_{y_n} x_{n,y_n}, \quad
-        w_{c} = \text{weight}[c] \cdot \mathbb{1}\{c \not= \text{ignore\_index}\},
+        w_{c} = \text{weight}[c] \cdot \mathbb{1}\{c \not= \text{ignore_index}\},
 
     where :math:`N` is the batch size. If :attr:`reduction` is not ``'none'``
     (default ``'mean'``), then
@@ -836,7 +834,7 @@ class NLLLoss(Layer):
             to each class. If given, it has to be a 1D Tensor whose size is `[C, ]`. Otherwise,
             it treated as if having all ones. the data type is
             float32, float64, Default is ``'None'``.
-        ignore_index (int64, optional): Specifies a target value that is ignored
+        ignore_index (int, optional): Specifies a target value that is ignored
             and does not contribute to the input gradient.
         reduction (str, optional): Indicate how to average the loss,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
@@ -844,16 +842,15 @@ class NLLLoss(Layer):
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
             if `reduction` is ``'none'``, no reduction will be apllied.
             Default is ``'mean'``.
-         name (str, optional): Name for the operation (optional, default is None).
-             For more information, please refer to :ref:`api_guide_Name`.
+         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Shape:
-        input (Tensor): Input tensor, the shape is :math:`[N, C]`, `C` is the number of classes.
+        - input (Tensor): Input tensor, the shape is :math:`[N, C]`, `C` is the number of classes.
             But in K-dimension situation, the shape is :math:`[N, C, d_1, d_2, ..., d_K]`.
             The data type is float32, float64.
-        label (Tensor): Label tensor, the shape is :math:`[N,]` or :math:`[N, d_1, d_2, ..., d_K]`.
+        - label (Tensor): Label tensor, the shape is :math:`[N,]` or :math:`[N, d_1, d_2, ..., d_K]`.
             The data type is int64.
-        output (Tensor): the `negative log likelihood loss` between input `x` and `label`.
+        - output (Tensor): the `negative log likelihood loss` between input `x` and `label`.
             If `reduction` is `'none'`, the shape is `[N, *]`.
             If `reduction` is `'sum'` or `'mean'`, the shape is `[1]`.
 
@@ -1178,16 +1175,16 @@ class SmoothL1Loss(Layer):
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Call Parameters:
-        input (Tensor): Input tensor, the data type is float32 or float64. Shape is
-            (N, C), where C is number of classes, and if shape is more than 2D, this
-            is (N, C, D1, D2,..., Dk), k >= 1.
-        label (Tensor): Label tensor, the data type is float32 or float64. The shape of label
-            is the same as the shape of input.
+
+        input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), 
+        where C is number of classes, and if shape is more than 2D, 
+        this is (N, C, D1, D2,..., Dk), k >= 1.
+
+        label (Tensor): Label tensor, the data type is float32 or float64. 
+        The shape of label is the same as the shape of input.
 
     Returns:
-        The tensor storing the smooth_l1_loss of input and label.
-
-    Return type: Tensor.
+        Tensor, The tensor storing the smooth_l1_loss of input and label.
 
     Examples:
         .. code-block:: python
@@ -1435,7 +1432,6 @@ class CosineEmbeddingLoss(Layer):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
 
             import paddle
 

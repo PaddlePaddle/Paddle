@@ -179,7 +179,7 @@ class TestCumprodAPI(unittest.TestCase):
             out_ref = np.cumprod(self.x, -2)
 
             for r in res:
-                self.assertEqual(np.allclose(out_ref, r), True)
+                np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
         for place in self.place:
             run(place)
@@ -192,7 +192,7 @@ class TestCumprodAPI(unittest.TestCase):
             x = paddle.to_tensor(self.x)
             out = paddle.cumprod(x, 1)
             out_ref = np.cumprod(self.x, 1)
-            self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:

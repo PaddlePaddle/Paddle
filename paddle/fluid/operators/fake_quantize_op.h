@@ -139,7 +139,8 @@ struct FindMovingAverageAbsMaxFunctor {
   void operator()(const DeviceContext &ctx,
                   const framework::Tensor &in_accum,
                   const framework::Tensor &in_state,
-                  const framework::Tensor &cur_scale,
+                  const T *cur_scale,
+                  const float rate,
                   framework::Tensor *out_state,
                   framework::Tensor *out_accum,
                   framework::Tensor *out_scale);
@@ -327,8 +328,10 @@ class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
     // training
     auto *in_accum = context.Input<framework::Tensor>("InAccum");
     auto *in_state = context.Input<framework::Tensor>("InState");
-    auto cur_scale = memory::Alloc(dev_ctx, sizeof(T));
-    T *cur_scale_data = static_cast<T *>(cur_scale->ptr());
+
+    phi::DenseTensor tmp_scale;
+    tmp_scale.Resize(phi::make_dim(1));
+    T *cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
 
     FindAbsMaxFunctor<DeviceContext, T>()(
         dev_ctx, in->data<T>(), in->numel(), cur_scale_data);
@@ -416,8 +419,9 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
     // training
     auto *in_accum = context.Input<framework::Tensor>("InAccum");
     auto *in_state = context.Input<framework::Tensor>("InState");
-    auto cur_scale = memory::Alloc(dev_ctx, sizeof(T));
-    T *cur_scale_data = static_cast<T *>(cur_scale->ptr());
+    phi::DenseTensor tmp_scale;
+    tmp_scale.Resize(phi::make_dim(1));
+    T *cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
 
     FindAbsMaxFunctor<DeviceContext, T>()(
         dev_ctx, in->data<T>(), in->numel(), cur_scale_data);

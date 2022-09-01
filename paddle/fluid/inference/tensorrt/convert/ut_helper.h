@@ -79,7 +79,7 @@ class TRTConvertValidation {
   TRTConvertValidation(int max_batch_size,
                        const std::unordered_set<std::string>& parameters,
                        framework::Scope& scope,  // NOLINT
-                       int workspace_size = 1 << 10,
+                       int64_t workspace_size = 1 << 30,
                        bool if_add_batch = true)
       : parameters_(parameters),
         scope_(scope),

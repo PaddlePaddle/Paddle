@@ -329,7 +329,7 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigIrOptim(
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableTensorRtEngine(
     __pd_keep PD_Config* pd_config,
-    int32_t workspace_size,
+    int64_t workspace_size,
     int32_t max_batch_size,
     int32_t min_subgraph_size,
     PD_PrecisionType precision,
