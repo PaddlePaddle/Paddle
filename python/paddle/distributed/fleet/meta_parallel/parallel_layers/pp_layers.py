@@ -201,58 +201,75 @@ class PipelineLayer(Layer):
         num_stages(int, optional): pp degree, if not specified, 'topology' parameter must be given. 
         topology(CommunicateTopology, optional): topo of hybrid parallel, if it is None, 'num_stages' parameters must be given.
         loss_fn(callable, optional): Loss function.
-        seg_method(str, optional): the method of splitting pp layer, default 'uniform'.
+        seg_method(str, optional): the method of splitting pp layer, default 'uniform', or use specific layer to split, method's name must be start with 'layer:'.
         recompute_interval(int, optional): the number of layers to be used recompute, the value of 0 represents no recompute. default 0. 
         recompute_ctx(dict,optional): the context of recompute, when 'recompute_interval' > 0, the context must be given.
         num_virtual_pipeline_stages(int, optional): the num of virtual pipeline stages for interleave pp.
     Examples:
         .. code-block:: python
-
-    import paddle.nn as nn
-    from paddle.distributed import fleet
-    from paddle.fluid.dygraph.layers import Layer
-    from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
-    class ReshapeHelp(Layer):
-    def __init__(self, shape):
-        super(ReshapeHelp, self).__init__()
-        self.shape = shape
-
-    def forward(self, x):
-        return x.reshape(shape=self.shape)
-
-    class AlexNetPipeDesc(PipelineLayer):
-        def __init__(self, num_classes=10, **kwargs):
-            self.num_classes = num_classes
-            decs = [
-                LayerDesc(
-                    nn.Conv2D, 1, 64, kernel_size=11, stride=4, padding=5),
-                LayerDesc(nn.ReLU),
-                LayerDesc(
-                    nn.MaxPool2D, kernel_size=2, stride=2),
-                LayerDesc(
-                    nn.Conv2D, 64, 192, kernel_size=5, padding=2),
-                F.relu,
-                LayerDesc(
-                    nn.MaxPool2D, kernel_size=2, stride=2),
-                LayerDesc(
-                    nn.Conv2D, 192, 384, kernel_size=3, padding=1),
-                F.relu,
-                LayerDesc(
-                    nn.Conv2D, 384, 256, kernel_size=3, padding=1),
-                F.relu,
-                LayerDesc(
-                    nn.Conv2D, 256, 256, kernel_size=3, padding=1),
-                F.relu,
-                LayerDesc(
-                    nn.MaxPool2D, kernel_size=2, stride=2),
-                LayerDesc(
-                    ReshapeHelp, shape=[-1, 256]),
-                LayerDesc(nn.Linear, 256, self.num_classes),  # classifier
-            ]
-            super(AlexNetPipeDesc, self).__init__(
-                layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
-
-    model = AlexNetPipeDesc(num_stages=pipeline_parallel_size, topology=fleet.get_hybrid_communicate_group()._topo)
+        import paddle.nn as nn
+        from paddle.distributed import fleet
+        from paddle.fluid.dygraph.layers import Layer
+        import paddle.nn.functional as F
+        from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
+        
+        pipeline_parallel_size = 2
+        strategy = fleet.DistributedStrategy()
+        strategy.hybrid_configs = {
+            "dp_degree": 1,
+            "mp_degree": 1,
+            "pp_degree": pipeline_parallel_size
+        }
+        strategy.pipeline_configs = {
+            "accumulate_steps": 4,
+            "micro_batch_size": 2
+        }
+        
+        fleet.init(is_collective=True, strategy=strategy)
+        
+        hcg = fleet.get_hybrid_communicate_group()
+        
+        class ReshapeHelp(Layer):
+            def __init__(self, shape):
+                super(ReshapeHelp, self).__init__()
+                self.shape = shape
+        
+            def forward(self, x):
+                return x.reshape(shape=self.shape)
+        
+        class AlexNetPipeDesc(PipelineLayer):
+            def __init__(self, num_classes=10, **kwargs):
+                self.num_classes = num_classes
+                decs = [
+                    LayerDesc(
+                        nn.Conv2D, 1, 64, kernel_size=11, stride=4, padding=5),
+                    LayerDesc(nn.ReLU),
+                    LayerDesc(
+                        nn.MaxPool2D, kernel_size=2, stride=2),
+                    LayerDesc(
+                        nn.Conv2D, 64, 192, kernel_size=5, padding=2),
+                    F.relu,
+                    LayerDesc(
+                        nn.MaxPool2D, kernel_size=2, stride=2),
+                    LayerDesc(
+                        nn.Conv2D, 192, 384, kernel_size=3, padding=1),
+                    F.relu,
+                    LayerDesc(
+                        nn.Conv2D, 384, 256, kernel_size=3, padding=1),
+                    F.relu,
+                    LayerDesc(
+                        nn.Conv2D, 256, 256, kernel_size=3, padding=1),
+                    F.relu,
+                    LayerDesc(
+                        nn.MaxPool2D, kernel_size=2, stride=2),
+                    LayerDesc(
+                        ReshapeHelp, shape=[-1, 256]),
+                    LayerDesc(nn.Linear, 256, self.num_classes),  # classifier
+                ]
+                super(AlexNetPipeDesc, self).__init__(
+                    layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
+        
+        model = AlexNetPipeDesc(num_stages=pipeline_parallel_size, topology=hcg._topo)
 
     """
 

@@ -255,7 +255,8 @@ class MoELayer(nn.Layer):
 
         moe_group: moe group for experts communication
         mp_group: mp group for mp commutication
-        kwargs: other parameters
+        recompute_interval(int, optional): whether to use recompute, default 0, means to disable recompute.
+        recompute_ctx(dict, optional): the context for recompute, if recompute_interval > 1, recompute_ctx must be given.
     Examples:
         .. code-block:: python
         from paddle.nn import layer, LayerList
