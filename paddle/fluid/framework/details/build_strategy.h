@@ -150,7 +150,11 @@ struct BuildStrategy {
   // Inference pass
   bool enable_inference_pass_{false};  // switch for infernce pass
   bool delete_dropout_{true};          // delte dropout op
-  bool use_mkldnn_{false};             // use mkdnn to do inference
+#ifdef PADDLE_WITH_MKLDNN
+  bool use_mkldnn_{true};  // use mkdnn to do inference
+#else
+  bool use_mkldnn_{false};  // use mkdnn to do inference
+#endif
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
