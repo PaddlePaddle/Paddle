@@ -172,17 +172,26 @@ class PipelineLayerChunk(Layer):
 
     def __init__(self):
         super(PipelineLayerChunk, self).__init__()
-        self.functions = []
+        self.run_function = []
 
     def append(self, sublayer):
         # This method is used to unify codes in _build_layer_impl.
         # For 1f1b scheduler, it will call append method of a List.
         # For interleave scheduler, it will call append method of this class.
         if isinstance(sublayer, Layer):
-            self.add_sublayer(str(len(self.functions)), sublayer)
-        self.functions.append(sublayer)
+            self.add_sublayer(str(len(self.run_function)), sublayer)
+        self.run_function.append(sublayer)
 
-    # TODO (Yuang Liu) forward function implement
+    def get_run_function(self):
+        return self.run_function
+
+    def forward(self, *args, **kwargs):
+        # Users shouldn't call PipelineLayerChunk directly, since all logics relating with recompute
+        # are in the forward function of PipelineLayer. Any directly call will bring unexpected
+        # behavior under recompute circumstance.
+        raise NotImplementedError(
+            "The forward function of PipelineLayerChunk cannot be called directly. "
+            "Please call forward function of PipelineLayer.")
 
 
 class PipelineLayer(Layer):
@@ -520,8 +529,22 @@ class PipelineLayer(Layer):
 
         return execute_func
 
-    def forward(self, input):
-        # TODO(Yuang Liu): forward function for interleave scheduler
+    def forward(self, input, chunk_id=None):
+        if chunk_id is not None:
+            assert isinstance(chunk_id, int), "chunk_id should be an int"
+            assert self._num_virtual_pipeline_stages > 1, \
+                "chunk_id is only valid when using virtual pipeline stage"
+            assert chunk_id < len(self._model_chunks), \
+                "The virtual pipeline only has {} chunks, " \
+                "but received chunk_id {}.".format(len(self._model_chunks), chunk_id)
+            # Get the target model chunk.
+            model_chunk = self._model_chunks[chunk_id]
+            # Update the self.run_function to the target run functions.
+            # Runs for 1f1b and interleave are similar, just handle all functions in self.run_function.
+            # The only different is that, for 1f1b, self.run_function has already been inited during build_layer.
+            # But for interleave, self.run_function will keep updating to the target functions at every run.
+            self.run_function = model_chunk.get_run_function()
+
         if self._recompute_interval == 0:
             input = self.forward_function(0, len(self.run_function))(input)
         else:

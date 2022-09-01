@@ -87,11 +87,9 @@ PYTHON_C_FUNCTION_TEMPLATE = \
 """
 static PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
   {}
-
   PyThreadState *tstate = nullptr;
   try {{
     VLOG(6) << "Running Eager Final State API: {}";
-
     // Get EagerTensors from args
 {}
     // Parse Attributes if needed
@@ -116,7 +114,7 @@ static PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs)
 }}
 """
 
-NOAMP_DYGRAPH_FUNCTION_TEMPLATE = "decltype({}({})) out = {}({});\n"
+NOAMP_DYGRAPH_FUNCTION_TEMPLATE = "decltype({}({})) out = {}({});"
 
 
 FUNCTION_SET_DEVICE_TEMPLATE = \
@@ -145,10 +143,7 @@ FUNCTION_NAME_TEMPLATE = \
 
 
 PYTHON_C_FUNCTION_REG_TEMPLATE = \
-"""
-{{\"{}{}\", (PyCFunction)(void(*)(void)) {}eager_api_{}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {} in dygraph.\"}}
-
-"""
+"  {{\"{}{}\", (PyCFunction)(void(*)(void)) {}eager_api_{}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {} in dygraph.\"}},\n"
 
 
 PYTHON_C_WRAPPER_TEMPLATE = \
@@ -173,7 +168,7 @@ namespace pybind {{
 {}
 
 static PyMethodDef EagerFinalStateMethods[] = {{
-    {}
+{}
 }};
 
 void BindFinalStateEagerOpFunctions(pybind11::module *module) {{
@@ -195,8 +190,7 @@ CORE_OPS_INFO = \
 """
 static PyObject * eager_get_core_ops_args_info(PyObject *self) {
     PyThreadState *tstate = nullptr;
-    try
-    {
+    try {
       return ToPyObject(core_ops_args_info);
     }
     catch(...) {
@@ -210,8 +204,7 @@ static PyObject * eager_get_core_ops_args_info(PyObject *self) {
 
 static PyObject * eager_get_core_ops_args_type_info(PyObject *self) {
     PyThreadState *tstate = nullptr;
-    try
-    {
+    try {
       return ToPyObject(core_ops_args_type_info);
     }
     catch(...) {
@@ -225,8 +218,7 @@ static PyObject * eager_get_core_ops_args_type_info(PyObject *self) {
 
 static PyObject * eager_get_core_ops_returns_info(PyObject *self) {
     PyThreadState *tstate = nullptr;
-    try
-    {
+    try {
       return ToPyObject(core_ops_returns_info);
     }
     catch(...) {
@@ -242,16 +234,9 @@ static PyObject * eager_get_core_ops_returns_info(PyObject *self) {
 
 CORE_OPS_INFO_REGISTRY = \
 """
-    {\"get_core_ops_args_info\",
-    (PyCFunction)(void(*)(void))eager_get_core_ops_args_info, METH_NOARGS,
-    \"C++ interface function for eager_get_core_ops_args_info.\"},
-    {\"get_core_ops_args_type_info\",
-    (PyCFunction)(void(*)(void))eager_get_core_ops_args_type_info,
-    METH_NOARGS,
-    \"C++ interface function for eager_get_core_ops_args_type_info.\"},
-    {\"get_core_ops_returns_info\",
-    (PyCFunction)(void(*)(void))eager_get_core_ops_returns_info,
-    METH_NOARGS, \"C++ interface function for eager_get_core_ops_returns_info.\"},
+  {\"get_core_ops_args_info\", (PyCFunction)(void(*)(void))eager_get_core_ops_args_info, METH_NOARGS, \"C++ interface function for eager_get_core_ops_args_info.\"},
+  {\"get_core_ops_args_type_info\", (PyCFunction)(void(*)(void))eager_get_core_ops_args_type_info, METH_NOARGS, \"C++ interface function for eager_get_core_ops_args_type_info.\"},
+  {\"get_core_ops_returns_info\", (PyCFunction)(void(*)(void))eager_get_core_ops_returns_info, METH_NOARGS, \"C++ interface function for eager_get_core_ops_returns_info.\"},
 """
 
 NAMESPACE_WRAPPER_TEMPLATE = \
@@ -429,7 +414,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             else:
                 self.python_c_function_str += python_c_inplace_func_str
                 # Generate Python-C Function Registration
-                self.python_c_function_reg_str += "\n," + python_c_inplace_func_reg_str
+                self.python_c_function_reg_str += python_c_inplace_func_reg_str
 
     def run(self):
         # Initialized is_forward_only
@@ -480,7 +465,7 @@ class PythonCGenerator(GeneratorBase):
 
             if status == True:
                 self.python_c_functions_str += f_generator.python_c_function_str + "\n"
-                self.python_c_functions_reg_str += f_generator.python_c_function_reg_str + ",\n"
+                self.python_c_functions_reg_str += f_generator.python_c_function_reg_str
 
     def AttachNamespace(self):
         namespace = self.namespace
@@ -530,7 +515,7 @@ def GeneratePythonCWrappers(python_c_function_str, python_c_function_reg_str):
 
     python_c_function_str += core_ops_infos_definition
     python_c_function_reg_str += core_ops_infos_registry
-    python_c_function_reg_str += "\n {nullptr,nullptr,0,nullptr}"
+    python_c_function_reg_str += "  {nullptr,nullptr,0,nullptr}"
 
     python_c_str = PYTHON_C_WRAPPER_TEMPLATE.format(python_c_function_str,
                                                     python_c_function_reg_str)
@@ -556,7 +541,7 @@ if __name__ == "__main__":
         py_c_generator.run()
 
         generated_python_c_functions += py_c_generator.python_c_functions_str + "\n"
-        generated_python_c_registration += py_c_generator.python_c_functions_reg_str + "\n"
+        generated_python_c_registration += py_c_generator.python_c_functions_reg_str
 
     python_c_str = GeneratePythonCWrappers(generated_python_c_functions,
                                            generated_python_c_registration)
