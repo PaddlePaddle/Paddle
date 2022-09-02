@@ -2107,7 +2107,7 @@ def alltoall_single(in_tensor,
         ``alltoall_single`` is only supported in eager mode.
 
     Args:
-        in_tensor (Tensor): Input tensor. The data type should be float16, float32, float64, int32 or int64.
+        in_tensor (Tensor): Input tensor. The data type should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         out_tensor (Tensor): Output Tensor. The data type should be the same as the data type of the input Tensor.
         in_split_sizes (list[int], optional): Split sizes of ``in_tensor`` for dim[0]. If not given, dim[0] of ``in_tensor`` 
             must be divisible by group size and ``in_tensor`` will be scattered averagely to all participators. Default: None.
@@ -2130,35 +2130,36 @@ def alltoall_single(in_tensor,
             rank = dist.get_rank()
             size = dist.get_world_size()
 
-            # case 1
-            input = paddle.arange(2, dtype='int64') + rank * 2
-            # input for rank 0: [0, 1]
-            # input for rank 1: [2, 3]
-            
+            # case 1 (2 GPUs)
+            data = paddle.arange(2, dtype='int64') + rank * 2
+            # data for rank 0: [0, 1]
+            # data for rank 1: [2, 3]
             output = paddle.empty([2], dtype='int64')
-            dist.alltoall_single(input, output)
+            dist.alltoall_single(data, output)
+            print(output)
             # output for rank 0: [0, 2]
             # output for rank 1: [1, 3]
 
-            # case 2
+            # case 2 (2 GPUs)
             in_split_sizes = [i + 1 for i in range(size)]
-            # in_split_sizes for rank 0: [1, 2] and for rank 1: [1, 2]
+            # in_split_sizes for rank 0: [1, 2]
+            # in_split_sizes for rank 1: [1, 2]
             out_split_sizes = [rank + 1 for i in range(size)]
-            # out_split_sizes for rank 0: [1, 1] and for rank 1: [2, 2]
-
-            input = paddle.ones([sum(in_split_sizes), size], dtype='float32') * rank
-            # input for rank 0: [[0., 0.], [0., 0.], [0., 0.]]
-            # input for rank 1: [[1., 1.], [1., 1.], [1., 1.]]
+            # out_split_sizes for rank 0: [1, 1]
+            # out_split_sizes for rank 1: [2, 2]
+            data = paddle.ones([sum(in_split_sizes), size], dtype='float32') * rank
+            # data for rank 0: [[0., 0.], [0., 0.], [0., 0.]]
+            # data for rank 1: [[1., 1.], [1., 1.], [1., 1.]]
             output = paddle.empty([(rank + 1) * size, size], dtype='float32')
-
             group = dist.new_group([0, 1])
-            task = dist.alltoall_single(input,
+            task = dist.alltoall_single(data,
                                         output,
                                         in_split_sizes,
                                         out_split_sizes,
                                         use_calc_stream=False,
                                         group=group)
             task.wait()
+            print(output)
             # output for rank 0: [[0., 0.], [1., 1.]]
             # output for rank 1: [[0., 0.], [0., 0.], [1., 1.], [1., 1.]]
 
@@ -2170,6 +2171,9 @@ def alltoall_single(in_tensor,
     # _check_single_tensor
 
     group = _get_default_group() if group is None else group
+    backend = _group_map_backend[group]
+    assert backend != 'gloo', ("backend gloo is not supported yet")
+
     in_split_sizes = [] if in_split_sizes is None else in_split_sizes
     out_split_sizes = [] if out_split_sizes is None else out_split_sizes
 
@@ -2572,8 +2576,9 @@ def reduce_scatter(tensor,
     Reduces, then scatters a list of tensors to all processes in a group
 
     Args:
-        tensor (Tensor): Output tensor.
-        tensor_list (list[Tensor]): List of tensors to reduce and scatter.
+        tensor (Tensor): Output tensor. Its data type should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+        tensor_list (list[Tensor]): List of tensors to reduce and scatter. Every element in the list must be a Tensor whose data type
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (Group, optional): The group instance return by new_group or None for global 
             default group. Default: None.
@@ -2595,24 +2600,16 @@ def reduce_scatter(tensor,
             import paddle.distributed as dist
 
             dist.init_parallel_env()
-            rank = dist.get_rank()
-            world_size = dist.get_world_size()
-
-            if rank == 0:
-                t1 = paddle.to_tensor([0, 1])
-                t2 = paddle.to_tensor([2, 3])
+            if dist.get_rank() == 0:
+                data1 = paddle.to_tensor([0, 1])
+                data2 = paddle.to_tensor([2, 3])
             else:
-                t1 = paddle.to_tensor([4, 5])
-                t2 = paddle.to_tensor([6, 7])
-
-            tensor_list = [t1, t2]
-
-            output = paddle.empty(shape=[2], dtype=tensor_list[0].dtype)
-            dist.reduce_scatter(output, tensor_list)
-
-            print(output)
-            # [4, 6]     # Rank-0
-            # [8, 10]     # Rank-1
+                data1 = paddle.to_tensor([4, 5])
+                data2 = paddle.to_tensor([6, 7])
+            dist.reduce_scatter(data1, [data1, data2])
+            print(data1)
+            # [4, 6] (2 GPUs, out for rank 0)
+            # [8, 10] (2 GPUs, out for rank 1)
 
     """
     _check_single_tensor(tensor, "tensor")
@@ -2624,6 +2621,8 @@ def reduce_scatter(tensor,
     if in_dygraph_mode():
         op_type = _get_reduce_op(op, "reduce_scatter")
         group = _get_default_group() if group is None else group
+        backend = _group_map_backend[group]
+        assert backend != 'gloo', ("backend gloo is not supported yet")
 
         temp = paddle.concat(tensor_list, axis=0)
         task = group.process_group._reduce_scatter_base(tensor, temp, op_type)
@@ -2645,8 +2644,9 @@ def _reduce_scatter_base(output,
     Reduces, then scatters a flattened tensor to all processes in a group.
 
     Args:
-        output (Tensor): Output tensor.
-        input (Tensor): Input tensor that is of size output tensor size times world size
+        output (Tensor): Output tensor. Its data type should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+        input (Tensor): Input tensor that is of size output tensor size times world size. Its data type 
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (ProcessGroup, optional): The process group to work on. If None,
             the default process group will be used.
@@ -2660,23 +2660,19 @@ def _reduce_scatter_base(output,
         .. code-block:: python
 
             # required: distributed
-
             import paddle
             import paddle.distributed as dist
 
             dist.init_parallel_env()
             rank = dist.get_rank()
-            world_size = dist.get_world_size()
-
-            input = paddle.arange(4) + rank
-            # [0, 1, 2, 3]  # Rank-0
-            # [1, 2, 3, 4]  # Rank-1
-
-            output = paddle.empty(shape=[2], dtype=input.dtype)
-            paddle.distributed.collective._reduce_scatter_base(output, input)
+            data = paddle.arange(4) + rank
+            # [0, 1, 2, 3] (2 GPUs, for rank 0)
+            # [1, 2, 3, 4] (2 GPUs, for rank 1)
+            output = paddle.empty(shape=[2], dtype=data.dtype)
+            dist.collective._reduce_scatter_base(output, data)
             print(output)
-            # [1, 3]     # Rank-0
-            # [5, 7]     # Rank-1
+            # [1, 3] (2 GPUs, out for rank 0)
+            # [5, 7] (2 GPUs, out for rank 1)
 
     """
     _check_single_tensor(output, "output")

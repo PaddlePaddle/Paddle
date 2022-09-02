@@ -94,6 +94,14 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
+    test_collective_alltoall_single_api MODULES
+    test_collective_alltoall_single_api ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_collective_alltoall_single_api
+                       PROPERTIES TIMEOUT "300" RUN_SERIAL 1)
+endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  py_test_modules(
     test_collective_barrier_api MODULES test_collective_barrier_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_barrier_api
@@ -192,6 +200,14 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     "PADDLE_DIST_UT_PORT=21296;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_collective_reduce_scatter PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  py_test_modules(
+    test_collective_reduce_scatter_api MODULES
+    test_collective_reduce_scatter_api ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_collective_reduce_scatter_api
+                       PROPERTIES TIMEOUT "300" RUN_SERIAL 1)
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
