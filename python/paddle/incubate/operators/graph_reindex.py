@@ -18,8 +18,13 @@ from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
 from paddle import _C_ops, _legacy_C_ops
+import paddle.utils.deprecated as deprecated
 
 
+@deprecated(since="2.4.0",
+            update_to="paddle.geometric.reindex_graph",
+            level=1,
+            reason="paddle.incubate.graph_reindex will be removed in future")
 def graph_reindex(x,
                   neighbors,
                   count,
@@ -121,7 +126,7 @@ def graph_reindex(x,
     if flag_buffer_hashtable:
         check_variable_and_dtype(value_buffer, "HashTable_Value", ("int32"),
                                  "graph_reindex")
-        check_variable_and_dtype(index_buffer, "HashTable_Value", ("int32"),
+        check_variable_and_dtype(index_buffer, "HashTable_Index", ("int32"),
                                  "graph_reindex")
 
     helper = LayerHelper("graph_reindex", **locals())

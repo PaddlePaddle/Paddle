@@ -275,6 +275,9 @@ def grid_sample(x,
         x.stop_gradient = False
         grid.stop_gradient = False
 
+    if len(grid.shape) == 5:
+        use_cudnn = False
+
     if in_dygraph_mode():
         return _C_ops.grid_sample(x, grid, mode, padding_mode, align_corners)
     elif in_dynamic_mode():
@@ -305,25 +308,27 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
     """
     This API implements pixel shuffle operation.
     See more details in :ref:`api_nn_vision_PixelShuffle` .
+
+
     Parameters:
         x(Tensor): 4-D tensor, the data type should be float32 or float64.
         upscale_factor(int): factor to increase spatial resolution.
-        data_format (str): The data format of the input and output data. An optional string from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): The data format of the input and output data. An optional string from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+
     Returns:
         Out(tensor): Reshaped tensor according to the new dimension.
-    Raises:
-        ValueError: If the square of upscale_factor cannot divide the channels of input.
+
     Examples:
         .. code-block:: python
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
-            x = np.random.randn(2, 9, 4, 4).astype(np.float32)
-            x_var = paddle.to_tensor(x)
-            out_var = F.pixel_shuffle(x_var, 3)
+
+            x = paddle.randn(shape=[2,9,4,4])
+            out_var = F.pixel_shuffle(x, 3)
             out = out_var.numpy()
+            print(out.shape)
             # (2, 1, 12, 12)
     """
     if not isinstance(upscale_factor, int):
@@ -361,7 +366,7 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     Parameters:
         x (Tensor): 4-D tensor, the data type should be float32 or float64.
         downscale_factor (int): Factor to decrease spatial resolution.
-        data_format (str): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
         name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -374,7 +379,8 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
             import paddle.nn.functional as F
             x = paddle.randn([2, 1, 12, 12])
             out = F.pixel_unshuffle(x, 3)
-            # out.shape = [2, 9, 4, 4]
+            print(out.shape)
+            # [2, 9, 4, 4]
     """
     if len(x.shape) != 4:
         raise ValueError(
