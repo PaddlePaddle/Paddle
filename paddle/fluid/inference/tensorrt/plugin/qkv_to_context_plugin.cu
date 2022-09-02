@@ -50,6 +50,15 @@ __global__ void transpose(T *src,
       threadIdx.x] = src[blockIdx.x * size_per_head + threadIdx.x];
 }
 
+inline int round_up(int seq_len, int multiple = 32) {
+  PADDLE_ENFORCE_GT(
+      multiple,
+      0,
+      platform::errors::InvalidArgument(
+          "multiple should be a positive number，but it's (%d)", multiple));
+  return ((seq_len + multiple - 1) / multiple) * multiple;
+}
+
 template <typename T>
 __global__ void reset_qk_bias(T *input, int real_seq_len, int seq_len) {
   if (threadIdx.x < seq_len) {
@@ -360,15 +369,6 @@ __global__ void apply_scale(T *data, T scale, int n) {
     data[tid] = data[tid] * scale;
   }
 #endif
-}
-
-inline int round_up(int seq_len, int multiple = 32) {
-  PADDLE_ENFORCE_GT(
-      multiple,
-      0,
-      platform::errors::InvalidArgument(
-          "multiple should be a positive number，but it's (%d)", multiple));
-  return ((seq_len + multiple - 1) / multiple) * multiple;
 }
 
 template <typename T>
