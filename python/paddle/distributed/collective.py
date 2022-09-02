@@ -113,6 +113,10 @@ class Group():
     def process_group(self):
         return self.pg
 
+    @property
+    def world_size(self):
+        return self.nranks if self.rank >= 0 else -1
+
     def __repr__(self):
         debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
             self.rank, self.nranks, self.id)
