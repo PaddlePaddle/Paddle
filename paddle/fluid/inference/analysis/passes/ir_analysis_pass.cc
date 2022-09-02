@@ -37,13 +37,13 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
   auto graph = std::unique_ptr<Graph>(the_graph);
 
 #ifdef PADDLE_WITH_MKLDNN
-  if (argument->Has("scale_file_path")) {
-    VLOG(5) << "Scale file path for quantized model: "
-            << argument->scale_file_path();
+  if (argument->Has("calibration_file_path")) {
+    VLOG(5) << "Calibration file path of quantize model: "
+            << argument->calibration_file_path();
     std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
-    std::ifstream out_scale_file(argument->scale_file_path());
+    std::ifstream calibration_file(argument->calibration_file_path());
     std::string one_line;
-    while (getline(out_scale_file, one_line)) {
+    while (getline(calibration_file, one_line)) {
       if (one_line.find(" ") != one_line.npos) {
         auto pos = one_line.find(" ");
         std::string pre_str = one_line.substr(0, pos);
