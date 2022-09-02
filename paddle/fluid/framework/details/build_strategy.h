@@ -224,6 +224,60 @@ struct BuildStrategy {
   // on some scenarios.
   mutable bool enable_parallel_graph_ = false;
 
+  std::ostream &operator<<(std::ostream &os) {
+    os << "BuildStrategy: " << this;
+    os << "reduce_: " << reduce_ << std::endl;
+    os << "gradient_scale_: " << gradient_scale_ << std::endl;
+    os << "debug_graphviz_path_: " << debug_graphviz_path_ << std::endl;
+    os << "enable_backward_optimizer_op_deps_: "
+       << enable_backward_optimizer_op_deps_ << std::endl;
+    os << "enable_sequential_execution_: " << enable_sequential_execution_
+       << std::endl;
+    os << "remove_unnecessary_lock_: " << remove_unnecessary_lock_ << std::endl;
+    os << "cache_runtime_context_: " << cache_runtime_context_ << std::endl;
+    os << "fix_op_run_order_: " << fix_op_run_order_ << std::endl;
+    os << "fuse_bn_act_ops_: " << fuse_bn_act_ops_ << std::endl;
+    os << "fuse_bn_add_act_ops_: " << fuse_bn_add_act_ops_ << std::endl;
+    os << "fuse_elewise_add_act_ops_: " << fuse_elewise_add_act_ops_
+       << std::endl;
+    os << "enable_auto_fusion_: " << enable_auto_fusion_ << std::endl;
+    os << "fuse_all_optimizer_ops_: " << fuse_all_optimizer_ops_ << std::endl;
+    os << "fuse_all_reduce_ops_: " << fuse_all_reduce_ops_ << std::endl;
+    os << "fuse_relu_depthwise_conv_: " << fuse_relu_depthwise_conv_
+       << std::endl;
+    os << "fuse_broadcast_ops_: " << fuse_broadcast_ops_ << std::endl;
+    os << "sync_batch_norm_: " << sync_batch_norm_ << std::endl;
+    os << "fuse_gemm_epilogue_: " << fuse_gemm_epilogue_ << std::endl;
+    os << "mkldnn_enabled_op_types_: ";
+    for (auto s : mkldnn_enabled_op_types_) {
+      os << s << ", ";
+    }
+    os << std::endl;
+    os << "memory_optimize_: " << memory_optimize_ << std::endl;
+    os << "enable_inplace_: " << enable_inplace_ << std::endl;
+    os << "allow_cuda_graph_capture_: " << allow_cuda_graph_capture_
+       << std::endl;
+    os << "inference_: " << inference_ << std::endl;
+    os << "del_dropout_: " << del_dropout_ << std::endl;
+    os << "is_distribution_: " << is_distribution_ << std::endl;
+    os << "async_mode_: " << async_mode_ << std::endl;
+    os << "num_trainers_: " << num_trainers_ << std::endl;
+    os << "trainer_id_: " << trainer_id_ << std::endl;
+    os << "trainers_endpoints_: ";
+    for (auto s : trainers_endpoints_) {
+      os << s << ", ";
+    }
+    os << std::endl;
+    os << "nccl_comm_num_: " << nccl_comm_num_ << std::endl;
+    os << "bkcl_comm_num_: " << bkcl_comm_num_ << std::endl;
+    os << "use_hierarchical_allreduce_: " << use_hierarchical_allreduce_
+       << std::endl;
+    os << "hierarchical_allreduce_inter_nranks_: "
+       << hierarchical_allreduce_inter_nranks_ << std::endl;
+    os << "enable_parallel_graph_: " << enable_parallel_graph_ << std::endl;
+    return os;
+  }
+
  private:
   mutable bool is_finalized_ = false;
   mutable std::shared_ptr<ir::PassBuilder> pass_builder_;
