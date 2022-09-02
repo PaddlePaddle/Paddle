@@ -299,8 +299,11 @@ def multiplex(inputs, index, name=None):
             print(res) # Tensor([[5., 6.], [3., 4.]], dtype=float32)
 
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.multiplex(inputs, index)
+    elif _in_legacy_dygraph():
         return _legacy_C_ops.multiplex(index, inputs)
+
     helper = LayerHelper('multiplex', **locals())
 
     check_type(inputs, 'inputs', (list), 'multiplex')

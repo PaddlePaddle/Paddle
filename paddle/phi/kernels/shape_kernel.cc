@@ -67,3 +67,17 @@ PD_REGISTER_KERNEL(shape,
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 #endif
+
+#if defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(shape,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ShapeKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+#endif

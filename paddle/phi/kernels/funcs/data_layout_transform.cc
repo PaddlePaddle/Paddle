@@ -25,8 +25,8 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/phi/kernels/funcs/onednn/onednn_helper.h"
-#include "paddle/phi/kernels/funcs/onednn/onednn_reuse.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 #endif
 
 namespace phi {
