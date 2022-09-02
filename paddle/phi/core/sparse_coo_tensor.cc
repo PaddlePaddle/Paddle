@@ -18,7 +18,7 @@ namespace phi {
 
 SparseCooTensor::SparseCooTensor() {
   DenseTensor non_zero_indices, non_zero_elements;
-  this->SetMember(non_zero_indices, non_zero_elements, {1}, true);
+  this->SetMembers(non_zero_indices, non_zero_elements, {1}, true);
 }
 
 SparseCooTensor::SparseCooTensor(const DenseTensor& non_zero_indices,
@@ -56,6 +56,8 @@ void* SparseCooTensor::AllocateFrom(Allocator* allocator,
                                     DataType dtype,
                                     size_t requested_size) {
   return non_zero_elements_.AllocateFrom(allocator, dtype, requested_size);
+  // // Is there need to add the following code ?
+  // non_zero_indices_.AllocateFrom(allocator, dtype, requested_size);
 }
 
 int64_t SparseCooTensor::nnz() const {
@@ -69,43 +71,43 @@ int64_t SparseCooTensor::nnz() const {
   }
 }
 
-void SparseCooTensor::Resize(const DDim& dense_dims,
-                             const int64_t sparse_dim,
-                             const int64_t non_zero_num) {
-  PADDLE_ENFORCE_GE(non_zero_num,
+void SparseCooTensor::Resize(const DDim& original_dims,
+                             const int64_t num_sparse_dims,
+                             const int64_t num_non_zero) {
+  PADDLE_ENFORCE_GE(num_non_zero,
                     this->nnz(),
                     phi::errors::InvalidArgument(
-                        "the non_zero_num must be greater than or equal to the "
-                        "origin non_zero_num."));
-  PADDLE_ENFORCE_GE(sparse_dim,
+                        "the num_non_zero must be greater than or equal to the "
+                        "original number of non zero elements."));
+  PADDLE_ENFORCE_GE(num_sparse_dims,
                     1,
                     phi::errors::InvalidArgument(
-                        "the sparse_dim must be greater than or equal 1."));
+                        "the num_sparse_dims must be greater than or equal to 1."));
   PADDLE_ENFORCE_LE(
-      sparse_dim,
-      dense_dims.size(),
+      num_sparse_dims,
+      original_dims.size(),
       phi::errors::InvalidArgument(
-          "the sparse_dim must be less than or equal dense_dims."));
+          "the num_sparse_dims must be less than or equal to the rank of dense_dims."));
 
-  DDim indices_dims = phi::make_ddim({sparse_dim, non_zero_num});
-  auto dense_dim = dense_dims.size() - sparse_dim;
+  DDim indices_dims = phi::make_ddim({num_sparse_dims, num_non_zero});
+  auto num_dense_dims = original_dims.size() - num_sparse_dims;
   DDim values_dims;
-  if (dense_dim) {
-    std::vector<int64_t> dense_dim_vec(dense_dim + 1);
-    dense_dim_vec[0] = non_zero_num;
+  if (num_dense_dims > 0) {
+    std::vector<int64_t> dense_dim_vec(num_dense_dims + 1);
+    dense_dim_vec[0] = num_non_zero;
     memcpy(&dense_dim_vec[1],
-           dense_dims.Get() + sparse_dim,
-           dense_dim * sizeof(dense_dims[0]));
+           original_dims.Get() + num_sparse_dims,
+           num_dense_dims * sizeof(original_dims[0]));
     values_dims = phi::make_ddim(dense_dim_vec);
   } else {
-    values_dims = phi::make_ddim({non_zero_num});
+    values_dims = phi::make_ddim({num_non_zero});
   }
 
   this->non_zero_indices_.Resize(indices_dims);
   this->non_zero_elements_.Resize(values_dims);
 }
 
-void SparseCooTensor::SetMember(const DenseTensor& non_zero_indices,
+void SparseCooTensor::SetMembers(const DenseTensor& non_zero_indices,
                                 const DenseTensor& non_zero_elements,
                                 const DDim& dims,
                                 const bool coalesced) {
