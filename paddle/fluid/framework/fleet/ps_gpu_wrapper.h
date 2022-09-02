@@ -55,6 +55,7 @@ limitations under the License. */
 #include "afs_api.h"
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
+#include "paddle/fluid/framework/fleet/heter_ps/parallel_thread_pool.h"
 
 namespace paddle {
 namespace framework {
@@ -101,6 +102,9 @@ class PSGPUWrapper {
     for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
       hbm_thread_pool_[i].reset(new ::ThreadPool(1));
     }
+#ifdef PADDLE_WITH_XPU_KP
+    sign2fid_thread_pool_.init(24);
+#endif
   }
 
 #if defined(PADDLE_WITH_XPU_KP) && defined(PADDLE_WITH_XPU_CACHE_BFID)
@@ -378,6 +382,11 @@ class PSGPUWrapper {
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
   Dataset* dataset_;
+
+#ifdef PADDLE_WITH_XPU_KP
+  ParallelThreadPool sign2fid_thread_pool_;
+#endif
+
 #ifdef PADDLE_WITH_PSLIB
   paddle::ps::AfsApiWrapper afs_handler_;
 #endif

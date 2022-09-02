@@ -23,7 +23,7 @@
 #endif
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
-
+#include "paddle/fluid/platform/timer_manager.h"
 namespace paddle {
 namespace operators {
 
@@ -54,6 +54,7 @@ static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
 #ifdef PADDLE_WITH_HETERPS
   auto hidden_size = ctx.Attr<int>("size");
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
+
   gpu_ps_ptr->PullSparse(ctx.GetPlace(), 0, all_keys, all_values, slot_lengths,
                          hidden_size);
 #endif

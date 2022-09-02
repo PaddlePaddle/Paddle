@@ -854,3 +854,10 @@ PADDLE_DEFINE_EXPORTED_bool(dump_cache_array, false, "Whether dump cache array d
 PADDLE_DEFINE_EXPORTED_bool(dump_cache_manager, false, "Whether dump cache manager data.");
 #endif
 
+/**
+ * debug switch of TimerManager
+ * Name: FLAGS_debug_timermanager
+ * Value Range: bool, default=false
+ * Example:
+ */
+PADDLE_DEFINE_EXPORTED_bool(debug_timermanager, false, "Whether open debug timermanager");
