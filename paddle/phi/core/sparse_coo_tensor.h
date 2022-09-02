@@ -114,8 +114,6 @@ class SparseCooTensor : public TensorBase,
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
-  // DataLayout layout() const noexcept override { return
-  // DataLayout::SPARSE_COO; }
   DataLayout layout() const noexcept override { return meta_.layout; }
 
   /// \brief Returns the data place of the tensor.

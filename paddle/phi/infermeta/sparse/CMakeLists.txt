@@ -1,4 +1,4 @@
 cc_library(
   sparse_infermeta
-  SRCS nullary.cc unary.cc
+  SRCS unary.cc
   DEPS convert_utils infermeta_utils)
