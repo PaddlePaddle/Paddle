@@ -30,8 +30,6 @@ void SubtractRawKernel(const Context& dev_ctx,
       dev_ctx, x, y, axis, out, xpu::broadcast_sub<XPUType>);
 }
 
-
-
 }  // namespace phi
 PD_REGISTER_KERNEL(subtract_raw,
                    XPU,
@@ -39,5 +37,3 @@ PD_REGISTER_KERNEL(subtract_raw,
                    phi::SubtractRawKernel,
                    float,
                    phi::dtype::float16) {}
-
-
