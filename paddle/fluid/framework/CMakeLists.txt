@@ -73,7 +73,8 @@ cc_library(
 cc_library(
   data_type
   SRCS data_type.cc
-  DEPS framework_proto ddim device_context)
+  DEPS framework_proto)
+
 cc_test(
   data_type_test
   SRCS data_type_test.cc
@@ -183,10 +184,17 @@ cc_test(
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS selected_rows_utils framework_proto scope)
+  DEPS framework_proto scope)
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
+
+# every source file that includes "dnnl.h" must depends on mkldnn
+# or, the first one should depends on mkldnn
+if(WITH_MKLDNN)
+  add_dependencies(var_type_traits mkldnn)
+endif()
+
 cc_test(
   var_type_traits_test
   SRCS var_type_traits_test.cc
@@ -364,7 +372,13 @@ cc_library(
 cc_library(
   shape_inference
   SRCS shape_inference.cc
-  DEPS ddim attribute device_context)
+  DEPS ddim attribute)
+
+# every source file that includes "dnnl.h" must depends on mkldnn
+# or, the first one should depends on mkldnn
+if(WITH_MKLDNN)
+  add_dependencies(shape_inference mkldnn)
+endif()
 
 cc_test(
   no_need_buffer_vars_inference_test
@@ -1194,6 +1208,13 @@ else()
     SRCS convert_utils.cc
     DEPS data_type place)
 endif()
+
+# every source file that includes "dnnl.h" must depends on mkldnn
+# or, the first one should depends on mkldnn
+if(WITH_MKLDNN)
+  add_dependencies(fluid_convert_utils mkldnn)
+endif()
+
 cc_test(
   convert_utils_test
   SRCS convert_utils_test.cc

@@ -117,7 +117,7 @@ bool InterpretercoreInferShapeContext::HasOutputs(const std::string& name,
 }
 
 AttrReader InterpretercoreInferShapeContext::Attrs() const {
-  return AttrReader(op_.Attrs());
+  return AttrReader(op_.Attrs(), op_.RuntimeAttrs());
 }
 
 std::vector<std::string> InterpretercoreInferShapeContext::Inputs(
