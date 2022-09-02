@@ -2496,7 +2496,7 @@
   infer_meta :
     func : SpectralNormInferMeta
   kernel :
-    func : spectralnorm
+    func : spectral_norm
     data_type : weight
   backward : spectral_norm_grad
 

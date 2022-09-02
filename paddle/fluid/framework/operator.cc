@@ -767,7 +767,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
-  AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
+  AttrReader Attrs() const override {
+    return AttrReader(op_.Attrs(), op_.RuntimeAttrs());
+  }
 
   std::vector<std::string> Inputs(const std::string& name) const override {
     return op_.Inputs(name);
