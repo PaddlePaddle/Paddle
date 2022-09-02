@@ -15,6 +15,9 @@
 import unittest
 import paddle
 import paddle.distributed.auto_parallel as auto
+
+from paddle.fluid import program_guard
+from paddle.fluid.backward import append_backward
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
@@ -104,11 +107,14 @@ def matmul_dp2mp2(init_x, init_y, trans_x, trans_y):
     with paddle.static.program_guard(main_program, start_program):
         x = init_x(trans_x)
         y = init_y(trans_y)
-        paddle.fluid.layers.matmul(x,
-                                   y,
-                                   transpose_x=trans_x,
-                                   transpose_y=trans_y)
-    return main_program, start_program
+        x.stop_gradient = False
+        y.stop_gradient = False
+        out = paddle.fluid.layers.matmul(x,
+                                         y,
+                                         transpose_x=trans_x,
+                                         transpose_y=trans_y)
+        loss = paddle.mean(out)
+    return main_program, start_program, loss
 
 
 def matmulv2_dp2mp2(init_x, init_y, trans_x, trans_y):
@@ -117,8 +123,11 @@ def matmulv2_dp2mp2(init_x, init_y, trans_x, trans_y):
     with paddle.static.program_guard(main_program, start_program):
         x = init_x(trans_x)
         y = init_y(trans_y)
-        paddle.matmul(x, y, transpose_x=trans_x, transpose_y=trans_y)
-    return main_program, start_program
+        x.stop_gradient = False
+        y.stop_gradient = False
+        out = paddle.matmul(x, y, transpose_x=trans_x, transpose_y=trans_y)
+        loss = paddle.mean(out)
+    return main_program, start_program, loss
 
 
 def parallelizer(program_func, *args, **kwargs):
@@ -126,13 +135,18 @@ def parallelizer(program_func, *args, **kwargs):
     from paddle.distributed.auto_parallel.partitioner import Partitioner
     from paddle.distributed.auto_parallel.dist_context import DistributedContext
 
-    main_program, start_program = program_func(*args, **kwargs)
+    main_program, start_program, loss = program_func(*args, **kwargs)
 
     dist_context = DistributedContext()
     completer = Completer(dist_context)
     completer.complete_forward_annotation(main_program)
-
     dist_context.block_state.parse_forward_blocks(main_program)
+
+    with program_guard(main_program, start_program):
+        append_backward(loss, distop_context=dist_context.dist_op_context)
+    completer.complete_backward_annotation(main_program)
+    dist_context.block_state.parse_backward_blocks(main_program)
+
     partitioner = Partitioner(dist_context, 0)
     dist_main_prog, _, _ = partitioner.partition(main_program, start_program,
                                                  [])
@@ -144,7 +158,10 @@ class TestDistMatmul(unittest.TestCase):
 
     def check_col_program(self, main_program, dist_ctx):
         # [0, -1] * [-1, 1] --> [0, 1]
-        ref_ops = ["c_identity", "matmul"]
+        ref_ops = [
+            "c_identity", "matmul", "reduce_mean", "fill_constant",
+            "reduce_mean_grad", "matmul_grad"
+        ]
         ops = []
         block = main_program.global_block()
         for op in block.ops:
@@ -153,17 +170,27 @@ class TestDistMatmul(unittest.TestCase):
                 out_name = op.output('Out')[0]
                 out_var = block.vars[out_name]
                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
+                assert op_dist_attr.impl_idx == 0
+                assert op_dist_attr.impl_type == "matmul"
                 out_dims_mapping = op_dist_attr.get_output_dims_mapping(
                     out_name)
                 assert out_dims_mapping == [0, 1]
                 tensor_dist_attr = dist_ctx.get_tensor_dist_attr_for_program(
                     out_var)
                 assert tensor_dist_attr.dims_mapping == [0, 1]
+            if op.type == "matmul_grad":
+                op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
+                assert op_dist_attr.impl_idx == 0
+                assert op_dist_attr.impl_type == "matmul"
+
         assert ops == ref_ops
 
     def check_row_program(self, main_program, dist_ctx):
         # [0, -1, 1] * [1, -1] --> [0, -1, -1]
-        ref_ops = ["matmul", "c_allreduce_sum"]
+        ref_ops = [
+            "matmul", "c_allreduce_sum", "reduce_mean", "fill_constant",
+            "reduce_mean_grad", "matmul_grad"
+        ]
         ops = []
         block = main_program.global_block()
         for op in block.ops:
@@ -172,12 +199,18 @@ class TestDistMatmul(unittest.TestCase):
                 out_name = op.output('Out')[0]
                 out_var = block.vars[out_name]
                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
+                assert op_dist_attr.impl_idx == 1
+                assert op_dist_attr.impl_type == "matmul"
                 out_dims_mapping = op_dist_attr.get_output_dims_mapping(
                     out_name)
                 assert out_dims_mapping == [0, -1, -1]
                 tensor_dist_attr = dist_ctx.get_tensor_dist_attr_for_program(
                     out_var)
                 assert tensor_dist_attr.dims_mapping == [0, -1, -1]
+            if op.type == "matmul_grad":
+                op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
+                assert op_dist_attr.impl_idx == 1
+                assert op_dist_attr.impl_type == "matmul"
         assert ops == ref_ops
 
 
@@ -233,7 +266,10 @@ class TestDistMatmulV2(unittest.TestCase):
 
     def check_col_program(self, main_program, dist_ctx):
         # [0, -1] * [-1, 1] --> [0, 1]
-        ref_ops = ["c_identity", "matmul_v2"]
+        ref_ops = [
+            "c_identity", "matmul_v2", "reduce_mean", "fill_constant",
+            "reduce_mean_grad", "matmul_v2_grad"
+        ]
         ops = []
         block = main_program.global_block()
         for op in block.ops:
@@ -242,17 +278,27 @@ class TestDistMatmulV2(unittest.TestCase):
                 out_name = op.output('Out')[0]
                 out_var = block.vars[out_name]
                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
+                assert op_dist_attr.impl_idx == 0
+                assert op_dist_attr.impl_type == "matmul_v2"
                 out_dims_mapping = op_dist_attr.get_output_dims_mapping(
                     out_name)
                 assert out_dims_mapping == [0, 1]
                 tensor_dist_attr = dist_ctx.get_tensor_dist_attr_for_program(
                     out_var)
                 assert tensor_dist_attr.dims_mapping == [0, 1]
+            if op.type == "matmul_v2_grad":
+                op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
+                assert op_dist_attr.impl_idx == 0
+                assert op_dist_attr.impl_type == "matmul_v2"
+
         assert ops == ref_ops
 
     def check_row_program(self, main_program, dist_ctx):
         # [0, -1, 1] * [1, -1] --> [0, -1, -1]
-        ref_ops = ["matmul_v2", "c_allreduce_sum"]
+        ref_ops = [
+            "matmul_v2", "c_allreduce_sum", "reduce_mean", "fill_constant",
+            "reduce_mean_grad", "matmul_v2_grad"
+        ]
         ops = []
         block = main_program.global_block()
         for op in block.ops:
@@ -261,12 +307,18 @@ class TestDistMatmulV2(unittest.TestCase):
                 out_name = op.output('Out')[0]
                 out_var = block.vars[out_name]
                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
+                assert op_dist_attr.impl_idx == 1
+                assert op_dist_attr.impl_type == "matmul_v2"
                 out_dims_mapping = op_dist_attr.get_output_dims_mapping(
                     out_name)
                 assert out_dims_mapping == [0, -1, -1]
                 tensor_dist_attr = dist_ctx.get_tensor_dist_attr_for_program(
                     out_var)
                 assert tensor_dist_attr.dims_mapping == [0, -1, -1]
+            if op.type == "matmul_v2_grad":
+                op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
+                assert op_dist_attr.impl_idx == 1
+                assert op_dist_attr.impl_type == "matmul_v2"
         assert ops == ref_ops
 
 
