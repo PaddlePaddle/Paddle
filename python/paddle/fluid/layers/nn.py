@@ -5310,8 +5310,11 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     if len(x.shape) == 1:
         axis = 0
     if _non_static_mode():
-        _, out = _legacy_C_ops.norm(x, 'axis', 1 if axis is None else axis,
-                                    'epsilon', epsilon)
+        if in_dygraph_mode():
+            out, _ = _C_ops.norm(x, 1 if axis is None else axis, epsilon, False)
+        elif _in_legacy_dygraph():
+            _, out = _legacy_C_ops.norm(x, 'axis', 1 if axis is None else axis,
+                                        'epsilon', epsilon)
         return out
 
     check_variable_and_dtype(x, "X", ("float16", "float32", "float64"), "norm")

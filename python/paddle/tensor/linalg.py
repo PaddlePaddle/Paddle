@@ -767,10 +767,11 @@ def cond(x, p=None, name=None):
         keepdim = False
 
         if _non_static_mode():
-            abs_out = _legacy_C_ops.abs(input)
             if in_dygraph_mode():
+                abs_out = _C_ops.abs(input)
                 sum_out = _C_ops.sum(abs_out, axis, None, keepdim)
             else:
+                abs_out = _legacy_C_ops.abs(input)
                 sum_out = _legacy_C_ops.reduce_sum(abs_out, 'dim', axis,
                                                    'keepdim', keepdim,
                                                    'reduce_all', reduce_all)
