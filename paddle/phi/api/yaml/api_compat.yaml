@@ -123,9 +123,8 @@
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
 
-- api : diag
-  op_name : diag_v2
-  grad_op_name : diag_v2_grad
+- api : diag (diag_v2)
+  backward : diag_grad (diag_v2_grad)
   inputs :
     x : X
   outputs :
