@@ -3933,7 +3933,6 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     dtype = weight.dtype
 
     # create intput and parameters
-    inputs = {'Weight': weight}
     input_shape = weight.shape
     assert weight.numel() > 0, "Any dimension of input cannot be equal to 0."
     assert dim < len(input_shape), ("The input `dim` should be less than the "
@@ -3947,13 +3946,18 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
                                 dtype=dtype,
                                 default_initializer=Normal(0., 1.))
     u.stop_gradient = True
-    inputs['U'] = u
     v = helper.create_parameter(attr=ParamAttr(),
                                 shape=[w],
                                 dtype=dtype,
                                 default_initializer=Normal(0., 1.))
-    inputs['V'] = v
     v.stop_gradient = True
+
+    if in_dygraph_mode():
+        return _C_ops.spectral_norm(weight, u, v, dim, power_iters, eps)
+
+    inputs = {'Weight': weight}
+    inputs['U'] = u
+    inputs['V'] = v
 
     # create output
     out = helper.create_variable(dtype=dtype)
