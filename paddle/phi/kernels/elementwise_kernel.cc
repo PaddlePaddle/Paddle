@@ -334,7 +334,12 @@ PD_REGISTER_KERNEL(multiply,
                    phi::MultiplyKernel,
                    phi::dtype::float16,
                    float) {}
-
+PD_REGISTER_KERNEL(subtract,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SubtractKernel,
+                   float,
+                   phi::dtype::float16) {}
 #endif
 
 #if defined PADDLE_WITH_XPU
@@ -360,12 +365,6 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    XPU,
                    ALL_LAYOUT,
                    phi::ElementwisePowKernel,
-                   float,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(subtract,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::SubtractKernel,
                    float,
                    phi::dtype::float16) {}
 #endif
