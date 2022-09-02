@@ -32,7 +32,7 @@ class TestDistMnistNCCL2(TestDistBase):
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("dist_allreduce_op.py", delta=1e-5)
+            self.check_with_place("/ssd/paddle/paddle0320/Paddle/build/python/paddle/fluid/tests/unittests/dist_allreduce_op.py", delta=1e-5, check_error_log=True)
 
 
 if __name__ == '__main__':

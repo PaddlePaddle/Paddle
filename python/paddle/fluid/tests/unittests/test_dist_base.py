@@ -320,7 +320,7 @@ class TestDistRunnerBase(object):
         sys.stdout.buffer.write(pickle.dumps(out_losses))
 
         if args.save_model:
-            model_save_dir = "/tmp"
+            model_save_dir = "/ssd/paddle/paddle0320/Paddle/build/dist_log"
             if fleet.worker_index() == 0:
                 model_save_dir_fluid = os.path.join(model_save_dir,
                                                     "fluid_persistables")
@@ -872,10 +872,12 @@ class TestDistBase(unittest.TestCase):
 
         self._after_setup_config()
 
-        self.temp_dir = tempfile.TemporaryDirectory()
+        # self.temp_dir = tempfile.TemporaryDirectory()
+        self.temp_dir_name = "/ssd/paddle/paddle0320/Paddle/build/dist_log"
 
     def tearDown(self):
-        self.temp_dir.cleanup()
+        print("clean")
+        # self.temp_dir.cleanup()
 
     def _find_free_port(self):
 
@@ -920,8 +922,8 @@ class TestDistBase(unittest.TestCase):
 
         print(ps0_cmd)
         print(ps1_cmd)
-        path0 = os.path.join(self.temp_dir.name, log_name + "_ps0_err.log")
-        path1 = os.path.join(self.temp_dir.name, log_name + "_ps1_err.log")
+        path0 = os.path.join(self.temp_dir_name, log_name + "_ps0_err.log")
+        path1 = os.path.join(self.temp_dir_name, log_name + "_ps1_err.log")
         ps0_pipe = open(path0, "wb")
         ps1_pipe = open(path1, "wb")
 
@@ -1001,7 +1003,7 @@ class TestDistBase(unittest.TestCase):
         print("local_cmd: {}, env: {}".format(cmd, env_local))
 
         if check_error_log:
-            path = os.path.join(self.temp_dir.name, log_name + "_local.log")
+            path = os.path.join(self.temp_dir_name, log_name + "_local.log")
             err_log = open(path, "wb")
             local_proc = subprocess.Popen(cmd.split(" "),
                                           stdout=subprocess.PIPE,
@@ -1089,8 +1091,8 @@ class TestDistBase(unittest.TestCase):
         print("tr0_cmd: {}, env: {}".format(tr0_cmd, env0))
         print("tr1_cmd: {}, env: {}".format(tr1_cmd, env1))
 
-        path0 = os.path.join(self.temp_dir.name, log_name + "_tr0_err.log")
-        path1 = os.path.join(self.temp_dir.name, log_name + "_tr1_err.log")
+        path0 = os.path.join(self.temp_dir_name, log_name + "_tr0_err.log")
+        path1 = os.path.join(self.temp_dir_name, log_name + "_tr1_err.log")
         tr0_pipe = open(path0, "wb")
         tr1_pipe = open(path1, "wb")
 
@@ -1167,7 +1169,7 @@ class TestDistBase(unittest.TestCase):
             "PADDLE_CURRENT_ENDPOINT": ep,
             "PADDLE_CURRENT_ENDPOINT": ep,
             "PADDLE_DISTRI_BACKEND": "gloo",
-            "GLOG_v": "2",
+            "GLOG_v": "10",
         })
 
         assert self._use_dgc == False, "gloo not support use dgc"
@@ -1231,7 +1233,7 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": ep,
-                "GLOG_v": "2",
+                "GLOG_v": "10",
             })
         elif self.__use_npu:
             tr_cmd += " --use_npu"
@@ -1241,7 +1243,7 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": ep,
-                "GLOG_v": "2",
+                "GLOG_v": "10",
             })
         else:
             env.update({'CPU_NUM': '1'})
@@ -1303,12 +1305,13 @@ class TestDistBase(unittest.TestCase):
                                                         update_method, i,
                                                         trainer_num)
             tr_env.update(envs)
+            print("yoki3")
             tr_env["GLOG_vmodule"] = 'gloo_context=4'
             tr_env["GLOG_v"] = '3'
             print("use_hallreduce:{} tr_cmd:{}, env: {}".format(
                 self._use_hallreduce, tr_cmd, tr_env))
 
-            path = os.path.join(self.temp_dir.name,
+            path = os.path.join(self.temp_dir_name,
                                 log_name + "_tr{}_err.log".format(i))
             tr_pipe = open(path, "wb")
 
@@ -1371,7 +1374,7 @@ class TestDistBase(unittest.TestCase):
             print("use_hallreduce:{} tr_cmd:{}, env: {}".format(
                 self._use_hallreduce, tr_cmd, tr_env))
 
-            path = os.path.join(self.temp_dir.name,
+            path = os.path.join(self.temp_dir_name,
                                 log_name + "_tr{}_err.log".format(i))
             tr_pipe = open(path, "wb")
 
@@ -1418,7 +1421,7 @@ class TestDistBase(unittest.TestCase):
             tr_env['FLAGS_cudnn_deterministic'] = '0'
             print("tr_cmd:{}, env: {}".format(tr_cmd, tr_env))
 
-            path = os.path.join(self.temp_dir.name + "tr{}_err.log".format(i))
+            path = os.path.join(self.temp_dir_name + "tr{}_err.log".format(i))
             tr_pipe = open(path, "wb")
 
             print_to_err(
@@ -1457,15 +1460,17 @@ class TestDistBase(unittest.TestCase):
             "FLAGS_rpc_disable_reuse_port": "1",
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1",
-            "NCCL_SHM_DISABLE": "1"
+            "NCCL_SHM_DISABLE": "1",
         }
 
         if check_error_log:
-            required_envs["GLOG_vmodule"] = \
-                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
-                "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
-                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,gen_nccl_id_op_help=10,nccl_helper=10,grpc_client=10," \
-                "grpc_server=10,request_handler_impl=10,section_worker=10"
+            print("yoki1")
+            # required_envs["GLOG_vmodule"] = \
+            #     "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
+            #     "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
+            #     "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,gen_nccl_id_op_help=10,nccl_helper=10,grpc_client=10," \
+            #     "grpc_server=10,request_handler_impl=10,section_worker=10"
+            required_envs["GLOG_v"] = "10"
             required_envs["GLOG_logtostderr"] = "1"
 
         if os.getenv('NVIDIA_TF32_OVERRIDE', '') is not None:
@@ -1508,6 +1513,7 @@ class TestDistBase(unittest.TestCase):
                               check_error_log=False,
                               need_envs={},
                               log_name=""):
+        print("yoki0")
         required_envs = self._get_required_envs(check_error_log, need_envs)
 
         if self._gloo_mode:
