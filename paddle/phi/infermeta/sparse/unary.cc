@@ -23,11 +23,5 @@ void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
 }
 
-void CreateLikeInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims(x.dims());
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-}
-
 }  // namespace sparse
 }  // namespace phi

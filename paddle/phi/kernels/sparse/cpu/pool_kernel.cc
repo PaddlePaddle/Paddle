@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/infermeta/sparse/binary.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
 #include "paddle/phi/kernels/sparse/cpu/conv.h"
@@ -40,13 +41,16 @@ void MaxPoolCooCPUKernel(const CPUContext& dev_ctx,
                          DenseTensor* rulebook,
                          DenseTensor* counter) {
   const auto& x_dims = x.dims();
+  const auto& out_dims = out->dims();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
-  const std::vector<int>& real_kernel_sizes =
-      phi::funcs::sparse::PoolResetKernel(kernel_sizes, x_dims[4], x_dims[4]);
-  DDim out_dims = {1, 1, 1, 1, 1};
-  phi::funcs::sparse::GetOutShape(
-      x_dims, real_kernel_sizes, paddings, dilations, strides, &out_dims);
-  const int in_channels = real_kernel_sizes[3];
+  // const std::vector<int>& real_kernel_sizes =
+  //     phi::funcs::sparse::PoolResetKernel(kernel_sizes, x_dims[4],
+  //     x_dims[4]);
+  // DDim out_dims = {1, 1, 1, 1, 1};
+  // phi::funcs::sparse::GetOutShape(
+  //     x_dims, real_kernel_sizes, paddings, dilations, strides, &out_dims);
+  // const int in_channels = real_kernel_sizes[3];
+  const int in_channels = x_dims[4];
 
   std::vector<int> counter_per_kernel(kernel_size, 0);
 
@@ -54,7 +58,7 @@ void MaxPoolCooCPUKernel(const CPUContext& dev_ctx,
   // 1. product rule book
   ProductRuleBook<T, CPUContext, IntT>(dev_ctx,
                                        x,
-                                       real_kernel_sizes,
+                                       kernel_sizes,
                                        paddings,
                                        dilations,
                                        strides,
@@ -109,6 +113,12 @@ void MaxPoolCooKernel(const Context& dev_ctx,
                       SparseCooTensor* out,
                       DenseTensor* rulebook,
                       DenseTensor* counter) {
+  MetaTensor meta_out(out);
+  const auto& x_dims = x.dims();
+  const std::vector<int>& real_kernel_sizes =
+      phi::funcs::sparse::PoolResetKernel(kernel_sizes, x_dims[4], x_dims[4]);
+  phi::sparse::Conv3DInferMeta(
+      x, real_kernel_sizes, paddings, dilations, strides, false, &meta_out);
   PD_VISIT_BASE_INTEGRAL_TYPES(
       x.indices().dtype(), "MaxPoolCooCPUKernel", ([&] {
         MaxPoolCooCPUKernel<T, data_t>(dev_ctx,
