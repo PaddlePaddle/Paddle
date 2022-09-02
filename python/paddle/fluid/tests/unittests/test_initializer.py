@@ -586,11 +586,29 @@ class TestBilinearInitializerDygraphAPI(unittest.TestCase):
         x = conv_up(data)
         return x
 
+    def func_test_case_fp16(self):
+        paddle.set_default_dtype("float16")
+        paddle.seed(1234)
+        w_attr = paddle.ParamAttr(learning_rate=0.,
+                                  regularizer=L2Decay(0.),
+                                  initializer=initializer.BilinearInitializer())
+        conv2d = paddle.nn.Conv2D(1, 2, 3, weight_attr=w_attr)
+        paddle.set_default_dtype("float32")
+        return conv2d.weight
+
     def test_bilinear_initializer(self):
         paddle.disable_static()
         with framework._test_eager_guard():
             eager_x = self.func_test_case()
         legacy_x = self.func_test_case()
+        self.assertEqual(eager_x.numpy().all(), legacy_x.numpy().all())
+        paddle.enable_static()
+
+    def test_bilinear_initializer_fp16(self):
+        paddle.disable_static()
+        with framework._test_eager_guard():
+            eager_x = self.func_test_case_fp16()
+        legacy_x = self.func_test_case_fp16()
         self.assertEqual(eager_x.numpy().all(), legacy_x.numpy().all())
         paddle.enable_static()
 
