@@ -797,8 +797,6 @@ GPUContext::~GPUContext() = default;
 
 const Place& GPUContext::GetPlace() const { return impl_->GetPlace(); }
 
-const Place& GPUContext::GetPinnedPlace() const { return GPUPinnedPlace(); }
-
 gpuStream_t GPUContext::stream() const { return impl_->stream(); }
 
 CUDAStream* GPUContext::cuda_stream() const { return impl_->cuda_stream(); }

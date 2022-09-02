@@ -158,7 +158,6 @@ class PADDLE_API DeviceContext {
 
   virtual const Place& GetPlace() const = 0;
 
-  virtual const Place& GetPinnedPlace() const;
   // TODO(wilber): The fluid framework uses wait() in many places, how to delete
   // this API interface.
   virtual void Wait() const {}
