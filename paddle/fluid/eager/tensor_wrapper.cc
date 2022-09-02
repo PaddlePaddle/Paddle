@@ -29,18 +29,18 @@
 #include "paddle/fluid/eager/saved_tensors_hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#if !defined(PADDLE_NO_PYTHON) || !defined(PADDLE_ON_INFERENCE)
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
 #include "paddle/fluid/pybind/eager.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/pytypes.h"
 #endif
 
-#if !defined(PADDLE_NO_PYTHON) || !defined(PADDLE_ON_INFERENCE)
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
 PyTypeObject* p_tensor_type_tensor_wrapper = nullptr;
 #endif
 namespace egr {
 
-#if !defined(PADDLE_NO_PYTHON) || !defined(PADDLE_ON_INFERENCE)
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
 PyObject* ToPyObject(const paddle::experimental::Tensor& value) {
   PyObject* obj = nullptr;
   obj = p_tensor_type_tensor_wrapper->tp_alloc(p_tensor_type_tensor_wrapper, 0);
@@ -54,7 +54,7 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value) {
   }
   return obj;
 }
-#endif
+
 TensorWrapper::TensorWrapper(const TensorWrapper& other) {
   no_need_buffer_ = other.no_need_buffer_;
   intermidiate_tensor_ = other.intermidiate_tensor_;
@@ -77,6 +77,12 @@ TensorWrapper& TensorWrapper::operator=(const TensorWrapper& other) {
   Py_XINCREF(unpack_hook_);
   return *this;
 }
+
+TensorWrapper::~TensorWrapper() {
+  Py_XDECREF(packed_tensor_info_);
+  Py_XDECREF(unpack_hook_);
+}
+#endif
 
 TensorWrapper::TensorWrapper(const paddle::experimental::Tensor& tensor,
                              bool no_need_buffer) {
@@ -113,7 +119,7 @@ TensorWrapper::TensorWrapper(const paddle::experimental::Tensor& tensor,
           "Unrecognized tensor type for no_need_buffer feature"));
     }
   } else {
-#if !defined(PADDLE_NO_PYTHON) || !defined(PADDLE_ON_INFERENCE)
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
     if (SavedTensorsHooks::GetInstance().is_enable() &&
         tensor.is_dense_tensor()) {
       phi::DenseTensor* dense_tensor =
@@ -138,7 +144,7 @@ TensorWrapper::TensorWrapper(const paddle::experimental::Tensor& tensor,
     } else {
 #endif
       intermidiate_tensor_.set_impl(tensor.impl());
-#if !defined(PADDLE_NO_PYTHON) || !defined(PADDLE_ON_INFERENCE)
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
     }
 #endif
   }
@@ -156,10 +162,6 @@ TensorWrapper::TensorWrapper(const paddle::experimental::Tensor& tensor,
   }
 }
 
-TensorWrapper::~TensorWrapper() {
-  Py_XDECREF(packed_tensor_info_);
-  Py_XDECREF(unpack_hook_);
-}
 paddle::experimental::Tensor TensorWrapper::recover() {
   VLOG(6) << "Recover tensor: " << intermidiate_tensor_.name()
           << " for wrapper";
@@ -168,7 +170,7 @@ paddle::experimental::Tensor TensorWrapper::recover() {
     return paddle::experimental::Tensor();
   }
 
-#if !defined(PADDLE_NO_PYTHON) || !defined(PADDLE_ON_INFERENCE)
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
   if (packed_tensor_info_ && unpack_hook_) {
     bool grad_tmp = egr::Controller::Instance().HasGrad();
     egr::Controller::Instance().SetHasGrad(false);
@@ -200,7 +202,7 @@ paddle::experimental::Tensor TensorWrapper::recover() {
   } else {
 #endif
     check_inplace_version();
-#if !defined(PADDLE_NO_PYTHON) || !defined(PADDLE_ON_INFERENCE)
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
   }
 #endif
 

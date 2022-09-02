@@ -25,7 +25,9 @@
  * with no grad **/
 
 #pragma once
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
 #include <Python.h>
+#endif
 #include "paddle/fluid/eager/autograd_meta.h"
 
 namespace egr {
@@ -34,9 +36,11 @@ class TensorWrapper {
   TensorWrapper() = default;
   explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
                          bool no_need_buffer = false);
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
   TensorWrapper(const TensorWrapper& other);
   TensorWrapper& operator=(const TensorWrapper& other);
   ~TensorWrapper();
+#endif
 
   paddle::experimental::Tensor recover();
 
@@ -52,7 +56,13 @@ class TensorWrapper {
   paddle::experimental::Tensor intermidiate_tensor_;
   std::weak_ptr<egr::GradNodeBase> weak_grad_node_;
   uint32_t inplace_version_snapshot_ = 0;
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
   PyObject* packed_tensor_info_{nullptr};
   PyObject* unpack_hook_{nullptr};
+#else
+  // for sizeof(TensorWrapper) be same
+  void* packed_tensor_info_{nullptr};
+  void* unpack_hook_{nullptr};
+#endif
 };
 }  // namespace egr

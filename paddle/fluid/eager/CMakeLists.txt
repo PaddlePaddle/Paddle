@@ -79,10 +79,14 @@ cc_library(
        hook_utils
        tensor_wrapper)
 
+set(tensor_wrapper_deps phi_tensor)
+if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+  set(tensor_wrapper_deps ${tensor_wrapper_deps} python pybind)
+endif()
 cc_library(
   tensor_wrapper
   SRCS tensor_wrapper.cc
-  DEPS phi_tensor python pybind)
+  DEPS ${tensor_wrapper_deps})
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   add_subdirectory(tests)
