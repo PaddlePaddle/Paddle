@@ -44,7 +44,7 @@ void SwinAttentionBiasqkFoldPass::ApplyImpl(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   const std::string pattern_name = "swin_attention_bisqk_fold";
   FusePassBase::Init(pattern_name, graph);
-  auto* scope = param_scope();
+  // auto* scope = param_scope();
 
   // std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
   PDNode* x = gpd.mutable_pattern()
@@ -64,66 +64,13 @@ void SwinAttentionBiasqkFoldPass::ApplyImpl(ir::Graph* graph) const {
     // desc.SetInput("X",{subgraph.at(x)->Name()});
     // desc.SetAttr("BiasQK_swinFolded",true);
     auto* elementwise_00_op_desc = elementwise_00_op->Op();
-    auto* bias_qk_1_desc = elementwise_00_in_y->Var();
-    auto* bias_qk_1_var = scope->FindVar(elementwise_00_in_y->Name());
-    auto* bias_qk_1_tensor = bias_qk_1_var->GetMutable<LoDTensor>();
-    auto bias_qk_1_dims = bias_qk_1_tensor->dims();
-    auto* bias_qk_1_data =
-        bias_qk_1_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bias_qk_2_var = scope->FindVar(unsqueeze_01_op_x->Name());
-    auto* bias_qk_2_tensor = bias_qk_2_var->GetMutable<LoDTensor>();
-    auto bias_qk_2_dims = bias_qk_2_tensor->dims();
-    auto* bias_qk_2_data =
-        bias_qk_2_tensor->mutable_data<float>(platform::CPUPlace());
 
-    framework::LoDTensor foldedBiasQK_tensor;
-    foldedBiasQK_tensor.Resize(phi::make_ddim({bias_qk_2_dims[0],
-                                               bias_qk_1_dims[1],
-                                               bias_qk_1_dims[2],
-                                               bias_qk_1_dims[3]}));
-    auto* foldedBiasQK_tensor_data =
-        foldedBiasQK_tensor.mutable_data<float>(platform::CPUPlace());
-
-    int foldedBiasQK_dims_size = bias_qk_2_dims[0] * bias_qk_1_dims[1] *
-                                 bias_qk_1_dims[2] * bias_qk_1_dims[3];
-    for (int n = 0; n < bias_qk_2_dims[0]; ++n) {
-      for (int c = 0; c < bias_qk_1_dims[1]; ++c) {
-        for (int i = 0; i < bias_qk_1_dims[2]; ++i) {
-          for (int j = 0; j < bias_qk_1_dims[3]; ++j) {
-            int foldIndex =
-                n * bias_qk_1_dims[1] * bias_qk_1_dims[2] * bias_qk_1_dims[3] +
-                c * bias_qk_1_dims[2] * bias_qk_1_dims[3] +
-                i * bias_qk_1_dims[3] + j;
-            int bias1Index = c * bias_qk_1_dims[2] * bias_qk_1_dims[3] +
-                             i * bias_qk_1_dims[3] + j;
-            int bias2Index = n * bias_qk_2_dims[1] * bias_qk_2_dims[2] +
-                             i * bias_qk_2_dims[2] + j;
-            foldedBiasQK_tensor_data[foldIndex] =
-                bias_qk_1_data[bias1Index] + bias_qk_2_data[bias2Index];
-          }  // for foldedBiasQK_tensor_data loop j
-        }    // for foldedBiasQK_tensor_data loop j
-      }      // for foldedBiasQK_tensor_data loop c
-    }        // for foldedBiasQK_tensor_data loop n
-
-    bias_qk_1_desc->SetShape({bias_qk_2_dims[0],
-                              bias_qk_1_dims[1],
-                              bias_qk_1_dims[2],
-                              bias_qk_1_dims[3]});
-    bias_qk_1_tensor->Resize(phi::make_ddim({bias_qk_2_dims[0],
-                                             bias_qk_1_dims[1],
-                                             bias_qk_1_dims[2],
-                                             bias_qk_1_dims[3]}));
-    bias_qk_1_data =
-        bias_qk_1_tensor->mutable_data<float>(platform::CPUPlace());
-
-    memcpy(bias_qk_1_data,
-           foldedBiasQK_tensor_data,
-           sizeof(float) * foldedBiasQK_dims_size);
+    elementwise_00_op_desc->SetInput("BiasQK_mask",{unsqueeze_01_op_x->Name()});
     elementwise_00_op_desc->SetOutput("Out", {reshape_30_out->Name()});
-
+    IR_NODE_LINK_TO(unsqueeze_01_op_x,elementwise_00_op);
     IR_NODE_LINK_TO(elementwise_00_op, reshape_30_out);
 
-    std::unordered_set<const Node*> marked_nodes({unsqueeze_01_op_x,
+    std::unordered_set<const Node*> marked_nodes({// unsqueeze_01_op_x,
                                                   // elementwise_00_op,
                                                   elementwise_00_out,
                                                   unsqueeze_01_op,

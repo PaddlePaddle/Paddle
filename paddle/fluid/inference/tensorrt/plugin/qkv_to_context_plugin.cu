@@ -27,6 +27,162 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
+// todo ,wangbojun for testing
+#ifdef TRT_FT_WINDOWS_ATTENTION
+#include "3rdparty/trt_fused_multihead_attention/qkvToContext.h"
+namespace fastertransformer {
+
+/*******************  invokeTransformMask  ***********************/
+
+// transform mask [B, S, S](half) into [B, S2*S2/64, 64](half), S2 is the actural  seqlen used in fmha row-major
+// in one MMA (16*16 elements calculated by a warp), each thread calculates 8 elements
+// the offsets of elements calculated by each thread are : for n, +0 +1 +8 +9; for m, +0 +8 (M_XMMAS*N_XMMAS times)
+// in transformed_mask, the masks of one warp are stored in 4 continuous rows ([4, 64]), with two elements of one thread
+// stored in 2 continuous halfs. one cta calculates warps_m*warps_n mma == 16*warps_m*16*warps_n elements grid(B,
+// S2*S2/64) block(32)
+__global__ void transform_mask_kernel(half2*         tranformed_mask,
+                                      const half2*   mask,
+                                      const uint32_t warps_m,
+                                      const uint32_t warps_n,
+                                      const uint32_t B,
+                                      const uint32_t S,
+                                      const uint32_t S2)
+{
+    const int bi = blockIdx.x;
+    const int r  = blockIdx.y;
+
+    const int    N_per_XMMAS       = warps_n << 4;
+    const int    M_per_XMMAS       = warps_m << 4;
+    const int    N_XMMAS           = (S2 + N_per_XMMAS - 1) / (N_per_XMMAS);
+    const int    warps_in_XMMAS    = warps_m * warps_n;
+    const half2* mask_b            = mask + ((bi * S * S) >> 1);
+    half2*       tranformed_mask_b = tranformed_mask + (bi * gridDim.y << 5);  //((bi * gridDim.y << 6) >> 1);
+
+    half2 tmp = {half(-30000.0f), half(-30000.0f)};
+
+    int c               = threadIdx.x * 2;
+    int elt_offset      = c % 2;
+    int warp_id         = r / 4;
+    int elt_in_thread   = (r % 4) * 2 + elt_offset;
+    int noffset_in_warp = (((elt_in_thread & 3) >> 1) << 3) + (elt_in_thread & 1);
+    int moffset_in_warp = ((elt_in_thread >> 2) & 1) << 3;
+
+    int XMMAS_mi         = warp_id / (N_XMMAS * warps_in_XMMAS);
+    int XMMAS_ni         = warp_id % (N_XMMAS * warps_in_XMMAS) / warps_in_XMMAS;
+    int warp_id_in_XMMAS = warp_id - (XMMAS_mi * N_XMMAS + XMMAS_ni) * warps_in_XMMAS;
+    int warp_mi          = warp_id_in_XMMAS % warps_m;
+    int warp_ni          = warp_id_in_XMMAS / warps_m;
+    int noffset          = XMMAS_ni * N_per_XMMAS + (warp_ni << 4) + noffset_in_warp;
+    int moffset          = XMMAS_mi * M_per_XMMAS + (warp_mi << 4) + moffset_in_warp;
+
+    int mi = moffset + (c >> 3);
+    int ni = noffset + (((c >> 1) & 3) << 1);
+
+    if (mi < S && ni < S) {
+        tmp = __ldg(mask_b + ((mi * S + ni) >> 1));
+    }
+
+    tranformed_mask_b[(r << 5) + threadIdx.x] = tmp;
+}
+
+// transform mask [B, S, S](half) into [B, S2*S2/64, 64](half), S2 is the actural  seqlen used in fmha row-major
+// in one MMA (16*16 elements calculated by a warp), each thread calculates 8 elements
+// the offsets of elements calculated by each thread are : for n, +0 +1 +8 +9; for m, +0 +8 (M_XMMAS*N_XMMAS times)
+// in transformed_mask, the masks of one warp are stored in 4 continuous rows ([4, 64]), with two elements of one thread
+// stored in 2 continuous halfs. one cta calculates warps_m*warps_n mma == 16*warps_m*16*warps_n elements grid(B,
+// S2*S2/64) block(32)
+__global__ void transform_mask_kernel(half*          tranformed_mask,
+                                      const half*    mask,
+                                      const uint32_t warps_m,
+                                      const uint32_t warps_n,
+                                      const uint32_t B,
+                                      const uint32_t S,
+                                      const uint32_t S2)
+{
+    const int bi = blockIdx.x;
+    const int r  = blockIdx.y;
+
+    const int N_per_XMMAS       = warps_n << 4;
+    const int M_per_XMMAS       = warps_m << 4;
+    const int N_XMMAS           = (S2 + N_per_XMMAS - 1) / (N_per_XMMAS);
+    const int warps_in_XMMAS    = warps_m * warps_n;
+    half2*    tranformed_mask_b = (half2*)(tranformed_mask + (bi * gridDim.y << 6));
+
+    half2 tmp = {half(-30000.0f), half(-30000.0f)};
+
+    int c               = threadIdx.x * 2;
+    int elt_offset      = c % 2;
+    int warp_id         = r / 4;
+    int elt_in_thread   = (r % 4) * 2 + elt_offset;
+    int noffset_in_warp = (((elt_in_thread & 3) >> 1) << 3) + (elt_in_thread & 1);
+    int moffset_in_warp = ((elt_in_thread >> 2) & 1) << 3;
+
+    int XMMAS_mi         = warp_id / (N_XMMAS * warps_in_XMMAS);
+    int XMMAS_ni         = warp_id % (N_XMMAS * warps_in_XMMAS) / warps_in_XMMAS;
+    int warp_id_in_XMMAS = warp_id - (XMMAS_mi * N_XMMAS + XMMAS_ni) * warps_in_XMMAS;
+    int warp_mi          = warp_id_in_XMMAS % warps_m;
+    int warp_ni          = warp_id_in_XMMAS / warps_m;
+    int noffset          = XMMAS_ni * N_per_XMMAS + (warp_ni << 4) + noffset_in_warp;
+    int moffset          = XMMAS_mi * M_per_XMMAS + (warp_mi << 4) + moffset_in_warp;
+
+    int mi = moffset + (c >> 3);
+    int ni = noffset + (((c >> 1) & 3) << 1);
+
+    if (mi < S) {
+        mask += bi * S * S;
+        int idx = mi * S + ni;
+        if (ni < S) {
+            tmp.x = __ldg(mask + idx);
+        }
+        if (ni + 1 < S) {
+            tmp.y = __ldg(mask + idx + 1);
+        }
+    }
+
+    tranformed_mask_b[(r << 5) + threadIdx.x] = tmp;
+}
+
+void invokeTransformMask(
+    half* tranformed_mask, const half* mask, const uint32_t B, const uint32_t S, cudaStream_t stream)
+{
+    uint32_t S2;
+    uint32_t warps_m = 2, warps_n = 2;
+    if (S <= 64) {
+        S2 = 64;
+    }
+    else if (S <= 128) {
+        S2 = 128;
+    }
+    else if (S <= 256) {
+        S2      = 256;
+        warps_m = 1;
+        warps_n = 4;
+    }
+    else if (S <= 384) {
+        S2      = 384;
+        warps_m = 1;
+        warps_n = 8;
+    }
+    else {
+        printf("[ERROR][invokeTransformMask]unsupported seq_len %d\n", S);
+        exit(-1);
+    }
+    assert(S2 * S2 % 64 == 0);
+    dim3 grid(B, S2 * S2 / 64);
+    dim3 block(32);
+    if (S % 2 == 0) {
+        transform_mask_kernel<<<grid, block, 0, stream>>>(
+            (half2*)tranformed_mask, (const half2*)mask, warps_m, warps_n, B, S, S2);
+    }
+    else {
+        transform_mask_kernel<<<grid, block, 0, stream>>>(tranformed_mask, mask, warps_m, warps_n, B, S, S2);
+    }
+}
+
+}  // namespace fastertransformer
+
+#endif
+
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -187,7 +343,9 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
     int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   // input[0], (B, S, 3 * N * H, 1, 1)
-  // input[1], (B, head_num, seq_len, seq_len)
+  // input[1], (B, head_num, seq_len, seq_len) / (1,head_num, seq_len, seq_len)
+  // if has_biasqk_mask_
+  // input[2], (window_number, seq_len, seq_len)
   // output, (B, seq_len, hidden)
   PADDLE_ENFORCE_EQ(output_index,
                     0,
@@ -196,6 +354,7 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
                         "so the index should be zero,"
                         "but it's (%d)",
                         output_index));
+  if(!has_biasqk_mask_){
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       2,
@@ -203,6 +362,15 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
           "The Input of the EmbEltwiseLayernorm should be 3, but we found "
           "it has (%d) inputs",
           nb_inputs));
+  } else {
+  PADDLE_ENFORCE_EQ(
+      nb_inputs,
+      3,
+      platform::errors::InvalidArgument(
+          "The Input of the EmbEltwiseLayernorm should be 3, but we found "
+          "it has (%d) inputs",
+          nb_inputs));
+  }
   nvinfer1::DimsExprs ret;
   ret.nbDims = 3;
   ret.d[0] = inputs[0].d[0];
@@ -318,6 +486,47 @@ __global__ void broadcast_batch(const T *src,
   }
 }
 
+
+// TODO wangbojun for debug
+template<typename T>
+__global__ void print_float(const T *src, int start_index, int end_index, int numPerRow=49, int stride=1){
+  printf("start print float \r\n");
+  for (int i=start_index;i<end_index;i+=stride){
+    printf("%.1e, ",static_cast<double>(src[i]));
+    if((i-start_index)/stride%numPerRow==numPerRow-1){
+      printf("\r\n");
+    }
+  }
+}
+
+template <typename T>
+__global__ void transpose_qkv_for_ftmha(const T *src, // (Batch, real_seq_len, 3 , head_num * size_per_head)
+                                         T *dst,       
+                                      const int batch_size,
+                                      const int seq_len,
+                                      const int head_num,
+                                      const int size_per_head){
+  //const dim3 grid(seq_len, batch, 3);
+  //const dim3 block(head_size, head_num, 1);
+  int qkv_id = blockIdx.z;
+  int batch_id = blockIdx.y;
+  int seq_id = blockIdx.x;
+  int head_id = threadIdx.y;
+  // (batch * seq_len * head_num * 3(qkv) * size_per_head)
+  const int dst_offset = batch_id * seq_len * 3 * head_num * size_per_head +
+                         seq_id * head_num * 3 * size_per_head+
+                         head_id * 3 * size_per_head +
+                         qkv_id * size_per_head;
+  const int src_offset = batch_id * seq_len * 3 * head_num * size_per_head +
+                         seq_id * 3 * head_num * size_per_head +
+                         qkv_id * head_num * size_per_head +
+                         head_id * size_per_head;
+  if(seq_id<seq_len){
+    dst[threadIdx.x + dst_offset] = src[threadIdx.x + src_offset];
+  };
+}
+
+
 int QkvToContextPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc,
@@ -348,8 +557,9 @@ int QkvToContextPluginDynamic::enqueue(
         platform::CUDAPlace(device_id));
     auto *qkptr = multihead_temp_data;
     auto *tptr = multihead_temp_data + scratch_size;
-    cudaDeviceSynchronize();
+
     const float *input0_data = static_cast<const float *>(inputs[0]);
+
     float *qk_bias = const_cast<float *>(static_cast<const float *>(inputs[1]));
     framework::Tensor temp_qk_bias_tensor;
 
@@ -391,6 +601,7 @@ int QkvToContextPluginDynamic::enqueue(
     }
 
     const float *input1_data = static_cast<const float *>(qk_bias);
+
     // BxSx3xNxH => tptr: 3xBxNxSxH.
     TransposeQKV(
         batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
@@ -421,9 +632,8 @@ int QkvToContextPluginDynamic::enqueue(
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
+#ifndef TRT_FT_WINDOWS_ATTENTION
     VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp16";
-    operators::math::MultiHeadGPUComputeFunctor<half> multihead_compute_func;
-
     auto *multihead_temp_data =
         multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
             platform::CUDAPlace(device_id));
@@ -496,7 +706,7 @@ int QkvToContextPluginDynamic::enqueue(
     //     tptr, static_cast<half>(scale_), n_q);
 
     const phi::GPUContext &dev_ctx = *device_ctx;
-
+    operators::math::MultiHeadGPUComputeFunctor<half> multihead_compute_func;
     multihead_compute_func(dev_ctx,
                            batch,
                            seq_len,
@@ -513,6 +723,141 @@ int QkvToContextPluginDynamic::enqueue(
     half *output = static_cast<half *>(outputs[0]);
     transpose<half><<<grid, block, 0, stream>>>(
         tptr, output, batch, seq_len, head_number_, head_size_);
+#else //if define TRT_FT_WINDOWS_ATTENTION
+    VLOG(1)<<"@@@ use faster transformer trt fused multihead matmul kernel";
+    printf("@@@ use faster transformer trt fused multihead matmul kernel\r\n");
+    auto *multihead_temp_data =
+        multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
+            platform::CUDAPlace(device_id));
+
+    half *qkptr = reinterpret_cast<half *>(multihead_temp_data);
+    half *tptr = qkptr + scratch_size;
+    const int sm = 86; // TODO for A10, sm is 86
+    if (ft_dispatcher_fp16_.get() && head_number_ == ft_dispatcher_fp16_num_head_) {}
+    else {
+      printf("@@@ ft_dispatcher_fp16_.reset head_number_:%d, head_size_:%d \r\n",head_number_, head_size_);
+      ft_dispatcher_fp16_.reset(new fastertransformer::FusedMHARunnerFP16v2(head_number_, head_size_, sm, 1.0f));
+      ft_dispatcher_fp16_num_head_ = head_number_;
+    }
+    int S;
+    S = ft_dispatcher_fp16_->getSFromMaxSeqLen(seq_len);
+    // printf("@@@ ft S %d \r\n",S);
+    framework::Tensor temp_qk_bias_tensor;
+    temp_qk_bias_tensor.Resize({head_number_,S*S/64,64});
+    auto * temp_qk_bias_data = reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
+                                                              platform::CUDAPlace(device_id)));
+    int window_num = input_desc[0].dims.d[0];
+    framework::Tensor temp_qk_bias_mask_tensor;
+
+    // BxSx3xNxH 
+    const half *input0_data = static_cast<const half *>(inputs[0]); //qkv
+    const dim3 grid_t_ftmha(seq_len, batch, 3);
+    const dim3 block_t_ftmha(head_size_, head_number_, 1);
+    // TransposeQKV(
+    //     batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
+    transpose_qkv_for_ftmha<half><<<grid_t_ftmha,block_t_ftmha,0,stream>>>(
+      input0_data,
+      tptr,
+      batch,
+      seq_len,
+      head_number_,
+      head_size_
+    );
+
+
+    // if(window_num==64){
+    //   cudaDeviceSynchronize();
+    //   print_float<half><<<1,1>>>(input0_data,0,2*seq_len*3*head_number_*head_size_,3*head_number_*head_size_,1);
+    //   cudaDeviceSynchronize();
+    // }
+
+    const half *input1_data = static_cast<const half *>(inputs[1]); //relative pos
+    VLOG(1)<<"@@@ invokeTransformMask(temp_qk_bias_data,input1_data ";
+    fastertransformer::invokeTransformMask(temp_qk_bias_data,input1_data,head_number_,seq_len,stream);
+
+    const half *input2_data = nullptr;
+    half * temp_qk_bias_mask_data = nullptr;
+    if (has_biasqk_mask_){
+      printf("@@@ has biasqk mask \r\n");
+      VLOG(1)<<"@@@ invokeTransformMask(temp_qk_bias_data,input2_data";
+      window_num = input_desc[2].dims.d[0];
+      input2_data = static_cast<const half *>(inputs[2]); //mask
+      temp_qk_bias_mask_tensor.Resize({window_num,S*S/64,64});
+      temp_qk_bias_mask_data = reinterpret_cast<half *>(
+          temp_qk_bias_mask_tensor.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
+      // printf("@@@ input 2 (qkbias mask) \r\n");
+      // if(window_num==64){
+      //   cudaDeviceSynchronize();
+      //   print_float<half><<<1,1>>>(input2_data,
+      //   0,S*S,
+      //   64,
+      //   1);
+      //   cudaDeviceSynchronize();
+      //   print_float<half><<<1,1>>>(input2_data,
+      //   S*S,2*S*S,
+      //   64,
+      //   1);
+      // }
+      fastertransformer::invokeTransformMask(temp_qk_bias_mask_data,input2_data,window_num,seq_len,stream);
+      // printf("@@@ temp_qk_bias_mask_data \r\n");
+      // if(window_num==64){
+      //   cudaDeviceSynchronize();
+      //   print_float<half><<<1,1>>>(temp_qk_bias_mask_data,
+      //       0,
+      //       S*S,
+      //       64,
+      //       1);
+      //   cudaDeviceSynchronize();
+      //   print_float<half><<<1,1>>>(temp_qk_bias_mask_data,
+      //       S*S,
+      //       2*S*S,
+      //       64,
+      //       1);
+      // }
+    }
+    printf("@@@ ft_dispatcher_fp16_ setup, S:%d, Batch: %d, window_num: %d \r\n",
+      S,batch,window_num);
+    ft_dispatcher_fp16_->setup(S,batch,window_num);
+    half *output = static_cast<half *>(outputs[0]);
+
+    if(window_num == 64){
+        printf("@before run \r\n");
+        printf("@ q_buf \r\n");
+        cudaDeviceSynchronize();
+        print_float<half><<<1,1>>>(tptr, 0, batch*seq_len*3*head_number_*head_size_,head_size_,1);
+        cudaDeviceSynchronize();
+        // if(temp_qk_bias_mask_data!=nullptr){
+        //     printf("@ trt_attention_mask \r\n");
+        //     print_float<half><<<1,1>>>(temp_qk_bias_mask_data,0,window_num*seq_len*seq_len,seq_len,1);
+        //     cudaDeviceSynchronize();
+        // }
+        // printf("@ trt_relative_position_bias_ \r\n");
+        // print_float<half><<<1,1>>>(temp_qk_bias_data,0,head_number_*seq_len*seq_len,seq_len,1);
+        // cudaDeviceSynchronize();
+    }
+
+
+    ft_dispatcher_fp16_->run(
+      tptr, 
+      temp_qk_bias_mask_data,
+      temp_qk_bias_data,
+      seq_len,
+      nullptr,
+      output,
+      stream);
+    printf("@@@ output after run \r\n");
+    cudaDeviceSynchronize();
+    if(window_num==64){
+      print_float<half><<<1,1>>>(output,0,seq_len*head_size_,head_size_,1);
+    }
+    cudaDeviceSynchronize();
+    int grid = batch * head_number_ * seq_len;
+    int block = head_size_;
+
+    // transpose<half><<<grid, block, 0, stream>>>(
+    //     qkptr, output, batch, seq_len, head_number_, head_size_);
+
+#endif //TRT_FT_WINDOWS_ATTENTION
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "The Ernie(Bert) TensorRT Plugin should be "
@@ -533,3 +878,4 @@ int QkvToContextPluginDynamic::enqueue(
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
+

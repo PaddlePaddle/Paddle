@@ -539,9 +539,9 @@ class MultiheadMatMulOpConverter : public OpConverter {
             engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
         nvinfer1::ILayer* biasQK_constLayer = nullptr;
+        nvinfer1::Weights biasqk_const_nvWeight;
         if (is_BiasQK_directInput) {
           auto biasqk_name = op_desc.Input("BiasQK").front();
-
           auto biasqk_constlayer_outputname = biasqk_name + "_cl";
           auto* biasqk_v = scope.FindVar(biasqk_name);
           auto* biasqk_t = biasqk_v->GetMutable<framework::LoDTensor>();
@@ -550,16 +550,12 @@ class MultiheadMatMulOpConverter : public OpConverter {
           for (int i = 0; i < biasqk_t->dims().size(); ++i) {
             biasqk_dims.d[biasqk_dims.nbDims++] = biasqk_t->dims()[i];
           }
-          nvinfer1::Weights biasqk_const_nvWeight;
+          
           biasqk_const_nvWeight.count = biasqk_t->numel();
           if (with_fp16) {
             auto biasqk_const_weight =
                 engine_->GetTrtWeight(biasqk_name, *biasqk_t);
-
-            // auto half_biasqk_data=new half[biasqk_t->numel()];
-
             biasqk_const_nvWeight.type = nvinfer1::DataType::kHALF;
-
             if (biasqk_const_weight.get().type == nvinfer1::DataType::kFLOAT) {
               std::unique_ptr<framework::Tensor> half_biasqk_tensor(
                   new framework::Tensor());
@@ -601,6 +597,76 @@ class MultiheadMatMulOpConverter : public OpConverter {
         }
         nvinfer1::ITensor* input_bias_qk =
             engine_->GetITensor(op_desc.Input("BiasQK").front());
+
+        bool has_BiasQK_mask = false;
+        if (op_desc.HasAttr("has_BiasQK_mask")){
+          has_BiasQK_mask = 
+            PADDLE_GET_CONST(bool, op_desc.GetAttr("has_BiasQK_mask"));
+        }
+        nvinfer1::Weights biasqk_mask_const_nvWeight;
+        nvinfer1::ILayer* biasQK_mask_constLayer = nullptr;
+        nvinfer1::ITensor* input_bias_qk_mask = nullptr;
+        if (has_BiasQK_mask){
+          printf("@@ has biasqk mask\r\n");
+          auto biasqk_mask_name = op_desc.Input("BiasQK_mask").front();
+          printf("@@ %s", biasqk_mask_name.c_str());
+          auto biasqk_mask_constlayer_outputname = biasqk_mask_name + "_cl";
+          auto* biasqk_mask_v = scope.FindVar(biasqk_mask_name);
+          auto* biasqk_mask_t = biasqk_mask_v->GetMutable<framework::LoDTensor>();
+          nvinfer1::Dims biasqk_mask_dims;
+          biasqk_mask_dims.nbDims = 0;
+          printf("@@@@ mask dims : \r\n");
+          for (int i = 0; i < biasqk_mask_t->dims().size(); ++i) {
+            biasqk_mask_dims.d[biasqk_mask_dims.nbDims++] = biasqk_mask_t->dims()[i];
+            printf("%ld, ",biasqk_mask_t->dims()[i]);
+          }
+          printf("\r\n");
+          biasqk_mask_const_nvWeight.count = biasqk_mask_t->numel();
+          if (with_fp16) {
+            auto biasqk_mask_const_weight =
+                engine_->GetTrtWeight(biasqk_mask_name, *biasqk_mask_t);
+            biasqk_mask_const_nvWeight.type = nvinfer1::DataType::kHALF;
+            if (biasqk_mask_const_weight.get().type == nvinfer1::DataType::kFLOAT) {
+              std::unique_ptr<framework::Tensor> half_biasqk_mask_tensor(
+                  new framework::Tensor());
+              half_biasqk_mask_tensor->Resize({biasqk_mask_t->numel()});
+              auto* half_biasqk_mask_data =
+                  half_biasqk_mask_tensor->mutable_data<paddle::platform::float16>(
+                      platform::CPUPlace());
+
+              for (int i = 0; i < biasqk_mask_t->numel(); i++) {
+                half_biasqk_mask_data[i] = static_cast<paddle::platform::float16>(
+                    static_cast<const float*>(
+                        biasqk_mask_const_weight.get().values)[i]);
+              }
+              engine_->SetWeights(biasqk_mask_constlayer_outputname + "_fp16",
+                                  std::move(half_biasqk_mask_tensor));
+              biasqk_mask_const_nvWeight.values = half_biasqk_mask_data;
+            } else if (biasqk_mask_const_weight.get().type ==
+                       nvinfer1::DataType::kHALF) {
+              biasqk_mask_const_nvWeight = biasqk_mask_const_weight.get();
+            }
+            biasQK_mask_constLayer = TRT_ENGINE_ADD_LAYER(
+                engine_, Constant, biasqk_mask_dims, biasqk_mask_const_nvWeight);
+            biasQK_mask_constLayer->setOutputType(0, nvinfer1::DataType::kHALF);
+            biasQK_mask_constLayer->setPrecision(nvinfer1::DataType::kHALF);
+          } else {
+            auto biasqk_mask_const_weight =
+                engine_->GetFp32TrtWeight(biasqk_mask_name, *biasqk_mask_t);
+            biasQK_mask_constLayer = TRT_ENGINE_ADD_LAYER(
+                engine_, Constant, biasqk_mask_dims, biasqk_mask_const_weight.get());
+            biasQK_mask_constLayer->setOutputType(0, nvinfer1::DataType::kFLOAT);
+            biasQK_mask_constLayer->setPrecision(nvinfer1::DataType::kFLOAT);
+          }
+          biasQK_mask_constLayer->getOutput(0)->setName(
+              biasqk_mask_constlayer_outputname.c_str());
+          engine_->SetITensor(biasQK_mask_constLayer->getOutput(0)->getName(),
+                              biasQK_mask_constLayer->getOutput(0));
+          op_desc.SetInput("BiasQK_mask",
+                           {biasQK_mask_constLayer->getOutput(0)->getName()});
+          input_bias_qk_mask =
+            engine_->GetITensor(op_desc.Input("BiasQK_mask").front());
+        }
 
         TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                       static_cast<void*>(weight_data),
@@ -679,14 +745,21 @@ class MultiheadMatMulOpConverter : public OpConverter {
         std::vector<nvinfer1::ITensor*> plugin_inputs;
         plugin_inputs.push_back(fc_layer->getOutput(0));
         plugin_inputs.push_back(input_bias_qk);
+        if(has_BiasQK_mask){
+          plugin_inputs.push_back(input_bias_qk_mask);
+        }
 
         if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
           with_fp16 = true;
         }
         plugin::DynamicPluginTensorRT* plugin =
             new plugin::QkvToContextPluginDynamic(
-                hidden_in, head_number, head_size, scale, with_fp16);
-        layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
+                hidden_in, head_number, head_size, scale, with_fp16,has_BiasQK_mask);
+        if(!has_BiasQK_mask){
+          layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
+        } else {
+          layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 3, plugin);
+        }
       }
     } else {
       PADDLE_THROW(platform::errors::Fatal(

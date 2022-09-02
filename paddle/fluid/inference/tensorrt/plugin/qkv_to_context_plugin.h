@@ -35,33 +35,44 @@
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
+//for test wangbojun
+#define TRT_FT_WINDOWS_ATTENTION 
+
+#ifdef TRT_FT_WINDOWS_ATTENTION
+#include "3rdparty/trt_fused_multihead_attention/qkvToContext.h"
+#endif  
+
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#if IS_TRT_VERSION_GE(6000)
+#if IS_TRT_VERSION_GE(6000) 
 class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit QkvToContextPluginDynamic(
-      int hidden, int head_number, int head_size, float scale, bool with_fp16)
+      int hidden, int head_number, int head_size, float scale, bool with_fp16, bool has_biasqk_mask)
       : hidden_(hidden),
         head_number_(head_number),
         head_size_(head_size),
-        scale_(scale) {
+        scale_(scale),
+        has_biasqk_mask_(has_biasqk_mask) {
     with_fp16_ = with_fp16;
   }
-
   QkvToContextPluginDynamic(void const* serial_data, size_t serial_length) {
     DeserializeValue(&serial_data, &serial_length, &hidden_);
     DeserializeValue(&serial_data, &serial_length, &head_number_);
     DeserializeValue(&serial_data, &serial_length, &head_size_);
     DeserializeValue(&serial_data, &serial_length, &scale_);
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
+    DeserializeValue(&serial_data, &serial_length, &has_biasqk_mask_);
+
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new QkvToContextPluginDynamic(
-        hidden_, head_number_, head_size_, scale_, with_fp16_);
+    auto * ptr = new QkvToContextPluginDynamic(
+        hidden_, head_number_, head_size_, scale_, with_fp16_, has_biasqk_mask_);
+    ptr->ft_dispatcher_fp16_num_head_=ft_dispatcher_fp16_num_head_;
+    return ptr;
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
@@ -73,7 +84,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return SerializedSize(hidden_) + SerializedSize(head_number_) +
            SerializedSize(head_size_) + SerializedSize(scale_) +
-           SerializedSize(with_fp16_);
+           SerializedSize(with_fp16_) + SerializedSize(has_biasqk_mask_);  
   }
   void serialize(void* buffer) const TRT_NOEXCEPT override {
     SerializeValue(&buffer, hidden_);
@@ -81,6 +92,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, head_size_);
     SerializeValue(&buffer, scale_);
     SerializeValue(&buffer, with_fp16_);
+    SerializeValue(&buffer, has_biasqk_mask_);
   }
 
   nvinfer1::DimsExprs getOutputDimensions(int output_index,
@@ -124,6 +136,9 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   int head_number_;
   int head_size_;
   float scale_;
+  bool has_biasqk_mask_=false;
+  std::unique_ptr<fastertransformer::MHARunner> ft_dispatcher_fp16_;
+  int ft_dispatcher_fp16_num_head_=-1;
 };
 
 class QkvToContextPluginDynamicCreator : public nvinfer1::IPluginCreator {

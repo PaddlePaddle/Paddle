@@ -21,39 +21,39 @@
 #include <string>
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
-#define GET_NODES                   \
-  GET_IR_NODE(matmul_00_op);        \
-  GET_IR_NODE(matmul_00_in_y);      \
-  GET_IR_NODE(matmul_00_out);       \
-  GET_IR_NODE(elementwise_10_op);   \
-  GET_IR_NODE(elementwise_10_in_y); \
-  GET_IR_NODE(elementwise_10_out);  \
-  GET_IR_NODE(reshape_20_op);       \
-  GET_IR_NODE(reshape_20_out);      \
-  GET_IR_NODE(transpose_30_op);     \
-  GET_IR_NODE(transpose_30_out);    \
-  GET_IR_NODE(slice_40_op);         \
-  GET_IR_NODE(slice_40_out);        \
-  GET_IR_NODE(slice_41_op);         \
-  GET_IR_NODE(slice_41_out);        \
-  GET_IR_NODE(slice_42_op);         \
-  GET_IR_NODE(slice_42_out);        \
-  GET_IR_NODE(scale_50_op);         \
-  GET_IR_NODE(scale_50_out);        \
-  GET_IR_NODE(transpose_51_op);     \
-  GET_IR_NODE(transpose_51_out);    \
-  GET_IR_NODE(matmul_60_op);        \
-  GET_IR_NODE(matmul_60_out);       \
-  GET_IR_NODE(elementwise_70_op);   \
-  GET_IR_NODE(elementwise_70_in_y); \
-  GET_IR_NODE(elementwise_70_out);  \
-  GET_IR_NODE(softmax_80_op);       \
-  GET_IR_NODE(softmax_80_out);      \
-  GET_IR_NODE(matmul_90_op);        \
-  GET_IR_NODE(matmul_90_out);       \
-  GET_IR_NODE(transpose_a0_op);     \
-  GET_IR_NODE(transpose_a0_out);    \
-  GET_IR_NODE(reshape_b0_op);       \
+#define GET_NODES                      \
+  GET_IR_NODE(matmul_00_op);           \
+  GET_IR_NODE(matmul_00_in_y);         \
+  GET_IR_NODE(matmul_00_out);          \
+  GET_IR_NODE(elementwise_10_op);      \
+  GET_IR_NODE(elementwise_10_in_y);    \
+  GET_IR_NODE(elementwise_10_out);     \
+  GET_IR_NODE(reshape_20_op);          \
+  GET_IR_NODE(reshape_20_out);         \
+  GET_IR_NODE(transpose_30_op);        \
+  GET_IR_NODE(transpose_30_out);       \
+  GET_IR_NODE(slice_40_op);            \
+  GET_IR_NODE(slice_40_out);           \
+  GET_IR_NODE(slice_41_op);            \
+  GET_IR_NODE(slice_41_out);           \
+  GET_IR_NODE(slice_42_op);            \
+  GET_IR_NODE(slice_42_out);           \
+  GET_IR_NODE(scale_50_op);            \
+  GET_IR_NODE(scale_50_out);           \
+  GET_IR_NODE(transpose_51_op);        \
+  GET_IR_NODE(transpose_51_out);       \
+  GET_IR_NODE(matmul_60_op);           \
+  GET_IR_NODE(matmul_60_out);          \
+  GET_IR_NODE(elementwise_70_op);      \
+  GET_IR_NODE(elementwise_70_in_y);    \
+  GET_IR_NODE(elementwise_70_out);     \
+  GET_IR_NODE(softmax_80_op);          \
+  GET_IR_NODE(softmax_80_out);         \
+  GET_IR_NODE(matmul_90_op);           \
+  GET_IR_NODE(matmul_90_out);          \
+  GET_IR_NODE(transpose_a0_op);        \
+  GET_IR_NODE(transpose_a0_out);       \
+  GET_IR_NODE(reshape_b0_op);          \
   GET_IR_NODE(reshape_b0_out);
 
 namespace paddle {
@@ -96,11 +96,32 @@ void SwinAttention1FusePass::ApplyImpl(ir::Graph* graph) const {
 
     std::vector<int64_t> softmax_shape = softmax_80_out->Var()->GetShape();
     float alpha = PADDLE_GET_CONST(float, scale_50_op->Op()->GetAttr("scale"));
-
+    auto qkbias_add_inputs = elementwise_70_op->Op()->Inputs(false);
+    bool has_biasQK_mask=false;
+    std::string biasQK_mask_name;
+    for (auto input : qkbias_add_inputs){
+        if(input.first=="BiasQK_mask"){
+            has_biasQK_mask = true;
+            biasQK_mask_name=input.second[0].c_str();
+            break;
+        }
+    }
     desc.SetInput("W", {matmul_00_in_y->Name()});
     desc.SetInput("Bias", {elementwise_10_in_y->Name()});
     desc.SetInput("BiasQK", {elementwise_70_in_y->Name()});
+    Node* biaskQK_mask_node = nullptr; 
+    if(has_biasQK_mask){
+        desc.SetInput("BiasQK_mask",{biasQK_mask_name});
+        desc.SetAttr("has_BiasQK_mask",true);
+        for(auto inputNode : elementwise_70_op->inputs){
+            if(inputNode->Name()==biasQK_mask_name){
+                biaskQK_mask_node=inputNode;
+                break;
+            }
+        }
+    }
     desc.SetOutput("Out", {reshape_b0_out->Name()});
+
     desc.SetAttr("head_number", static_cast<int>(softmax_shape[1]));
     desc.SetAttr("alpha", alpha);
     desc.SetAttr("BiasQK_directInput", true);
@@ -120,6 +141,9 @@ void SwinAttention1FusePass::ApplyImpl(ir::Graph* graph) const {
     IR_NODE_LINK_TO(matmul_00_in_y, swin_attention1_node);       // weight
     IR_NODE_LINK_TO(elementwise_10_in_y, swin_attention1_node);  // Bias
     IR_NODE_LINK_TO(elementwise_70_in_y, swin_attention1_node);  // BiasQK
+    if(has_biasQK_mask){
+        IR_NODE_LINK_TO(biaskQK_mask_node, swin_attention1_node);
+    }
     IR_NODE_LINK_TO(swin_attention1_node, reshape_b0_out);
 
     // remove the origin nodes

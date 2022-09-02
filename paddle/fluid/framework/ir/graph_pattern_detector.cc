@@ -2441,6 +2441,10 @@ PDNode *patterns::SwinAttention1Fuse::operator()(PDNode *atten1_in){
   auto elementwise_70_in_y=pattern->NewNode(elementwise_70_in_y_repr())
                                   ->AsInput()
                                   ->assert_is_op_input("elementwise_add","Y");
+  // auto elementwise_70_in_mask=pattern->NewNode(elementwise_70_in_mask_repr())
+  //                                    ->AsInput()
+  //                                    ->assert_is_op_input("elementwise_add","BiasQK_mask");
+
   auto elementwise_70_out=pattern->NewNode(elementwise_70_out_repr())
                             ->assert_is_op_output("elementwise_add","Out")
                             ->assert_is_op_input("softmax","X")
@@ -2505,6 +2509,8 @@ PDNode *patterns::SwinAttention1Fuse::operator()(PDNode *atten1_in){
   matmul_60_out->LinksFrom({matmul_60_op});
 
   elementwise_70_op->LinksFrom({matmul_60_out,elementwise_70_in_y});
+  // elementwise_70_op->LinksFrom({matmul_60_out,elementwise_70_in_y,elementwise_70_in_mask});
+  
   elementwise_70_out->LinksFrom({elementwise_70_op});
 
   softmax_80_op->LinksFrom({elementwise_70_out});
@@ -2519,9 +2525,6 @@ PDNode *patterns::SwinAttention1Fuse::operator()(PDNode *atten1_in){
   reshape_b0_op->LinksFrom({transpose_a0_out});
   reshape_b0_out->LinksFrom({reshape_b0_op});
   return reshape_b0_out;
-
-  // for debug
-  //return matmul_60_out;
 }
 
 PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {

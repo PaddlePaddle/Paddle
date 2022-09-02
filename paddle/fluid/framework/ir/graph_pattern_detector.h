@@ -1440,6 +1440,7 @@ struct SwinAttention1Fuse : public PatternBase{
 
   PATTERN_DECL_NODE(elementwise_70_op);
   PATTERN_DECL_NODE(elementwise_70_in_y);
+  // PATTERN_DECL_NODE(elementwise_70_in_mask);
   PATTERN_DECL_NODE(elementwise_70_out);
 
   PATTERN_DECL_NODE(softmax_80_op);
