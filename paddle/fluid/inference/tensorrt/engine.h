@@ -837,11 +837,9 @@ class TRTEngineManager {
     max_ctx_mem_size_ = std::max(max_ctx_mem_size_, mem_size);
   }
 
-  void* getContextMemory(PredictorID predictor_id,
-                         const phi::GPUPlace& place,
-                         const phi::Stream& stream) {
+  void* getContextMemory(TensorRTEngine* trt_engine) {
     std::unique_lock<std::mutex> lock(mutex_);
-    static auto alignment = getAlignmentSize(place);
+    auto predictor_id = trt_engine->predictor_id_per_thread;
     if (context_memorys_.count(predictor_id) == 0) {
       void* context_memory_{nullptr};
       cudaMalloc(&context_memory_, max_ctx_mem_size_);
