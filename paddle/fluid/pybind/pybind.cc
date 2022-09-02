@@ -1049,13 +1049,44 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
-  m.def("get_all_op_names", []() {
-    std::vector<std::string> op_names;
-    for (auto &iter : OpInfoMap::Instance().map()) {
-      op_names.emplace_back(iter.first);
-    }
-    return op_names;
-  });
+  m.def(
+      "get_all_op_names",
+      [](const std::string &lib) {
+        std::vector<std::string> op_names;
+        for (auto &iter : OpInfoMap::Instance().map()) {
+          op_names.emplace_back(iter.first);
+        }
+        if (lib == "phi") {
+          std::vector<std::string> ops_with_phi_kernel;
+          for (const auto &op_name : op_names) {
+            if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
+                    op_name)) {
+              ops_with_phi_kernel.emplace_back(op_name);
+            }
+          }
+          return ops_with_phi_kernel;
+        } else if (lib == "fluid") {
+          std::vector<std::string> ops_with_fluid_kernel;
+          auto all_fluid_op_kernels =
+              paddle::framework::OperatorWithKernel::AllOpKernels();
+          for (const auto &op_name : op_names) {
+            if (all_fluid_op_kernels.find(op_name) !=
+                all_fluid_op_kernels.end()) {
+              ops_with_fluid_kernel.emplace_back(op_name);
+            }
+          }
+          return ops_with_fluid_kernel;
+        } else {
+          return op_names;
+        }
+      },
+      py::arg("lib") = "all",
+      R"DOC(
+      Return the operator names in paddle.
+
+      Args:
+          lib[string]: the library contains corresponding OpKernel, could be 'phi', 'fluid' and 'all'. Default value is 'all'.
+  )DOC");
   m.def("get_op_attrs_default_value",
         [](py::bytes byte_name) -> paddle::framework::AttributeMap {
           std::string op_type = byte_name;
