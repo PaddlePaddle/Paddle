@@ -166,10 +166,8 @@ void MemcpyKernel(const Context& dev_ctx,
       break;
 #endif
     default:
-      PADDLE_THROW(errors::Unimplemented(
-          "memcpy argument dst_place_type only support 0-2, dst_place_type = "
-          "%d is not supported yet.",
-          dst_place_type));
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
       break;
   }
 }
