@@ -368,18 +368,27 @@ Attribute VarDesc::GetAttr(const std::string &name) const {
 struct SetVarAttrDescVisitor {
   explicit SetVarAttrDescVisitor(proto::VarDesc::Attr *attr) : attr_(attr) {}
   mutable proto::VarDesc::Attr *attr_;
+
   template <typename T>
-  void operator()(T &&v) const {
+  void operator()(T &&v) {
     using U = std::decay_t<decltype(v)>;
-    if constexpr (std::is_same<U, int64_t>::value) {
-      attr_->set_l(v);
-    } else if constexpr (std::is_same<U, std::string>::value) {
-      attr_->set_s(v);
+    if (std::is_same<U, int64_t>::value) {
+      set_attr_value(v);
+    } else if (std::is_same<U, std::string>::value) {
+      set_attr_value(v);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
           "Unsupported calling method of SetAttrDescVisitor object."));
     }
   }
+
+  // This template is used to pass the compilation
+  template <typename U>
+  void set_attr_value(U v);
+
+  void set_attr_value(int64_t v) { attr_->set_l(v); }
+
+  void set_attr_value(const std::string &v) { attr_->set_s(v); }
 };
 
 // Only need to flush the attrs for auto parallel for now

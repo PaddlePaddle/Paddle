@@ -391,23 +391,9 @@ class DistributedContext:
             self._ops_ids = list(self._dist_ops_for_program.keys())
             self._is_initialized = True
 
-            # for block in self._serial_main_program.blocks:
-            #     for tensor in block.vars.values():
-            #         dist_tensor = self.get_dist_tensor_for_program(tensor)
-            #         print("dist_context tensor", dist_tensor.serial_tensor.desc.id(), dist_tensor.dist_attr, flush=True)
-            #     for op in block.ops:
-            #         dist_op = self.get_dist_op_for_program(op)
-            #         print("dist_context op", dist_op.serial_op.desc.id(), dist_op.dist_attr, flush=True)
-
             # TODO: This will be removed in the future
             if with_cpp:
                 _copy_dist_attr_to_cpp(self)
-
-            # for block in self._serial_main_program.blocks:
-            #     for tensor in block.vars.values():
-            #         print("before graph tensor", tensor.desc.id(), tensor.dist_attr, flush=True)
-            #     for op in block.ops:
-            #         print("before graph op", op.desc.id(), op.dist_attr, flush=True)
 
             if with_graph:
                 set_flags({"FLAGS_convert_all_blocks": True})
