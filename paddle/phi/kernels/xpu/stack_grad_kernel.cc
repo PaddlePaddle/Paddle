@@ -33,7 +33,7 @@ void StackGradKernel(const Context& dev_ctx,
 
   std::vector<int> dx_dims_list(x_grad.size(), 1);
   std::vector<XPUType*> dx_lists;
-  for (int j = 0; j < outs.size(); ++j) {
+  for (size_t j = 0; j < outs.size(); ++j) {
     dev_ctx.template Alloc<T>(outs[j]);
     dx_lists.push_back(reinterpret_cast<XPUType*>(outs[j]->data<T>()));
   }
