@@ -385,6 +385,9 @@ class PipelineLayer(Layer):
                                           start_idx + stage + 1]:
                     return stage
 
+    def get_num_virtual_stages(self):
+        return self._num_virtual_pipeline_stages
+
     def get_model_chunks(self):
         return None if self._num_virtual_pipeline_stages == 1 else self._model_chunks
 
