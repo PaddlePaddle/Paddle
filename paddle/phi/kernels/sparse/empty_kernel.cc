@@ -29,10 +29,10 @@ void EmptyLikeCooKernel(const Context& dev_ctx,
                         SparseCooTensor* out) {
   MetaTensor meta_out(out);
   phi::sparse::UnchangedInferMeta(x, &meta_out);
-  *(out->mutable_non_zero_indices()) = x.non_zero_indices();
+  *(out->mutable_indices()) = x.indices();
 
-  const DenseTensor& x_values = x.non_zero_elements();
-  DenseTensor* out_values = out->mutable_non_zero_elements();
+  const DenseTensor& x_values = x.values();
+  DenseTensor* out_values = out->mutable_values();
   out_values->Resize(x_values.dims());
   dev_ctx.template Alloc<T>(out_values);
 }
@@ -43,11 +43,11 @@ void EmptyLikeCsrKernel(const Context& dev_ctx,
                         SparseCsrTensor* out) {
   MetaTensor meta_out(out);
   phi::sparse::UnchangedInferMeta(x, &meta_out);
-  *(out->mutable_non_zero_crows()) = x.non_zero_crows();
-  *(out->mutable_non_zero_cols()) = x.non_zero_cols();
+  *(out->mutable_crows()) = x.crows();
+  *(out->mutable_cols()) = x.cols();
 
-  const DenseTensor& x_values = x.non_zero_elements();
-  DenseTensor* out_values = out->mutable_non_zero_elements();
+  const DenseTensor& x_values = x.values();
+  DenseTensor* out_values = out->mutable_values();
   out_values->Resize(x_values.dims());
   dev_ctx.template Alloc<T>(out_values);
 }
