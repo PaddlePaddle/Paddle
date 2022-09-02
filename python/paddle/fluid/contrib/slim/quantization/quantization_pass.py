@@ -1473,6 +1473,7 @@ class OutScaleForTrainingPass(object):
                         graph._find_node_by_name(
                             graph.all_var_nodes(),
                             self._scale_name(in_node.name()))
+                        continue
                     except:
                         scale_node = graph.create_persistable_node(
                             name=self._scale_name(in_node.name()),
