@@ -267,6 +267,8 @@ struct GPUContext::Impl {
 
   const Place& GetPlace() const { return place_; }
 
+  const Place& GetPinnedPlace() const { return GPUPinnedPlace(); }
+
   bool IsTensorCoreAvailable() const {
     return blas_tensor_core_handle_ != nullptr;
   }

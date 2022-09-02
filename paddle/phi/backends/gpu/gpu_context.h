@@ -89,6 +89,9 @@ class PADDLE_API GPUContext : public DeviceContext {
   /*! \brief  Return place in the device context. */
   const Place& GetPlace() const override;
 
+  /*! \brief  Return pinned place in the device context. */
+  const Place& GetPinnedPlace() const override;
+
   /*! \brief  Return gpu stream in the device context. */
   gpuStream_t stream() const;
 
