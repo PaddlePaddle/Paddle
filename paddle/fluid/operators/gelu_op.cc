@@ -100,21 +100,6 @@ class GeluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("approximate",
                   "(bool, default false) use approximation of gelu")
         .SetDefault(false);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"})
-        .AsExtra();
-    AddAttr<bool>("use_cudnn",
-                  "(bool, default false) Only used in cudnn kernel, need "
-                  "install cudnn")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Gelu Activation Operator. 
 

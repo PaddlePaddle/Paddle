@@ -111,10 +111,6 @@ class Pad3dOpMaker : public framework::OpProtoAndCheckerMaker {
         "An optional string from: \"NDHWC\", \"NCDHW\". "
         "Defaults to \"NDHWC\". Specify the data format of the input data.")
         .SetDefault("NCDHW");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Pad3d Operator.
 Pad 3-d images according to 'paddings' and 'mode'. 
