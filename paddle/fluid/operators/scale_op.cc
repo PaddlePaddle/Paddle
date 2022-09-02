@@ -75,6 +75,10 @@ $$Out = scale*(X + bias)$$
         "Apply bias addition after or before scaling. It is useful for "
         "numeric stability in some circumstances.")
         .SetDefault(true);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
   }
 };
 
