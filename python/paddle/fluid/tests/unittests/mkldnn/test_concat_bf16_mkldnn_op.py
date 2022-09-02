@@ -26,6 +26,7 @@ from paddle import enable_static
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
 class TestConcatBf16Op(OpTest):
+
     def setUp(self):
         self.op_type = "concat"
         self.use_mkldnn = True
@@ -40,12 +41,27 @@ class TestConcatBf16Op(OpTest):
             'mkldnn_data_type': self.mkldnn_data_type
         }
 
-        self.output = np.concatenate(
-            (self.x0, self.x1, self.x2), axis=self.axis).astype(np.uint16)
+        self.sections = [self.x0.shape[self.axis]] * 2
+        self.sections[1] += self.x1.shape[self.axis]
+
+        self.output = np.concatenate((self.x0, self.x1, self.x2),
+                                     axis=self.axis).astype(np.uint16)
         self.outputs = {'Out': self.output}
+
+    def calculate_grads(self):
+        self.dout = self.outputs['Out']
+        self.dxs = np.split(self.dout, self.sections, self.axis)
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
+
+    def test_check_grad(self):
+        self.calculate_grads()
+        self.check_grad_with_place(
+            core.CPUPlace(), ["x0", "x1", "x2"],
+            "Out",
+            user_defined_grads=[self.dxs[0], self.dxs[1], self.dxs[2]],
+            user_defined_grad_outputs=[self.dout])
 
 # --------------------test concat bf16 in with axis 0--------------------
 
@@ -61,28 +77,30 @@ class TestConcatBf16Op(OpTest):
         self.axis = 0
 
     def init_shape(self):
-        self.x0_shape = [2, 2, 1, 2]
-        self.x1_shape = [1, 2, 1, 2]
-        self.x2_shape = [3, 2, 1, 2]
+        self.x0_shape = [6, 2, 4, 3]
+        self.x1_shape = [7, 2, 4, 3]
+        self.x2_shape = [8, 2, 4, 3]
 
 
 # --------------------test concat bf16 in with axis 1--------------------
 
 
 class TestAxis1Case(TestConcatBf16Op):
+
     def init_axis(self):
         self.axis = 1
 
     def init_shape(self):
-        self.x0_shape = [1, 1, 5, 5]
-        self.x1_shape = [1, 2, 5, 5]
-        self.x2_shape = [1, 3, 5, 5]
+        self.x0_shape = [1, 4, 5, 5]
+        self.x1_shape = [1, 8, 5, 5]
+        self.x2_shape = [1, 6, 5, 5]
 
 
 # --------------------test concat bf16 in with axis 2--------------------
 
 
 class TestAxis2Case(TestConcatBf16Op):
+
     def init_axis(self):
         self.axis = 2
 
@@ -96,6 +114,7 @@ class TestAxis2Case(TestConcatBf16Op):
 
 
 class TestAxis3Case(TestConcatBf16Op):
+
     def init_axis(self):
         self.axis = 3
 

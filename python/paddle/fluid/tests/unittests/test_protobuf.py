@@ -19,6 +19,7 @@ import unittest
 
 
 class TestFrameworkProto(unittest.TestCase):
+
     def test_all(self):
         op_proto = framework_pb2.OpProto()
         ipt0 = op_proto.inputs.add()

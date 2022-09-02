@@ -35,9 +35,9 @@ class NCCLCommunicator;
 }  // namespace paddle
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #elif defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/fluid/platform/bkcl_helper.h"
+#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
 
 namespace paddle {
@@ -67,16 +67,24 @@ struct FusedAllReduceOpHandle : public AllReduceOpHandle {
 #endif
   std::string Name() const override;
 
+  ~FusedAllReduceOpHandle();
+
  protected:
   void RunImpl() override;
 
  private:
   size_t num_of_all_reduce_;
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  gpuEvent_t start_event_{nullptr};
+  gpuEvent_t end_event_{nullptr};
+#endif
+
   // Check the dtype of the input
   void GetDTypeAndNumel(
       const std::vector<std::pair<std::string, const LoDTensor *>> &g_tensor,
-      proto::VarType::Type *dtype, int64_t *total_num) const;
+      proto::VarType::Type *dtype,
+      int64_t *total_num) const;
 
   // Get gradient's name and LoDTensor
   void GetGradLoDTensor(const size_t &scope_idx,

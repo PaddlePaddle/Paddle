@@ -17,7 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 struct ASCENDPlace;
-struct float16;
 }  // namespace platform
 }  // namespace paddle
 
@@ -25,7 +24,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    c_allreduce_min, ops::CAllReduceOpASCENDKernel<ops::kRedMin, int>,
+    c_allreduce_min,
+    ops::CAllReduceOpASCENDKernel<ops::kRedMin, int>,
     ops::CAllReduceOpASCENDKernel<ops::kRedMin, int8_t>,
     ops::CAllReduceOpASCENDKernel<ops::kRedMin, float>,
     ops::CAllReduceOpASCENDKernel<ops::kRedMin, plat::float16>)

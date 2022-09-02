@@ -16,7 +16,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -36,30 +36,38 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     int nranks = comm->nranks();
 
     auto out_dims = in->dims();
-    PADDLE_ENFORCE_EQ(out_dims[0] % nranks, 0,
+    PADDLE_ENFORCE_EQ(out_dims[0] % nranks,
+                      0,
                       platform::errors::InvalidArgument(
                           "The input tensor X's "
                           "dim[0] (%d) should be divisible by nranks(%d)",
-                          out_dims[0], nranks));
+                          out_dims[0],
+                          nranks));
     out_dims[0] = out_dims[0] / nranks;
     out->mutable_data<T>(out_dims, place);
 
     int64_t recv_numel = in->numel() / nranks;
     const T* send_buff = in->data<T>();
     T* recv_buff = out->data<T>();
-    int dtype = platform::ToNCCLDataType(in->type());
+    int dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
 
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
     }
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduceScatter(
-        send_buff, recv_buff, recv_numel, static_cast<ncclDataType_t>(dtype),
-        ncclSum, comm->comm(), stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::ncclReduceScatter(send_buff,
+                                             recv_buff,
+                                             recv_numel,
+                                             static_cast<ncclDataType_t>(dtype),
+                                             ncclSum,
+                                             comm->comm(),
+                                             stream));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
@@ -73,8 +81,12 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(c_reducescatter, ops::CReduceScatterOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(c_reducescatter,
+                        ops::CReduceScatterOpCUDAKernel<float>,
                         ops::CReduceScatterOpCUDAKernel<double>,
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+                        ops::CReduceScatterOpCUDAKernel<plat::bfloat16>,
+#endif
                         ops::CReduceScatterOpCUDAKernel<int>,
                         ops::CReduceScatterOpCUDAKernel<int64_t>,
                         ops::CReduceScatterOpCUDAKernel<plat::float16>);

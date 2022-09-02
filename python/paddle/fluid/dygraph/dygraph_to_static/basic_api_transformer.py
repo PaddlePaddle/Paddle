@@ -17,9 +17,11 @@ from paddle.utils import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static import utils
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 
 
-class BasicApiTransformer(gast.NodeTransformer):
+class BasicApiTransformer(BaseTransformer):
     """
     Class to transform basic API from dygraph to static graph.
     """
@@ -36,6 +38,8 @@ class BasicApiTransformer(gast.NodeTransformer):
     def transform(self):
         to_tensor_transformer = ToTensorTransformer(self.root)
         to_tensor_transformer.transform()
+        attribute_transformer = AttributeJstTransformer(self.root)
+        attribute_transformer.transform()
         self.visit(self.root)
 
         return self.wrapper_root
@@ -98,7 +102,7 @@ class BasicApiTransformer(gast.NodeTransformer):
         return False
 
 
-class ToTensorTransformer(gast.NodeTransformer):
+class ToTensorTransformer(BaseTransformer):
     """
     Class to transform paddle.to_tensor and paddle.to_variable to paddle.assign
     """
@@ -121,15 +125,48 @@ class ToTensorTransformer(gast.NodeTransformer):
         return node
 
 
+class AttributeJstTransformer(BaseTransformer):
+    """
+    change some special attribute into __jst.XXX(obj, "attr_name") format.
+    for example:
+        a.size  -->  __jst.attr(a, "size")
+
+    because `size` have different behavier when in dygraph / static mode
+    NOTE: we only deal with ctx=Load() case.
+    """
+
+    def __init__(self, node):
+        assert isinstance(
+            node, gast.AST
+        ), "Input non-gast.AST node for the initialization of ToTensorTransformer."
+        self.interested_name = set([
+            'size',
+        ])
+        self.root = node
+
+    def transform(self):
+        self.visit(self.root)
+        return self.root
+
+    def visit_Attribute(self, node):
+        assert isinstance(node, gast.Attribute)
+        assert isinstance(node.attr, str)
+        if isinstance(node.ctx,
+                      gast.Load) and node.attr in self.interested_name:
+            attr = node.attr
+            value = node.value
+            node = gast.parse("_jst.Attr({}, \"{}\")".format(
+                ast_to_source_code(value).strip(), attr)).body[0].value
+        self.generic_visit(node)
+        return node
+
+
 def is_to_variable(node):
     assert isinstance(node, gast.Call)
     api_name = utils.ast_to_source_code(node.func).strip()
 
     if utils.is_dygraph_api(node):
         return api_name.endswith("to_variable")
-
-    if utils.is_paddle_api(node):
-        return api_name.endswith("to_tensor")
 
     return False
 

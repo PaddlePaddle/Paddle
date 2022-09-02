@@ -59,6 +59,7 @@ def convert_to_one_hot(y, C):
 
 
 class TestAccuracy(unittest.TestCase):
+
     def test_acc(self, squeeze_y=False):
         x = paddle.to_tensor(
             np.array([[0.1, 0.2, 0.3, 0.4], [0.1, 0.4, 0.3, 0.2],
@@ -126,6 +127,7 @@ class TestAccuracy(unittest.TestCase):
 
 
 class TestAccuracyDynamic(unittest.TestCase):
+
     def setUp(self):
         self.topk = (1, )
         self.class_num = 5
@@ -153,7 +155,7 @@ class TestAccuracyDynamic(unittest.TestCase):
                 label_var = paddle.to_tensor(label)
                 pred_var = paddle.to_tensor(pred)
                 state = to_list(acc.compute(pred_var, label_var))
-                acc.update(* [s.numpy() for s in state])
+                acc.update(*[s.numpy() for s in state])
                 res_m = acc.accumulate()
                 res_f = accuracy(pred, label, self.topk)
                 assert np.all(np.isclose(np.array(res_m, dtype='float64'),
@@ -165,6 +167,7 @@ class TestAccuracyDynamic(unittest.TestCase):
 
 
 class TestAccuracyDynamicMultiTopk(TestAccuracyDynamic):
+
     def setUp(self):
         self.topk = (1, 5)
         self.class_num = 10
@@ -174,6 +177,7 @@ class TestAccuracyDynamicMultiTopk(TestAccuracyDynamic):
 
 
 class TestAccuracyStatic(TestAccuracyDynamic):
+
     def setUp(self):
         self.topk = (1, )
         self.class_num = 5
@@ -189,8 +193,9 @@ class TestAccuracyStatic(TestAccuracyDynamic):
         main_prog.random_seed = 1024
         startup_prog.random_seed = 1024
         with fluid.program_guard(main_prog, startup_prog):
-            pred = fluid.data(
-                name='pred', shape=[None, self.class_num], dtype='float32')
+            pred = fluid.data(name='pred',
+                              shape=[None, self.class_num],
+                              dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             acc = paddle.metric.Accuracy(topk=self.topk, name=self.name)
             state = acc.compute(pred, label)
@@ -201,8 +206,10 @@ class TestAccuracyStatic(TestAccuracyDynamic):
         for _ in range(10):
             label, pred = self.random_pred_label()
             state_ret = exe.run(compiled_main_prog,
-                                feed={'pred': pred,
-                                      'label': label},
+                                feed={
+                                    'pred': pred,
+                                    'label': label
+                                },
                                 fetch_list=[s.name for s in to_list(state)],
                                 return_numpy=True)
             acc.update(*state_ret)
@@ -218,6 +225,7 @@ class TestAccuracyStatic(TestAccuracyDynamic):
 
 
 class TestAccuracyStaticMultiTopk(TestAccuracyStatic):
+
     def setUp(self):
         self.topk = (1, 5)
         self.class_num = 10
@@ -227,6 +235,7 @@ class TestAccuracyStaticMultiTopk(TestAccuracyStatic):
 
 
 class TestPrecision(unittest.TestCase):
+
     def test_1d(self):
 
         x = np.array([0.1, 0.5, 0.6, 0.7])
@@ -266,6 +275,7 @@ class TestPrecision(unittest.TestCase):
 
 
 class TestRecall(unittest.TestCase):
+
     def test_1d(self):
         x = np.array([0.1, 0.5, 0.6, 0.7])
         y = np.array([1, 0, 1, 1])
@@ -289,6 +299,7 @@ class TestRecall(unittest.TestCase):
 
 
 class TestAuc(unittest.TestCase):
+
     def test_auc_numpy(self):
         x = np.array([[0.78, 0.22], [0.62, 0.38], [0.55, 0.45], [0.30, 0.70],
                       [0.14, 0.86], [0.59, 0.41], [0.91, 0.08], [0.16, 0.84]])

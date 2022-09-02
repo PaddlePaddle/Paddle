@@ -16,7 +16,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/cast_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -43,14 +43,16 @@ class CastNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<Tensor>("Out");
     auto place = ctx.GetPlace();
 
-    if (x->type() == dtype) {
+    if (framework::TransToProtoVarType(x->dtype()) == dtype) {
       // NOTE(zhiqiu): NPU cast op may result in wrong value, so
       // add special case here.
       VLOG(4) << "cast to same dtype:" << dtype;
       out->mutable_data(place, x->type());
       framework::TensorCopy(
-          *x, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), out);
+          *x,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          out);
       return;
     }
 
@@ -89,7 +91,8 @@ class CastNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    cast, ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int16_t>,
+    cast,
+    ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int16_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int32_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int>,

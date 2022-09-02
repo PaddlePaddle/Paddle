@@ -86,7 +86,8 @@ inline const Kernel* GetReferKernel() {
   KernelKey kkey(KernelTuple::kernel_type, platform::CPUPlace());
   auto ref_iter = ref_pool.find(kkey);
   PADDLE_ENFORCE_NE(
-      ref_iter, ref_pool.end(),
+      ref_iter,
+      ref_pool.end(),
       platform::errors::PreconditionNotMet(
           "Every Refer Kernel of jitcode should have reference function."));
   auto& ref_impls = ref_iter->second;
@@ -103,9 +104,10 @@ template <typename KernelTuple>
 inline typename KernelTuple::func_type GetReferFunc() {
   auto ker = GetReferKernel<KernelTuple>();
   auto p = dynamic_cast<const ReferKernel<KernelTuple>*>(ker);
-  PADDLE_ENFORCE_NOT_NULL(p, platform::errors::InvalidArgument(
-                                 "Get the reference code of kernel in CPU "
-                                 "failed. The Refer kernel should exsit."));
+  PADDLE_ENFORCE_NOT_NULL(p,
+                          platform::errors::InvalidArgument(
+                              "Get the reference code of kernel in CPU "
+                              "failed. The Refer kernel should exsit."));
   return p->GetFunc();
 }
 
@@ -136,9 +138,10 @@ std::vector<const Kernel*> GetAllCandidateKernels(
 
   // The last implementation should be reference function on CPUPlace.
   auto ref = GetReferKernel<KernelTuple>();
-  PADDLE_ENFORCE_NOT_NULL(ref, platform::errors::InvalidArgument(
-                                   "Get all candicate kernel in CPU failed. "
-                                   "The Refer Kernel can not be empty."));
+  PADDLE_ENFORCE_NOT_NULL(ref,
+                          platform::errors::InvalidArgument(
+                              "Get all candicate kernel in CPU failed. "
+                              "The Refer Kernel can not be empty."));
   res.emplace_back(ref);
   return res;
 }
@@ -159,8 +162,9 @@ GetAllCandidateFuncsWithTypes(const typename KernelTuple::attr_type& attr) {
       res.emplace_back(std::make_pair(name, i->template getCode<Func>()));
     } else {
       auto i = dynamic_cast<const KernelMore<KernelTuple>*>(k);
-      PADDLE_ENFORCE_NOT_NULL(i, platform::errors::InvalidArgument(
-                                     "Kernel cast (KernelMore) failed."));
+      PADDLE_ENFORCE_NOT_NULL(i,
+                              platform::errors::InvalidArgument(
+                                  "Kernel cast (KernelMore) failed."));
       res.emplace_back(std::make_pair(name, i->GetFunc()));
     }
   }
@@ -182,7 +186,8 @@ template <typename KernelTuple, typename PlaceType = platform::CPUPlace>
 typename KernelTuple::func_type GetDefaultBestFunc(
     const typename KernelTuple::attr_type& attr) {
   auto funcs = GetAllCandidateFuncs<KernelTuple, PlaceType>(attr);
-  PADDLE_ENFORCE_GE(funcs.size(), 1UL,
+  PADDLE_ENFORCE_GE(funcs.size(),
+                    1UL,
                     platform::errors::InvalidArgument(
                         "The candicate jit kernel is at least one in CPU."));
   // Here could do some runtime benchmark of this attr and return the best one.
@@ -272,6 +277,11 @@ inline std::ostream& operator<<(std::ostream& os,
      << attr.table_width << "],index_height[" << attr.index_height
      << "],index_width[" << attr.index_width << "],output_width["
      << attr.out_width << "],pool_type[" << to_string(attr.pool_type) << "]";
+  return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const adam_attr_t& attr) {
+  os << "beta1[" << attr.beta1 << "],beta2[" << attr.beta2 << "]";
   return os;
 }
 

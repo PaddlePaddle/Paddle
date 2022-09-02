@@ -32,7 +32,8 @@ class MinusKernel : public framework::OpKernel<T> {
     auto& dev =
         *context.template device_context<DeviceContext>().eigen_device();
     EigenSub<std::decay_t<decltype(dev)>, T>::Eval(
-        dev, framework::EigenVector<T>::Flatten(*out_tensor),
+        dev,
+        framework::EigenVector<T>::Flatten(*out_tensor),
         framework::EigenVector<T>::Flatten(*left_tensor),
         framework::EigenVector<T>::Flatten(*right_tensor));
   }

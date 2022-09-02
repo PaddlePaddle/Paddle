@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/batch_norm_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -38,11 +38,15 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_EQ(x_dims.size(), 4,
-                      platform::errors::InvalidArgument(
-                          "The input tensor X's dimension must equal to 4. But "
-                          "received X's shape = [%s], X's dimension = [%d].",
-                          x_dims, x_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        (x_dims.size() == 4UL || x_dims.size() == 3UL),
+        true,
+        platform::errors::InvalidArgument(
+            "The input tensor X's dimension must equal to 3 or 4. "
+            " But got X's shape = [%s], X's dimension = [%d].",
+            x_dims.to_str(),
+            x_dims.size()));
+
     const auto *running_mean = ctx.Input<Tensor>("Mean");
     const auto *running_var = ctx.Input<Tensor>("Variance");
     const auto *scale = ctx.Input<Tensor>("Scale");
@@ -51,8 +55,11 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
     auto *y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
 
-    Tensor x_tensor(x->type());
-    Tensor y_tesnor(y->type());
+    auto &dev_ctx = ctx.template device_context<NPUDeviceContext>();
+    auto x_tensor =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(x->dims(), dev_ctx);
+    auto y_tesnor =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(y->dims(), dev_ctx);
     x_tensor.ShareDataWith(*x);
     y_tesnor.ShareDataWith(*y);
     if (data_layout == DataLayout::kNHWC) {
@@ -62,26 +69,29 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (!training) {
-      const auto &runner_infer = NpuOpRunner(
-          "BNInfer", {x_tensor, *scale, *bias, *running_mean, *running_var},
-          {y_tesnor}, {{"epsilon", epsilon}});
+      const auto &runner_infer =
+          NpuOpRunner("BNInfer",
+                      {x_tensor, *scale, *bias, *running_mean, *running_var},
+                      {y_tesnor},
+                      {{"epsilon", epsilon}});
       runner_infer.Run(stream);
     } else {
       auto *mean_out = ctx.Output<Tensor>("MeanOut");
       auto *variance_out = ctx.Output<Tensor>("VarianceOut");
       auto *saved_mean = ctx.Output<Tensor>("SavedMean");
       auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
-      mean_out->mutable_data<T>(ctx.GetPlace());
-      variance_out->mutable_data<T>(ctx.GetPlace());
-      saved_mean->mutable_data<T>(ctx.GetPlace());
-      saved_variance->mutable_data<T>(ctx.GetPlace());
+      mean_out->mutable_data<float>(ctx.GetPlace());
+      variance_out->mutable_data<float>(ctx.GetPlace());
+      saved_mean->mutable_data<float>(ctx.GetPlace());
+      saved_variance->mutable_data<float>(ctx.GetPlace());
 
       // if MomentumTensor is set, use MomentumTensor value, momentum
       // is only used in this training branch
       if (ctx.HasInput("MomentumTensor")) {
         const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
         Tensor mom_cpu;
-        TensorCopySync(*mom_tensor, platform::CPUPlace(), &mom_cpu);
+        paddle::framework::TensorCopySync(
+            *mom_tensor, platform::CPUPlace(), &mom_cpu);
         momentum = mom_cpu.data<float>()[0];
       }
 
@@ -89,14 +99,33 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
       sum.mutable_data<float>(running_mean->dims(), ctx.GetPlace());
       square_sum.mutable_data<float>(running_mean->dims(), ctx.GetPlace());
 
-      const auto &runner_reduce =
-          NpuOpRunner("BNTrainingReduce", {x_tensor}, {sum, square_sum},
-                      {{"epsilon", epsilon}});
+      // BNTrainingReduce ONLY support rank = 4
+      if (x->dims().size() == 3) {
+        auto x_shape_vec = phi::vectorize(x->dims());
+        if (data_layout == DataLayout::kNCHW) {
+          x_shape_vec.push_back(1);  // expand NCL -> NCL1
+        } else {
+          x_shape_vec.insert(x_shape_vec.begin() + 2, 1);  // expand NLC -> NL1C
+        }
+        auto x_new_shape = phi::make_ddim(x_shape_vec);
+        x_tensor.Resize(x_new_shape);
+        x_tensor.Resize(x_new_shape);
+      }
+      const auto &runner_reduce = NpuOpRunner("BNTrainingReduce",
+                                              {x_tensor},
+                                              {sum, square_sum},
+                                              {{"epsilon", epsilon}});
       runner_reduce.Run(stream);
 
       const auto &runner_update = NpuOpRunner(
-          "BNTrainingUpdate", {x_tensor, sum, square_sum, *scale, *bias,
-                               *running_mean, *running_var},
+          "BNTrainingUpdate",
+          {x_tensor,
+           sum,
+           square_sum,
+           *scale,
+           *bias,
+           *running_mean,
+           *running_var},
           {y_tesnor, *mean_out, *variance_out, *saved_mean, *saved_variance},
           {{"factor", momentum}, {"epsilon", epsilon}});
       runner_update.Run(stream);
@@ -127,8 +156,11 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
 
     use_global_stats = is_test || use_global_stats;
 
-    Tensor x_tensor(x->type());
-    Tensor dy_tensor(d_y->type());
+    auto &dev_ctx = ctx.template device_context<NPUDeviceContext>();
+    auto x_tensor =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(x->dims(), dev_ctx);
+    auto dy_tensor =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(d_y->dims(), dev_ctx);
     x_tensor.ShareDataWith(*x);
     dy_tensor.ShareDataWith(*d_y);
     if (data_layout == DataLayout::kNHWC) {
@@ -136,52 +168,79 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
       dy_tensor.set_layout(DataLayout::kNHWC);
     }
 
-    Tensor scale_grad_tmp(scale->type());
-    Tensor bias_grad_tmp(bias->type());
+    auto scale_grad_tmp =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(scale->dims(), dev_ctx);
+    auto bias_grad_tmp =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(bias->dims(), dev_ctx);
     if (d_scale == nullptr) {
-      scale_grad_tmp.Resize(scale->dims());
       d_scale = &scale_grad_tmp;
     }
     if (d_bias == nullptr) {
-      bias_grad_tmp.Resize(bias->dims());
       d_bias = &bias_grad_tmp;
     }
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (d_scale && d_bias) {
-      d_scale->mutable_data<T>(ctx.GetPlace());
-      d_bias->mutable_data<T>(ctx.GetPlace());
+      d_scale->mutable_data<float>(ctx.GetPlace());
+      d_bias->mutable_data<float>(ctx.GetPlace());
       if (use_global_stats) {
         const auto *running_mean = ctx.Input<Tensor>("Mean");
         const auto *running_variance = ctx.Input<Tensor>("Variance");
         const auto &runner_update =
             NpuOpRunner("BNTrainingUpdateGrad",
                         {dy_tensor, x_tensor, *running_mean, *running_variance},
-                        {*d_scale, *d_bias}, {{"epsilon", epsilon}});
+                        {*d_scale, *d_bias},
+                        {{"epsilon", epsilon}});
         runner_update.Run(stream);
       } else {
         const auto &runner_update =
             NpuOpRunner("BNTrainingUpdateGrad",
                         {dy_tensor, x_tensor, *saved_mean, *saved_inv_variance},
-                        {*d_scale, *d_bias}, {{"epsilon", epsilon}});
+                        {*d_scale, *d_bias},
+                        {{"epsilon", epsilon}});
         runner_update.Run(stream);
       }
     }
     if (d_x) {
       d_x->mutable_data<T>(ctx.GetPlace());
-      Tensor dx_tensor(d_x->type());
+      auto dx_tensor =
+          ctx.AllocateTmpTensor<T, NPUDeviceContext>(d_x->dims(), dev_ctx);
       dx_tensor.ShareDataWith(*d_x);
+      if (data_layout == DataLayout::kNHWC) {
+        dx_tensor.set_layout(DataLayout::kNHWC);
+      }
       if (use_global_stats) {
+        if (x->dims().size() == 3) {
+          // BNInferGrad only support x rank = 4,
+          auto x_shape_vec = phi::vectorize(d_x->dims());
+          if (data_layout == DataLayout::kNCHW) {
+            x_shape_vec.push_back(1);  // expand NCL -> NCL1
+          } else {
+            x_shape_vec.insert(x_shape_vec.begin() + 2,
+                               1);  // expand NLC -> NL1C
+          }
+          auto x_new_shape = phi::make_ddim(x_shape_vec);
+          dx_tensor.Resize(x_new_shape);
+          dy_tensor.Resize(x_new_shape);
+        }
         const auto *running_var = ctx.Input<Tensor>("Variance");
         const auto &runner_infer =
-            NpuOpRunner("BNInferGrad", {dy_tensor, *scale, *running_var},
-                        {dx_tensor}, {{"epsilon", epsilon}});
+            NpuOpRunner("BNInferGrad",
+                        {dy_tensor, *scale, *running_var},
+                        {dx_tensor},
+                        {{"epsilon", epsilon}});
         runner_infer.Run(stream);
       } else {
-        const auto &runner_reduce = NpuOpRunner(
-            "BNTrainingReduceGrad", {dy_tensor, x_tensor, *d_scale, *d_bias,
-                                     *scale, *saved_mean, *saved_inv_variance},
-            {dx_tensor}, {{"epsilon", epsilon}});
+        const auto &runner_reduce = NpuOpRunner("BNTrainingReduceGrad",
+                                                {dy_tensor,
+                                                 x_tensor,
+                                                 *d_scale,
+                                                 *d_bias,
+                                                 *scale,
+                                                 *saved_mean,
+                                                 *saved_inv_variance},
+                                                {dx_tensor},
+                                                {{"epsilon", epsilon}});
         runner_reduce.Run(stream);
       }
     }
@@ -193,7 +252,9 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(batch_norm, ops::NPUBatchNormOpKernel<float>,
+REGISTER_OP_NPU_KERNEL(batch_norm,
+                       ops::NPUBatchNormOpKernel<float>,
                        ops::NPUBatchNormOpKernel<plat::float16>);
-REGISTER_OP_NPU_KERNEL(batch_norm_grad, ops::NPUBatchNormGradOpKernel<float>,
+REGISTER_OP_NPU_KERNEL(batch_norm_grad,
+                       ops::NPUBatchNormGradOpKernel<float>,
                        ops::NPUBatchNormGradOpKernel<plat::float16>);

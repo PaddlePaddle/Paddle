@@ -12,32 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/var_type_traits.h"
+
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #ifdef PADDLE_WITH_CUDA
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/cudnn_rnn_cache.h"
 #endif
 #ifdef PADDLE_WITH_HIP
 #if defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"  // NOLINT
-#include "paddle/fluid/platform/nccl_helper.h"            // NOLINT
+#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"   // NOLINT
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"  // NOLINT
 #endif
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"  // NOLINT
 #include "paddle/fluid/operators/miopen_rnn_cache.h"
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/fluid/platform/bkcl_helper.h"
+#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
 
 namespace paddle {
@@ -92,7 +93,7 @@ bool CheckVarId(int proto_id) {
 
 TEST(var_type_traits, check_proto_type_id) {
   ASSERT_TRUE(CheckVarId<LoDTensor>(proto::VarType::LOD_TENSOR));
-  ASSERT_TRUE(CheckVarId<SelectedRows>(proto::VarType::SELECTED_ROWS));
+  ASSERT_TRUE(CheckVarId<phi::SelectedRows>(proto::VarType::SELECTED_ROWS));
   ASSERT_TRUE(CheckVarId<std::vector<Scope *>>(proto::VarType::STEP_SCOPES));
   ASSERT_TRUE(CheckVarId<LoDRankTable>(proto::VarType::LOD_RANK_TABLE));
   ASSERT_TRUE(CheckVarId<LoDTensorArray>(proto::VarType::LOD_TENSOR_ARRAY));

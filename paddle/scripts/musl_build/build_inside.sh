@@ -51,6 +51,7 @@ if [ "$pip_index" ]; then
 fi
 
 if [ "$WITH_REQUIREMENT" ]; then
+    echo "pyyaml" >> $WITH_REQUIREMENT
     echo ">>> install python requirement: $WITH_REQUIREMENT";
     pip install $PIP_ARGS -r "$WITH_REQUIREMENT";
 fi

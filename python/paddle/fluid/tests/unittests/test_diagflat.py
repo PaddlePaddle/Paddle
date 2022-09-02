@@ -21,6 +21,7 @@ from paddle.static import Program, program_guard
 
 
 class TestDiagFlatError(unittest.TestCase):
+
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -36,6 +37,7 @@ class TestDiagFlatError(unittest.TestCase):
 
 
 class TestDiagFlatAPI(unittest.TestCase):
+
     def setUp(self):
         self.input_np = np.random.random(size=(10, 10)).astype(np.float64)
         self.expected0 = np.diagflat(self.input_np)
@@ -50,23 +52,23 @@ class TestDiagFlatAPI(unittest.TestCase):
     def run_imperative(self):
         x = paddle.to_tensor(self.input_np)
         y = paddle.diagflat(x)
-        self.assertTrue(np.allclose(y.numpy(), self.expected0))
+        np.testing.assert_allclose(y.numpy(), self.expected0, rtol=1e-05)
 
         y = paddle.diagflat(x, offset=1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected1))
+        np.testing.assert_allclose(y.numpy(), self.expected1, rtol=1e-05)
 
         y = paddle.diagflat(x, offset=-1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected2))
+        np.testing.assert_allclose(y.numpy(), self.expected2, rtol=1e-05)
 
         x = paddle.to_tensor(self.input_np2)
         y = paddle.diagflat(x)
-        self.assertTrue(np.allclose(y.numpy(), self.expected3))
+        np.testing.assert_allclose(y.numpy(), self.expected3, rtol=1e-05)
 
         y = paddle.diagflat(x, offset=1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected4))
+        np.testing.assert_allclose(y.numpy(), self.expected4, rtol=1e-05)
 
         y = paddle.diagflat(x, offset=-1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected5))
+        np.testing.assert_allclose(y.numpy(), self.expected5, rtol=1e-05)
 
     def run_static(self, use_gpu=False):
         x = paddle.static.data(name='input', shape=[10, 10], dtype='float64')
@@ -77,13 +79,14 @@ class TestDiagFlatAPI(unittest.TestCase):
         place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
         exe = paddle.static.Executor(place)
         exe.run(paddle.static.default_startup_program())
-        res0, res3 = exe.run(
-            feed={"input": self.input_np,
-                  'input2': self.input_np2},
-            fetch_list=[result0, result3])
+        res0, res3 = exe.run(feed={
+            "input": self.input_np,
+            'input2': self.input_np2
+        },
+                             fetch_list=[result0, result3])
 
-        self.assertTrue(np.allclose(res0, self.expected0))
-        self.assertTrue(np.allclose(res3, self.expected3))
+        np.testing.assert_allclose(res0, self.expected0, rtol=1e-05)
+        np.testing.assert_allclose(res3, self.expected3, rtol=1e-05)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.CPUPlace())

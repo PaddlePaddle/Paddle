@@ -14,11 +14,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_desc.h"
-#else
-#include "paddle/fluid/platform/cudnn_desc.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {

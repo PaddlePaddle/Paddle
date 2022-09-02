@@ -18,9 +18,11 @@ import unittest
 import paddle.fluid as fluid
 import numpy as np
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 
 class MyLayer(fluid.Layer):
+
     def __init__(self, layerlist):
         super(MyLayer, self).__init__()
         self.layerlist = layerlist
@@ -32,6 +34,7 @@ class MyLayer(fluid.Layer):
 
 
 class TestImperativeContainer(unittest.TestCase):
+
     def fluid_dygraph_list(self):
         return fluid.dygraph.LayerList(
             [fluid.dygraph.Linear(2**i, 2**(i + 1)) for i in range(6)])
@@ -96,9 +99,14 @@ class TestImperativeContainer(unittest.TestCase):
             self.assertListEqual(res11.shape, [5, 4])
             res11.backward()
 
-    def test_layer_list(self):
+    def func_test_layer_list(self):
         self.layer_list(True)
         self.layer_list(False)
+
+    def test_layer_list(self):
+        with _test_eager_guard():
+            self.func_test_layer_list()
+        self.func_test_layer_list()
 
 
 if __name__ == '__main__':

@@ -18,24 +18,22 @@
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
-#include "paddle/fluid/memory/detail/buddy_allocator.h"
-#include "paddle/fluid/memory/detail/system_allocator.h"
+#include "paddle/fluid/memory/allocation/buddy_allocator.h"
+#include "paddle/fluid/memory/allocation/system_allocator.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/npu_info.h"
 #include "paddle/fluid/platform/profiler.h"
-
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/phi/common/place.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
-#ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu/xpu_header.h"
-#endif
 
 PADDLE_DEFINE_EXPORTED_bool(
-    init_allocated_mem, false,
+    init_allocated_mem,
+    false,
     "It is a mistake that the values of the memory allocated by "
     "BuddyAllocator are always zeroed in some op's implementation. "
     "To find this error in time, we use init_allocated_mem to indicate "
@@ -61,7 +59,7 @@ uint64_t Release(const Place &place);
 template <typename Place>
 size_t Used(const Place &place);
 
-struct Usage : public boost::static_visitor<size_t> {
+struct Usage {
   size_t operator()(const platform::CPUPlace &cpu) const;
   size_t operator()(const platform::CUDAPlace &gpu) const;
   size_t operator()(const platform::CUDAPinnedPlace &cuda_pinned) const;
@@ -80,7 +78,8 @@ BuddyAllocator *GetCPUBuddyAllocator() {
   std::call_once(init_flag, []() {
     a = new detail::BuddyAllocator(
         std::unique_ptr<detail::SystemAllocator>(new detail::CPUAllocator),
-        platform::CpuMinChunkSize(), platform::CpuMaxChunkSize());
+        platform::CpuMinChunkSize(),
+        platform::CpuMaxChunkSize());
   });
 
   return a;
@@ -98,7 +97,8 @@ void *Alloc<platform::CPUPlace>(const platform::CPUPlace &place, size_t size) {
 }
 
 template <>
-void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p,
+void Free<platform::CPUPlace>(const platform::CPUPlace &place,
+                              void *p,
                               size_t size) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
@@ -114,49 +114,58 @@ size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
   return GetCPUBuddyAllocator()->Used();
 }
 
+// For Graphcore IPU
+template <>
+void *Alloc<platform::IPUPlace>(const platform::IPUPlace &place, size_t size) {
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "IPUPlace, Allocate on cpu.";
+
+  void *p = GetCPUBuddyAllocator()->Alloc(size);
+  if (FLAGS_init_allocated_mem) {
+    memset(p, 0xEF, size);
+  }
+  VLOG(10) << "  pointer=" << p;
+  return p;
+}
+template <>
+void Free<platform::IPUPlace>(const platform::IPUPlace &place,
+                              void *p,
+                              size_t size) {
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  GetCPUBuddyAllocator()->Free(p);
+}
+template <>
+uint64_t Release<platform::IPUPlace>(const platform::IPUPlace &place) {
+  return GetCPUBuddyAllocator()->Release();
+}
+template <>
+size_t Used<platform::IPUPlace>(const platform::IPUPlace &place) {
+  return GetCPUBuddyAllocator()->Used();
+}
+
 // For kunlun XPU
 template <>
 void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
 #ifdef PADDLE_WITH_XPU
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void *p = nullptr;
-  int dev_id = -1;
-  int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id >= 64) {
-    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
-    dev_id -= 64;
-  }
-  ret = xpu_set_device(place.device);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
+
+  platform::XPUDeviceGuard gurad(place.device);
+  int ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
   if (ret != XPU_SUCCESS) {
-    std::cout << "xpu memory malloc(" << size << ") failed, try again\n";
+    VLOG(10) << "xpu memory malloc(" << size << ") failed, try again";
     xpu_wait();
     ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
   }
   PADDLE_ENFORCE_EQ(
-      ret, XPU_SUCCESS,
+      ret,
+      XPU_SUCCESS,
       platform::errors::External(
           "XPU API return wrong value[%d], no enough memory", ret));
   if (FLAGS_init_allocated_mem) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "xpu memory FLAGS_init_allocated_mem is not implemented."));
   }
-  ret = xpu_set_device(dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
   VLOG(10) << "  pointer=" << p;
   return p;
 #else
@@ -167,35 +176,15 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
 }
 
 template <>
-void Free<platform::XPUPlace>(const platform::XPUPlace &place, void *p,
+void Free<platform::XPUPlace>(const platform::XPUPlace &place,
+                              void *p,
                               size_t size) {
 #ifdef PADDLE_WITH_XPU
-  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "Free " << size << " bytes on " << platform::Place(place);
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
-  int dev_id = -1;
-  int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id >= 64) {
-    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
-    dev_id -= 64;
-  }
-  ret = xpu_set_device(place.device);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
+
+  platform::XPUDeviceGuard gurad(place.device);
   xpu_free(p);
-  ret = xpu_set_device(dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
 #else
   PADDLE_THROW(
       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
@@ -251,11 +240,13 @@ class NPUBuddyAllocatorList {
   BuddyAllocator *Get(int npu_id) {
     auto pos = std::distance(
         devices_.begin(), std::find(devices_.begin(), devices_.end(), npu_id));
-    PADDLE_ENFORCE_LT(pos, devices_.size(),
+    PADDLE_ENFORCE_LT(pos,
+                      devices_.size(),
                       platform::errors::OutOfRange(
                           "The index exceeds the size of devices, the size of "
                           "devices is %d, the index is %d",
-                          devices_.size(), pos));
+                          devices_.size(),
+                          pos));
 
     std::call_once(*init_flags_[pos], [this, pos] {
       platform::SetNPUDeviceId(devices_[pos]);
@@ -263,7 +254,8 @@ class NPUBuddyAllocatorList {
           new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
                                  new detail::NPUAllocator(devices_[pos])),
                              platform::NPUMinChunkSize(),
-                             platform::NPUMaxChunkSize(), EXTRA_PADDING_SIZE));
+                             platform::NPUMaxChunkSize(),
+                             EXTRA_PADDING_SIZE));
       VLOG(10) << "\n\nNOTE:\n"
                << "You can set GFlags environment variable "
                << "'FLAGS_fraction_of_gpu_memory_to_use' "
@@ -327,16 +319,18 @@ void *Alloc<platform::NPUPlace>(const platform::NPUPlace &place, size_t size) {
     size_t avail, total;
     platform::NPUMemoryUsage(&avail, &total);
     PADDLE_THROW(platform::errors::ResourceExhausted(
-        "Cannot allocate %s in GPU %d, avaliable %s, total %s, GpuMinChunkSize "
-        "%s, GpuMaxChunkSize %s, GPU memory used: %s.",
-        string::HumanReadableSize(size), place.device,
-        string::HumanReadableSize(avail), string::HumanReadableSize(total),
+        "Cannot allocate %s in NPU %d, avaliable %s, total %s, NpuMinChunkSize "
+        "%s, NpuMaxChunkSize %s, NPU memory used: %s.",
+        string::HumanReadableSize(size),
+        place.device,
+        string::HumanReadableSize(avail),
+        string::HumanReadableSize(total),
         string::HumanReadableSize(buddy_allocator->GetMinChunkSize()),
         string::HumanReadableSize(buddy_allocator->GetMaxChunkSize()),
         string::HumanReadableSize(Used<platform::NPUPlace>(place))));
   } else {
     if (FLAGS_init_allocated_mem) {
-      aclrtMemset(ptr, size, 0xEF, size);
+      platform::NPUMemsetSync(ptr, 0xEF, size, size);
     }
   }
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
@@ -348,7 +342,8 @@ void *Alloc<platform::NPUPlace>(const platform::NPUPlace &place, size_t size) {
 }
 
 template <>
-void Free<platform::NPUPlace>(const platform::NPUPlace &place, void *p,
+void Free<platform::NPUPlace>(const platform::NPUPlace &place,
+                              void *p,
                               size_t size) {
 #ifdef PADDLE_WITH_ASCEND_CL
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
@@ -387,8 +382,7 @@ void *Alloc<platform::NPUPinnedPlace>(const platform::NPUPinnedPlace &place,
   void *ptr = buddy_allocator->Alloc(size);
 
   if (ptr == nullptr) {
-    LOG(WARNING) << "aclrtMallocHost Cannot allocate " << size
-                 << " bytes in NPUPinnedPlace";
+    LOG(WARNING) << "Cannot allocate " << size << " bytes in NPUPinnedPlace";
   }
   if (FLAGS_init_allocated_mem) {
     memset(ptr, 0xEF, size);
@@ -402,7 +396,8 @@ void *Alloc<platform::NPUPinnedPlace>(const platform::NPUPinnedPlace &place,
 
 template <>
 void Free<platform::NPUPinnedPlace>(const platform::NPUPinnedPlace &place,
-                                    void *p, size_t size) {
+                                    void *p,
+                                    size_t size) {
 #ifdef PADDLE_WITH_ASCEND_CL
   GetNPUPinnedBuddyAllocator()->Free(p);
 #else
@@ -448,18 +443,21 @@ class GPUBuddyAllocatorList {
   BuddyAllocator *Get(int gpu_id) {
     auto pos = std::distance(
         devices_.begin(), std::find(devices_.begin(), devices_.end(), gpu_id));
-    PADDLE_ENFORCE_LT(pos, devices_.size(),
+    PADDLE_ENFORCE_LT(pos,
+                      devices_.size(),
                       platform::errors::OutOfRange(
                           "The index exceeds the size of devices, the size of "
                           "devices is %d, the index is %d",
-                          devices_.size(), pos));
+                          devices_.size(),
+                          pos));
 
     std::call_once(*init_flags_[pos], [this, pos] {
       platform::SetDeviceId(devices_[pos]);
-      allocators_[pos].reset(new BuddyAllocator(
-          std::unique_ptr<detail::SystemAllocator>(
-              new detail::GPUAllocator(devices_[pos])),
-          platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
+      allocators_[pos].reset(
+          new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
+                                 new detail::GPUAllocator(devices_[pos])),
+                             platform::GpuMinChunkSize(),
+                             platform::GpuMaxChunkSize()));
       VLOG(10) << "\n\nNOTE:\n"
                << "You can set GFlags environment variable "
                << "'FLAGS_fraction_of_gpu_memory_to_use' "
@@ -511,8 +509,10 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
     PADDLE_THROW(platform::errors::ResourceExhausted(
         "Cannot allocate %s in GPU %d, avaliable %s, total %s, GpuMinChunkSize "
         "%s, GpuMaxChunkSize %s, GPU memory used: %s.",
-        string::HumanReadableSize(size), place.device,
-        string::HumanReadableSize(avail), string::HumanReadableSize(total),
+        string::HumanReadableSize(size),
+        place.device,
+        string::HumanReadableSize(avail),
+        string::HumanReadableSize(total),
         string::HumanReadableSize(buddy_allocator->GetMinChunkSize()),
         string::HumanReadableSize(buddy_allocator->GetMaxChunkSize()),
         string::HumanReadableSize(Used<platform::CUDAPlace>(place))));
@@ -533,7 +533,8 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
 }
 
 template <>
-void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p,
+void Free<platform::CUDAPlace>(const platform::CUDAPlace &place,
+                               void *p,
                                size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   GetGPUBuddyAllocator(place.device)->Free(p);
@@ -602,7 +603,8 @@ void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
 
 template <>
 void Free<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
-                                     void *p, size_t size) {
+                                     void *p,
+                                     size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   GetCUDAPinnedBuddyAllocator()->Free(p);
 #else
@@ -622,7 +624,277 @@ uint64_t Release<platform::CUDAPinnedPlace>(
 #endif
 }
 
-struct AllocVisitor : public boost::static_visitor<void *> {
+// For MLU
+#ifdef PADDLE_WITH_MLU
+class MLUBuddyAllocatorList {
+ private:
+  MLUBuddyAllocatorList() : devices_(platform::GetMLUSelectedDevices()) {
+    auto mlu_num = devices_.size();
+    allocators_.resize(mlu_num);
+    init_flags_.reserve(mlu_num);
+    for (size_t i = 0; i < mlu_num; ++i) {
+      init_flags_.emplace_back(new std::once_flag());
+    }
+  }
+
+  static MLUBuddyAllocatorList *CreateNewInstance() {
+    return new MLUBuddyAllocatorList();
+  }
+
+ public:
+  static MLUBuddyAllocatorList *Instance() {
+    static auto *instance = CreateNewInstance();
+    return instance;
+  }
+
+  BuddyAllocator *Get(int mlu_id) {
+    auto pos = std::distance(
+        devices_.begin(), std::find(devices_.begin(), devices_.end(), mlu_id));
+    PADDLE_ENFORCE_LT(pos,
+                      devices_.size(),
+                      platform::errors::OutOfRange(
+                          "The index exceeds the size of devices, the size of "
+                          "devices is %d, the index is %d",
+                          devices_.size(),
+                          pos));
+
+    std::call_once(*init_flags_[pos], [this, pos] {
+      platform::SetMLUDeviceId(devices_[pos]);
+      allocators_[pos].reset(
+          new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
+                                 new detail::MLUAllocator(devices_[pos])),
+                             platform::MLUMinChunkSize(),
+                             platform::MLUMaxChunkSize()));
+      VLOG(10) << "\n\nNOTE:\n"
+               << "You can set GFlags environment variable "
+               << "(mlu reuse gpu GFlags) "
+               << "'FLAGS_fraction_of_gpu_memory_to_use' "
+               << "or 'FLAGS_initial_gpu_memory_in_mb' "
+               << "or 'FLAGS_reallocate_gpu_memory_in_mb' "
+               << "to change the memory size for MLU usage.\n"
+               << "Current 'FLAGS_fraction_of_gpu_memory_to_use' value is "
+               << FLAGS_fraction_of_gpu_memory_to_use
+               << ". Current 'FLAGS_initial_gpu_memory_in_mb' value is "
+               << FLAGS_initial_gpu_memory_in_mb
+               << ". Current 'FLAGS_reallocate_gpu_memory_in_mb' value is "
+               << FLAGS_reallocate_gpu_memory_in_mb << "\n\n";
+    });
+
+    return allocators_[pos].get();
+  }
+
+ private:
+  std::vector<int> devices_;
+  std::vector<std::unique_ptr<std::once_flag>> init_flags_;
+  std::vector<std::unique_ptr<BuddyAllocator>> allocators_;
+};
+
+BuddyAllocator *GetMLUBuddyAllocator(int mlu_id) {
+  return MLUBuddyAllocatorList::Instance()->Get(mlu_id);
+}
+#endif
+
+template <>
+size_t Used<platform::MLUPlace>(const platform::MLUPlace &place) {
+#ifdef PADDLE_WITH_MLU
+  return GetMLUBuddyAllocator(place.device)->Used();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'MLUPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+void *Alloc<platform::MLUPlace>(const platform::MLUPlace &place, size_t size) {
+#ifdef PADDLE_WITH_MLU
+  auto *buddy_allocator = GetMLUBuddyAllocator(place.device);
+  auto *ptr = buddy_allocator->Alloc(size);
+  if (ptr == nullptr) {
+    platform::MLUDeviceGuard(place.device);
+    size_t avail = 0, total = 0;
+    platform::MLUMemoryUsage(&avail, &total);
+    PADDLE_THROW(platform::errors::ResourceExhausted(
+        "Cannot allocate %s in MLU %d, avaliable %s, total %s, MLUMinChunkSize "
+        "%s, MLUMinChunkSize %s, MLU memory used: %s.",
+        string::HumanReadableSize(size),
+        place.device,
+        string::HumanReadableSize(avail),
+        string::HumanReadableSize(total),
+        string::HumanReadableSize(buddy_allocator->GetMinChunkSize()),
+        string::HumanReadableSize(buddy_allocator->GetMaxChunkSize()),
+        string::HumanReadableSize(Used<platform::MLUPlace>(place))));
+  } else {
+    if (FLAGS_init_allocated_mem) {
+      cnrtMemset(ptr, 0xEF, size);
+    }
+  }
+  return ptr;
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'MLUPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+void Free<platform::MLUPlace>(const platform::MLUPlace &place,
+                              void *p,
+                              size_t size) {
+#ifdef PADDLE_WITH_MLU
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  GetMLUBuddyAllocator(place.device)->Free(p);
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'MLUPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+uint64_t Release<platform::MLUPlace>(const platform::MLUPlace &place) {
+#ifdef PADDLE_WITH_MLU
+  return GetMLUBuddyAllocator(place.device)->Release();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'MLUPlace' is not supported in CPU only device."));
+#endif
+}
+
+// For CustomDevice
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+class BuddyAllocatorList {
+ private:
+  explicit BuddyAllocatorList(const std::string &device_type)
+      : device_type_(device_type) {
+    auto devices = phi::DeviceManager::GetSelectedDeviceList(device_type);
+    for (auto dev_id : devices) {
+      init_flags_[dev_id].reset(new std::once_flag());
+    }
+  }
+
+  static BuddyAllocatorList *CreateNewInstance(const std::string &device_type) {
+    return new BuddyAllocatorList(device_type);
+  }
+
+ public:
+  static BuddyAllocatorList *Instance(const std::string &device_type) {
+    // DeviceType -> AllocatorList
+    static std::unordered_map<std::string, BuddyAllocatorList *> pool;
+    if (pool.find(device_type) == pool.end()) {
+      pool[device_type] = CreateNewInstance(device_type);
+    }
+    return pool[device_type];
+  }
+
+  BuddyAllocator *Get(int dev_id) {
+    PADDLE_ENFORCE_NE(init_flags_.find(dev_id),
+                      init_flags_.end(),
+                      platform::errors::OutOfRange(
+                          "Cannot find %s %d, please check visible devices.",
+                          device_type_,
+                          dev_id));
+
+    std::call_once(*init_flags_[dev_id], [this, dev_id] {
+      phi::DeviceManager::SetDevice(device_type_, dev_id);
+      platform::CustomPlace place(device_type_, dev_id);
+
+      allocators_[dev_id].reset(new BuddyAllocator(
+          std::unique_ptr<detail::SystemAllocator>(
+              new detail::CustomAllocator(device_type_, dev_id)),
+          phi::DeviceManager::GetMinChunkSize(place),
+          phi::DeviceManager::GetMaxChunkSize(place),
+          phi::DeviceManager::GetExtraPaddingSize(place),
+          device_type_));
+    });
+
+    return allocators_[dev_id].get();
+  }
+
+ private:
+  std::string device_type_;
+  std::unordered_map<size_t, std::unique_ptr<std::once_flag>> init_flags_;
+  std::unordered_map<size_t, std::unique_ptr<BuddyAllocator>> allocators_;
+};
+
+BuddyAllocator *GetBuddyAllocator(const platform::Place &place) {
+  VLOG(10) << "GetBuddyAllocator place = " << place;
+  if (platform::is_custom_place(place)) {
+    return BuddyAllocatorList::Instance(
+               platform::PlaceHelper::GetDeviceType(place))
+        ->Get(platform::PlaceHelper::GetDeviceId(place));
+  } else {
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("place must be CustomPlace"));
+  }
+}
+#endif
+
+template <>
+void *Alloc<platform::CustomPlace>(const platform::CustomPlace &place,
+                                   size_t size) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  auto *buddy_allocator = GetBuddyAllocator(place);
+  auto *ptr = buddy_allocator->Alloc(size);
+
+  if (ptr == nullptr) {
+    phi::DeviceGuard guard(place);
+    size_t avail, total;
+    phi::DeviceManager::MemoryStats(place, &total, &avail);
+    PADDLE_THROW(platform::errors::ResourceExhausted(
+        "Cannot allocate %s in %s:%d, avaliable %s, total %s, used "
+        "%s. ",
+        string::HumanReadableSize(size),
+        place.GetDeviceType(),
+        place.device,
+        string::HumanReadableSize(avail),
+        string::HumanReadableSize(total),
+        string::HumanReadableSize(total - avail)));
+  } else {
+    if (FLAGS_init_allocated_mem) {
+      phi::DeviceManager::GetDeviceWithPlace(place)->MemorySet(ptr, 0xEF, size);
+    }
+  }
+  VLOG(10) << "  pointer=" << ptr;
+  return ptr;
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CustomPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+void Free<platform::CustomPlace>(const platform::CustomPlace &place,
+                                 void *p,
+                                 size_t size) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  GetBuddyAllocator(place)->Free(p);
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CustomPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+uint64_t Release<platform::CustomPlace>(const platform::CustomPlace &place) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  return GetBuddyAllocator(place)->Release();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CustomPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+size_t Used<platform::CustomPlace>(const platform::CustomPlace &place) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  return GetBuddyAllocator(place)->Used();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CustomPlace' is not supported in CPU only device."));
+#endif
+}
+
+struct AllocVisitor : std::unary_function<const Place, void *> {
   inline explicit AllocVisitor(size_t size) : size_(size) {}
 
   template <typename Place>
@@ -634,7 +906,7 @@ struct AllocVisitor : public boost::static_visitor<void *> {
   size_t size_;
 };
 
-struct FreeVisitor : public boost::static_visitor<void> {
+struct FreeVisitor : public std::unary_function<const Place, void> {
   inline explicit FreeVisitor(void *ptr, size_t size)
       : ptr_(ptr), size_(size) {}
 
@@ -648,7 +920,7 @@ struct FreeVisitor : public boost::static_visitor<void> {
   size_t size_;
 };
 
-struct ReleaseVisitor : public boost::static_visitor<uint64_t> {
+struct ReleaseVisitor : std::unary_function<const Place, uint64_t> {
   template <typename Place>
   inline uint64_t operator()(const Place &place) const {
     return Release<Place>(place);
@@ -680,25 +952,21 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 
 namespace allocation {
 
-Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
-  void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
+phi::Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
+  void *ptr = paddle::platform::VisitPlace(place_, legacy::AllocVisitor(size));
   auto *tmp_alloc = new Allocation(ptr, size, place_);
-  platform::MemEvenRecorder::Instance().PushMemRecord(
-      static_cast<void *>(tmp_alloc), place_, size);
   return tmp_alloc;
 }
 
-void NaiveBestFitAllocator::FreeImpl(Allocation *allocation) {
-  boost::apply_visitor(
-      legacy::FreeVisitor(allocation->ptr(), allocation->size()),
-      allocation->place());
-  platform::MemEvenRecorder::Instance().PopMemRecord(
-      static_cast<void *>(allocation), place_);
+void NaiveBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
+  paddle::platform::VisitPlace(
+      allocation->place(),
+      legacy::FreeVisitor(allocation->ptr(), allocation->size()));
   delete allocation;
 }
 
 uint64_t NaiveBestFitAllocator::ReleaseImpl(const platform::Place &place) {
-  return boost::apply_visitor(legacy::ReleaseVisitor(), place);
+  return paddle::platform::VisitPlace(place, legacy::ReleaseVisitor());
 }
 
 }  // namespace allocation

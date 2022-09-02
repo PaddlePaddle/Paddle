@@ -23,45 +23,57 @@ void NPUPinnedAllocator::ProcessEventsAndFree() {
   for (auto it = npu_events_.begin(); it != npu_events_.end();) {
     aclrtEvent event = it->second;
     aclrtEventStatus status = ACL_EVENT_STATUS_COMPLETE;
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtQueryEvent(event, &status));
+    platform::NPUEventQuery(event, &status);
 
     if (status == ACL_EVENT_STATUS_COMPLETE) {
-      Allocation *allocation = it->first;
+      auto *allocation = it->first;
       void *ptr = allocation->ptr();
       free(ptr);
       npu_events_.erase(it++);
       delete allocation;
-      PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyEvent(event));
+      platform::NPUEventDestroy(event);
     } else {
       ++it;
     }
   }
 }
 
-Allocation *NPUPinnedAllocator::AllocateImpl(size_t size) {
+phi::Allocation *NPUPinnedAllocator::AllocateImpl(size_t size) {
   std::lock_guard<std::mutex> lock(mtx_);
   ProcessEventsAndFree();
   void *ptr;
   int error = posix_memalign(&ptr, kAlignment, size);
   PADDLE_ENFORCE_EQ(
-      error, 0,
+      error,
+      0,
       platform::errors::ResourceExhausted(
           "Fail to alloc memory of %ld size, error code is %d.", size, error));
   return new Allocation(ptr, size, platform::NPUPinnedPlace());
 }
 
-void NPUPinnedAllocator::FreeImpl(Allocation *allocation) {
+void NPUPinnedAllocator::FreeImpl(phi::Allocation *allocation) {
   std::lock_guard<std::mutex> lock(mtx_);
   void *ptr = allocation->ptr();
   auto iter = npu_events_.find(allocation);
+
+  // Managed by GC if not called RecordEvent.
+  if (iter == npu_events_.end()) {
+    // double free? No such problem has been found so far.
+    // Or maybe we need a set<Allocation*> to record which
+    // Allocation managed by GC.
+    free(ptr);
+    delete allocation;
+    return;
+  }
+
   aclrtEvent event = iter->second;
   aclrtEventStatus status = ACL_EVENT_STATUS_COMPLETE;
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtQueryEvent(event, &status));
+  platform::NPUEventQuery(event, &status);
   if (status == ACL_EVENT_STATUS_COMPLETE) {
     free(ptr);
     npu_events_.erase(allocation);
     delete allocation;
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyEvent(event));
+    platform::NPUEventDestroy(event);
   }
   return;
 }
@@ -72,12 +84,12 @@ uint64_t NPUPinnedAllocator::ReleaseImpl(const platform::Place &place) {
   return static_cast<uint64_t>(0);
 }
 
-void NPUPinnedAllocator::RecordEvent(Allocation *allocation,
+void NPUPinnedAllocator::RecordEvent(phi::Allocation *allocation,
                                      aclrtStream stream) {
   std::lock_guard<std::mutex> lock(mtx_);
   aclrtEvent event = nullptr;
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateEvent(&event));
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtRecordEvent(event, stream));
+  platform::NPUEventCreate(&event);
+  platform::NPUEventRecord(event, stream);
   npu_events_.insert({allocation, event});
 }
 

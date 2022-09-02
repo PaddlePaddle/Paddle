@@ -24,17 +24,19 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTReshapeTest(InferencePassTest):
+
     def setUp(self):
         self.bs = 1
-        self.input_shape = [32, 15, 24]
-        self.reshape = [-1, 8, 20, 72]
+        self.input_shape = [16, 3, 8]
+        self.reshape = [-1, 4, 4, 24]
         self.data_shape = [
             self.bs, self.input_shape[0], self.input_shape[1],
             self.input_shape[2]
         ]
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name='data', shape=self.data_shape, dtype='float32')
+            data = fluid.data(name='data',
+                              shape=self.data_shape,
+                              dtype='float32')
             reshape_out = self.append_reshape(data, self.reshape)
             out = fluid.layers.batch_norm(reshape_out, is_test=True)
         self.feeds = {
@@ -57,17 +59,19 @@ class TRTReshapeTest(InferencePassTest):
 
 
 class TRTReshapeTest1(TRTReshapeTest):
+
     def setUp(self):
         self.bs = 2
-        self.input_shape = [23, 13, 24]
-        self.reshape = [2, 0, -1, 12]
+        self.input_shape = [23, 13, 12]
+        self.reshape = [2, 0, -1, 6]
         self.data_shape = [
             self.bs, self.input_shape[0], self.input_shape[1],
             self.input_shape[2]
         ]
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name='data', shape=self.data_shape, dtype='float32')
+            data = fluid.data(name='data',
+                              shape=self.data_shape,
+                              dtype='float32')
             reshape_out = self.append_reshape(data, self.reshape)
             out = fluid.layers.batch_norm(reshape_out, is_test=True)
         self.feeds = {
@@ -80,25 +84,23 @@ class TRTReshapeTest1(TRTReshapeTest):
 
 
 class TRTReshapeTest2(TRTReshapeTest):
+
     def setUp(self):
         self.bs = 2
-        self.input_shape = [23, 13, 24]
-        self.reshape = [2, 0, -1, 12]
+        self.input_shape = [23, 13, 12]
+        self.reshape = [2, 0, -1, 6]
         self.data_shape = [
             self.bs, self.input_shape[0], self.input_shape[1],
             self.input_shape[2]
         ]
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name='data', shape=self.data_shape, dtype='float32')
-            actual_reshape = fluid.data(
-                name='actual_reshape', shape=[4], dtype='int32')
-            reshape_out = fluid.layers.reshape(
-                x=data, shape=self.reshape, actual_shape=actual_reshape)
+            data = fluid.data(name='data',
+                              shape=self.data_shape,
+                              dtype='float32')
+            reshape_out = fluid.layers.reshape(x=data, shape=self.reshape)
             out = fluid.layers.batch_norm(reshape_out, is_test=True)
         self.feeds = {
-            'data': np.random.random(self.data_shape).astype('float32'),
-            'actual_reshape': np.array([2, 0, -1, 12]).astype('int32')
+            'data': np.random.random(self.data_shape).astype('float32')
         }
         self.enable_trt = True
         self.trt_parameters = TRTReshapeTest.TensorRTParam(
@@ -107,17 +109,19 @@ class TRTReshapeTest2(TRTReshapeTest):
 
 
 class TRTReshapeTest3(TRTReshapeTest):
+
     def setUp(self):
         self.bs = 1
-        self.input_shape = [14, 48, 27]
-        self.reshape = [1, 24, 28, 0]
+        self.input_shape = [7, 16, 27]
+        self.reshape = [1, 8, 14, 0]
         self.data_shape = [
             self.bs, self.input_shape[0], self.input_shape[1],
             self.input_shape[2]
         ]
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name='data', shape=self.data_shape, dtype='float32')
+            data = fluid.data(name='data',
+                              shape=self.data_shape,
+                              dtype='float32')
             bn_out = fluid.layers.batch_norm(data, is_test=True)
             out = self.append_reshape(bn_out, self.reshape)
         self.feeds = {

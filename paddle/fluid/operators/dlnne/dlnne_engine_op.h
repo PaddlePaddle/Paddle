@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #pragma once
+#include <assert.h>
 #include <cuda.h>          // NOTLINT
 #include <cuda_runtime.h>  // NOTLINT
 #include <dlnne.h>         // NOTLINT
 
-#include <assert.h>
 #include <ctime>
 #include <fstream>
 #include <iostream>
@@ -128,11 +128,15 @@ class DlnneEngineOp : public framework::OperatorBase {
              << ".onnx";
 
     builder = dl::nne::CreateInferBuilder();
-    PADDLE_ENFORCE_NE(builder, nullptr, platform::errors::Unavailable(
-                                            "nne create builder failed"));
+    PADDLE_ENFORCE_NE(
+        builder,
+        nullptr,
+        platform::errors::Unavailable("nne create builder failed"));
     parser = dl::nne::CreateParser();
-    PADDLE_ENFORCE_NE(parser, nullptr, platform::errors::Unavailable(
-                                           "nne create parser failed"));
+    PADDLE_ENFORCE_NE(
+        parser,
+        nullptr,
+        platform::errors::Unavailable("nne create parser failed"));
 
     network = builder->CreateNetwork();
 
@@ -174,7 +178,8 @@ class DlnneEngineOp : public framework::OperatorBase {
   void RunDlnneOnCreateEngine(const framework::Scope &scope,
                               const platform::Place &dev_place) const {
     PADDLE_ENFORCE_EQ(
-        input_names_.empty(), false,
+        input_names_.empty(),
+        false,
         platform::errors::PreconditionNotMet(
             "Dlnne engine needs at least one input, but no input is found. "
             "Please check if you set the input correctly."));
@@ -196,7 +201,7 @@ class DlnneEngineOp : public framework::OperatorBase {
       index++;
       int64_t data_bytes;
       int32_t dtype;
-      auto type = t.type();
+      auto type = framework::TransToProtoVarType(t.dtype());
       data_bytes = 1;
       void *buffer = nullptr;
       if (type == framework::proto::VarType::FP32) {
@@ -217,7 +222,7 @@ class DlnneEngineOp : public framework::OperatorBase {
       }
       input_buffers[bind_index] = buffer;
 
-      auto t_shape = framework::vectorize<int64_t>(t.dims());
+      auto t_shape = phi::vectorize<int64_t>(t.dims());
       std::vector<int64_t> runtime_input_shape(t_shape.begin(), t_shape.end());
       for (auto &size : t_shape) {
         data_bytes = data_bytes * size;
@@ -269,11 +274,10 @@ class DlnneEngineOp : public framework::OperatorBase {
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
 
       VLOG(4) << "out_shapes[bind_index] dim:" << out_shapes[bind_index].size();
-      fluid_t->Resize(framework::make_ddim(out_shapes[bind_index]));
+      fluid_t->Resize(phi::make_ddim(out_shapes[bind_index]));
 
       int32_t dtype;
-      output_buffers[bind_index] = fluid_t->mutable_data<float>(
-          BOOST_GET_CONST(platform::CPUPlace, dev_place));
+      output_buffers[bind_index] = fluid_t->mutable_data<float>(dev_place);
       dtype = 0;
       cpu_output_buffers[bind_index] =
           output_buffers[bind_index];  // malloc(data_bytes);
@@ -298,7 +302,8 @@ class DlnneEngineOp : public framework::OperatorBase {
         engine_input_ptr[InputIndexToBindIndex_[i]] = gpu_ptr;
 
         paddle::inference::CopyTensorCpuToDevice(
-            gpu_ptr, reinterpret_cast<void *>(cpu_input_buffers[i]),
+            gpu_ptr,
+            reinterpret_cast<void *>(cpu_input_buffers[i]),
             total_bytes);
 
       } else {

@@ -42,6 +42,12 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["transpose2"]["X"] = ScaleAlgo::KL;
   rules_["transpose2"]["Out"] = ScaleAlgo::NONE;
 
+  rules_["slice"]["Input"] = ScaleAlgo::KL;
+  rules_["slice"]["Out"] = ScaleAlgo::NONE;
+
+  rules_["shape"]["Input"] = ScaleAlgo::KL;
+  rules_["shape"]["Out"] = ScaleAlgo::NONE;
+
   rules_["fc"]["Input"] = ScaleAlgo::KL;
   rules_["fc"]["W"] = ScaleAlgo::MAX_CH_T;
   rules_["fc"]["Bias"] = ScaleAlgo::NONE;
@@ -58,6 +64,10 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["elementwise_mul"]["X"] = ScaleAlgo::KL;
   rules_["elementwise_mul"]["Y"] = ScaleAlgo::KL;
   rules_["elementwise_mul"]["Out"] = ScaleAlgo::KL;
+
+  rules_["elementwise_sub"]["X"] = ScaleAlgo::KL;
+  rules_["elementwise_sub"]["Y"] = ScaleAlgo::KL;
+  rules_["elementwise_sub"]["Out"] = ScaleAlgo::KL;
 
   // Reshape2 does not perform calculation on the data and shapes are not
   // changed. Scale is calculated on input data and assign to Quantize and
@@ -104,6 +114,18 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["fusion_lstm"]["ReorderedC0"] = ScaleAlgo::NONE;
   rules_["fusion_lstm"]["CheckedCell"] = ScaleAlgo::NONE;
   rules_["fusion_lstm"]["Hidden"] = ScaleAlgo::KL;
+
+  rules_["nearest_interp"]["X"] = ScaleAlgo::KL;
+  rules_["nearest_interp"]["OutSize"] = ScaleAlgo::NONE;
+  rules_["nearest_interp"]["SizeTensor"] = ScaleAlgo::NONE;
+  rules_["nearest_interp"]["Scale"] = ScaleAlgo::NONE;
+  rules_["nearest_interp"]["Out"] = ScaleAlgo::NONE;
+
+  rules_["nearest_interp_v2"]["X"] = ScaleAlgo::KL;
+  rules_["nearest_interp_v2"]["OutSize"] = ScaleAlgo::NONE;
+  rules_["nearest_interp_v2"]["SizeTensor"] = ScaleAlgo::NONE;
+  rules_["nearest_interp_v2"]["Scale"] = ScaleAlgo::NONE;
+  rules_["nearest_interp_v2"]["Out"] = ScaleAlgo::NONE;
 }
 
 ScaleAlgo MkldnnQuantizerConfig::scale_algo(

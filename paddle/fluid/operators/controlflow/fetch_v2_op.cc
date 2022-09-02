@@ -26,11 +26,6 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-struct CPUPlace;
-struct CUDAPlace;
-struct float16;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -47,17 +42,21 @@ static void DeepCopy(const framework::LoDTensor &src_item,
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
       framework::innerTransDataLayoutFromMKLDNN(
-          src_item.layout(), fetch_var_name == framework::GradVarName("Filter")
-                                 ? framework::DataLayout::kNCHW
-                                 : paddle::platform::MKLDNNDeviceContext::tls()
-                                       .get_cur_paddle_data_layout(),
-          src_item, &out, platform::CPUPlace());
-      TensorCopySync(out, platform::CPUPlace(), dst_item);
+          src_item.layout(),
+          fetch_var_name == framework::GradVarName("Filter")
+              ? framework::DataLayout::kNCHW
+              : paddle::platform::MKLDNNDeviceContext::tls()
+                    .get_cur_paddle_data_layout(),
+          src_item,
+          &out,
+          platform::CPUPlace());
+      paddle::framework::TensorCopySync(out, platform::CPUPlace(), dst_item);
     } else {
-      TensorCopySync(src_item, platform::CPUPlace(), dst_item);
+      paddle::framework::TensorCopySync(
+          src_item, platform::CPUPlace(), dst_item);
     }
 #else
-    TensorCopySync(src_item, platform::CPUPlace(), dst_item);
+    paddle::framework::TensorCopySync(src_item, platform::CPUPlace(), dst_item);
 #endif
   } else {
     // Not copy, if the src tensor is empty.
@@ -75,24 +74,41 @@ class FetchV2Op : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    if (!tensor.IsInitialized()) {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
+    auto *fetch_var = ctx.InputVar("X");
+    if (fetch_var == nullptr) {
+      return framework::OpKernelType(framework::proto::VarType::FP32,
+                                     platform::CPUPlace());
+    }
+
+    if (fetch_var->IsType<framework::LoDTensor>()) {
+      auto &src_item = fetch_var->Get<framework::LoDTensor>();
+      if (!src_item.IsInitialized()) {
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       platform::CPUPlace());
+      }
+    } else {
+      auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
+      if (src_item.empty() || !src_item[0].IsInitialized()) {
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       platform::CPUPlace());
+      }
+    }
+
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         platform::CPUPlace());
-  }
-};
-
-class FetchV2InferVarType : public framework::VarTypeInference {
- public:
-  void operator()(framework::InferVarTypeContext *ctx) const override {
-    ctx->SyncTypeAndDataType("X", "Out");
   }
 };
 
@@ -105,17 +121,20 @@ class FetchV2Kernel {
       return;
     }
     PADDLE_ENFORCE_EQ(
-        ctx.HasOutput("Out"), true,
+        ctx.HasOutput("Out"),
+        true,
         platform::errors::NotFound("Output(Out) of fetch_v2_op is not found."));
     auto *out_var = ctx.OutputVar("Out");
 
     int col = ctx.Attr<int>("col");
     PADDLE_ENFORCE_GE(
-        col, 0, platform::errors::InvalidArgument(
-                    "Expected the column index (the attribute 'col' of "
-                    "operator 'Fetch') of current fetching variable to be "
-                    "no less than 0. But received column index = %d.",
-                    col));
+        col,
+        0,
+        platform::errors::InvalidArgument(
+            "Expected the column index (the attribute 'col' of "
+            "operator 'Fetch') of current fetching variable to be "
+            "no less than 0. But received column index = %d.",
+            col));
 
     auto *fetch_list = out_var->GetMutable<framework::FetchList>();
 
@@ -127,29 +146,39 @@ class FetchV2Kernel {
 
     if (fetch_var->IsType<framework::LoDTensor>()) {
       auto &src_item = fetch_var->Get<framework::LoDTensor>();
-      auto *dst_item = &(BOOST_GET(framework::LoDTensor, fetch_list->at(col)));
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(src_item.place()), true,
-                        platform::errors::InvalidArgument(
-                            "Tensor's place of input(X) must be CPUPlace."));
+      if (!src_item.IsInitialized()) {
+        return;
+      }
+      auto *dst_item = &(PADDLE_GET(framework::LoDTensor, fetch_list->at(col)));
+      bool check_place = platform::is_cpu_place(src_item.place()) ||
+                         platform::is_cuda_pinned_place(src_item.place());
+      PADDLE_ENFORCE_EQ(
+          check_place,
+          true,
+          platform::errors::InvalidArgument("Tensor's place of input(X) must "
+                                            "be CPUPlace or CUDAPinnedPlace."));
       if (deepcopy) {
         DeepCopy(src_item, fetch_var_name, dst_item);
       } else {
         dst_item->ShareDataWith(src_item);
+        dst_item->set_lod(src_item.lod());
       }
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
       framework::LoDTensorArray tmp(src_item.size());
       fetch_list->at(col) = tmp;
       auto &dst_item =
-          BOOST_GET(framework::LoDTensorArray, fetch_list->at(col));
+          PADDLE_GET(framework::LoDTensorArray, fetch_list->at(col));
       for (size_t i = 0; i < src_item.size(); ++i) {
-        PADDLE_ENFORCE_EQ(platform::is_cpu_place(src_item[i].place()), true,
+        PADDLE_ENFORCE_EQ(platform::is_cpu_place(src_item[i].place()),
+                          true,
                           platform::errors::InvalidArgument(
                               "Tensor's place of input(X) must be CPUPlace."));
         if (deepcopy) {
           DeepCopy(src_item[i], fetch_var_name, &dst_item[i]);
         } else {
           dst_item[i].ShareDataWith(src_item[i]);
+          dst_item[i].set_lod(src_item[i].lod());
         }
       }
     }
@@ -170,9 +199,7 @@ class FetchV2OpProtoMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
     AddComment(R"DOC(
 FetchV2 Operator.
-
 It should not be configured by users directly.
-
 )DOC");
   }
 };
@@ -183,13 +210,34 @@ It should not be configured by users directly.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OPERATOR(
-    fetch_v2, ops::FetchV2Op, ops::FetchV2OpProtoMaker,
-    ops::FetchV2InferVarType,
+    fetch_v2,
+    ops::FetchV2Op,
+    ops::FetchV2OpProtoMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL_FUNCTOR(fetch_v2, float, ops::FetchV2Kernel, double,
-                               ops::FetchV2Kernel, int, ops::FetchV2Kernel,
-                               int64_t, ops::FetchV2Kernel, bool,
-                               ops::FetchV2Kernel, plat::float16,
+REGISTER_OP_CPU_KERNEL_FUNCTOR(fetch_v2,
+                               float,
+                               ops::FetchV2Kernel,
+                               double,
+                               ops::FetchV2Kernel,
+                               int8_t,
+                               ops::FetchV2Kernel,
+                               uint8_t,
+                               ops::FetchV2Kernel,
+                               int,
+                               ops::FetchV2Kernel,
+                               int64_t,
+                               ops::FetchV2Kernel,
+                               bool,
+                               ops::FetchV2Kernel,
+                               paddle::platform::bfloat16,
+                               ops::FetchV2Kernel,
+                               paddle::platform::complex<float>,
+                               ops::FetchV2Kernel,
+                               paddle::platform::complex<double>,
+                               ops::FetchV2Kernel,
+                               plat::float16,
+                               ops::FetchV2Kernel,
+                               int16_t,
                                ops::FetchV2Kernel);

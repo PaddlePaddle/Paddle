@@ -15,11 +15,11 @@
 
 欢迎来到 PaddlePaddle GitHub
 
-飞桨(PaddlePaddle)以百度多年的深度学习技术研究和业务应用为基础，是中国首个自主研发、功能完备、 开源开放的产业级深度学习平台，集深度学习核心训练和推理框架、基础模型库、端到端开发套件和丰富的工具组件于一体。目前，飞桨累计开发者265万，服务企业10万家，基于飞桨开源深度学习平台产生了34万个模型。飞桨助力开发者快速实现AI想法，快速上线AI业务。帮助越来越多的行业完成AI赋能，实现产业智能化升级。
+飞桨(PaddlePaddle)以百度多年的深度学习技术研究和业务应用为基础，是中国首个自主研发、功能完备、 开源开放的产业级深度学习平台，集深度学习核心训练和推理框架、基础模型库、端到端开发套件和丰富的工具组件于一体。目前，飞桨累计开发者477万，服务企业18万家，基于飞桨开源深度学习平台产生了56万个模型。飞桨助力开发者快速实现AI想法，快速上线AI业务。帮助越来越多的行业完成AI赋能，实现产业智能化升级。
 
 ## 安装
 
-### PaddlePaddle最新版本: [v2.1](https://github.com/PaddlePaddle/Paddle/tree/release/2.1)
+### PaddlePaddle最新版本: [v2.3](https://github.com/PaddlePaddle/Paddle/tree/release/2.3)
 
 跟进PaddlePaddle最新特性请参考我们的[版本说明](https://github.com/PaddlePaddle/Paddle/releases)
 
@@ -49,7 +49,7 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 
 - **支持多端多平台的高性能推理部署工具**
 
-    飞桨不仅广泛兼容第三方开源框架训练的模型部署，并且为不同的场景的生产环境提供了完备的推理引擎，包括适用于高性能服务器及云端推理的原生推理库 [Paddle Inference](https://paddle-inference.readthedocs.io/en/latest/product_introduction/summary.html)，面向分布式、流水线生产环境下自动上云、A/B测试等高阶功能的服务化推理框架 [Paddle Serving](https://github.com/PaddlePaddle/Serving)，针对于移动端、物联网场景的轻量化推理引擎 [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite)，以及在浏览器、小程序等环境下使用的前端推理引擎 [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs)。同时，透过与不同场景下的主流硬件高度适配优化及异构计算的支持, 飞桨的推理性能也领先绝大部分的主流实现。
+    飞桨不仅广泛兼容第三方开源框架训练的模型部署，并且为不同的场景的生产环境提供了完备的推理引擎，包括适用于高性能服务器及云端推理的原生推理库 [Paddle Inference](https://www.paddlepaddle.org.cn/inference/product_introduction/inference_intro.html)，面向分布式、流水线生产环境下自动上云、A/B测试等高阶功能的服务化推理框架 [Paddle Serving](https://github.com/PaddlePaddle/Serving)，针对于移动端、物联网场景的轻量化推理引擎 [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite)，以及在浏览器、小程序等环境下使用的前端推理引擎 [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs)。同时，透过与不同场景下的主流硬件高度适配优化及异构计算的支持, 飞桨的推理性能也领先绝大部分的主流实现。
 
 
 - **面向产业应用，开源开放覆盖多领域的工业级模型库。**
@@ -82,8 +82,8 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 ## 交流与反馈
 
 - 欢迎您通过[Github Issues](https://github.com/PaddlePaddle/Paddle/issues)来提交问题、报告与建议
-- QQ群: 793866180 (PaddlePaddle)
-- [论坛](https://ai.baidu.com/forum/topic/list/168): 欢迎大家在PaddlePaddle论坛分享在使用PaddlePaddle中遇到的问题和经验, 营造良好的论坛氛围
+- QQ群: 441226485 (PaddlePaddle)
+- [论坛](https://aistudio.baidu.com/paddle/forum): 欢迎大家在PaddlePaddle论坛分享在使用PaddlePaddle中遇到的问题和经验, 营造良好的论坛氛围
     
 ## 课程
 

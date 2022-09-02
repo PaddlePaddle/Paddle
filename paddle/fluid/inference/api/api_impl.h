@@ -15,12 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include <glog/logging.h>
+
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/naive_executor.h"
@@ -31,11 +31,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 
 namespace framework {
-class LoDTensor;
 class Scope;
 }  // namespace framework
 
@@ -51,7 +51,7 @@ class NativePaddlePredictor : public PaddlePredictor {
            std::vector<PaddleTensor> *output_data,
            int batch_size = -1) override;
 
-  std::unique_ptr<PaddlePredictor> Clone() override;
+  std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override;
 
   ~NativePaddlePredictor() override;
 

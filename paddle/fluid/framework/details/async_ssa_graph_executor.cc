@@ -17,14 +17,15 @@
 #include "paddle/fluid/framework/variable_helper.h"
 
 #if defined PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/service/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-inline void InitVarsInScope(const std::vector<VarInfo> &var_infos, Scope *scope,
+inline void InitVarsInScope(const std::vector<VarInfo> &var_infos,
+                            Scope *scope,
                             Scope *local_scope) {
   VLOG(3) << "InitVarsInScope";
   for (auto &info : var_infos) {
@@ -46,9 +47,11 @@ inline void InitVarsInScope(const std::vector<VarInfo> &var_infos, Scope *scope,
 void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) { return; }
 
 AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
-    const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
+    const ExecutionStrategy &strategy,
+    const std::vector<Scope *> &local_scopes,
     const std::vector<Scope *> &local_exec_scopes,
-    const std::vector<platform::Place> &places, std::vector<ir::Graph *> graphs)
+    const std::vector<platform::Place> &places,
+    std::vector<ir::Graph *> graphs)
     : strategy_(std::move(strategy)),
       local_scopes_(std::move(local_scopes)),
       local_exec_scopes_(local_exec_scopes),
@@ -56,19 +59,23 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
       places_(std::move(places)),
       graphs_(std::move(graphs)) {
   VLOG(3) << "build AsyncSSAGraphExecutor";
-  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size(),
+  PADDLE_ENFORCE_EQ(places_.size(),
+                    local_scopes_.size(),
                     platform::errors::InvalidArgument(
                         "The number of places and the number of local scopes "
                         "should be equal, but got number of places is %d and "
                         "number of local scopes is %d.",
-                        places_.size(), local_scopes_.size()));
+                        places_.size(),
+                        local_scopes_.size()));
   PADDLE_ENFORCE_EQ(
-      local_scopes_.size(), local_exec_scopes_.size(),
+      local_scopes_.size(),
+      local_exec_scopes_.size(),
       platform::errors::InvalidArgument(
           "The number of local scopes and the number of local execution scopes "
           "should be equal, but got number of local scopes is %d and "
           "number of local execution scopes is %d.",
-          local_scopes_.size(), local_exec_scopes_.size()));
+          local_scopes_.size(),
+          local_exec_scopes_.size()));
 
   // set the correct size of thread pool to each device.
   strategy_.num_threads_ = strategy_.num_threads_ < places_.size()
@@ -77,9 +84,12 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
   VLOG(1) << "set num_threads: " << strategy_.num_threads_
           << " to run the operators of the graph on each device.";
   for (size_t i = 0; i < places.size(); ++i) {
-    executors_.emplace_back(new details::ThreadedSSAGraphExecutor(
-        strategy_, {local_scopes_[i]}, {local_exec_scopes_[i]}, {places_[i]},
-        graphs_[i]));
+    executors_.emplace_back(
+        new details::ThreadedSSAGraphExecutor(strategy_,
+                                              {local_scopes_[i]},
+                                              {local_exec_scopes_[i]},
+                                              {places_[i]},
+                                              graphs_[i]));
   }
 
   for (auto &node : graphs_[0]->Nodes()) {
@@ -92,8 +102,8 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
   }
 
   for (size_t i = local_scopes_.size(); i >= 1; --i) {
-    InitVarsInScope(var_infos_, local_scopes_[i - 1],
-                    local_exec_scopes_[i - 1]);
+    InitVarsInScope(
+        var_infos_, local_scopes_[i - 1], local_exec_scopes_[i - 1]);
   }
   ProcessGraph(graphs_, local_scopes_[0]);
 }
@@ -132,7 +142,8 @@ void AsyncSSAGraphExecutor::HandleException() {
 
 FetchResultType AsyncSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
-  PADDLE_ENFORCE_EQ(return_merged, true,
+  PADDLE_ENFORCE_EQ(return_merged,
+                    true,
                     platform::errors::InvalidArgument(
                         "AsyncSSAGraphExecutor does not support unmerged "
                         "results to be fetched!"));
@@ -163,23 +174,24 @@ FetchResultType AsyncSSAGraphExecutor::Run(
   HandleException();
 
   FetchList ret;
-  auto &val = BOOST_GET(FetchList, fetch_data);
+  auto &val = PADDLE_GET(FetchList, fetch_data);
   for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
     if (data_is_lod_tensor(val.at(fetch_idx))) {
       std::vector<const LoDTensor *> lodtensor_ptrs;
-      lodtensor_ptrs.push_back(&(BOOST_GET(LoDTensor, val.at(fetch_idx))));
+      lodtensor_ptrs.push_back(&(PADDLE_GET(LoDTensor, val.at(fetch_idx))));
       LoDTensor var;
-      var.MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+      MergeLoDTensor(&var, lodtensor_ptrs, platform::CPUPlace());
       ret.emplace_back(var);
     } else {
-      auto array = BOOST_GET(LoDTensorArray, val.at(fetch_idx));
+      auto array = PADDLE_GET(LoDTensorArray, val.at(fetch_idx));
       LoDTensorArray item_array;
       item_array.reserve(array.size());
       for (size_t i = 0; i < array.size(); ++i) {
         std::vector<const LoDTensor *> lodtensor_ptrs;
         lodtensor_ptrs.push_back(&array[i]);
         item_array.emplace_back();
-        item_array.back().MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+        MergeLoDTensor(
+            &(item_array.back()), lodtensor_ptrs, platform::CPUPlace());
       }
       ret.emplace_back(item_array);
     }

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -30,7 +31,7 @@ TEST(test_no_need_buffer_vars_inference, test_static_graph) {
   ASSERT_TRUE(ctx.HasOutput("Out"));
   ASSERT_FALSE(ctx.HasOutput("X"));
 
-  ASSERT_TRUE(BOOST_GET_CONST(bool, ctx.GetAttr("is_test")));
+  ASSERT_TRUE(PADDLE_GET_CONST(bool, ctx.GetAttr("is_test")));
 }
 
 TEST(test_no_need_buffer_vars_inference, test_dygraph) {
@@ -45,7 +46,7 @@ TEST(test_no_need_buffer_vars_inference, test_dygraph) {
   ASSERT_TRUE(ctx.HasOutput("Out"));
   ASSERT_FALSE(ctx.HasOutput("X"));
 
-  ASSERT_TRUE(BOOST_GET_CONST(bool, ctx.GetAttr("is_test")));
+  ASSERT_TRUE(PADDLE_GET_CONST(bool, ctx.GetAttr("is_test")));
 }
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(TestNoNeedBufferVarsInferer, "X1", "X2");

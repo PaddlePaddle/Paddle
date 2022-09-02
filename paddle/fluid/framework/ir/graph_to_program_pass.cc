@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 
 #include <gflags/gflags.h>
+
 #include <algorithm>
 
 #include "paddle/fluid/framework/op_proto_maker.h"

@@ -1,12 +1,12 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 # Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -64,7 +64,8 @@ class CheckMethod(Enum):
             .. code-block:: python
 
             import numpy as np
-            from paddle.fluid.contrib.sparsity import MaskAlgo, CheckMethod
+            from paddle.static.sparsity import MaskAlgo
+            from paddle.fluid.contrib.sparsity import CheckMethod
 
             CheckMethod.get_checking_method(MaskAlgo.MASK_1D)
             # CheckMethod.CHECK_1D
@@ -93,13 +94,12 @@ def calculate_density(x):
         float: The density of :attr:`x`.
     Examples:
         .. code-block:: python
-
+          import paddle
           import numpy as np
-          import paddle.fluid.contrib.sparsity as sparsity
 
           x = np.array([[0, 1, 3, 0],
                         [1, 1, 0, 1]])
-          sparsity.calculate_density(x) # 0.625
+          paddle.incubate.asp.calculate_density(x) # 0.625
     """
     x_flattened = x.flatten()
     return float(np.nonzero(x_flattened)[0].size) / x_flattened.size
@@ -406,8 +406,8 @@ def _compute_valid_2d_patterns(n, m):
         patterns = patterns + patterns
         patterns = np.asarray(list(set(permutations(patterns, m))))
 
-        valid = ((patterns.sum(axis=1) <= n).sum(axis=1) == m
-                 ).nonzero()[0].reshape(-1)
+        valid = ((patterns.sum(axis=1) <= n).sum(
+            axis=1) == m).nonzero()[0].reshape(-1)
         valid_patterns = np.empty((valid.shape[0], m, m))
         valid_patterns[:] = patterns[valid[:]]
 
@@ -446,7 +446,7 @@ def get_mask_2d_best(mat, n, m):
                           [5, 6, 3, 9],
                           [2, 4, 6, 9]])
           mask_greedy = sparsity.get_mask_2d_greedy(mat, 2, 4)
-          mask_greedy = sparsity.get_mask_2d_best(mat, 2, 4)
+          mask_best = sparsity.get_mask_2d_best(mat, 2, 4)
           print("L1 norm of `greedy` sparse matrix", np.multiply(mat, mask_greedy).sum()) # 56
           print("L1 norm of `best` sparse matrix", np.multiply(mat, mask_best).sum()) # 61
     """
@@ -454,9 +454,9 @@ def get_mask_2d_best(mat, n, m):
 
     mat_flattern, shape = _reshape_2d(mat, m)
     mask_flattern = np.ones_like(mat_flattern).reshape(-1, m, m)
-    pmax = np.argmax(
-        np.matmul(mat_flattern, patterns.reshape(patterns.shape[0], m * m).T),
-        axis=1)
+    pmax = np.argmax(np.matmul(mat_flattern,
+                               patterns.reshape(patterns.shape[0], m * m).T),
+                     axis=1)
 
     mask_flattern[:] = patterns[pmax[:]]
     mask = np.empty(shape)
@@ -518,9 +518,13 @@ def create_mask(tensor, func_name=MaskAlgo.MASK_1D, n=2, m=4):
         t = t.reshape(shape[0], shape[1])
     elif len(shape) == 3:
         t = t.reshape(shape[0] * shape[1], shape[2])
-    # 4d-tensor conv (out, in, h, w) -> (out, in*h*w) in GemmConvKernel Op
+    # 4d-tensor conv (h, w, in, out) -> (h*w*out, in) in GemmConvKernel Op
     elif len(shape) == 4:
-        t = t.reshape(shape[0], shape[1] * shape[2] * shape[3])
+        t = t.transpose([0, 1, 3, 2]).reshape(shape[0] * shape[1] * shape[3],
+                                              shape[2])
+        mask = func(t, n=n, m=m)
+        return mask.reshape([shape[0], shape[1], shape[3],
+                             shape[2]]).transpose([0, 1, 3, 2]).astype(dtype)
     else:
         raise ValueError("The dimension of input tensor is not supported in create_mask, " \
                          "Only dimension < 4 is supported but got {}".format(len(shape)))
@@ -572,9 +576,10 @@ def check_sparsity(tensor, func_name=CheckMethod.CHECK_1D, n=2, m=4):
         t = t.reshape(shape[0], shape[1])
     elif len(shape) == 3:
         t = t.reshape(shape[0] * shape[1], shape[2])
-    # 4d-tensor conv (out, in, h, w) -> (out, in*h*w) in GemmConvKernel Op
+    # 4d-tensor conv (h, w, in, out) -> (h*w*out, in) in GemmConvKernel Op
     elif len(shape) == 4:
-        t = t.reshape(shape[0], shape[1] * shape[2] * shape[3])
+        t = t.transpose([0, 1, 3,
+                         2]).reshape([shape[0] * shape[1] * shape[3], shape[2]])
     else:
         raise ValueError("The dimension of input tensor is not supported in create_mask, " \
                          "Only dimension < 4 is supported but got {}".format(len(shape)))

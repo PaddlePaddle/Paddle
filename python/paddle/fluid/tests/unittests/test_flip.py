@@ -46,9 +46,8 @@ class TestFlipOp_API(unittest.TestCase):
                           fetch_list=[output])
             out_np = np.array(res[0])
             out_ref = np.array([[3, 2, 1], [6, 5, 4]]).astype(np.float32)
-            self.assertTrue(
-                (out_np == out_ref).all(),
-                msg='flip output is wrong, out =' + str(out_np))
+            self.assertTrue((out_np == out_ref).all(),
+                            msg='flip output is wrong, out =' + str(out_np))
 
     def test_dygraph(self):
         img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
@@ -65,8 +64,10 @@ class TestFlipOp_API(unittest.TestCase):
 
 
 class TestFlipOp(OpTest):
+
     def setUp(self):
         self.op_type = 'flip'
+        self.python_api = paddle.tensor.flip
         self.init_test_case()
         self.inputs = {'X': np.random.random(self.in_shape).astype('float64')}
         self.init_attrs()
@@ -76,10 +77,10 @@ class TestFlipOp(OpTest):
         self.attrs = {"axis": self.axis}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_eager=True)
 
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 3)
@@ -95,40 +96,47 @@ class TestFlipOp(OpTest):
 
 
 class TestFlipOpAxis1(TestFlipOp):
+
     def init_test_case(self):
         self.in_shape = (2, 4, 4)
         self.axis = [0]
 
 
 class TestFlipOpAxis2(TestFlipOp):
+
     def init_test_case(self):
         self.in_shape = (4, 4, 6, 3)
         self.axis = [0, 2]
 
 
 class TestFlipOpAxis3(TestFlipOp):
+
     def init_test_case(self):
         self.in_shape = (4, 3, 1)
         self.axis = [0, 1, 2]
 
 
 class TestFlipOpAxis4(TestFlipOp):
+
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 2)
         self.axis = [0, 1, 2, 3]
 
 
 class TestFlipOpEmptyAxis(TestFlipOp):
+
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 2)
         self.axis = []
 
 
 class TestFlipOpNegAxis(TestFlipOp):
+
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 2)
         self.axis = [-1]
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

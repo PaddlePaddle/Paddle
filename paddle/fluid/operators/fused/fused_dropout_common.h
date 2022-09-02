@@ -21,12 +21,12 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
-#include "paddle/fluid/operators/math/functors.h"
-#include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/functors.h"
 
 namespace paddle {
 namespace operators {
@@ -40,12 +40,22 @@ namespace operators {
  * 2D grids: gridDim.y = rows
  */
 inline platform::GpuLaunchConfig Get1DBlocksAnd2DGrids(
-    const platform::CUDADeviceContext &ctx, const uint32_t rows,
-    const uint32_t cols, const int vec_size) {
+    const phi::GPUContext &ctx,
+    const uint32_t rows,
+    const uint32_t cols,
+    const int vec_size) {
   const uint32_t tmp_cols = cols / vec_size;
-  int threads = std::max(
-      static_cast<uint32_t>(32),
-      std::min(tmp_cols, static_cast<uint32_t>(ctx.GetMaxThreadsPerBlock())));
+  // NOTE(wangxi): We set max_block_size to 512, for `FusedResidualDropoutBias`
+  // needs too many register resources. If data_type is float16, CUDA
+  // error(701) will occur when block_size is 1024. Which error is
+  // 'cudaErrorLaunchOutOfResources', this indicates that a launch did not
+  // occur because it did not have appropriate resources.
+  // Of course, this kernel can be optimized later to reduce the use
+  // of registers.
+  int threads = std::max(static_cast<uint32_t>(32),
+                         std::min(tmp_cols,
+                                  static_cast<uint32_t>(std::min(
+                                      ctx.GetMaxThreadsPerBlock(), 512))));
   const auto blocks_x =
       std::max(static_cast<uint32_t>(1), (tmp_cols + threads - 1) / threads);
   const auto blocks_y = std::max(static_cast<uint32_t>(1), rows);
@@ -91,9 +101,8 @@ __forceinline__ __device__ void RandVec<8>(curandStatePhilox4_32_10_t *state,
 }
 
 template <typename T>
-inline void SetZero(const platform::CUDADeviceContext &ctx, T *ptr,
-                    const size_t size) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+inline void SetZero(const phi::GPUContext &ctx, T *ptr, const size_t size) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemsetAsync(ptr, 0, size * sizeof(T), ctx.stream()));
 }
 
@@ -101,7 +110,8 @@ inline void SetZero(const platform::CUDADeviceContext &ctx, T *ptr,
  * reduce the sum of 128 cols data by 8*VecSize warps
  */
 template <typename T, int VecSize, int BlockSizeX, int BlockSizeY>
-inline __device__ void CalculateDBias(const T *tmp_sum, T *dbias,
+inline __device__ void CalculateDBias(const T *tmp_sum,
+                                      T *dbias,
                                       const int cols) {
   // save temporary sum to cache and do transpose
   __shared__ T cache[BlockSizeX * VecSize][BlockSizeY];
@@ -110,27 +120,34 @@ inline __device__ void CalculateDBias(const T *tmp_sum, T *dbias,
   }
   __syncthreads();
   // reduce sum
-  T sum = static_cast<T>(0);
+  T sum[2] = {static_cast<T>(0)};
   int tid = threadIdx.y * blockDim.x + threadIdx.x;
   int x = tid >> 5;  // warp id
   int y = tid & 31;  // thread id on warp 0~31
 
   // need BlockSizeX * VecSize warps
-  if (x < BlockSizeX * VecSize) {
+  for (int j = x; j < BlockSizeX * VecSize; j += 32) {
 // reduce 128 to 32
 #pragma unroll
     for (int i = 0; i < (BlockSizeY >> 5); i++) {
-      sum += cache[x][y + i * 32];
+      sum[(j >> 5)] += cache[j][y + i * 32];
     }
   }
 
+  int reduce_num_pre_thread = (BlockSizeX * VecSize + 31) / 32;
   // reduce 32 to 1
-  sum = WarpReduceSum(sum);
+  for (int i = 0; i < reduce_num_pre_thread; i++) {
+    sum[i] = WarpReduceSum(sum[i]);
+  }
 
   // save sum to dbias
-  int bias_id = blockIdx.x * blockDim.x * VecSize + x;
-  if (y == 0 && x < VecSize * BlockSizeX && bias_id < cols) {
-    dbias[bias_id] = sum;
+  if (y == 0 && x < BlockSizeX * VecSize) {
+    for (int i = 0; i < reduce_num_pre_thread; i++) {
+      int bias_id = blockIdx.x * BlockSizeX * VecSize + x + i * 32;
+      if (bias_id < cols) {
+        dbias[bias_id] = sum[i];
+      }
+    }
   }
 }
 

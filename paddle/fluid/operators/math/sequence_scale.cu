@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/sequence_scale.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace paddle {
 namespace operators {
@@ -22,7 +23,9 @@ namespace math {
 using platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, int BlockSize>
-__global__ void SequenceScaleKernel(T* seq, size_t* lod, const T* scales,
+__global__ void SequenceScaleKernel(T* seq,
+                                    size_t* lod,
+                                    const T* scales,
                                     const size_t seq_width) {
   for (int i = threadIdx.x;
        i < (lod[blockIdx.x + 1] - lod[blockIdx.x]) * seq_width;
@@ -33,34 +36,44 @@ __global__ void SequenceScaleKernel(T* seq, size_t* lod, const T* scales,
 }
 
 template <typename T>
-class ScaleLoDTensorFunctor<platform::CUDADeviceContext, T> {
+class ScaleLoDTensorFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context, const T* scales,
+  void operator()(const phi::GPUContext& context,
+                  const T* scales,
                   framework::LoDTensor* seq) {
     const size_t level = 0;
     auto lod = seq->lod();
     const size_t num_seq = lod[level].size() - 1;
     const size_t seq_width = seq->numel() / seq->dims()[0];
-    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+    auto abs_offset_lod = framework::ToAbsOffset(lod);
     T* seq_data = seq->mutable_data<T>(context.GetPlace());
+    paddle::framework::MixVector<size_t> mix_vector(&(abs_offset_lod[level]));
 
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(
         HIP_KERNEL_NAME(SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS>),
-        dim3(num_seq), dim3(PADDLE_CUDA_NUM_THREADS), 0, context.stream(),
-        seq_data, abs_offset_lod[level].CUDAMutableData(context.GetPlace()),
-        scales, seq_width);
+        dim3(num_seq),
+        dim3(PADDLE_CUDA_NUM_THREADS),
+        0,
+        context.stream(),
+        seq_data,
+        mix_vector.CUDAMutableData(context.GetPlace()),
+        scales,
+        seq_width);
 #else
-    SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS><<<
-        num_seq, PADDLE_CUDA_NUM_THREADS, 0, context.stream()>>>(
-        seq_data, abs_offset_lod[level].CUDAMutableData(context.GetPlace()),
-        scales, seq_width);
+    SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS>
+        <<<num_seq, PADDLE_CUDA_NUM_THREADS, 0, context.stream()>>>(
+            seq_data,
+            mix_vector.CUDAMutableData(context.GetPlace()),
+            scales,
+            seq_width);
 #endif
+    mix_vector.CopyToCPU();
   }
 };
 
-template class ScaleLoDTensorFunctor<platform::CUDADeviceContext, float>;
-template class ScaleLoDTensorFunctor<platform::CUDADeviceContext, double>;
+template class ScaleLoDTensorFunctor<phi::GPUContext, float>;
+template class ScaleLoDTensorFunctor<phi::GPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

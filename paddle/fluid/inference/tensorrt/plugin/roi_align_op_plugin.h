@@ -30,14 +30,18 @@ class RoiAlignPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit RoiAlignPluginDynamic(const nvinfer1::DataType data_type,
                                  const int pooled_height,
-                                 const int pooled_width, float spatial_scale,
-                                 int sampling_ratio);
+                                 const int pooled_width,
+                                 float spatial_scale,
+                                 int sampling_ratio,
+                                 bool aligned);
   RoiAlignPluginDynamic(void const* data, size_t length);
   ~RoiAlignPluginDynamic() = default;
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override;
-  nvinfer1::DimsExprs getOutputDimensions(
-      int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
-      nvinfer1::IExprBuilder& exprBuilder) TRT_NOEXCEPT override;
+  nvinfer1::DimsExprs getOutputDimensions(int outputIndex,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nbInputs,
+                                          nvinfer1::IExprBuilder& exprBuilder)
+      TRT_NOEXCEPT override;
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* inOut,
                                  int nbInputs,
@@ -52,12 +56,15 @@ class RoiAlignPluginDynamic : public DynamicPluginTensorRT {
                           int nbOutputs) const TRT_NOEXCEPT override;
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
-              const void* const* inputs, void* const* outputs, void* workspace,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
 
-  nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* inputTypes,
-      int nbInputs) const TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* inputTypes,
+                                       int nbInputs) const
+      TRT_NOEXCEPT override;
 
   const char* getPluginType() const TRT_NOEXCEPT override;
   int getNbOutputs() const TRT_NOEXCEPT override;
@@ -66,13 +73,16 @@ class RoiAlignPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   void serialize(void* buffer) const TRT_NOEXCEPT override;
   void destroy() TRT_NOEXCEPT override;
+  const char* getPluginVersion() const TRT_NOEXCEPT override;
 
  private:
   template <typename T, typename OutT>
   int enqueue_impl(const nvinfer1::PluginTensorDesc* inputDesc,
                    const nvinfer1::PluginTensorDesc* outputDesc,
-                   const void* const* inputs, void* const* outputs,
-                   void* workspace, cudaStream_t stream);
+                   const void* const* inputs,
+                   void* const* outputs,
+                   void* workspace,
+                   cudaStream_t stream);
 
   nvinfer1::DataType data_type_;
   int pooled_height_;
@@ -80,6 +90,7 @@ class RoiAlignPluginDynamic : public DynamicPluginTensorRT {
   float spatial_scale_;
   int sampling_ratio_;
   int smem_per_block_;
+  bool aligned_;
   std::string namespace_;
 };
 
@@ -97,9 +108,10 @@ class RoiAlignPluginDynamicCreator : public nvinfer1::IPluginCreator {
   nvinfer1::IPluginV2Ext* createPlugin(
       const char* name,
       const nvinfer1::PluginFieldCollection* fc) TRT_NOEXCEPT override;
-  nvinfer1::IPluginV2Ext* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override;
+  nvinfer1::IPluginV2Ext* deserializePlugin(const char* name,
+                                            const void* serial_data,
+                                            size_t serial_length)
+      TRT_NOEXCEPT override;
 
  private:
   std::string namespace_;

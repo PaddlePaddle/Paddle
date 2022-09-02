@@ -13,26 +13,31 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <iostream>
+
 #include "paddle/fluid/operators/center_loss_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 namespace paddle {
 namespace operators {
 
 using platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
-__global__ void ComputeDifferent(T *centers_diff, const T *X, const T *centers,
-                                 const int64_t *ids, const int64_t N,
-                                 const int64_t K, const int64_t D) {
+__global__ void ComputeDifferent(T *centers_diff,
+                                 const T *X,
+                                 const T *centers,
+                                 const int64_t *ids,
+                                 const int64_t N,
+                                 const int64_t K,
+                                 const int64_t D) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * GridDimX;
 
   while (idy < K) {
     int64_t id = ids[idy];
     PADDLE_ENFORCE(id >= 0, "Id should larger than 0 but received id: %d.", id);
-    PADDLE_ENFORCE(id < N, "Id should smaller than %d but received id: %d.", N,
-                   id);
+    PADDLE_ENFORCE(
+        id < N, "Id should smaller than %d but received id: %d.", N, id);
 
     T *out = centers_diff + idy * D;
     const T *x = X + idy * D;
@@ -45,8 +50,12 @@ __global__ void ComputeDifferent(T *centers_diff, const T *X, const T *centers,
 }
 
 template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
-__global__ void UpdateCenters(T *centers, T *centers_diff, const int64_t *ids,
-                              const int64_t N, const int64_t K, const int64_t D,
+__global__ void UpdateCenters(T *centers,
+                              T *centers_diff,
+                              const int64_t *ids,
+                              const int64_t N,
+                              const int64_t K,
+                              const int64_t D,
                               const T *alpha) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * GridDimX;
@@ -55,8 +64,8 @@ __global__ void UpdateCenters(T *centers, T *centers_diff, const int64_t *ids,
     int count = 1;
     int64_t id = ids[idy];
     PADDLE_ENFORCE(id >= 0, "Id should larger than 0 but received id: %d.", id);
-    PADDLE_ENFORCE(id < N, "Id should smaller than %d but received id: %d.", N,
-                   id);
+    PADDLE_ENFORCE(
+        id < N, "Id should smaller than %d but received id: %d.", N, id);
 
     for (int i = 0; i < K; i++) {
       if (ids[i] == id) {
@@ -107,7 +116,8 @@ class CenterLossCUDAKernel : public framework::OpKernel<T> {
     auto ctx_place = ctx.GetPlace();
     if (centers != centers_out) {
       framework::TensorCopy(
-          *static_cast<const framework::Tensor *>(centers), ctx_place,
+          *static_cast<const framework::Tensor *>(centers),
+          ctx_place,
           *platform::DeviceContextPool::Instance().Get(ctx_place),
           static_cast<framework::Tensor *>(centers_out));
     }
@@ -140,8 +150,9 @@ class CenterLossCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using GPUCtx = paddle::platform::CUDADeviceContext;
-REGISTER_OP_CUDA_KERNEL(center_loss, ops::CenterLossCUDAKernel<GPUCtx, float>,
+using GPUCtx = phi::GPUContext;
+REGISTER_OP_CUDA_KERNEL(center_loss,
+                        ops::CenterLossCUDAKernel<GPUCtx, float>,
                         ops::CenterLossCUDAKernel<GPUCtx, double>);
 
 REGISTER_OP_CUDA_KERNEL(center_loss_grad,

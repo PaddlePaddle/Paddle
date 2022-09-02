@@ -33,6 +33,7 @@ CLASS_NUM = 10
 
 
 class RandomDataset(IterableDataset):
+
     def __init__(self, sample_num, class_num):
         self.sample_num = sample_num
         self.class_num = class_num
@@ -54,8 +55,9 @@ def simple_fc_net_static():
 
     with fluid.unique_name.guard():
         with fluid.program_guard(main_prog, startup_prog):
-            image = fluid.data(
-                name='image', shape=[None, IMAGE_SIZE], dtype='float32')
+            image = fluid.data(name='image',
+                               shape=[None, IMAGE_SIZE],
+                               dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             hidden = image
             param_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(
@@ -75,8 +77,7 @@ def simple_fc_net_static():
                                             param_attr=param_attr,
                                             bias_attr=bias_attr)
             loss = fluid.layers.reduce_mean(
-                fluid.layers.cross_entropy(
-                    input=predict_label, label=label))
+                fluid.layers.cross_entropy(input=predict_label, label=label))
 
             optimizer = fluid.optimizer.Adam()
             optimizer.minimize(loss)
@@ -100,21 +101,21 @@ def prepare_places(with_data_parallel, with_cpu=False, with_gpu=True):
 
 
 class TestStaticDataLoader(unittest.TestCase):
+
     def run_main(self, num_workers, places, persistent_workers):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             startup_prog, main_prog, image, label, loss = simple_fc_net_static()
 
             dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
-            dataloader = DataLoader(
-                dataset,
-                feed_list=[image, label],
-                places=places,
-                num_workers=num_workers,
-                batch_size=BATCH_SIZE,
-                return_list=False,
-                drop_last=True,
-                persistent_workers=persistent_workers)
+            dataloader = DataLoader(dataset,
+                                    feed_list=[image, label],
+                                    places=places,
+                                    num_workers=num_workers,
+                                    batch_size=BATCH_SIZE,
+                                    return_list=False,
+                                    drop_last=True,
+                                    persistent_workers=persistent_workers)
             # assert len(dataloader) == int(SAMPLE_NUM / BATCH_SIZE)
 
             exe = fluid.Executor(place=places[0])
@@ -122,8 +123,8 @@ class TestStaticDataLoader(unittest.TestCase):
 
             prog = fluid.CompiledProgram(main_prog)
             if len(places) > 1:
-                prog = prog.with_data_parallel(
-                    loss_name=loss.name, places=places)
+                prog = prog.with_data_parallel(loss_name=loss.name,
+                                               places=places)
 
             step_list = []
             loss_list = []
@@ -165,16 +166,16 @@ class TestStaticDataLoader(unittest.TestCase):
                     print(self.__class__.__name__, p, num_workers,
                           persistent_workers)
                     sys.stdout.flush()
-                    ret = self.run_main(
-                        num_workers=num_workers,
-                        places=p,
-                        persistent_workers=persistent_workers)
+                    ret = self.run_main(num_workers=num_workers,
+                                        places=p,
+                                        persistent_workers=persistent_workers)
                     results.append(ret)
                 assert results[0]['loss'].shape[0] * 2 == results[1][
                     'loss'].shape[0]
 
 
 class RandomBatchedDataset(IterableDataset):
+
     def __init__(self, sample_num, class_num):
         self.sample_num = sample_num // BATCH_SIZE
         self.class_num = class_num
@@ -194,29 +195,29 @@ class RandomBatchedDataset(IterableDataset):
 
 
 class TestStaticDataLoaderWithBatchedDataset(TestStaticDataLoader):
+
     def run_main(self, num_workers, places, persistent_workers):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             startup_prog, main_prog, image, label, loss = simple_fc_net_static()
 
             dataset = RandomBatchedDataset(SAMPLE_NUM, CLASS_NUM)
-            dataloader = DataLoader(
-                dataset,
-                feed_list=[image, label],
-                places=places,
-                num_workers=num_workers,
-                batch_size=None,
-                return_list=False,
-                drop_last=True,
-                persistent_workers=persistent_workers)
+            dataloader = DataLoader(dataset,
+                                    feed_list=[image, label],
+                                    places=places,
+                                    num_workers=num_workers,
+                                    batch_size=None,
+                                    return_list=False,
+                                    drop_last=True,
+                                    persistent_workers=persistent_workers)
 
             exe = fluid.Executor(place=places[0])
             exe.run(startup_prog)
 
             prog = fluid.CompiledProgram(main_prog)
             if len(places) > 1:
-                prog = prog.with_data_parallel(
-                    loss_name=loss.name, places=places)
+                prog = prog.with_data_parallel(loss_name=loss.name,
+                                               places=places)
 
             step_list = []
             loss_list = []

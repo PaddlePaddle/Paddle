@@ -1,4 +1,5 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,13 +28,6 @@ from ..fluid.dygraph.io import TranslatedLayer  # noqa: F401
 from . import dy2static  # noqa: F401
 
 __all__ = [  # noqa
-    'save',
-    'load',
-    'TracedLayer',
-    'to_static',
-    'ProgramTranslator',
-    'TranslatedLayer',
-    'set_code_level',
-    'set_verbosity',
-    'not_to_static'
+    'save', 'load', 'TracedLayer', 'to_static', 'ProgramTranslator',
+    'TranslatedLayer', 'set_code_level', 'set_verbosity', 'not_to_static'
 ]

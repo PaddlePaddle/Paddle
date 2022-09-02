@@ -60,12 +60,15 @@ class PRChecker(object):
         last_commit = None
         ix = 0
         while True:
-            commits = self.pr.get_commits().get_page(ix)
-            for c in commits:
-                last_commit = c.commit
-            else:
+            try:
+                commits = self.pr.get_commits().get_page(ix)
+                if len(commits) == 0:
+                    raise ValueError("no commit found in {} page".format(ix))
+                last_commit = commits[-1].commit
+            except Exception as e:
                 break
-            ix = ix + 1
+            else:
+                ix = ix + 1
         if last_commit.message.find('test=allcase') != -1:
             print('PREC test=allcase is set')
             self.full_case = True
@@ -88,8 +91,8 @@ class PRChecker(object):
             if code == 0:
                 return True
             print(
-                'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.
-                format(url, ix, ix * 10, proxy))
+                'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'
+                .format(url, ix, ix * 10, proxy))
             time.sleep(ix * 10)
             ix += 1
         return False
@@ -111,8 +114,8 @@ class PRChecker(object):
             except Exception as e:
                 print(e)
                 print(
-                    'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.
-                    format(url, ix, ix * 10, cur_proxy))
+                    'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'
+                    .format(url, ix, ix * 10, cur_proxy))
                 continue
             else:
                 return True
@@ -125,12 +128,16 @@ class PRChecker(object):
         """ Get files in pull request. """
         page = 0
         file_dict = {}
+        file_count = 0
         while True:
             files = self.pr.get_files().get_page(page)
             if not files:
                 break
             for f in files:
                 file_dict[PADDLE_ROOT + f.filename] = f.status
+                file_count += 1
+            if file_count == 30:  #if pr file count = 31, nend to run all case
+                break
             page += 1
         print("pr modify files: %s" % file_dict)
         return file_dict
@@ -142,9 +149,7 @@ class PRChecker(object):
                            PADDLE_ROOT + 'tools/dockerfile/',
                            PADDLE_ROOT + 'tools/windows/',
                            PADDLE_ROOT + 'tools/test_runner.py',
-                           PADDLE_ROOT + 'tools/parallel_UT_rule.py',
-                           PADDLE_ROOT + 'paddle/scripts/paddle_build.sh',
-                           PADDLE_ROOT + 'paddle/scripts/paddle_build.bat')
+                           PADDLE_ROOT + 'tools/parallel_UT_rule.py')
         if 'cmakelist' in filename.lower():
             isWhiteFile = False
         elif filename.startswith((not_white_files)):
@@ -228,7 +233,9 @@ class PRChecker(object):
                             if line_list:
                                 line_list.append(line)
                             else:
-                                file_to_diff_lines[filename] = [line, ]
+                                file_to_diff_lines[filename] = [
+                                    line,
+                                ]
                         if data[ix][0] != '-':
                             lineno += 1
                         ix += 1
@@ -248,10 +255,9 @@ class PRChecker(object):
         return True
 
     def get_all_count(self):
-        p = subprocess.Popen(
-            "cd {}build && ctest -N".format(PADDLE_ROOT),
-            shell=True,
-            stdout=subprocess.PIPE)
+        p = subprocess.Popen("cd {}build && ctest -N".format(PADDLE_ROOT),
+                             shell=True,
+                             stdout=subprocess.PIPE)
         out, err = p.communicate()
         for line in out.splitlines():
             if 'Total Tests:' in str(line):
@@ -283,10 +289,24 @@ class PRChecker(object):
         filterFiles = []
         file_list = []
         file_dict = self.get_pr_files()
+        if len(file_dict) == 30:  #if pr file count = 31, nend to run all case
+            return ''
         for filename in file_dict:
-            if filename.startswith(
-                (PADDLE_ROOT + 'python/', PADDLE_ROOT + 'paddle/fluid/')):
+            if filename.startswith(PADDLE_ROOT + 'python/'):
                 file_list.append(filename)
+            elif filename.startswith(PADDLE_ROOT + 'paddle/'):
+                if filename.startswith((PADDLE_ROOT + 'paddle/infrt',
+                                        PADDLE_ROOT + 'paddle/utils')):
+                    filterFiles.append(filename)
+                elif filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
+                    if filename.startswith(
+                        (PADDLE_ROOT + 'paddle/scripts/paddle_build.sh',
+                         PADDLE_ROOT + 'paddle/scripts/paddle_build.bat')):
+                        file_list.append(filename)
+                    else:
+                        filterFiles.append(filename)
+                else:
+                    file_list.append(filename)
             else:
                 if file_dict[filename] == 'added':
                     file_list.append(filename)
@@ -344,8 +364,8 @@ class PRChecker(object):
                         else:
                             print("remove file not hit mapFiles: %s" % f_judge)
                     else:
-                        notHitMapFiles.append(f_judge) if file_dict[
-                            f] != 'removed' else print(
+                        notHitMapFiles.append(
+                            f_judge) if file_dict[f] != 'removed' else print(
                                 "remove file not hit mapFiles: %s" % f_judge)
                 else:
                     if file_dict[f] not in ['removed']:

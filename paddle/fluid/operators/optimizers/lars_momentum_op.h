@@ -23,54 +23,50 @@ template <typename T>
 class LarsMomentumOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param_out = ctx.Output<framework::LoDTensor>("ParamOut");
-    auto velocity_out = ctx.Output<framework::LoDTensor>("VelocityOut");
-    auto param = ctx.Input<framework::LoDTensor>("Param");
-    auto velocity = ctx.Input<framework::LoDTensor>("Velocity");
-    auto learning_rate = ctx.Input<framework::LoDTensor>("LearningRate");
-    auto* grad_var = ctx.InputVar("Grad");
-    // only support dense for now.
-    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(), true,
-                      platform::errors::InvalidArgument(
-                          "The Var(%s)'s type should be LoDTensor, "
-                          "but the received is %s",
-                          ctx.InputNames("Grad").front(),
-                          framework::ToTypeName(grad_var->Type())));
-    auto grad = ctx.Input<framework::LoDTensor>("Grad");
-
-    param_out->mutable_data<T>(ctx.GetPlace());
-    velocity_out->mutable_data<T>(ctx.GetPlace());
-
+    auto param_out = ctx.MultiOutput<framework::LoDTensor>("ParamOut");
+    auto velocity_out = ctx.MultiOutput<framework::LoDTensor>("VelocityOut");
+    auto param = ctx.MultiInput<framework::LoDTensor>("Param");
+    auto velocity = ctx.MultiInput<framework::LoDTensor>("Velocity");
+    auto learning_rate = ctx.MultiInput<framework::LoDTensor>("LearningRate");
+    auto grad = ctx.MultiInput<framework::LoDTensor>("Grad");
+    auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     T lars_coeff = ctx.Attr<float>("lars_coeff");
-    T lars_weight_decay = ctx.Attr<float>("lars_weight_decay");
     T epsilon = ctx.Attr<float>("epsilon");
+    T rescale_grad = ctx.Attr<float>("rescale_grad");
 
-    auto p_out = framework::EigenVector<T>::Flatten(*param_out);
-    auto v_out = framework::EigenVector<T>::Flatten(*velocity_out);
+    int op_num = param.size();
+    for (int i = 0; i < op_num; ++i) {
+      auto* lr = learning_rate[i]->data<T>();
+      T lars_weight_decay = weight_decay_arr[i];
+      param_out[i]->mutable_data<T>(ctx.GetPlace());
+      velocity_out[i]->mutable_data<T>(ctx.GetPlace());
 
-    auto p = framework::EigenVector<T>::Flatten(*param);
-    auto v = framework::EigenVector<T>::Flatten(*velocity);
-    auto g = framework::EigenVector<T>::Flatten(*grad);
-    auto* lr = learning_rate->data<T>();
+      auto p_out = framework::EigenVector<T>::Flatten(*(param_out[i]));
+      auto v_out = framework::EigenVector<T>::Flatten(*(velocity_out[i]));
+      auto p = framework::EigenVector<T>::Flatten(*(param[i]));
+      auto v = framework::EigenVector<T>::Flatten(*(velocity[i]));
+      auto g = framework::EigenVector<T>::Flatten(*(grad[i]));
+      auto rescale_g = rescale_grad * g;
 
-    framework::Tensor p_norm_t, g_norm_t;
-    p_norm_t.Resize({1});
-    g_norm_t.Resize({1});
-    p_norm_t.mutable_data<T>(ctx.GetPlace());
-    g_norm_t.mutable_data<T>(ctx.GetPlace());
-    auto ep_norm = framework::EigenScalar<T>::From(p_norm_t);
-    auto eg_norm = framework::EigenScalar<T>::From(g_norm_t);
+      framework::Tensor p_norm_t, g_norm_t;
+      p_norm_t.Resize({1});
+      g_norm_t.Resize({1});
+      p_norm_t.mutable_data<T>(ctx.GetPlace());
+      g_norm_t.mutable_data<T>(ctx.GetPlace());
+      auto ep_norm = framework::EigenScalar<T>::From(p_norm_t);
+      auto eg_norm = framework::EigenScalar<T>::From(g_norm_t);
+      ep_norm = p.square().sum().sqrt();
+      eg_norm = rescale_g.square().sum().sqrt();
 
-    ep_norm = p.square().sum().sqrt();
-    eg_norm = g.square().sum().sqrt();
-    T local_lr = lr[0];
-    if (lars_weight_decay > 0 && ep_norm(0) > 0 && eg_norm(0) > 0) {
-      local_lr = lr[0] * lars_coeff * ep_norm(0) /
-                 (eg_norm(0) + lars_weight_decay * ep_norm(0) + epsilon);
+      T local_lr = lr[0];
+      if (lars_weight_decay > 0 && ep_norm(0) > 0 && eg_norm(0) > 0) {
+        local_lr = lr[0] * lars_coeff * ep_norm(0) /
+                   (eg_norm(0) + lars_weight_decay * ep_norm(0) + epsilon);
+      }
+      v_out = v * mu + local_lr * (rescale_g + lars_weight_decay * p);
+      p_out = p - v_out;
     }
-    v_out = v * mu + local_lr * (g + lars_weight_decay * p);
-    p_out = p - v_out;
   }
 };
 

@@ -18,7 +18,7 @@ import paddle.fluid as fluid
 from paddle.static import default_startup_program, device_guard
 from paddle.fluid import layers
 
-from .common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper
+from .common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper, OP_ROLE_KEY
 from .common import is_backward_op, is_optimizer_op, is_update_op
 from .meta_optimizer_base import MetaOptimizerBase
 from .sharding.shard import Shard, ProgramSegment
@@ -32,9 +32,10 @@ from .sharding import utils
 from .sharding.utils import *
 
 import logging
+
 logger = logging.getLogger(__name__)
-formatter = logging.Formatter(
-    fmt='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s',
+                              datefmt='%Y-%m-%d %H:%M:%S')
 ch = logging.StreamHandler()
 ch.setFormatter(formatter)
 logger.addHandler(ch)
@@ -53,10 +54,13 @@ class ShardingOptimizer(MetaOptimizerBase):
             "AMPOptimizer",
             "LarsOptimizer",
             "LambOptimizer",
+            "ASPOptimizer",
             # "ModelParallelOptimizer",
             # "PipelineOptimizer",
         ]
-        self.meta_optimizers_black_list = ["GraphExecutionOptimizer", ]
+        self.meta_optimizers_black_list = [
+            "GraphExecutionOptimizer",
+        ]
         self._main_program = None
         self._startup_program = None
         self._segments = []
@@ -137,9 +141,16 @@ class ShardingOptimizer(MetaOptimizerBase):
         if pp_degree > 1:
             assert strategy.pipeline is True
 
-        assert global_world_size == mp_degree * sharding_degree * pp_degree * dp_degree, \
-            "global work size [{}], mp_degree [{}], sharding_degree [{}], pp_degree [{}], dp_degree [{}].".format(
-                global_world_size, mp_degree, sharding_degree, pp_degree, dp_degree)
+        if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None):
+            assert pp_degree == 2, ("For manually set pipeline, only "
+                                    "pp_degree = 2 is supported.")
+            assert global_world_size == mp_degree * sharding_degree * dp_degree, \
+                "global work size [{}], mp_degree [{}], sharding_degree [{}], dp_degree [{}].".format(
+                    global_world_size, mp_degree, sharding_degree, dp_degree)
+        else:
+            assert global_world_size == mp_degree * sharding_degree * pp_degree * dp_degree, \
+                "global work size [{}], mp_degree [{}], sharding_degree [{}], pp_degree [{}], dp_degree [{}].".format(
+                    global_world_size, mp_degree, sharding_degree, pp_degree, dp_degree)
 
         # FIXME (JZ-LIANG) deprecated hybrid_dp
         if sharding_configs["hybrid_dp"]:
@@ -193,6 +204,14 @@ class ShardingOptimizer(MetaOptimizerBase):
         else:
             gm_mode = "pp_gm"
             gm_acc_step = strategy.pipeline_configs['accumulate_steps']
+            gradient_scale_configs = strategy.gradient_scale_configs
+            assert gradient_scale_configs['scale_strategy'] == 'avg', \
+                'For pipeline mode, the ' 'gradient scale mode should ' \
+                'be "avg", but got {}'.format(gradient_scale_configs['scale_strategy'])
+            # Note (Yuang Liu): this avg_loss flag determines where to do the average op for grad merge.
+            # If True, will do sum firstly for gradient merge, then do scale by gm_acc_step.
+            # If False, will scale loss by gm_acc_step first, then do sum for gradient merge.
+            self.scale_gradient = gradient_scale_configs['scale_gradient']
         if gm_acc_step > 1:
             logger.info("Gradient merge in [{}], acc step = [{}]".format(
                 gm_mode, gm_acc_step))
@@ -241,6 +260,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 'global_ring_id': 3,
                 'mp_degree': self.mp_degree,
                 'mp_rank': global_rank % self.mp_degree,
+                'scale_gradient': self.scale_gradient
             }
             main_program = loss.block.program
             main_program._pipeline_opt = pipeline_opt
@@ -258,7 +278,11 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.pp_degree > 1:
             startup_program = startup_program._pipeline_opt['startup_program']
             print("pp_rank:", self.pp_rank)
-            main_program = program_list[self.pp_rank]
+            if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None):
+                main_program = program_list[int(
+                    os.getenv("PADDLE_MANUAL_PIPELINE_STAGE"))]
+            else:
+                main_program = program_list[self.pp_rank]
             with open("main_%d" % self.role_maker._worker_index(), 'w') as f:
                 f.writelines(str(main_program))
             main_block = main_program.global_block()
@@ -329,6 +353,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.pp_degree == 1: return
 
         strategy = self.user_defined_strategy
+        sharding_configs = strategy.sharding_configs
 
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
@@ -361,6 +386,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_block, strategy=strategy, shard=shard)
 
         len_of_ops = len(main_block.ops)
+        if self.scale_gradient:
+            self._avg_grad_merge_after_sum(main_block, accumulated_grad_names)
         first_optimize_op_index = get_first_optimize_op_idx(main_block)
 
         if self.pp_allreduce_in_optimize:
@@ -394,11 +421,13 @@ class ShardingOptimizer(MetaOptimizerBase):
                 use_calc_stream=True,
                 rank=self.dp_rank,
                 strategy=strategy)
-            logger.info("Optimizer grad in this rank {}".format(
-                accumulated_grad_names))
+            logger.info(
+                "Optimizer grad in this rank {}".format(accumulated_grad_names))
             first_optimize_op_index += (len(main_block.ops) - len_of_ops)
             len_of_ops = len(main_block.ops)
 
+            # NOTE(wangxi): we fused after optimize_cast
+            optimize_cast = sharding_configs['optimize_cast']
             optimizer_param = utils.insert_broadcast_param_ops(
                 main_block,
                 len_of_ops,
@@ -407,10 +436,10 @@ class ShardingOptimizer(MetaOptimizerBase):
                 OpRole.Optimize,
                 use_calc_stream=True,
                 rank=self.dp_rank,
-                strategy=strategy)
-            logger.info("Optimizer param in this rank {}".format(
-                optimizer_param))
-            if not strategy.fuse_grad_merge:
+                strategy=None if optimize_cast else strategy)
+            logger.info(
+                "Optimizer param in this rank {}".format(optimizer_param))
+            if not strategy.fuse_grad_merge and not optimize_cast:
                 assert len(accumulated_grad_names) == len(optimizer_param)
         elif self.hybrid_dp and self.hybrid_dp_mode == "pp_hybrid_dp":
             insert_allreduce_ops(
@@ -425,6 +454,55 @@ class ShardingOptimizer(MetaOptimizerBase):
             len_of_ops = len(main_block.ops)
 
         # FIXME(wangxi): if fp16_allreduce, put cast fp16->fp32 to there?
+
+    def _avg_grad_merge_after_sum(self, main_block, accumulated_grad_names):
+        if self.user_defined_strategy.amp and \
+                self.user_defined_strategy.amp_configs['use_dynamic_loss_scaling']:
+            # For AMP, if using dynamic loss scaling the avg
+            # operation can be simple done by modify the LossScaling op.
+            for idx, op in enumerate(main_block.ops):
+                if op.type == 'check_finite_and_unscale':
+                    loss_scale_name = op.input('Scale')[0]
+                    loss_scaling_var = main_block.var(loss_scale_name)
+                    loss_scale_tmp_var_name = loss_scale_name + '@TMP'
+                    loss_scale_tmp_var = main_block.create_var(
+                        name=loss_scale_tmp_var_name,
+                        shape=loss_scaling_var.shape,
+                        dtype=loss_scaling_var.dtype)
+                    main_block._insert_op_without_sync(
+                        idx,
+                        type='scale',
+                        inputs={'X': loss_scaling_var},
+                        outputs={'Out': loss_scale_tmp_var},
+                        attrs={
+                            'scale': self._gradient_merge_acc_step,
+                            'bias': 0.0,
+                            'bias_after_scale': False,
+                            OP_ROLE_KEY: OpRole.Optimize
+                        })
+                    op._rename_input(loss_scale_name, loss_scale_tmp_var_name)
+                    break
+        else:
+            # For pp, do the avg operation for gradient merge after merging
+            # the gradient to meet the logic for gradient merge under pure dp.
+            tmp_first_opt_idx = None
+            for idx, op in enumerate(main_block.ops):
+                if is_optimizer_op(op) and op.type != 'c_sync_comm_stream':
+                    tmp_first_opt_idx = idx
+                    break
+            assert tmp_first_opt_idx is not None, 'Occurs some errors, no optimize ops'
+            for grad in accumulated_grad_names:
+                main_block._insert_op_without_sync(
+                    tmp_first_opt_idx,
+                    type='scale',
+                    inputs={'X': grad},
+                    outputs={'Out': grad},
+                    attrs={
+                        'scale': 1.0 / self._gradient_merge_acc_step,
+                        'bias': 0.0,
+                        'bias_after_scale': False,
+                        OP_ROLE_KEY: OpRole.Optimize
+                    })
 
     def _adapt_amp_clip_without_sharding(self):
         # if not use sharding, adapt amp/clip, for remain parallelism.
@@ -444,8 +522,9 @@ class ShardingOptimizer(MetaOptimizerBase):
         FP16Utils.sync_amp_check_nan_inf(main_block, rings)
 
         gradientclip_helper = GradientClipHelper(None)
-        gradientclip_helper.sync_global_norm(
-            main_block, [self.mp_ring_id, self.pp_ring_id], self.mp_rank)
+        gradientclip_helper.sync_global_norm(main_block,
+                                             [self.mp_ring_id, self.pp_ring_id],
+                                             self.mp_rank)
 
     def _insert_loss_grad_scale_op(self):
         main_block = self._main_program.global_block()
@@ -458,18 +537,22 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         main_block._sync_with_cpp()
 
-    def _apply_optimize_offload_pass(self):
+    def _apply_optimize_offload_pass(self, params_grads):
         strategy = self.user_defined_strategy
         sharding_configs = strategy.sharding_configs
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
+
+        mp_ring_id = self.mp_ring_id if self.mp_degree > 1 else None
+        dp_ring_id = self.dp_ring_id if self.dp_degree > 1 else None
+        offload_helper = OffloadHelper(mp_ring_id=mp_ring_id,
+                                       dp_ring_id=dp_ring_id)
 
         # optimize offload should be enable while gradient merge is enable and
         # acc_step is quite large (e.g. >> 100). Since its memcpy could not be
         # overlap with calc, otherwise it will slower down training severely.
         if sharding_configs["optimize_offload"]:
             logger.info("Sharding with optimize offload !")
-            offload_helper = OffloadHelper()
             offload_helper.offload(main_block, startup_block)
             # The optimize_cast is already included in offload_fp32param
             offload_helper.offload_fp32param(main_block, startup_block)
@@ -477,8 +560,18 @@ class ShardingOptimizer(MetaOptimizerBase):
             logger.info("Sharding with optimize cast !")
             # NOTE(wangxi): optimize_cast will persist fp16 param, it
             # will take more memory, but will be faster. Trade space for time.
-            offload_helper = OffloadHelper()
-            offload_helper.cast_fp32param_in_optimize(main_block, startup_block)
+            if self._optimizer_sharding:
+                offload_helper.opt_sharding_cast_fp32param(
+                    main_block, startup_block,
+                    [x[0].name for x in params_grads])
+                # NOTE(wangxi): fused after optimize_cast
+                utils.fuse_opt_broadcast_param_ops(main_block,
+                                                   dp_ring_id,
+                                                   self._shard,
+                                                   strategy=strategy)
+            else:
+                offload_helper.cast_fp32param_in_optimize(
+                    main_block, startup_block)
 
     def _dump_program_for_debug(self):
         main_block = self._main_program.global_block()
@@ -525,7 +618,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._insert_loss_grad_scale_op()
 
         # apply optimize offload or optimize cast
-        self._apply_optimize_offload_pass()
+        self._apply_optimize_offload_pass(params_grads)
 
         # step6: (optional) sharding gradient merge
         self._sharding_gradient_merge()
@@ -540,6 +633,10 @@ class ShardingOptimizer(MetaOptimizerBase):
         # init param broadcast should be called after startup pruning
         self._initialization_broadcast()
 
+        # NOTE(wangxi): if param is not persistable, program.clone will
+        #  failed, so we remove no persistable param, recreate param as a var
+        self._recreate_not_persist_param_as_var()
+
         self._dump_program_for_debug()
 
         # GPU need to wait server ready, GPU and NPU is Layered connection
@@ -553,14 +650,14 @@ class ShardingOptimizer(MetaOptimizerBase):
             self.pp_group_endpoints[pair[1]],
         ]
         pp_rank = 0 if self.pp_rank == pair[0] else 1
-        self._collective_helper._init_communicator(
-            self._startup_program,
-            self.current_endpoint,
-            pp_group_endpoints,
-            pp_rank,
-            ring_id,
-            False,
-            sync=False)
+        if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None) is None:
+            self._collective_helper._init_communicator(self._startup_program,
+                                                       self.current_endpoint,
+                                                       pp_group_endpoints,
+                                                       pp_rank,
+                                                       ring_id,
+                                                       False,
+                                                       sync=False)
 
     def _init_npu_pipeline_comm(self, startup_block):
         # NOTE(wangxi): some bug with hccl, must set pp_degree be even number
@@ -578,12 +675,13 @@ class ShardingOptimizer(MetaOptimizerBase):
                 my_pair.append(pair)
 
         # for example: self.pp_rank=2, self.pp_degree=4
-        send_to_next_pair = (self.pp_rank,
-                             (self.pp_rank + 1) % self.pp_degree)  # 2->3
-        recv_from_next_pair = ((self.pp_rank + 1) % self.pp_degree,
-                               self.pp_rank)  # 3->2
-        recv_from_prev_pair = ((self.pp_rank - 1 + self.pp_degree) %
-                               self.pp_degree, self.pp_rank)  # 1->2
+        send_to_next_pair = (self.pp_rank, (self.pp_rank + 1) % self.pp_degree
+                             )  # 2->3
+        recv_from_next_pair = (
+            (self.pp_rank + 1) % self.pp_degree, self.pp_rank)  # 3->2
+        recv_from_prev_pair = (
+            (self.pp_rank - 1 + self.pp_degree) % self.pp_degree, self.pp_rank
+        )  # 1->2
         send_to_prev_pair = (self.pp_rank, (self.pp_rank - 1 + self.pp_degree) %
                              self.pp_degree)  # 2->1
 
@@ -594,24 +692,24 @@ class ShardingOptimizer(MetaOptimizerBase):
         ring_id = self.pp_ring_map[pair[0] * 1000 + pair[1]]
         self._init_pair_comm(pair, ring_id)
         my_pair.remove(pair)
-        logger.info("pair0(even->odd): pp pair:{}, ring_id: {}".format(pair,
-                                                                       ring_id))
+        logger.info("pair0(even->odd): pp pair:{}, ring_id: {}".format(
+            pair, ring_id))
 
         # 2. even recv from next, odd send to prev, 1->0, 3->2
         pair = recv_from_next_pair if even else send_to_prev_pair
         ring_id = self.pp_ring_map[pair[0] * 1000 + pair[1]]
         self._init_pair_comm(pair, ring_id)
         my_pair.remove(pair)
-        logger.info("pair1(even<-odd): pp pair:{}, ring_id: {}".format(pair,
-                                                                       ring_id))
+        logger.info("pair1(even<-odd): pp pair:{}, ring_id: {}".format(
+            pair, ring_id))
 
         # if pp_degree is 2, only need pair(0->1, 1->0)
         if self.pp_degree > 2:
             # 3. odd send to next, even recv from prev, 1->2, 3->0
             pair = send_to_next_pair if not even else recv_from_prev_pair
-            ring_id = self.pp_ring_map.get(
-                pair[0] * 1000 + pair[1],
-                max_ring_id + 1)  # 3->0 not in pp_ring_map
+            ring_id = self.pp_ring_map.get(pair[0] * 1000 + pair[1],
+                                           max_ring_id +
+                                           1)  # 3->0 not in pp_ring_map
             self._init_pair_comm(pair, ring_id)
             if self.pp_rank != 0 and self.pp_rank != self.pp_degree - 1:
                 my_pair.remove(pair)
@@ -620,9 +718,9 @@ class ShardingOptimizer(MetaOptimizerBase):
 
             # 4. odd recv from next, even send to prev, 2->1, 0->3
             pair = recv_from_next_pair if not even else send_to_prev_pair
-            ring_id = self.pp_ring_map.get(
-                pair[0] * 1000 + pair[1],
-                max_ring_id + 2)  # 0->3 not in pp_ring_map
+            ring_id = self.pp_ring_map.get(pair[0] * 1000 + pair[1],
+                                           max_ring_id +
+                                           2)  # 0->3 not in pp_ring_map
             self._init_pair_comm(pair, ring_id)
             if self.pp_rank != 0 and self.pp_rank != self.pp_degree - 1:
                 my_pair.remove(pair)
@@ -634,14 +732,14 @@ class ShardingOptimizer(MetaOptimizerBase):
 
     def _init_pipeline_comm(self, startup_block):
         # TODO (JZ-LIANG) to unify pp_rank_ and pp_rank
-        self._collective_helper._init_communicator(
-            self._startup_program,
-            self.current_endpoint,
-            self.pp_group_endpoints,
-            self.pp_rank,
-            self.pp_ring_id,
-            False,
-            sync=False)
+        if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None) is None:
+            self._collective_helper._init_communicator(self._startup_program,
+                                                       self.current_endpoint,
+                                                       self.pp_group_endpoints,
+                                                       self.pp_rank,
+                                                       self.pp_ring_id,
+                                                       False,
+                                                       sync=False)
 
         if core.is_compiled_with_npu():
             self._init_npu_pipeline_comm(startup_block)
@@ -661,14 +759,13 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # mp ring
         if self.mp_degree > 1:
-            self._collective_helper._init_communicator(
-                self._startup_program,
-                self.current_endpoint,
-                self.mp_group_endpoints,
-                self.mp_rank,
-                self.mp_ring_id,
-                False,
-                sync=False)
+            self._collective_helper._init_communicator(self._startup_program,
+                                                       self.current_endpoint,
+                                                       self.mp_group_endpoints,
+                                                       self.mp_rank,
+                                                       self.mp_ring_id,
+                                                       False,
+                                                       sync=False)
 
         # sharding ring
         if self.sharding_degree > 1:
@@ -687,14 +784,13 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # pure dp ring
         if self.dp_degree > 1:
-            self._collective_helper._init_communicator(
-                self._startup_program,
-                self.current_endpoint,
-                self.dp_group_endpoints,
-                self.dp_rank,
-                self.dp_ring_id,
-                False,
-                sync=False)
+            self._collective_helper._init_communicator(self._startup_program,
+                                                       self.current_endpoint,
+                                                       self.dp_group_endpoints,
+                                                       self.dp_rank,
+                                                       self.dp_ring_id,
+                                                       False,
+                                                       sync=False)
 
         startup_block._sync_with_cpp()
 
@@ -746,12 +842,12 @@ class ShardingOptimizer(MetaOptimizerBase):
                             if ".cast_fp16@GRAD" not in input_name:
                                 continue
                             else:
-                                input_name = input_name[:input_name.find(
-                                    ".cast_fp16@GRAD")]
+                                input_name = input_name[:input_name.
+                                                        find(".cast_fp16@GRAD")]
 
                         if input_name in self._backward_remain_anchors:
-                            segment = self.collect_segment(segment, op_idx,
-                                                           block)
+                            segment = self.collect_segment(
+                                segment, op_idx, block)
                             assert input_name not in self._forward_remain_anchors, "segment anchor [{}] met twice !".format(
                                 input_name)
                             self._backward_remain_anchors.remove(input_name)
@@ -759,8 +855,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                 elif int(op.attr('op_role')) == int(OpRole.Forward):
                     for output_name in op.desc.output_arg_names():
                         if output_name in self._forward_remain_anchors:
-                            segment = self.collect_segment(segment, op_idx,
-                                                           block)
+                            segment = self.collect_segment(
+                                segment, op_idx, block)
                             self._forward_remain_anchors.remove(output_name)
 
             # find broadcast vars
@@ -785,8 +881,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                 if "subprog" in broadcast_var_base_name:
                     # remove suffix
                     broadcast_var_base_name = broadcast_var_base_name[:
-                                                                      broadcast_var_base_name.
-                                                                      find(
+                                                                      broadcast_var_base_name
+                                                                      .find(
                                                                           ".subprog"
                                                                       )]
 
@@ -795,8 +891,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                         broadcast_var_base_name, 0) + 1
 
                 segment._param2broadcast[input_name] = broadcast_var_name
-                segment._broadcast_vars.append((broadcast_var_name,
-                                                self._shard.device(input_name)))
+                segment._broadcast_vars.append(
+                    (broadcast_var_name, self._shard.device(input_name)))
                 segment._param_mem += get_var_size(
                     self._main_program.global_block().var(input_name))
 
@@ -811,11 +907,12 @@ class ShardingOptimizer(MetaOptimizerBase):
                     if len(op_role_var) != 0:
                         assert len(op_role_var) % 2 == 0
                         for i in range(0, len(op_role_var), 2):
-                            param, reduced_grad = op_role_var[i], op_role_var[
-                                i + 1]
+                            param, reduced_grad = op_role_var[i], op_role_var[i
+                                                                              +
+                                                                              1]
                             segment._allreduce_vars.append(reduced_grad)
-                            assert (reduced_grad not in
-                                    self._reduced_grads_to_param)
+                            assert (reduced_grad
+                                    not in self._reduced_grads_to_param)
                             self._reduced_grads_to_param[reduced_grad] = param
 
             # find cast op
@@ -838,19 +935,20 @@ class ShardingOptimizer(MetaOptimizerBase):
                     self._backward_remain_anchors)
 
         if self._verbose:
-            for varname in sorted(
-                    var2broadcast_time, key=var2broadcast_time.get,
-                    reverse=True):
+            for varname in sorted(var2broadcast_time,
+                                  key=var2broadcast_time.get,
+                                  reverse=True):
                 logger.info("Sharding broadcast: [{}] times [{}]".format(
                     var2broadcast_time[varname], varname))
             for idx_ in range(len(self._segments)):
                 logger.info("segment [{}] :".format(idx_))
-                logger.info("start op: [{}]  [{}]".format(block.ops[
-                    self._segments[idx_]._start_idx].desc.type(), block.ops[
-                        self._segments[idx_]._start_idx].desc.input_arg_names(
-                        )))
-                logger.info("end   op: [{}]  [{}]".format(block.ops[
-                    self._segments[idx_]._end_idx].desc.type(), block.ops[
+                logger.info("start op: [{}]  [{}]".format(
+                    block.ops[self._segments[idx_]._start_idx].desc.type(),
+                    block.ops[self._segments[idx_].
+                              _start_idx].desc.input_arg_names()))
+                logger.info("end   op: [{}]  [{}]".format(
+                    block.ops[self._segments[idx_]._end_idx].desc.type(),
+                    block.ops[
                         self._segments[idx_]._end_idx].desc.input_arg_names()))
         return
 
@@ -951,7 +1049,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                     program_deps.remove_op(idx, reserved_vars)
 
         # NOTE (JZ-LIANG) revise and unify logic here
-        # sharding support fp16_allreduce logic            
+        # sharding support fp16_allreduce logic
         block._sync_with_cpp()
         for idx, op in reversed(list(enumerate(block.ops))):
             if op.type == 'concat' and is_optimizer_op(op):
@@ -991,8 +1089,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._segments[-1]._end_idx = new_end_idx
 
         if self._segments[-1]._allreduce_vars:
-            shard_allredue_vars = self._shard.filter_grads(self._segments[-1]
-                                                           ._allreduce_vars)
+            shard_allredue_vars = self._shard.filter_grads(
+                self._segments[-1]._allreduce_vars)
             if self.gradient_merge_mode != "sharding_gm" or self._gradient_merge_acc_step <= 1:
                 if self.hybrid_dp and self.hybrid_dp_mode == "sharding_hybrid_dp" and len(
                         shard_allredue_vars) >= 1:
@@ -1004,38 +1102,36 @@ class ShardingOptimizer(MetaOptimizerBase):
                         self.dp_ring_id,
                         shard_allredue_vars,
                         user_defined_strategy=self.user_defined_strategy)
-            # gradient merge 
+            # gradient merge
             elif self.gradient_merge_mode == "sharding_gm" and self._gradient_merge_acc_step > 1:
                 self.create_persistable_gradients_and_insert_merge_ops(
-                    block,
-                    self._startup_program.global_block(),
+                    block, self._startup_program.global_block(),
                     self._segments[-1]._end_idx, shard_allredue_vars,
                     self._shard)
 
             insert_sync_comm_ops(block, self._segments[-1]._end_idx,
                                  self.sharding_ring_id,
                                  self._segments[-1]._allreduce_vars)
-            # allreduce --> reduce 
-            insert_reduce_ops(
-                block,
-                self._segments[-1]._end_idx,
-                self.sharding_ring_id,
-                self._segments[-1]._allreduce_vars,
-                self._shard,
-                op_role=OpRole.Backward,
-                use_calc_stream=False)
+            # allreduce --> reduce
+            insert_reduce_ops(block,
+                              self._segments[-1]._end_idx,
+                              self.sharding_ring_id,
+                              self._segments[-1]._allreduce_vars,
+                              self._shard,
+                              op_role=OpRole.Backward,
+                              use_calc_stream=False)
 
         for idx, segment in reversed(list(enumerate(self._segments))):
             allreduce_vars = self._segments[
                 idx - 1]._allreduce_vars if idx > 0 else []
-            broadcast_vars = self._segments[idx +
-                                            1]._broadcast_vars if idx < len(
-                                                self._segments) - 1 else []
+            broadcast_vars = self._segments[
+                idx +
+                1]._broadcast_vars if idx < len(self._segments) - 1 else []
             fill_constant_vars = self._segments[
-                idx + 2]._fill_constant_vars if idx < len(
-                    self._segments) - 2 else []
-            cast_ops = self._segments[idx + 2]._cast_ops if idx < len(
-                self._segments) - 2 else {}
+                idx +
+                2]._fill_constant_vars if idx < len(self._segments) - 2 else []
+            cast_ops = self._segments[
+                idx + 2]._cast_ops if idx < len(self._segments) - 2 else {}
 
             for op_idx in reversed(range(segment._start_idx, segment._end_idx)):
                 op = block.ops[op_idx]
@@ -1051,14 +1147,14 @@ class ShardingOptimizer(MetaOptimizerBase):
                         name=broadcast_name,
                         shape=self._main_program.global_block().var(
                             param_name).shape,
-                        dtype=self._main_program.global_block().var(param_name)
-                        .dtype,
+                        dtype=self._main_program.global_block().var(
+                            param_name).dtype,
                         persistable=False)
 
             # step1: remove cast ops
             block._sync_with_cpp()
-            segment._end_idx += FP16Utils.remove_cast_op(block, self._params,
-                                                         segment, 0)
+            segment._end_idx += FP16Utils.remove_cast_op(
+                block, self._params, segment, 0)
 
             # step2: add Sync ops
             shard_allredue_vars = self._shard.filter_grads(allreduce_vars)
@@ -1097,20 +1193,19 @@ class ShardingOptimizer(MetaOptimizerBase):
                 insert_sync_calc_op(block, segment._end_idx,
                                     [calc_dep_vars[-1]])
 
-            # step3: insert `fill_constant` ops 
+            # step3: insert `fill_constant` ops
             insert_fill_constant_ops(block, segment._end_idx,
                                      fill_constant_vars)
 
-            # step4: add `cast` ops     
+            # step4: add `cast` ops
             insert_cast_ops(block, segment._end_idx, cast_ops)
 
             # step5: add broadcast ops
             # gradient merge
             if self.gradient_merge_mode == "sharding_gm" and self._gradient_merge_acc_step > 1:
                 self.create_persistable_gradients_and_insert_merge_ops(
-                    block,
-                    self._startup_program.global_block(), segment._start_idx,
-                    shard_allredue_vars, self._shard)
+                    block, self._startup_program.global_block(),
+                    segment._start_idx, shard_allredue_vars, self._shard)
 
             insert_broadcast_ops(block, segment._start_idx,
                                  self.sharding_ring_id, broadcast_vars)
@@ -1133,17 +1228,16 @@ class ShardingOptimizer(MetaOptimizerBase):
                 insert_sync_comm_ops(block, segment._start_idx,
                                      self.sharding_ring_id, allreduce_vars)
             # sharding
-            # allreduce --> reduce 
+            # allreduce --> reduce
             # TODO temp change
             if len(allreduce_vars) > 0:
-                insert_reduce_ops(
-                    block,
-                    segment._start_idx,
-                    self.sharding_ring_id,
-                    allreduce_vars,
-                    self._shard,
-                    op_role=OpRole.Backward,
-                    use_calc_stream=False)
+                insert_reduce_ops(block,
+                                  segment._start_idx,
+                                  self.sharding_ring_id,
+                                  allreduce_vars,
+                                  self._shard,
+                                  op_role=OpRole.Backward,
+                                  use_calc_stream=False)
 
             block._sync_with_cpp()
 
@@ -1215,8 +1309,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         self.global_rank = self.role_maker._worker_index()
         self.global_endpoints = self.role_maker._get_trainer_endpoints()
         self.current_endpoint = self.global_endpoints[self.global_rank]
-        self._collective_helper = CollectiveHelper(
-            self.role_maker, nrings=self._nrings_sharding)
+        self._collective_helper = CollectiveHelper(self.role_maker,
+                                                   nrings=self._nrings_sharding)
         assert self.global_word_size % self.mp_degree == 0, \
             "global_word_size: {} should be divisible to the mp_degree: {}".format(self.global_word_size, self.mp_degree)
         assert self.global_word_size % self.sharding_degree == 0, \
@@ -1247,7 +1341,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             self.mp_group_id = -1
             self.mp_group_endpoints = []
 
-        # sharding 
+        # sharding
         if self.sharding_degree > 1:
             self.sharding_ring_id = 1
             self.sharding_rank = (self.global_rank //
@@ -1261,7 +1355,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                     if (idx // (self.mp_degree * self.sharding_degree)) == self.
                     sharding_group_id and idx % self.mp_degree == self.mp_rank
                 ]
-            # sharding + ...    
+            # sharding + ...
             else:
                 self.sharding_group_endpoints = [
                     ep for idx, ep in enumerate(self.global_endpoints)
@@ -1292,8 +1386,9 @@ class ShardingOptimizer(MetaOptimizerBase):
             pp_stage_offset = self.sharding_degree * self.mp_degree
             self.pp_group_endpoints = []
             for i in range(self.pp_degree):
-                self.pp_group_endpoints.append(self.global_endpoints[
-                    pp_first_stage_idx + pp_stage_offset * i])
+                self.pp_group_endpoints.append(
+                    self.global_endpoints[pp_first_stage_idx +
+                                          pp_stage_offset * i])
             assert self.current_endpoint in self.pp_group_endpoints
         else:
             self.pp_ring_id = -1
@@ -1306,22 +1401,32 @@ class ShardingOptimizer(MetaOptimizerBase):
         # outter-pure-dp group
         # NOTE (JZ-LIANG) support outter-pure-dp to scale the throughput in 3D parallelism
         # e.g. mp-sharding-pp-dp
-        # sharding-hybrid-dp as one senario of outter-pure-dp 
-        assert self.global_word_size == self.mp_degree * self.sharding_degree * self.pp_degree * self.dp_degree, "mp_degree: [{}], sharding_degree: [{}], pp_degree: [{}], dp_degree: [{}]; BUT global nrank: [{}]".format(
-            self.mp_degree, self.sharding_degree, self.pp_degree,
-            self.dp_degree, self.global_word_size)
+        # sharding-hybrid-dp as one senario of outter-pure-dp
+        local_pp_degree = self.pp_degree
+        if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None):
+            assert self.pp_degree == 2, ("For manually set pipeline, only "
+                                         "pp_degree = 2 is supported.")
+            assert self.global_word_size == self.mp_degree * self.sharding_degree * self.dp_degree, \
+                "global work size [{}], mp_degree [{}], sharding_degree [{}], dp_degree [{}].".format(
+                    self.global_word_size, self.mp_degree, self.sharding_degree, self.dp_degree)
+            local_pp_degree = 1
+        else:
+            assert self.global_word_size == self.mp_degree * self.sharding_degree * self.pp_degree * self.dp_degree, "mp_degree: [{}], sharding_degree: [{}], pp_degree: [{}], dp_degree: [{}]; BUT global nrank: [{}]".format(
+                self.mp_degree, self.sharding_degree, self.pp_degree,
+                self.dp_degree, self.global_word_size)
 
         if self.dp_degree > 1:
             self.dp_ring_id = 2
-            self.dp_rank = self.global_rank // (self.sharding_degree *
-                                                self.mp_degree * self.pp_degree)
+            self.dp_rank = self.global_rank // (
+                self.sharding_degree * self.mp_degree * local_pp_degree)
             dp_first_rank_idx = self.global_rank % (
-                self.sharding_degree * self.mp_degree * self.pp_degree)
-            dp_offset = (self.sharding_degree * self.mp_degree * self.pp_degree)
+                self.sharding_degree * self.mp_degree * local_pp_degree)
+            dp_offset = (self.sharding_degree * self.mp_degree *
+                         local_pp_degree)
             self.dp_group_endpoints = []
             for i in range(self.dp_degree):
-                self.dp_group_endpoints.append(self.global_endpoints[
-                    dp_first_rank_idx + dp_offset * i])
+                self.dp_group_endpoints.append(
+                    self.global_endpoints[dp_first_rank_idx + dp_offset * i])
             assert self.current_endpoint in self.dp_group_endpoints
             logger.info("Hybrid DP mode turn on !")
         else:
@@ -1371,34 +1476,95 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         return
 
+    def _recreate_not_persist_param_as_var(self):
+
+        def recreate_not_persist_param_as_var(program):
+            block = program.global_block()
+            params = block.all_parameters()
+            for param in params:
+                if param.persistable:
+                    continue
+
+                name = param.name
+                shape = param.shape
+                dtype = param.dtype
+                type = param.type
+                lod_level = param.lod_level
+                stop_gradient = param.stop_gradient
+                trainable = param.trainable
+                optimize_attr = param.optimize_attr
+                regularizer = param.regularizer
+                have_dist_attr = False
+                is_distributed = False
+                if hasattr(param, 'is_distributed'):
+                    have_dist_attr = True
+                    is_distributed = param.is_distributed
+
+                block._remove_var(name, sync=False)
+                var = block.create_var(name=name,
+                                       shape=shape,
+                                       dtype=dtype,
+                                       type=type,
+                                       lod_level=lod_level,
+                                       stop_gradient=stop_gradient,
+                                       trainable=trainable,
+                                       persistable=False)
+                if have_dist_attr:
+                    var.is_distributed = is_distributed
+
+            block._sync_with_cpp()
+
+        recreate_not_persist_param_as_var(self._startup_program)
+        recreate_not_persist_param_as_var(self._main_program)
+
     def _initialization_broadcast(self):
         """
-        this funtion is to ensure the initialization between dp group to be 
-        identical when hybrid-dp is used.
+        this funtion is to ensure the initialization between dp group to be
+        identical when hybrid-dp is used, and the initialization of
+        not distributed param between mp group to be identical.
         """
-        if not self.hybrid_dp:
+        if self.dp_degree <= 1 and self.mp_degree <= 1:
             return
 
         startup_block = self._startup_program.global_block()
 
-        params = []
-        for param in startup_block.iter_parameters():
-            params.append(param)
-            startup_block.append_op(
-                type='c_broadcast',
-                inputs={'X': param},
-                outputs={'Out': param},
-                attrs={
-                    'ring_id': self.dp_ring_id,
-                    'root': 0,
-                    OP_ROLE_KEY: OpRole.Forward
-                })
-        startup_block.append_op(
-            type='c_sync_comm_stream',
-            inputs={'X': params},
-            outputs={'Out': params},
-            attrs={'ring_id': self.dp_ring_id,
-                   OP_ROLE_KEY: OpRole.Forward})
+        params = startup_block.all_parameters()
+        params_name = []
+        not_dist_param_name = set()
+
+        for param in params:
+            params_name.append(param.name)
+            if not hasattr(param, 'is_distributed') or not param.is_distributed:
+                not_dist_param_name.add(param.name)
+
+        # offload and optimize_cast will insert broadcast op
+        broadcast_params = set()
+        for op in startup_block.ops:
+            if op.type == 'c_broadcast':
+                broadcast_params.add(op.desc.output_arg_names()[0])
+
+        for param in params_name:
+            if param in broadcast_params: continue
+
+            rings = []
+            # need sync not distributed param in mp group
+            if self.mp_degree > 1 and param in not_dist_param_name:
+                rings.append(self.mp_ring_id)
+            if self.dp_degree > 1:
+                rings.append(self.dp_ring_id)
+
+            for ring in rings:
+                startup_block.append_op(type='c_broadcast',
+                                        inputs={'X': param},
+                                        outputs={'Out': param},
+                                        attrs={
+                                            'ring_id': ring,
+                                            'root': 0,
+                                            'use_calc_stream': True,
+                                            OP_ROLE_KEY: OpRole.Forward
+                                        })
+
+        startup_block._sync_with_cpp()
 
     # sharding gradient merge
     def create_persistable_gradients_and_insert_merge_ops(
@@ -1430,8 +1596,10 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_block._insert_op_without_sync(
                 insert_idx,
                 type="elementwise_add",
-                inputs={'X': grad_name,
-                        'Y': gradient_merge_var},
+                inputs={
+                    'X': grad_name,
+                    'Y': gradient_merge_var
+                },
                 outputs={'Out': gradient_merge_var},
                 attrs={
                     'axis': -1,
@@ -1440,14 +1608,13 @@ class ShardingOptimizer(MetaOptimizerBase):
                 })
 
             # startup initialization
-            startup_block.append_op(
-                type="fill_constant",
-                outputs={"Out": startup_gradient_merge_var},
-                attrs={
-                    "shape": grad_var.shape,
-                    "dtype": grad_var.dtype,
-                    "value": float(0),
-                })
+            startup_block.append_op(type="fill_constant",
+                                    outputs={"Out": startup_gradient_merge_var},
+                                    attrs={
+                                        "shape": grad_var.shape,
+                                        "dtype": grad_var.dtype,
+                                        "value": float(0),
+                                    })
 
         main_block._sync_with_cpp()
         startup_block._sync_with_cpp()
@@ -1462,13 +1629,12 @@ class ShardingOptimizer(MetaOptimizerBase):
             persistable=True,
             force_cpu=True)
 
-        zero_var = layers.create_global_var(
-            name="gradient_merge_zero",
-            shape=[1],
-            value=int(0),
-            dtype='int32',
-            persistable=True,
-            force_cpu=True)
+        zero_var = layers.create_global_var(name="gradient_merge_zero",
+                                            shape=[1],
+                                            value=int(0),
+                                            dtype='int32',
+                                            persistable=True,
+                                            force_cpu=True)
 
         # Add step var & cond var
         current_step_var = layers.create_global_var(
@@ -1479,41 +1645,40 @@ class ShardingOptimizer(MetaOptimizerBase):
             persistable=True,
             force_cpu=True)
 
-        cond_var = layers.create_global_var(
-            name="gradient_merge_cond",
-            shape=[1],
-            value=bool(0),
-            dtype='bool',
-            persistable=False,
-            force_cpu=True)
+        cond_var = main_block.create_var(name="gradient_merge_cond",
+                                         shape=[1],
+                                         dtype='bool')
 
         with device_guard("cpu"):
             # step_var = (step_var + 1) % k_step
-            main_block.append_op(
-                type='increment',
-                inputs={'X': [current_step_var]},
-                outputs={'Out': [current_step_var]},
-                attrs={'step': float(1),
-                       OP_ROLE_KEY: OpRole.Optimize})
+            main_block.append_op(type='increment',
+                                 inputs={'X': [current_step_var]},
+                                 outputs={'Out': [current_step_var]},
+                                 attrs={
+                                     'step': float(1),
+                                     OP_ROLE_KEY: OpRole.Optimize
+                                 })
 
-            main_block.append_op(
-                type='elementwise_mod',
-                inputs={'X': current_step_var,
-                        'Y': acc_step_var},
-                outputs={'Out': current_step_var},
-                attrs={
-                    'axis': -1,
-                    OP_ROLE_KEY: OpRole.Optimize,
-                    'use_mkldnn': False
-                })
+            main_block.append_op(type='elementwise_mod',
+                                 inputs={
+                                     'X': current_step_var,
+                                     'Y': acc_step_var
+                                 },
+                                 outputs={'Out': current_step_var},
+                                 attrs={
+                                     'axis': -1,
+                                     OP_ROLE_KEY: OpRole.Optimize,
+                                     'use_mkldnn': False
+                                 })
 
             # cond_var = (step_var == 0)
-            main_block.append_op(
-                type='equal',
-                inputs={'X': current_step_var,
-                        'Y': zero_var},
-                outputs={'Out': cond_var},
-                attrs={OP_ROLE_KEY: OpRole.Optimize})
+            main_block.append_op(type='equal',
+                                 inputs={
+                                     'X': current_step_var,
+                                     'Y': zero_var
+                                 },
+                                 outputs={'Out': cond_var},
+                                 attrs={OP_ROLE_KEY: OpRole.Optimize})
         # paddle.static.Print(current_step_var, message="in FWBW last conditional")
         return cond_var
 
@@ -1538,35 +1703,37 @@ class ShardingOptimizer(MetaOptimizerBase):
         # cur_block's forward_block & backward_block is itself
         cur_block._set_forward_block_idx(cur_block_idx)
 
-        # allreduce grad@gradientmerge  
+        # allreduce grad@gradientmerge
         if self.hybrid_dp:
             assert self.dp_ring_id >= 0, "dp_ring_id should larger than 0 when in sharding&DP mode"
             for grad, merged_grad in self._grad2merged_grad.items():
                 merged_grad_var = main_block.var(merged_grad)
-                cur_block.append_op(
-                    type='c_allreduce_sum',
-                    inputs={'X': merged_grad_var},
-                    outputs={'Out': merged_grad_var},
-                    attrs={
-                        'ring_id': self.dp_ring_id,
-                        'use_calc_stream': True,
-                        OP_ROLE_KEY: OpRole.Optimize
-                    })
+                cur_block.append_op(type='c_allreduce_sum',
+                                    inputs={'X': merged_grad_var},
+                                    outputs={'Out': merged_grad_var},
+                                    attrs={
+                                        'ring_id': self.dp_ring_id,
+                                        'use_calc_stream': True,
+                                        OP_ROLE_KEY: OpRole.Optimize
+                                    })
 
         # grad@gradientmerge / acc_step
         for grad, merged_grad in self._grad2merged_grad.items():
             # grad /= k_steps
             merged_grad_var = main_block.var(merged_grad)
-            cur_block.append_op(
-                type='scale',
-                inputs={'X': merged_grad_var},
-                outputs={'Out': merged_grad_var},
-                attrs={
-                    'scale': 1.0 / float(self._gradient_merge_acc_step),
-                    'bias': 0.0,
-                    'bias_after_scale': False,
-                    OP_ROLE_KEY: OpRole.Optimize
-                })
+            cur_block.append_op(type='scale',
+                                inputs={'X': merged_grad_var},
+                                outputs={'Out': merged_grad_var},
+                                attrs={
+                                    'scale':
+                                    1.0 / float(self._gradient_merge_acc_step),
+                                    'bias':
+                                    0.0,
+                                    'bias_after_scale':
+                                    False,
+                                    OP_ROLE_KEY:
+                                    OpRole.Optimize
+                                })
 
         # re-create optimize ops
         already_moved_var_names = []
@@ -1595,11 +1762,10 @@ class ShardingOptimizer(MetaOptimizerBase):
                         type_ = var_.dtype
                         self._main_program.global_block()._remove_var(
                             var_.name, sync=False)
-                        self.cond_block.create_var(
-                            name=name_,
-                            shape=shape_,
-                            dtype=type_,
-                            persistable=False)
+                        self.cond_block.create_var(name=name_,
+                                                   shape=shape_,
+                                                   dtype=type_,
+                                                   persistable=False)
                         already_moved_var_names.append(name_)
 
         self._main_program.global_block()._sync_with_cpp()
@@ -1608,15 +1774,14 @@ class ShardingOptimizer(MetaOptimizerBase):
         # fill zero to grad@gradientmerge
         for grad, merged_grad in self._grad2merged_grad.items():
             merged_grad_var = main_block.var(merged_grad)
-            cur_block.append_op(
-                type='fill_constant',
-                outputs={'Out': merged_grad_var},
-                attrs={
-                    "shape": merged_grad_var.shape,
-                    "dtype": merged_grad_var.dtype,
-                    "value": float(0),
-                    OP_ROLE_KEY: OpRole.Optimize
-                })
+            cur_block.append_op(type='fill_constant',
+                                outputs={'Out': merged_grad_var},
+                                attrs={
+                                    "shape": merged_grad_var.shape,
+                                    "dtype": merged_grad_var.dtype,
+                                    "value": float(0),
+                                    OP_ROLE_KEY: OpRole.Optimize
+                                })
 
         # lr_var = main_block.var("gradient_merge_current_step")
         # paddle.static.Print(lr_var, message="in OPTIMIZE last conditional")
@@ -1671,8 +1836,10 @@ class ShardingOptimizer(MetaOptimizerBase):
                 'Cond': cond,
                 'Input': [],
             },
-            outputs={'Out': [],
-                     'Scope': [step_scope]},
+            outputs={
+                'Out': [],
+                'Scope': [step_scope]
+            },
             attrs={
                 'sub_block': cond_block,
                 'is_scalar_condition': True,

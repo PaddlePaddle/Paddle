@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -31,6 +32,16 @@ class GlobalScatterOpCPUKernel : public framework::OpKernel<T> {
     PADDLE_THROW(platform::errors::Unavailable(
         "Do not support global scatter op for cpu kernel now."));
   }
+};
+
+template <typename Context, typename T>
+struct GlobalScatterFunctor {
+  void operator()(const framework::ExecutionContext& ctx);
+};
+
+template <typename Context, typename T>
+struct GlobalScatterProcessGroupFunctor {
+  void operator()(const framework::ExecutionContext& ctx);
 };
 
 }  // namespace operators

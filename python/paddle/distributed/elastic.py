@@ -18,6 +18,7 @@ import os
 
 
 class Command(object):
+
     def __init__(self, server, name):
         import etcd3
 
@@ -47,10 +48,14 @@ class Command(object):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Elastic Command')
-    parser.add_argument(
-        "--elastic_server", type=str, help="etcd server host:port")
+    parser.add_argument("--elastic_server",
+                        type=str,
+                        help="etcd server host:port")
     parser.add_argument("--job_id", type=str, help="job unique id")
-    parser.add_argument("--np", type=int, help="job pod/node number")
+    parser.add_argument(
+        "--np",
+        type=str,
+        help="job pod/node number, need to be 'MIN' or 'MIN:MAX' format")
     parser.add_argument("action", type=str, help="action to take")
 
     args = parser.parse_args()
@@ -58,7 +63,7 @@ if __name__ == '__main__':
     server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
     name = args.job_id or os.getenv('PADDLE_ELASTIC_JOB_ID')
 
-    np = args.np or int(os.getenv('PADDLE_ELASTIC_NP', 0))
+    np = int(args.np.split(":")[0]) or int(os.getenv('PADDLE_ELASTIC_NP', 0))
 
     cmd = Command(server, name)
 

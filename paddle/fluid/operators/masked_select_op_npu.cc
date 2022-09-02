@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/masked_select_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -29,13 +29,15 @@ class MaskedSelectedNPUKernel : public framework::OpKernel<T> {
     auto input_dim = input->dims();
     auto mask_dim = mask->dims();
     PADDLE_ENFORCE_EQ(
-        input_dim, mask_dim,
+        input_dim,
+        mask_dim,
         platform::errors::InvalidArgument(
             "The dim size of input and mask in OP(masked_selected) "
             "must be equal, but got input dim:(%ld), mask dim: "
             "(%ld). Please check input "
             "value.",
-            input_dim, mask_dim));
+            input_dim,
+            mask_dim));
 
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
@@ -46,10 +48,13 @@ class MaskedSelectedNPUKernel : public framework::OpKernel<T> {
     mask_int32.mutable_data<int32_t>(mask->dims(), ctx.GetPlace());
     out_size.mutable_data<int32_t>({1}, ctx.GetPlace());
     {
-      const auto& cast_runner =
-          NpuOpRunner("Cast", {*mask}, {mask_int32},
-                      {{"dst_type", static_cast<int32_t>(ConvertToNpuDtype(
-                                        framework::proto::VarType::INT32))}});
+      const auto& cast_runner = NpuOpRunner(
+          "Cast",
+          {*mask},
+          {mask_int32},
+          {{"dst_type",
+            static_cast<int32_t>(
+                ConvertToNpuDtype(framework::proto::VarType::INT32))}});
       cast_runner.Run(stream);
 
       mask_int32.Resize({mask_int32.numel()});
@@ -60,7 +65,7 @@ class MaskedSelectedNPUKernel : public framework::OpKernel<T> {
       sum_runner.AddOutput(out_size);
       sum_runner.AddAttr("keep_dims", false);
       sum_runner.Run(stream);
-      TensorToVector(out_size, dev_ctx, &out_size_vec);
+      paddle::framework::TensorToVector(out_size, dev_ctx, &out_size_vec);
     }
 
     out->Resize({out_size_vec[0]});
@@ -121,10 +126,13 @@ class MaskedSelectedGradNPUKernel : public framework::OpKernel<T> {
     mask_int32.mutable_data<int32_t>(mask->dims(), ctx.GetPlace());
     out_size.mutable_data<int32_t>({1}, ctx.GetPlace());
     {
-      const auto& cast_runner =
-          NpuOpRunner("Cast", {*mask}, {mask_int32},
-                      {{"dst_type", static_cast<int32_t>(ConvertToNpuDtype(
-                                        framework::proto::VarType::INT32))}});
+      const auto& cast_runner = NpuOpRunner(
+          "Cast",
+          {*mask},
+          {mask_int32},
+          {{"dst_type",
+            static_cast<int32_t>(
+                ConvertToNpuDtype(framework::proto::VarType::INT32))}});
       cast_runner.Run(stream);
 
       mask_int32.Resize({mask_int32.numel()});
@@ -135,7 +143,7 @@ class MaskedSelectedGradNPUKernel : public framework::OpKernel<T> {
       sum_runner.AddOutput(out_size);
       sum_runner.AddAttr("keep_dims", false);
       sum_runner.Run(stream);
-      TensorToVector(out_size, dev_ctx, &out_size_vec);
+      paddle::framework::TensorToVector(out_size, dev_ctx, &out_size_vec);
     }
 
     Tensor topkv2_out, indices;

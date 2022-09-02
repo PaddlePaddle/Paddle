@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,9 +26,50 @@ class OpBase;
 
 namespace paddle {
 namespace operators {
+
+// FeedVariableVisitor is to feed the variable data
+// according to data type (LoDTensor or  Strings).
+class FeedVariableVisitor {
+ public:
+  explicit FeedVariableVisitor(framework::Variable *out_var,
+                               const platform::Place &place)
+      : out_var_(out_var), place_(place) {}
+
+  void operator()(const framework::LoDTensor &in_tensor) const {
+    framework::LoDTensor *out_tensor =
+        out_var_->GetMutable<framework::LoDTensor>();
+    if (platform::is_same_place(in_tensor.place(), place_)) {
+      out_tensor->ShareDataWith(in_tensor);
+#ifdef PADDLE_WITH_IPU
+    } else if (platform::is_ipu_place(place_)) {
+      // For ipu, both in_tensor and out_tensor are allocated on cpu,
+      // PopART will copy tensor from host automatically,
+      // no TensorCopy() is required here.
+      out_tensor->ShareDataWith(in_tensor);
+#endif
+    } else {
+      platform::DeviceContext *context =
+          platform::DeviceContextPool::Instance().Get(place_);
+      framework::TensorCopy(in_tensor, place_, *context, out_tensor);
+    }
+    out_tensor->set_lod(in_tensor.lod());
+  }
+
+  void operator()(const framework::Strings &in_str) const {
+    framework::Strings *out_str = out_var_->GetMutable<framework::Strings>();
+    out_str->resize(in_str.size());
+    *out_str = in_str;
+  }
+
+ private:
+  framework::Variable *out_var_;
+  const platform::Place &place_;
+};
+
 class FeedOp : public framework::OperatorBase {
  public:
-  FeedOp(const std::string &type, const framework::VariableNameMap &inputs,
+  FeedOp(const std::string &type,
+         const framework::VariableNameMap &inputs,
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -59,7 +97,8 @@ class FeedOp : public framework::OperatorBase {
             out_name));
 
     auto col = Attr<int>("col");
-    PADDLE_ENFORCE_GE(col, 0,
+    PADDLE_ENFORCE_GE(col,
+                      0,
                       platform::errors::InvalidArgument(
                           "Expected the column index (the attribute 'col' of "
                           "operator 'Feed') of current feeding variable to be "
@@ -71,23 +110,19 @@ class FeedOp : public framework::OperatorBase {
 
     auto &feed_list = feed_var->Get<framework::FeedList>();
     PADDLE_ENFORCE_LT(
-        static_cast<size_t>(col), feed_list.size(),
+        static_cast<size_t>(col),
+        feed_list.size(),
         platform::errors::InvalidArgument(
             "The column index of current feeding variable is expected to be "
             "less than the length of feeding list. But received column index = "
             "%d, the length of feeding list = %d",
-            col, feed_list.size()));
+            col,
+            feed_list.size()));
 
     auto &feed_item = feed_list.at(static_cast<size_t>(col));
-    auto *out_item = out_var->GetMutable<framework::FeedType>();
 
-    if (platform::is_same_place(feed_item.place(), place)) {
-      out_item->ShareDataWith(feed_item);
-    } else {
-      auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      framework::TensorCopy(feed_item, place, *dev_ctx, out_item);
-    }
-    out_item->set_lod(feed_item.lod());
+    FeedVariableVisitor visitor(out_var, place);
+    paddle::visit(visitor, feed_item);
   }
 };
 
@@ -95,17 +130,17 @@ class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(vector<LoDTensor>) A feeding list of LoDTensor, which may have "
+             "(vector<LoDTensor>) "
+             "A feeding list of LoDTensor, which may have "
              "different dimension and data type.");
     AddOutput("Out",
-              "(LoDTensor) The LoDTensor which is a copy of the col-th feeding "
+              "(LoDTensor) The LoDTensor which is a copy "
+              "of the col-th feeding "
               "object.");
     AddAttr<int>("col", "(int) The column index of current feeding object.");
     AddComment(R"DOC(
 Feed Operator.
-
 It should not be configured by users directly.
-
 )DOC");
   }
 };
@@ -114,7 +149,8 @@ It should not be configured by users directly.
 }  // namespace paddle
 
 REGISTER_OPERATOR(
-    feed, paddle::operators::FeedOp,
+    feed,
+    paddle::operators::FeedOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::FeedOpInfoMaker);

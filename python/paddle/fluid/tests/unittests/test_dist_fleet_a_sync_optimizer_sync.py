@@ -23,6 +23,7 @@ paddle.enable_static()
 
 
 class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_PSERVER_NUMS"] = "2"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
@@ -40,7 +41,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         x = paddle.fluid.layers.data(name='x', shape=[1], dtype='float32')
         y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = paddle.fluid.layers.square_error_cost(input=x, label=y)
-        avg_cost = paddle.fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = False
@@ -61,10 +62,6 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
                 sgds += 1
         self.assertEqual(sends, 0)
         self.assertEqual(sgds, 0)
-
-        fleet.init_worker()
-        time.sleep(8)
-        fleet.stop_worker()
 
 
 if __name__ == "__main__":

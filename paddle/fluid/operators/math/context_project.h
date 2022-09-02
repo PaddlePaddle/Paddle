@@ -18,8 +18,8 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -88,11 +88,16 @@ using LoDTensor = framework::LoDTensor;
 template <typename DeviceContext, typename T>
 class ContextProjectFunctor {
  public:
-  void operator()(const DeviceContext& context, const LoDTensor& in,
-                  const Tensor* padding_data, bool padding_trainable,
-                  const int context_start, const int context_length,
-                  const int context_stride, const int up_pad,
-                  const int down_pad, Tensor* col) {
+  void operator()(const DeviceContext& context,
+                  const LoDTensor& in,
+                  const Tensor* padding_data,
+                  bool padding_trainable,
+                  const int context_start,
+                  const int context_length,
+                  const int context_stride,
+                  const int up_pad,
+                  const int down_pad,
+                  Tensor* col) {
     auto lod_level_0 = in.lod()[0];
 
     math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, float> im2col_ocf;
@@ -122,15 +127,19 @@ class ContextProjectFunctor {
         Tensor in_t = in.Slice(input_row_begin, input_row_end);
 
         std::vector<int64_t> output_shape(
-            {sequence_height, 1, 1, context_length,
+            {sequence_height,
+             1,
+             1,
+             context_length,
              sequence_width});  // output_height, output_width,
         // input_channels, filter_height, filter_width
-        out_t.Resize(framework::make_ddim(output_shape));
+        out_t.Resize(phi::make_ddim(output_shape));
 
         std::vector<int64_t> input_shape(
-            {1, input_row_end - input_row_begin,
+            {1,
+             input_row_end - input_row_begin,
              sequence_width});  // input_channels, input_height, input_width
-        in_t.Resize(framework::make_ddim(input_shape));
+        in_t.Resize(phi::make_ddim(input_shape));
         im2col_ocf(context, in_t, dilation, stride, padding, &out_t);
         out_t.Resize({sequence_height, context_length * sequence_width});
       }
@@ -162,8 +171,8 @@ class ContextProjectFunctor {
             Tensor out_t_sub = out_t.Slice(k * context_length,
                                            k * context_length + padding_size);
             Tensor w_sub = padding_data->Slice(k, k + padding_size);
-            framework::TensorCopy(w_sub, context.GetPlace(), context,
-                                  &out_t_sub);
+            framework::TensorCopy(
+                w_sub, context.GetPlace(), context, &out_t_sub);
           }
         }
         if (down_pad > 0) {  // add down pad
@@ -193,8 +202,8 @@ class ContextProjectFunctor {
                 (down_pad_begin_row + t) * context_length);
             Tensor w_sub = padding_data->Slice(
                 up_pad + padding_idx, up_pad + padding_idx + padding_size);
-            framework::TensorCopy(w_sub, context.GetPlace(), context,
-                                  &out_t_sub);
+            framework::TensorCopy(
+                w_sub, context.GetPlace(), context, &out_t_sub);
           }
         }
         out_t.Resize({sequence_height,
@@ -207,11 +216,18 @@ class ContextProjectFunctor {
 template <typename DeviceContext, typename T>
 class ContextProjectGradFunctor {
  public:
-  void operator()(const DeviceContext& context, const LoDTensor& in,
-                  bool padding_trainable, const int context_start,
-                  const int context_length, const int context_stride,
-                  const int up_pad, const int down_pad, bool pad_grad,
-                  bool input_grad, Tensor* padding_data, Tensor* col) {
+  void operator()(const DeviceContext& context,
+                  const LoDTensor& in,
+                  bool padding_trainable,
+                  const int context_start,
+                  const int context_length,
+                  const int context_stride,
+                  const int up_pad,
+                  const int down_pad,
+                  bool pad_grad,
+                  bool input_grad,
+                  Tensor* padding_data,
+                  Tensor* col) {
     auto lod_level_0 = in.lod()[0];
 
     math::Col2ImFunctor<math::ColFormat::kOCF, DeviceContext, float> col2im_ocf;
@@ -223,7 +239,7 @@ class ContextProjectGradFunctor {
     int input_row_begin, input_row_end;
     int sequence_height, sequence_width;
     sequence_width = in.dims()[1];
-    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
 
     if (input_grad) {
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
@@ -243,15 +259,19 @@ class ContextProjectGradFunctor {
           Tensor in_t = in.Slice(input_row_begin, input_row_end);
 
           std::vector<int64_t> output_shape(
-              {sequence_height, 1, 1, context_length,
+              {sequence_height,
+               1,
+               1,
+               context_length,
                sequence_width});  // output_height, output_width,
           // input_channels, filter_height, filter_width
-          out_t.Resize(framework::make_ddim(output_shape));
+          out_t.Resize(phi::make_ddim(output_shape));
 
           std::vector<int64_t> input_shape(
-              {1, input_row_end - input_row_begin,
+              {1,
+               input_row_end - input_row_begin,
                sequence_width});  // input_channels, input_height, input_width
-          in_t.Resize(framework::make_ddim(input_shape));
+          in_t.Resize(phi::make_ddim(input_shape));
 
           col2im_ocf(context, out_t, dilation, stride, padding, &in_t);
           out_t.Resize({sequence_height, context_length * sequence_width});
@@ -280,7 +300,9 @@ class ContextProjectGradFunctor {
               Tensor out_t_sub = out_t.Slice(k * context_length,
                                              k * context_length + padding_size);
               Tensor w_sub = padding_data->Slice(k, k + padding_size);
-              blas.AXPY(w_sub.numel(), static_cast<T>(1), out_t_sub.data<T>(),
+              blas.AXPY(w_sub.numel(),
+                        static_cast<T>(1),
+                        out_t_sub.data<T>(),
                         w_sub.data<T>());
             }
           }
@@ -312,7 +334,9 @@ class ContextProjectGradFunctor {
                   (down_pad_begin_row + t) * context_length);
               Tensor w_sub = padding_data->Slice(
                   up_pad + padding_idx, up_pad + padding_idx + padding_size);
-              blas.AXPY(w_sub.numel(), static_cast<T>(1), out_t_sub.data<T>(),
+              blas.AXPY(w_sub.numel(),
+                        static_cast<T>(1),
+                        out_t_sub.data<T>(),
                         w_sub.data<T>());
             }
           }

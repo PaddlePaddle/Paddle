@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <paddle/fluid/platform/device_context.h>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/partial_concat_op.h"
@@ -26,7 +27,9 @@ using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
 template <class T>
-__global__ void ConcatPartialCUDAKernel(T **in, T *out, int64_t all_length,
+__global__ void ConcatPartialCUDAKernel(T **in,
+                                        T *out,
+                                        int64_t all_length,
                                         int64_t in_batch_len,
                                         int64_t start_index,
                                         int64_t out_batch_len,
@@ -45,9 +48,13 @@ __global__ void ConcatPartialCUDAKernel(T **in, T *out, int64_t all_length,
 }
 
 template <class T>
-__global__ void ConcatPartialGradCUDAKernel(
-    T **in, const T *out, int64_t all_length, int64_t in_batch_len,
-    int64_t start_index, int64_t out_batch_len, int64_t part_length) {
+__global__ void ConcatPartialGradCUDAKernel(T **in,
+                                            const T *out,
+                                            int64_t all_length,
+                                            int64_t in_batch_len,
+                                            int64_t start_index,
+                                            int64_t out_batch_len,
+                                            int64_t part_length) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < all_length) {
     int64_t bs_id = id / out_batch_len;
@@ -67,12 +74,14 @@ class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto in_vars = ctx.MultiInput<Tensor>("X");
     Tensor *out = ctx.Output<Tensor>("Out");
-    PADDLE_ENFORCE_EQ(in_vars[0] != nullptr, true,
+    PADDLE_ENFORCE_EQ(in_vars[0] != nullptr,
+                      true,
                       platform::errors::InvalidArgument(
                           "The input of partial concat should not be null."));
 
     auto input_dim = in_vars[0]->dims();
-    PADDLE_ENFORCE_EQ(input_dim.size(), 2,
+    PADDLE_ENFORCE_EQ(input_dim.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "Only supports 2-D array with batch size in the 1st "
                           "dimension and data in the 2nd."));
@@ -92,7 +101,7 @@ class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
     int all_length = batch_size * out_batch_len;
 
     constexpr size_t theory_sm_threads = 1024;
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto stream = dev_ctx.stream();
     auto max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     auto sm_count = max_threads / theory_sm_threads;
@@ -117,17 +126,26 @@ class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
     for (int i = 0; i < in_num; ++i)
       in_data.emplace_back(in_vars[i]->data<T>());
 
-    auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 tmp_in_array->ptr(), platform::CPUPlace(),
+    auto tmp_in_array = memory::Alloc(
+        dev_ctx.GetPlace(),
+        in_data.size() * sizeof(T *),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+    memory::Copy(dev_ctx.GetPlace(),
+                 tmp_in_array->ptr(),
+                 platform::CPUPlace(),
                  reinterpret_cast<void *>(in_data.data()),
-                 in_data.size() * sizeof(T *), dev_ctx.stream());
+                 in_data.size() * sizeof(T *),
+                 dev_ctx.stream());
 
     T **in_array_data = reinterpret_cast<T **>(tmp_in_array->ptr());
     ComputeKernelParameter(all_length);
-    ConcatPartialCUDAKernel<T><<<grids, blocks, 0, stream>>>(
-        in_array_data, out->data<T>(), all_length, in_size, start_index,
-        out_batch_len, partial_len);
+    ConcatPartialCUDAKernel<T><<<grids, blocks, 0, stream>>>(in_array_data,
+                                                             out->data<T>(),
+                                                             all_length,
+                                                             in_size,
+                                                             start_index,
+                                                             out_batch_len,
+                                                             partial_len);
   }
 };
 
@@ -139,7 +157,8 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
     auto ins = ctx.MultiInput<LoDTensor>("X");
     auto outs = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
 
-    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true,
+    PADDLE_ENFORCE_EQ(ins[0] != nullptr,
+                      true,
                       platform::errors::InvalidArgument(
                           "The input of partial concat should not be null."));
     // all parameters
@@ -155,8 +174,8 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
     auto grad_batch_len = partial_len * in_num;
     auto all_length = grad_batch_len * batch_size;
     // initialize
-    auto &place = *ctx.template device_context<platform::CUDADeviceContext>()
-                       .eigen_device();
+    auto &place =
+        *ctx.template device_context<phi::GPUContext>().eigen_device();
     for (size_t i = 0; i < outs.size(); ++i) {
       outs[i]->mutable_data<T>(ctx.GetPlace());
       auto dxt = framework::EigenVector<T>::Flatten(*outs[i]);
@@ -164,7 +183,7 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
     }
 
     constexpr size_t theory_sm_threads = 1024;
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto stream = dev_ctx.stream();
     auto max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     auto sm_count = max_threads / theory_sm_threads;
@@ -186,18 +205,28 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < in_num; ++i) {
       out_data.emplace_back(outs[i]->data<T>());
     }
-    auto tmp_out_array = memory::Alloc(dev_ctx, out_data.size() * sizeof(T *));
+    auto tmp_out_array = memory::Alloc(
+        dev_ctx.GetPlace(),
+        out_data.size() * sizeof(T *),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 tmp_out_array->ptr(), platform::CPUPlace(),
+    memory::Copy(dev_ctx.GetPlace(),
+                 tmp_out_array->ptr(),
+                 platform::CPUPlace(),
                  reinterpret_cast<void *>(out_data.data()),
-                 out_data.size() * sizeof(T *), dev_ctx.stream());
+                 out_data.size() * sizeof(T *),
+                 dev_ctx.stream());
 
     T **out_grad_data = reinterpret_cast<T **>(tmp_out_array->ptr());
     ComputeKernelParameter(all_length);
-    ConcatPartialGradCUDAKernel<T><<<grids, blocks, 0, stream>>>(
-        out_grad_data, out_grad->data<T>(), all_length, in_size, start_index,
-        grad_batch_len, partial_len);
+    ConcatPartialGradCUDAKernel<T>
+        <<<grids, blocks, 0, stream>>>(out_grad_data,
+                                       out_grad->data<T>(),
+                                       all_length,
+                                       in_size,
+                                       start_index,
+                                       grad_batch_len,
+                                       partial_len);
   }
 };
 
@@ -205,7 +234,8 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(partial_concat, ops::PartialConcatOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(partial_concat,
+                        ops::PartialConcatOpCUDAKernel<float>,
                         ops::PartialConcatOpCUDAKernel<double>,
                         ops::PartialConcatOpCUDAKernel<int>,
                         ops::PartialConcatOpCUDAKernel<int64_t>,

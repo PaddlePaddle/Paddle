@@ -60,18 +60,20 @@ def combine_abs_max_and_hist(tensor, origin_max, origin_hist, bins,
     if new_max == 0.0:
         return origin_max, origin_hist
     elif origin_max == 0.0:
-        new_hist, _ = np.histogram(
-            paddle.abs(tensor).numpy(), range=(0, new_max), bins=bins)
+        new_hist, _ = np.histogram(paddle.abs(tensor).numpy(),
+                                   range=(0, new_max),
+                                   bins=bins)
         new_hist = new_hist.astype(np.float32)
         return new_max, new_hist
     elif new_max <= origin_max:
-        new_hist, _ = np.histogram(
-            paddle.abs(tensor).numpy(), range=(0, origin_max), bins=bins)
+        new_hist, _ = np.histogram(paddle.abs(tensor).numpy(),
+                                   range=(0, origin_max),
+                                   bins=bins)
         new_hist = new_hist.astype(np.float32)
         new_hist += origin_hist
         return origin_max, new_hist
     else:
-        # bin_width = origin_max / (bins * upsample_bins) 
+        # bin_width = origin_max / (bins * upsample_bins)
         #           = new_max / (bins * downsample_bins)
         bin_width = origin_max / (bins * upsample_bins)
         downsampe_bins = int(math.ceil(new_max / (bins * bin_width)))
@@ -87,8 +89,9 @@ def combine_abs_max_and_hist(tensor, origin_max, origin_hist, bins,
         sampled_hist = (cumsumed_hist - shift_cumsumed_hist) / upsample_bins
         sampled_hist = sampled_hist.astype(np.float32)
 
-        new_hist, _ = np.histogram(
-            paddle.abs(tensor).numpy(), range=(0, new_max), bins=bins)
+        new_hist, _ = np.histogram(paddle.abs(tensor).numpy(),
+                                   range=(0, new_max),
+                                   bins=bins)
         new_hist = new_hist.astype(np.float32)
         new_hist += sampled_hist
 
@@ -193,10 +196,9 @@ class BaseHistQuantizer(BaseQuantizer):
                 if abs_max_vals[idx] == 0.0:
                     self.hists.append(None)
                 else:
-                    hist, _ = np.histogram(
-                        paddle.abs(tensor).numpy(),
-                        range=(0., abs_max_vals[idx]),
-                        bins=self.bins)
+                    hist, _ = np.histogram(paddle.abs(tensor).numpy(),
+                                           range=(0., abs_max_vals[idx]),
+                                           bins=self.bins)
                     hist = hist.astype(np.float32)
                     self.hists.append(hist)
         else:
@@ -228,6 +230,7 @@ class HistQuantizer(BaseHistQuantizer):
         self.hist_percent = hist_percent
 
     def cal_thresholds(self):
+
         def _helper(abs_max, hist, percent):
             assert hist.ndim == 1 and percent < 1.0
             hist = hist / np.sum(hist, dtype=np.float64)

@@ -47,6 +47,7 @@ RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 
 
 class GeoSgdTranspiler(DistributeTranspiler):
+
     def __init__(self, config=None):
         if config is not None:
             self.config = config
@@ -195,8 +196,8 @@ class GeoSgdTranspiler(DistributeTranspiler):
     def get_pserver_programs(self, endpoint):
         pserver_prog = self.get_pserver_program(endpoint)
         self.param_grad_ep_mapping = self.param_opt_ep_mapping
-        pserver_startup = self.get_startup_program(
-            endpoint, pserver_program=pserver_prog)
+        pserver_startup = self.get_startup_program(endpoint,
+                                                   pserver_program=pserver_prog)
         return pserver_prog, pserver_startup
 
     def get_pserver_program(self, endpoint):
@@ -230,19 +231,17 @@ class GeoSgdTranspiler(DistributeTranspiler):
                     [delta_var_name, param.name]))
             else:
                 delta_type = param.type
-            delta_var = pserver_block.create_var(
-                name=delta_var_name,
-                persistable=False,
-                type=delta_type,
-                dtype=param.dtype,
-                shape=param.shape)
+            delta_var = pserver_block.create_var(name=delta_var_name,
+                                                 persistable=False,
+                                                 type=delta_type,
+                                                 dtype=param.dtype,
+                                                 shape=param.shape)
 
-            per_opt_block.append_op(
-                type="sum",
-                inputs={"X": [param, delta_var]},
-                outputs={"Out": param})
-            param_to_block_id.append(delta_var_name + ":" + str(
-                per_opt_block.idx))
+            per_opt_block.append_op(type="sum",
+                                    inputs={"X": [param, delta_var]},
+                                    outputs={"Out": param})
+            param_to_block_id.append(delta_var_name + ":" +
+                                     str(per_opt_block.idx))
 
         attrs = {
             "optimize_blocks": optimize_block,
@@ -258,11 +257,10 @@ class GeoSgdTranspiler(DistributeTranspiler):
         }
 
         # step5 append the listen_and_serv op
-        pserver_program.global_block().append_op(
-            type="listen_and_serv",
-            inputs={'X': recv_inputs},
-            outputs={},
-            attrs=attrs)
+        pserver_program.global_block().append_op(type="listen_and_serv",
+                                                 inputs={'X': recv_inputs},
+                                                 outputs={},
+                                                 attrs=attrs)
 
         pserver_program._sync_with_cpp()
         # save pserver program to generate pserver side startup relatively.
@@ -289,8 +287,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
         # step 2. Slice vars into numbers of piece with block_size
         # when we slice var up into blocks, we will slice the var according to
         # pserver services' count. A pserver may have two or more listening ports.
-        param_blocks = slice_variable(param_list,
-                                      len(self.pserver_endpoints),
+        param_blocks = slice_variable(param_list, len(self.pserver_endpoints),
                                       self.config.min_block_size)
 
         # step 3. Create split param from split blocks
@@ -302,11 +299,9 @@ class GeoSgdTranspiler(DistributeTranspiler):
         # step 4. Create mapping of endpoint -> split var to create pserver side program
         self.param_opt_ep_mapping = collections.OrderedDict()
         [
-            self.param_opt_ep_mapping.update({
-                ep: {
-                    "params": [],
-                }
-            }) for ep in self.pserver_endpoints
+            self.param_opt_ep_mapping.update({ep: {
+                "params": [],
+            }}) for ep in self.pserver_endpoints
         ]
 
         # step 5. Create delta var of Geo-Sgd & record vars information
@@ -340,13 +335,12 @@ class GeoSgdTranspiler(DistributeTranspiler):
             for splited_var in splited_vars:
                 is_slice, block_id, offset = self._get_slice_var_info(
                     splited_var)
-                self.vars_overview.add_distributed_var(
-                    origin_var=origin_var,
-                    slice_var=splited_var,
-                    block_id=block_id,
-                    offset=offset,
-                    is_slice=is_slice,
-                    vtype="Param")
+                self.vars_overview.add_distributed_var(origin_var=origin_var,
+                                                       slice_var=splited_var,
+                                                       block_id=block_id,
+                                                       offset=offset,
+                                                       is_slice=is_slice,
+                                                       vtype="Param")
                 self.split_to_origin_mapping[splited_var.name] = origin_name
                 if origin_name in self.sparse_var_list:
                     self.sparse_var_splited_list.append(splited_var.name)

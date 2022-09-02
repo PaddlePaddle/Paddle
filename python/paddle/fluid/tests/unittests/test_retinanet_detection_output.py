@@ -23,6 +23,7 @@ from test_multiclass_nms_op import iou
 from test_multiclass_nms_op import nms
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+import paddle
 
 
 def multiclass_nms(prediction, class_num, keep_top_k, nms_threshold):
@@ -44,8 +45,9 @@ def multiclass_nms(prediction, class_num, keep_top_k, nms_threshold):
         for idx in indices:
             score_index.append((prediction[c][idx][4], c, idx))
 
-    sorted_score_index = sorted(
-        score_index, key=lambda tup: tup[0], reverse=True)
+    sorted_score_index = sorted(score_index,
+                                key=lambda tup: tup[0],
+                                reverse=True)
     if keep_top_k > -1 and num_det > keep_top_k:
         sorted_score_index = sorted_score_index[:keep_top_k]
         num_det = keep_top_k
@@ -102,10 +104,10 @@ def retinanet_detection_out(boxes_list, scores_list, anchors_list, im_info,
                 box_offset] * anchor_box_width + anchor_box_center_x
             target_box_center_y = bboxes_per_level[
                 box_offset + 1] * anchor_box_height + anchor_box_center_y
-            target_box_width = math.exp(bboxes_per_level[box_offset +
-                                                         2]) * anchor_box_width
-            target_box_height = math.exp(bboxes_per_level[
-                box_offset + 3]) * anchor_box_height
+            target_box_width = math.exp(
+                bboxes_per_level[box_offset + 2]) * anchor_box_width
+            target_box_height = math.exp(
+                bboxes_per_level[box_offset + 3]) * anchor_box_height
 
             pred_box_xmin = target_box_center_x - target_box_width / 2
             pred_box_ymin = target_box_center_y - target_box_height / 2
@@ -118,13 +120,17 @@ def retinanet_detection_out(boxes_list, scores_list, anchors_list, im_info,
             pred_box_ymax = pred_box_ymax / im_scale
 
             pred_box_xmin = max(
-                min(pred_box_xmin, np.round(im_width / im_scale) - 1), 0.)
+                min(pred_box_xmin,
+                    np.round(im_width / im_scale) - 1), 0.)
             pred_box_ymin = max(
-                min(pred_box_ymin, np.round(im_height / im_scale) - 1), 0.)
+                min(pred_box_ymin,
+                    np.round(im_height / im_scale) - 1), 0.)
             pred_box_xmax = max(
-                min(pred_box_xmax, np.round(im_width / im_scale) - 1), 0.)
+                min(pred_box_xmax,
+                    np.round(im_width / im_scale) - 1), 0.)
             pred_box_ymax = max(
-                min(pred_box_ymax, np.round(im_height / im_scale) - 1), 0.)
+                min(pred_box_ymax,
+                    np.round(im_height / im_scale) - 1), 0.)
 
             if c not in prediction.keys():
                 prediction[c] = []
@@ -166,6 +172,7 @@ def batched_retinanet_detection_out(boxes, scores, anchors, im_info,
 
 
 class TestRetinanetDetectionOutOp1(OpTest):
+
     def set_argument(self):
         self.score_threshold = 0.05
         self.min_level = 3
@@ -250,11 +257,14 @@ class TestRetinanetDetectionOutOp1(OpTest):
             'Scores': [('s0', self.scores_list[0]), ('s1', self.scores_list[1]),
                        ('s2', self.scores_list[2]), ('s3', self.scores_list[3]),
                        ('s4', self.scores_list[4])],
-            'Anchors':
-            [('a0', self.anchors_list[0]), ('a1', self.anchors_list[1]),
-             ('a2', self.anchors_list[2]), ('a3', self.anchors_list[3]),
-             ('a4', self.anchors_list[4])],
-            'ImInfo': (self.im_info, [[1, ]])
+            'Anchors': [('a0', self.anchors_list[0]),
+                        ('a1', self.anchors_list[1]),
+                        ('a2', self.anchors_list[2]),
+                        ('a3', self.anchors_list[3]),
+                        ('a4', self.anchors_list[4])],
+            'ImInfo': (self.im_info, [[
+                1,
+            ]])
         }
         self.outputs = {'Out': (nmsed_outs, [lod])}
         self.attrs = {
@@ -270,6 +280,7 @@ class TestRetinanetDetectionOutOp1(OpTest):
 
 
 class TestRetinanetDetectionOutOp2(OpTest):
+
     def set_argument(self):
         self.score_threshold = 0.05
         self.min_level = 3
@@ -294,6 +305,7 @@ class TestRetinanetDetectionOutOp2(OpTest):
 
 
 class TestRetinanetDetectionOutOpNo3(TestRetinanetDetectionOutOp1):
+
     def set_argument(self):
         # Here set 2.0 to test the case there is no outputs.
         # In practical use, 0.0 < score_threshold < 1.0
@@ -323,6 +335,7 @@ class TestRetinanetDetectionOutOpNo3(TestRetinanetDetectionOutOp1):
 
 
 class TestRetinanetDetectionOutOpNo4(TestRetinanetDetectionOutOp1):
+
     def set_argument(self):
         self.score_threshold = 0.05
         self.min_level = 2
@@ -359,16 +372,19 @@ class TestRetinanetDetectionOutOpNo4(TestRetinanetDetectionOutOp1):
         nmsed_outs = np.array(nmsed_outs).astype('float32')
         self.op_type = 'retinanet_detection_output'
         self.inputs = {
-            'BBoxes':
-            [('b0', self.bboxes_list[0]), ('b1', self.bboxes_list[1]),
-             ('b2', self.bboxes_list[2]), ('b3', self.bboxes_list[3])],
+            'BBoxes': [('b0', self.bboxes_list[0]), ('b1', self.bboxes_list[1]),
+                       ('b2', self.bboxes_list[2]),
+                       ('b3', self.bboxes_list[3])],
             'Scores': [('s0', self.scores_list[0]), ('s1', self.scores_list[1]),
                        ('s2', self.scores_list[2]),
                        ('s3', self.scores_list[3])],
-            'Anchors':
-            [('a0', self.anchors_list[0]), ('a1', self.anchors_list[1]),
-             ('a2', self.anchors_list[2]), ('a3', self.anchors_list[3])],
-            'ImInfo': (self.im_info, [[1, ]])
+            'Anchors': [('a0', self.anchors_list[0]),
+                        ('a1', self.anchors_list[1]),
+                        ('a2', self.anchors_list[2]),
+                        ('a3', self.anchors_list[3])],
+            'ImInfo': (self.im_info, [[
+                1,
+            ]])
         }
         self.outputs = {'Out': (nmsed_outs, [lod])}
         self.attrs = {
@@ -384,6 +400,7 @@ class TestRetinanetDetectionOutOpNo4(TestRetinanetDetectionOutOp1):
 
 
 class TestRetinanetDetectionOutOpNo5(TestRetinanetDetectionOutOp1):
+
     def set_argument(self):
         self.score_threshold = 0.05
         self.min_level = 3
@@ -411,24 +428,32 @@ class TestRetinanetDetectionOutOpNo5(TestRetinanetDetectionOutOp1):
 
 
 class TestRetinanetDetectionOutOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
-            bboxes_low1 = fluid.data(
-                name='bboxes_low1', shape=[1, 44, 4], dtype='float32')
-            bboxes_high1 = fluid.data(
-                name='bboxes_high1', shape=[1, 11, 4], dtype='float32')
-            scores_low1 = fluid.data(
-                name='scores_low1', shape=[1, 44, 10], dtype='float32')
-            scores_high1 = fluid.data(
-                name='scores_high1', shape=[1, 11, 10], dtype='float32')
-            anchors_low1 = fluid.data(
-                name='anchors_low1', shape=[44, 4], dtype='float32')
-            anchors_high1 = fluid.data(
-                name='anchors_high1', shape=[11, 4], dtype='float32')
-            im_info1 = fluid.data(
-                name="im_info1", shape=[1, 3], dtype='float32')
+            bboxes_low1 = fluid.data(name='bboxes_low1',
+                                     shape=[1, 44, 4],
+                                     dtype='float32')
+            bboxes_high1 = fluid.data(name='bboxes_high1',
+                                      shape=[1, 11, 4],
+                                      dtype='float32')
+            scores_low1 = fluid.data(name='scores_low1',
+                                     shape=[1, 44, 10],
+                                     dtype='float32')
+            scores_high1 = fluid.data(name='scores_high1',
+                                      shape=[1, 11, 10],
+                                      dtype='float32')
+            anchors_low1 = fluid.data(name='anchors_low1',
+                                      shape=[44, 4],
+                                      dtype='float32')
+            anchors_high1 = fluid.data(name='anchors_high1',
+                                       shape=[11, 4],
+                                       dtype='float32')
+            im_info1 = fluid.data(name="im_info1",
+                                  shape=[1, 3],
+                                  dtype='float32')
 
-            # The `bboxes` must be list, each element must be Variable and 
+            # The `bboxes` must be list, each element must be Variable and
             # its Tensor data type must be one of float32 and float64.
             def test_bboxes_type():
                 fluid.layers.retinanet_detection_output(
@@ -440,8 +465,9 @@ class TestRetinanetDetectionOutOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_bboxes_type)
 
             def test_bboxes_tensor_dtype():
-                bboxes_high2 = fluid.data(
-                    name='bboxes_high2', shape=[1, 11, 4], dtype='int32')
+                bboxes_high2 = fluid.data(name='bboxes_high2',
+                                          shape=[1, 11, 4],
+                                          dtype='int32')
                 fluid.layers.retinanet_detection_output(
                     bboxes=[bboxes_high2, 5],
                     scores=[scores_low1, scores_high1],
@@ -462,8 +488,9 @@ class TestRetinanetDetectionOutOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_scores_type)
 
             def test_scores_tensor_dtype():
-                scores_high2 = fluid.data(
-                    name='scores_high2', shape=[1, 11, 10], dtype='int32')
+                scores_high2 = fluid.data(name='scores_high2',
+                                          shape=[1, 11, 10],
+                                          dtype='int32')
                 fluid.layers.retinanet_detection_output(
                     bboxes=[bboxes_low1, bboxes_high1],
                     scores=[scores_high2, 5],
@@ -484,8 +511,9 @@ class TestRetinanetDetectionOutOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_anchors_type)
 
             def test_anchors_tensor_dtype():
-                anchors_high2 = fluid.data(
-                    name='anchors_high2', shape=[11, 4], dtype='int32')
+                anchors_high2 = fluid.data(name='anchors_high2',
+                                           shape=[11, 4],
+                                           dtype='int32')
                 fluid.layers.retinanet_detection_output(
                     bboxes=[bboxes_low1, bboxes_high1],
                     scores=[scores_low1, scores_high1],
@@ -506,8 +534,9 @@ class TestRetinanetDetectionOutOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_iminfo_type)
 
             def test_iminfo_tensor_dtype():
-                im_info2 = fluid.data(
-                    name='im_info2', shape=[1, 3], dtype='int32')
+                im_info2 = fluid.data(name='im_info2',
+                                      shape=[1, 3],
+                                      dtype='int32')
                 fluid.layers.retinanet_detection_output(
                     bboxes=[bboxes_low1, bboxes_high1],
                     scores=[scores_low1, scores_high1],
@@ -518,4 +547,5 @@ class TestRetinanetDetectionOutOpError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

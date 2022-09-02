@@ -23,14 +23,18 @@ namespace cub = hipcub;
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T, framework::DataLayout layout, bool HasBias>
-__global__ void KeAffineChannelCUDA(const T* x, const T* scale, const T* bias,
-                                    const int C, const int HxW, const int num,
+__global__ void KeAffineChannelCUDA(const T* x,
+                                    const T* scale,
+                                    const T* bias,
+                                    const int C,
+                                    const int HxW,
+                                    const int num,
                                     T* y) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -81,21 +85,25 @@ class AffineChannelCUDAKernel : public framework::OpKernel<T> {
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     grid = std::min(std::max(max_threads / block, 1), grid);
     if (layout == framework::DataLayout::kNCHW) {
-      KeAffineChannelCUDA<T, framework::DataLayout::kNCHW,
-                          true><<<grid, block, 0, dev_ctx.stream()>>>(
-          x_d, scale_d, bias_d, C, HxW, num, y_d);
+      KeAffineChannelCUDA<T, framework::DataLayout::kNCHW, true>
+          <<<grid, block, 0, dev_ctx.stream()>>>(
+              x_d, scale_d, bias_d, C, HxW, num, y_d);
     } else {
-      KeAffineChannelCUDA<T, framework::DataLayout::kNHWC,
-                          true><<<grid, block, 0, dev_ctx.stream()>>>(
-          x_d, scale_d, bias_d, C, HxW, num, y_d);
+      KeAffineChannelCUDA<T, framework::DataLayout::kNHWC, true>
+          <<<grid, block, 0, dev_ctx.stream()>>>(
+              x_d, scale_d, bias_d, C, HxW, num, y_d);
     }
   }
 };
 
 template <typename T, int BlockDim, framework::DataLayout layout>
-__global__ void AffineChannelScaleBiasGradientCUDAKernel(
-    const T* dy, const T* x, const int N, const int C, const int HxW, T* dscale,
-    T* dbias) {
+__global__ void AffineChannelScaleBiasGradientCUDAKernel(const T* dy,
+                                                         const T* x,
+                                                         const int N,
+                                                         const int C,
+                                                         const int HxW,
+                                                         T* dscale,
+                                                         T* dbias) {
   const int outer_size = C;
   const int inner_size = N * HxW;
   typedef cub::BlockReduce<double, BlockDim> BlockReduce;
@@ -169,29 +177,31 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
     if (layout == framework::DataLayout::kNCHW) {
       if (dscale && dbias) {
         const T* x_d = x->data<T>();
-        AffineChannelScaleBiasGradientCUDAKernel<
-            T, block, framework::DataLayout::kNCHW><<<grid2, block, 0,
-                                                      dev_ctx.stream()>>>(
-            dy_d, x_d, N, C, HxW, ds_d, db_d);
+        AffineChannelScaleBiasGradientCUDAKernel<T,
+                                                 block,
+                                                 framework::DataLayout::kNCHW>
+            <<<grid2, block, 0, dev_ctx.stream()>>>(
+                dy_d, x_d, N, C, HxW, ds_d, db_d);
       }
       if (dx) {
-        KeAffineChannelCUDA<T, framework::DataLayout::kNCHW,
-                            false><<<grid1, block, 0, dev_ctx.stream()>>>(
-            dy_d, s_d, nullptr, C, HxW, num, dx_d);
+        KeAffineChannelCUDA<T, framework::DataLayout::kNCHW, false>
+            <<<grid1, block, 0, dev_ctx.stream()>>>(
+                dy_d, s_d, nullptr, C, HxW, num, dx_d);
       }
     } else {
       if (dscale && dbias) {
         const T* x_d = x->data<T>();
-        AffineChannelScaleBiasGradientCUDAKernel<
-            T, block, framework::DataLayout::kNHWC><<<grid2, block, 0,
-                                                      dev_ctx.stream()>>>(
-            dy_d, x_d, N, C, HxW, ds_d, db_d);
+        AffineChannelScaleBiasGradientCUDAKernel<T,
+                                                 block,
+                                                 framework::DataLayout::kNHWC>
+            <<<grid2, block, 0, dev_ctx.stream()>>>(
+                dy_d, x_d, N, C, HxW, ds_d, db_d);
       }
 
       if (dx) {
-        KeAffineChannelCUDA<T, framework::DataLayout::kNHWC,
-                            false><<<grid1, block, 0, dev_ctx.stream()>>>(
-            dy_d, s_d, nullptr, C, HxW, num, dx_d);
+        KeAffineChannelCUDA<T, framework::DataLayout::kNHWC, false>
+            <<<grid1, block, 0, dev_ctx.stream()>>>(
+                dy_d, s_d, nullptr, C, HxW, num, dx_d);
       }
     }
   }
@@ -201,7 +211,7 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CUDA = paddle::platform::CUDADeviceContext;
+using CUDA = phi::GPUContext;
 
 REGISTER_OP_CUDA_KERNEL(affine_channel,
                         ops::AffineChannelCUDAKernel<CUDA, float>,

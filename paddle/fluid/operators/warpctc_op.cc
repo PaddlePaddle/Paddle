@@ -12,16 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/warpctc_op.h"
-
 #include <memory>
 
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#endif
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -30,48 +27,16 @@ class WarpCTCOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Logits"), "Input", "Logits", "WarpCTC");
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "WarpCTC");
-    OP_INOUT_CHECK(ctx->HasOutput("WarpCTCGrad"), "Output", "WarpCTCGrad",
-                   "WarpCTC");
-    OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss", "WarpCTC");
-
-    auto logits_dims = ctx->GetInputDim("Logits");
-    int blank = ctx->Attrs().Get<int>("blank");
-    int sequence_width = 0;
-
-    if (ctx->HasInput("LogitsLength")) {
-      sequence_width = logits_dims[2];
-    } else {
-      sequence_width =
-          static_cast<int>(framework::product(logits_dims) / logits_dims[0]);
-    }
-
-    PADDLE_ENFORCE_GE(
-        blank, 0, platform::errors::InvalidArgument(
-                      "The value of Attr(blank) should be in interval [0, %d), "
-                      "but received %d",
-                      blank));
-    PADDLE_ENFORCE_LT(
-        blank, sequence_width,
-        platform::errors::InvalidArgument(
-            "The value of Attr(blank) should be in interval [0, %d), "
-            "but received %d",
-            blank));
-
-    // TODO(liuyiqun): it is tricky to set the wrong dimension here.
-    ctx->SetOutputDim("Loss", {-1, 1});
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"), ctx.GetPlace(),
-        layout_, library_);
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"),
+        ctx.GetPlace(),
+        layout_,
+        library_);
   }
 };
 
@@ -125,17 +90,6 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
                   "normalize the gradients by the number of time-step, "
                   "which is also the sequence's length.")
         .SetDefault(false);
-    AddAttr<bool>(
-        "norm_by_batchsize",
-        "(bool, default: false), normalize the loss by the batch size."
-        "If True, supersedes norm_by_times")
-        .SetDefault(false);
-    AddAttr<bool>(
-        "norm_by_total_logits_len",
-        "(bool, default: false), normalize the loss by the total number of "
-        "frames"
-        "in the batch. If True, supersedes norm_by_batchsize and norm_by_times")
-        .SetDefault(false);
     AddComment(R"DOC(
 An operator integrating the open-source
 [warp-ctc](https://github.com/baidu-research/warp-ctc) library, which is used in
@@ -143,7 +97,7 @@ An operator integrating the open-source
 https://arxiv.org/pdf/1512.02595v1.pdf),
 to compute Connectionist Temporal Classification (CTC) loss.
 It can be aliased as softmax with ctc, since a native softmax activation is
-interated to the warp-ctc library, to to normalize values for each row of the
+interated to the warp-ctc library, to normalize values for each row of the
 input tensor.
 
 More detail of CTC loss can be found by referring to
@@ -180,10 +134,12 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("WarpCTCGrad"), "Input", "WarpCTCGrad",
+    OP_INOUT_CHECK(
+        ctx->HasInput("WarpCTCGrad"), "Input", "WarpCTCGrad", "WarpCTCGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")),
+                   "Output",
+                   framework::GradVarName("Logits"),
                    "WarpCTCGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")), "Output",
-                   framework::GradVarName("Logits"), "WarpCTCGrad");
     ctx->SetOutputDim(framework::GradVarName("Logits"),
                       ctx->GetInputDim("Logits"));
     ctx->ShareLoD("Logits", /*->*/ framework::GradVarName("Logits"));
@@ -205,33 +161,15 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(WarpCTCGradOpNoNeedBufferVarInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker,
+DECLARE_INFER_SHAPE_FUNCTOR(warpctc,
+                            WarpctcInferShapeFunctor,
+                            PD_INFER_META(phi::WarpctcInferMeta));
+REGISTER_OPERATOR(warpctc,
+                  ops::WarpCTCOp,
+                  ops::WarpCTCOpMaker,
                   ops::WarpCTCGradOpMaker<paddle::framework::OpDesc>,
-                  ops::WarpCTCGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp,
+                  ops::WarpCTCGradOpMaker<paddle::imperative::OpBase>,
+                  WarpctcInferShapeFunctor);
+REGISTER_OPERATOR(warpctc_grad,
+                  ops::WarpCTCGradOp,
                   ops::WarpCTCGradOpNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(
-    warpctc, ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    warpctc_grad,
-    ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_VERSION(warpctc)
-    .AddCheckpoint(
-        R"ROC(
-              Upgrade warpctc add a new attribute [norm_by_batchsize] and [norm_by_total_logits_len])ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewAttr(
-                "norm_by_batchsize",
-                "(bool, default: false), normalize the loss by the batch size."
-                "If True, supersedes norm_by_times",
-                false)
-            .NewAttr("norm_by_total_logits_len",
-                     "(bool, default: false), normalize the loss by the total "
-                     "number of "
-                     "frames"
-                     "in the batch. If True, supersedes norm_by_batchsize and "
-                     "norm_by_times",
-                     false));

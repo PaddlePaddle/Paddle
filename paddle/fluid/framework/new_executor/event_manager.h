@@ -17,18 +17,13 @@
 
 namespace paddle {
 namespace framework {
+namespace interpreter {
+void RecordEvent(const Instruction& instruction, const platform::Place& place);
 
-class EventManager {
- public:
-  void RecordEvent(const Instruction& instruction,
-                   const platform::Place& place);
+void RecordEvent(const Instruction& instruction);
 
-  void WaitEvent(const Instruction& instruction, const platform::Place& place);
+void WaitEvent(const Instruction& instruction, const platform::Place& place);
 
- private:
-  void WaitOrSync(const std::vector<EventInter>& events,
-                  const platform::DeviceContext* dev_ctx);
-};
-
+}  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

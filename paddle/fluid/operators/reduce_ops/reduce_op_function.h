@@ -14,6 +14,7 @@
 
 #pragma once
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -22,20 +23,29 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using DDim = framework::DDim;
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+template <typename T,
+          size_t D,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-template <typename DeviceContext, typename T, size_t D, size_t R_D,
+template <typename DeviceContext,
+          typename T,
+          size_t D,
+          size_t R_D,
           typename Functor>
-void ReduceFunctor(const DeviceContext& context, const framework::Tensor& input,
-                   framework::Tensor* output, const std::vector<int>& dims,
+void ReduceFunctor(const DeviceContext& context,
+                   const framework::Tensor& input,
+                   framework::Tensor* output,
+                   const std::vector<int>& dims,
                    bool keep_dim) {
   auto x = EigenTensor<T, D>::From(input);
   auto x_rank = static_cast<int>(x.dimensions().size());
@@ -49,13 +59,13 @@ void ReduceFunctor(const DeviceContext& context, const framework::Tensor& input,
   DDim out_dims = output->dims();
   if (keep_dim && x_rank > 1) {
     const int kDelFlag = -2;
-    auto dims_vector = framework::vectorize(out_dims);
+    auto dims_vector = phi::vectorize(out_dims);
     for (size_t i = 0; i < dims_ref.size(); ++i) {
       dims_vector[dims_ref[i]] = kDelFlag;
     }
     dims_vector.erase(remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
                       dims_vector.end());
-    out_dims = framework::make_ddim(dims_vector);
+    out_dims = phi::make_ddim(dims_vector);
   }
   auto& place = *context.eigen_device();
   Functor functor;
@@ -75,12 +85,13 @@ void ReduceGradFunctor(const DeviceContext& context,
                        const framework::Tensor& input1,
                        const framework::Tensor& input2,
                        framework::Tensor* output,
+                       Functor functor,
                        const std::vector<int>& dims) {
   auto x = EigenTensor<T, D>::From(input0);
   auto x_grad = EigenTensor<T, D>::From(*output);
   auto x_rank = static_cast<int>(x.dimensions().size());
   auto x_dims = input0.dims();
-  auto reduced_dims_v = framework::vectorize(x_dims);
+  auto reduced_dims_v = phi::vectorize(x_dims);
   std::vector<int> dims_ref = dims;
   Eigen::array<int, D> broadcast_dim;
   for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;
@@ -94,14 +105,18 @@ void ReduceGradFunctor(const DeviceContext& context,
     broadcast_dim[dims_ref[i]] = x_dims[dims_ref[i]];
     broad_cats_times *= x_dims[dims_ref[i]];
   }
-  auto reduced_dims = framework::make_ddim(reduced_dims_v);
+  auto reduced_dims = phi::make_ddim(reduced_dims_v);
   auto x_reduce = EigenTensor<T, D>::From(input1, reduced_dims);
   auto x_reduce_grad = EigenTensor<T, D>::From(input2, reduced_dims);
 
   auto& place = *context.eigen_device();
 
-  Functor functor;
-  functor(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
+  functor(place,
+          &x,
+          &x_reduce,
+          &x_grad,
+          &x_reduce_grad,
+          broadcast_dim,
           broad_cats_times);
 }
 

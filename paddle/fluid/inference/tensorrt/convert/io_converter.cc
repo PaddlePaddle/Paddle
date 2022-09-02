@@ -13,21 +13,24 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/io_converter.h"
+
 #include <cuda.h>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-using platform::is_gpu_place;
 using platform::is_cpu_place;
+using platform::is_gpu_place;
 
 class DefaultIOConverter : public EngineIOConverter {
  public:
   DefaultIOConverter() {}
   // NOTE out is GPU memory.
-  virtual void operator()(const LoDTensor& in, void* out,
+  virtual void operator()(const LoDTensor& in,
+                          void* out,
                           size_t max_size) override {
     PADDLE_ENFORCE_NOT_NULL(out,
                             platform::errors::InvalidArgument(
@@ -39,18 +42,21 @@ class DefaultIOConverter : public EngineIOConverter {
     const auto& place = in.place();
     size_t size = in.memory_size();
     PADDLE_ENFORCE_LE(
-        size, max_size,
+        size,
+        max_size,
         platform::errors::InvalidArgument(
             "The input Tensor in's memory_size shoule be less than or equal to "
             "the input max_size. But in's memory_size = %u, max_size = %u.",
-            size, max_size));
+            size,
+            max_size));
     if (is_cpu_place(place)) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpyAsync(
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
           out, in.data<float>(), size, cudaMemcpyHostToDevice, *stream_));
     } else if (is_gpu_place(place)) {
       PADDLE_ENFORCE_EQ(
-          0, cudaMemcpyAsync(out, in.data<float>(), size,
-                             cudaMemcpyDeviceToDevice, *stream_),
+          0,
+          cudaMemcpyAsync(
+              out, in.data<float>(), size, cudaMemcpyDeviceToDevice, *stream_),
           platform::errors::External(
               "cudaMemcpyAsync(cudaMemcpyDeviceToDevice) error."));
     } else {
@@ -59,7 +65,8 @@ class DefaultIOConverter : public EngineIOConverter {
     cudaStreamSynchronize(*stream_);
   }
   // NOTE in is GPU memory.
-  virtual void operator()(const void* in, LoDTensor* out,
+  virtual void operator()(const void* in,
+                          LoDTensor* out,
                           size_t max_size) override {
     PADDLE_ENFORCE_NOT_NULL(in,
                             platform::errors::InvalidArgument(
@@ -71,21 +78,26 @@ class DefaultIOConverter : public EngineIOConverter {
     const auto& place = out->place();
     size_t size = out->memory_size();
     PADDLE_ENFORCE_LE(
-        size, max_size,
+        size,
+        max_size,
         platform::errors::InvalidArgument(
             "The input Tensor out's memory_size shoule be less than or equal "
             "to the input max_size. "
             "But out's memory_size = %u, max_size = %u.",
-            size, max_size));
+            size,
+            max_size));
     if (is_cpu_place(place)) {
-      PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(out->data<float>(), in, size,
-                                           cudaMemcpyDeviceToHost, *stream_),
-                        platform::errors::External(
-                            "cudaMemcpyAsync(cudaMemcpyDeviceToHost) error."));
+      PADDLE_ENFORCE_EQ(
+          0,
+          cudaMemcpyAsync(
+              out->data<float>(), in, size, cudaMemcpyDeviceToHost, *stream_),
+          platform::errors::External(
+              "cudaMemcpyAsync(cudaMemcpyDeviceToHost) error."));
     } else if (is_gpu_place(place)) {
       PADDLE_ENFORCE_EQ(
-          0, cudaMemcpyAsync(out->data<float>(), in, size,
-                             cudaMemcpyDeviceToDevice, *stream_),
+          0,
+          cudaMemcpyAsync(
+              out->data<float>(), in, size, cudaMemcpyDeviceToDevice, *stream_),
           platform::errors::External(
               "cudaMemcpyAsync(cudaMemcpyDeviceToDevice) error."));
     } else {

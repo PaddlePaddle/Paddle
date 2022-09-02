@@ -13,8 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/one_hot_op.h"
-
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -43,7 +42,8 @@ class OneHotNPUKernel : public framework::OpKernel<T> {
     out->mutable_data<float>(ctx.GetPlace());
 
     float on_value = 1.0f, off_value = 0.0f;
-    if (in->type() == framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(in->dtype()) ==
+        framework::proto::VarType::INT32) {
       NpuOpRunner runner;
       runner.SetType("OneHot")
           .AddInput(*in)
@@ -56,8 +56,8 @@ class OneHotNPUKernel : public framework::OpKernel<T> {
     } else {
       Tensor transformed_in;
       transformed_in.mutable_data<int32_t>(in->dims(), dev_ctx.GetPlace());
-      const auto& cast_runner = NpuOpRunner("Cast", {*in}, {transformed_in},
-                                            {{"dst_type", ACL_INT32}});
+      const auto& cast_runner = NpuOpRunner(
+          "Cast", {*in}, {transformed_in}, {{"dst_type", ACL_INT32}});
       cast_runner.Run(dev_ctx.stream());
       NpuOpRunner runner;
       runner.SetType("OneHot")
@@ -78,5 +78,6 @@ class OneHotNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(one_hot, ops::OneHotNPUKernel<int32_t>,
+REGISTER_OP_NPU_KERNEL(one_hot,
+                       ops::OneHotNPUKernel<int32_t>,
                        ops::OneHotNPUKernel<int64_t>);

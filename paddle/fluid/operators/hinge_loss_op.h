@@ -58,8 +58,8 @@ class HingeLossGradKernel : public framework::OpKernel<T> {
     if (dpred) {
       dpred->mutable_data<T>(context.GetPlace());
       auto dx = framework::EigenVector<T>::Flatten(*dpred);
-      EigenHingeLossGrad<std::decay_t<decltype(place)>, T>::Eval(place, dx, dl,
-                                                                 x, y);
+      EigenHingeLossGrad<std::decay_t<decltype(place)>, T>::Eval(
+          place, dx, dl, x, y);
     }
   }
 };

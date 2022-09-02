@@ -1,0 +1,151 @@
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+syntax = "proto2";
+package paddle.jit.proto;
+
+message TensorProto {
+  enum DataType {
+    UNDEFINED = 0;
+    BOOL = 1;    // bool
+
+    UINT8 = 2;   // uint8_t
+    INT8 = 3;    // int8_t
+    UINT16 = 4;  // uint16_t
+    INT16 = 5;   // int16_t
+    UINT32 = 6; // uint32_t
+    INT32 = 7;   // int32_t
+    UINT64 = 8; // uint64_t
+    INT64 = 9;   // int64_t
+
+    FLOAT = 10;   // float
+    DOUBLE = 11;
+
+    COMPLEX64 = 12;     // complex with float32 real and imaginary components
+    COMPLEX128 = 13;    // complex with float64 real and imaginary components
+
+    STRING = 14;  // string
+
+    // IEEE754 half-precision floating-point format (16 bits wide).
+    // This format has 1 sign bit, 5 exponent bits, and 10 mantissa bits.
+    FLOAT16 = 15;
+
+    // Non-IEEE floating-point format based on IEEE754 single-precision
+    // floating-point number truncated to 16 bits.
+    // This format has 1 sign bit, 8 exponent bits, and 7 mantissa bits.
+    BFLOAT16 = 16;
+
+    // Future extensions go here.
+  }
+
+  optional bool stop_gradient = 1;
+
+  // The shape of the tensor.
+  repeated int64 dims = 2;
+
+  // The data type of the tensor.
+  optional int32 data_type = 3;
+
+  // Tensor content must be organized in row-major order.
+  // For float and complex64 values
+  // Complex64 tensors are encoded as a single array of floats,
+  // with the real components appearing in odd numbered positions,
+  // and the corresponding imaginary component appearing in the
+  // subsequent even numbered position. (e.g., [1.0 + 2.0i, 3.0 + 4.0i]
+  // is encoded as [1.0, 2.0 ,3.0 ,4.0]
+  // When this field is present, the data_type field MUST be FLOAT or COMPLEX64.
+  repeated float float_data = 4 [packed = true];
+
+  // For int32, uint8, int8, uint16, int16, bool, and float16 values
+  // float16 values must be bit-wise converted to an uint16_t prior
+  // to writing to the buffer.
+  // When this field is present, the data_type field MUST be
+  // INT32, INT16, INT8, UINT16, UINT8, BOOL, or FLOAT16
+  repeated int32 int32_data = 5 [packed = true];
+
+  // For strings.
+  // Each element of string_data is a UTF-8 encoded Unicode
+  // string. No trailing null, no leading BOM. The protobuf "string"
+  // scalar type is not used to match ML community conventions.
+  // When this field is present, the data_type field MUST be STRING
+  repeated bytes string_data = 6;
+
+  // For int64.
+  // When this field is present, the data_type field MUST be INT64
+  repeated int64 int64_data = 7 [packed = true];
+  
+  // For double
+  // Complex128 tensors are encoded as a single array of doubles,
+  // with the real components appearing in odd numbered positions,
+  // and the corresponding imaginary component appearing in the
+  // subsequent even numbered position. (e.g., [1.0 + 2.0i, 3.0 + 4.0i]
+  // is encoded as [1.0, 2.0 ,3.0 ,4.0]
+  // When this field is present, the data_type field MUST be DOUBLE or COMPLEX128
+  repeated double double_data = 8 [packed = true];
+
+  // For uint64 and uint32 values
+  // When this field is present, the data_type field MUST be
+  // UINT32 or UINT64
+  repeated uint64 uint64_data = 9 [packed = true];
+
+  // Serializations can either use one of the fields above, or use this
+  // raw bytes field. The only exception is the string case, where one is
+  // required to store the content in the repeated bytes string_data field.
+  //
+  // When this raw_data field is used to store tensor value, elements MUST
+  // be stored in as fixed-width, little-endian order.
+  // Floating-point data types MUST be stored in IEEE 754 format.
+  // Complex64 elements must be written as two consecutive FLOAT values, real component first.
+  // Complex128 elements must be written as two consecutive DOUBLE values, real component first.
+  // Boolean type MUST be written one byte per tensor element (00000001 for true, 00000000 for false).
+  //
+  // Note: the advantage of specific field rather than the raw_data field is
+  // that in some cases (e.g. int data), protobuf does a better packing via
+  // variable length storage, and may lead to smaller binary footprint.
+  // When this field is present, the data_type field MUST NOT be STRING or UNDEFINED
+  optional bytes raw_data = 10;
+}
+
+message ValueProto {
+  enum AttributeType {
+    UNDEFINED = 0;
+    FLOAT = 1;
+    INT = 2;
+    STRING = 3;
+    TENSOR = 4;
+
+    FLOATS = 6;
+    INTS = 7;
+    STRINGS = 8;
+    TENSORS = 9;
+  }
+  optional string name = 1;           
+  
+  optional AttributeType type = 2;   // discriminator that indicates which field below is in use
+  
+  // Exactly ONE of the following fields must be present
+  optional float f = 3;               // float
+  optional int64 i = 4;               // int
+  optional bytes s = 5;               // UTF-8 string
+  optional TensorProto t = 6;         // tensor value
+  
+  repeated float floats = 7;          // list of floats
+  repeated int64 ints = 8;            // list of ints
+  repeated bytes strings = 9;         // list of UTF-8 strings
+  repeated TensorProto tensors = 10;  // list of tensors
+}
+
+message PropertyVals {
+  repeated ValueProto entrys=1;  
+}

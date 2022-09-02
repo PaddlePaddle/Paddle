@@ -64,7 +64,8 @@ class SimilarityFocusOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), 4,
+        x_dims.size(),
+        4,
         platform::errors::InvalidArgument(
             "The dimension size of Input(X) be 4, but received %d.",
             x_dims.size()));
@@ -86,8 +87,11 @@ class SimilarityFocusOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    similarity_focus, ops::SimilarityFocusOp, ops::SimilarityFocusOpMaker,
+    similarity_focus,
+    ops::SimilarityFocusOp,
+    ops::SimilarityFocusOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(similarity_focus, ops::SimilarityFocusKernel<float>,
+REGISTER_OP_CPU_KERNEL(similarity_focus,
+                       ops::SimilarityFocusKernel<float>,
                        ops::SimilarityFocusKernel<double>);

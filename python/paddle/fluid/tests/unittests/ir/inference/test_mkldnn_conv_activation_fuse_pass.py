@@ -18,36 +18,35 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import AnalysisConfig
 from paddle.fluid.core import PassVersionChecker
 
 
 class ConvActivationMkldnnFusePassTest(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 100, 100], dtype="float32")
-            conv_out = fluid.layers.conv2d(
-                data,
-                num_filters=self.conv_num_filters,
-                filter_size=self.conv_filter_size,
-                bias_attr=self.conv_bias_attr,
-                act=self.act)
+            data = fluid.data(name="data",
+                              shape=[-1, 3, 100, 100],
+                              dtype="float32")
+            conv_out = fluid.layers.conv2d(data,
+                                           num_filters=self.conv_num_filters,
+                                           filter_size=self.conv_filter_size,
+                                           bias_attr=self.conv_bias_attr,
+                                           act=self.act)
 
         self.feeds = {
             "data": np.random.random((1, 3, 100, 100)).astype("float32")
         }
         self.fetch_list = [conv_out]
         self.enable_mkldnn = True
+        self.pass_name = 'conv_activation_mkldnn_fuse_pass'
 
     def set_params(self):
         self.conv_num_filters = 3
         self.conv_filter_size = 3
         self.conv_bias_attr = False
         self.act = "relu"
-        self.pass_name = 'conv_relu_mkldnn_fuse_pass'
 
     def test_check_output(self):
         use_gpu = False
@@ -58,48 +57,66 @@ class ConvActivationMkldnnFusePassTest(InferencePassTest):
 
 
 class ConvActivationMkldnnFusePassTest_1(ConvActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.conv_num_filters = 5
         self.conv_filter_size = 5
         self.conv_bias_attr = True
         self.act = "relu"
-        self.pass_name = 'conv_relu_mkldnn_fuse_pass'
 
 
 class ConvActivationMkldnnFusePassTest_2(ConvActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.conv_num_filters = 3
         self.conv_filter_size = 3
         self.conv_bias_attr = False
         self.act = "leaky_relu"
-        self.pass_name = 'conv_leaky_relu_mkldnn_fuse_pass'
 
 
 class ConvActivationMkldnnFusePassTest_3(ConvActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.conv_num_filters = 5
         self.conv_filter_size = 5
         self.conv_bias_attr = True
         self.act = "leaky_relu"
-        self.pass_name = 'conv_leaky_relu_mkldnn_fuse_pass'
 
 
 class ConvActivationMkldnnFusePassTest_4(ConvActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.conv_num_filters = 3
         self.conv_filter_size = 3
         self.conv_bias_attr = False
         self.act = "relu6"
-        self.pass_name = 'conv_relu6_mkldnn_fuse_pass'
 
 
 class ConvActivationMkldnnFusePassTest_5(ConvActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.conv_num_filters = 5
         self.conv_filter_size = 5
         self.conv_bias_attr = True
         self.act = "hard_swish"
-        self.pass_name = 'conv_hard_swish_mkldnn_fuse_pass'
+
+
+class ConvActivationMkldnnFusePassTest_6(ConvActivationMkldnnFusePassTest):
+
+    def set_params(self):
+        self.conv_num_filters = 5
+        self.conv_filter_size = 5
+        self.conv_bias_attr = True
+        self.act = "mish"
+
+
+class ConvHardSigmoidOneDNNFusePassTest(ConvActivationMkldnnFusePassTest):
+
+    def set_params(self):
+        self.conv_num_filters = 5
+        self.conv_filter_size = 5
+        self.conv_bias_attr = True
+        self.act = "hard_sigmoid"
 
 
 if __name__ == "__main__":

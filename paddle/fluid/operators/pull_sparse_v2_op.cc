@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/pull_sparse_v2_op.h"
+
 #include <string>
 
 namespace paddle {
@@ -22,10 +23,12 @@ class PullSparseV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_GE(ctx->Inputs("Ids").size(), 1UL,
+    PADDLE_ENFORCE_GE(ctx->Inputs("Ids").size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "Input(Ids) of PullSparseV2Op can not be null"));
-    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
+    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "Output(Out) of PullSparseV2Op can not be null"));
 
@@ -37,9 +40,9 @@ class PullSparseV2Op : public framework::OperatorWithKernel {
     outs_dims.resize(n_ids);
     for (size_t i = 0; i < n_ids; ++i) {
       const auto ids_dims = all_ids_dim[i];
-      auto out_dim = framework::vectorize(ids_dims);
+      auto out_dim = phi::vectorize(ids_dims);
       out_dim.push_back(hidden_size);
-      outs_dims[i] = framework::make_ddim(out_dim);
+      outs_dims[i] = phi::make_ddim(out_dim);
     }
     ctx->SetOutputsDim("Out", outs_dims);
     for (size_t i = 0; i < n_ids; ++i) {
@@ -127,7 +130,9 @@ class PushSparseV2Op : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(pull_sparse_v2, ops::PullSparseV2Op, ops::PullSparseV2OpMaker,
+REGISTER_OPERATOR(pull_sparse_v2,
+                  ops::PullSparseV2Op,
+                  ops::PullSparseV2OpMaker,
                   ops::PushSparseV2OpMaker<paddle::framework::OpDesc>,
                   ops::PushSparseV2OpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_sparse_v2, ops::PushSparseV2Op);

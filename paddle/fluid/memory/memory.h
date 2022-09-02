@@ -16,3 +16,4 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/memory/stats.h"

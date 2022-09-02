@@ -16,6 +16,10 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/parallel_context.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -41,8 +45,11 @@ class GLOOParallelContext : public ParallelContext {
   void InitWithRingID(int ring_id) override;
 
   void AllReduceByStream(const framework::Variable& src,
-                         framework::Variable* dst, int ring_id,
+                         framework::Variable* dst,
+                         int ring_id,
                          bool use_calc_stream) override;
+
+  void Broadcast(framework::Variable* src, int ring_id) override;
 
   paddle::platform::DeviceContext* GetDeviceContext(int ring_id) override;
 
@@ -53,7 +60,11 @@ class GLOOParallelContext : public ParallelContext {
   void SynchronizeCompute() override;
 
  private:
-  std::unique_ptr<platform::CPUDeviceContext> device_;
+  void AllReduce(const framework::Tensor& src, framework::Tensor* dst);
+  void AllReduce(const phi::SelectedRows& src, phi::SelectedRows* dst);
+
+ private:
+  std::unique_ptr<phi::CPUContext> device_;
 };
 
 }  //  namespace imperative

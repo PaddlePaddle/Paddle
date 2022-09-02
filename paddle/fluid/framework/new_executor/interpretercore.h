@@ -19,13 +19,14 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/new_executor/event_manager.h"
-#include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
 #include "paddle/fluid/framework/new_executor/stream_analyzer.h"
-#include "paddle/fluid/framework/new_executor/workqueue.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -34,73 +35,132 @@
 
 namespace paddle {
 namespace framework {
-using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
 
 class InterpreterCore {
  public:
-  InterpreterCore(const platform::Place& place, const ProgramDesc& main_prog,
-                  VariableScope* global_scope,
-                  const std::vector<std::string>& feed_names,
-                  const std::vector<std::string>& fetch_names);
+  InterpreterCore(const platform::Place& place,
+                  const BlockDesc& block,
+                  const std::set<std::string>& skip_gc_vars,
+                  Scope* scope,
+                  bool used_for_jit = false);
+
+  ~InterpreterCore();
+
+  interpreter::CostInfo DryRun(
+      const std::vector<std::string>& feed_names,
+      const std::vector<framework::LoDTensor>& feed_tensors);
 
   paddle::framework::FetchList Run(
-      const std::vector<framework::Tensor>& feed_tensors);
+      const std::vector<std::string>& feed_names,
+      const std::vector<framework::LoDTensor>& feed_tensors);
 
-  const CostInfo& DryRun(const std::vector<framework::Tensor>& feed_tensors);
+  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
+
+  void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
+
+  void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
+
+  void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
+
+  const VariableScope* GetVariableScope() const;
+
+  void reset_scope(Scope* new_scope);
 
  private:
-  void Convert();
+  bool BuildInplaceCheckVarIsOnlyInput(size_t var_index);
 
-  void BuildAndCacheInstructionCtx(Instruction* instr_node,
-                                   const VariableScope& var_scope,
-                                   const platform::Place& place);
+  std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
+
+  void BuildAndCacheInstructionCtx(Instruction* instr_node);
 
   void BuildInplace();
 
+  void BuildOperatorDependences();
+
+  void ClearLoDTensorArrayInLocalScope();
+
+  void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
+
   void RunInstruction(const Instruction& instr_node);
 
-  void ExecuteInstructionList(const std::vector<Instruction>& vec_instr,
-                              bool is_dry_run = false);
+  void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
 
-  void DryRunPrepare(const std::vector<framework::Tensor>& feed_tensors);
+  void Prepare(const std::vector<std::string>& feed_names,
+               const std::vector<framework::LoDTensor>& feed_tensors,
+               bool prepare_feed);
 
-  void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list,
-               AtomicVectorSizeT* working_var_ref);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void RecordStreamForGC(const Instruction& instr);
+#endif
+
+  void CheckGC(const Instruction& instr,
+               std::vector<std::atomic<size_t>>* atomic_var_ref);
 
   void RunInstructionAsync(size_t instr_id,
-                           AtomicVectorSizeT* working_dependecy_count,
-                           AtomicVectorSizeT* working_var_ref,
-                           std::atomic<size_t>* op_run_number, bool is_dry_run);
-  void AddFetch(const std::vector<std::string>& fetch_names);
+                           std::vector<std::atomic<size_t>>* atomic_deps,
+                           std::vector<std::atomic<size_t>>* atomic_var_ref);
+  void RunNextInstructions(const Instruction& instr_id,
+                           std::queue<size_t>* reserved_next_ops,
+                           std::vector<std::atomic<size_t>>* atomic_deps,
+                           std::vector<std::atomic<size_t>>* atomic_var_ref);
 
   void BuildSkipShareLoDInfo();
 
+  void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
+
   bool is_build_;
 
-  const platform::Place& place_;
-  ProgramDesc main_program_;
-  VariableScope* global_scope_;
+  platform::Place place_;
+  const BlockDesc& block_;  // not owned
+  std::set<std::string> skip_gc_vars_;
 
-  std::vector<Instruction> vec_instruction_;
-  InstructionInfo instruction_info_;
-  std::vector<size_t> dependecy_count_;
-  std::vector<std::vector<size_t>> input_var2op_info_;
-  std::vector<VariableMetaInfo> ref_coun_info_;
+  interpreter::DependencyBuilder dependency_builder_;
+
+  // NOTE(zhiqiu): when add fetch ops in GetInterpreterCore, we will
+  // copy a new program and block, the copy_program_ here is used to
+  // hold the program, otherwise block_ maybe not valid after the
+  // new program is deleted.
+  std::shared_ptr<ProgramDesc> copy_program_{nullptr};
+
+  // from variable scope
+  std::vector<Variable*> var_list_;
+  std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
 
-  std::vector<paddle::framework::OpFuncNode> vec_func_list_;
-  std::vector<paddle::framework::OperatorBase*> op_list_;
+  std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
-  std::vector<std::string> feed_names_;
+  // last_live_ops_[i] contains the id of operatos that last access var[i]
+  std::map<size_t, std::set<size_t>> last_live_ops_;
 
-  InterpreterProfiler dry_run_profiler_;
+  std::vector<size_t> dependecy_count_;
+  std::atomic<size_t> unfinished_op_numer_{0};
+  std::vector<std::vector<size_t>> input_var2op_info_;
+
+  VariableScope var_scope_;
+  bool create_local_scope_{true};
+  Scope* local_scope_{nullptr};  // not owned
+
   StreamAnalyzer stream_analyzer_;
-  EventManager event_manager_;
-  interpretercore::AsyncWorkQueue async_work_queue_;
+  EventsWaiter main_thread_blocker_;
+  std::shared_ptr<interpreter::AsyncWorkQueue> async_work_queue_;
+  details::ExceptionHolder exception_holder_;
+  std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
+  std::shared_ptr<EventsWaiter::EventNotifier> completion_notifier_{nullptr};
 
-  InterpreterCoreGarbageCollector gc_;
-  std::vector<paddle::platform::DeviceEvent> gc_event_;
-  std::unique_ptr<WorkQueueGroup> group_thread_pool_;
+  std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
+
+  std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_deps_;
+  std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_var_ref_;
+
+  bool used_for_jit_{false};
 };
+
+std::shared_ptr<InterpreterCore> CreateInterpreterCore(
+    const platform::Place& place,
+    const ProgramDesc& prog,
+    Scope* global_scope,
+    const std::vector<std::string>& fetch_names = {},
+    const std::set<std::string>& skip_gc_vars = {});
+
 }  // namespace framework
 }  // namespace paddle

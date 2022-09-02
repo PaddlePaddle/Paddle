@@ -15,123 +15,97 @@ limitations under the License. */
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
-namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
-namespace platform {
-class MKLDNNDeviceContext;
-}  // namespace platform
-}  // namespace paddle
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace operators {
 
-using mkldnn::memory;
-using mkldnn::primitive;
-using mkldnn::reorder;
-using mkldnn::stream;
+using dnnl::memory;
+using dnnl::primitive;
+using dnnl::reorder;
+using dnnl::stream;
 using paddle::platform::MKLDNNDeviceContext;
 using platform::to_void_cast;
 
 template <typename T>
 class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
-                                   T, mkldnn::batch_normalization_forward,
-                                   mkldnn::batch_normalization_backward> {
+                                   T,
+                                   dnnl::batch_normalization_forward,
+                                   dnnl::batch_normalization_backward> {
  public:
   BatchNormMKLDNNHandler(const paddle::framework::ExecutionContext &ctx,
-                         const mkldnn::engine mkldnn_engine, const Tensor *x,
-                         const bool global_stats, const bool test_mode)
+                         const dnnl::engine mkldnn_engine,
+                         const Tensor *x,
+                         const bool global_stats,
+                         const bool test_mode)
       : platform::MKLDNNHandlerNoCachingT<T,
-                                          mkldnn::batch_normalization_forward,
-                                          mkldnn::batch_normalization_backward>(
+                                          dnnl::batch_normalization_forward,
+                                          dnnl::batch_normalization_backward>(
             mkldnn_engine, ctx.GetPlace()) {
     const float epsilon = ctx.Attr<float>("epsilon");
     const bool fuse_with_relu = ctx.HasAttr("fuse_with_relu")
                                     ? ctx.Attr<bool>("fuse_with_relu")
                                     : false;
 
-    std::vector<std::string> DataLayout_error_msg = {"kNHWC", "kNCHW",
-                                                     "kAnyLayout", "kMKLDNN"};
-    PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument(
-            "Wrong layout set for X tensor. Expected layout is `kMKLDNN`, "
-            "But received %s.",
-            DataLayout_error_msg[static_cast<int>(DataLayout::kMKLDNN)]));
-    PADDLE_ENFORCE_NE(
-        x->format(), MKLDNNMemoryFormat::undef,
-        platform::errors::InvalidArgument("Wrong format set for X tensor"));
-
-    auto src_tz = paddle::framework::vectorize(x->dims());
+    std::vector<std::string> DataLayout_error_msg = {
+        "kNHWC", "kNCHW", "kAnyLayout", "kMKLDNN"};
 
     // Flags are added by bitwise OR operation
-    auto flags = mkldnn::normalization_flags::use_scale_shift;  // 001
+    auto flags = dnnl::normalization_flags::use_scale_shift;  // 001
     if (global_stats)
-      flags |= mkldnn::normalization_flags::use_global_stats;  // 010
+      flags |= dnnl::normalization_flags::use_global_stats;  // 010
     if (fuse_with_relu && test_mode)
-      flags |= mkldnn::normalization_flags::fuse_norm_relu;  // 100
-
-    auto md = mkldnn::memory::desc(
-        src_tz, platform::MKLDNNGetDataType<T>(),
-        platform::MKLDNNFormatForSize(src_tz.size(), x->format()));
+      flags |= dnnl::normalization_flags::fuse_norm_relu;  // 100
 
     this->AcquireForwardPrimitiveDescriptor(
-        global_stats == true ? mkldnn::prop_kind::forward_scoring
-                             : mkldnn::prop_kind::forward_training,
-        md, epsilon, flags);
+        global_stats == true ? dnnl::prop_kind::forward_scoring
+                             : dnnl::prop_kind::forward_training,
+        x->mem_desc(),
+        epsilon,
+        flags);
   }
 
   BatchNormMKLDNNHandler(const paddle::framework::ExecutionContext &ctx,
-                         const mkldnn::engine mkldnn_engine, const Tensor *in_x,
-                         const Tensor *scale, const Tensor *out_grad)
+                         const dnnl::engine mkldnn_engine,
+                         const Tensor *in_x,
+                         const Tensor *scale,
+                         const Tensor *out_grad)
       : platform::MKLDNNHandlerNoCachingT<T,
-                                          mkldnn::batch_normalization_forward,
-                                          mkldnn::batch_normalization_backward>(
+                                          dnnl::batch_normalization_forward,
+                                          dnnl::batch_normalization_backward>(
             mkldnn_engine, ctx.GetPlace()) {
-    PADDLE_ENFORCE_EQ(out_grad->layout(), DataLayout::kMKLDNN,
-                      platform::errors::InvalidArgument(
-                          "Wrong layout set for Input out_grad tensor"));
-    PADDLE_ENFORCE_NE(out_grad->format(), MKLDNNMemoryFormat::undef,
-                      platform::errors::InvalidArgument(
-                          "Wrong format set for Input out_grad tensor"));
-
-    auto src_tz = paddle::framework::vectorize<int64_t>(in_x->dims());
-    auto scale_tz = paddle::framework::vectorize<int64_t>(scale->dims());
+    auto scale_tz = phi::vectorize<int64_t>(scale->dims());
     PADDLE_ENFORCE_EQ(
-        scale_tz.size(), 1,
+        scale_tz.size(),
+        1,
         platform::errors::InvalidArgument(
             "Dims of scale tensor must be 1, but received scale's size is %d",
             scale_tz.size()));
 
-    MKLDNNMemoryFormat diff_fmt =
-        platform::MKLDNNFormatForSize(src_tz.size(), out_grad->format());
-
-    MKLDNNMemoryFormat src_fmt =
-        platform::MKLDNNFormatForSize(src_tz.size(), in_x->format());
-
-    auto dims = framework::vectorize(in_x->dims());
-    auto diff_dst_md =
-        mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
-    auto src_md =
-        mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), src_fmt);
-
     const float epsilon = ctx.Attr<float>("epsilon");
 
     this->AcquireForwardPrimitiveDescriptor(
-        mkldnn::prop_kind::forward_training, src_md, epsilon,
-        mkldnn::normalization_flags::use_scale_shift);
+        dnnl::prop_kind::forward_training,
+        in_x->mem_desc(),
+        epsilon,
+        dnnl::normalization_flags::use_scale_shift);
     this->AcquireBackwardPrimitiveDescriptor(
-        mkldnn::prop_kind::backward, diff_dst_md, src_md, epsilon,
-        mkldnn::normalization_flags::use_scale_shift);
+        dnnl::prop_kind::backward,
+        out_grad->mem_desc(),
+        in_x->mem_desc(),
+        epsilon,
+        dnnl::normalization_flags::use_scale_shift);
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireScaleShiftMemory(const Tensor *scale,
-                                                          const Tensor *shift) {
-    auto scale_tz = paddle::framework::vectorize(scale->dims());
+  std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(const Tensor *scale,
+                                                        const Tensor *shift) {
+    auto scale_tz = phi::vectorize(scale->dims());
     const unsigned int C = scale_tz[0];
     PADDLE_ENFORCE_EQ(
-        scale_tz.size(), 1,
+        scale_tz.size(),
+        1,
         platform::errors::InvalidArgument(
             "Dims of scale tensor must be 1, but received scale's size is %d",
             scale_tz.size()));
@@ -147,34 +121,34 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
     return scaleshift_memory;
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireDiffScaleShiftMemory(
+  std::shared_ptr<dnnl::memory> AcquireDiffScaleShiftMemory(
       T *diff_scaleshift_data) {
     return this->AcquireMemoryFromPrimitive(this->bwd_pd_->diff_weights_desc(),
                                             diff_scaleshift_data);
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireMeanMemory(
+  std::shared_ptr<dnnl::memory> AcquireMeanMemory(
       const framework::Tensor *mean) {
     const T *mean_data = mean->data<T>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
                                             to_void_cast<T>(mean_data));
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireMeanMemory(framework::Tensor *mean) {
+  std::shared_ptr<dnnl::memory> AcquireMeanMemory(framework::Tensor *mean) {
     T *mean_data = mean->mutable_data<T>(this->place_,
                                          this->fwd_pd_->mean_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
                                             mean_data);
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireVarianceMemory(
+  std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
       const framework::Tensor *variance) {
     const T *variance_data = variance->data<T>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
                                             to_void_cast<T>(variance_data));
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireVarianceMemory(
+  std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
       framework::Tensor *variance) {
     T *variance_data = variance->mutable_data<T>(
         this->place_, this->fwd_pd_->variance_desc().get_size());
@@ -203,14 +177,12 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto *y = ctx.Output<Tensor>("Y");
     auto *batch_mean = ctx.Output<Tensor>("SavedMean");
     auto *batch_variance = ctx.Output<Tensor>("SavedVariance");
-
-    BatchNormMKLDNNHandler<T> handler(ctx, mkldnn_engine, x, global_stats,
-                                      test_mode);
+    BatchNormMKLDNNHandler<T> handler(
+        ctx, mkldnn_engine, x, global_stats, test_mode);
 
     auto src_memory = handler.AcquireSrcMemory(x);
     auto scaleshift_memory = handler.AcquireScaleShiftMemory(scale, shift);
     auto dst_memory = handler.AcquireDstMemory(y);
-
     auto batch_norm_p = handler.AcquireForwardPrimitive();
 
     std::shared_ptr<memory> mean_memory;
@@ -229,16 +201,15 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       variance_memory = handler.AcquireVarianceMemory(batch_variance);
     }
 
-    y->set_layout(DataLayout::kMKLDNN);
-    y->set_format(platform::GetMKLDNNFormat(*dst_memory));
+    y->set_mem_desc(dst_memory->get_desc());
 
     auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     batch_norm_p->execute(astream,
-                          {{MKLDNN_ARG_SRC, *src_memory},
-                           {MKLDNN_ARG_SCALE_SHIFT, *scaleshift_memory},
-                           {MKLDNN_ARG_MEAN, *mean_memory},
-                           {MKLDNN_ARG_VARIANCE, *variance_memory},
-                           {MKLDNN_ARG_DST, *dst_memory}});
+                          {{DNNL_ARG_SRC, *src_memory},
+                           {DNNL_ARG_SCALE_SHIFT, *scaleshift_memory},
+                           {DNNL_ARG_MEAN, *mean_memory},
+                           {DNNL_ARG_VARIANCE, *variance_memory},
+                           {DNNL_ARG_DST, *dst_memory}});
     astream.wait();
 
     if (!global_stats) {
@@ -246,7 +217,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto *variance_out = ctx.Output<Tensor>("VarianceOut");
       const float momentum = ctx.Attr<float>("momentum");
 
-      const unsigned int C = paddle::framework::vectorize(scale->dims())[0];
+      const unsigned int C = phi::vectorize(scale->dims())[0];
 
       // mkldnn only compute stats for current batch
       // so we need compute momentum stats via Eigen lib
@@ -288,7 +259,7 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     BatchNormMKLDNNHandler<T> handler(ctx, mkldnn_engine, x, scale, diff_y);
 
     // MKLDNN requires a single piece of memory for scale and shift/bias data
-    const unsigned int C = paddle::framework::vectorize(scale->dims())[0];
+    const unsigned int C = phi::vectorize(scale->dims())[0];
     const size_t scaleshift_size = 2 * C;
     std::vector<T> diff_scaleshift_data;
     diff_scaleshift_data.reserve(scaleshift_size);
@@ -301,19 +272,19 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto diff_src_memory = handler.AcquireDiffSrcMemory(diff_x);
     auto diff_scaleshift_memory =
         handler.AcquireDiffScaleShiftMemory(diff_scaleshift_data.data());
-
     // finally create batch_norm backward primitive
     auto batch_norm_bwd_p = handler.AcquireBackwardPrimitive();
 
     auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     batch_norm_bwd_p->execute(
-        astream, {{MKLDNN_ARG_SRC, *src_memory},
-                  {MKLDNN_ARG_MEAN, *mean_memory},
-                  {MKLDNN_ARG_VARIANCE, *variance_memory},
-                  {MKLDNN_ARG_DIFF_DST, *diff_dst_memory},
-                  {MKLDNN_ARG_SCALE_SHIFT, *scaleshift_memory},
-                  {MKLDNN_ARG_DIFF_SRC, *diff_src_memory},
-                  {MKLDNN_ARG_DIFF_SCALE_SHIFT, *diff_scaleshift_memory}});
+        astream,
+        {{DNNL_ARG_SRC, *src_memory},
+         {DNNL_ARG_MEAN, *mean_memory},
+         {DNNL_ARG_VARIANCE, *variance_memory},
+         {DNNL_ARG_DIFF_DST, *diff_dst_memory},
+         {DNNL_ARG_SCALE_SHIFT, *scaleshift_memory},
+         {DNNL_ARG_DIFF_SRC, *diff_src_memory},
+         {DNNL_ARG_DIFF_SCALE_SHIFT, *diff_scaleshift_memory}});
     astream.wait();
 
     T *diff_scale_data = diff_scale->mutable_data<T>(ctx.GetPlace());
@@ -323,19 +294,22 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     diff_scaleshift_data.resize(scaleshift_size);
     auto it = std::begin(diff_scaleshift_data);
     std::copy(it, std::next(it, C), diff_scale_data);
-    std::copy(std::next(it, C), std::end(diff_scaleshift_data),
-              diff_shift_data);
+    std::copy(
+        std::next(it, C), std::end(diff_scaleshift_data), diff_shift_data);
 
-    // set layout/format of output tensors
-    diff_x->set_layout(DataLayout::kMKLDNN);
-    diff_x->set_format(platform::GetMKLDNNFormat(*diff_src_memory));
+    // set memory descriptor of out tensor
+    diff_x->set_mem_desc(diff_src_memory->get_desc());
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(batch_norm, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(batch_norm,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::BatchNormMKLDNNOpKernel<float>);
-REGISTER_OP_KERNEL(batch_norm_grad, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(batch_norm_grad,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::BatchNormMKLDNNGradOpKernel<float>);

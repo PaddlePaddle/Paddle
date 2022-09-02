@@ -30,6 +30,7 @@ from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
 
 
 def fake_ctr_reader():
+
     def reader():
         for _ in range(1000):
             deep = np.random.random_integers(0, 1e10, size=16).tolist()
@@ -57,33 +58,29 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         """
         dnn_input_dim, lr_input_dim = 10, 10
 
-        dnn_data = fluid.layers.data(
-            name="dnn_data",
-            shape=[-1, 1],
-            dtype="int64",
-            lod_level=1,
-            append_batch_size=False)
-        lr_data = fluid.layers.data(
-            name="lr_data",
-            shape=[-1, 1],
-            dtype="int64",
-            lod_level=1,
-            append_batch_size=False)
-        label = fluid.layers.data(
-            name="click",
-            shape=[-1, 1],
-            dtype="int64",
-            lod_level=0,
-            append_batch_size=False)
+        dnn_data = fluid.layers.data(name="dnn_data",
+                                     shape=[-1, 1],
+                                     dtype="int64",
+                                     lod_level=1,
+                                     append_batch_size=False)
+        lr_data = fluid.layers.data(name="lr_data",
+                                    shape=[-1, 1],
+                                    dtype="int64",
+                                    lod_level=1,
+                                    append_batch_size=False)
+        label = fluid.layers.data(name="click",
+                                  shape=[-1, 1],
+                                  dtype="int64",
+                                  lod_level=0,
+                                  append_batch_size=False)
 
         datas = [dnn_data, lr_data, label]
 
         if args.reader == "pyreader":
-            self.reader = fluid.io.PyReader(
-                feed_list=datas,
-                capacity=64,
-                iterable=False,
-                use_double_buffer=False)
+            self.reader = fluid.io.PyReader(feed_list=datas,
+                                            capacity=64,
+                                            iterable=False,
+                                            use_double_buffer=False)
 
         # build dnn model
         initializer = int(os.getenv("INITIALIZER", "0"))
@@ -98,15 +95,16 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         else:
             raise ValueError("error initializer code: {}".format(initializer))
 
+        entry = paddle.distributed.ShowClickEntry("show", "click")
         dnn_layer_dims = [128, 64, 32]
         dnn_embedding = fluid.contrib.layers.sparse_embedding(
             input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
             is_test=inference,
-            param_attr=fluid.ParamAttr(
-                name="deep_embedding", initializer=init))
-        dnn_pool = fluid.layers.sequence_pool(
-            input=dnn_embedding, pool_type="sum")
+            entry=entry,
+            param_attr=fluid.ParamAttr(name="deep_embedding", initializer=init))
+        dnn_pool = fluid.layers.sequence_pool(input=dnn_embedding,
+                                              pool_type="sum")
         dnn_out = dnn_pool
         for i, dim in enumerate(dnn_layer_dims[1:]):
             fc = fluid.layers.fc(
@@ -123,6 +121,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             input=lr_data,
             size=[lr_input_dim, 1],
             is_test=inference,
+            entry=entry,
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
                 initializer=fluid.initializer.Constant(value=0.01)))
@@ -134,7 +133,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         acc = fluid.layers.accuracy(input=predict, label=label)
         auc_var, _, _ = fluid.layers.auc(input=predict, label=label)
         cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
 
         self.feeds = datas
         self.train_file_path = ["fake1", "fake2"]
@@ -167,8 +166,8 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                     loss_val = exe.run(program=fluid.default_main_program(),
                                        fetch_list=[self.avg_cost.name])
                     loss_val = np.mean(loss_val)
-                    print("TRAIN ---> pass: {} loss: {}\n".format(epoch_id,
-                                                                  loss_val))
+                    print("TRAIN ---> pass: {} loss: {}\n".format(
+                        epoch_id, loss_val))
             except fluid.core.EOFException:
                 self.reader.reset()
 
@@ -177,6 +176,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             fleet.save_inference_model(exe, model_dir,
                                        [feed.name for feed in self.feeds],
                                        self.avg_cost)
+            fleet.load_model(model_dir, mode=1)
 
 
 if __name__ == "__main__":

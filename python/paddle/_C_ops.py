@@ -13,9 +13,10 @@
 # limitations under the License.
 
 from paddle.fluid import core
+from .fluid import framework
 
 __all__ = []
 
-for name in dir(core.ops):
-    globals()[name] = getattr(core.ops, name)
+for name in dir(core.eager.ops):
+    globals()[name] = getattr(core.eager.ops, name)
     __all__.append(name)

@@ -10,10 +10,10 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the Licnse. */
+limitations under the License. */
 
-#include "paddle/fluid/operators/meshgrid_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -25,7 +25,8 @@ class MeshgridNPUKernel : public framework::OpKernel<T> {
     auto ins = context.MultiInput<framework::Tensor>("X");
     auto outs = context.MultiOutput<framework::Tensor>("Out");
     PADDLE_ENFORCE_EQ(
-        (ins.size() > 1) && (ins.size() < 7), true,
+        (ins.size() > 1) && (ins.size() < 7),
+        true,
         platform::errors::InvalidArgument(
             "Excepted Tensor numbers between 2 and 6, but only received d% .",
             ins.size()));
@@ -53,12 +54,12 @@ class MeshgridNPUKernel : public framework::OpKernel<T> {
       std::vector<int64_t> view_shape(size, 1);
       view_shape[i] = shape[i];
 
-      framework::DDim out_dims_reshape = framework::make_ddim(view_shape);
-      framework::Tensor reshape_ins_tensor(ins[i]->type());
+      framework::DDim out_dims_reshape = phi::make_ddim(view_shape);
+      framework::Tensor reshape_ins_tensor(ins[i]->dtype());
       reshape_ins_tensor.ShareDataWith(*ins[i]);
       reshape_ins_tensor.Resize(out_dims_reshape);
 
-      framework::DDim out_dims = framework::make_ddim(shape);
+      framework::DDim out_dims = phi::make_ddim(shape);
       outs[i]->Resize(out_dims);
       outs[i]->mutable_data<T>(context.GetPlace());
 
@@ -79,7 +80,8 @@ class MeshgridNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_NPU_KERNEL(
-    meshgrid, paddle::operators::MeshgridNPUKernel<int>,
+    meshgrid,
+    paddle::operators::MeshgridNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64
     paddle::operators::MeshgridNPUKernel<int64_t>,
 #endif

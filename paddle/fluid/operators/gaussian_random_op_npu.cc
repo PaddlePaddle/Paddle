@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include <random>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/fill_constant_op.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -35,7 +35,7 @@ class NPUGaussianRandomKernel : public framework::OpKernel<T> {
     auto* tensor = context.Output<framework::Tensor>("Out");
     tensor->mutable_data<T>(context.GetPlace());
 
-    Tensor cpu_tensor(tensor->type());
+    Tensor cpu_tensor(tensor->dtype());
     cpu_tensor.Resize(tensor->dims());
     T* cpu_data = cpu_tensor.mutable_data<T>(platform::CPUPlace());
     std::normal_distribution<T> dist(mean, std);
@@ -48,8 +48,10 @@ class NPUGaussianRandomKernel : public framework::OpKernel<T> {
       cpu_data[i] = dist(*engine);
     }
     framework::TensorCopy(
-        cpu_tensor, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), tensor);
+        cpu_tensor,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        tensor);
     context.template device_context<paddle::platform::NPUDeviceContext>()
         .Wait();
   }

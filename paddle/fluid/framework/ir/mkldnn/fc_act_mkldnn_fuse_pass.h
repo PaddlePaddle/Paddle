@@ -27,8 +27,8 @@ namespace ir {
  * \brief   Fuse the FC and activation operators into single OneDNN's
  *          FC with post-op.
  *
- * \note    Currently only GeLU, hardswish, sigmoid and tanh are supported as an
- * activation function.
+ * \note    Currently only GeLU, hardswish, sigmoid, mish and tanh are supported
+ * as an activation function.
  */
 class FuseFCActOneDNNPass : public FusePassBase {
  public:
@@ -42,4 +42,4 @@ class FuseFCActOneDNNPass : public FusePassBase {
 
 }  // namespace ir
 }  // namespace framework
-}  // namespace paddlea
+}  // namespace paddle

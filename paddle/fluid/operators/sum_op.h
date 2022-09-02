@@ -11,19 +11,21 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using SelectedRows = framework::SelectedRows;
+using SelectedRows = phi::SelectedRows;
 using LoDTensor = framework::LoDTensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
@@ -37,32 +39,34 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
     return;
   }
 
-  std::vector<const paddle::framework::SelectedRows *> inputs;
+  std::vector<const phi::SelectedRows *> inputs;
   SelectedRows temp_in0;
 
   if (in_place) {
-    auto &in0 = in_vars[0]->Get<SelectedRows>();
+    auto &in0 = in_vars[0]->Get<phi::SelectedRows>();
     temp_in0.set_height(in0.height());
     temp_in0.set_rows(in0.rows());
-    framework::TensorCopy(in0.value(), in0.place(), context.device_context(),
+    framework::TensorCopy(in0.value(),
+                          in0.place(),
+                          context.device_context(),
                           temp_in0.mutable_value());
     inputs.push_back(&temp_in0);
     for (size_t i = 1; i < in_vars.size(); ++i) {
-      auto &in = in_vars[i]->Get<SelectedRows>();
+      auto &in = in_vars[i]->Get<phi::SelectedRows>();
       if (in.rows().size() > 0) {
         inputs.push_back(&in);
       }
     }
   } else {
     for (auto &in_var : in_vars) {
-      auto &in = in_var->Get<SelectedRows>();
+      auto &in = in_var->Get<phi::SelectedRows>();
       if (in.rows().size() > 0) {
-        inputs.push_back(&in_var->Get<SelectedRows>());
+        inputs.push_back(&in_var->Get<phi::SelectedRows>());
       }
     }
   }
 
-  auto *out = context.Output<SelectedRows>("Out");
+  auto *out = context.Output<phi::SelectedRows>("Out");
   out->mutable_rows()->clear();
 
   bool has_data = false;
@@ -80,7 +84,7 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
 
   } else {
     // no data, just set a empty out tensor.
-    out->mutable_value()->mutable_data<T>(framework::make_ddim({0}),
+    out->mutable_value()->mutable_data<T>(phi::make_ddim({0}),
                                           context.GetPlace());
   }
 }
@@ -92,7 +96,8 @@ void LodTensorArrayCompute(const framework::ExecutionContext &context) {
   bool in_place = out_var == in_vars[0];
   auto &out_array = *out_var->GetMutable<framework::LoDTensorArray>();
   for (size_t i = in_place ? 1 : 0; i < in_vars.size(); ++i) {
-    PADDLE_ENFORCE_EQ(in_vars[i]->IsType<framework::LoDTensorArray>(), true,
+    PADDLE_ENFORCE_EQ(in_vars[i]->IsType<framework::LoDTensorArray>(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Only support all inputs are TensorArray, "
                           "but inputs[%d] is not TensorArray.",
@@ -105,16 +110,20 @@ void LodTensorArrayCompute(const framework::ExecutionContext &context) {
           out_array.resize(i + 1);
         }
         if (!out_array[i].IsInitialized() || (out_array[i].numel() == 0)) {
-          framework::TensorCopy(in_array[i], in_array[i].place(),
-                                context.device_context(), &out_array[i]);
+          framework::TensorCopy(in_array[i],
+                                in_array[i].place(),
+                                context.device_context(),
+                                &out_array[i]);
           out_array[i].set_lod(in_array[i].lod());
         } else {
           PADDLE_ENFORCE_EQ(
-              out_array[i].lod(), in_array[i].lod(),
+              out_array[i].lod(),
+              in_array[i].lod(),
               platform::errors::InvalidArgument(
                   "The lod message between inputs[%d] and"
                   " outputs[%d] must be same, but now is not same.",
-                  i, i));
+                  i,
+                  i));
           auto in = EigenVector<T>::Flatten(in_array[i]);
           auto result = EigenVector<T>::Flatten(out_array[i]);
           result.device(*context.template device_context<DeviceContext>()
@@ -129,6 +138,7 @@ template <typename DeviceContext, typename T>
 class SumKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+    VLOG(10) << "start sum kernel";
     auto in_vars = context.MultiInputVar("X");
     size_t in_num = in_vars.size();
     auto out_var = context.OutputVar("Out");
@@ -138,7 +148,8 @@ class SumKernel : public framework::OpKernel<T> {
     if (out_var->IsType<framework::LoDTensor>()) {
       auto *out = out_var->GetMutable<framework::LoDTensor>();
       auto *out_ptr = out->mutable_data<T>(context.GetPlace());
-      if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>()) {
+      if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>() &&
+          in_vars[0]->Get<framework::LoDTensor>().IsInitialized()) {
         auto &in_0_tensor = in_vars[0]->Get<framework::LoDTensor>();
         if (in_0_tensor.numel() > 0) {
           in_place = (in_0_tensor.data<T>() == out_ptr);
@@ -151,7 +162,9 @@ class SumKernel : public framework::OpKernel<T> {
       int start = in_place ? 1 : 0;
       if (!in_place) {
         if ((in_num >= 2) && in_vars[0]->IsType<framework::LoDTensor>() &&
-            in_vars[1]->IsType<framework::LoDTensor>()) {
+            in_vars[1]->IsType<framework::LoDTensor>() &&
+            in_vars[0]->Get<framework::LoDTensor>().IsInitialized() &&
+            in_vars[1]->Get<framework::LoDTensor>().IsInitialized()) {
           auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
           auto &in_1 = in_vars[1]->Get<framework::LoDTensor>();
           if (in_0.numel() && in_1.numel()) {
@@ -162,9 +175,11 @@ class SumKernel : public framework::OpKernel<T> {
           }
         }
         if (start != 2) {
-          math::SetConstant<DeviceContext, T> constant_functor;
+          VLOG(10) << "Fill with constant = 0 in sum kernel.";
+          phi::funcs::SetConstant<DeviceContext, T> constant_functor;
           constant_functor(context.template device_context<DeviceContext>(),
-                           out, static_cast<T>(0));
+                           out,
+                           static_cast<T>(0));
         }
       }
 
@@ -173,13 +188,13 @@ class SumKernel : public framework::OpKernel<T> {
       for (size_t i = start; i < in_num; i++) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
           auto &in_t = in_vars[i]->Get<framework::LoDTensor>();
-          if (in_t.numel() == 0) {
+          if (!in_t.IsInitialized() || in_t.numel() == 0) {
             continue;
           }
           auto in = EigenVector<T>::Flatten(in_t);
           result.device(place) = result + in;
-        } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
-          auto &in_t = in_vars[i]->Get<framework::SelectedRows>();
+        } else if (in_vars[i]->IsType<phi::SelectedRows>()) {
+          auto &in_t = in_vars[i]->Get<phi::SelectedRows>();
           functor(context.template device_context<DeviceContext>(), in_t, out);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
@@ -189,7 +204,7 @@ class SumKernel : public framework::OpKernel<T> {
               framework::ToTypeName(in_vars[i]->Type())));
         }
       }
-    } else if (out_var->IsType<framework::SelectedRows>()) {
+    } else if (out_var->IsType<phi::SelectedRows>()) {
       SelectedRowsCompute<DeviceContext, T>(context);
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
       LodTensorArrayCompute<DeviceContext, T>(context);
@@ -200,6 +215,7 @@ class SumKernel : public framework::OpKernel<T> {
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));
     }
+    VLOG(10) << "end sum kernel";
   }
 };
 }  // namespace operators

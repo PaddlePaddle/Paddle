@@ -19,6 +19,12 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_dropout_test.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(dropout, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(dropout_grad, GPU, ALL_LAYOUT);
+#endif
 
 /**
  * @brief The unit test of fused_layernorm_residual_dropout_bias
@@ -48,7 +54,7 @@ struct TestFusedLayernormResidualDropoutBias {
   std::vector<uint8_t> correct_mask;
 
   platform::CUDAPlace place;
-  platform::CUDADeviceContext *ctx;
+  phi::GPUContext *ctx;
 
   TestFusedLayernormResidualDropoutBias() {
     rows = 32;
@@ -63,15 +69,17 @@ struct TestFusedLayernormResidualDropoutBias {
     epsilon = 0.00001f;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
+    ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
 
-  TestFusedLayernormResidualDropoutBias(int _rows, int _cols,
+  TestFusedLayernormResidualDropoutBias(int _rows,
+                                        int _cols,
                                         uint64_t _seed = 0,
                                         float _dropout_prob = 0.0,
                                         float _epsilon = 0.00001f,
                                         bool _is_upscale_in_train = false,
-                                        bool _is_test = false) {
+                                        bool _is_test = false,
+                                        bool _has_bias = true) {
     rows = _rows;
     cols = _cols;
     seed = _seed;
@@ -79,12 +87,12 @@ struct TestFusedLayernormResidualDropoutBias {
     epsilon = _epsilon;
     is_upscale_in_train = _is_upscale_in_train;
     is_test = _is_test;
-    has_bias = true;
+    has_bias = _has_bias;
     has_scale = true;
     has_layernorm_bias = true;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
+    ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
 
   ~TestFusedLayernormResidualDropoutBias() {}
@@ -181,11 +189,25 @@ struct TestFusedLayernormResidualDropoutBias {
         }
       }
       // call dropout
-      Dropout<T>(out1, src.dims(), &out2, &correct_mask, *ctx, seed,
-                 dropout_prob, is_upscale_in_train, is_test);
+      Dropout<T>(out1,
+                 src.dims(),
+                 &out2,
+                 &correct_mask,
+                 *ctx,
+                 seed,
+                 dropout_prob,
+                 is_upscale_in_train,
+                 is_test);
     } else {
-      Dropout<T>(src_vec, src.dims(), &out2, &correct_mask, *ctx, seed,
-                 dropout_prob, is_upscale_in_train, is_test);
+      Dropout<T>(src_vec,
+                 src.dims(),
+                 &out2,
+                 &correct_mask,
+                 *ctx,
+                 seed,
+                 dropout_prob,
+                 is_upscale_in_train,
+                 is_test);
     }
     // add residual
     for (int i = 0; i < rows; i++) {
@@ -194,9 +216,15 @@ struct TestFusedLayernormResidualDropoutBias {
             residual_vec[i * cols + j] + out2[i * cols + j];
       }
     }
-
-    LayerNorm<T>(scale_vec, layernorm_bias_vec, correct_out, &correct_means,
-                 &correct_vars, &correct_layernorm_out, epsilon, rows, cols,
+    LayerNorm<T>(scale_vec,
+                 layernorm_bias_vec,
+                 correct_out,
+                 &correct_means,
+                 &correct_vars,
+                 &correct_layernorm_out,
+                 epsilon,
+                 rows,
+                 cols,
                  *ctx);
     ctx->Wait();
   }
@@ -223,11 +251,26 @@ struct TestFusedLayernormResidualDropoutBias {
       layernorm_bias_ptr = layernorm_bias.data<U>();
     }
 
-    paddle::operators::LaunchLayernormResidualDropoutBias<T, uint8_t>(
-        rows, cols, increment, seed, dropout_prob, epsilon, is_upscale_in_train,
-        is_test, src.data<T>(), residual.data<T>(), bias_ptr, scale_ptr,
-        layernorm_bias_ptr, mask.data<uint8_t>(), out.data<T>(),
-        layernorm_out.data<T>(), means.data<U>(), vars.data<U>(), *ctx);
+    paddle::operators::LaunchLayernormResidualDropoutBias<T, uint8_t, U, false>(
+        rows,
+        cols,
+        increment,
+        seed,
+        dropout_prob,
+        epsilon,
+        is_upscale_in_train,
+        is_test,
+        src.data<T>(),
+        residual.data<T>(),
+        bias_ptr,
+        scale_ptr,
+        layernorm_bias_ptr,
+        mask.data<uint8_t>(),
+        out.data<T>(),
+        layernorm_out.data<T>(),
+        means.data<U>(),
+        vars.data<U>(),
+        *ctx);
     ctx->Wait();
   }
 
@@ -283,7 +326,6 @@ static void BaseTest(const bool is_fp16 = false) {
     }
   }
 }
-
 TEST(FusedDropout, GPUFusedLayernormResidualDropoutBias) { BaseTest<float>(); }
 
 TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasDouble) {
@@ -308,8 +350,8 @@ TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasIsUpscaleInTrain) {
 TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasIsTest) {
   const int rows = 16;
   const int cols = 16;
-  TestFusedLayernormResidualDropoutBias<float> test(rows, cols, 0, 0.35,
-                                                    0.00001f, true, true);
+  TestFusedLayernormResidualDropoutBias<float> test(
+      rows, cols, 0, 0.35, 0.00001f, true, true);
   test.Run();
   test.CheckOut(static_cast<float>(1e-4));
 }
@@ -317,8 +359,8 @@ TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasIsTest) {
 TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasSeed) {
   const int rows = 16;
   const int cols = 16;
-  TestFusedLayernormResidualDropoutBias<float> test(rows, cols, 125, 0.0,
-                                                    0.00001f, false, false);
+  TestFusedLayernormResidualDropoutBias<float> test(
+      rows, cols, 125, 0.0, 0.00001f, false, false);
   test.Run();
   test.CheckOut(static_cast<float>(1e-4));
 }
@@ -329,4 +371,13 @@ TEST(FusedDropout, GPUFusedLayernormResidualDropoutLargeShape) {
   TestFusedLayernormResidualDropoutBias<float> test(rows, cols);
   test.Run();
   test.CheckOut(static_cast<float>(1e-4));
+}
+
+TEST(FusedDropout, GPUFusedLayernormResidualDropoutFp16MLperf) {
+  const int rows = 512;
+  const int cols = 1024;
+  TestFusedLayernormResidualDropoutBias<platform::float16> test(
+      rows, cols, 0, 0, 0.00001f, false, false, false);
+  test.Run();
+  test.CheckOut(static_cast<platform::float16>(1e-2));
 }

@@ -19,6 +19,7 @@ __all__ = []
 
 
 class ParameterServerGraphOptimizer(ParameterServerOptimizer):
+
     def __init__(self, optimizer):
         super(ParameterServerGraphOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
@@ -59,11 +60,10 @@ class ParameterServerGraphOptimizer(ParameterServerOptimizer):
 
         self._compiled_program = compiler.CompiledProgram(main_program)
 
-        self._compiled_program.with_data_parallel(
-            loss_name=loss.name,
-            build_strategy=build_strategy,
-            exec_strategy=exec_strategy,
-            share_vars_from=None)
+        self._compiled_program.with_data_parallel(loss_name=loss.name,
+                                                  build_strategy=build_strategy,
+                                                  exec_strategy=exec_strategy,
+                                                  share_vars_from=None)
 
         return self._compiled_program
 

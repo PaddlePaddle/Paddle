@@ -61,12 +61,15 @@ static int64_t GetMemorySize(
   PADDLE_ENFORCE_NOT_NULL(
       var_desc,
       platform::errors::NotFound("Var(%s) can not find VarDesc.", var_name));
-  PADDLE_ENFORCE_EQ(IsLoDTensor(var_desc), true,
+  PADDLE_ENFORCE_EQ(IsLoDTensor(var_desc),
+                    true,
                     platform::errors::InvalidArgument(
                         "Var(%s) must be LoDTensor.", var_name));
   auto dims = var_desc->GetShape();
   return SizeOfType(var_desc->GetDataType()) *
-         std::accumulate(dims.begin(), dims.end(), static_cast<int64_t>(1),
+         std::accumulate(dims.begin(),
+                         dims.end(),
+                         static_cast<int64_t>(1),
                          std::multiplies<int64_t>());
 }
 
@@ -75,8 +78,10 @@ static int64_t GetMemorySize(
 // Since partial GC is based on static analysis of memory size of each variable
 // So we should skip SelectedRows and LoDTensorArray here
 static void SplitIntoLoDTensorAndNonLoDTensorVars(
-    const OpToVarNameSetMap &m, const details::GraphVars &vars,
-    OpToVarNameSetMap *lod_tensors, OpToVarNameSetMap *other_vars) {
+    const OpToVarNameSetMap &m,
+    const details::GraphVars &vars,
+    OpToVarNameSetMap *lod_tensors,
+    OpToVarNameSetMap *other_vars) {
   lod_tensors->clear();
   other_vars->clear();
 
@@ -94,8 +99,10 @@ static void SplitIntoLoDTensorAndNonLoDTensorVars(
 }
 
 struct GCVarInfo {
-  GCVarInfo(const std::string &name, int64_t memory_size,
-            details::ComputationOpHandle *op, size_t scope_idx)
+  GCVarInfo(const std::string &name,
+            int64_t memory_size,
+            details::ComputationOpHandle *op,
+            size_t scope_idx)
       : name_(name),
         memory_size_(memory_size),
         op_(op),
@@ -112,8 +119,10 @@ struct GCVarInfo {
 
 // Delete delete_lod_tensor_only is not used currently
 static OpToVarNameSetMap ShrinkGCVars(
-    const OpToVarNameSetMap &m, const details::GraphVars &vars,
-    const std::vector<platform::Place> &places, double fraction_of_memory_size,
+    const OpToVarNameSetMap &m,
+    const details::GraphVars &vars,
+    const std::vector<platform::Place> &places,
+    double fraction_of_memory_size,
     bool delete_lod_tensor_only = false) {
   // Do not perform gc when fraction_of_memory_size = 0
   if (fraction_of_memory_size <= 0.0) return {};
@@ -160,7 +169,8 @@ static OpToVarNameSetMap ShrinkGCVars(
   for (auto &place_to_var_pair : place_to_vars) {
     auto &place = place_to_var_pair.first;
     auto &gc_vars = place_to_var_pair.second;
-    std::sort(gc_vars.begin(), gc_vars.end(),
+    std::sort(gc_vars.begin(),
+              gc_vars.end(),
               [](const GCVarInfo &var1, const GCVarInfo &var2) {
                 return var1.AbsMemorySize() > var2.AbsMemorySize();
               });
@@ -232,11 +242,16 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
     }
 
     auto *eager_deletion_op = new details::EagerDeletionOpHandle(
-        eager_deletion_node, op->GetScope(), op->GetScopeIdx(), op->GetPlace(),
-        std::move(var_info), gcs.at(places[op->GetScopeIdx()]).get());
+        eager_deletion_node,
+        op->GetScope(),
+        op->GetScopeIdx(),
+        op->GetPlace(),
+        std::move(var_info),
+        gcs.at(places[op->GetScopeIdx()]).get());
 
     auto it = std::find_if(
-        op->Outputs().begin(), op->Outputs().end(),
+        op->Outputs().begin(),
+        op->Outputs().end(),
         [](details::VarHandleBase *var) {
           return dynamic_cast<details::DummyVarHandle *>(var) != nullptr;
         });
@@ -285,6 +300,13 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
   auto recurrent_op_eager_deletion_pass =
       ir::PassRegistry::Instance().Get("recurrent_op_eager_deletion_pass");
   recurrent_op_eager_deletion_pass->Apply(graph);
+
+#ifdef PADDLE_WITH_CINN
+  auto share_varinfo_into_cinn_pass =
+      ir::PassRegistry::Instance().Get("share_varinfo_into_cinn_pass");
+  share_varinfo_into_cinn_pass->SetNotOwned(kMemOptVarInfoMapList, &var_infos);
+  share_varinfo_into_cinn_pass->Apply(graph);
+#endif
 }
 
 }  // namespace ir
@@ -300,3 +322,6 @@ REGISTER_PASS(eager_deletion_pass, paddle::framework::ir::EagerDeletionPass)
 USE_PASS(conditional_block_op_eager_deletion_pass);
 USE_PASS(while_op_eager_deletion_pass);
 USE_PASS(recurrent_op_eager_deletion_pass);
+#ifdef PADDLE_WITH_CINN
+USE_PASS(share_varinfo_into_cinn_pass);
+#endif

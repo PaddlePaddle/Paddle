@@ -32,7 +32,7 @@ class IsEmptyOpKernel : public framework::OpKernel<T> {
     // always be allocated for CPUPlace. We reigister CUDA kernel for this op to
     // avoid the unnecessary data transform.
     output_tensor->mutable_data<bool>(platform::CPUPlace())[0] =
-        framework::product(input_tensor->dims()) == 0;
+        phi::product(input_tensor->dims()) == 0;
   }
 };
 

@@ -16,6 +16,7 @@ from ...compiler import CompiledProgram
 
 
 class SerializableBase(object):
+
     def serialize(self, path):
         raise NotImplementedError
 
@@ -24,6 +25,7 @@ class SerializableBase(object):
 
 
 class PaddleModel(SerializableBase):
+
     def __init__(self, exe, program):
         self._exe = exe
         self._origin_program = program
@@ -35,22 +37,21 @@ class PaddleModel(SerializableBase):
 
     def serialize(self, path):
         from ...io import save_persistables
-        save_persistables(
-            executor=self._exe,
-            dirname=path,
-            main_program=self._program,
-            filename=self._file_name)
+        save_persistables(executor=self._exe,
+                          dirname=path,
+                          main_program=self._program,
+                          filename=self._file_name)
 
     def deserialize(self, path):
         from ...io import load_persistables
-        load_persistables(
-            executor=self._exe,
-            dirname=path,
-            main_program=self._program,
-            filename=self._file_name)
+        load_persistables(executor=self._exe,
+                          dirname=path,
+                          main_program=self._program,
+                          filename=self._file_name)
 
 
 class CheckpointSaver(object):
+
     def __init__(self, fs):
         self._fs = fs
         self._checkpoint_prefix = "__paddle_checkpoint__"
@@ -84,8 +85,9 @@ class CheckpointSaver(object):
 
         cache_path = None
         if self._fs.need_upload_download():
-            cache_path = "{}/{}.{}.saved_cache".format(
-                local_cache_path, self._checkpoint_prefix, max_no)
+            cache_path = "{}/{}.{}.saved_cache".format(local_cache_path,
+                                                       self._checkpoint_prefix,
+                                                       max_no)
 
             if trainer_id is not None:
                 cache_path = "{}.{}".format(cache_path, trainer_id)
@@ -137,8 +139,9 @@ class CheckpointSaver(object):
         from paddle.distributed.fleet.utils.fs import LocalFS
         local_fs = LocalFS()
         if self._fs.need_upload_download():
-            cache_path = "{}/{}.{}.load_cache".format(
-                local_cache_path, self._checkpoint_prefix, checkpoint_no)
+            cache_path = "{}/{}.{}.load_cache".format(local_cache_path,
+                                                      self._checkpoint_prefix,
+                                                      checkpoint_no)
 
             if trainer_id is not None:
                 cache_path = "{}.{}".format(cache_path, trainer_id)

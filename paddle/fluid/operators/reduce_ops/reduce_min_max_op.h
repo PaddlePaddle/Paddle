@@ -33,10 +33,19 @@ struct MinFunctor {
 };
 
 struct MaxOrMinGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX,
-            typename DY, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
-                  const Dim& dim, int size) {
+  template <typename DeviceContext,
+            typename X,
+            typename Y,
+            typename DX,
+            typename DY,
+            typename Dim>
+  void operator()(const DeviceContext& place,
+                  X* x,
+                  Y* y,
+                  DX* dx,
+                  DY* dy,
+                  const Dim& dim,
+                  int size) {
     auto equals = (*x) == y->broadcast(dim);
     auto ones = dx->constant(1);
     auto zeros = dx->constant(0);

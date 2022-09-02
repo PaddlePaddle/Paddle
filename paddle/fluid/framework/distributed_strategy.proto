@@ -27,6 +27,7 @@ message RecomputeConfig {
   repeated string checkpoints = 1;
   optional bool enable_offload = 2 [ default = false ];
   repeated int32 checkpoint_shape = 3;
+  optional bool enable_tuning = 4 [ default = false ]; // incubate for auto parallel
 }
 
 message ShardingConfig {
@@ -45,6 +46,8 @@ message ShardingConfig {
   optional bool optimize_cast = 12 [ default = false ];
   // Optimizer sharding. Temporary plans and may be deprecated
   optional bool _dp_as_optimizer_sharding = 13 [ default = false ];
+  optional int32 stage = 14 [ default = 1 ];
+  optional bool enable_tuning = 15 [ default = false ]; // incubate for auto parallel
 }
 
 message HybridConfig {
@@ -66,6 +69,8 @@ message AMPConfig {
   repeated string custom_black_varnames = 9;
   optional bool use_pure_fp16 = 10 [ default = false ];
   optional bool use_fp16_guard = 11 [ default = true ];
+  optional bool use_optimizer_fp16 = 12
+      [ default = false ]; // auto parallel effective only
 }
 
 message LocalSGDConfig {
@@ -115,6 +120,9 @@ message BuildStrategy {
   optional bool enable_auto_fusion = 11 [ default = false ];
   optional bool enable_addto = 12 [ default = false ];
   optional bool fix_op_run_order = 13 [ default = false ];
+  optional bool allow_cuda_graph_capture = 14 [ default = false ];
+  optional int32 reduce_strategy = 15 [ default = 0 ];
+  optional bool fuse_gemm_epilogue = 16 [ default = false ];
 }
 
 message ExecutionStrategy {
@@ -132,6 +140,10 @@ message GradientScaleConfig {
   // Else if sum, the gradient will accumulated among multiple
   // devices.
   optional string scale_strategy = 1 [ default = 'avg' ];
+  // The avg_loss flag is used to determine the position of average
+  // If scale_gradient is False, it will avg the loss@Grad before grad merge.
+  // Otherwise, it will do grad merge firstly, then avg the grad after merging.
+  optional bool scale_gradient = 2 [ default = false ];
 }
 
 message AsyncConfig {
@@ -154,6 +166,10 @@ message TrainerDescConfig {
   repeated string dump_fields = 2;
   repeated string dump_param = 3;
   repeated string stat_var_names = 4;
+  optional string trainer = 5;
+  optional string device_worker = 6;
+  repeated string local_sparse = 7;
+  repeated string remote_sparse = 8;
 }
 
 message PipelineConfig {
@@ -166,6 +182,122 @@ message PipelineConfig {
 message TensorParallelConfig {
   optional int32 tensor_parallel_degree = 1 [ default = 1 ];
   optional int32 tensor_init_seed = 2 [ default = -1 ];
+}
+
+message QatConfig {
+  optional bool channel_wise_abs_max = 1 [default = true];
+  optional int32 weight_bits = 2 [default = 8];
+  optional int32 activation_bits = 3 [default = 8];
+  repeated string not_quant_pattern = 4;
+  optional string algo = 5;
+}
+
+enum TableType {
+  PS_SPARSE_TABLE = 0;
+  PS_DENSE_TABLE = 1;
+}
+
+message TableParameter {
+  optional uint64 table_id = 1;
+  optional string table_name = 2;
+  optional string table_class = 3;
+  optional uint64 shard_num = 4 [ default = 1000 ];
+  optional TableType type = 5;
+  optional TableAccessorParameter accessor = 6;
+  optional bool compress_in_save = 7 [ default = false ];
+  // for cache model
+  optional bool enable_sparse_table_cache = 10 [ default = true ];
+  optional double sparse_table_cache_rate = 11 [ default = 0.00055 ];
+  optional uint32 sparse_table_cache_file_num = 12 [ default = 16 ];
+  // for patch model
+  optional bool enable_revert = 13 [ default = false ];
+  optional float shard_merge_rate = 14 [ default = 1.0 ];
+}
+
+message TableAccessorParameter {
+  optional string accessor_class = 1;
+  optional uint32 fea_dim = 4 [ default = 11 ];   // field size of one value
+  optional uint32 embedx_dim = 5 [ default = 8 ]; // embedx feature size
+  optional uint32 embedx_threshold = 6
+      [ default = 10 ]; // embedx feature create threshold
+  optional CtrAccessorParameter ctr_accessor_param = 7;
+  repeated TableAccessorSaveParameter table_accessor_save_param = 8;
+  optional SGDParameter embed_sgd_param = 10;
+  optional SGDParameter embedx_sgd_param = 11;
+  optional GraphSGDParameter graph_sgd_param = 12;
+}
+
+message GraphSGDParameter {
+  optional uint32 nodeid_slot = 1 [ default = 9008 ];
+  optional float feature_learning_rate = 2 [ default = 0.05 ];
+}
+
+message SGDParameter {
+  optional string name = 1;
+  optional SparseNaiveSGDRuleParameter naive = 2;
+  optional SparseAdagradSGDRuleParameter adagrad = 3;
+  optional SparseAdamSGDParameter adam = 4;
+}
+
+message SparseNaiveSGDRuleParameter { // SparseNaiveSGDRule
+  optional double learning_rate = 1 [ default = 0.05 ];
+  optional double initial_range = 2 [ default = 0.0001 ];
+  repeated float weight_bounds = 3;
+}
+
+message
+    SparseAdagradSGDRuleParameter { // SparseAdaGradSGDRule|StdAdaGradSGDRule
+  optional double learning_rate = 1 [ default = 0.05 ];
+  optional double initial_g2sum = 2 [ default = 3.0 ];
+  optional double initial_range = 3 [ default = 0.0001 ];
+  repeated float weight_bounds = 4;
+}
+
+message SparseAdamSGDParameter { // SparseAdamSGDRule | SparseSharedAdamSGDRule
+  optional double learning_rate = 1 [ default = 0.001 ];
+  optional double initial_range = 2 [ default = 0.0001 ];
+  optional double beta1_decay_rate = 3 [ default = 0.9 ];
+  optional double beta2_decay_rate = 4 [ default = 0.999 ];
+  optional double ada_epsilon = 5 [ default = 1e-08 ];
+  repeated float weight_bounds = 6;
+}
+
+message CtrAccessorParameter {
+  optional float nonclk_coeff = 1
+      [ default = 0.1 ]; // to calculate show_click_score
+  optional float click_coeff = 2
+      [ default = 1 ]; // to calculate show_click_score
+  optional float base_threshold = 3 [
+    default = 1.5
+  ]; // show_click_score > base_threshold, this feature can be saved
+  optional float delta_threshold = 4
+      [ default =
+            0.25 ]; // delta_score > delta_threshold, this feature can be saved
+  optional float delta_keep_days = 5
+      [ default =
+            16 ]; // unseen_day < delta_keep_days, this feature can be saved
+  optional float show_click_decay_rate = 6
+      [ default = 0.98 ]; // show/click will update to
+                          // show/click *
+                          // show_click_decay_rate after a day
+  optional float delete_threshold = 7
+      [ default = 0.8 ]; // threshold to shrink a feasign
+  optional float delete_after_unseen_days = 8 [ default = 30 ];
+  optional int32 ssd_unseenday_threshold = 9 [ default = 1 ];
+  optional bool show_scale = 10 [ default = true ];
+}
+
+message TableAccessorSaveParameter {
+  optional uint32 param = 1;
+  optional string converter = 2;
+  optional string deconverter = 3;
+}
+
+message FsClientParameter {
+  optional string uri = 1;
+  optional string user = 2;
+  optional string passwd = 3;
+  optional string hadoop_bin = 4;
 }
 
 message DistributedStrategy {
@@ -205,6 +337,12 @@ message DistributedStrategy {
   optional bool asp = 33 [ default = false ];
   optional bool fuse_grad_merge = 34 [ default = false ];
   optional bool semi_auto = 35 [ default = false ];
+  optional bool adam_d2sum = 36 [ default = false ];
+  optional bool auto_search = 37 [ default = false ];
+  optional bool heter_ccl_mode = 38 [ default = false ];
+  optional bool is_fl_ps_mode = 39 [ default = false ];
+  optional bool with_coordinator = 40 [ default = false ];
+  optional bool qat = 41 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
@@ -220,6 +358,10 @@ message DistributedStrategy {
   optional HybridConfig hybrid_configs = 112;
   optional TensorParallelConfig tensor_parallel_configs = 113;
   optional TrainerDescConfig trainer_desc_configs = 114;
+  repeated TableParameter downpour_table_param = 115;
+  optional FsClientParameter fs_client_param = 116;
+  optional QatConfig qat_configs = 117;
+
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
   optional GradientScaleConfig gradient_scale_configs = 203;

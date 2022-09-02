@@ -18,9 +18,11 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 
 namespace paddle {
@@ -72,24 +74,26 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
 
   const std::string& InputVarName(const std::string& name,
                                   const int index = 0) const {
-    return inputs_.at(name)[index]->Name();
+    return GetNameFromVar(inputs_.at(name)[index]);
   }
 
   bool InputTypeAnyOf(const std::string& name,
                       framework::proto::VarType::Type type) const override {
     auto& inputs = inputs_.at(name);
-    return std::any_of(inputs.begin(), inputs.end(),
+    return std::any_of(inputs.begin(),
+                       inputs.end(),
                        [&type](const std::shared_ptr<VarType>& var) {
-                         return var->Type() == type;
+                         return GetType(var) == type;
                        });
   }
 
   bool InputTypeAllOf(const std::string& name,
                       framework::proto::VarType::Type type) const override {
     auto& inputs = inputs_.at(name);
-    return std::all_of(inputs.begin(), inputs.end(),
+    return std::all_of(inputs.begin(),
+                       inputs.end(),
                        [&type](const std::shared_ptr<VarType>& var) {
-                         return var->Type() == type;
+                         return GetType(var) == type;
                        });
   }
 
@@ -99,8 +103,7 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     auto in_var = inputs_.at(input_name)[index];
     auto out_var = outputs_.at(output_name)[index];
     if (in_var != out_var) {
-      this->SetVarBaseType(out_var, in_var->Type());
-      this->SetVarBaseDataType(out_var, in_var->DataType());
+      this->SetVarType(out_var, GetType(in_var));
     }
   }
 
@@ -109,54 +112,44 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
                      int index = 0) override {
     if (index == framework::ALL_ELEMENTS) {
       for (auto& item : outputs_.at(name)) {
-        this->SetVarBaseType(item, type);
+        this->SetVarType(item, type);
       }
     } else {
       auto& var = outputs_.at(name)[index];
-      this->SetVarBaseType(var, type);
+      this->SetVarType(var, type);
     }
   }
 
-  void SetVarBaseType(std::shared_ptr<VarType> out,
-                      framework::proto::VarType::Type type) {
-    out->SetType(type);
+  void SetVarType(std::shared_ptr<VarType> out,
+                  framework::proto::VarType::Type type) {
+    SetType(out, type);
     if ((out->MutableVar()->IsInitialized() == true) &&
         (out->MutableVar()->Type() != type)) {
       out->MutableVar()->Clear();
     }
   }
 
-  void SetVarBaseDataType(std::shared_ptr<VarType> out,
-                          framework::proto::VarType::Type type) {
-    out->SetDataType(type);
-  }
-
   framework::proto::VarType::Type GetInputType(
       const std::string& name, const int& index = 0) const override {
-    return inputs_.at(name)[index]->Type();
+    return GetType(inputs_.at(name)[index]);
   }
 
   framework::proto::VarType::Type GetOutputType(
       const std::string& name, const int& index = 0) const override {
-    return outputs_.at(name)[index]->Type();
+    return GetType(outputs_.at(name)[index]);
   }
 
   framework::proto::VarType::Type GetInputDataType(
       const std::string& name, const int& index = 0) const override {
-    return inputs_.at(name)[index]->DataType();
+    return GetDataType(inputs_.at(name)[index]);
   }
 
   void SetOutputDataType(const std::string& name,
                          framework::proto::VarType::Type type,
                          int index = 0) override {
-    if (framework::ALL_ELEMENTS == index) {
-      for (auto& item : outputs_.at(name)) {
-        this->SetVarBaseDataType(item, type);
-      }
-    } else {
-      auto& var = outputs_.at(name)[index];
-      this->SetVarBaseDataType(var, type);
-    }
+    VLOG(10) << "Set data type in infer var type of Eager mode is meaning less "
+                "for var: "
+             << name;
   }
 
   bool IsDygraph() const override { return true; }

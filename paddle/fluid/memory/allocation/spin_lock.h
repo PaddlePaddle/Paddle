@@ -15,37 +15,48 @@
 #pragma once
 
 #include <atomic>
-#if !defined(_WIN32)
-#include <sched.h>
-#else
-#include <windows.h>
-#endif  // !_WIN32
+#if defined(_M_X64) || defined(__x86_64__) || defined(_M_IX86) || \
+    defined(__i386__)
+#define __PADDLE_x86__
+#include <immintrin.h>
+#endif
+#include <thread>
 
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace memory {
+static inline void CpuRelax() {
+#if defined(__PADDLE_x86__)
+  _mm_pause();
+#endif
+}
 
 class SpinLock {
  public:
   SpinLock() : mlock_(false) {}
 
   void lock() {
-    bool expect = false;
-    uint64_t spin_cnt = 0;
-    while (!mlock_.compare_exchange_weak(expect, true)) {
-      expect = false;
-      if ((++spin_cnt & 0xFF) == 0) {
-#if defined(_WIN32)
-        SleepEx(50, FALSE);
-#else
-        sched_yield();
-#endif
+    for (;;) {
+      if (!mlock_.exchange(true, std::memory_order_acquire)) {
+        break;
+      }
+      constexpr int kMaxLoop = 32;
+      for (int loop = 1; mlock_.load(std::memory_order_relaxed);) {
+        if (loop <= kMaxLoop) {
+          for (int i = 1; i <= loop; ++i) {
+            CpuRelax();
+          }
+          loop *= 2;
+        } else {
+          std::this_thread::yield();
+        }
       }
     }
   }
 
-  void unlock() { mlock_.store(false); }
+  void unlock() { mlock_.store(false, std::memory_order_release); }
+
   DISABLE_COPY_AND_ASSIGN(SpinLock);
 
  private:

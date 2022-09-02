@@ -12,82 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/broadcast_tensors_op.h"
-
-#include <algorithm>
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <vector>
-
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
 using framework::DDim;
+using framework::Tensor;
 
 class BroadcastTensorsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "broadcast_tensors");
-    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out",
-                   "broadcast_tensors");
-
-    int target_rank = 0;
-    const auto& input_dims = ctx->GetInputsDim("X");
-
-    // 1. Find Output rank = max(Inputs rank)
-    for (const auto& input_ddim : input_dims) {
-      target_rank = std::max(target_rank, input_ddim.size());
-    }
-
-    PADDLE_ENFORCE_GT(
-        target_rank, 0,
-        platform::errors::InvalidArgument(
-            "BroadcastTensorsOp requires at least one input tensor"
-            "to have rank greater than zero"));
-
-    std::vector<int64_t> target_dims(target_rank, 0);
-    // 2. Output dim(axis=x) = max(Inputs dim(axis=x))
-    for (int index = 0; index < target_rank; index++) {
-      // Loop axes in reverse order,
-      // For each axis, take the maximum as target size
-      // Fill size = 1 if shape vector exhausts
-      int target_dim_size = 1;
-      for (const auto& input_ddim : input_dims) {
-        // Reversed order
-        int axis = static_cast<int>(input_ddim.size()) - index - 1;
-        int dim_size = 1;
-        if (axis >= 0) {
-          dim_size = input_ddim[axis];
-        }
-
-        if (target_dim_size != 1 && dim_size != 1 &&
-            target_dim_size != dim_size) {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "BroadcastTensorsOp inputs does not satisfy bcast semantics,"
-              "Please check axis = %d in reverse order",
-              index));
-        }
-
-        // We performed bcast semantics check at python level
-        // So input tensors should all have legal shape
-        target_dim_size = std::max(target_dim_size, dim_size);
-      }
-      target_dims[target_rank - index - 1] = target_dim_size;
-    }
-
-    // 3. Set Output Dim
-    std::vector<DDim> output_ddims;
-    for (size_t i = 0; i < input_dims.size(); i++) {
-      output_ddims.emplace_back(framework::make_ddim(target_dims));
-    }
-    ctx->SetOutputsDim("Out", output_ddims);
-    ctx->ShareAllLoD("X", /*->*/ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -127,7 +65,8 @@ class BroadcastTensorsOpVarTypeInference : public framework::VarTypeInference {
     // We need at least two tensors to satisfy broadcast semantics
     size_t input_size = ctx->InputSize("X");
     PADDLE_ENFORCE_GT(
-        input_size, 0,
+        input_size,
+        0,
         platform::errors::InvalidArgument(
             "BroadcastTensorsOp should have at least one input variables,"
             "but only received %d ",
@@ -141,7 +80,8 @@ class BroadcastTensorsOpVarTypeInference : public framework::VarTypeInference {
     for (size_t ind = 1; ind < input_size; ind++) {
       auto cur_var_type = ctx->GetInputType("X", ind);
       PADDLE_ENFORCE_EQ(
-          var_type, cur_var_type,
+          var_type,
+          cur_var_type,
           platform::errors::InvalidArgument(
               "inputs to BroadcastTensorsOp should have the same variable type,"
               "but detected %d v.s %d ",
@@ -150,7 +90,8 @@ class BroadcastTensorsOpVarTypeInference : public framework::VarTypeInference {
 
       auto cur_data_type = ctx->GetInputDataType("X", ind);
       PADDLE_ENFORCE_EQ(
-          data_type, cur_data_type,
+          data_type,
+          cur_data_type,
           platform::errors::InvalidArgument(
               "inputs to BroadcastTensorsOp should have the same data type,"
               "but detected %d v.s %d ",
@@ -170,11 +111,15 @@ class BroadcastTensorsGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutputs(framework::GradVarName("X")), "Output",
-                   "X@grad", "broadcast_tensors");
+    OP_INOUT_CHECK(ctx->HasOutputs(framework::GradVarName("X")),
+                   "Output",
+                   "X@grad",
+                   "broadcast_tensors");
     OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "broadcast_tensors");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")), "Input",
-                   "Out@grad", "broadcast_tensors");
+    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@grad",
+                   "broadcast_tensors");
 
     const auto& forward_input_dims = ctx->GetInputsDim("X");
     ctx->SetOutputsDim(framework::GradVarName("X"), forward_input_dims);
@@ -213,10 +158,10 @@ class BroadcastTensorsGradOpVarTypeInference
     auto var_type = ctx->GetInputType("X", 0);
     auto data_type = ctx->GetInputDataType("X", 0);
 
-    ctx->SetOutputType(framework::GradVarName("X"), var_type,
-                       framework::ALL_ELEMENTS);
-    ctx->SetOutputDataType(framework::GradVarName("X"), data_type,
-                           framework::ALL_ELEMENTS);
+    ctx->SetOutputType(
+        framework::GradVarName("X"), var_type, framework::ALL_ELEMENTS);
+    ctx->SetOutputDataType(
+        framework::GradVarName("X"), data_type, framework::ALL_ELEMENTS);
   }
 };
 
@@ -229,34 +174,19 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(BroadcastTensorsGradNoNeedBufVarsInferer,
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(broadcast_tensors, ops::BroadcastTensorsOp,
+DECLARE_INFER_SHAPE_FUNCTOR(broadcast_tensors,
+                            BroadcastTensorsInferShapeFunctor,
+                            PD_INFER_META(phi::BroadcastTensorsInferMeta));
+
+REGISTER_OPERATOR(broadcast_tensors,
+                  ops::BroadcastTensorsOp,
                   ops::BroadcastTensorsOpMaker,
                   ops::BroadcastTensorsGradOpMaker<paddle::framework::OpDesc>,
                   ops::BroadcastTensorsGradOpMaker<paddle::imperative::OpBase>,
-                  ops::BroadcastTensorsOpVarTypeInference);
+                  ops::BroadcastTensorsOpVarTypeInference,
+                  BroadcastTensorsInferShapeFunctor);
 
-REGISTER_OPERATOR(broadcast_tensors_grad, ops::BroadcastTensorsGradOp,
+REGISTER_OPERATOR(broadcast_tensors_grad,
+                  ops::BroadcastTensorsGradOp,
                   ops::BroadcastTensorsGradOpVarTypeInference,
                   ops::BroadcastTensorsGradNoNeedBufVarsInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    broadcast_tensors,
-    ops::BroadcastTensorsOpKernel<paddle::platform::CPUDeviceContext,
-                                  plat::float16>,
-    ops::BroadcastTensorsOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BroadcastTensorsOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::BroadcastTensorsOpKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::BroadcastTensorsOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::BroadcastTensorsOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
-
-REGISTER_OP_CPU_KERNEL(
-    broadcast_tensors_grad,
-    ops::BroadcastTensorsGradOpKernel<paddle::platform::CPUDeviceContext,
-                                      plat::float16>,
-    ops::BroadcastTensorsGradOpKernel<paddle::platform::CPUDeviceContext,
-                                      float>,
-    ops::BroadcastTensorsGradOpKernel<paddle::platform::CPUDeviceContext,
-                                      double>,
-    ops::BroadcastTensorsGradOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::BroadcastTensorsGradOpKernel<paddle::platform::CPUDeviceContext,
-                                      int64_t>);

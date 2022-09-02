@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,11 +21,11 @@ import paddle.static as static
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from utils import paddle_includes, extra_cc_args, extra_nvcc_args
+from paddle.fluid.framework import _test_eager_guard
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
-file = '{}\\custom_relu_module_jit\\custom_relu_module_jit.pyd'.format(
-    get_build_directory())
+file = '{}\\custom_conj\\custom_conj.pyd'.format(get_build_directory())
 if os.name == 'nt' and os.path.isfile(file):
     cmd = 'del {}'.format(file)
     run_cmd(cmd, True)
@@ -91,15 +91,17 @@ def conj_static(func, shape, dtype, np_input):
 
 
 class TestCustomConjJit(unittest.TestCase):
+
     def setUp(self):
         self.dtypes = ['float32', 'float64']
         self.shape = [2, 20, 2, 3]
 
     def check_output(self, out, pd_out, name):
-        self.assertTrue(
-            np.array_equal(out, pd_out),
-            "custom op {}: {},\n paddle api {}: {}".format(name, out, name,
-                                                           pd_out))
+        np.testing.assert_array_equal(
+            out,
+            pd_out,
+            err_msg='custom op {}: {},\n paddle api {}: {}'.format(
+                name, out, name, pd_out))
 
     def run_dynamic(self, dtype, np_input):
         out, x_grad = conj_dynamic(custom_ops.custom_conj, dtype, np_input)
@@ -117,10 +119,15 @@ class TestCustomConjJit(unittest.TestCase):
         self.check_output(out, pd_out, "out")
         self.check_output(x_grad, pd_x_grad, "x's grad")
 
-    def test_dynamic(self):
+    def func_dynamic(self):
         for dtype in self.dtypes:
             np_input = np.random.random(self.shape).astype(dtype)
             self.run_dynamic(dtype, np_input)
+
+    def test_dynamic(self):
+        with _test_eager_guard():
+            self.func_dynamic()
+        self.func_dynamic()
 
     def test_static(self):
         for dtype in self.dtypes:

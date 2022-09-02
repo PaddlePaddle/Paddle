@@ -16,11 +16,13 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/phi/core/ddim.h"
+
 namespace paddle {
 namespace framework {
 
 TEST(EigenDim, From) {
-  EigenDim<3>::Type ed = EigenDim<3>::From(make_ddim({1, 2, 3}));
+  EigenDim<3>::Type ed = EigenDim<3>::From(phi::make_ddim({1, 2, 3}));
   ASSERT_EQ(1, ed[0]);
   ASSERT_EQ(2, ed[1]);
   ASSERT_EQ(3, ed[2]);
@@ -28,7 +30,8 @@ TEST(EigenDim, From) {
 
 TEST(Eigen, Tensor) {
   Tensor t;
-  float* p = t.mutable_data<float>(make_ddim({1, 2, 3}), platform::CPUPlace());
+  float* p =
+      t.mutable_data<float>(phi::make_ddim({1, 2, 3}), platform::CPUPlace());
   for (int i = 0; i < 1 * 2 * 3; i++) {
     p[i] = static_cast<float>(i);
   }
@@ -50,7 +53,7 @@ TEST(Eigen, Tensor) {
 
 TEST(Eigen, ScalarFrom) {
   Tensor t;
-  int* p = t.mutable_data<int>(make_ddim({1}), platform::CPUPlace());
+  int* p = t.mutable_data<int>(phi::make_ddim({1}), platform::CPUPlace());
   *p = static_cast<int>(100);
 
   EigenScalar<int>::Type es = EigenScalar<int>::From(t);
@@ -61,7 +64,7 @@ TEST(Eigen, ScalarFrom) {
 
 TEST(Eigen, VectorFrom) {
   Tensor t;
-  float* p = t.mutable_data<float>(make_ddim({6}), platform::CPUPlace());
+  float* p = t.mutable_data<float>(phi::make_ddim({6}), platform::CPUPlace());
   for (int i = 0; i < 6; i++) {
     p[i] = static_cast<float>(i);
   }
@@ -77,7 +80,8 @@ TEST(Eigen, VectorFrom) {
 
 TEST(Eigen, VectorFlatten) {
   Tensor t;
-  float* p = t.mutable_data<float>(make_ddim({1, 2, 3}), platform::CPUPlace());
+  float* p =
+      t.mutable_data<float>(phi::make_ddim({1, 2, 3}), platform::CPUPlace());
   for (int i = 0; i < 1 * 2 * 3; i++) {
     p[i] = static_cast<float>(i);
   }
@@ -93,7 +97,8 @@ TEST(Eigen, VectorFlatten) {
 
 TEST(Eigen, Matrix) {
   Tensor t;
-  float* p = t.mutable_data<float>(make_ddim({2, 3}), platform::CPUPlace());
+  float* p =
+      t.mutable_data<float>(phi::make_ddim({2, 3}), platform::CPUPlace());
   for (int i = 0; i < 2 * 3; i++) {
     p[i] = static_cast<float>(i);
   }

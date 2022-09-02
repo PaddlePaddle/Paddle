@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include <stdio.h>
+
 #include <cassert>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/instance_norm_op_plugin.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace inference {
@@ -57,36 +59,40 @@ bool InstanceNormPlugin::supportsFormat(
           (format == nvinfer1::PluginFormat::kLINEAR));
 }
 
-int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
+int InstanceNormPlugin::enqueue(int batch_size,
+                                const void *const *inputs,
 #if IS_TRT_VERSION_LT(8000)
-                                void **outputs, void *workspace,
+                                void **outputs,
+                                void *workspace,
 #else
-                                void *const *outputs, void *workspace,
+                                void *const *outputs,
+                                void *workspace,
 #endif
                                 cudaStream_t stream) TRT_NOEXCEPT {
   const auto &input_dims = this->getInputDims(0);
-
-  PADDLE_ENFORCE_EQ(input_dims.nbDims, 3,
-                    platform::errors::InvalidArgument(
-                        "Input Dims should be 3 (except the batch), got %d",
-                        input_dims.nbDims));
   int n = batch_size;
   int c = input_dims.d[0];
   int h = input_dims.d[1];
   int w = input_dims.d[2];
 
-  scale_t.Resize(framework::make_ddim({batch_size, c}));
-  bias_t.Resize(framework::make_ddim({batch_size, c}));
+  scale_t.Resize(phi::make_ddim({batch_size, c}));
+  bias_t.Resize(phi::make_ddim({batch_size, c}));
   int device_id;
   cudaGetDevice(&device_id);
   float *scale_d = scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
   float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
 
   for (int i = 0; i < batch_size; i++) {
-    cudaMemcpyAsync(scale_d + i * c, scale_.data(), sizeof(float) * c,
-                    cudaMemcpyHostToDevice, stream);
-    cudaMemcpyAsync(bias_d + i * c, bias_.data(), sizeof(float) * c,
-                    cudaMemcpyHostToDevice, stream);
+    cudaMemcpyAsync(scale_d + i * c,
+                    scale_.data(),
+                    sizeof(float) * c,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    cudaMemcpyAsync(bias_d + i * c,
+                    bias_.data(),
+                    sizeof(float) * c,
+                    cudaMemcpyHostToDevice,
+                    stream);
   }
   platform::dynload::cudnnSetTensor4dDescriptor(
       b_desc_, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, n * c, 1, 1);
@@ -94,10 +100,10 @@ int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
   cudnnDataType_t cudnn_dtype;
   nvinfer1::DataType data_type = getDataType();
   convert_trt2cudnn_dtype(data_type, &cudnn_dtype);
-  platform::dynload::cudnnSetTensor4dDescriptor(x_desc_, CUDNN_TENSOR_NCHW,
-                                                cudnn_dtype, 1, n * c, h, w);
-  platform::dynload::cudnnSetTensor4dDescriptor(y_desc_, CUDNN_TENSOR_NCHW,
-                                                cudnn_dtype, 1, n * c, h, w);
+  platform::dynload::cudnnSetTensor4dDescriptor(
+      x_desc_, CUDNN_TENSOR_NCHW, cudnn_dtype, 1, n * c, h, w);
+  platform::dynload::cudnnSetTensor4dDescriptor(
+      y_desc_, CUDNN_TENSOR_NCHW, cudnn_dtype, 1, n * c, h, w);
   float alpha = 1;
   float beta = 0;
   platform::dynload::cudnnSetStream(handle_, stream);
@@ -105,9 +111,23 @@ int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
   void const *x_ptr = inputs[0];
   void *y_ptr = outputs[0];
   platform::dynload::cudnnBatchNormalizationForwardTraining(
-      handle_, CUDNN_BATCHNORM_SPATIAL_PERSISTENT, &alpha, &beta, x_desc_,
-      x_ptr, y_desc_, y_ptr, b_desc_, scale_d, bias_d, 1., nullptr, nullptr,
-      eps_, nullptr, nullptr);
+      handle_,
+      CUDNN_BATCHNORM_SPATIAL_PERSISTENT,
+      &alpha,
+      &beta,
+      x_desc_,
+      x_ptr,
+      y_desc_,
+      y_ptr,
+      b_desc_,
+      scale_d,
+      bias_d,
+      1.,
+      nullptr,
+      nullptr,
+      eps_,
+      nullptr,
+      nullptr);
   return cudaGetLastError() != cudaSuccess;
 }
 

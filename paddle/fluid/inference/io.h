@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -27,7 +28,8 @@ namespace inference {
 
 void Init(const std::vector<std::string> argv);
 
-void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
+void LoadPersistables(framework::Executor* executor,
+                      framework::Scope* scope,
                       const framework::ProgramDesc& main_program,
                       const std::string& dirname,
                       const std::string& param_filename,
@@ -43,12 +45,15 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
                                              const std::string& param_filename);
 
 std::unique_ptr<framework::ProgramDesc> LoadFromMemory(
-    framework::Executor* executor, framework::Scope* scope,
-    const std::string& prog_buffer, const std::string& param_buffer);
+    framework::Executor* executor,
+    framework::Scope* scope,
+    const std::string& prog_buffer,
+    const std::string& param_buffer);
 
 // Save the variables from a scope to disk.
 void SaveVars(const framework::Scope& scope,
-              const std::vector<std::string>& vars, const std::string& dirname,
+              const std::vector<std::string>& vars,
+              const std::string& dirname,
               bool predicate = true);
 
 }  // namespace inference

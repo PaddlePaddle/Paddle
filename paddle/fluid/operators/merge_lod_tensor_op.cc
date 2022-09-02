@@ -13,11 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/lod_utils.h"
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
 class InferShapeContext;
-class LoDTensor;
 class OpDesc;
 class Scope;
 }  // namespace framework
@@ -56,7 +60,8 @@ class MergeLoDTensorOp : public framework::OperatorBase {
     auto level = static_cast<size_t>(Attr<int>("level"));
 
     PADDLE_ENFORCE_EQ(
-        in_true.numel() || in_false.numel(), true,
+        in_true.numel() || in_false.numel(),
+        true,
         platform::errors::InvalidArgument(
             "Input(InTrue) or Input(InFalse) should be initialized."));
 
@@ -66,8 +71,8 @@ class MergeLoDTensorOp : public framework::OperatorBase {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      framework::TensorCopy(mask, platform::CPUPlace(), dev_ctx,
-                            cpu_mask.get());
+      framework::TensorCopy(
+          mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "Not supported GPU, Please recompile or reinstall paddle with CUDA "
@@ -83,16 +88,16 @@ class MergeLoDTensorOp : public framework::OperatorBase {
     framework::DDim in_dims;
     if (in_true.IsInitialized()) {
       rank = in_true.dims().size();
-      in_dims = framework::slice_ddim(in_true.dims(), 1, rank);
+      in_dims = phi::slice_ddim(in_true.dims(), 1, rank);
     } else {
       rank = in_false.dims().size();
-      in_dims = framework::slice_ddim(in_false.dims(), 1, rank);
+      in_dims = phi::slice_ddim(in_false.dims(), 1, rank);
     }
 
-    auto in_dim_vec = framework::vectorize(in_dims);
+    auto in_dim_vec = phi::vectorize(in_dims);
     in_dim_vec.insert(in_dim_vec.begin(), batch_size);
 
-    framework::DDim out_dims = framework::make_ddim(in_dim_vec);
+    framework::DDim out_dims = phi::make_ddim(in_dim_vec);
     out->Resize(out_dims);
 
     out->mutable_data(place, data_type);
@@ -119,23 +124,25 @@ class MergeLoDTensorOp : public framework::OperatorBase {
           input->lod(), *in_idx, (*in_idx) + 1, 0);
       auto &lod_length = lod_and_offset.first;
 
-      framework::AppendLoD(out_lod, lod_length);
+      phi::AppendLoD(out_lod, lod_length);
 
       size_t start_offset = lod_and_offset.second.first;
       size_t end_offset = lod_and_offset.second.second;
 
-      PADDLE_ENFORCE_GE(end_offset, start_offset,
+      PADDLE_ENFORCE_GE(end_offset,
+                        start_offset,
                         platform::errors::InvalidArgument(
                             "The end offset less than start offset, end offset "
                             "is %d, start offset is %d.",
-                            end_offset, start_offset));
+                            end_offset,
+                            start_offset));
       size_t len = end_offset - start_offset;
       if (len == 0) {
         continue;
       }
       auto slice = out->Slice(out_offset, out_offset + len);
-      framework::TensorCopy(input->Slice(start_offset, end_offset), place,
-                            dev_ctx, &slice);
+      framework::TensorCopy(
+          input->Slice(start_offset, end_offset), place, dev_ctx, &slice);
       out_offset += len;
       (*in_idx) += 1;
     }
@@ -198,16 +205,17 @@ class MergeLoDTensorInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "merge_lod_tensor");
-    OP_INOUT_CHECK(context->HasInput("Mask"), "Input", "Mask",
-                   "merge_lod_tensor");
-    OP_INOUT_CHECK(context->HasInput("InTrue"), "Input", "InTrue",
-                   "merge_lod_tensor");
-    OP_INOUT_CHECK(context->HasInput("InFalse"), "Input", "InFalse",
-                   "merge_lod_tensor");
-    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out",
-                   "merge_lod_tensor");
+    OP_INOUT_CHECK(
+        context->HasInput("Mask"), "Input", "Mask", "merge_lod_tensor");
+    OP_INOUT_CHECK(
+        context->HasInput("InTrue"), "Input", "InTrue", "merge_lod_tensor");
+    OP_INOUT_CHECK(
+        context->HasInput("InFalse"), "Input", "InFalse", "merge_lod_tensor");
+    OP_INOUT_CHECK(
+        context->HasOutput("Out"), "Output", "Out", "merge_lod_tensor");
     auto mask_dim = context->GetInputDim("Mask");
-    PADDLE_ENFORCE_EQ(mask_dim.size(), 2,
+    PADDLE_ENFORCE_EQ(mask_dim.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "If you are using IfElse OP:"
                           "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
@@ -217,7 +225,8 @@ class MergeLoDTensorInferShape : public framework::InferShapeBase {
                           "But now the cond's shape is [%s].\n",
                           mask_dim));
     if (context->IsRuntime() || mask_dim[1] > 0) {
-      PADDLE_ENFORCE_EQ(mask_dim[1], 1,
+      PADDLE_ENFORCE_EQ(mask_dim[1],
+                        1,
                         platform::errors::InvalidArgument(
                             "If you are using IfElse OP:"
                             "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
@@ -252,13 +261,16 @@ class MergeLoDTensorGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(merge_lod_tensor, ops::MergeLoDTensorOp,
+REGISTER_OPERATOR(merge_lod_tensor,
+                  ops::MergeLoDTensorOp,
                   ops::MergeLoDTensorOpProtoMaker,
                   ops::MergeLoDTensorInferShape,
                   ops::MergeLoDTensorGradMaker<paddle::framework::OpDesc>,
                   ops::MergeLoDTensorGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
-    merge_lod_tensor_infer, ops::MergeLoDTensorInferOp,
-    ops::MergeLoDTensorOpProtoMaker, ops::MergeLoDTensorInferShape,
+    merge_lod_tensor_infer,
+    ops::MergeLoDTensorInferOp,
+    ops::MergeLoDTensorOpProtoMaker,
+    ops::MergeLoDTensorInferShape,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

@@ -24,8 +24,27 @@ import unittest
 import math
 import sys
 import os
+import struct
+import tempfile
 
 paddle.enable_static()
+
+
+def convert_uint16_to_float(in_list):
+    in_list = numpy.asarray(in_list)
+    out = numpy.vectorize(
+        lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+        otypes=[numpy.float32])(in_list.flat)
+    return numpy.reshape(out, in_list.shape)
+
+
+def convert_float_to_uint16(in_list):
+    out = []
+    for x in numpy.nditer(in_list):
+        out.append(
+            numpy.uint16(struct.unpack('<I', struct.pack('<f', x))[0] >> 16))
+    out = numpy.reshape(out, in_list.shape).view(numpy.uint16)
+    return out
 
 
 def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
@@ -37,16 +56,16 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
             with amp.bf16.bf16_guard():
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
         else:
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
             with amp.bf16.bf16_guard():
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
     else:
         y_predict = fluid.layers.fc(input=x, size=1, act=None)
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
 
     lr = 5e-3 if use_bf16 else 1e-3
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=lr)
@@ -57,15 +76,14 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
             amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(),
             use_bf16_guard=False,
             use_pure_bf16=pure_bf16)
-    sgd_optimizer.minimize(
-        avg_cost, startup_program=fluid.default_startup_program())
+    sgd_optimizer.minimize(avg_cost,
+                           startup_program=fluid.default_startup_program())
 
     BATCH_SIZE = 20
 
-    train_reader = paddle.batch(
-        paddle.reader.shuffle(
-            paddle.dataset.uci_housing.train(), buf_size=500),
-        batch_size=BATCH_SIZE)
+    train_reader = paddle.batch(paddle.reader.shuffle(
+        paddle.dataset.uci_housing.train(), buf_size=500),
+                                batch_size=BATCH_SIZE)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
@@ -75,8 +93,9 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
         exe.run(fluid.default_startup_program())
         test_prog = main_program.clone(for_test=True)
         if pure_bf16:
-            sgd_optimizer.amp_init(
-                exe.place, test_program=test_prog, use_bf16_test=True)
+            sgd_optimizer.amp_init(exe.place,
+                                   test_program=test_prog,
+                                   use_bf16_test=True)
 
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
@@ -84,12 +103,14 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
                 avg_loss_value, = exe.run(main_program,
                                           feed=feeder.feed(data),
                                           fetch_list=[avg_cost])
+                if avg_loss_value.dtype == numpy.uint16:
+                    avg_loss_value = convert_uint16_to_float(avg_loss_value)
                 if avg_loss_value[0] < 10.0:
                     if save_dirname is not None:
-                        paddle.static.save_inference_model(
-                            save_dirname, [x], [y_predict],
-                            exe,
-                            clip_extra=False)
+                        paddle.static.save_inference_model(save_dirname, [x],
+                                                           [y_predict],
+                                                           exe,
+                                                           clip_extra=False)
                     return
                 if math.isnan(float(avg_loss_value)):
                     sys.exit("got NaN loss, training failed.")
@@ -141,19 +162,25 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
         # The input data should be >= 0
         batch_size = 10
 
-        test_reader = paddle.batch(
-            paddle.dataset.uci_housing.test(), batch_size=batch_size)
+        test_reader = paddle.batch(paddle.dataset.uci_housing.test(),
+                                   batch_size=batch_size)
 
         test_data = next(test_reader())
-        test_feat = numpy.array(
-            [data[0] for data in test_data]).astype("float32")
-        test_label = numpy.array(
-            [data[1] for data in test_data]).astype("float32")
+        test_feat = numpy.array([data[0]
+                                 for data in test_data]).astype("float32")
+
+        if use_bf16:
+            test_feat = convert_float_to_uint16(test_feat)
+
+        test_label = numpy.array([data[1]
+                                  for data in test_data]).astype("float32")
 
         assert feed_target_names[0] == 'x'
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: numpy.array(test_feat)},
                           fetch_list=fetch_targets)
+        if results[0].dtype == numpy.uint16:
+            results[0] = convert_uint16_to_float(results[0])
         print("infer shape: ", results[0].shape)
         print("infer results: ", results[0])
         print("ground truth: ", test_label)
@@ -166,14 +193,17 @@ def main(use_cuda, is_local=True, use_bf16=False, pure_bf16=False):
     if use_bf16 and not fluid.core.is_compiled_with_mkldnn():
         return
 
+    temp_dir = tempfile.TemporaryDirectory()
     # Directory for saving the trained model
-    save_dirname = "fit_a_line.inference.model"
+    save_dirname = os.path.join(temp_dir.name, "fit_a_line.inference.model")
 
     train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16)
     infer(use_cuda, save_dirname, use_bf16)
+    temp_dir.cleanup()
 
 
 class TestFitALineBase(unittest.TestCase):
+
     @contextlib.contextmanager
     def program_scope_guard(self):
         prog = fluid.Program()
@@ -185,6 +215,7 @@ class TestFitALineBase(unittest.TestCase):
 
 
 class TestFitALine(TestFitALineBase):
+
     def test_cpu(self):
         with self.program_scope_guard():
             main(use_cuda=False)
@@ -197,6 +228,7 @@ class TestFitALine(TestFitALineBase):
 @unittest.skipIf(not fluid.core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
 class TestFitALineBF16(TestFitALineBase):
+
     def test_bf16(self):
         with self.program_scope_guard():
             main(use_cuda=False, use_bf16=True)

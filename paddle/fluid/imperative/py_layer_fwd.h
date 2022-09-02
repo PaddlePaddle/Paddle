@@ -16,12 +16,12 @@
 
 #include <string>
 #include <vector>
-#include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/imperative/prepared_operator.h"
-#include "paddle/fluid/imperative/tracer.h"
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/prepared_operator.h"
+#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/operators/py_layer_op.h"
 
 namespace paddle {
@@ -52,8 +52,10 @@ bool RequiredGrad(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
 }
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(
-    const std::string& type, const NameVarBaseMap& ins,
-    const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
+    const std::string& type,
+    const NameVarBaseMap& ins,
+    const NameVarBaseMap& outs,
+    const framework::AttributeMap& attrs,
     const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map,
     const std::shared_ptr<operators::PyLayerContext>& py_context) {
@@ -74,16 +76,15 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
   }
 }
 
-py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
-                        const py::args args, const py::kwargs kwargs) {
+py::object PyLayerApply(const platform::Place& place,
+                        const py::handle& cls,
+                        const py::args args,
+                        const py::kwargs kwargs) {
   py::gil_scoped_acquire guard;
   auto bk_function = cls.attr("_backward_function");
   auto context = bk_function();
   auto forward = cls.attr("forward");
 
-  auto result_forward = forward(context, *args, **kwargs);
-  std::shared_ptr<operators::PyLayerContext> py_layer_ctx =
-      std::make_shared<operators::PyLayerContext>(context.ptr());
   // make inputs to varbase
   std::vector<std::shared_ptr<imperative::VarBase>> input_vars;
   // process args,`input_vars` only collect `imperative::VarBase`
@@ -95,6 +96,28 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
         try {
           auto a = ptr->cast<std::shared_ptr<VarBase>>();
           input_vars.push_back(a);
+        } catch (py::cast_error& err) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "The `PyLayer.forward` function contains invalid argument, the "
+              "`%s` type argument can not be cast into `Tensor`.",
+              ptr->ptr()->ob_type->tp_name));
+        }
+      } else if (py::isinstance<py::tuple>(*ptr) ||
+                 py::isinstance<py::list>(*ptr)) {
+        try {
+          auto tuple_arg = ptr->cast<py::tuple>();
+          for (auto iter = tuple_arg.begin(); iter != tuple_arg.end(); ++iter) {
+            try {
+              auto t = iter->cast<std::shared_ptr<VarBase>>();
+              input_vars.push_back(t);
+            } catch (py::cast_error& err) {
+              PADDLE_THROW(platform::errors::InvalidArgument(
+                  "The `PyLayer.forward` function contains invalid argument, "
+                  "the "
+                  "`%s` type argument can not be cast into `Tensor`.",
+                  ptr->ptr()->ob_type->tp_name));
+            }
+          }
         } catch (py::cast_error& err) {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "The `PyLayer.forward` function contains invalid argument, the "
@@ -119,9 +142,35 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
               "`%s` type argument can not be cast into `Tensor`.",
               ptr->second.ptr()->ob_type->tp_name));
         }
+      } else if (py::isinstance<py::tuple>(*ptr->second) ||
+                 py::isinstance<py::list>(*ptr->second)) {
+        try {
+          auto tuple_arg = ptr->second.cast<py::tuple>();
+          for (auto iter = tuple_arg.begin(); iter != tuple_arg.end(); ++iter) {
+            try {
+              auto t = iter->cast<std::shared_ptr<VarBase>>();
+              input_vars.push_back(t);
+            } catch (py::cast_error& err) {
+              PADDLE_THROW(platform::errors::InvalidArgument(
+                  "The `PyLayer.forward` function contains invalid argument, "
+                  "the "
+                  "`%s` type argument can not be cast into `Tensor`.",
+                  ptr->second.ptr()->ob_type->tp_name));
+            }
+          }
+        } catch (py::cast_error& err) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "The `PyLayer.forward` function contains invalid argument, the "
+              "`%s` type argument can not be cast into `Tensor`.",
+              ptr->second.ptr()->ob_type->tp_name));
+        }
       }
     }
   }
+
+  std::shared_ptr<operators::PyLayerContext> py_layer_ctx =
+      std::make_shared<operators::PyLayerContext>(context.ptr());
+  auto result_forward = forward(context, *args, **kwargs);
   NameVarBaseMap ins = {{"X", input_vars}};
 
   std::vector<std::shared_ptr<imperative::VarBase>> output_vars;
@@ -182,11 +231,21 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
       }
     }
     if (if_inplace) {
+      // when pylayer forward is inplace strategy, check whether tensor is leaf
+      for (auto& t : input_vars) {
+        PADDLE_ENFORCE_EQ(t->IsLeaf() && !t->OverridedStopGradient(),
+                          false,
+                          platform::errors::InvalidArgument(
+                              "Leaf Var (%s) that doesn't stop gradient can't "
+                              "use inplace strategy.",
+                              t->Name()));
+      }
+
       inplace_map["X"] = "Out";
     }
 
-    CreateGradOpNode("py_layer", ins, outs, {{}}, place, inplace_map,
-                     py_layer_ctx);
+    CreateGradOpNode(
+        "py_layer", ins, outs, {{}}, place, inplace_map, py_layer_ctx);
   } else {
     VLOG(3) << "No Grad to track for Op: py_layer_op";
   }

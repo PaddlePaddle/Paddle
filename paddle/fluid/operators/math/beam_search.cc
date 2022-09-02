@@ -13,38 +13,41 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/beam_search.h"
-
-namespace paddle {
-namespace framework {
-class LoDTensor;
-class Tensor;
-}  // namespace framework
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
-}  // namespace paddle
+#include "paddle/phi/backends/cpu/cpu_context.h"
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace operators {
 namespace math {
 
 template <typename T>
-class BeamSearchFunctor<platform::CPUDeviceContext, T> {
+class BeamSearchFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext &context,
+  void operator()(const phi::CPUContext &context,
                   const framework::LoDTensor *pre_ids,
                   const framework::LoDTensor *pre_scores,
                   const framework::LoDTensor *ids,
                   const framework::LoDTensor *scores,
                   framework::LoDTensor *selected_ids,
                   framework::LoDTensor *selected_scores,
-                  framework::Tensor *parent_idx, size_t level, size_t beam_size,
-                  int end_id, bool is_accumulated) {
+                  framework::Tensor *parent_idx,
+                  size_t level,
+                  size_t beam_size,
+                  int end_id,
+                  bool is_accumulated) {
     auto abs_lod = framework::ToAbsOffset(scores->lod());
     auto &high_level = abs_lod[level];
 
-    auto items = SelectTopBeamSizeItems(pre_ids, pre_scores, ids, scores, level,
-                                        beam_size, end_id, is_accumulated);
+    auto items = SelectTopBeamSizeItems(pre_ids,
+                                        pre_scores,
+                                        ids,
+                                        scores,
+                                        level,
+                                        beam_size,
+                                        end_id,
+                                        is_accumulated);
     auto selected_items = ToMap(items, high_level.back());
     if (FLAGS_v == 3) {
       VLOG(3) << "selected_items:";
@@ -59,10 +62,12 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     PruneEndBeams(pre_ids, abs_lod, &selected_items, level, end_id);
     // calculate the output tensor's height
     size_t num_instances = std::accumulate(
-        std::begin(selected_items), std::end(selected_items), 0,
+        std::begin(selected_items),
+        std::end(selected_items),
+        0,
         [](size_t a, std::vector<Item> &b) { return a + b.size(); });
     // the output tensor shape should be [num_instances, 1]
-    auto dims = framework::make_ddim(
+    auto dims = phi::make_ddim(
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     auto *selected_ids_data =
         selected_ids->mutable_data<int64_t>(dims, platform::CPUPlace());
@@ -150,7 +155,8 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
    */
   void PruneEndBeams(const framework::LoDTensor *pre_ids,
                      const framework::LoD &abs_lod,
-                     std::vector<std::vector<Item>> *items, size_t lod_level,
+                     std::vector<std::vector<Item>> *items,
+                     size_t lod_level,
                      int end_id) {
     auto *pre_ids_data = pre_ids->data<int64_t>();
     auto &high_level = abs_lod[lod_level];
@@ -194,7 +200,8 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     return result;
   }
 
-  void Insert(std::vector<Item> *top_beam_ptr, const Item &item,
+  void Insert(std::vector<Item> *top_beam_ptr,
+              const Item &item,
               size_t beam_size) {
     std::vector<Item> &top_beam = *top_beam_ptr;
 
@@ -224,9 +231,13 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
    */
   std::vector<std::vector<Item>> SelectTopBeamSizeItems(
       const framework::LoDTensor *pre_ids,
-      const framework::LoDTensor *pre_scores, const framework::LoDTensor *ids,
-      const framework::LoDTensor *scores, size_t lod_level, size_t beam_size,
-      int end_id, bool is_accumulated) {
+      const framework::LoDTensor *pre_scores,
+      const framework::LoDTensor *ids,
+      const framework::LoDTensor *scores,
+      size_t lod_level,
+      size_t beam_size,
+      int end_id,
+      bool is_accumulated) {
     std::vector<std::vector<Item>> result;
 
     // find the current candidates
@@ -290,10 +301,10 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template class BeamSearchFunctor<platform::CPUDeviceContext, int>;
-template class BeamSearchFunctor<platform::CPUDeviceContext, int64_t>;
-template class BeamSearchFunctor<platform::CPUDeviceContext, float>;
-template class BeamSearchFunctor<platform::CPUDeviceContext, double>;
+template class BeamSearchFunctor<phi::CPUContext, int>;
+template class BeamSearchFunctor<phi::CPUContext, int64_t>;
+template class BeamSearchFunctor<phi::CPUContext, float>;
+template class BeamSearchFunctor<phi::CPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

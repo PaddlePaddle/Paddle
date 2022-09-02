@@ -19,6 +19,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+namespace egr {
+class EagerVariable;
+}
 namespace paddle {
 namespace imperative {
 
@@ -45,6 +48,13 @@ template <>
 struct NameVarMapTrait<VariableWrapper> {
   using Type = std::map<std::string, SavedVariableWrapperList>;
 };
+
+template <>
+struct NameVarMapTrait<egr::EagerVariable> {
+  using Type =
+      std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>>;
+};
+
 }  // namespace details
 
 template <typename T>
@@ -52,6 +62,7 @@ using NameVarMap = typename details::NameVarMapTrait<T>::Type;
 
 using NameVarBaseMap = NameVarMap<VarBase>;
 using NameVariableWrapperMap = NameVarMap<VariableWrapper>;
+using NameTensorMap = NameVarMap<egr::EagerVariable>;
 
 using VariableWrapperList = std::vector<std::shared_ptr<VariableWrapper>>;
 

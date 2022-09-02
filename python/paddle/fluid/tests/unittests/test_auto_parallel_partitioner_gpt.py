@@ -25,21 +25,22 @@ import paddle.nn.functional as F
 import paddle.tensor as tensor
 import paddle.utils as utils
 from paddle.fluid import layers
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
 from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.distributed import fleet
 import paddle.static as static
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
-from paddle.distributed.auto_parallel.utils import print_program_with_distributed_attr
-from paddle.distributed.auto_parallel.context import DistributedContext
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.partitioner import Partitioner
+from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.utils import _get_comm_group
-from paddle.distributed.auto_parallel.process import new_process_group
+from paddle.distributed.auto_parallel.process_group import new_process_group
 
 paddle.enable_static()
-ROOT_MESH = auto.ProcessMesh([[0, 1, 2, 3], [4, 5, 6, 7]])
 _global_parallel_strategy = None
 _global_process_mesh = None
 
@@ -50,6 +51,38 @@ def check_tensor_split(prog1, varnames1, prog2, varnames2, axis, nsplit):
         var1 = prog1.global_block().var(varnames1[i] + '@GRAD')
         var2 = prog2.global_block().var(varnames2[i])
         if var1.shape[axis] != (var2.shape[axis] // nsplit):
+            return False
+
+    return True
+
+
+def is_valid_completed_program(dist_context, program):
+
+    # TODO (ZJ-LIANG) should check all block
+    ops = program.global_block().ops
+    vars_ = program.list_vars()
+    for op in ops:
+        op_dist_attrs = dist_context.get_op_dist_attr_for_program(op)
+        if op_dist_attrs == None:
+            return False
+
+        if op_dist_attrs.process_mesh == None:
+            return False
+
+        for tensor_dist_attr in op_dist_attrs.inputs_dist_attrs.values():
+            if None == tensor_dist_attr.dims_mapping:
+                return False
+        for tensor_dist_attr in op_dist_attrs.outputs_dist_attrs.values():
+            if None == tensor_dist_attr.dims_mapping:
+                return False
+
+    for var in vars_:
+        var_dist_attrs = dist_context.get_tensor_dist_attr_for_program(var)
+        if var_dist_attrs == None:
+            return False
+        elif var_dist_attrs.process_mesh == None:
+            return False
+        elif var_dist_attrs.dims_mapping == None:
             return False
 
     return True
@@ -92,17 +125,27 @@ class MultiHeadAttention(nn.Layer):
             if self.fuse:
                 assert self.kdim == embed_dim
                 assert self.vdim == embed_dim
-                self.qkv_proj = nn.Linear(
-                    embed_dim, 3 * embed_dim, weight_attr, bias_attr=bias_attr)
+                self.qkv_proj = nn.Linear(embed_dim,
+                                          3 * embed_dim,
+                                          weight_attr,
+                                          bias_attr=bias_attr)
             else:
-                self.q_proj = nn.Linear(
-                    embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
-                self.k_proj = nn.Linear(
-                    self.kdim, embed_dim, weight_attr, bias_attr=bias_attr)
-                self.v_proj = nn.Linear(
-                    self.vdim, embed_dim, weight_attr, bias_attr=bias_attr)
-            self.out_proj = nn.Linear(
-                embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
+                self.q_proj = nn.Linear(embed_dim,
+                                        embed_dim,
+                                        weight_attr,
+                                        bias_attr=bias_attr)
+                self.k_proj = nn.Linear(self.kdim,
+                                        embed_dim,
+                                        weight_attr,
+                                        bias_attr=bias_attr)
+                self.v_proj = nn.Linear(self.vdim,
+                                        embed_dim,
+                                        weight_attr,
+                                        bias_attr=bias_attr)
+            self.out_proj = nn.Linear(embed_dim,
+                                      embed_dim,
+                                      weight_attr,
+                                      bias_attr=bias_attr)
 
     def _fuse_prepare_qkv(self, query):
         mix_layer = self.qkv_proj(query)
@@ -121,11 +164,17 @@ class MultiHeadAttention(nn.Layer):
         q = self.q_proj(query)
 
         if _global_parallel_strategy == "mp":
-            auto.shard_tensor(
-                self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+            auto.shard_tensor(self.q_proj.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [-1, 0]
+                              })
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+            auto.shard_tensor(self.q_proj.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [-1, 1]
+                              })
 
         q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
         q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
@@ -158,20 +207,32 @@ class MultiHeadAttention(nn.Layer):
         k = self.k_proj(key)
 
         if _global_parallel_strategy == "mp":
-            auto.shard_tensor(
-                self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+            auto.shard_tensor(self.k_proj.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [-1, 0]
+                              })
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+            auto.shard_tensor(self.k_proj.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [-1, 1]
+                              })
 
         v = self.v_proj(value)
 
         if _global_parallel_strategy == "mp":
-            auto.shard_tensor(
-                self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+            auto.shard_tensor(self.v_proj.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [-1, 0]
+                              })
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+            auto.shard_tensor(self.v_proj.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [-1, 1]
+                              })
 
         k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
         k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
@@ -227,19 +288,20 @@ class MultiHeadAttention(nn.Layer):
             q, k, v, cache = self._prepare_qkv(query, key, value, use_cache,
                                                cache)
         # scale dot product attention
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5)
+        product = layers.matmul(x=q,
+                                y=k,
+                                transpose_y=True,
+                                alpha=self.head_dim**-0.5)
 
         if attn_mask is not None:
             product = product + attn_mask
 
         weights = F.softmax(product)
         if self.dropout:
-            weights = F.dropout(
-                weights,
-                self.dropout,
-                training=self.training,
-                mode="upscale_in_train")
+            weights = F.dropout(weights,
+                                self.dropout,
+                                training=self.training,
+                                mode="upscale_in_train")
 
         out = tensor.matmul(weights, v)
 
@@ -251,13 +313,17 @@ class MultiHeadAttention(nn.Layer):
         out = self.out_proj(out)
 
         if _global_parallel_strategy == "mp":
-            auto.shard_tensor(
-                self.out_proj.weight, _global_process_mesh,
-                dim_mapping=[0, -1])
+            auto.shard_tensor(self.out_proj.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [0, -1]
+                              })
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                self.out_proj.weight, _global_process_mesh,
-                dim_mapping=[1, -1])
+            auto.shard_tensor(self.out_proj.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [1, -1]
+                              })
 
         outs = [out]
         if self.need_weights:
@@ -379,24 +445,21 @@ class TransformerDecoderLayer(nn.Layer):
         weight_attrs = _convert_param_attr_to_list(weight_attr, 3)
         bias_attrs = _convert_param_attr_to_list(bias_attr, 3)
 
-        self.self_attn = MultiHeadAttention(
-            d_model,
-            nhead,
-            dropout=attn_dropout,
-            weight_attr=weight_attrs[0],
-            bias_attr=bias_attrs[0],
-            topo=topo)
+        self.self_attn = MultiHeadAttention(d_model,
+                                            nhead,
+                                            dropout=attn_dropout,
+                                            weight_attr=weight_attrs[0],
+                                            bias_attr=bias_attrs[0],
+                                            topo=topo)
         if topo is None or topo.mp_info.size == 1:
-            self.linear1 = nn.Linear(
-                d_model,
-                dim_feedforward,
-                weight_attrs[2],
-                bias_attr=bias_attrs[2])
-            self.linear2 = nn.Linear(
-                dim_feedforward,
-                d_model,
-                weight_attrs[2],
-                bias_attr=bias_attrs[2])
+            self.linear1 = nn.Linear(d_model,
+                                     dim_feedforward,
+                                     weight_attrs[2],
+                                     bias_attr=bias_attrs[2])
+            self.linear2 = nn.Linear(dim_feedforward,
+                                     d_model,
+                                     weight_attrs[2],
+                                     bias_attr=bias_attrs[2])
 
         self.norm1 = nn.LayerNorm(d_model, epsilon=1e-5)
         self.norm2 = nn.LayerNorm(d_model, epsilon=1e-5)
@@ -424,18 +487,30 @@ class TransformerDecoderLayer(nn.Layer):
             tgt = self.norm2(tgt)
 
         if _global_parallel_strategy == "mp":
-            auto.shard_tensor(
-                self.linear1.weight, _global_process_mesh, dim_mapping=[-1, 0])
+            auto.shard_tensor(self.linear1.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [-1, 0]
+                              })
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                self.linear1.weight, _global_process_mesh, dim_mapping=[-1, 1])
+            auto.shard_tensor(self.linear1.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [-1, 1]
+                              })
 
         if _global_parallel_strategy == "mp":
-            auto.shard_tensor(
-                self.linear2.weight, _global_process_mesh, dim_mapping=[0, -1])
+            auto.shard_tensor(self.linear2.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [0, -1]
+                              })
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                self.linear2.weight, _global_process_mesh, dim_mapping=[1, -1])
+            auto.shard_tensor(self.linear2.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [1, -1]
+                              })
 
         # tgt = self.dropout2(
         #     self.linear2(F.gelu(
@@ -451,8 +526,8 @@ class TransformerDecoderLayer(nn.Layer):
         return tgt if use_cache is False else (tgt, incremental_cache)
 
     def gen_cache(self, memory):
-        incremental_cache = self.self_attn.gen_cache(
-            memory, type=self.self_attn.Cache)
+        incremental_cache = self.self_attn.gen_cache(memory,
+                                                     type=self.self_attn.Cache)
         return incremental_cache
 
 
@@ -474,17 +549,16 @@ class GPTEmbeddings(nn.Layer):
             self.word_embeddings = nn.Embedding(
                 vocab_size,
                 hidden_size,
-                weight_attr=paddle.ParamAttr(
-                    name="word_embeddings",
-                    initializer=nn.initializer.Normal(
-                        mean=0.0, std=initializer_range)))
+                weight_attr=paddle.ParamAttr(name="word_embeddings",
+                                             initializer=nn.initializer.Normal(
+                                                 mean=0.0,
+                                                 std=initializer_range)))
         self.position_embeddings = nn.Embedding(
             max_position_embeddings,
             hidden_size,
-            weight_attr=paddle.ParamAttr(
-                name="pos_embeddings",
-                initializer=nn.initializer.Normal(
-                    mean=0.0, std=initializer_range)))
+            weight_attr=paddle.ParamAttr(name="pos_embeddings",
+                                         initializer=nn.initializer.Normal(
+                                             mean=0.0, std=initializer_range)))
 
         self.dropout = nn.Dropout(hidden_dropout_prob)
 
@@ -497,15 +571,17 @@ class GPTEmbeddings(nn.Layer):
         input_embedings = self.word_embeddings(input_ids)
 
         if _global_parallel_strategy == "mp":
-            auto.shard_tensor(
-                self.word_embeddings.weight,
-                _global_process_mesh,
-                dim_mapping=[0, -1])
+            auto.shard_tensor(self.word_embeddings.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [0, -1]
+                              })
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                self.word_embeddings.weight,
-                _global_process_mesh,
-                dim_mapping=[1, -1])
+            auto.shard_tensor(self.word_embeddings.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [1, -1]
+                              })
 
         position_embeddings = self.position_embeddings(position_ids)
         embeddings = input_embedings + position_embeddings
@@ -521,7 +597,7 @@ class GPTModel(nn.Layer):
     def __init__(self,
                  vocab_size,
                  hidden_size=768,
-                 num_hidden_layers=12,
+                 num_hidden_layers=4,
                  num_attention_heads=12,
                  intermediate_size=3072,
                  hidden_act="gelu",
@@ -544,37 +620,36 @@ class GPTModel(nn.Layer):
         if self.pipline_mode:
             self.layer_per_stage = num_hidden_layers // self.topo.pp_info.size
 
-        self.embeddings = GPTEmbeddings(
-            vocab_size, hidden_size, hidden_dropout_prob,
-            max_position_embeddings, type_vocab_size, self.initializer_range,
-            topo)
+        self.embeddings = GPTEmbeddings(vocab_size, hidden_size,
+                                        hidden_dropout_prob,
+                                        max_position_embeddings,
+                                        type_vocab_size, self.initializer_range,
+                                        topo)
 
         decoder_layers = nn.LayerList()
         for i in range(num_hidden_layers):
             DecoderLayer = TransformerDecoderLayer
             decoder_layers.append(
-                DecoderLayer(
-                    d_model=hidden_size,
-                    nhead=num_attention_heads,
-                    dim_feedforward=intermediate_size,
-                    dropout=hidden_dropout_prob,
-                    activation=hidden_act,
-                    attn_dropout=attention_probs_dropout_prob,
-                    act_dropout=hidden_dropout_prob,
-                    weight_attr=paddle.ParamAttr(
-                        initializer=nn.initializer.Normal(
-                            mean=0.0, std=self.initializer_range)),
-                    bias_attr=None,
-                    topo=topo))
+                DecoderLayer(d_model=hidden_size,
+                             nhead=num_attention_heads,
+                             dim_feedforward=intermediate_size,
+                             dropout=hidden_dropout_prob,
+                             activation=hidden_act,
+                             attn_dropout=attention_probs_dropout_prob,
+                             act_dropout=hidden_dropout_prob,
+                             weight_attr=paddle.ParamAttr(
+                                 initializer=nn.initializer.Normal(
+                                     mean=0.0, std=self.initializer_range)),
+                             bias_attr=None,
+                             topo=topo))
 
         Decoder = TransformerDecoder
 
-        self.decoder = Decoder(
-            decoder_layers,
-            num_hidden_layers,
-            norm="LayerNorm",
-            hidden_size=hidden_size,
-            topo=topo)
+        self.decoder = Decoder(decoder_layers,
+                               num_hidden_layers,
+                               norm="LayerNorm",
+                               hidden_size=hidden_size,
+                               topo=topo)
 
         self.checkpoints = []
 
@@ -589,29 +664,27 @@ class GPTModel(nn.Layer):
             length = paddle.shape(input_ids)[1]
             # Use bool mask
             attention_mask = paddle.tensor.tril(
-                paddle.ones(
-                    (length, length),
-                    dtype=self.embeddings.word_embeddings.weight.dtype))
+                paddle.ones((length, length),
+                            dtype=self.embeddings.word_embeddings.weight.dtype))
         if position_ids is None:
             past_length = 0
             if cache is not None:
                 past_length = paddle.shape(cache[0].k)[-2]
-            position_ids = paddle.arange(
-                past_length,
-                paddle.shape(input_ids)[-1] + past_length,
-                dtype='int64')
+            position_ids = paddle.arange(past_length,
+                                         paddle.shape(input_ids)[-1] +
+                                         past_length,
+                                         dtype='int64')
             position_ids = position_ids.unsqueeze(0)
             # .expand_as(input_ids)
-            position_ids = paddle.fluid.layers.expand_as(position_ids,
-                                                         input_ids)
-        embedding_output = self.embeddings(
-            input_ids=input_ids, position_ids=position_ids)
+            position_ids = paddle.fluid.layers.expand_as(
+                position_ids, input_ids)
+        embedding_output = self.embeddings(input_ids=input_ids,
+                                           position_ids=position_ids)
 
         # TODO, use registered buffer
-        causal_mask = paddle.tensor.triu(
-            paddle.ones((paddle.shape(input_ids)[-1],
-                         paddle.shape(input_ids)[-1])) * -1e9,
-            diagonal=1)
+        causal_mask = paddle.tensor.triu(paddle.ones(
+            (paddle.shape(input_ids)[-1], paddle.shape(input_ids)[-1])) * -1e9,
+                                         diagonal=1)
 
         if attention_mask is not None:
             attention_mask = attention_mask + causal_mask
@@ -621,12 +694,11 @@ class GPTModel(nn.Layer):
         # The tensor returned by triu not in static graph.
         attention_mask.stop_gradient = True
 
-        encoder_outputs = self.decoder(
-            embedding_output,
-            memory=None,
-            tgt_mask=attention_mask,
-            use_cache=use_cache,
-            cache=cache)
+        encoder_outputs = self.decoder(embedding_output,
+                                       memory=None,
+                                       tgt_mask=attention_mask,
+                                       use_cache=use_cache,
+                                       cache=cache)
         self.checkpoints.extend(self.decoder.checkpoints)
         return encoder_outputs
 
@@ -650,8 +722,9 @@ class GPTForPretraining(nn.Layer):
             input_parallel = paddle.distributed.collective._c_identity(
                 lm_output, group=None)
 
-            logits = paddle.matmul(
-                input_parallel, logit_weights, transpose_y=True)
+            logits = paddle.matmul(input_parallel,
+                                   logit_weights,
+                                   transpose_y=True)
 
             if parallel_output:
                 return logits
@@ -709,47 +782,54 @@ class GPTPretrainingCriterion(nn.Layer):
         return loss
 
 
-def gpt_pretrain_forward(train_program, start_program):
+def gpt_pretrain_forward(train_program, startup_program):
     with static.program_guard(train_program,
-                              start_program), utils.unique_name.guard():
+                              startup_program), utils.unique_name.guard():
         batch_size = 16
         sequence_len = 512
-        input_ids = static.data(
-            name="input_ids", shape=[batch_size, sequence_len], dtype='int64')
-        position_ids = static.data(
-            name="position_ids",
-            shape=[batch_size, sequence_len],
-            dtype='int64')
+        input_ids = static.data(name="input_ids",
+                                shape=[batch_size, sequence_len],
+                                dtype='int64')
+        position_ids = static.data(name="position_ids",
+                                   shape=[batch_size, sequence_len],
+                                   dtype='int64')
         attention_mask = static.data(
             name="attention_mask",
             shape=[batch_size, 1, sequence_len, sequence_len],
             dtype='float64')
-        labels = static.data(
-            name="labels", shape=[batch_size, sequence_len], dtype='int64')
-        loss_mask = static.data(
-            name="loss_mask", shape=[batch_size, sequence_len], dtype='float64')
+        labels = static.data(name="labels",
+                             shape=[batch_size, sequence_len],
+                             dtype='int64')
+        loss_mask = static.data(name="loss_mask",
+                                shape=[batch_size, sequence_len],
+                                dtype='float64')
 
         if _global_parallel_strategy == "dp":
-            auto.shard_tensor(
-                input_ids, _global_process_mesh, dim_mapping=[0, -1])
+            auto.shard_tensor(input_ids,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [0, -1]
+                              })
         elif _global_parallel_strategy == "dp_mp":
-            auto.shard_tensor(
-                input_ids, _global_process_mesh, dim_mapping=[0, -1])
+            auto.shard_tensor(input_ids,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh,
+                                  "dims_mapping": [0, -1]
+                              })
 
-        gpt = GPTModel(
-            vocab_size=32768,
-            hidden_size=768,
-            num_hidden_layers=2,
-            num_attention_heads=12,
-            intermediate_size=4096,
-            hidden_act="gelu",
-            hidden_dropout_prob=0.1,
-            attention_probs_dropout_prob=0.1,
-            max_position_embeddings=1024,
-            type_vocab_size=16,
-            initializer_range=0.02,
-            pad_token_id=0,
-            topo=None)
+        gpt = GPTModel(vocab_size=32768,
+                       hidden_size=768,
+                       num_hidden_layers=2,
+                       num_attention_heads=12,
+                       intermediate_size=4096,
+                       hidden_act="gelu",
+                       hidden_dropout_prob=0.1,
+                       attention_probs_dropout_prob=0.1,
+                       max_position_embeddings=1024,
+                       type_vocab_size=16,
+                       initializer_range=0.02,
+                       pad_token_id=0,
+                       topo=None)
 
         model = GPTForPretraining(gpt)
 
@@ -759,43 +839,58 @@ def gpt_pretrain_forward(train_program, start_program):
 
         loss = criterion(preds, labels, loss_mask)
 
-    return train_program, start_program, loss
+    return train_program, startup_program, loss
+
+
+class FakeStrategy(object):
+
+    def __init__(self):
+        self.amp = False
+        self.recompute = False
+
+
+class FakeFleet(object):
+
+    def __init__(self):
+        self.user_defined_optimizer = None
+        self._user_defined_strategy = FakeStrategy()
 
 
 class TestGPTPartitioner(unittest.TestCase):
+
     def test_gpt_dp_mp(self):
         global _global_parallel_strategy
         _global_parallel_strategy = "dp_mp"
         global _global_process_mesh
 
         _global_process_mesh = auto.ProcessMesh(
-            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], parent=ROOT_MESH)
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
 
         train_program = static.Program()
-        start_program = static.Program()
-        dist_context = DistributedContext()
-        dist_context.set_process_mesh(_global_process_mesh)
-        train_program, start_program, loss = gpt_pretrain_forward(train_program,
-                                                                  start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
+        startup_program = static.Program()
+        parallelizer = AutoParallelizer(FakeFleet())
+        dist_context = parallelizer._dist_context
+
+        dist_context.process_mesh = _global_process_mesh
+        train_program, startup_program, loss = gpt_pretrain_forward(
+            train_program, startup_program)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
+        dist_context.block_state.parse_forward_blocks(complete_train_program)
+
+        # serial backward pass
+        params_grads = parallelizer._generate_backward(complete_train_program,
+                                                       startup_program,
+                                                       loss,
+                                                       parameter_list=None,
+                                                       no_grad_set=None,
+                                                       callbacks=None)
+
         rank_id = 3
-        dist_strategy = fleet.DistributedStrategy()
-        partitioner = Partitioner(dist_strategy, dist_context, rank_id)
-        auto_parallel_main_prog, auto_parallel_startup_prog = partitioner.transpile_forward(
-            complete_train_program, start_program)
-        dist_params_grads = partitioner.apply_backward(
-            loss, complete_train_program, start_program,
-            auto_parallel_main_prog, auto_parallel_startup_prog)
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(
-            learning_rate=0.00001,
-            beta1=0.9,
-            beta2=0.999,
-            epsilon=1e-08,
-            grad_clip=None)
-        opt_ops = partitioner.apply_optimize(optimizer, dist_params_grads,
-                                             auto_parallel_main_prog,
-                                             auto_parallel_startup_prog)
+        partitioner = Partitioner(dist_context, rank_id)
+        auto_parallel_main_prog, auto_parallel_startup_prog, params_grads = partitioner.partition(
+            complete_train_program, startup_program, params_grads)
 
         nrank = 4
         # col parallel
@@ -820,37 +915,44 @@ class TestGPTPartitioner(unittest.TestCase):
                                complete_train_program, weights, 0, 1))
 
         all_params = sorted(
-            [param.name for param in start_program.all_parameters()])
+            [param.name for param in startup_program.all_parameters()])
         allreduce_grads = [
             'layer_norm_5.tmp_2', 'layer_norm_5.tmp_2', 'layer_norm_5.tmp_2',
             'layer_norm_6.tmp_2', 'layer_norm_7.tmp_2', 'layer_norm_7.tmp_2',
             'layer_norm_7.tmp_2', 'layer_norm_8.tmp_2'
         ]
-        mp_parallel_axis, process_mesh = dist_context._get_model_parallel_info()
-        group_ranks = _get_comm_group(process_mesh.process_group,
+        process_mesh = _global_process_mesh
+        mp_parallel_axis = 1
+        dp_parallel_axis = 0
+
+        group_ranks = _get_comm_group(process_mesh.processes,
                                       process_mesh.topology, mp_parallel_axis,
                                       3)
         mp_ring_id = new_process_group(group_ranks).id
-        dp_parallel_axis, process_mesh = dist_context._get_data_parallel_info()
-        group_ranks = _get_comm_group(process_mesh.process_group,
+
+        group_ranks = _get_comm_group(process_mesh.processes,
                                       process_mesh.topology, dp_parallel_axis,
                                       3)
         dp_ring_id = new_process_group(group_ranks).id
+
         tensor_parallel_allreduce_vars = sorted([
             op.desc.output_arg_names()[0].split("@")[0]
             for op in auto_parallel_main_prog.global_block().ops
-            if (op.type == "c_allreduce_sum" and op.attr('op_role') == 1 and
-                op.desc.attr("ring_id") == mp_ring_id)
+            if (op.type == "c_allreduce_sum" and op.attr('op_role') == 1
+                and op.desc.attr("ring_id") == mp_ring_id)
         ])
         data_parallel_allreduce_vars = sorted([
             op.desc.output_arg_names()[0].split("@")[0]
             for op in auto_parallel_main_prog.global_block().ops
-            if (op.type == "c_allreduce_sum" and op.desc.attr("ring_id") ==
-                dp_ring_id)
+            if (op.type == "c_allreduce_sum"
+                and op.desc.attr("ring_id") == dp_ring_id)
         ])
 
         self.assertTrue(all_params == data_parallel_allreduce_vars)
         self.assertTrue(allreduce_grads == tensor_parallel_allreduce_vars)
+
+        self.assertTrue(
+            is_valid_completed_program(dist_context, auto_parallel_main_prog))
 
 
 if __name__ == "__main__":

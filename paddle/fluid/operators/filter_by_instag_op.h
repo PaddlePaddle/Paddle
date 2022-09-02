@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/mixed_vector.h"
@@ -29,15 +30,11 @@
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
-using SelectedRows = framework::SelectedRows;
+using SelectedRows = phi::SelectedRows;
 using LoDTensor = framework::LoDTensor;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 template <typename T>
 using Vector = framework::Vector<T>;
-#else
-template <typename T>
-using Vector = framework::CPUVector<T>;
-#endif
 
 template <typename T>
 class FilterByInstagKernel : public framework::OpKernel<T> {
@@ -65,14 +62,34 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     // expected auto = const int64_t
     auto* x2_data = x2->data<int64_t>();
     // e.g get [0, 1, 2, 3, ...]
-    auto x2_lods = x2->lod()[0];
+    // size_t x2_lods_size = x2->dims()[0];
+    // size_t instag_num_per_ins = x2->dims()[1];
+
+    Vector<size_t> x2_lods(1, 0);
+    if (x2->lod().size() != 0) {  // lod_level = 1
+      x2_lods = x2->lod()[0];
+    } else {  // lod_level = 0
+      const size_t x2_lods_size = x2->dims()[0];
+      const size_t instag_num_per_ins = x2->dims()[1];
+      for (size_t i = 0; i < x2_lods_size; i++) {
+        x2_lods.push_back(x2_lods.back() + instag_num_per_ins);
+      }
+    }
+
     Vector<size_t> x1_lods(1, 0);
     if (!is_x1_lod) {
       for (int i = 0; i < x1->dims()[0]; i++) {
         x1_lods.push_back(i + 1);
       }
     } else {
-      x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
+      // new: lod_level=0 => lod() return {}
+      if (x1->lod().size() != 0) {
+        x1_lods = x1->lod()[0];
+      } else {
+        for (int i = 0; i < x1->dims()[0]; i++) {
+          x1_lods.push_back(i + 1);
+        }
+      }
     }
     std::unordered_map<int64_t, int64_t> mmap_aux;
     Vector<size_t> out_lods(1, 0);
@@ -98,15 +115,14 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     // expected auto = T
     size_t x1_embed_size = x1->dims()[1];
     if (out_lods.size() - 1 > 0) {
-      out->Resize(framework::make_ddim(
-          {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
-      map->Resize(framework::make_ddim({(int64_t)out_lods.size() - 1, 3}));
-      loss_weight->Resize(
-          framework::make_ddim({(int64_t)out_lods.size() - 1, 1}));
+      out->Resize(
+          phi::make_ddim({(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
+      map->Resize(phi::make_ddim({(int64_t)out_lods.size() - 1, 3}));
+      loss_weight->Resize(phi::make_ddim({(int64_t)out_lods.size() - 1, 1}));
     } else {
-      out->Resize(framework::make_ddim({1, (int64_t)x1_embed_size}));
-      map->Resize(framework::make_ddim({1, 3}));
-      loss_weight->Resize(framework::make_ddim({1, 1}));
+      out->Resize(phi::make_ddim({1, (int64_t)x1_embed_size}));
+      map->Resize(phi::make_ddim({1, 3}));
+      loss_weight->Resize(phi::make_ddim({1, 1}));
     }
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
@@ -137,8 +153,10 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < out_lods.size() - 1; i++) {
         size_t pos = out_lods[i];
         for (int k = map_data[i * 3 + 1];
-             k < map_data[i * 3 + 1] + map_data[i * 3 + 2]; k++) {
-          memcpy(out_data + pos * x1_embed_size, x1_data + k * x1_embed_size,
+             k < map_data[i * 3 + 1] + map_data[i * 3 + 2];
+             k++) {
+          memcpy(out_data + pos * x1_embed_size,
+                 x1_data + k * x1_embed_size,
                  x1_embed_size * sizeof(T));
           ++pos;
         }
@@ -163,8 +181,10 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
           out_data[oi] = (int32_t)out_val_if_empty;
         } else if (std::is_same<T, int64_t>::value) {
           out_data[oi] = (int64_t)out_val_if_empty;
-        } else {
+        } else if (std::is_same<T, double>::value) {
           out_data[oi] = static_cast<double>(out_val_if_empty);
+        } else {
+          out_data[oi] = static_cast<float>(out_val_if_empty);
         }
       }
       loss_weight_data[0] = 0;

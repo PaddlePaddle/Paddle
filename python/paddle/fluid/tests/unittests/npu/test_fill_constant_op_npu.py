@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -28,6 +29,7 @@ SEED = 2021
 
 
 class TestFillConstant(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -49,6 +51,7 @@ class TestFillConstant(OpTest):
 
 
 class TestFillConstantInt(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -73,6 +76,7 @@ class TestFillConstantInt(OpTest):
 
 
 class TestFillConstantInt64(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -97,6 +101,7 @@ class TestFillConstantInt64(OpTest):
 
 
 class TestFillConstantFP16(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -118,6 +123,53 @@ class TestFillConstantFP16(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(self.place, atol=1e-3)
+
+
+class TestFillConstantBool(OpTest):
+
+    def setUp(self):
+        self.set_npu()
+        self.place = paddle.NPUPlace(0)
+        self.op_type = "fill_constant"
+
+        self.inputs = {}
+        self.attrs = {
+            'shape': [123, 92],
+            'value': True,
+            'dtype': core.VarDesc.VarType.BOOL
+        }
+        self.outputs = {'Out': np.full((123, 92), True).astype(self.dtype)}
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def init_dtype(self):
+        self.dtype = np.BOOL
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+
+class TestFillConstantWithPlaceType(OpTest):
+
+    def setUp(self):
+        self.set_npu()
+        self.place = paddle.NPUPlace(0)
+        self.op_type = "fill_constant"
+        self.init_dtype()
+
+        self.inputs = {}
+        self.attrs = {'shape': [123, 92], 'value': 3.8, 'place_type': 4}
+        self.outputs = {'Out': np.full((123, 92), 3.8)}
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
 
 
 if __name__ == '__main__':

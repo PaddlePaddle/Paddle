@@ -24,6 +24,7 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestDistMnist2x2(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -52,20 +53,18 @@ class TestDistMnist2x2(TestDistBase):
                 "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10,alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10"
             required_envs["GLOG_logtostderr"] = "1"
 
-        no_merge_losses = self._run_local(
-            model_file,
-            required_envs,
-            check_error_log=check_error_log,
-            batch_size=4,
-            log_name=flag_name)
+        no_merge_losses = self._run_local(model_file,
+                                          required_envs,
+                                          check_error_log=check_error_log,
+                                          batch_size=4,
+                                          log_name=flag_name)
 
-        batch_merge_losses = self._run_local(
-            model_file,
-            required_envs,
-            check_error_log=check_error_log,
-            batch_size=2,
-            batch_merge_repeat=2,
-            log_name=flag_name)
+        batch_merge_losses = self._run_local(model_file,
+                                             required_envs,
+                                             check_error_log=check_error_log,
+                                             batch_size=2,
+                                             batch_merge_repeat=2,
+                                             log_name=flag_name)
         # Ensure both result have values.
         self.assertGreater(len(no_merge_losses), 1)
         self.assertEqual(len(no_merge_losses), len(batch_merge_losses))

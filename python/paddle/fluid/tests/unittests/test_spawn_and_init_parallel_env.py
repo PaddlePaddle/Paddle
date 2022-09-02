@@ -24,15 +24,17 @@ from paddle.distributed.spawn import _get_subprocess_env_list, _options_valid_ch
 
 from paddle.fluid import core
 from paddle.fluid.dygraph import parallel_helper
+import multiprocessing
 
 # NOTE(chenweihang): Coverage CI is currently not able to count python3
-# unittest, so the unittests here covers some cases that will only be 
-# executed in the python3 sub-process. 
+# unittest, so the unittests here covers some cases that will only be
+# executed in the python3 sub-process.
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestInitParallelEnv(unittest.TestCase):
+
     def test_check_env_failed(self):
         os.environ['FLAGS_selected_gpus'] = '0'
         os.environ['PADDLE_TRAINER_ID'] = '0'
@@ -55,6 +57,7 @@ class TestInitParallelEnv(unittest.TestCase):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestSpawnAssistMethod(unittest.TestCase):
+
     def test_nprocs_greater_than_device_num_error(self):
         with self.assertRaises(RuntimeError):
             _get_subprocess_env_list(nprocs=100, options=dict())
@@ -89,8 +92,8 @@ class TestSpawnAssistMethod(unittest.TestCase):
 
     def test_get_default_nprocs(self):
         paddle.set_device('cpu')
-        with self.assertRaises(RuntimeError):
-            nprocs = _get_default_nprocs()
+        nprocs = _get_default_nprocs()
+        self.assertEqual(nprocs, multiprocessing.cpu_count())
 
         paddle.set_device('gpu')
         nprocs = _get_default_nprocs()

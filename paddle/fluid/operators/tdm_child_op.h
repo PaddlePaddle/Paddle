@@ -20,6 +20,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -34,8 +35,10 @@ using LoD = framework::LoD;
 
 template <typename T, typename InfoT = int, typename OutT = int>
 void TDMChildInner(const framework::ExecutionContext &context,
-                   const LoDTensor &input, const LoDTensor &tree_info,
-                   LoDTensor *child, LoDTensor *mask) {
+                   const LoDTensor &input,
+                   const LoDTensor &tree_info,
+                   LoDTensor *child,
+                   LoDTensor *mask) {
   auto child_nums = context.Attr<int>("child_nums");
   auto info_dims = tree_info.dims();
   int node_nums = info_dims[0];
@@ -53,19 +56,23 @@ void TDMChildInner(const framework::ExecutionContext &context,
   // TreeInfo: node_id : item_id; layer_id; ancestor_id; child_id
   for (int input_ids = 0; input_ids < input_ids_num; ++input_ids) {
     PADDLE_ENFORCE_LT(
-        input_data[input_ids], node_nums,
+        input_data[input_ids],
+        node_nums,
         platform::errors::InvalidArgument(
             "input id of OP(fluid.contrib.layers.tdm_child) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            node_nums, input_data[input_ids]));
+            node_nums,
+            input_data[input_ids]));
     PADDLE_ENFORCE_LE(
-        0, input_data[input_ids],
+        0,
+        input_data[input_ids],
         platform::errors::InvalidArgument(
             "input id of OP(fluid.contrib.layers.tdm_child) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            node_nums, input_data[input_ids]));
+            node_nums,
+            input_data[input_ids]));
 
     bool has_child =
         (input_data[input_ids] == 0 ||
@@ -108,10 +115,12 @@ class TDMChildKernel : public framework::OpKernel<T> {
     auto *tree_info_var = ctx.InputVar("TreeInfo");
 
     auto &input_tensor = input_var->Get<LoDTensor>();
-    const auto &input_type = input_tensor.type();
+    const auto &input_type =
+        framework::TransToProtoVarType(input_tensor.dtype());
     bool input_type_match = input_type == framework::proto::VarType::INT32 ||
                             input_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(input_type_match, true,
+    PADDLE_ENFORCE_EQ(input_type_match,
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(X) holds the wrong type, it holds %s, but "
                           "desires to be %s or %s",
@@ -122,11 +131,13 @@ class TDMChildKernel : public framework::OpKernel<T> {
                               framework::proto::VarType::INT64)));
 
     auto &tree_info_tensor = tree_info_var->Get<LoDTensor>();
-    const auto &info_type = tree_info_tensor.type();
+    const auto &info_type =
+        framework::TransToProtoVarType(tree_info_tensor.dtype());
     bool info_type_match = info_type == framework::proto::VarType::INT32 ||
                            info_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(
-        info_type_match, true,
+        info_type_match,
+        true,
         platform::errors::InvalidArgument(
             "Input(TreeInfo) holds the wrong type, it holds %s, but "
             "desires to be %s or %s",
@@ -145,9 +156,10 @@ class TDMChildKernel : public framework::OpKernel<T> {
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
     bool out_type_match = output_type == framework::proto::VarType::INT32 ||
                           output_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(out_type_match, true,
+    PADDLE_ENFORCE_EQ(out_type_match,
+                      true,
                       platform::errors::InvalidArgument(
-                          "Ouput(Child) & Output(LeafMask) holds the wrong "
+                          "Output(Child) & Output(LeafMask) holds the wrong "
                           "type, it holds %s, but "
                           "desires to be %s or %s",
                           paddle::framework::DataTypeToString(output_type),
@@ -158,20 +170,20 @@ class TDMChildKernel : public framework::OpKernel<T> {
 
     if (info_type == framework::proto::VarType::INT32 &&
         output_type == framework::proto::VarType::INT32) {
-      TDMChildInner<T, int, int>(ctx, input_tensor, tree_info_tensor,
-                                 child_tensor, leaf_mask_tensor);
+      TDMChildInner<T, int, int>(
+          ctx, input_tensor, tree_info_tensor, child_tensor, leaf_mask_tensor);
     } else if (info_type == framework::proto::VarType::INT64 &&
                output_type == framework::proto::VarType::INT32) {
-      TDMChildInner<T, int64_t, int>(ctx, input_tensor, tree_info_tensor,
-                                     child_tensor, leaf_mask_tensor);
+      TDMChildInner<T, int64_t, int>(
+          ctx, input_tensor, tree_info_tensor, child_tensor, leaf_mask_tensor);
     } else if (info_type == framework::proto::VarType::INT32 &&
                output_type == framework::proto::VarType::INT64) {
-      TDMChildInner<T, int, int64_t>(ctx, input_tensor, tree_info_tensor,
-                                     child_tensor, leaf_mask_tensor);
+      TDMChildInner<T, int, int64_t>(
+          ctx, input_tensor, tree_info_tensor, child_tensor, leaf_mask_tensor);
     } else if (info_type == framework::proto::VarType::INT64 &&
                output_type == framework::proto::VarType::INT64) {
-      TDMChildInner<T, int64_t, int64_t>(ctx, input_tensor, tree_info_tensor,
-                                         child_tensor, leaf_mask_tensor);
+      TDMChildInner<T, int64_t, int64_t>(
+          ctx, input_tensor, tree_info_tensor, child_tensor, leaf_mask_tensor);
     }
   }
 };

@@ -21,8 +21,14 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
+
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
+#endif
 
 namespace paddle {
 namespace operators {
@@ -30,10 +36,9 @@ namespace operators {
 static void Memcpy(void *dst, const void *src, size_t n, bool copy_to_gpu) {
   if (copy_to_gpu) {
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMemcpy(dst, src, n, cudaMemcpyHostToDevice));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(dst, src, n, cudaMemcpyHostToDevice));
 #elif defined(PADDLE_WITH_HIP)
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipMemcpy(dst, src, n, hipMemcpyHostToDevice));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpy(dst, src, n, hipMemcpyHostToDevice));
 #else
     PADDLE_THROW(
         platform::errors::InvalidArgument("Check your paddle version, current "
@@ -45,7 +50,8 @@ static void Memcpy(void *dst, const void *src, size_t n, bool copy_to_gpu) {
 }
 
 template <typename T>
-bool TestMain(const platform::Place &place, const framework::DDim &dims,
+bool TestMain(const platform::Place &place,
+              const framework::DDim &dims,
               bool inplace) {
   framework::Scope scope;
   auto *x = scope.Var("x")->GetMutable<framework::LoDTensor>();
@@ -56,7 +62,7 @@ bool TestMain(const platform::Place &place, const framework::DDim &dims,
   y->Resize(dims);
   z->Resize(dims);
 
-  size_t numel = static_cast<size_t>(framework::product(dims));
+  size_t numel = static_cast<size_t>(phi::product(dims));
 
   auto x_ptr = x->mutable_data<T>(place);
   auto y_ptr = y->mutable_data<T>(place);
@@ -84,25 +90,29 @@ bool TestMain(const platform::Place &place, const framework::DDim &dims,
   const char *out_name = inplace ? "x" : "z";
   auto op = framework::OpRegistry::CreateOp("elementwise_add",
                                             {{"X", {"x"}}, {"Y", {"y"}}},
-                                            {{"Out", {out_name}}}, {});
+                                            {{"Out", {out_name}}},
+                                            {});
   op->Run(scope, place);
   platform::DeviceContextPool::Instance().Get(place)->Wait();
 
   framework::LoDTensor cpu_out;
   auto &out_tensor = scope.FindVar(out_name)->Get<framework::LoDTensor>();
-  PADDLE_ENFORCE_EQ(scope.kids().empty(), true,
+  PADDLE_ENFORCE_EQ(scope.kids().empty(),
+                    true,
                     platform::errors::InvalidArgument(
                         "The scope can not have the child scopes,"
                         "please check your code."));
   if (inplace) {
     PADDLE_ENFORCE_EQ(
-        &out_tensor, x,
+        &out_tensor,
+        x,
         platform::errors::InvalidArgument(
             "The output tensor should be same as input x in inplace mode,"
             " but now is not same."));
   } else {
     PADDLE_ENFORCE_EQ(
-        &out_tensor, z,
+        &out_tensor,
+        z,
         platform::errors::InvalidArgument(
             "The output tensor should be same as output z in normal mode,"
             " but now is not same."));

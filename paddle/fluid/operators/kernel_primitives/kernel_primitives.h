@@ -13,13 +13,10 @@
 // limitations under the License.
 
 #pragma once
-
-#include "paddle/fluid/operators/kernel_primitives/compute_primitives.h"
-#include "paddle/fluid/operators/kernel_primitives/datamover_primitives.h"
-#include "paddle/fluid/operators/kernel_primitives/helper_primitives.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace paddle {
 namespace operators {
-namespace kernel_primitives {}
+namespace kernel_primitives = phi::kps;
 }
-}
+}  // namespace paddle

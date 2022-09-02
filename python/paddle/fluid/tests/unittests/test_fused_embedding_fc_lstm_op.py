@@ -43,12 +43,12 @@ def fused_embedded_fc_lstm(
     T = ids.shape[0]
     M = embeddings.shape[1]
     x = embeddings[ids].reshape([T, M])
-    return lstm(
-        fc(x, wx, bx), lod, h0, c0, w_h, w_b, w_c, is_reverse, act_gate,
-        act_cell, act_cand)
+    return lstm(fc(x, wx, bx), lod, h0, c0, w_h, w_b, w_c, is_reverse, act_gate,
+                act_cell, act_cand)
 
 
 class TestFusionLSTMOp(OpTest):
+
     def set_conf(self):
         pass
 
@@ -56,7 +56,7 @@ class TestFusionLSTMOp(OpTest):
         self.op_type = 'fused_embedding_fc_lstm'
         self.lod = [[2, 3, 5, 4]]
         self.M = 8  # Embedding size
-        self.D = 16  # Hidden size 
+        self.D = 16  # Hidden size
         self.dict_size = 18
         self.has_initial_state = False
         self.use_peepholes = False
@@ -82,8 +82,8 @@ class TestFusionLSTMOp(OpTest):
         w_c = b[:, 4 * self.D:] if self.use_peepholes else None
 
         # low is 0 , high is voc_size - 1
-        ids = np.random.randint(
-            low=0, high=self.dict_size - 1, size=(T, 1)).astype("int64")
+        ids = np.random.randint(low=0, high=self.dict_size - 1,
+                                size=(T, 1)).astype("int64")
         # embeddings as they were trained , so each entry is of M size
         embeddings = np.random.random(
             (self.dict_size, self.M)).astype("float32")
@@ -109,10 +109,11 @@ class TestFusionLSTMOp(OpTest):
 
         wh = np.random.normal(size=(self.D, 4 * self.D)).astype('float32')
 
-        h, c = fused_embedded_fc_lstm(
-            ids, self.lod, embeddings, wx, bx, h0, c0, wh, w_b, w_c,
-            self.is_reverse, ACTIVATION[self.act_gate],
-            ACTIVATION[self.act_cell], ACTIVATION[self.act_cand])
+        h, c = fused_embedded_fc_lstm(ids, self.lod, embeddings, wx, bx, h0, c0,
+                                      wh, w_b, w_c, self.is_reverse,
+                                      ACTIVATION[self.act_gate],
+                                      ACTIVATION[self.act_cell],
+                                      ACTIVATION[self.act_cand])
 
         self.inputs = {
             'Ids': (ids, self.lod),
@@ -144,63 +145,74 @@ class TestFusionLSTMOp(OpTest):
 
 
 class TestFusionLSTMOpInit(TestFusionLSTMOp):
+
     def set_conf(self):
         self.has_initial_state = True
 
 
 class TestFusionLSTMOpReverse(TestFusionLSTMOp):
+
     def set_conf(self):
         self.is_reverse = True
 
 
 class TestFusionLSTMOpInitReverse(TestFusionLSTMOp):
+
     def set_conf(self):
         self.has_initial_state = True
         self.is_reverse = True
 
 
 class TestFusionLSTMOpMD1(TestFusionLSTMOp):
+
     def set_conf(self):
         self.M = 36
         self.D = 8
 
 
 class TestFusionLSTMOpMD2(TestFusionLSTMOp):
+
     def set_conf(self):
         self.M = 8
         self.D = 8
 
 
 class TestFusionLSTMOpMD3(TestFusionLSTMOp):
+
     def set_conf(self):
         self.M = 15
         self.D = 3
 
 
 class TestFusionLSTMOpBS1(TestFusionLSTMOp):
+
     def set_conf(self):
         self.lod = [[3]]
         self.D = 16
 
 
 class TestFusionLSTMOpPeepholes(TestFusionLSTMOp):
+
     def set_conf(self):
         self.use_peepholes = True
 
 
 class TestFusionLSTMOpPeepholesInit(TestFusionLSTMOp):
+
     def set_conf(self):
         self.use_peepholes = True
         self.has_initial_state = True
 
 
 class TestFusionLSTMOpPeepholesReverse(TestFusionLSTMOp):
+
     def set_conf(self):
         self.use_peepholes = True
         self.is_reverse = True
 
 
 class TestFusionLSTMOpPeepholesInitReverse(TestFusionLSTMOp):
+
     def set_conf(self):
         self.use_peepholes = True
         self.has_initial_state = True
@@ -208,6 +220,7 @@ class TestFusionLSTMOpPeepholesInitReverse(TestFusionLSTMOp):
 
 
 class TestFusionLSTMOpPeepholesBS1(TestFusionLSTMOp):
+
     def set_conf(self):
         self.use_peepholes = True
         self.lod = [[2]]

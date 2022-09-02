@@ -12,16 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
 
-using platform::MKLDNNDeviceContext;
 using framework::ExecutionContext;
+using platform::MKLDNNDeviceContext;
 using Tensor = framework::Tensor;
 
 template <typename T>
@@ -32,9 +34,14 @@ class MatMulGradMKLDNNKernel : public framework::OpKernel<T> {
  private:
   void ExecuteMatMulGrad(const ExecutionContext& ctx,
                          const MKLDNNDeviceContext& dev_ctx,
-                         const mkldnn::engine& engine, Tensor* x, bool trans_x,
-                         bool is_fold_init_dims_x, Tensor* y, bool trans_y,
-                         bool is_fold_init_dims_y, Tensor* out) const;
+                         const dnnl::engine& engine,
+                         Tensor* x,
+                         bool trans_x,
+                         bool is_fold_init_dims_x,
+                         Tensor* y,
+                         bool trans_y,
+                         bool is_fold_init_dims_y,
+                         Tensor* out) const;
   void RunKernel(const ExecutionContext& ctx) const;
 };
 }  // namespace operators

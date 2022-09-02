@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/eigh_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,45 +25,9 @@ using framework::Tensor;
 class EighOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Eigh");
-    OP_INOUT_CHECK(ctx->HasOutput("Eigenvalues"), "Output", "Eigenvalues",
-                   "Eigh");
-    OP_INOUT_CHECK(ctx->HasOutput("Eigenvectors"), "Output", "Eigenvectors",
-                   "Eigh");
-
-    auto input_dim = ctx->GetInputDim("X");
-    auto rank = input_dim.size();
-
-    PADDLE_ENFORCE_GE(rank, 2,
-                      platform::errors::InvalidArgument(
-                          "The Input(X) should have at least 2 dimensions."
-                          "But received a %d dimension tensor.",
-                          rank));
-    PADDLE_ENFORCE_EQ(
-        input_dim[rank - 2], input_dim[rank - 1],
-        platform::errors::InvalidArgument(
-            "Eigh op is designed for square matrix, consequently"
-            "inner-most 2 dimensions of Input(X) should be symmetric."
-            "But received X's shape[-2] = %d and shape[-1] = %d.",
-            input_dim[rank - 2], input_dim[rank - 1]));
-
-    std::vector<int64_t> values_dim;
-    if (rank > 2) {
-      for (auto i = 0; i < rank - 1; i++) {
-        values_dim.emplace_back(input_dim[i]);
-      }
-    } else {
-      values_dim = {input_dim[1]};
-    }
-
-    ctx->SetOutputDim("Eigenvalues", framework::make_ddim(values_dim));
-    ctx->SetOutputDim("Eigenvectors", input_dim);
-  }
 };
 
-class EignOpMaker : public framework::OpProtoAndCheckerMaker {
+class EighOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
@@ -95,14 +62,18 @@ class EighGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Eigenvalues"), "Input", "Eigenvalues",
+    OP_INOUT_CHECK(
+        ctx->HasInput("Eigenvalues"), "Input", "Eigenvalues", "EighGrad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Eigenvectors"), "Input", "Eigenvectors", "EighGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Eigenvalues")),
+                   "Input",
+                   "Eigenvalues@GRAD",
                    "EighGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Eigenvectors"), "Input", "Eigenvectors",
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Eigenvectors")),
+                   "Input",
+                   "Eigenvectors@GRAD",
                    "EighGrad");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Eigenvalues")),
-                   "Input", "Eigenvalues@GRAD", "EighGrad");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Eigenvectors")),
-                   "Input", "Eigenvectors@GRAD", "EighGrad");
     auto dims = ctx->GetInputDim("Eigenvectors");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -143,25 +114,14 @@ class EighGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(eigh,
+                            EighInferShapeFunctor,
+                            PD_INFER_META(phi::EighInferMeta));
 
-REGISTER_OPERATOR(eigh, ops::EighOp, ops::EignOpMaker,
+REGISTER_OPERATOR(eigh,
+                  ops::EighOp,
+                  ops::EighOpMaker,
                   ops::EighGradOpMaker<paddle::framework::OpDesc>,
-                  ops::EighGradOpMaker<paddle::imperative::OpBase>);
+                  ops::EighGradOpMaker<paddle::imperative::OpBase>,
+                  EighInferShapeFunctor);
 REGISTER_OPERATOR(eigh_grad, ops::EighGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    eigh, ops::EighKernel<paddle::platform::CPUDeviceContext, float, float>,
-    ops::EighKernel<paddle::platform::CPUDeviceContext, double, double>,
-    ops::EighKernel<paddle::platform::CPUDeviceContext, float,
-                    paddle::platform::complex<float>>,
-    ops::EighKernel<paddle::platform::CPUDeviceContext, double,
-                    paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    eigh_grad,
-    ops::EighGradKernel<paddle::platform::CPUDeviceContext, float, float>,
-    ops::EighGradKernel<paddle::platform::CPUDeviceContext, double, double>,
-    ops::EighGradKernel<paddle::platform::CPUDeviceContext, float,
-                        paddle::platform::complex<float>>,
-    ops::EighGradKernel<paddle::platform::CPUDeviceContext, double,
-                        paddle::platform::complex<double>>);

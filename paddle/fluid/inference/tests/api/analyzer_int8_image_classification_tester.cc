@@ -14,20 +14,28 @@ limitations under the License. */
 
 #include <fstream>
 #include <iostream>
+
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
+
+DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->SetModel(FLAGS_infer_model);
+  std::ifstream model_file(FLAGS_infer_model + "/__model__");
+  if (model_file.good())
+    cfg->SetModel(FLAGS_infer_model);
+  else
+    cfg->SetModel(FLAGS_infer_model + "/inference.pdmodel",
+                  FLAGS_infer_model + "/inference.pdiparams");
   cfg->DisableGpu();
   cfg->SwitchIrOptim();
   cfg->SwitchSpecifyInputNames();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
-  cfg->EnableMKLDNN();
+  if (FLAGS_enable_mkldnn) cfg->EnableMKLDNN();
 }
 
 TEST(Analyzer_int8_image_classification, quantization) {
@@ -41,11 +49,15 @@ TEST(Analyzer_int8_image_classification, quantization) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInputs(&input_slots_all);
 
-  if (FLAGS_enable_int8) {
+  if (FLAGS_enable_mkldnn && FLAGS_enable_int8) {
     // prepare warmup batch from input data read earlier
     // warmup batch size can be different than batch size
     std::shared_ptr<std::vector<PaddleTensor>> warmup_data =
         paddle::inference::GetWarmupData(input_slots_all);
+
+    // INT8 implies FC oneDNN passes to be used
+    q_cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
+    q_cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
 
     // configure quantizer
     q_cfg.EnableMkldnnQuantizer();

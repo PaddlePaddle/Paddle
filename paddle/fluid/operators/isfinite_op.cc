@@ -26,10 +26,6 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-struct CPUPlace;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -37,7 +33,8 @@ namespace operators {
 
 class OverflowOp : public framework::OperatorWithKernel {
  public:
-  OverflowOp(const std::string &type, const framework::VariableNameMap &inputs,
+  OverflowOp(const std::string &type,
+             const framework::VariableNameMap &inputs,
              const framework::VariableNameMap &outputs,
              const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
@@ -55,12 +52,15 @@ class OverflowOp : public framework::OperatorWithKernel {
     int dtype = -1;
     auto *x_var = ctx.InputVar("X");
     if (x_var->IsType<framework::LoDTensor>()) {
-      dtype = x_var->Get<framework::LoDTensor>().type();
-    } else if (x_var->IsType<framework::SelectedRows>()) {
-      dtype = x_var->Get<framework::SelectedRows>().value().type();
+      dtype = framework::TransToProtoVarType(
+          x_var->Get<framework::LoDTensor>().type());
+    } else if (x_var->IsType<phi::SelectedRows>()) {
+      dtype = framework::TransToProtoVarType(
+          x_var->Get<phi::SelectedRows>().value().type());
     } else {
       PADDLE_ENFORCE_EQ(
-          true, false,
+          true,
+          false,
           platform::errors::InvalidArgument(
               "The input type mismatch, the type of Input(X) must be Tensor or "
               "SelectedRows, please check your input."));
@@ -90,7 +90,8 @@ If X contains both Inf/Nan, it will return the first indicator it meeted.
 
 %s
 )DOC",
-                               GetName(), GetComments()));
+                               GetName(),
+                               GetComments()));
   }
 
  protected:
@@ -115,22 +116,33 @@ namespace ops = paddle::operators;
   }                                                                   \
   }                                                                   \
   REGISTER_OPERATOR(                                                  \
-      op_type, ops::OverflowOp, ops::_##op_type##OverflowOpMaker,     \
+      op_type,                                                        \
+      ops::OverflowOp,                                                \
+      ops::_##op_type##OverflowOpMaker,                               \
       paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>, \
       paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
-
-#define REGISTER_OVERFLOW_CPU_KERNEL(op_type, functor)                      \
-  REGISTER_OP_CPU_KERNEL(                                                   \
-      op_type, ops::OverflowKernel<paddle::platform::CPUDeviceContext, int, \
-                                   ops::functor>,                           \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, int64_t,      \
-                          ops::functor>,                                    \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, float,        \
-                          ops::functor>,                                    \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, double,       \
-                          ops::functor>);
 
 REGISTER_OP_MAKER(isinf, "isinf(X)");
 REGISTER_OP_MAKER(isnan, "isnan(X)");
 REGISTER_OP_MAKER(isfinite, "isfinite(X)");
-FOR_EACH_KERNEL_FUNCTOR(REGISTER_OVERFLOW_CPU_KERNEL);
+
+REGISTER_OP_CPU_KERNEL(
+    isinf,
+    ops::OverflowKernel<phi::CPUContext, int, ops::InfinityFunctor>,
+    ops::OverflowKernel<phi::CPUContext, int64_t, ops::InfinityFunctor>,
+    ops::OverflowKernel<phi::CPUContext, float, ops::InfinityFunctor>,
+    ops::OverflowKernel<phi::CPUContext, double, ops::InfinityFunctor>);
+
+REGISTER_OP_CPU_KERNEL(
+    isnan,
+    ops::OverflowKernel<phi::CPUContext, int, ops::NANFunctor>,
+    ops::OverflowKernel<phi::CPUContext, int64_t, ops::NANFunctor>,
+    ops::OverflowKernel<phi::CPUContext, float, ops::NANFunctor>,
+    ops::OverflowKernel<phi::CPUContext, double, ops::NANFunctor>);
+
+REGISTER_OP_CPU_KERNEL(
+    isfinite,
+    ops::OverflowKernel<phi::CPUContext, int, ops::IsfiniteFunctor>,
+    ops::OverflowKernel<phi::CPUContext, int64_t, ops::IsfiniteFunctor>,
+    ops::OverflowKernel<phi::CPUContext, float, ops::IsfiniteFunctor>,
+    ops::OverflowKernel<phi::CPUContext, double, ops::IsfiniteFunctor>);

@@ -36,7 +36,10 @@ template PD_INFER_DECL int64_t *Tensor::data<int64_t>(PlaceType *place,
 template float *Tensor::mutable_data(PlaceType place);
 template int64_t *Tensor::mutable_data(PlaceType place);
 
-void *Tensor::FindTensor() const { return nullptr; }
+template <typename T>
+void *Tensor::FindTensor() const {
+  return nullptr;
+}
 
 std::vector<int> Tensor::shape() const { return {}; }
 

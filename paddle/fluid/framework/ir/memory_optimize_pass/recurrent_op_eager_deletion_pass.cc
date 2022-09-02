@@ -26,9 +26,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+using paddle::operators::OpAndGradOpPair;
 using paddle::operators::OpVariant;
 using paddle::operators::OpVariantSet;
-using paddle::operators::OpAndGradOpPair;
 
 void RecurrentOpEagerDeletionPass::ApplyImpl(Graph *graph) const {
   // Find all recurrent_op and recurrent_grad_op in graph
@@ -42,6 +42,21 @@ void RecurrentOpEagerDeletionPass::ApplyImpl(Graph *graph) const {
     OpAndGradOpPair &op_pair = entry.second;
     PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
         graph->OriginProgram(), &op_pair);
+  }
+
+  auto all_ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*graph);
+  for (auto op_hander : all_ops) {
+    auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(op_hander);
+    if (compute_op == nullptr) continue;
+    if (compute_op->Name() == "recurrent" ||
+        compute_op->Name() == "recurrent_grad") {
+      ir::Node *op_node = op_hander->Node();
+      auto *op_base = compute_op->GetOp();
+      if (op_base->Attrs().count("skip_eager_deletion_vars")) {
+        op_node->Op()->SetAttr("skip_eager_deletion_vars",
+                               op_base->Attrs().at("skip_eager_deletion_vars"));
+      }
+    }
   }
 }
 

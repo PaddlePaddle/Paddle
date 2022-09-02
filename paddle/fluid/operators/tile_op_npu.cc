@@ -11,41 +11,53 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/tile_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/tile_op_functor.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
-template <typename DeviceContext, typename T>
+
+using Tensor = framework::Tensor;
+using NPUDeviceContext = platform::NPUDeviceContext;
+
+template <typename T>
 class TileNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto rank = context.Input<Tensor>("X")->dims().size();
     PADDLE_ENFORCE_GE(
-        rank, 1, platform::errors::InvalidArgument(
-                     "The rank of the input 'x' for tile op must be a positive "
-                     "integer, but the value received is %d.",
-                     rank));
+        rank,
+        1,
+        platform::errors::InvalidArgument(
+            "The rank of the input 'x' for tile op must be a positive "
+            "integer, but the value received is %d.",
+            rank));
     PADDLE_ENFORCE_LE(
-        rank, MAX_RANK_SUPPORTED,
+        rank,
+        MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
             "The rank of the input 'x' for tile op "
             "must be less than or equal to %d, but the value received is %d.",
-            MAX_RANK_SUPPORTED, rank));
+            MAX_RANK_SUPPORTED,
+            rank));
     auto repeat_times = get_repeat_times(context);
     int repeat_times_size = repeat_times.size();
     PADDLE_ENFORCE_GE(
-        repeat_times_size, 1,
+        repeat_times_size,
+        1,
         platform::errors::InvalidArgument(
             "The number of elements of the input 'repeat_times' for tile "
             "op must be positive, but the value received is %d.",
             repeat_times_size));
     PADDLE_ENFORCE_LE(
-        repeat_times_size, MAX_RANK_SUPPORTED,
+        repeat_times_size,
+        MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
             "The number of elements of the input 'repeat_times' for tile op "
             "must be less than or equal to %d, but the value received is %d.",
-            MAX_RANK_SUPPORTED, repeat_times_size));
+            MAX_RANK_SUPPORTED,
+            repeat_times_size));
     rank = std::max(rank, repeat_times_size);
     Tile(context);
   }
@@ -58,13 +70,14 @@ class TileNPUKernel : public framework::OpKernel<T> {
     auto repeat_times = get_repeat_times(context);
     for (size_t i = 0; i < repeat_times.size(); ++i) {
       PADDLE_ENFORCE_GT(
-          repeat_times[i], 0,
+          repeat_times[i],
+          0,
           platform::errors::InvalidArgument(
               "All elements of the input 'repeat_times' for tile op must "
               "be positive integers, but the value received is %d.",
               repeat_times[i]));
     }
-    auto vec_in_dims = framework::vectorize<int>(in_dims);
+    auto vec_in_dims = phi::vectorize<int>(in_dims);
     if (repeat_times.size() < vec_in_dims.size()) {
       int diff = vec_in_dims.size() - repeat_times.size();
       repeat_times.insert(repeat_times.begin(), diff, 1);
@@ -73,14 +86,16 @@ class TileNPUKernel : public framework::OpKernel<T> {
       vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
     }
     PADDLE_ENFORCE_EQ(
-        repeat_times.size(), vec_in_dims.size(),
+        repeat_times.size(),
+        vec_in_dims.size(),
         platform::errors::InvalidArgument(
             "The rank (%d) of the input 'x' and the rank (%d) of the input "
             "'repeat_times' for tile op must match after promotion.",
-            vec_in_dims.size(), repeat_times.size()));
+            vec_in_dims.size(),
+            repeat_times.size()));
     auto* out0 = context.Output<framework::Tensor>("Out");
 
-    framework::DDim new_in_dims = framework::make_ddim(vec_in_dims);
+    framework::DDim new_in_dims = phi::make_ddim(vec_in_dims);
     framework::DDim out_dims(new_in_dims);
 
     for (size_t i = 0; i < repeat_times.size(); ++i) {
@@ -92,18 +107,22 @@ class TileNPUKernel : public framework::OpKernel<T> {
 
     std::vector<int> temp(repeat_times.size(), 1);
     if (repeat_times == temp) {
-      framework::TensorCopy(
-          *in0, context.GetPlace(),
-          context.template device_context<platform::DeviceContext>(), out0);
+      framework::TensorCopy(*in0,
+                            context.GetPlace(),
+                            context.template device_context<NPUDeviceContext>(),
+                            out0);
       return;
     }
 
-    const auto& runner =
-        NpuOpRunner("TileD", {*in0}, {*out0}, {{"multiples", repeat_times}});
-    auto stream =
-        context.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
+    // const auto& runner =
+    //     NpuOpRunner("TileD", {*in0}, {*out0}, {{"multiples", repeat_times}});
+    auto stream = context.template device_context<NPUDeviceContext>().stream();
+    NpuOpRunner runner;
+    runner.SetType("Tile")
+        .AddInput(*in0)
+        .AddInput(std::move(repeat_times))
+        .AddOutput(*out0)
+        .Run(stream);
   }
 };
 
@@ -111,8 +130,11 @@ class TileNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_NPU_KERNEL(
-    tile, ops::TileNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::TileNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::TileNPUKernel<paddle::platform::NPUDeviceContext,
-                       paddle::platform::float16>);
+REGISTER_OP_NPU_KERNEL(tile,
+                       ops::TileNPUKernel<float>,
+                       ops::TileNPUKernel<int>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::TileNPUKernel<int64_t>,
+#endif
+                       ops::TileNPUKernel<bool>,
+                       ops::TileNPUKernel<paddle::platform::float16>);

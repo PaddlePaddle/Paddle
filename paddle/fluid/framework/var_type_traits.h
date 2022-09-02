@@ -18,10 +18,12 @@
 #include <string>
 #include <tuple>
 #include <typeindex>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
@@ -45,6 +47,15 @@
 #include "xpu/bkcl.h"
 #endif
 
+#if defined(PADDLE_WITH_CNCL)
+#include <cncl.h>
+#endif
+
+namespace phi {
+class DenseTensor;
+class SelectedRows;
+}  // namespace phi
+
 // Users should add forward declarations here
 namespace paddle {
 
@@ -67,16 +78,16 @@ class BKCLCommunicator;
 
 namespace framework {
 class LoDRankTable;
-class LoDTensor;
+class ScopeBase;
 class ReaderHolder;
 class Scope;
-class SelectedRows;
-class Tensor;
 }  // namespace framework
 
 namespace operators {
 
 class CudnnRNNCache;
+
+class CUDAGraphWithInOuts;
 
 namespace reader {
 class LoDTensorBlockingQueueHolder;
@@ -95,14 +106,20 @@ int TypeIndexToVarTraitId(const std::type_index &type);
 
 namespace detail {
 
-template <bool kStop, int kStart, int kEnd, typename T1, typename T2,
+template <bool kStop,
+          int kStart,
+          int kEnd,
+          typename T1,
+          typename T2,
           typename... Args>
 struct TypePosFinderImpl {
-  static constexpr int kPos =
-      std::is_same<T1, T2>::value
-          ? kStart
-          : TypePosFinderImpl<kStart + 2 == kEnd, kStart + 1, kEnd, T1,
-                              Args...>::kPos;
+  static constexpr int kPos = std::is_same<T1, T2>::value
+                                  ? kStart
+                                  : TypePosFinderImpl<kStart + 2 == kEnd,
+                                                      kStart + 1,
+                                                      kEnd,
+                                                      T1,
+                                                      Args...>::kPos;
 };
 
 template <int kStart, int kEnd, typename T1, typename T2>
@@ -115,8 +132,8 @@ struct TypePosFinderImpl<true, kStart, kEnd, T1, T2> {
 template <typename T, typename... Args>
 struct TypePosFinder {
   static constexpr int kPos =
-      TypePosFinderImpl<sizeof...(Args) == 1, 0, sizeof...(Args), T,
-                        Args...>::kPos;
+      TypePosFinderImpl<sizeof...(Args) == 1, 0, sizeof...(Args), T, Args...>::
+          kPos;
 };
 
 template <typename... Args>
@@ -161,13 +178,25 @@ struct VarTypeRegistryImpl {
 // Users should add other variable types below.
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
-    Tensor, LoDTensor, SelectedRows, std::vector<Scope *>, LoDRankTable,
-    LoDTensorArray, platform::PlaceList, ReaderHolder, std::string, Scope *,
-    operators::reader::LoDTensorBlockingQueueHolder, FetchList,
+    Tensor,
+    phi::SelectedRows,
+    std::vector<Scope *>,
+    LoDRankTable,
+    Strings,
+    LoDTensorArray,
+    platform::PlaceList,
+    ReaderHolder,
+    String,
+    Scope *,
+    operators::reader::LoDTensorBlockingQueueHolder,
+    FetchList,
+    FeedList,
     operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    ncclUniqueId, platform::Communicator, platform::NCCLCommunicator,
+    ncclUniqueId,
+    platform::Communicator,
+    platform::NCCLCommunicator,
 #endif
     operators::CudnnRNNCache,
 #endif
@@ -175,10 +204,18 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     HcclRootInfo,
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
-    BKCLUniqueId, platform::BKCLCommunicator,
+    BKCLUniqueId,
+    platform::BKCLCommunicator,
 #endif
-    int, float>;
-
+#if defined(PADDLE_WITH_CNCL)
+    cnclCliqueId,
+#endif
+    std::vector<std::unique_ptr<operators::CUDAGraphWithInOuts>>,
+    int,
+    float,
+    Vocab,
+    std::vector<int>,
+    std::vector<float>>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
@@ -202,15 +239,19 @@ struct VarTypeTrait {
 // Users should set some of variable type ids to be what is defined in
 // framework.proto below
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensor, proto::VarType::LOD_TENSOR);
-REG_PROTO_VAR_TYPE_TRAIT(SelectedRows, proto::VarType::SELECTED_ROWS);
+REG_PROTO_VAR_TYPE_TRAIT(phi::SelectedRows, proto::VarType::SELECTED_ROWS);
 REG_PROTO_VAR_TYPE_TRAIT(std::vector<Scope *>, proto::VarType::STEP_SCOPES);
 REG_PROTO_VAR_TYPE_TRAIT(LoDRankTable, proto::VarType::LOD_RANK_TABLE);
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensorArray, proto::VarType::LOD_TENSOR_ARRAY);
 REG_PROTO_VAR_TYPE_TRAIT(platform::PlaceList, proto::VarType::PLACE_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(ReaderHolder, proto::VarType::READER);
+REG_PROTO_VAR_TYPE_TRAIT(FeedList, proto::VarType::FEED_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(FetchList, proto::VarType::FETCH_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(int, proto::VarType::INT32);
 REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
+REG_PROTO_VAR_TYPE_TRAIT(Vocab, proto::VarType::VOCAB);
+REG_PROTO_VAR_TYPE_TRAIT(String, proto::VarType::STRING);
+REG_PROTO_VAR_TYPE_TRAIT(Strings, proto::VarType::STRINGS);
 
 /** End of variable type registration */
 

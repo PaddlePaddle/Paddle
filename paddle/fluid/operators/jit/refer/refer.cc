@@ -13,13 +13,14 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/refer/refer.h"
+
 #include "paddle/fluid/operators/jit/registry.h"
 
 namespace refer = paddle::operators::jit::refer;
 
-#define REGISTER_REFER_KERNEL(func)                             \
-  REGISTER_JITKERNEL_REFER(k##func, refer::func##Kernel<float>, \
-                           refer::func##Kernel<double>)
+#define REGISTER_REFER_KERNEL(func) \
+  REGISTER_JITKERNEL_REFER(         \
+      k##func, refer::func##Kernel<float>, refer::func##Kernel<double>)
 
 REGISTER_REFER_KERNEL(VMul);
 REGISTER_REFER_KERNEL(VAdd);
@@ -55,6 +56,8 @@ REGISTER_REFER_KERNEL(HSum);
 REGISTER_REFER_KERNEL(StrideASum);
 REGISTER_REFER_KERNEL(Softmax);
 REGISTER_REFER_KERNEL(EmbSeqPool);
+REGISTER_REFER_KERNEL(Adam);
+REGISTER_REFER_KERNEL(AdamW);
 REGISTER_REFER_KERNEL(Sgd);
 REGISTER_REFER_KERNEL(VBroadcast);
 

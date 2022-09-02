@@ -10,16 +10,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <math.h>
+
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/mask_util.h"
-#include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -41,46 +42,58 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("ImInfo"), true,
+        ctx->HasInput("ImInfo"),
+        true,
         platform::errors::InvalidArgument("Input(ImInfo) shouldn't be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("GtClasses"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("GtClasses"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(GtClasses) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("IsCrowd"), true,
+        ctx->HasInput("IsCrowd"),
+        true,
         platform::errors::InvalidArgument("Input(IsCrowd) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("GtSegms"), true,
+        ctx->HasInput("GtSegms"),
+        true,
         platform::errors::InvalidArgument("Input(GtSegms) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Rois"), true,
+        ctx->HasInput("Rois"),
+        true,
         platform::errors::InvalidArgument("Input(Rois) shouldn't be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("LabelsInt32"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("LabelsInt32"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(LabelsInt32) shouldn't be null."));
 
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("MaskRois"), true,
+        ctx->HasOutput("MaskRois"),
+        true,
         platform::errors::InvalidArgument(
             "Output(MaskRois) of GenerateMaskLabelsOp should not be null"));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("RoiHasMaskInt32"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("RoiHasMaskInt32"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(RoiHasMaskInt32) of GenerateMaskLabelsOp "
                           "should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("MaskInt32"), true,
+        ctx->HasOutput("MaskInt32"),
+        true,
         platform::errors::InvalidArgument(
             "Output(MaskInt32) of GenerateMaskLabelsOp should not be null"));
 
     auto im_info_dims = ctx->GetInputDim("ImInfo");
     auto gt_segms_dims = ctx->GetInputDim("GtSegms");
-    PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
+    PADDLE_ENFORCE_EQ(im_info_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The rank of Input(ImInfo) must be 2."));
-    PADDLE_ENFORCE_EQ(gt_segms_dims.size(), 2,
+    PADDLE_ENFORCE_EQ(gt_segms_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The rank of Input(GtSegms) must be 2."));
-    PADDLE_ENFORCE_EQ(gt_segms_dims[1], 2,
+    PADDLE_ENFORCE_EQ(gt_segms_dims[1],
+                      2,
                       platform::errors::InvalidArgument(
                           "The second dim of Input(GtSegms) must be 2."));
     int num_classes = ctx->Attrs().Get<int>("num_classes");
@@ -109,10 +122,11 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
  * to encode class specific mask targets.
  */
 template <typename T>
-static inline void ExpandMaskTarget(const platform::CPUDeviceContext& ctx,
+static inline void ExpandMaskTarget(const phi::CPUContext& ctx,
                                     const Tensor& masks,
                                     const Tensor& mask_class_labels,
-                                    const int resolution, const int num_classes,
+                                    const int resolution,
+                                    const int num_classes,
                                     Tensor* mask_targets) {
   const uint8_t* masks_data = masks.data<uint8_t>();
   int64_t num_mask = masks.dims()[0];
@@ -122,7 +136,7 @@ static inline void ExpandMaskTarget(const platform::CPUDeviceContext& ctx,
 
   int* mask_targets_data =
       mask_targets->mutable_data<int>({num_mask, mask_dim}, ctx.GetPlace());
-  math::set_constant(ctx, mask_targets, -1);
+  phi::funcs::set_constant(ctx, mask_targets, -1);
   for (int64_t mask_id = 0; mask_id < num_mask; ++mask_id) {
     int cls = mask_class_labels_data[mask_id];
     int start = M * cls;
@@ -136,11 +150,16 @@ static inline void ExpandMaskTarget(const platform::CPUDeviceContext& ctx,
 }
 
 template <typename T>
-std::vector<Tensor> SampleMaskForOneImage(
-    const platform::CPUDeviceContext& ctx, const Tensor& im_info,
-    const Tensor& gt_classes, const Tensor& is_crowd, const Tensor& gt_segms,
-    const Tensor& rois, const Tensor& label_int32, const int num_classes,
-    const int resolution, const framework::LoD& segm_length) {
+std::vector<Tensor> SampleMaskForOneImage(const phi::CPUContext& ctx,
+                                          const Tensor& im_info,
+                                          const Tensor& gt_classes,
+                                          const Tensor& is_crowd,
+                                          const Tensor& gt_segms,
+                                          const Tensor& rois,
+                                          const Tensor& label_int32,
+                                          const int num_classes,
+                                          const int resolution,
+                                          const framework::LoD& segm_length) {
   // Prepare the mask targets by associating one gt mask to each training roi
   // that has a fg (non-bg) class label.
   const int64_t gt_size = static_cast<int64_t>(gt_classes.dims()[0]);
@@ -148,11 +167,13 @@ std::vector<Tensor> SampleMaskForOneImage(
   const int* gt_classes_data = gt_classes.data<int>();
   const int* is_crowd_data = is_crowd.data<int>();
   const int* label_int32_data = label_int32.data<int>();
-  PADDLE_ENFORCE_EQ(roi_size, label_int32.dims()[0],
+  PADDLE_ENFORCE_EQ(roi_size,
+                    label_int32.dims()[0],
                     platform::errors::InvalidArgument(
                         "The first dim of label [%d] is the different from "
                         "roi_size [%d], they should be same.",
-                        label_int32.dims()[0], roi_size));
+                        label_int32.dims()[0],
+                        roi_size));
 
   std::vector<int> mask_gt_inds, fg_inds;
   std::vector<std::vector<std::vector<T>>> gt_polys;
@@ -173,12 +194,15 @@ std::vector<Tensor> SampleMaskForOneImage(
       for (int j = 0; j < poly_num; ++j) {
         int s = lod2[s_idx + j];
         int e = lod2[s_idx + j + 1];
-        PADDLE_ENFORCE_NE(s, e,
+        PADDLE_ENFORCE_NE(s,
+                          e,
                           platform::errors::InvalidArgument(
                               "The start point and the end point in the poly "
                               "segment [%d] should not be same, but received "
                               "the start point [%d] and the end point [%d].",
-                              i, s, e));
+                              i,
+                              s,
+                              e));
         std::vector<T> plts(polys_data + s * 2, polys_data + e * 2);
         polys.push_back(plts);
       }
@@ -207,7 +231,10 @@ std::vector<Tensor> SampleMaskForOneImage(
   if (fg_num > 0) {
     // Class labels for the foreground rois
     mask_class_labels.mutable_data<int>({fg_num, 1}, ctx.GetPlace());
-    Gather<int>(label_int32_data, 1, fg_inds.data(), fg_inds.size(),
+    Gather<int>(label_int32_data,
+                1,
+                fg_inds.data(),
+                fg_inds.size(),
                 mask_class_labels.data<int>());
 
     uint8_t* masks_data = masks.mutable_data<uint8_t>(
@@ -216,8 +243,8 @@ std::vector<Tensor> SampleMaskForOneImage(
     // Find overlap between all foreground rois and the bounding boxes
     // enclosing each segmentation
     T* rois_fg_data = rois_fg.mutable_data<T>({fg_num, 4}, ctx.GetPlace());
-    Gather<T>(rois.data<T>(), 4, fg_inds.data(), fg_inds.size(),
-              rois_fg.data<T>());
+    Gather<T>(
+        rois.data<T>(), 4, fg_inds.data(), fg_inds.size(), rois_fg.data<T>());
 
     for (int k = 0; k < rois_fg.numel(); ++k) {
       rois_fg_data[k] = rois_fg_data[k] / im_scale;
@@ -271,7 +298,7 @@ std::vector<Tensor> SampleMaskForOneImage(
     }
     masks.mutable_data<uint8_t>({bg_num, resolution * resolution},
                                 ctx.GetPlace());
-    math::set_constant(ctx, &masks, -1);
+    phi::funcs::set_constant(ctx, &masks, -1);
     int* mask_class_labels_data =
         mask_class_labels.mutable_data<int>({bg_num, 1}, ctx.GetPlace());
     mask_class_labels_data[0] = 0;
@@ -279,8 +306,8 @@ std::vector<Tensor> SampleMaskForOneImage(
   }
 
   Tensor masks_expand;
-  ExpandMaskTarget<T>(ctx, masks, mask_class_labels, resolution, num_classes,
-                      &masks_expand);
+  ExpandMaskTarget<T>(
+      ctx, masks, mask_class_labels, resolution, num_classes, &masks_expand);
 
   T* rois_fg_data = rois_fg.data<T>();
   for (int k = 0; k < rois_fg.numel(); ++k) {
@@ -319,33 +346,40 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
     int resolution = ctx.Attr<int>("resolution");
 
     PADDLE_ENFORCE_EQ(
-        gt_classes->lod().size(), 1UL,
+        gt_classes->lod().size(),
+        1UL,
         platform::errors::InvalidArgument(
             "GenerateMaskLabelsOp gt_classes needs 1 level of LoD"));
     PADDLE_ENFORCE_EQ(
-        is_crowd->lod().size(), 1UL,
+        is_crowd->lod().size(),
+        1UL,
         platform::errors::InvalidArgument(
             "GenerateMaskLabelsOp is_crowd needs 1 level of LoD"));
-    PADDLE_ENFORCE_EQ(rois->lod().size(), 1UL,
+    PADDLE_ENFORCE_EQ(rois->lod().size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "GenerateMaskLabelsOp rois needs 1 level of LoD"));
     PADDLE_ENFORCE_EQ(
-        label_int32->lod().size(), 1UL,
+        label_int32->lod().size(),
+        1UL,
         platform::errors::InvalidArgument(
             "GenerateMaskLabelsOp label_int32 needs 1 level of LoD"));
 
     PADDLE_ENFORCE_EQ(
-        gt_segms->lod().size(), 3UL,
+        gt_segms->lod().size(),
+        3UL,
         platform::errors::InvalidArgument(
             "GenerateMaskLabelsOp gt_segms needs 3 level of LoD"));
 
     int64_t n = static_cast<int64_t>(gt_classes->lod().back().size() - 1);
     PADDLE_ENFORCE_EQ(
-        gt_segms->lod()[0].size() - 1, n,
+        gt_segms->lod()[0].size() - 1,
+        n,
         platform::errors::InvalidArgument(
             "Batchsize of Input(gt_segms) and Input(gt_classes) should be "
             "same, but received gt_segms[%d], gt_classes[%d].",
-            gt_segms->lod()[0].size() - 1, n));
+            gt_segms->lod()[0].size() - 1,
+            n));
 
     int mask_dim = num_classes * resolution * resolution;
     int roi_num = rois->lod().back()[n];
@@ -357,7 +391,7 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
     std::vector<size_t> lod0(1, 0);
 
     int64_t num_mask = 0;
-    auto& dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = ctx.device_context<phi::CPUContext>();
 
     auto gt_classes_lod = gt_classes->lod().back();
     auto is_crowd_lod = is_crowd->lod().back();
@@ -386,18 +420,25 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
       size_t e = sub_lod_and_offset.second.second;
       Tensor gt_segms_slice = gt_segms->Slice(s, e);
 
-      std::vector<Tensor> tensor_output = SampleMaskForOneImage<T>(
-          dev_ctx, im_info_slice, gt_classes_slice, is_crowd_slice,
-          gt_segms_slice, rois_slice, label_int32_slice, num_classes,
-          resolution, lod_length);
+      std::vector<Tensor> tensor_output =
+          SampleMaskForOneImage<T>(dev_ctx,
+                                   im_info_slice,
+                                   gt_classes_slice,
+                                   is_crowd_slice,
+                                   gt_segms_slice,
+                                   rois_slice,
+                                   label_int32_slice,
+                                   num_classes,
+                                   resolution,
+                                   lod_length);
 
       Tensor sampled_mask_rois = tensor_output[0];
       Tensor sampled_roi_has_mask_int32 = tensor_output[1];
       Tensor sampled_mask_int32 = tensor_output[2];
 
       AppendMask<T>(mask_rois, kBoxDim * num_mask, &sampled_mask_rois);
-      AppendMask<int>(roi_has_mask_int32, num_mask,
-                      &sampled_roi_has_mask_int32);
+      AppendMask<int>(
+          roi_has_mask_int32, num_mask, &sampled_roi_has_mask_int32);
       AppendMask<int>(mask_int32, mask_dim * num_mask, &sampled_mask_int32);
 
       num_mask += sampled_mask_rois.dims()[0];
@@ -478,7 +519,8 @@ K classes. This mask targets are used to compute loss of mask branch.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    generate_mask_labels, ops::GenerateMaskLabelsOp,
+    generate_mask_labels,
+    ops::GenerateMaskLabelsOp,
     ops::GenerateMaskLabelsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

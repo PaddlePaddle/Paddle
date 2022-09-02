@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("../")
 from op_test import OpTest, skip_check_grad_ci
 from test_reorder_lod_tensor import convert_to_offset
@@ -54,6 +55,7 @@ def compute_seqpool_sqrt(x, offset, out, pad_value=0.0):
 
 
 class TestSeqAvgPool(OpTest):
+
     def set_lod(self):
         return [[11]]
 
@@ -95,54 +97,62 @@ class TestSeqAvgPool(OpTest):
 
 
 class TestSeqAvgPoolBatch1(TestSeqAvgPool):
+
     def set_lod(self):
         return [[11]]
 
     def set_lod_data(self):
         lod = self.set_lod()
-        x, _ = self.get_sequence_batch_size_1_input(
-            lod=lod, shape=[lod[0][0], 23])
+        x, _ = self.get_sequence_batch_size_1_input(lod=lod,
+                                                    shape=[lod[0][0], 23])
         return x
 
 
 class TestSeqAvgPoolInstance0(TestSeqAvgPool):
+
     def set_lod(self):
         return [[0, 0, 4, 0, 3, 0, 0, 5, 0, 0]]
 
     def set_lod_data(self):
         lod = self.set_lod()
-        x, _ = self.get_sequence_instance_size_0_input(
-            lod=lod, shape=[sum(lod[0]), 10])
+        x, _ = self.get_sequence_instance_size_0_input(lod=lod,
+                                                       shape=[sum(lod[0]), 10])
         return x
 
 
 class TestSeqAvgPoolLen0(TestSeqAvgPool):
+
     def set_lod(self):
         return [[0, 4, 0, 7, 0]]
 
 
 class TestSeqAvgPoolLen0LoDLevel2(TestSeqAvgPool):
+
     def set_lod(self):
         return [[2, 0, 1, 2], [0, 4, 0, 7, 0]]
 
 
 class TestSeqSumPool(TestSeqAvgPool):
+
     def compute(self, x, offset, out):
         self.attrs = {"pad_value": 0.1, 'pooltype': "SUM"}
         compute_seqpool_sum(x, offset, out, self.attrs["pad_value"])
 
 
 class TestSeqSumPoolLen0(TestSeqSumPool):
+
     def set_lod(self):
         return [[0, 4, 0, 7, 0]]
 
 
 class TestSeqSumPoolLen0LoDLevel2(TestSeqSumPool):
+
     def set_lod(self):
         return [[2, 0, 1, 2], [0, 4, 0, 7, 0]]
 
 
 class TestSeqMaxPool(TestSeqAvgPool):
+
     def set_lod(self):
         return [[13]]
 
@@ -175,32 +185,38 @@ class TestSeqMaxPool(TestSeqAvgPool):
 
 
 class TestSeqMaxPoolLen0(TestSeqMaxPool):
+
     def set_lod(self):
         return [[0, 1, 1, 5, 6, 0]]
 
 
 class TestSeqMaxPoolLen0LoDLevel2(TestSeqMaxPool):
+
     def set_lod(self):
         return [[2, 0, 3, 1], [0, 1, 1, 5, 6, 0]]
 
 
 class TestSeqSqrtPool(TestSeqAvgPool):
+
     def compute(self, x, offset, out):
         self.attrs = {"pad_value": 0.0, 'pooltype': "SQRT"}
         compute_seqpool_sqrt(x, offset, out, self.attrs["pad_value"])
 
 
 class TestSeqSqrtPoolLen0(TestSeqSqrtPool):
+
     def set_lod(self):
         return [[0, 7, 0, 2, 2, 0]]
 
 
 class TestSeqSqrtPoolLen0LoDLevel2(TestSeqSqrtPool):
+
     def set_lod(self):
         return [[1, 2, 0, 3], [0, 7, 0, 2, 2, 0]]
 
 
 class TestSeqLastPool(TestSeqAvgPool):
+
     def compute(self, x, offset, out):
         self.attrs = {"pad_value": 0.0, 'pooltype': "LAST"}
         level = len(offset) - 1
@@ -213,16 +229,19 @@ class TestSeqLastPool(TestSeqAvgPool):
 
 
 class TestSeqLastPoolLen0(TestSeqLastPool):
+
     def set_lod(self):
         return [[0, 3, 4, 0, 4, 0]]
 
 
 class TestSeqLastPoolLen0LoDLevel2(TestSeqLastPool):
+
     def set_lod(self):
         return [[1, 0, 2, 3], [0, 3, 4, 0, 4, 0]]
 
 
 class TestSeqFirstPool(TestSeqAvgPool):
+
     def compute(self, x, offset, out):
         self.attrs = {"pad_value": 0.3, 'pooltype': "FIRST"}
         level = len(offset) - 1
@@ -235,16 +254,19 @@ class TestSeqFirstPool(TestSeqAvgPool):
 
 
 class TestSeqFirstPoolLen0(TestSeqFirstPool):
+
     def set_lod(self):
         return [[0, 2, 0, 3, 6, 0]]
 
 
 class TestSeqFirstPoolLen0LoDLevel2(TestSeqFirstPool):
+
     def set_lod(self):
         return [[1, 0, 2, 3], [0, 2, 0, 3, 6, 0]]
 
 
 class TestSeqAvgPool2D(TestSeqAvgPool):
+
     def set_lod(self):
         return [[4, 1, 3, 5]]
 
@@ -273,16 +295,19 @@ class TestSeqAvgPool2D(TestSeqAvgPool):
 
 
 class TestSeqAvgPool2DLen0(TestSeqAvgPool2D):
+
     def set_lod(self):
         return [[0, 5, 0, 8, 0]]
 
 
 class TestSeqAvgPool2DLen0LoDLevel2(TestSeqAvgPool2D):
+
     def set_lod(self):
         return [[1, 0, 4], [0, 5, 0, 8, 0]]
 
 
 class TestSeqSumPool2D(TestSeqAvgPool2D):
+
     def compute(self, x, offset, out):
         self.attrs = {"pad_value": 0.2, 'pooltype': "SUM"}
         level = len(offset) - 1
@@ -296,16 +321,19 @@ class TestSeqSumPool2D(TestSeqAvgPool2D):
 
 
 class TestSeqSumPool2DLen0(TestSeqSumPool2D):
+
     def set_lod(self):
         return [[0, 8, 0, 5, 0]]
 
 
 class TestSeqSumPool2DLen0LoDLevel2(TestSeqSumPool2D):
+
     def set_lod(self):
         return [[1, 0, 4], [0, 8, 0, 5, 0]]
 
 
 class TestSeqSqrtPool2D(TestSeqAvgPool2D):
+
     def compute(self, x, offset, out):
         self.attrs = {"pad_value": 0.0, 'pooltype': "SQRT"}
         level = len(offset) - 1
@@ -326,21 +354,26 @@ class TestSeqSqrtPool2D(TestSeqAvgPool2D):
             out = out[0]
         self.outputs['MaxIndex'] = \
             np.zeros(out.shape).astype('int32')
-        self.check_grad(
-            ["X"], "Out", max_relative_error=0.06, check_dygraph=False)
+        self.check_grad(["X"],
+                        "Out",
+                        max_relative_error=0.06,
+                        check_dygraph=False)
 
 
 class TestSeqSqrtPool2DLen0(TestSeqSqrtPool2D):
+
     def set_lod(self):
         return [[0, 8, 0, 5, 0]]
 
 
 class TestSeqSqrtPool2DLen0LoDLevel2(TestSeqSqrtPool2D):
+
     def set_lod(self):
         return [[1, 0, 2, 2], [0, 8, 0, 5, 0]]
 
 
 class TestSeqMaxPool2D(TestSeqAvgPool2D):
+
     def set_lod(self):
         return [[4, 1, 3, 5]]
 
@@ -374,11 +407,13 @@ class TestSeqMaxPool2D(TestSeqAvgPool2D):
 
 
 class TestSeqMaxPool2DLen0(TestSeqMaxPool2D):
+
     def set_lod(self):
         return [[0, 3, 0, 10, 0]]
 
 
 class TestSeqMaxPool2DLen0LoDLevel2(TestSeqMaxPool2D):
+
     def set_lod(self):
         return [[1, 0, 2, 2], [0, 3, 0, 10, 0]]
 
@@ -386,6 +421,7 @@ class TestSeqMaxPool2DLen0LoDLevel2(TestSeqMaxPool2D):
 @skip_check_grad_ci(reason="Grad computation does not apply to Sequence MAX "
                     "Pool executed when is_test is true.")
 class TestSeqMaxPool2DInference(TestSeqMaxPool2D):
+
     def compute(self, x, offset, out):
         self.attrs = {"pad_value": 1.0, 'pooltype': "MAX", 'is_test': True}
         level = len(offset) - 1
@@ -404,16 +440,19 @@ class TestSeqMaxPool2DInference(TestSeqMaxPool2D):
 
 
 class TestSeqMaxPool2DInferenceLen0(TestSeqMaxPool2DInference):
+
     def set_lod(self):
         return [[0, 3, 0, 10, 0]]
 
 
 class TestSeqMaxPool2DInferenceLen0LoDLevel2(TestSeqMaxPool2DInference):
+
     def set_lod(self):
         return [[1, 0, 2, 2], [0, 3, 0, 10, 0]]
 
 
 class TestSeqLastPool2D(TestSeqAvgPool2D):
+
     def compute(self, x, offset, out):
         self.attrs = {"pad_value": 0.0, 'pooltype': "LAST"}
         level = len(offset) - 1
@@ -427,16 +466,19 @@ class TestSeqLastPool2D(TestSeqAvgPool2D):
 
 
 class TestSeqLastPool2DLen0(TestSeqLastPool2D):
+
     def set_lod(self):
         return [[0, 3, 0, 1, 9, 0]]
 
 
 class TestSeqLastPool2DLen0LoDLevel2(TestSeqLastPool2D):
+
     def set_lod(self):
         return [[1, 0, 2, 3], [0, 3, 0, 1, 9, 0]]
 
 
 class TestSeqFirstPool2D(TestSeqAvgPool2D):
+
     def compute(self, x, offset, out):
         self.attrs = {"pad_value": 0.0, 'pooltype': "FIRST"}
         level = len(offset) - 1
@@ -450,11 +492,13 @@ class TestSeqFirstPool2D(TestSeqAvgPool2D):
 
 
 class TestSeqFirstPool2DLen0(TestSeqFirstPool2D):
+
     def set_lod(self):
         return [[0, 3, 0, 3, 7, 0]]
 
 
 class TestSeqFirstPool2DLen0LoDLevel2(TestSeqFirstPool2D):
+
     def set_lod(self):
         return [[1, 0, 2, 3], [0, 3, 0, 3, 7, 0]]
 

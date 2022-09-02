@@ -14,13 +14,16 @@ limitations under the License. */
 
 #pragma once
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||          \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL) || \
+    defined(PADDLE_WITH_CNCL)
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
+
+#include "glog/logging.h"
 
 namespace paddle {
 namespace platform {
@@ -31,24 +34,38 @@ void CloseSocket(int fd);
 
 template <typename CommUniqueId>
 void SendBroadCastCommID(std::vector<std::string> servers,
-                         std::vector<CommUniqueId>* nccl_ids, int ring_id = 0);
+                         std::vector<CommUniqueId>* nccl_ids,
+                         int ring_id = 0);
 
 template <typename CommUniqueId>
 void RecvBroadCastCommID(std::string endpoint,
-                         std::vector<CommUniqueId>* nccl_ids, int ring_id = 0);
+                         std::vector<CommUniqueId>* nccl_ids,
+                         int ring_id = 0);
 
 // recv nccl id from socket
 template <typename CommUniqueId>
-void RecvBroadCastCommID(int server_fd, std::string endpoint,
-                         std::vector<CommUniqueId>* nccl_ids, int ring_id = 0);
+void RecvBroadCastCommID(int server_fd,
+                         std::string endpoint,
+                         std::vector<CommUniqueId>* nccl_ids,
+                         int ring_id = 0);
 
 class SocketServer {
  public:
   SocketServer() = default;
 
-  ~SocketServer() { CloseSocket(server_fd_); }
+  ~SocketServer() {
+    if (server_fd_ != -1) {
+      CloseSocket(server_fd_);
+    }
+  }
 
   int socket() const { return server_fd_; }
+
+  void Release() {
+    VLOG(3) << "Server will be closed by external call.";
+    CloseSocket(server_fd_);
+    server_fd_ = -1;
+  }
 
   static SocketServer& GetInstance(const std::string& end_point);
 

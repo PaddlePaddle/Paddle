@@ -20,9 +20,21 @@ from paddle.fluid.data_feeder import check_type
 from ...wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import warnings
 import numpy as np
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
+from collections import defaultdict
+from enum import Enum
 
-__all__ = ['AmpScaler']
+__all__ = ['AmpScaler', 'OptimizerState']
+
+
+class OptimizerState(Enum):
+    INIT = 0
+    UNSCALED = 1
+    STEPPED = 2
+
+
+def _refresh_optimizer_state():
+    return {"state": OptimizerState.INIT}
 
 
 class AmpScaler(object):
@@ -31,10 +43,11 @@ class AmpScaler(object):
 
     AmpScaler is used for Auto-Mixed-Precision training/inferring in imperative
     mode. It controls the scaling of loss, helps avoiding numerical overflow.
-    The object of this class has two methods `scale()`, `minimize()`.
+    The object of this class has seventeen methods `scale()`, `unscale_()`, `minimize()` and `get`/`set` api of parameters.
 
     `scale()` is used to multiply the loss by a scale ratio.
-    `minimize()` is similar as `Optimizer.minimize()`, performs parameters updating.
+    `unscale_()` is used to unscale the gradients of parameters, multiplies the gradients of parameters by 1/(scale ratio)
+    `minimize()` is similar as `optimizer.minimize()`, performs parameters updating, and it will update the loss_scaling.
 
     Commonly, it is used together with `amp_guard` to achieve Auto-Mixed-Precision in 
     imperative mode.
@@ -91,10 +104,13 @@ class AmpScaler(object):
             raise ValueError(
                 "current_tracer is None, maybe it is not in imperative mode.")
 
-        if enable and not (tracer._expected_place.is_gpu_place() or
-                           tracer._expected_place.is_xpu_place()):
+        if enable and not (tracer._expected_place.is_gpu_place()
+                           or tracer._expected_place.is_xpu_place()
+                           or tracer._expected_place.is_mlu_place()
+                           or tracer._expected_place.is_npu_place()
+                           or tracer._expected_place.is_custom_place()):
             warnings.warn(
-                'AmpScaler can only be enabled on CUDAPlace and XPUPlace, current place is %s, so it makes no effect.'
+                'AmpScaler can only be enabled on CUDAPlace, XPUPlace, MLUPlace, NPUPlace and CustomPlace, current place is %s, so it makes no effect.'
                 % tracer._expected_place)
             enable = False
 
@@ -113,10 +129,15 @@ class AmpScaler(object):
             self._decr_count = 0
             self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
 
-            self._found_inf = to_variable(np.array([0]).astype(np.bool))
+            self._found_inf = to_variable(np.array([0]).astype(np.bool_))
+            self._temp_found_inf_fp16 = to_variable(
+                np.array([0]).astype(np.bool_))
+            self._temp_found_inf_fp32 = to_variable(
+                np.array([0]).astype(np.bool_))
             self._scale = to_variable(
                 np.array([self._init_loss_scaling]).astype(np.float32))
             self._cache_founf_inf = None
+            self._optimizer_states = defaultdict(_refresh_optimizer_state)
 
     def scale(self, var):
         """
@@ -129,24 +150,25 @@ class AmpScaler(object):
             The scaled variable or original variable.
         
         Examples:
+
             .. code-block:: python
 
-            import numpy as np
-            import paddle.fluid as fluid
+                import numpy as np
+                import paddle.fluid as fluid
 
-            data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-            with fluid.dygraph.guard():
-                model = fluid.dygraph.Conv2D(3, 2, 3)
-                optimizer = fluid.optimizer.SGDOptimizer(
-                        learning_rate=0.01, parameter_list=model.parameters())
-                scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
-                data = fluid.dygraph.to_variable(data)
-                with fluid.dygraph.amp_guard():
-                    conv = model(data)
-                    loss = fluid.layers.reduce_mean(conv)
-                    scaled = scaler.scale(loss)
-                    scaled.backward()
-                    scaler.minimize(optimizer, scaled) 
+                data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+                with fluid.dygraph.guard():
+                    model = fluid.dygraph.Conv2D(3, 2, 3)
+                    optimizer = fluid.optimizer.SGDOptimizer(
+                            learning_rate=0.01, parameter_list=model.parameters())
+                    scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
+                    data = fluid.dygraph.to_variable(data)
+                    with fluid.dygraph.amp_guard():
+                        conv = model(data)
+                        loss = fluid.layers.reduce_mean(conv)
+                        scaled = scaler.scale(loss)
+                        scaled.backward()
+                        scaler.minimize(optimizer, scaled) 
         """
         check_type(var, "var", core.VarBase, 'AmpScaler.scale()')
 
@@ -160,7 +182,7 @@ class AmpScaler(object):
         This function is similar as `Optimizer.minimize()`, which performs parameters updating.
         
         If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
-        Otherwise, it first unscales the scaled gradients of parameters, then updates the parameters.
+        Otherwise, if `unscale_()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
 
         Finally, the loss scaling ratio is updated.
 
@@ -170,30 +192,34 @@ class AmpScaler(object):
             kwargs: Keyword arguments, which will be forward to `Optimizer.minimize()`.
 
         Examples:
+
             .. code-block:: python
 
-            import numpy as np
-            import paddle.fluid as fluid
+                import numpy as np
+                import paddle.fluid as fluid
 
-            data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-            with fluid.dygraph.guard():
-                model = fluid.dygraph.Conv2D(3, 2, 3)
-                optimizer = fluid.optimizer.SGDOptimizer(
-                        learning_rate=0.01, parameter_list=model.parameters())
-                scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
-                data = fluid.dygraph.to_variable(data)
-                with fluid.dygraph.amp_guard():
-                    conv = model(data)
-                    loss = fluid.layers.reduce_mean(conv)
-                    scaled = scaler.scale(loss)
-                    scaled.backward()
-                    scaler.minimize(optimizer, scaled) 
+                data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+                with fluid.dygraph.guard():
+                    model = fluid.dygraph.Conv2D(3, 2, 3)
+                    optimizer = fluid.optimizer.SGDOptimizer(
+                            learning_rate=0.01, parameter_list=model.parameters())
+                    scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
+                    data = fluid.dygraph.to_variable(data)
+                    with fluid.dygraph.amp_guard():
+                        conv = model(data)
+                        loss = fluid.layers.reduce_mean(conv)
+                        scaled = scaler.scale(loss)
+                        scaled.backward()
+                        scaler.minimize(optimizer, scaled) 
         """
         if not self._enable:
             return optimizer.minimize(*args, **kwargs)
 
+        optimizer_state = self._optimizer_states[id(optimizer)]
+
         #  unscale the grad
-        self._unscale(optimizer)
+        if optimizer_state["state"] is OptimizerState.INIT:
+            self._unscale(optimizer)
 
         optimize_ops, params_grads = (None, None)
 
@@ -207,11 +233,30 @@ class AmpScaler(object):
             # uopdate the scale
             self._update()
 
+        self._optimizer_states = defaultdict(_refresh_optimizer_state)
+
         return optimize_ops, params_grads
 
     def _unscale(self, optimizer):
+        """
+        Unscale the gradients of parameters, multiplies the gradients of parameters by 1/(loss scaling ratio).  
+        If this instance of :class:`GradScaler` is not enabled, output are returned unmodified.
+        Args:
+            optimizer(Optimizer):  The optimizer used to update parameters.
+        Returns:
+            The unscaled parameters or original parameters.
+        """
         if not self._enable:
             return
+
+        optimizer_state = self._optimizer_states[id(optimizer)]
+
+        if optimizer_state["state"] is OptimizerState.UNSCALED:
+            raise RuntimeError(
+                "unscale_() has already been called on this optimizer since the last update()."
+            )
+        elif optimizer_state["state"] is OptimizerState.STEPPED:
+            raise RuntimeError("unscale_() is being called after step().")
 
         if getattr(optimizer, '_param_groups', None) and isinstance(
                 optimizer._param_groups[0], dict):
@@ -233,28 +278,38 @@ class AmpScaler(object):
                 if param._grad_ivar() is not None
             ]
             param_grads_fp16 = [
-                param._grad_ivar() for param in optimizer._parameter_list
-                if (param._grad_ivar() is not None
-                    ) and (param._grad_ivar().dtype == core.VarDesc.VarType.FP16
-                           )
+                param for param in param_grads
+                if param.dtype == core.VarDesc.VarType.FP16
             ]
             param_grads_fp32 = [
-                param._grad_ivar() for param in optimizer._parameter_list
-                if (param._grad_ivar() is not None
-                    ) and (param._grad_ivar().dtype == core.VarDesc.VarType.FP32
-                           )
+                param for param in param_grads
+                if param.dtype == core.VarDesc.VarType.FP32
             ]
-        temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
-        temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
-        if len(param_grads_fp16):
-            _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
-                                            param_grads_fp16,
-                                            temp_found_inf_fp16)
-        if len(param_grads_fp32):
-            _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
-                                            param_grads_fp32,
-                                            temp_found_inf_fp32)
-        self._found_inf = temp_found_inf_fp16 or temp_found_inf_fp32
+        if core.is_compiled_with_npu():
+            float_status = _legacy_C_ops.alloc_float_status()
+            _legacy_C_ops.clear_float_status(float_status, float_status)
+
+            if len(param_grads_fp16):
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_fp16, self._scale, float_status,
+                    param_grads_fp16, self._temp_found_inf_fp16)
+            if len(param_grads_fp32):
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_fp32, self._scale, float_status,
+                    param_grads_fp32, self._temp_found_inf_fp32)
+        else:
+            if len(param_grads_fp16):
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_fp16, self._scale, param_grads_fp16,
+                    self._temp_found_inf_fp16)
+            if len(param_grads_fp32):
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_fp32, self._scale, param_grads_fp32,
+                    self._temp_found_inf_fp32)
+
+        self._found_inf = self._temp_found_inf_fp16 or self._temp_found_inf_fp32
+
+        optimizer_state["state"] = OptimizerState.UNSCALED
 
     def _update(self):
         """
@@ -268,10 +323,9 @@ class AmpScaler(object):
             self._decr_count = self._decr_count + 1
             if self._decr_count == self._decr_every_n_nan_or_inf:
                 print(
-                    'Found inf or nan, current scale is: {}, decrease to: {}*{}'.
-                    format(
-                        float(self._scale),
-                        float(self._scale), float(self._decr_ratio)))
+                    'Found inf or nan, current scale is: {}, decrease to: {}*{}'
+                    .format(float(self._scale), float(self._scale),
+                            float(self._decr_ratio)))
                 self._scale = self._scale * self._decr_ratio
                 self._decr_count = 0
         else:

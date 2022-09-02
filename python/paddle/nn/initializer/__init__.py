@@ -15,6 +15,7 @@
 # TODO: define the initializers to create a Parameter in neural network
 from ...fluid.initializer import Bilinear  # noqa: F401
 from ...fluid.initializer import set_global_initializer  # noqa: F401
+from ...fluid.initializer import calculate_gain  # noqa: F401
 
 from .constant import Constant  # noqa: F401
 
@@ -31,16 +32,12 @@ from .normal import TruncatedNormal  # noqa: F401
 
 from .uniform import Uniform  # noqa: F401
 
-__all__ = [     #noqa
-           'Bilinear',
-           'Constant',
-           'KaimingUniform',
-           'KaimingNormal',
-           'XavierNormal',
-           'XavierUniform',
-           'Assign',
-           'Normal',
-           'TruncatedNormal',
-           'Uniform',
-           'set_global_initializer'
+from .orthogonal import Orthogonal  # noqa: F401
+
+from .dirac import Dirac  # noqa: F401
+
+__all__ = [  #noqa
+    'Bilinear', 'Constant', 'KaimingUniform', 'KaimingNormal', 'XavierNormal',
+    'XavierUniform', 'Assign', 'Normal', 'TruncatedNormal', 'Uniform',
+    'Orthogonal', 'Dirac', 'set_global_initializer', 'calculate_gain'
 ]

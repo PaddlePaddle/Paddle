@@ -14,12 +14,19 @@
 
 from __future__ import print_function
 
+import paddle
 import unittest
 import numpy as np
 from op_test import OpTest
+from functools import partial
+
+
+def arange_wrapper(start, end, step, dtype=None):
+    return paddle.arange(start, end, step, dtype)
 
 
 class TestRangeOp(OpTest):
+
     def setUp(self):
         self.op_type = "range"
         self.init_config()
@@ -30,39 +37,49 @@ class TestRangeOp(OpTest):
         }
 
         self.outputs = {
-            'Out': np.arange(self.case[0], self.case[1],
-                             self.case[2]).astype(self.dtype)
+            'Out':
+            np.arange(self.case[0], self.case[1],
+                      self.case[2]).astype(self.dtype)
         }
 
     def init_config(self):
         self.dtype = np.float32
+        self.python_api = partial(arange_wrapper, dtype=self.dtype)
         self.case = (0, 1, 0.2)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestFloatRangeOpCase0(TestRangeOp):
+
     def init_config(self):
         self.dtype = np.float32
+        self.python_api = partial(arange_wrapper, dtype=self.dtype)
         self.case = (0, 5, 1)
 
 
 class TestInt32RangeOpCase0(TestRangeOp):
+
     def init_config(self):
         self.dtype = np.int32
+        self.python_api = partial(arange_wrapper, dtype=self.dtype)
         self.case = (0, 5, 2)
 
 
 class TestInt32RangeOpCase1(TestRangeOp):
+
     def init_config(self):
         self.dtype = np.int32
+        self.python_api = partial(arange_wrapper, dtype=self.dtype)
         self.case = (10, 1, -2)
 
 
 class TestInt32RangeOpCase2(TestRangeOp):
+
     def init_config(self):
         self.dtype = np.int32
+        self.python_api = partial(arange_wrapper, dtype=self.dtype)
         self.case = (-1, -10, -2)
 
 

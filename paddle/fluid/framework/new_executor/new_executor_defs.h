@@ -19,447 +19,135 @@
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/phi/core/utils/rw_lock.h"
+
+// When in inference scenario, the scopes will not be written by two threads in
+// a mean time, but a scope may be read by multiple threads concurrently, and
+// the mutex will cause serious performance issue.
+// So the mutex is disabled when `ON_INFER`.
+#ifdef PADDLE_ON_INFERENCE
+#define SCOPE_VARS_READER_LOCK
+#define SCOPE_VARS_WRITER_LOCK
+#else
+#define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
+#define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
+#endif
 
 namespace paddle {
 namespace framework {
-
-namespace interpretercore {
-static constexpr char kMemcpyH2D[] = "memcpy_h2d";
-static constexpr char kMemcpyD2H[] = "memcpy_d2h";
-}  // namespace interpretercore
 
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 using OpKernelMap =
     std::unordered_map<OpKernelType, OpKernelComputeFunc, OpKernelType::Hash>;
 
+constexpr int kEmptyVarIndex = 0;
+
 class InterpretercoreInferShapeContext : public InferShapeContext {
  public:
   InterpretercoreInferShapeContext(const OperatorBase& op,
-                                   const RuntimeContext& ctx)
-      : op_(op), ctx_(ctx), can_skip_lod_(false) {}
+                                   const RuntimeContext& ctx);
 
-  bool HasInput(const std::string& name) const override {
-    // has only one input
-    const auto& ins = ctx_.inputs;
-    auto it = ins.find(name);
-    if (it == ins.end()) {
-      return false;
-    }
-    const auto& in = it->second;
-    if (in.size() == 0) return false;
-    PADDLE_ENFORCE_EQ(
-        in.size(), 1UL,
-        platform::errors::InvalidArgument(
-            "Input %s should not contain more than one inputs.", name));
-    return in[0] != nullptr;
-  }
+  bool HasInput(const std::string& name) const override;
 
-  bool HasOutput(const std::string& name) const override {
-    // has only one output
-    const auto& outs = ctx_.outputs;
-    auto it = outs.find(name);
-    if (it == outs.end()) {
-      return false;
-    }
-    const auto& out = it->second;
-    if (out.size() == 0) {
-      return false;
-    }
-    PADDLE_ENFORCE_EQ(
-        out.size(), 1UL,
-        platform::errors::InvalidArgument(
-            "Output %s should not contain more than one outputs.", name));
-    return out[0] != nullptr;
-  }
+  bool HasOutput(const std::string& name) const override;
 
-  bool HasInputs(const std::string& name) const override {
-    const auto& ins = ctx_.inputs;
-    auto it = ins.find(name);
-    if (it == ins.end() || it->second.empty()) {
-      return false;
-    }
-    for (auto& input : it->second) {
-      if (input == nullptr) {
-        return false;
-      }
-    }
-    return true;
-  }
+  bool HasAttr(const std::string& name) const override;
 
-  bool HasOutputs(const std::string& name) const override {
-    const auto& outs = ctx_.outputs;
-    auto it = outs.find(name);
-    if (it == outs.end() || it->second.empty()) {
-      return false;
-    }
-    for (auto& output : it->second) {
-      if (output == nullptr) {
-        return false;
-      }
-    }
-    return true;
-  }
+  bool HasInputs(const std::string& name) const override;
 
-  AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
+  bool HasOutputs(const std::string& name,
+                  bool allow_null = false) const override;
 
-  std::vector<std::string> Inputs(const std::string& name) const override {
-    return op_.Inputs(name);
-  }
+  AttrReader Attrs() const override;
 
-  std::vector<std::string> Outputs(const std::string& name) const override {
-    return op_.Outputs(name);
-  }
+  std::vector<std::string> Inputs(const std::string& name) const override;
 
-  std::string GetInputNameByIdx(size_t idx) const override {
-    auto& op_proto =
-        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
-    PADDLE_ENFORCE_LT(idx, op_proto->inputs().size(),
-                      platform::errors::OutOfRange(
-                          "The index should be less than the size of inputs of "
-                          "operator %s, but got index is %d and size is %d",
-                          op_.Type(), idx, op_proto->inputs().size()));
-    return op_proto->inputs()[idx].name();
-  }
+  std::vector<std::string> Outputs(const std::string& name) const override;
 
-  std::string GetOutputNameByIdx(size_t idx) const override {
-    auto& op_proto =
-        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
-    PADDLE_ENFORCE_LT(
-        idx, op_proto->outputs().size(),
-        platform::errors::OutOfRange(
-            "The index should be less than the size of outputs of "
-            "operator %s, but got index is %d and size is %d",
-            op_.Type(), idx, op_proto->outputs().size()));
-    return op_proto->outputs()[idx].name();
-  }
+  std::string GetInputNameByIdx(size_t idx) const override;
 
-  void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
-                size_t j = 0) override {
-    auto in_it = ctx_.inputs.find(in);
-    auto out_it = ctx_.outputs.find(out);
-    PADDLE_ENFORCE_NE(
-        in_it, ctx_.inputs.end(),
-        platform::errors::NotFound("Input %s does not exist.", in));
-    PADDLE_ENFORCE_NE(
-        out_it, ctx_.outputs.end(),
-        platform::errors::NotFound("Output %s does not exist.", out));
-    PADDLE_ENFORCE_LT(i, in_it->second.size(),
-                      platform::errors::InvalidArgument(
-                          "The index of input dimension is out of range, "
-                          "excepted index less than %zu, but received %zu.",
-                          in_it->second.size(), i));
-    PADDLE_ENFORCE_LT(j, out_it->second.size(),
-                      platform::errors::InvalidArgument(
-                          "The index of output dimension is out of range, "
-                          "excepted index less than %zu, but received %zu.",
-                          out_it->second.size(), j));
+  std::string GetOutputNameByIdx(size_t idx) const override;
 
-    Variable* in_var = in_it->second[i];
-    Variable* out_var = out_it->second[j];
-
-    PADDLE_ENFORCE_EQ(
-        in_var->Type(), out_var->Type(),
-        platform::errors::InvalidArgument(
-            "The type of input (%s) and output (%s) are inconsistent.", in,
-            out));
-
-    if (in_var->IsType<framework::SelectedRows>()) {
-      auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
-      auto out_sele_rows = out_var->GetMutable<framework::SelectedRows>();
-      out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
-      out_sele_rows->set_rows(in_sele_rows.rows());
-      out_sele_rows->set_height(in_sele_rows.height());
-    } else if (in_var->IsType<framework::LoDTensor>()) {
-      auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
-      auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
-      out_lod_tensor->Resize(in_lod_tensor.dims());
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Currently, the input type of ShareDim only can be LoDTensor "
-          "or SelectedRows."));
-    }
-  }
+  void ShareDim(const std::string& in,
+                const std::string& out,
+                size_t i = 0,
+                size_t j = 0) override;
 
   void ShareAllLoD(const std::string& in,
-                   const std::string& out) const override {
-    auto in_it = ctx_.inputs.find(in);
-    auto out_it = ctx_.outputs.find(out);
-    PADDLE_ENFORCE_NE(in_it, ctx_.inputs.end(),
-                      platform::errors::NotFound(
-                          "Input [%s] found error in Op [%s]", in, op_.Type()));
-    PADDLE_ENFORCE_NE(
-        out_it, ctx_.outputs.end(),
-        platform::errors::NotFound("Output [%s] found error in Op [%s]", out,
-                                   op_.Type()));
+                   const std::string& out) const override;
 
-    auto& in_var_list = in_it->second;
-    auto& out_var_list = out_it->second;
+  void ShareLoD(const std::string& in,
+                const std::string& out,
+                size_t i = 0,
+                size_t j = 0) const override;
 
-    PADDLE_ENFORCE_EQ(
-        in_var_list.size(), out_var_list.size(),
-        platform::errors::PreconditionNotMet(
-            "Op [%s]: Input var size should be equal with output var size",
-            op_.Type()));
+  int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override;
 
-    auto& out_var_names = op_.Outputs(out);
+  void SetLoDLevel(const std::string& out,
+                   int32_t lod_level,
+                   size_t j = 0) const override;
 
-    for (size_t i = 0; i < in_var_list.size(); ++i) {
-      if (out_var_names[i] == framework::kEmptyVarName) {
-        continue;
-      }
+  bool IsRuntime() const override;
 
-      Variable* in_var = in_var_list[i];
-      if (!in_var->IsType<LoDTensor>()) return;
-      Variable* out_var = out_var_list[i];
-      PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(), true,
-                        platform::errors::PreconditionNotMet(
-                            "The %d-th output of Output(%s) must be LoDTensor.",
-                            i, out_var_names[i]));
-      auto& in_tensor = in_var->Get<LoDTensor>();
-      auto* out_tensor = out_var->GetMutable<LoDTensor>();
-      out_tensor->set_lod(in_tensor.lod());
-#ifdef PADDLE_WITH_MKLDNN
-      if (in_tensor.layout() != DataLayout::kMKLDNN)
-#endif
-        out_tensor->set_layout(in_tensor.layout());
-    }
-  }
-
-  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
-                size_t j = 0) const override {
-    if (can_skip_lod_) {
-      return;
-    }
-    auto in_it = ctx_.inputs.find(in);
-    auto out_it = ctx_.outputs.find(out);
-    PADDLE_ENFORCE_NE(
-        in_it, ctx_.inputs.end(),
-        platform::errors::NotFound("Input %s does not exist.", in));
-    PADDLE_ENFORCE_NE(
-        out_it, ctx_.outputs.end(),
-        platform::errors::NotFound("Output %s does not exist.", out));
-    PADDLE_ENFORCE_LT(i, in_it->second.size(),
-                      platform::errors::InvalidArgument(
-                          "The index of input dimension is out of range, "
-                          "excepted index less than %zu, but received %zu.",
-                          in_it->second.size(), i));
-    PADDLE_ENFORCE_LT(j, out_it->second.size(),
-                      platform::errors::InvalidArgument(
-                          "The index of output dimension is out of range, "
-                          "excepted index less than %zu, but received %zu.",
-                          out_it->second.size(), j));
-
-    Variable* in_var = in_it->second.at(i);
-    if (!in_var->IsType<LoDTensor>()) return;
-    Variable* out_var = out_it->second.at(j);
-    PADDLE_ENFORCE_EQ(
-        out_var->IsType<LoDTensor>(), true,
-        platform::errors::InvalidArgument(
-            "The %zu-th output of Output(%s) must be LoDTensor.", j, out));
-    auto& in_tensor = in_var->Get<LoDTensor>();
-    auto* out_tensor = out_var->GetMutable<LoDTensor>();
-    out_tensor->set_lod(in_tensor.lod());
-
-// TODO(dzhwinter) : reuse ShareLoD in most operators.
-// Need to call ShareLayout explicitly in sequence related ops.
-// Shall we have a better method to shared info between in/out Tensor?
-#ifdef PADDLE_WITH_MKLDNN
-    // Fix me: ugly workaround below
-    // Correct solution:
-    //    set_layout() should NOT be called here (i.e. ShareLoD). Instead,
-    //    layout of output tensor should be set "manually" in Compute()
-    //    of each OPKernel. The reason layout should NOT be shared between
-    //    input and output "automatically" (now by InferShape()->ShareLoD())
-    //    is that layout transform may occur after InferShape().
-    // Workaround:
-    //    Skip set_layout() when input layout is kMKLDNN
-    //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
-    //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
-    //    in Compute()
-    if (in_tensor.layout() != DataLayout::kMKLDNN)
-#endif
-      out_tensor->set_layout(in_tensor.layout());
-  }
-
-  int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "GetLoDLevel is only used in compile time. The calculation of "
-        "output's actual lod is different among operators so that should be "
-        "set in the runtime kernel."));
-  }
-
-  void SetLoDLevel(const std::string& out, int32_t lod_level,
-                   size_t j = 0) const override {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "SetLoDLevel is only used in compile time. The calculation of "
-        "output's actual lod is different among operators so that should be "
-        "set in the runtime kernel."));
-  }
-
-  bool IsRuntime() const override { return true; }
+  bool IsRunMKLDNNKernel() const override;
 
   // TODO(paddle-dev): Can this be template?
-  std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) override {
-    const std::vector<Variable*>& vars = InputVars(name);
-    std::vector<InferShapeVarPtr> res;
-    res.reserve(vars.size());
-    res.insert(res.begin(), vars.begin(), vars.end());
-    return res;
-  }
+  paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+  GetInputVarPtrs(const std::string& name) const override;
 
-  std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) override {
-    const std::vector<Variable*>& vars = OutputVars(name);
-    std::vector<InferShapeVarPtr> res;
-    res.reserve(vars.size());
-    res.insert(res.begin(), vars.begin(), vars.end());
-    return res;
-  }
+  paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  GetOutputVarPtrs(const std::string& name) const override;
 
-  DDim GetInputDim(const std::string& name) const override {
-    const std::vector<Variable*>& vars = InputVars(name);
-    PADDLE_ENFORCE_EQ(
-        vars.size(), 1UL,
-        platform::errors::InvalidArgument(
-            "Input(%s) should hold one element, but now it holds %zu elements.",
-            name, vars.size()));
-    return this->GetDim(vars[0]);
-  }
+  DDim GetInputDim(const std::string& name) const override;
 
-  std::vector<DDim> GetInputsDim(const std::string& name) const override {
-    const std::vector<Variable*>& vars = InputVars(name);
-    return GetDims(vars);
-  }
+  std::vector<DDim> GetInputsDim(const std::string& name) const override;
+
+  proto::VarType::Type GetInputVarType(const std::string& name) const override;
 
   std::vector<proto::VarType::Type> GetInputsVarType(
-      const std::string& name) const override {
-    return GetVarTypes(InputVars(name));
-  }
+      const std::string& name) const override;
 
   std::vector<proto::VarType::Type> GetOutputsVarType(
-      const std::string& name) const override {
-    return GetVarTypes(OutputVars(name));
-  }
+      const std::string& name) const override;
 
-  void SetOutputDim(const std::string& name, const DDim& dim) override {
-    auto& vars = OutputVars(name);
-    PADDLE_ENFORCE_EQ(
-        vars.size(), 1UL,
-        platform::errors::InvalidArgument("Output(%s) should hold one element, "
-                                          "but now it holds %zu elements.",
-                                          name, vars.size()));
-    SetDim(vars[0], dim);
-  }
+  void SetOutputDim(const std::string& name, const DDim& dim) override;
 
   void SetOutputsDim(const std::string& name,
-                     const std::vector<DDim>& dims) override {
-    auto& vars = OutputVars(name);
-    SetDims(vars, dims);
-  }
+                     const std::vector<DDim>& dims) override;
 
-  void SetSkipLoD(bool skip) { can_skip_lod_ = skip; }
+  const phi::ArgumentMappingFn* GetPhiArgumentMappingFn() const override;
+
+  const phi::KernelSignature* GetPhiDefaultKernelSignature() const override;
+
+  void SetSkipLoD(bool skip);
 
  protected:
-  DDim GetDim(Variable* var) const {
-    PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::InvalidArgument("Input variable is nullptr."));
-    if (var->IsType<LoDTensor>()) {
-      return var->Get<LoDTensor>().dims();
-    } else if (var->IsType<SelectedRows>()) {
-      return var->Get<SelectedRows>().GetCompleteDims();
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Only LoDTensor or SelectedRows support 'GetDim', but input "
-          "Variable's type is %s.",
-          ToTypeName(var->Type())));
-    }
-  }
+  DDim GetDim(Variable* var) const;
 
-  std::vector<DDim> GetDims(const std::vector<Variable*>& vars) const {
-    std::vector<DDim> ret;
-    ret.reserve(vars.size());
-    std::transform(vars.begin(), vars.end(), std::back_inserter(ret),
-                   [this](Variable* var) { return this->GetDim(var); });
-    return ret;
-  }
+  std::vector<DDim> GetDims(const std::vector<Variable*>& vars) const;
 
-  std::vector<DDim> GetRepeatedDims(const std::string& name) const override {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "GetRepeatedDims method only ban be used in compile time."));
-  }
+  std::vector<DDim> GetRepeatedDims(const std::string& name) const override;
 
-  void SetDim(Variable* var, const DDim& dim) {
-    if (var->IsType<LoDTensor>()) {
-      var->GetMutable<LoDTensor>()->Resize(dim);
-    } else if (var->IsType<SelectedRows>()) {
-      var->GetMutable<SelectedRows>()->set_height(dim[0]);
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Variable type error, expect LoDTensor or SelectedRows, but received "
-          "(%s).",
-          ToTypeName(var->Type())));
-    }
-  }
+  void SetDim(Variable* var, const DDim& dim);
 
   void SetDims(const std::vector<Variable*>& vars,
-               const std::vector<DDim>& dims) {
-    size_t length = vars.size();
-    PADDLE_ENFORCE_EQ(length, dims.size(),
-                      platform::errors::InvalidArgument(
-                          "The number of input variables do not match the "
-                          "number of input dimensions, the number of variables "
-                          "is %zu, the number of dimensions is %zu.",
-                          length, dims.size()));
-    for (size_t i = 0; i < length; ++i) {
-      if (vars[i] == nullptr) {
-        continue;
-      }
-      SetDim(vars[i], dims[i]);
-    }
-  }
+               const std::vector<DDim>& dims);
 
   void SetRepeatedDims(const std::string& name,
-                       const std::vector<DDim>& dims) override {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "SetRepeatedDims method only can be used in compile time."));
-  }
+                       const std::vector<DDim>& dims) override;
 
   std::vector<proto::VarType::Type> GetVarTypes(
-      const std::vector<Variable*>& vars) const {
-    std::vector<proto::VarType::Type> retv;
-    retv.resize(vars.size());
-    std::transform(
-        vars.begin(), vars.end(), retv.begin(),
-        std::bind(std::mem_fn(&InterpretercoreInferShapeContext::GetVarType),
-                  this, std::placeholders::_1));
-    return retv;
-  }
+      const std::vector<Variable*>& vars) const;
 
-  proto::VarType::Type GetVarType(Variable* var) const {
-    return ToVarType(var->Type());
-  }
+  proto::VarType::Type GetVarType(Variable* var) const;
 
  private:
-  const std::vector<Variable*>& InputVars(const std::string& name) const {
-    auto it = ctx_.inputs.find(name);
-    PADDLE_ENFORCE_NE(
-        it, ctx_.inputs.end(),
-        platform::errors::NotFound(
-            "Operator (%s) does not have the input (%s).", op_.Type(), name));
-    return it->second;
-  }
+  const std::vector<Variable*>& InputVars(const std::string& name) const;
 
-  const std::vector<Variable*>& OutputVars(const std::string& name) const {
-    auto it = ctx_.outputs.find(name);
-    PADDLE_ENFORCE_NE(
-        it, ctx_.outputs.end(),
-        platform::errors::NotFound(
-            "Operator (%s) does not have the outputs (%s).", op_.Type(), name));
-    return it->second;
-  }
+  const std::vector<Variable*>& OutputVars(const std::string& name) const;
 
   const OperatorBase& op_;
   const RuntimeContext& ctx_;
@@ -468,39 +156,124 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
 struct OpKernelFunc {
   OpKernelComputeFunc compute_func_;
-  OperatorBase* operator_base_;
 };
 
 struct VariableMetaInfo {
-  int var_ref_count_;
-  paddle::framework::VarDesc* vardesc_;
+  int var_ref_count_{0};
+  framework::VarDesc* var_desc_{nullptr};
+  bool sikp_inplace_{false};
+
+  VariableMetaInfo() {}
+  VariableMetaInfo(int var_ref_count, framework::VarDesc* var_desc)
+      : var_ref_count_(var_ref_count), var_desc_(var_desc) {}
 };
 
-struct VariableScope {
-  std::vector<Variable*> var_list;
-  std::map<std::string, int> name2id;
+class VariableScope {
+ public:
+  explicit VariableScope(Scope* scope);
+
+  Scope* GetMutableScope() const;
+
+  Scope* GetMutableLocalScope() const;
+
+  void SetScope(Scope* scope);
+
+  void SetLocalScope(Scope* local_scope);
+
+  ~VariableScope();
+
+  // Get variable id by name, return -1 if not found
+  int GetIdByName(const std::string& name) const;
+
+  // Get variable name by id, return "" if not found
+  std::string GetNameById(int id) const;
+
+  bool HasVar(const std::string& name) const;
+
+  int VarId(const std::string& name) const;
+
+  size_t VarSize() const;
+
+  void AddVar(const std::string& name, VarDesc* var_desc);
+
+  Variable* VarRef(int id) const;
+
+  void SetVarDesc(const std::string& name, framework::VarDesc* var_desc);
+
+  paddle::framework::VarDesc* VarDesc(const std::string& name) const;
+
+  paddle::framework::VarDesc* VarDesc(int id) const;
+
+  void CheckExist(int id) const;
+
+  void CheckExist(const std::string& name) const;
+
+  std::vector<VariableMetaInfo>& MutableVecMetaInfo() { return vec_meta_info_; }
+
+  const std::vector<VariableMetaInfo>& VecMetaInfo() const {
+    return vec_meta_info_;
+  }
+
+  const std::vector<std::pair<std::string, int>>& DataTransferAddedVars()
+      const {
+    return data_transfer_added_vars_;
+  }
+
+  std::vector<std::pair<std::string, int>>& MutableDataTransferAddedVars() {
+    return data_transfer_added_vars_;
+  }
+
+  std::vector<Variable*>& MutableVarList() { return var_list_; }
+
+  void SetVarSikpInplace(const std::string& name, bool skip);
+
+  bool GetVarSikpInplace(int id) const;
+
+ private:
+  // not owned, better remove it since all vars should be
+  // accessed by Scope instead of VariableScope
+  std::vector<Variable*> var_list_;
+
+  std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
+
+  Scope* scope_{nullptr};
+  // TODO(zhiqiu): find a better way to support local scope.
+  Scope* local_scope_{nullptr};
+  // mutable RWLock vars_lock_;
+
+  // var_name -> var_type
+  std::vector<std::pair<std::string, int>> data_transfer_added_vars_;
 };
 
-struct EventRun {
-  explicit EventRun(size_t op_id) : op_id_(op_id) {}
-  size_t op_id_;
-};
-struct NextInstruction {
+class NextInstruction {
+ public:
+  void AddDirectRun(size_t id) { direct_run_.push_back(id); }
+
+  void ADDEventRun(size_t id) { event_wait_run_.push_back(id); }
+
+  void AddSyncRun(size_t id) { synchronize_run_.push_back(id); }
+
+  const std::vector<size_t>& DirectRunIds() const { return direct_run_; }
+
+  const std::vector<size_t>& EventRunIds() const { return event_wait_run_; }
+
+  const std::vector<size_t>& SyncRunIds() const { return synchronize_run_; }
+
+ private:
   std::vector<size_t> direct_run_;
-  std::vector<EventRun> event_wait_run_;
-  std::vector<EventRun> synchronize_run_;
-  std::vector<size_t> all_next_ops_;
+  std::vector<size_t> event_wait_run_;
+  std::vector<size_t> synchronize_run_;
 };
 
 struct EventInter {
   explicit EventInter(size_t var_id,
                       std::shared_ptr<platform::DeviceEvent> event,
-                      bool is_sync)
-      : var_id_(var_id), event_(event), is_sync_(is_sync) {}
+                      platform::DeviceType waiter_type)
+      : var_id_(var_id), event_(event), waiter_type_(waiter_type) {}
   size_t var_id_;
   std::shared_ptr<platform::DeviceEvent> event_;
-  bool is_sync_;
+  platform::DeviceType waiter_type_;
 };
 
 struct InstructionInfo {
@@ -509,39 +282,136 @@ struct InstructionInfo {
 
 enum class OpFuncType {
   kQueueSync = 0,   // CPU kernel, block host
-  kQueueAsync = 1,  // GPU Kernel or d2h, h2d, send, recv, broadcast
+  kQueueAsync = 1,  // GPU、XPU Kernel or d2h, h2d, send, recv, broadcast
 };
 class RuntimeInferShapeContext;
 
-struct Instruction {
-  OpKernelFunc kernel_func_;
+struct OpFuncNode {
+  // TODO(zhiqiu): Better make it unique_ptr
+  std::shared_ptr<OperatorBase> operator_base_;
+  std::map<std::string, std::vector<int>> input_index;
+  std::map<std::string, std::vector<int>> output_index;
+  std::unordered_set<int> no_data_transform_index;
+
+  std::map<int, int> inplace_back_map;
+
+  OpKernelComputeFunc kernel_func_;
+  platform::DeviceContext* dev_ctx_;  // not owned
+
+  // fit for phi kernel
+  phi::Kernel* phi_kernel_{nullptr};  // not owned
+
+  OpFuncType type_;
+};
+
+class Instruction {
+ public:
+  Instruction(size_t id,
+              OpFuncNode&& op_func_node,
+              const platform::DeviceContext& dev_ctx);
+
+  size_t Id() const;
+
+  const std::map<std::string, std::vector<int>>& Inputs() const;
+
+  const std::map<std::string, std::vector<int>>& Outputs() const;
+
+  const std::unordered_set<int>& NoDataTransformVars() const;
+
+  OpKernelComputeFunc KernelFunc() const;
+
+  phi::Kernel* PhiKernel() const;
+
+  OpFuncType KernelType() const;
+
+  const std::map<int, int>& InplaceBackMap() const;
+
+  OperatorBase* OpBase() const;
+
+  NextInstruction& NextInstructions();
+
+  const NextInstruction& NextInstructions() const;
+
+  void AddGCCheckVar(size_t id);
+
+  const std::vector<size_t>& GCCheckVars() const;
+
+  void ResetContext(const VariableValueMap& in_vars,
+                    const VariableValueMap& out_vars);
+
+  void ResetContextWithScope(const VariableValueMap& in_vars,
+                             const VariableValueMap& out_vars,
+                             const framework::Scope& scope);
+
+  std::shared_ptr<RuntimeContext> InnerRuntimeContext() const;
+
+  std::shared_ptr<InterpretercoreInferShapeContext> InnerInferShapeContext()
+      const;
+
+  std::shared_ptr<ExecutionContext> InnerExecutionContext() const;
+
+  const platform::DeviceContext& DeviceContext() const;
+
+  const std::vector<std::pair<Variable*, Variable*>>& InplaceInfo() const;
+
+  void AddInplace(Variable* in, Variable* out);
+
+  void ClearInplace();
+
+  const std::vector<EventInter>& InputEvents() const;
+
+  const std::vector<EventInter>& OutputEvents() const;
+
+  void AddInputEvent(size_t var_id,
+                     std::shared_ptr<platform::DeviceEvent> event,
+                     platform::DeviceType waiter_type);
+
+  void AddOutputEvent(size_t var_id,
+                      std::shared_ptr<platform::DeviceEvent> event,
+                      platform::DeviceType waiter_type);
+
+ private:
+  size_t id_;
+  OpFuncNode op_func_node_;
+  const platform::DeviceContext& dev_ctx_;  // not owned
+
   std::shared_ptr<RuntimeContext> runtime_ctx_;
   std::shared_ptr<InterpretercoreInferShapeContext> infershape_ctx_;
   std::shared_ptr<ExecutionContext> execution_ctx_;
-  std::map<std::string, std::vector<int>> input_index_;
-  std::map<std::string, std::vector<int>> output_index_;
 
-  std::vector<size_t> gc_check_var_list;
+  std::vector<size_t> gc_check_var_list_;
   NextInstruction next_instruction_;
 
   std::vector<EventInter> intput_events_;
   std::vector<EventInter> output_events_;
 
-  platform::DeviceContext* dev_ctx_;  // not owned
-  OpFuncType type_;
-
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
 };
 
-struct OpFuncNode {
-  // int unsed;
-  std::map<std::string, std::vector<int>> input_index;
-  std::map<std::string, std::vector<int>> output_index;
+namespace interpreter {
+static constexpr char kMemcpyH2D[] = "memcpy_h2d";
+static constexpr char kMemcpyD2H[] = "memcpy_d2h";
+static constexpr char kFetchVarName[] = "fetch";
 
-  OpKernelComputeFunc kernel_func_;
-  platform::DeviceContext* dev_ctx_;  // not owned
-  OpFuncType type_;
-};
+static bool IsMemcpyH2D(const Instruction& instr) {
+  return instr.OpBase()->Type() == kMemcpyH2D;
+}
+
+static bool IsMemcpyD2H(const Instruction& instr) {
+  return instr.OpBase()->Type() == kMemcpyD2H;
+}
+
+static bool IsCpuOp(const Instruction& instr) {
+  return platform::is_cpu_place(instr.DeviceContext().GetPlace());
+}
+
+// is supported heterogeneous place
+static bool IsSupportedHetePlace(const phi::Place& place) {
+  return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
+         platform::is_xpu_place(place) || platform::is_ipu_place(place);
+}
+
+}  // namespace interpreter
 
 }  // namespace framework
 }  // namespace paddle

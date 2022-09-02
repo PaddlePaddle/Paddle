@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
@@ -28,6 +29,7 @@ from dist_simnet_bow import train_network
 
 
 class DistributeTranspilerConfigTest(unittest.TestCase):
+
     def set_runtime_split_send_recv(self, config, value):
         config.runtime_split_send_recv = value
 
@@ -48,55 +50,53 @@ class DistributeTranspilerConfigTest(unittest.TestCase):
 
 
 class FleetTest(unittest.TestCase):
+
     def testInvalidInputs(self):
         self.assertRaises(Exception, fleet.split_files, "files")
         self.assertRaises(Exception, fleet.init, "pserver")
 
         data = fluid.layers.data(name='X', shape=[1], dtype='float32')
         hidden = fluid.layers.fc(input=data, size=10)
-        loss = fluid.layers.mean(hidden)
+        loss = paddle.mean(hidden)
         adam = fluid.optimizer.Adam()
         adam.minimize(loss)
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         pe = fluid.ParallelExecutor(use_cuda=False, loss_name=loss.name)
-        self.assertRaises(
-            Exception,
-            fleet.save_inference_model,
-            dirname='/tmp/',
-            feeded_var_names=['X'],
-            target_vars=[loss],
-            executor=pe)
-        self.assertRaises(
-            Exception,
-            fleet.save_inference_model,
-            dirname='/tmp/',
-            feeded_var_names=['X'],
-            target_vars=[loss],
-            executor="executor")
+        self.assertRaises(Exception,
+                          fleet.save_inference_model,
+                          dirname='/tmp/',
+                          feeded_var_names=['X'],
+                          target_vars=[loss],
+                          executor=pe)
+        self.assertRaises(Exception,
+                          fleet.save_inference_model,
+                          dirname='/tmp/',
+                          feeded_var_names=['X'],
+                          target_vars=[loss],
+                          executor="executor")
         compiled_prog = fluid.compiler.CompiledProgram(
             fluid.default_main_program())
-        self.assertRaises(
-            Exception,
-            fleet.save_inference_model,
-            dirname='/tmp/',
-            feeded_var_names=['X'],
-            target_vars=[loss],
-            executor=exe,
-            main_program=compiled_prog)
-        self.assertRaises(
-            Exception, fleet.save_persistables, executor=pe, dirname='/tmp/')
-        self.assertRaises(
-            Exception,
-            fleet.save_persistables,
-            executor="executor",
-            dirname='/tmp/')
-        self.assertRaises(
-            Exception,
-            fleet.save_persistables,
-            executor=exe,
-            dirname='/tmp/',
-            main_program=compiled_prog)
+        self.assertRaises(Exception,
+                          fleet.save_inference_model,
+                          dirname='/tmp/',
+                          feeded_var_names=['X'],
+                          target_vars=[loss],
+                          executor=exe,
+                          main_program=compiled_prog)
+        self.assertRaises(Exception,
+                          fleet.save_persistables,
+                          executor=pe,
+                          dirname='/tmp/')
+        self.assertRaises(Exception,
+                          fleet.save_persistables,
+                          executor="executor",
+                          dirname='/tmp/')
+        self.assertRaises(Exception,
+                          fleet.save_persistables,
+                          executor=exe,
+                          dirname='/tmp/',
+                          main_program=compiled_prog)
         self.assertRaises(Exception, fleet._transpile, "config")
 
     def set_program(self, avg_cost, strategy):
@@ -147,6 +147,7 @@ class FleetTest(unittest.TestCase):
 
 
 class TranspilerOptimizerTest(unittest.TestCase):
+
     def testInvalidInputs(self):
         self.assertRaises(Exception, TranspilerOptimizer, "Adam", None)
         self.assertRaises(Exception, TranspilerOptimizer,
@@ -156,12 +157,15 @@ class TranspilerOptimizerTest(unittest.TestCase):
         self.assertRaises(Exception, transpiler.minimize, loss=[])
         data = fluid.layers.data(name='X', shape=[1], dtype='float32')
         hidden = fluid.layers.fc(input=data, size=10)
-        loss = fluid.layers.mean(hidden)
-        self.assertRaises(
-            Exception, transpiler.minimize, loss=loss.name, startup_program=[])
+        loss = paddle.mean(hidden)
+        self.assertRaises(Exception,
+                          transpiler.minimize,
+                          loss=loss.name,
+                          startup_program=[])
 
 
 class UserDefinedRoleMakerTest(unittest.TestCase):
+
     def createRoleMaker(self,
                         current_id=0,
                         role=Role.WORKER,
@@ -179,19 +183,19 @@ class UserDefinedRoleMakerTest(unittest.TestCase):
         self.assertRaises(
             Exception, self.createRoleMaker,
             server_endpoints=[])  # server_endpoints can't be empty
-        self.assertRaises(
-            Exception, self.createRoleMaker, server_endpoints=[
-                3, []
-            ])  # element in server_endpoints must be as string
-        self.assertRaises(
-            Exception,
-            self.createRoleMaker,
-            server_endpoints=["127.0.0.1:8080", "127.0.0.1:8080"]
-        )  # element in server_endpoints can't be duplicate
+        self.assertRaises(Exception,
+                          self.createRoleMaker,
+                          server_endpoints=[
+                              3, []
+                          ])  # element in server_endpoints must be as string
+        self.assertRaises(Exception,
+                          self.createRoleMaker,
+                          server_endpoints=[
+                              "127.0.0.1:8080", "127.0.0.1:8080"
+                          ])  # element in server_endpoints can't be duplicate
         # test all invalid current_id
-        self.assertRaises(
-            Exception, self.createRoleMaker,
-            current_id="0")  # current_id must be as int
+        self.assertRaises(Exception, self.createRoleMaker,
+                          current_id="0")  # current_id must be as int
         self.assertRaises(
             Exception, self.createRoleMaker,
             current_id=-1)  # current_id must be greater than or equal to 0
@@ -203,12 +207,10 @@ class UserDefinedRoleMakerTest(unittest.TestCase):
             server_endpoints=["127.0.0.1:8080"]
         )  # if role is server, current_id must be less than len(server_endpoints)
         # test all invalid worker_num
-        self.assertRaises(
-            Exception, self.createRoleMaker,
-            worker_num="1")  # worker_num must be as int
-        self.assertRaises(
-            Exception, self.createRoleMaker,
-            worker_num=0)  # worker_num must be greater than 0
+        self.assertRaises(Exception, self.createRoleMaker,
+                          worker_num="1")  # worker_num must be as int
+        self.assertRaises(Exception, self.createRoleMaker,
+                          worker_num=0)  # worker_num must be greater than 0
         # test all invalid role
         self.assertRaises(
             Exception, self.createRoleMaker,
@@ -216,7 +218,9 @@ class UserDefinedRoleMakerTest(unittest.TestCase):
 
 
 class UserDefinedCollectiveRoleMakerTest(unittest.TestCase):
-    def createRoleMaker(self, current_id=0,
+
+    def createRoleMaker(self,
+                        current_id=0,
                         worker_endpoints=["127.0.0.1:8080"]):
         role = UserDefinedCollectiveRoleMaker(current_id, worker_endpoints)
 
@@ -229,19 +233,19 @@ class UserDefinedCollectiveRoleMakerTest(unittest.TestCase):
         self.assertRaises(
             Exception, self.createRoleMaker,
             worker_endpoints=[])  # worker_endpoints can't be empty
-        self.assertRaises(
-            Exception, self.createRoleMaker,
-            worker_endpoints=[3,
-                              []])  # element worker_endpoints must be as string
-        self.assertRaises(
-            Exception,
-            self.createRoleMaker,
-            worker_endpoints=["127.0.0.1:8080", "127.0.0.1:8080"]
-        )  # element in worker_endpoints can't be duplicate
+        self.assertRaises(Exception,
+                          self.createRoleMaker,
+                          worker_endpoints=[
+                              3, []
+                          ])  # element worker_endpoints must be as string
+        self.assertRaises(Exception,
+                          self.createRoleMaker,
+                          worker_endpoints=[
+                              "127.0.0.1:8080", "127.0.0.1:8080"
+                          ])  # element in worker_endpoints can't be duplicate
         # test all invalid current_id
-        self.assertRaises(
-            Exception, self.createRoleMaker,
-            current_id="0")  # current_id must be as int
+        self.assertRaises(Exception, self.createRoleMaker,
+                          current_id="0")  # current_id must be as int
         self.assertRaises(
             Exception, self.createRoleMaker,
             current_id=-1)  # current_id must be greater than or equal to 0
@@ -249,11 +253,13 @@ class UserDefinedCollectiveRoleMakerTest(unittest.TestCase):
             Exception,
             self.createRoleMaker,
             current_id=1,
-            worker_endpoints=["127.0.0.1:8080"]
-        )  # current_id must be less than len(worker_endpoints)
+            worker_endpoints=[
+                "127.0.0.1:8080"
+            ])  # current_id must be less than len(worker_endpoints)
 
 
 class CollectiveOptimizerTest(unittest.TestCase):
+
     def test_ds_as_None(self):
         optimizer = fluid.optimizer.AdamOptimizer()
         dist_optimizer = CollectiveOptimizer(optimizer, strategy=None)

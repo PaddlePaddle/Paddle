@@ -21,16 +21,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-using SelectedRows = framework::SelectedRows;
+using SelectedRows = phi::SelectedRows;
 using DDim = framework::DDim;
 
 constexpr int64_t kNoPadding = -1;
@@ -39,8 +39,11 @@ constexpr int64_t kNoPadding = -1;
     !defined(__OSX__)
 template <typename T>
 void prepare_csr_data(const std::vector<uint64_t> &offset,
-                      const int64_t *ids_data, const size_t idx_width,
-                      T *csr_vals, int *csr_colmuns, int *csr_row_idx,
+                      const int64_t *ids_data,
+                      const size_t idx_width,
+                      T *csr_vals,
+                      int *csr_colmuns,
+                      int *csr_row_idx,
                       int64_t padding_idx = kNoPadding) {
   int val_idx = 0;
   int row_idx = 0;
@@ -64,7 +67,8 @@ void prepare_csr_data(const std::vector<uint64_t> &offset,
 
       VLOG(4) << "====sequence %d====" << i;
       for (std::map<int, int>::const_iterator it = ids_map.begin();
-           it != ids_map.end(); ++it) {
+           it != ids_map.end();
+           ++it) {
         VLOG(4) << it->first << " => " << it->second;
         csr_vals[val_idx] = it->second;
         csr_colmuns[val_idx] = it->first;
@@ -79,7 +83,8 @@ void prepare_csr_data(const std::vector<uint64_t> &offset,
 template <typename T>
 struct EmbeddingVSumFunctor {
   void operator()(const framework::ExecutionContext &context,
-                  const LoDTensor *table_t, const LoDTensor *ids_t,
+                  const LoDTensor *table_t,
+                  const LoDTensor *ids_t,
                   LoDTensor *output_t) {
     auto *table = table_t->data<T>();
     int64_t table_height = table_t->dims()[0];
@@ -90,27 +95,34 @@ struct EmbeddingVSumFunctor {
     int64_t idx_width = ids_t->numel() / ids_lod.back();
     auto *output = output_t->mutable_data<T>(context.GetPlace());
 
-    PADDLE_ENFORCE_LE(table_width * idx_width, out_width,
+    PADDLE_ENFORCE_LE(table_width * idx_width,
+                      out_width,
                       platform::errors::InvalidArgument(
                           "table_width * idx_width should be less than or "
                           "equal to out_width. But received "
                           "table_width * idx_width = %s, out_width = %d.",
-                          table_width * idx_width, out_width));
-    PADDLE_ENFORCE_GT(ids_lod.size(), 1UL,
+                          table_width * idx_width,
+                          out_width));
+    PADDLE_ENFORCE_GT(ids_lod.size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "The tensor ids's LoD[0] should be greater than 1. "
                           "But received the ids's LoD[0] = %d.",
                           ids_lod.size()));
 
-    jit::emb_seq_pool_attr_t attr(table_height, table_width, 0, idx_width,
-                                  out_width, jit::SeqPoolType::kSum);
+    jit::emb_seq_pool_attr_t attr(table_height,
+                                  table_width,
+                                  0,
+                                  idx_width,
+                                  out_width,
+                                  jit::SeqPoolType::kSum);
     for (size_t i = 0; i != ids_lod.size() - 1; ++i) {
       attr.index_height = ids_lod[i + 1] - ids_lod[i];
       auto emb_seqpool =
           jit::KernelFuncs<jit::EmbSeqPoolTuple<T>, platform::CPUPlace>::Cache()
               .At(attr);
-      emb_seqpool(table, ids + ids_lod[i] * idx_width, output + i * out_width,
-                  &attr);
+      emb_seqpool(
+          table, ids + ids_lod[i] * idx_width, output + i * out_width, &attr);
     }
   }
 };
@@ -138,7 +150,8 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
         FusedEmbeddingSeqPoolLastDim(table_var->dims(), ids_t->dims());
     const auto &ids_lod = ids_t->lod();
     // in run time, the LoD of ids must be 1
-    PADDLE_ENFORCE_EQ(ids_lod.size(), 1UL,
+    PADDLE_ENFORCE_EQ(ids_lod.size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "The LoD level of Input(Ids) should be 1. But "
                           "received Ids's LoD level = %d.",
@@ -168,8 +181,13 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
       auto csr_vals = csr_vals_t.mutable_data<T>(context.GetPlace());
       auto csr_colmuns = csr_colmuns_t.mutable_data<int>(context.GetPlace());
       auto csr_row_idx = csr_row_idx_t.mutable_data<int>(context.GetPlace());
-      prepare_csr_data<T>(offset, ids_t->data<int64_t>(), idx_width, csr_vals,
-                          csr_colmuns, csr_row_idx, padding_idx);
+      prepare_csr_data<T>(offset,
+                          ids_t->data<int64_t>(),
+                          idx_width,
+                          csr_vals,
+                          csr_colmuns,
+                          csr_row_idx,
+                          padding_idx);
 
       const char transa = 'N';
       const T alpha = 1.0;
@@ -179,10 +197,22 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
       const int m = batch_size * idx_width;
       const int n = table_width;
       const int k = table_height;
-      auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-      blas.CSRMM(&transa, &m, &n, &k, &alpha, matdescra, (const T *)csr_vals,
-                 (const int *)csr_colmuns, (const int *)csr_row_idx,
-                 (const int *)csr_row_idx + 1, weights, &n, &beta, output, &n);
+      auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
+      blas.CSRMM(&transa,
+                 &m,
+                 &n,
+                 &k,
+                 &alpha,
+                 matdescra,
+                 (const T *)csr_vals,
+                 (const int *)csr_colmuns,
+                 (const int *)csr_row_idx,
+                 (const int *)csr_row_idx + 1,
+                 weights,
+                 &n,
+                 &beta,
+                 output,
+                 &n);
 
 #else
       EmbeddingVSumFunctor<T> functor;
@@ -200,8 +230,8 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
     DDim table_dim;
     if (table_var->IsType<LoDTensor>()) {
       table_dim = context.Input<LoDTensor>("W")->dims();
-    } else if (table_var->IsType<SelectedRows>()) {
-      auto *table_t = context.Input<SelectedRows>("W");
+    } else if (table_var->IsType<phi::SelectedRows>()) {
+      auto *table_t = context.Input<phi::SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -215,7 +245,8 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
     if (is_sparse) {
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
+      auto *d_table =
+          context.Output<phi::SelectedRows>(framework::GradVarName("W"));
       // runtime shape
       d_table->set_height(table_dim[0]);
 
@@ -255,7 +286,8 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       memset(d_table_data, 0, d_table->numel() * sizeof(T));
 
       const auto &ids_lod = ids->lod();
-      PADDLE_ENFORCE_EQ(ids_lod.size(), 1UL,
+      PADDLE_ENFORCE_EQ(ids_lod.size(),
+                        1UL,
                         platform::errors::InvalidArgument(
                             "The LoD level of Input(Ids) should be 1. But "
                             "received Ids's LoD level = %d.",
@@ -272,11 +304,16 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       auto csr_vals = csr_vals_t.mutable_data<T>(context.GetPlace());
       auto csr_colmuns = csr_colmuns_t.mutable_data<int>(context.GetPlace());
       auto csr_row_idx = csr_row_idx_t.mutable_data<int>(context.GetPlace());
-      prepare_csr_data<T>(offset, ids->data<int64_t>(), idx_width, csr_vals,
-                          csr_colmuns, csr_row_idx, padding_idx);
+      prepare_csr_data<T>(offset,
+                          ids->data<int64_t>(),
+                          idx_width,
+                          csr_vals,
+                          csr_colmuns,
+                          csr_row_idx,
+                          padding_idx);
 
       auto *d_output_data = d_output->data<T>();
-      auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+      auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
       int width = static_cast<int>(table_dim[1]);
       int num_seq = batch_size * idx_width;
       LOG(INFO) << "num seq = " << num_seq << " width = " << width;
@@ -284,7 +321,9 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
         for (int j = csr_row_idx[i]; j < csr_row_idx[i + 1]; ++j) {
           unsigned int word_idx = csr_colmuns[j];
           T val = csr_vals[j];
-          blas.AXPY(width, val, d_output_data + i * width,
+          blas.AXPY(width,
+                    val,
+                    d_output_data + i * width,
                     d_table_data + word_idx * width);
         }
       }
