@@ -16,8 +16,9 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
+from paddle.fluid import core, unique_name
 from paddle.fluid.framework import default_main_program
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from paddle.distributed.auto_parallel.operators.common import is_data_parallel_scale_op, is_data_parallel_reduce_op
 from paddle.distributed.auto_parallel.utils import is_loss_grad_op, is_optimize_op, is_backward_op, ring_id_to_process_group, find_higher_order_backward_op
 from .pass_base import PassBase, PassType, register_pass
@@ -81,9 +82,9 @@ class DataParallelOptimizationPass(PassBase):
             self._analyze_program()
             self._prune_grad_scaling()
             self._calc_comm_overlap()
-            grad_group = self._fuse_allreduce()
+            # grad_group = self._fuse_allreduce()
 
-        self.summary(grad_group)
+        # self.summary(grad_group)
 
     def _prune_grad_scaling(self):
 
@@ -108,8 +109,14 @@ class DataParallelOptimizationPass(PassBase):
         if not self._could_be_fuse():
             return []
 
+        with open('./before_program.txt.' + str(paddle.distributed.get_rank()),
+                  'w') as f:
+            f.write(str(default_main_program()))
         grad_group = self._group_grads()
-
+        self._update_program(grad_group)
+        with open('./after_program.txt.' + str(paddle.distributed.get_rank()),
+                  'w') as f:
+            f.write(str(default_main_program()))
         return grad_group
 
     def _analyze_program(self):
@@ -371,9 +378,9 @@ class DataParallelOptimizationPass(PassBase):
                 grad_groups.append(cur_group)
 
             new_group = GradientsGroup(ops, max_fuse_numel)
-            grouped_grad_names.add(grad_name)
             if grad_var:
                 new_group.add(grad_var, ring_id, i)
+                grouped_grad_names.add(grad_var.name)
             return new_group
 
         def op_depend_on_group(op, group):
@@ -396,11 +403,82 @@ class DataParallelOptimizationPass(PassBase):
                     cur_group = collect_group(cur_group, grad_var, ring_id, i)
             else:
                 if op_depend_on_group(op, cur_group):
-                    cur_group = collect_group(cur_group, grad_var, ring_id, i)
+                    cur_group = collect_group(cur_group, None, None, None)
 
+        # collect last group
         collect_group(cur_group, None, None, None)
 
         return grad_groups
+
+    def _update_program(self, grad_groups):
+
+        block = default_main_program().global_block()
+
+        remove_op_types = ['scale', 'c_allreduce_sum', 'c_wait_compute']
+
+        for i, group in enumerate(grad_groups[::-1]):
+
+            # create coalecse tensor
+            group.coalesce_var = block.create_var(name=unique_name.generate(
+                'coalecse_grad_{}'.format(i)),
+                                                  dtype=group.dtype,
+                                                  persistable=False,
+                                                  stop_gradient=True)
+
+            # update allreduce & scale op
+            if group.scale_op_idx != -1:
+                scale_op = block.ops[group.scale_op_idx]
+                assert scale_op.type == 'scale', "should found scale op but found {}".format(
+                    str(scale_op))
+                scale_op._rename_input(scale_op.input_arg_names[0],
+                                       group.coalesce_var.name)
+                scale_op._rename_output(scale_op.output_arg_names[0],
+                                        group.coalesce_var.name)
+
+            allreduce_op = block.ops[group.allreduce_op_idx]
+            assert allreduce_op.type == 'c_allreduce_sum', "should found c_allreduce_sum op but found {}".format(
+                str(allreduce_op))
+            allreduce_op._rename_input(allreduce_op.input_arg_names[0],
+                                       group.coalesce_var.name)
+            allreduce_op._rename_output(allreduce_op.output_arg_names[0],
+                                        group.coalesce_var.name)
+
+            # remvoe un-used op
+            remove_op_indices = group.remove_wait_op_indices + group.remove_allreduce_op_indices + group.remove_scale_op_indices
+            for idx in sorted(remove_op_indices, reverse=True):
+                assert block.ops[
+                    idx].type in remove_op_types, "Unexception: try to remove op {}".format(
+                        str(op))
+                block._remove_op(idx)
+
+            # insert coalecse op
+            concated_shapes = []
+            concated_ranks = []
+            for grad_ in group.gradients:
+                shape = grad_.shape
+                concated_shapes.extend(shape)
+                concated_ranks.append(len(shape))
+
+            grad_names = [grad.name for grad in group.gradients]
+            block._insert_op_without_sync(group.coalesce_op_idx,
+                                          type="coalesce_tensor",
+                                          inputs={"Input": grad_names},
+                                          outputs={
+                                              "Output": grad_names,
+                                              "FusedOutput": group.coalesce_var
+                                          },
+                                          attrs={
+                                              "copy_data": False,
+                                              "use_align": True,
+                                              "dtype": group.dtype,
+                                              "concated_shapes":
+                                              concated_shapes,
+                                              "concated_ranks": concated_ranks,
+                                              OP_ROLE_KEY: OpRole.Backward
+                                          })
+
+        block._sync_with_cpp()
+        # TODO update dist attr
 
     def summary(self, grad_groups=[]):
         # TODO: add logger module
@@ -446,7 +524,7 @@ class GradientsGroup(object):
         self.numel = 0
         self.dtype = None
         self.ring_id = None
-        self.fuse_var_name = None
+        self.coalesce_var = None
         self.coalesce_op_idx = -1
         self.allreduce_op_idx = -1
         self.scale_op_idx = -1
@@ -476,12 +554,21 @@ class GradientsGroup(object):
         self.remove_allreduce_op_indices.append(i)
 
         # NOTE this pass rely on the original synchronization add in previous passes
-        # (same stream or calc_sync_comm & comm_sync_calc)
+        # (same stream or calc_wait_comm & comm_wait_calc)
         # to guarantee the correctness of comm_calc execution order.
+        # so the calc_wait_comm should be keep.
+        grad_op_idx = i - 1
         if i > 0 and self.ops[i - 1].type == 'c_wait_compute':
             self.remove_wait_op_indices.append(i - 1)
+            grad_op_idx -= 1
         if i + 1 < len(self.ops) and is_data_parallel_scale_op(self.ops[i - 1]):
             self.remove_scale_op_indices.append(i + 1)
+
+        if len(self.gradients) == 1:
+            grad_op = self.ops[grad_op_idx]
+            assert grad_var.name in grad_op.output_arg_names, "grad [{}] should be output of {}".format(
+                grad_var.name, str(grad_op))
+            self.coalesce_op_idx = grad_op_idx
 
     def finalize(self):
         self.allreduce_op_idx = self.remove_allreduce_op_indices.pop()
