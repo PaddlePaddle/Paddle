@@ -53,6 +53,22 @@ int LayerNormPlugin::enqueue(int batch_size,
   int begin_norm_axis = begin_norm_axis_;
   float eps = eps_;
 
+  PADDLE_ENFORCE_EQ(1,
+                    mean_shape_.size(),
+                    platform::errors::InvalidArgument(
+                        "Size of mean_shape vector should be equal to 1,"
+                        "but got Size of mean_shape vector:%d",
+                        mean_shape_.size()));
+  PADDLE_ENFORCE_EQ(1,
+                    variance_shape_.size(),
+                    platform::errors::InvalidArgument(
+                        "Size of variance_shape vector should be equal to 1,"
+                        "but got Size of mean_shape vector:%d",
+                        mean_shape_.size()));
+
+  int64_t batched_mean_shape = mean_shape_[0] * input_dims.d[0];
+  int64_t batched_variance_shape = variance_shape_[0] * input_dims.d[0];
+
   std::vector<int> input_shape;
   input_shape.push_back(batch_size);
   for (int i = 0; i < input_dims.nbDims; i++) {
@@ -78,8 +94,8 @@ int LayerNormPlugin::enqueue(int batch_size,
 
   scale_t.Resize(phi::make_ddim({feature_size}));
   bias_t.Resize(phi::make_ddim({feature_size}));
-  mean_t.Resize(phi::make_ddim(mean_shape_));
-  variance_t.Resize(phi::make_ddim(variance_shape_));
+  mean_t.Resize(phi::make_ddim({batched_mean_shape}));
+  variance_t.Resize(phi::make_ddim({batched_variance_shape}));
   int device_id;
   cudaGetDevice(&device_id);
   float *scale_d = scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
@@ -147,6 +163,20 @@ bool LayerNormPluginDynamic::supportsFormatCombination(
   return in.type == prev.type && in.format == prev.format;
 }
 
+void LayerNormPluginDynamic::configurePlugin(
+    const nvinfer1::DynamicPluginTensorDesc *in,
+    int nbInputs,
+    const nvinfer1::DynamicPluginTensorDesc *out,
+    int nbOutputs) TRT_NOEXCEPT {
+  const auto &input_dims = in[0].desc.dims;
+  int statis_num = 1;
+  for (int i = 0; i < begin_norm_axis_; i++) {
+    statis_num *= input_dims.d[i];
+  }
+  mean_shape_[0] = statis_num;
+  variance_shape_[0] = statis_num;
+}
+
 nvinfer1::DataType LayerNormPluginDynamic::getOutputDataType(
     int index,
     const nvinfer1::DataType *input_types,
@@ -175,6 +205,33 @@ int LayerNormPluginDynamic::enqueue(
   for (int i = 0; i < input_dims.nbDims; i++) {
     input_shape.push_back(input_dims.d[i]);
   }
+  // in dynamic shape
+  // the batch num should be involved in mean/variance shape
+  PADDLE_ENFORCE_EQ(1,
+                    mean_shape_.size(),
+                    platform::errors::InvalidArgument(
+                        "Size of mean_shape vector should be equal to 1,"
+                        "but got Size of mean_shape vector:%d",
+                        mean_shape_.size()));
+  PADDLE_ENFORCE_EQ(1,
+                    variance_shape_.size(),
+                    platform::errors::InvalidArgument(
+                        "Size of variance_shape vector should be equal to 1,"
+                        "but got Size of mean_shape vector:%d",
+                        mean_shape_.size()));
+  PADDLE_ENFORCE_GE(mean_shape_[0],
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The size of mean vector should be positive,"
+                        "but got:%d",
+                        mean_shape_[0]));
+  PADDLE_ENFORCE_GE(variance_shape_[0],
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The size of mean vector should be positive,"
+                        "but got:%d",
+                        variance_shape_[0]));
+
   const auto input_ddim = phi::make_ddim(input_shape);
   auto matrix_dim = phi::flatten_to_2d(input_ddim, begin_norm_axis);
   int feature_size = static_cast<int>(matrix_dim[1]);

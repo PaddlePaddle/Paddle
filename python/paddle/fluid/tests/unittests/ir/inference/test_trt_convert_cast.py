@@ -27,10 +27,12 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
+        if attrs[0]['in_dtype'] == 0:
+            return False
         if attrs[0]['in_dtype'] in [4, 5] and attrs[0]['out_dtype'] == 4:
             return False
         if attrs[0]['in_dtype'] not in [
-                0, 2, 4, 5
+                2, 4, 5
         ] or attrs[0]['out_dtype'] not in [2, 4, 5]:
             return False
         return True

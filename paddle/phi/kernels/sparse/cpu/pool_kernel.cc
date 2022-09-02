@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
-#include "paddle/phi/kernels/sparse/cpu/convolution.h"
+#include "paddle/phi/kernels/sparse/cpu/conv.h"
 
 namespace phi {
 namespace sparse {
@@ -37,7 +37,8 @@ void MaxPoolCooCPUKernel(const CPUContext& dev_ctx,
                          const std::vector<int>& dilations,
                          const std::vector<int>& strides,
                          SparseCooTensor* out,
-                         DenseTensor* rulebook) {
+                         DenseTensor* rulebook,
+                         DenseTensor* counter) {
   const auto& x_dims = x.dims();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
   const std::vector<int>& real_kernel_sizes =
@@ -47,11 +48,9 @@ void MaxPoolCooCPUKernel(const CPUContext& dev_ctx,
       x_dims, real_kernel_sizes, paddings, dilations, strides, &out_dims);
   const int in_channels = real_kernel_sizes[3];
 
-  DenseTensorMeta counter_meta(
-      DataType::INT32, {kernel_size}, DataLayout::NCHW);
-  DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
+  std::vector<int> counter_per_kernel(kernel_size, 0);
 
-  const T* in_features_ptr = x.non_zero_elements().data<T>();
+  const T* in_features_ptr = x.values().data<T>();
   // 1. product rule book
   ProductRuleBook<T, CPUContext, IntT>(dev_ctx,
                                        x,
@@ -62,21 +61,24 @@ void MaxPoolCooCPUKernel(const CPUContext& dev_ctx,
                                        out_dims,
                                        false,
                                        rulebook,
-                                       &counter_per_kernel);
+                                       counter_per_kernel.data());
 
   UpdateRulebookAndOutIndex<T, CPUContext, IntT>(
       dev_ctx, x, kernel_size, in_channels, out_dims, rulebook, out);
 
   int rulebook_len = rulebook->dims()[1];
   const IntT* rulebook_ptr = rulebook->data<IntT>();
-  const int* counter_ptr = counter_per_kernel.data<int>();
+
+  counter->Resize({kernel_size});
+  int* counter_ptr = dev_ctx.template HostAlloc<int>(counter);
+  memcpy(counter_ptr, counter_per_kernel.data(), kernel_size * sizeof(int));
 
   std::vector<int> offsets(kernel_size + 1);
   phi::funcs::sparse::PrefixSum(counter_ptr, &offsets[0], kernel_size);
   std::vector<bool> out_flags(out->nnz(), false);
 
   // 2. max pool
-  T* out_features_ptr = out->mutable_non_zero_elements()->data<T>();
+  T* out_features_ptr = out->mutable_values()->data<T>();
   phi::funcs::MaxPool<T> max_pool_functor;
   for (int i = 0; i < kernel_size; i++) {
     for (int j = 0; j < counter_ptr[i]; j++) {
@@ -105,9 +107,10 @@ void MaxPoolCooKernel(const Context& dev_ctx,
                       const std::vector<int>& dilations,
                       const std::vector<int>& strides,
                       SparseCooTensor* out,
-                      DenseTensor* rulebook) {
-  PD_VISIT_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "MaxPoolCooCPUKernel", ([&] {
+                      DenseTensor* rulebook,
+                      DenseTensor* counter) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      x.indices().dtype(), "MaxPoolCooCPUKernel", ([&] {
         MaxPoolCooCPUKernel<T, data_t>(dev_ctx,
                                        x,
                                        kernel_sizes,
@@ -115,7 +118,8 @@ void MaxPoolCooKernel(const Context& dev_ctx,
                                        dilations,
                                        strides,
                                        out,
-                                       rulebook);
+                                       rulebook,
+                                       counter);
       }));
 }
 

@@ -63,15 +63,18 @@ class TestSparseUnary(unittest.TestCase):
         dense_out.backward()
 
         # compare forward
-        self.assertTrue(
-            np.allclose(sp_out.to_dense().numpy(), dense_out.numpy()))
+        np.testing.assert_allclose(sp_out.to_dense().numpy(),
+                                   dense_out.numpy(),
+                                   rtol=1e-05)
 
         # compare backward
         if dense_func == paddle.sqrt:
             expect_grad = np.nan_to_num(dense_x.grad.numpy(), 0., 0., 0.)
         else:
             expect_grad = (dense_x.grad * mask).numpy()
-        self.assertTrue(np.allclose(sp_x.grad.to_dense().numpy(), expect_grad))
+        np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
+                                   expect_grad,
+                                   rtol=1e-05)
 
     def compare_with_dense(self, dense_func, sparse_func):
         self.check_result(dense_func, sparse_func, 'coo')
@@ -160,7 +163,7 @@ class TestSparseUnary(unittest.TestCase):
 
     def test_sparse_cast(self):
         self.compare_with_dense_two_attr(paddle.cast,
-                                         paddle.incubate.sparse.cast, 'int16',
+                                         paddle.incubate.sparse.cast, 'int32',
                                          'float32')
         self.compare_with_dense_two_attr(paddle.cast,
                                          paddle.incubate.sparse.cast, 'int32',

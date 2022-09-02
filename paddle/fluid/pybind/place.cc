@@ -200,6 +200,7 @@ PyTypeObject *g_xpuplace_pytype = nullptr;
 PyTypeObject *g_npuplace_pytype = nullptr;
 PyTypeObject *g_cudapinnedplace_pytype = nullptr;
 PyTypeObject *g_mluplace_pytype = nullptr;
+PyTypeObject *g_ipuplace_pytype = nullptr;
 
 template <typename PlaceType>
 static inline int PlaceIndex(const PlaceType &p) {  // NOLINT
@@ -611,7 +612,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("__str__", string::to_string<const platform::NPUPlace &>);
 
   // IPUPlace
-  py::class_<platform::IPUPlace>(m, "IPUPlace", R"DOC(
+  py::class_<platform::IPUPlace> ipuplace(m, "IPUPlace", R"DOC(
     IPUPlace is a descriptor of a device.
     It represents a IPU device on which a tensor will be allocated and a model will run.
 
@@ -623,7 +624,9 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
           ipu_place = paddle.IPUPlace()
 
-        )DOC")
+        )DOC");
+  g_ipuplace_pytype = reinterpret_cast<PyTypeObject *>(ipuplace.ptr());
+  ipuplace
       .def("__init__",
            [](platform::IPUPlace &self) {
 #ifdef PADDLE_WITH_IPU

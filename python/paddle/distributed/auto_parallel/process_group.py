@@ -42,7 +42,13 @@ def get_world_process_group():
     return _g_process_group_map[0]
 
 
-def new_process_group(ranks):
+def clear_all_process_groups():
+    global _g_process_group_map
+    _g_process_group_map = {}
+    _g_process_group_map[0] = ProcessGroup(0, [])
+
+
+def new_process_group(ranks, group_id=None):
     global _g_process_group_map
     # A key constructed from ranks is used for avoiding duplication
     new_key = ''.join(map(str, sorted(ranks)))
@@ -54,7 +60,9 @@ def new_process_group(ranks):
     num_groups = len(_g_process_group_map)
     # Note: our process group may interfere with the original implementation
     # so the created group id should start from the original _new_ring_id()
-    group_id = _new_ring_id() + num_groups + 1
+    if group_id == None:
+        group_id = _new_ring_id() + num_groups + 1
+
     new_pg = ProcessGroup(group_id, ranks)
     _g_process_group_map[group_id] = new_pg
     return new_pg
@@ -152,20 +160,23 @@ class ProcessGroup:
     def is_member(self):
         return True
 
-    # def __eq__(self, other):
-    #     if not isinstance(other, ProcessGroup):
-    #         return False
-    #     if self.id != other.id:
-    #         return False
-    #     return True
+    def __eq__(self, other):
+        if not isinstance(other, ProcessGroup):
+            return False
+        if self.id != other.id:
+            return False
+        return True
 
-    # def __ne__(self, other):
-    #     return not self.__eq__(other)
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __str__(self):
         string = "id: {}, nranks: {}, ranks: {}.".format(
             self.id, self.nranks, ", ".join(map(str, self.ranks)))
         return string
+
+    def __hash__(self):
+        return hash(self.__str__())
 
 
 # Note that Process group 0 is reserved for representing all ranks.

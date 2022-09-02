@@ -82,7 +82,7 @@ class TestDynRNNStopGradient(unittest.TestCase):
                 value2 = build_and_run_program(place, self.batch_size,
                                                self.beam_size, True)
 
-                self.assertTrue(np.array_equal(value1, value2))
+                np.testing.assert_array_equal(value1, value2)
 
     def test_check_main(self):
         places = [fluid.CPUPlace()]

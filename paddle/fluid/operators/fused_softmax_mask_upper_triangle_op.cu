@@ -577,12 +577,9 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     fused_softmax_mask_upper_triangle,
-    ops::SoftmaxMaskFuseUpperTriangleKernel<plat::CUDADeviceContext,
-                                            plat::float16>,
-    ops::SoftmaxMaskFuseUpperTriangleKernel<plat::CUDADeviceContext, float>);
+    ops::SoftmaxMaskFuseUpperTriangleKernel<phi::GPUContext, plat::float16>,
+    ops::SoftmaxMaskFuseUpperTriangleKernel<phi::GPUContext, float>);
 REGISTER_OP_CUDA_KERNEL(
     fused_softmax_mask_upper_triangle_grad,
-    ops::SoftmaxMaskFuseUpperTriangleGradKernel<plat::CUDADeviceContext,
-                                                plat::float16>,
-    ops::SoftmaxMaskFuseUpperTriangleGradKernel<plat::CUDADeviceContext,
-                                                float>);
+    ops::SoftmaxMaskFuseUpperTriangleGradKernel<phi::GPUContext, plat::float16>,
+    ops::SoftmaxMaskFuseUpperTriangleGradKernel<phi::GPUContext, float>);

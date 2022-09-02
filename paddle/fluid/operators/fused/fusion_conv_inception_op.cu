@@ -39,7 +39,7 @@ template <typename T>
 class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto* input = ctx.Input<Tensor>("Input");
     auto filters = ctx.MultiInput<framework::Tensor>("Filter");
     auto bias = ctx.MultiInput<framework::Tensor>("Bias");

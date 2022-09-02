@@ -72,12 +72,16 @@ bool RecoverPaddingPlugin::supportsFormatCombination(
                     platform::errors::InvalidArgument("Must have 1 output, "
                                                       "but got %d output(s). ",
                                                       nbOutputs));
-  if (pos == 1) {  // PosId, MaxSeqlen
+  if (pos == 1) {  // PosId
     return inOut[pos].type == nvinfer1::DataType::kINT32 &&
            inOut[pos].format == nvinfer1::TensorFormat::kLINEAR;
+  } else if (pos == 2) {  // mask_id
+    return inOut[pos].type == nvinfer1::DataType::kFLOAT &&
+           inOut[pos].format == nvinfer1::TensorFormat::kLINEAR;
+  } else {
+    return inOut[pos].type == nvinfer1::DataType::kFLOAT &&
+           inOut[pos].format == nvinfer1::TensorFormat::kLINEAR;
   }
-  return inOut[pos].type == nvinfer1::DataType::kFLOAT &&
-         inOut[pos].format == nvinfer1::TensorFormat::kLINEAR;
   // return (inOut[pos].type == nvinfer1::DataType::kFLOAT && inOut[pos].format
   // == nvinfer1::TensorFormat::kLINEAR)||
   // (inOut[pos].type == nvinfer1::DataType::kHALF && inOut[pos].format ==

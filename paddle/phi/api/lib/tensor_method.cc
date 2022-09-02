@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// clang-format off
 #include "paddle/phi/api/include/tensor.h"
 
 #include "paddle/phi/common/int_array.h"
@@ -25,7 +24,6 @@ limitations under the License. */
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/unary.h"
-// clang-format off
 
 namespace paddle {
 namespace experimental {
@@ -115,13 +113,12 @@ void Tensor::copy_(const Tensor &src,
     // Deep Copy AutoGrad info from src to self.
     *autograd_meta_ = *(src.autograd_meta_);
   }
-  kernel_key_set.backend_set =
-      kernel_key_set.backend_set |
-      BackendSet(phi::TransToPhiBackend(target_place));
+  kernel_key_set.backend_set = kernel_key_set.backend_set |
+                               BackendSet(phi::TransToPhiBackend(target_place));
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
   auto place = phi::TransToPhiPlace(kernel_key.backend());
-  auto& pool = paddle::experimental::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.GetMutable(
+  auto &pool = paddle::experimental::DeviceContextPool::Instance();
+  auto *dev_ctx = pool.GetMutable(
       place.GetType() == target_place.GetType() ? target_place : place);
 
   Backend kernel_backend = Backend::UNDEFINED;
@@ -143,7 +140,7 @@ void Tensor::copy_(const Tensor &src,
   }
 
   if (kernel_type == KernelType::DENSE_TENSOR_KENREL) {
-    SetKernelOutput(kernel_backend, this);
+    SetKernelOutput(this);
     phi::MetaTensor meta_out(impl_.get());
     phi::UnchangedInferMeta(
         MakeMetaTensor(
@@ -155,7 +152,7 @@ void Tensor::copy_(const Tensor &src,
               blocking,
               static_cast<phi::DenseTensor *>(impl_.get()));
   } else if (kernel_type == KernelType::SELECTED_ROWS_KENREL) {
-    SetSelectedRowsKernelOutput(kernel_backend, this);
+    SetSelectedRowsKernelOutput(this);
     phi::MetaTensor meta_out(impl_.get());
     phi::UnchangedInferMeta(
         MakeMetaTensor(

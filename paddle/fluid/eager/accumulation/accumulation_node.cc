@@ -127,7 +127,7 @@ GradNodeAccumulation::operator()(
 }
 
 void GradNodeAccumulation::RegisterReduceHook(
-    std::shared_ptr<TensorVoidHook>&& hook) {
+    std::shared_ptr<VoidHook>&& hook) {
   reduce_hooks_.emplace_back(std::move(hook));
 }
 

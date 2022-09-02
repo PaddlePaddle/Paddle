@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -60,14 +60,19 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
             self.begin_norm_axis = 1
             self.set_attrs()
 
+            self.atol = 1e-4
+            if self.dtype == np.float16:
+                self.atol = 1e-2
+
             right = reduce(mul,
                            self.shape[self.begin_norm_axis:len(self.shape)], 1)
             np.random.seed(10)
             x_np = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
-            scale_np = np.random.uniform(0.1, 1, [right]).astype(self.dtype)
-            bias_np = np.random.uniform(0.1, 1, [right]).astype(self.dtype)
+            scale_np = np.random.uniform(0.1, 1, [right]).astype('float32')
+            bias_np = np.random.uniform(0.1, 1, [right]).astype('float32')
             ref_y_np, ref_mean_np, ref_variance_np = ref_layer_norm(
                 x_np, scale_np, bias_np, self.epsilon, self.begin_norm_axis)
+            ref_y_np = ref_y_np.astype(self.dtype)
 
             self.inputs = {'X': x_np, 'Scale': scale_np, 'Bias': bias_np}
             self.outputs = {
@@ -84,12 +89,12 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
             pass
 
         def test_check_output(self):
-            self.check_output_with_place(paddle.XPUPlace(0), atol=1e-4)
+            self.check_output_with_place(paddle.XPUPlace(0), atol=self.atol)
 
         def test_check_grad(self):
             self.check_grad_with_place(paddle.XPUPlace(0), ['X'],
                                        'Y',
-                                       max_relative_error=0.02)
+                                       max_relative_error=self.atol)
 
     class TestXPULayerNormOpAxis2(TestXPULayerNormOp):
 

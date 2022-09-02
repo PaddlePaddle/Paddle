@@ -122,7 +122,7 @@ inline T GetValue(const framework::Tensor* x) {
   if (!platform::is_cpu_place(x->place())) {
     framework::Tensor cpu_x;
     framework::TensorCopy(*x, platform::CPUPlace(), &cpu_x);
-#ifdef PADDLE_WITH_ASCEND_CL
+#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     const platform::DeviceContext* dev_ctx = pool.Get(x->place());
     dev_ctx->Wait();

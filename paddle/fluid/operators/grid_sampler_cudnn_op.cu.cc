@@ -41,7 +41,7 @@ class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
                       true,
                       platform::errors::InvalidArgument(
                           "It must use CUDAPlace when using CUDA Kernel"));
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto handle = dev_ctx.cudnn_handle();
     auto* input = ctx.Input<Tensor>("X");
     auto* grid = ctx.Input<Tensor>("Grid");
@@ -90,7 +90,7 @@ class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
                       true,
                       platform::errors::InvalidArgument(
                           "It must use CUDAPlace when using CUDA Kernel"));
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto handle = dev_ctx.cudnn_handle();
     auto* input = ctx.Input<Tensor>("X");
     auto* grid = ctx.Input<Tensor>("Grid");

@@ -70,14 +70,12 @@ class TestMultiOutputDtypes(unittest.TestCase):
             one_int32 = one_int32.numpy()
         # Fake_float64
         self.assertTrue('float64' in str(zero_float64.dtype))
-        self.assertTrue(
-            np.array_equal(zero_float64,
-                           np.zeros([4, 8]).astype('float64')))
+        np.testing.assert_array_equal(zero_float64,
+                                      np.zeros([4, 8]).astype('float64'))
         # ZFake_int32
         self.assertTrue('int32' in str(one_int32.dtype))
-        self.assertTrue(
-            np.array_equal(one_int32,
-                           np.ones([4, 8]).astype('int32')))
+        np.testing.assert_array_equal(one_int32,
+                                      np.ones([4, 8]).astype('int32'))
 
     def test_static(self):
         paddle.enable_static()

@@ -32,7 +32,7 @@ from .dist_default import DistributedDefaultImpl0
 from ..cost import FillConstantBatchSizeLikeOpCost
 from ..cost import build_comp_desc_from_dist_op, build_dp_costs
 from ..cost import build_comp_costs_from_descs
-from ..cost import AllreduceSumOpCost
+from paddle.distributed.auto_parallel.cost.comm_op_cost import AllreduceSumOpCost
 
 
 class DistributedFillConstantBatchSizeLike(DistributedOperatorImplContainer):

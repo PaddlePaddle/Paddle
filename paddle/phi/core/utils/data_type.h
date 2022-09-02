@@ -97,4 +97,18 @@ inline DataType ToComplexType(const DataType& type) {
           type));
   }
 }
+
+inline DataType ToRealType(const DataType& type) {
+  switch (type) {
+    case DataType::COMPLEX64:
+      return DataType::FLOAT32;
+    case DataType::COMPLEX128:
+      return DataType::FLOAT64;
+    default:
+      PADDLE_THROW(errors::Unimplemented(
+          "Can not transform data type (%s) to real type, now only support "
+          "complex64 and complex128 value.",
+          type));
+  }
+}
 }  // namespace phi

@@ -36,8 +36,8 @@ class TestBase(IPUOpTest):
         self.rtol_fp16 = 1e-3
 
     def set_feed(self):
-        data1 = np.random.uniform(size=[100])
-        data2 = np.random.uniform(size=[200])
+        data1 = np.random.uniform(size=[10])
+        data2 = np.random.uniform(size=[20])
         self.feed_fp32 = {
             'x': data1.astype(np.float32),
             'y': data2.astype(np.float32)

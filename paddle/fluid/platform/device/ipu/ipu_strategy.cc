@@ -302,8 +302,6 @@ IpuStrategy::IpuStrategy() {
   ADD_POPART_BOOL_OPTION_ALIAS(
       schedule_non_weight_update_gradient_consumers_early,
       scheduleNonWeightUpdateGradientConsumersEarly);
-  ADD_POPART_BOOL_OPTION_ALIAS(create_implicit_pipelining_fwd_only_program,
-                               createImplicitPipeliningFwdOnlyProgram);
 
   ADD_POPART_DOUBLE_OPTION_ALIAS(outline_sequence_break_cost,
                                  outlineSequenceBreakCost);

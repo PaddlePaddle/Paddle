@@ -38,9 +38,13 @@ class TestAMP(TestMNIST):
         # NOTE(Aurelius84): In static AMP training, there is a grep_list but
         # dygraph AMP don't. It will bring the numbers of cast_op is different
         # and leads to loss has a bit diff.
-        self.assertTrue(np.allclose(dygraph_loss, static_loss, atol=1e-3),
-                        msg='dygraph is {}\n static_res is \n{}'.format(
-                            dygraph_loss, static_loss))
+        np.testing.assert_allclose(
+            dygraph_loss,
+            static_loss,
+            rtol=1e-05,
+            atol=0.001,
+            err_msg='dygraph is {}\n static_res is \n{}'.format(
+                dygraph_loss, static_loss))
 
     def train(self, to_static=False):
         paddle.seed(SEED)

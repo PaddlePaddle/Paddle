@@ -11,12 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import math
+
 import os
 import re
+import math
+import shutil
 import logging
 import numpy as np
-import shutil
+
 try:
     from tqdm import tqdm
 except:
@@ -34,7 +36,11 @@ from .cal_kl_threshold import cal_kl_threshold
 from .adaround import run_adaround
 from . import utils
 
-__all__ = ['PostTrainingQuantization', 'WeightQuantization']
+__all__ = [
+    'PostTrainingQuantization',
+    'WeightQuantization',
+    'PostTrainingQuantizationProgram',
+]
 
 _logger = get_logger(__name__,
                      logging.INFO,
@@ -108,9 +114,9 @@ class PostTrainingQuantization(object):
     """
 
     def __init__(self,
-                 executor=None,
+                 executor,
+                 model_dir,
                  scope=None,
-                 model_dir=None,
                  model_filename=None,
                  params_filename=None,
                  batch_generator=None,
@@ -130,10 +136,15 @@ class PostTrainingQuantization(object):
                  activation_quantize_type='range_abs_max',
                  weight_quantize_type='channel_wise_abs_max',
                  onnx_format=False,
+                 freeze_model=True,
                  optimize_model=False,
                  is_use_cache_file=False,
                  skip_tensor_list=None,
-                 cache_dir=None):
+                 same_scale_tensor_list=None,
+                 scale_trainable=False,
+                 cache_dir=None,
+                 scale_dict=None,
+                 return_graph=False):
         '''
         Constructor.
 
@@ -206,7 +217,12 @@ class PostTrainingQuantization(object):
                 the model accuracy is usually higher when it is 'channel_wise_abs_max'.
             onnx_format(bool): Whether to export the quantized model with format of ONNX.
                 Default is False.
-            skip_tensor_list(list): List of skip quant tensor name.
+            freeze_model(bool): Whether to convert quantized and trained ``program`` to final 
+                quantized ``program``. Default: True.
+            skip_tensor_list(list): List of skip quant tensor name. Default: None.
+            same_scale_tensor_list(list(list)): The list of tensor keep same scale in the outermost 
+                list, the final scale about every list is the max of the scale in the list 
+                of tensor. Default: None.
             optimize_model(bool, optional): If set optimize_model as True, it applies
                 some passes to the model before quantization, and it supports
                 `conv2d/depthwise_conv2d + bn` pass so far. Some targets require the
@@ -215,6 +231,7 @@ class PostTrainingQuantization(object):
                 `conv2d/depthwise_conv2d + bn`, the weights scale for all channel will
                 be different. In address this problem, fuse the pattern before
                 quantization. Default False.
+            scale_trainable(bool, optional): whether scale can be train.
             is_use_cache_file(bool, optional): This param is deprecated.
             cache_dir(str, optional): This param is deprecated.
         Returns:
@@ -262,7 +279,7 @@ class PostTrainingQuantization(object):
         ]
         self._support_weight_quantize_type = ['abs_max', 'channel_wise_abs_max']
         self._support_algo_type = [
-            'KL', 'hist', 'avg', 'mse', 'emd', 'abs_max', 'min_max'
+            'KL', 'hist', 'avg', 'mse', 'emd', 'abs_max', 'min_max', 'ptf'
         ]
         assert round_type in ['adaround', 'round']
         self._round_type = round_type
@@ -275,7 +292,6 @@ class PostTrainingQuantization(object):
 
         # Check inputs
         assert executor is not None, "The executor cannot be None."
-        assert model_dir is not None, "The model_dir cannot be None."
         assert any([gen is not None] for gen in [sample_generator,
             batch_generator, data_loader]), "The sample_generator, batch_generator " \
             "and data_loader cannot be None in the same time."
@@ -284,7 +300,7 @@ class PostTrainingQuantization(object):
                 "data_loader only accepts `paddle.io.DataLoader` or Generator instance."
         assert batch_size > 0, "The batch_size should be greater than 0."
         assert algo in self._support_algo_type, \
-            "The algo should be KL, hist, mse, avg, abs_max or min_max."
+            "The algo should be KL, hist, mse, avg, abs_max, min_max or ptf."
         assert activation_quantize_type in self._support_activation_quantize_type, \
             "The activation_quantize_type ({}) should in ({}).".format(
             activation_quantize_type, self._support_activation_quantize_type)
@@ -310,6 +326,7 @@ class PostTrainingQuantization(object):
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
         self._onnx_format = onnx_format
+        self._clip_extra = True if self._onnx_format else False
         self._skip_tensor_list = skip_tensor_list
         self._is_full_quantize = is_full_quantize
         if is_full_quantize:
@@ -347,6 +364,11 @@ class PostTrainingQuantization(object):
         self._best_calibration_loss = {}
         # The threshold for algo = abs_max, mse or avg
         self._quantized_threshold = {}
+        self._same_scale_tensor_list = same_scale_tensor_list
+        self._freeze_model = freeze_model
+        self._scale_trainable = scale_trainable
+        self._scale_dict = scale_dict
+        self._return_graph = return_graph
 
     def quantize(self):
         '''
@@ -418,8 +440,7 @@ class PostTrainingQuantization(object):
             self._update_program()
 
         # save out_threshold for quantized ops.
-        if not self._onnx_format:
-            self._save_output_threshold()
+        self._save_output_threshold()
 
         if any(op_type in self._quantizable_op_type
                for op_type in self._dynamic_quantize_op_type):
@@ -442,7 +463,11 @@ class PostTrainingQuantization(object):
                 persistables.extend(_op.input('X'))
                 _op.desc.set_input("X", persistables)
 
-        return self._program
+        if not self._return_graph:
+            return self._program
+        else:
+            main_graph = IrGraph(core.Graph(self._program.desc), for_test=True)
+            return main_graph
 
     def _adaround_apply(self):
         assert self._algo != "min_max", "The algo should not be min_max."
@@ -481,7 +506,6 @@ class PostTrainingQuantization(object):
         Returns:
             None
         '''
-        clip_extra = True if self._onnx_format else False
         io.save_inference_model(dirname=save_model_path,
                                 model_filename=model_filename,
                                 params_filename=params_filename,
@@ -489,19 +513,20 @@ class PostTrainingQuantization(object):
                                 target_vars=self._fetch_list,
                                 executor=self._executor,
                                 main_program=self._program,
-                                clip_extra=clip_extra)
+                                clip_extra=self._clip_extra)
         _logger.info("The quantized model is saved in " + save_model_path)
 
     def _load_model_data(self):
         '''
         Load model and set data loader.
         '''
-        _logger.info("Load model and set data loader ...")
-        [self._program, self._feed_list, self._fetch_list] = \
-            io.load_inference_model(dirname=self._model_dir,
-                                    executor=self._executor,
-                                    model_filename=self._model_filename,
-                                    params_filename=self._params_filename)
+        if self._program is None:
+            _logger.info("Load model and set data loader ...")
+            [self._program, self._feed_list, self._fetch_list] = \
+                io.load_inference_model(dirname=self._model_dir,
+                                        executor=self._executor,
+                                        model_filename=self._model_filename,
+                                        params_filename=self._params_filename)
 
         if self._optimize_model:
             self._optimize_fp32_model()
@@ -510,6 +535,8 @@ class PostTrainingQuantization(object):
             for var_name in self._feed_list]
 
         if self._data_loader is not None:
+            self._batch_nums = self._batch_nums if self._batch_nums else len(
+                self._data_loader)
             return
         self._data_loader = io.DataLoader.from_generator(feed_list=feed_vars,
                                                          capacity=3 *
@@ -523,6 +550,8 @@ class PostTrainingQuantization(object):
         elif self._batch_generator is not None:
             self._data_loader.set_batch_generator(self._batch_generator,
                                                   places=self._place)
+        self._batch_nums = self._batch_nums if self._batch_nums else len(
+            list(self._data_loader))
 
     def _optimize_fp32_model(self):
         '''
@@ -606,7 +635,6 @@ class PostTrainingQuantization(object):
             if var.name in self._quantized_act_var_name:
                 var.persistable = False
                 to_erase.append(var.name)
-        self._scope.erase(to_erase)
 
     def _sampling(self):
         '''
@@ -622,6 +650,8 @@ class PostTrainingQuantization(object):
             self._sample_mse()
         elif self._algo == "emd":
             self._sample_emd()
+        elif self._algo == "ptf":
+            self._sample_ptf()
         elif self._algo in ["KL", "hist"]:
             self._sample_histogram()
 
@@ -811,6 +841,58 @@ class PostTrainingQuantization(object):
             hist, _ = np.histogram(var_tensor_abs, bins=bins)
             self._sampling_act_histogram[var_name][0] += hist
 
+    def l2_loss(self, gt, pred):
+        return ((gt - pred)**2).mean()
+
+    def _sample_ptf(self):
+        """
+        The following code are modified from:
+        https://github.com/megvii-research/FQ-ViT/
+        """
+        if self._quantized_threshold == {}:
+            for var_name in self._quantized_weight_var_name:
+                var_tensor = utils.load_variable_data(self._scope, var_name)
+                if self._weight_quantize_type == "abs_max":
+                    abs_max_value = float(np.max(np.abs(var_tensor)))
+                elif self._weight_quantize_type == "channel_wise_abs_max":
+                    abs_max_value = []
+                    if self._weight_op_pairs[
+                            var_name] in utils._channelwise_quant_axis1_ops:
+                        for i in range(var_tensor.shape[1]):
+                            abs_max_value.append(
+                                float(np.max(np.abs(var_tensor[:, i]))))
+                    else:
+                        for i in range(var_tensor.shape[0]):
+                            abs_max_value.append(
+                                float(np.max(np.abs(var_tensor[i]))))
+                self._quantized_threshold[var_name] = abs_max_value
+
+        for var_name in self._quantized_act_var_name:
+            var_tensor = utils.load_variable_data(self._scope, var_name)
+            abs_max_value = float(np.max(np.abs(var_tensor)))
+            q_max = 2**(self._activation_bits - 1) - 1
+            scale8 = abs_max_value / q_max
+            scale4 = scale8 / 2
+            scale2 = scale4 / 2
+            scale1 = scale2 / 2
+            quant_dequant_var_scale1 = np.clip(np.round(var_tensor / scale1), 0,
+                                               q_max) * scale1
+            quant_dequant_var_scale2 = np.clip(np.round(var_tensor / scale2), 0,
+                                               q_max) * scale2
+            quant_dequant_var_scale4 = np.clip(np.round(var_tensor / scale4), 0,
+                                               q_max) * scale4
+            quant_dequant_var_scale8 = np.clip(np.round(var_tensor / scale8), 0,
+                                               q_max) * scale8
+            score1 = self.l2_loss(var_tensor, quant_dequant_var_scale1)
+            score2 = self.l2_loss(var_tensor, quant_dequant_var_scale2)
+            score4 = self.l2_loss(var_tensor, quant_dequant_var_scale4)
+            score8 = self.l2_loss(var_tensor, quant_dequant_var_scale8)
+            score = [score1, score2, score4, score8]
+            mask = 2**score.index(min(score))
+            scale = scale1 * mask
+            threshold = q_max * scale
+            self._quantized_threshold[var_name] = threshold
+
     def _save_input_threhold(self):
         '''
         Save input threshold to the quantized op.
@@ -919,7 +1001,8 @@ class PostTrainingQuantization(object):
                 activation_bits=self._activation_bits,
                 activation_quantize_type=self._activation_quantize_type,
                 weight_quantize_type=self._weight_quantize_type,
-                quantizable_op_type=major_quantizable_op_types)
+                quantizable_op_type=major_quantizable_op_types,
+                is_test=not self._scale_trainable)
         else:
             transform_pass = QuantizationTransformPassV2(
                 scope=self._scope,
@@ -928,7 +1011,8 @@ class PostTrainingQuantization(object):
                 activation_bits=self._activation_bits,
                 activation_quantize_type=self._activation_quantize_type,
                 weight_quantize_type=self._weight_quantize_type,
-                quantizable_op_type=major_quantizable_op_types)
+                quantizable_op_type=major_quantizable_op_types,
+                is_test=not self._scale_trainable)
 
         for sub_graph in graph.all_sub_graphs():
             # Insert fake_quant/fake_dequantize op must in test graph, so
@@ -945,24 +1029,72 @@ class PostTrainingQuantization(object):
             add_quant_dequant_pass = AddQuantDequantPass(
                 scope=self._scope,
                 place=self._place,
-                quantizable_op_type=minor_quantizable_op_types)
+                quantizable_op_type=minor_quantizable_op_types,
+                is_test=not self._scale_trainable)
         else:
             add_quant_dequant_pass = AddQuantDequantPassV2(
                 scope=self._scope,
                 place=self._place,
                 quantizable_op_type=minor_quantizable_op_types,
-                is_full_quantized=self._is_full_quantize)
+                is_full_quantized=self._is_full_quantize,
+                is_test=not self._scale_trainable)
 
         for sub_graph in graph.all_sub_graphs():
             sub_graph._for_test = True
             add_quant_dequant_pass.apply(sub_graph)
 
         # save threshold to scale var node
-        if self._algo in ["KL", "hist"]:
-            scale_dict = self._quantized_var_threshold
-        else:
-            scale_dict = self._quantized_threshold
-        for key, val in scale_dict.items():
+        if self._scale_dict is None:
+            if self._algo in ["KL", "hist"]:
+                scale_dict = self._quantized_var_threshold
+            else:
+                scale_dict = self._quantized_threshold
+
+            if self._same_scale_tensor_list is not None:
+                for tensor_list in self._same_scale_tensor_list:
+                    max_scale = None
+                    tmp_tensor_list = []
+                    for tensor_name in tensor_list:
+                        if tensor_name not in scale_dict.keys():
+                            continue
+                        if '#' in tensor_name:
+                            real_tensor_name, opera, scalar = tensor_name.split(
+                                '#')
+                            if opera == '*':
+                                scale_dict[real_tensor_name] = float(
+                                    scale_dict[real_tensor_name]) * float(
+                                        scalar)
+                            elif opera == '/':
+                                scale_dict[real_tensor_name] = float(
+                                    scale_dict[real_tensor_name]) / float(
+                                        scalar)
+                            max_scale = scale_dict[
+                                real_tensor_name] if max_scale is None else max(
+                                    max_scale, scale_dict[real_tensor_name])
+                        else:
+                            max_scale = scale_dict[
+                                tensor_name] if max_scale is None else max(
+                                    max_scale, scale_dict[tensor_name])
+
+                    for tensor_name in tensor_list:
+                        if tensor_name not in scale_dict.keys():
+                            continue
+                        if '#' in tensor_name:
+                            real_tensor_name, opera, scalar = tensor_name.split(
+                                '#')
+                            if opera == '*':
+                                scale_dict[
+                                    real_tensor_name] = max_scale / float(
+                                        scalar)
+                            elif opera == '/':
+                                scale_dict[
+                                    real_tensor_name] = max_scale * float(
+                                        scalar)
+                        else:
+                            scale_dict[tensor_name] = max_scale
+            self._scale_dict = scale_dict
+
+        for key, val in self._scale_dict.items():
             utils.set_variable_data(self._scope, self._place, key + "@scale",
                                     np.array([val], dtype=np.float32))
             utils.set_variable_data(self._scope, self._place,
@@ -971,19 +1103,20 @@ class PostTrainingQuantization(object):
 
         if not self._onnx_format:
             # apply QuantizationFreezePass, and obtain the final quant model
-            freeze_pass = QuantizationFreezePass(
-                scope=self._scope,
-                place=self._place,
-                bias_correction=self._bias_correction,
-                weight_bits=self._weight_bits,
-                round_type=self._round_type,
-                activation_bits=self._activation_bits,
-                weight_quantize_type=self._weight_quantize_type,
-                quantizable_op_type=major_quantizable_op_types)
+            if self._freeze_model:
+                freeze_pass = QuantizationFreezePass(
+                    scope=self._scope,
+                    place=self._place,
+                    bias_correction=self._bias_correction,
+                    weight_bits=self._weight_bits,
+                    round_type=self._round_type,
+                    activation_bits=self._activation_bits,
+                    weight_quantize_type=self._weight_quantize_type,
+                    quantizable_op_type=major_quantizable_op_types)
 
-            for sub_graph in graph.all_sub_graphs():
-                sub_graph._for_test = True
-                freeze_pass.apply(sub_graph)
+                for sub_graph in graph.all_sub_graphs():
+                    sub_graph._for_test = True
+                    freeze_pass.apply(sub_graph)
         else:
             quant_weight_pass = QuantWeightPass(self._scope, self._place)
             for sub_graph in graph.all_sub_graphs():
@@ -996,16 +1129,23 @@ class PostTrainingQuantization(object):
         '''
         Save output threshold to the quantized op.
         '''
+        self._calibration_scales = {}
 
         def save_info(op_node, out_var_name, threshold_map, out_info_name,
                       quantized_type):
             assert out_var_name in threshold_map, \
                 "The output ({}) of {} node does not have threshold.".format(
                 out_var_name, op_node.type)
-            op_node._set_attr(out_info_name, threshold_map[var_name])
-            op_node._set_attr("with_quant_attr", True)
-            if op_node.type in self._quantizable_op_type:
-                op._set_attr("quantization_type", quantized_type)
+            if self._onnx_format:
+                # For easy extension, every var_node set a dict to save parameters of quant.
+                self._calibration_scales[var_name] = {}
+                self._calibration_scales[var_name]['scale'] = threshold_map[
+                    var_name]
+            else:
+                op_node._set_attr(out_info_name, threshold_map[var_name])
+                op_node._set_attr("with_quant_attr", True)
+                if op_node.type in self._quantizable_op_type:
+                    op._set_attr("quantization_type", quantized_type)
 
         def analysis_and_save_info(op_node, out_var_name):
             argname_index = utils._get_output_name_index(op_node, out_var_name)
@@ -1028,7 +1168,7 @@ class PostTrainingQuantization(object):
                     argname_index[0] + str(argname_index[1]) + "_threshold",
                     "post_hist")
 
-            elif self._algo in ["avg", "abs_max", "mse", "emd"]:
+            elif self._algo in ["avg", "abs_max", "mse", "emd", "ptf"]:
                 save_info(op_node, out_var_name, self._quantized_threshold,
                           "out_threshold", "post_" + str(self._algo))
                 save_info(
@@ -1093,6 +1233,58 @@ class PostTrainingQuantization(object):
                 break
         bin_width = hist_edges[1] - hist_edges[0]
         return (hist_index - 0.5) * bin_width
+
+
+class PostTrainingQuantizationProgram(PostTrainingQuantization):
+
+    def __init__(self,
+                 executor,
+                 program,
+                 feed_list=None,
+                 fetch_list=None,
+                 scope=None,
+                 batch_generator=None,
+                 sample_generator=None,
+                 data_loader=None,
+                 batch_size=10,
+                 batch_nums=None,
+                 algo="KL",
+                 hist_percent=0.99999,
+                 quantizable_op_type=["conv2d", "depthwise_conv2d", "mul"],
+                 round_type='round',
+                 learning_rate=0.001,
+                 is_full_quantize=False,
+                 bias_correction=False,
+                 activation_bits=8,
+                 weight_bits=8,
+                 activation_quantize_type='range_abs_max',
+                 weight_quantize_type='channel_wise_abs_max',
+                 onnx_format=False,
+                 freeze_model=True,
+                 optimize_model=False,
+                 is_use_cache_file=False,
+                 skip_tensor_list=None,
+                 same_scale_tensor_list=None,
+                 scale_trainable=False,
+                 cache_dir=None,
+                 scale_dict=None,
+                 return_graph=True):
+        super().__init__(executor, scope, None, None, None, batch_generator,
+                         sample_generator, data_loader, batch_size, batch_nums,
+                         algo, hist_percent, quantizable_op_type, round_type,
+                         learning_rate, is_full_quantize, bias_correction,
+                         activation_bits, weight_bits, activation_quantize_type,
+                         weight_quantize_type, onnx_format, freeze_model,
+                         optimize_model, is_use_cache_file, skip_tensor_list,
+                         same_scale_tensor_list, scale_trainable, cache_dir,
+                         scale_dict, return_graph)
+        self._program = program
+        assert feed_list is not None, \
+            "Feed list should not be None."
+        assert fetch_list is not None, \
+            "Fetch list should not be None."
+        self._feed_list = feed_list
+        self._fetch_list = fetch_list
 
 
 class WeightQuantization(object):

@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/platform/device/custom/enforce_custom.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/common/data_type.h"
+
 #include "paddle/phi/backends/callback_manager.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_guard.h"
@@ -608,6 +610,27 @@ class CustomDevice : public DeviceInterface {
 #undef return_result
   }
 
+  C_DataType ToCDatatType(paddle::experimental::DataType data_type) {
+#define return_result(in, ret) \
+  case in:                     \
+    return C_DataType::ret
+    switch (data_type) {
+      return_result(paddle::experimental::DataType::FLOAT64, FLOAT64);
+      return_result(paddle::experimental::DataType::FLOAT32, FLOAT32);
+      return_result(paddle::experimental::DataType::FLOAT16, FLOAT16);
+      return_result(paddle::experimental::DataType::INT64, INT64);
+      return_result(paddle::experimental::DataType::INT32, INT32);
+      return_result(paddle::experimental::DataType::INT16, INT16);
+      return_result(paddle::experimental::DataType::INT8, INT8);
+      default: {
+        PADDLE_THROW(phi::errors::Unavailable(
+            "DataType is not supported on %s.", Type()));
+        return C_DataType::UNDEFINED;
+      }
+    }
+#undef return_result
+  }
+
   void CCLGetUniqueId(ccl::CCLRootId* unique_id) override {
     CHECK_PTR(pimpl_->xccl_get_unique_id_size);
     CHECK_PTR(pimpl_->xccl_get_unique_id);
@@ -682,6 +705,7 @@ class CustomDevice : public DeviceInterface {
                  size_t num,
                  ccl::CCLDataType data_type,
                  ccl::CCLReduceOp reduce_op,
+                 size_t root_id,
                  const ccl::CCLComm& comm,
                  const stream::Stream& stream) override {
     CHECK_PTR(pimpl_->xccl_reduce);
@@ -691,6 +715,7 @@ class CustomDevice : public DeviceInterface {
                             num,
                             ToXCCLDataType(data_type),
                             ToXCCLReduceOp(reduce_op),
+                            root_id,
                             reinterpret_cast<C_CCLComm>(comm),
                             reinterpret_cast<C_Stream>(stream.raw_stream())));
   }
@@ -769,6 +794,72 @@ class CustomDevice : public DeviceInterface {
                           src_rank,
                           reinterpret_cast<C_CCLComm>(comm),
                           reinterpret_cast<C_Stream>(stream.raw_stream())));
+  }
+
+  void BlasAXPBY(size_t dev_id,
+                 const stream::Stream& stream,
+                 paddle::experimental::DataType dtype,
+                 size_t numel,
+                 float alpha,
+                 void* x,
+                 float beta,
+                 void* y) override {
+    CHECK_PTR(pimpl_->blas_axpby);
+    const auto device = &devices_pool[dev_id];
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+        pimpl_->blas_axpby(device,
+                           reinterpret_cast<C_Stream>(stream.raw_stream()),
+                           ToCDatatType(dtype),
+                           numel,
+                           alpha,
+                           x,
+                           beta,
+                           y));
+  }
+
+  // Profiler
+  void ProfilerInitialize(paddle::platform::TraceEventCollector* collector,
+                          void** user_data) override {
+    CHECK_PTR(pimpl_->profiler_initialize);
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_initialize(
+        reinterpret_cast<C_Profiler>(collector), user_data));
+  }
+
+  void ProfilerFinalize(paddle::platform::TraceEventCollector* collector,
+                        void* user_data) override {
+    CHECK_PTR(pimpl_->profiler_finalize);
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_finalize(
+        reinterpret_cast<C_Profiler>(collector), user_data));
+  }
+
+  void ProfilerPrepareTracing(paddle::platform::TraceEventCollector* collector,
+                              void* user_data) override {
+    CHECK_PTR(pimpl_->profiler_prepare_tracing);
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_prepare_tracing(
+        reinterpret_cast<C_Profiler>(collector), user_data));
+  }
+
+  void ProfilerStartTracing(paddle::platform::TraceEventCollector* collector,
+                            void* user_data) override {
+    CHECK_PTR(pimpl_->profiler_start_tracing);
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_start_tracing(
+        reinterpret_cast<C_Profiler>(collector), user_data));
+  }
+
+  void ProfilerStopTracing(paddle::platform::TraceEventCollector* collector,
+                           void* user_data) override {
+    CHECK_PTR(pimpl_->profiler_stop_tracing);
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_stop_tracing(
+        reinterpret_cast<C_Profiler>(collector), user_data));
+  }
+
+  void ProfilerCollectTraceData(
+      paddle::platform::TraceEventCollector* collector,
+      uint64_t start_ns,
+      void* user_data) override {
+    CHECK_PTR(pimpl_->profiler_collect_trace_data);
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_collect_trace_data(
+        reinterpret_cast<C_Profiler>(collector), start_ns, user_data));
   }
 
  private:
@@ -877,6 +968,15 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(xccl_group_end, false);
   CHECK_INTERFACE(xccl_send, false);
   CHECK_INTERFACE(xccl_recv, false);
+
+  CHECK_INTERFACE(blas_axpby, false);
+
+  CHECK_INTERFACE(profiler_initialize, false);
+  CHECK_INTERFACE(profiler_finalize, false);
+  CHECK_INTERFACE(profiler_prepare_tracing, false);
+  CHECK_INTERFACE(profiler_start_tracing, false);
+  CHECK_INTERFACE(profiler_stop_tracing, false);
+  CHECK_INTERFACE(profiler_collect_trace_data, false);
   return true;
 #undef CHECK_INTERFACE
 }

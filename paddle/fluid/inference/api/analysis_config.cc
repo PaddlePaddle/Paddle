@@ -410,6 +410,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
       pass_builder_->DeletePass(ps);
     }
   }
+
+  for (auto &delete_pass : other.pass_builder()->GetAllDeletedPasses()) {
+    pass_builder_->DeletePass(delete_pass);
+  }
 }
 
 void AnalysisConfig::EnableCUDNN() {
@@ -513,7 +517,7 @@ MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
 }
 
 void AnalysisConfig::EnableTensorRtEngine(
-    int workspace_size,
+    int64_t workspace_size,
     int max_batch_size,
     int min_subgraph_size,
     AnalysisConfig::Precision precision_mode,

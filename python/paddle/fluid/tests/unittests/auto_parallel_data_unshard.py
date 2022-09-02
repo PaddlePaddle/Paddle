@@ -107,7 +107,9 @@ class TestDataUnshard(unittest.TestCase):
         input_data = np.array(range(2 * 8)).reshape([2, 8]).astype("float32")
         label_data = np.random.randint(0, 10, [2, 8]).astype("float32")
 
-        fetchs = [loss.name, 'input@RESHARD_0']
+        fetchs = [loss.name, 'split@RESHARD.tmp_0'] if worker_index == 0 else [
+            loss.name, 'split@RESHARD.tmp_1'
+        ]
         loss_np, shard_data_np = exe.run(distributed_main_program,
                                          feed={
                                              "input": input_data,

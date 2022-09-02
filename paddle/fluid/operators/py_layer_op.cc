@@ -223,21 +223,17 @@ REGISTER_OP_CPU_KERNEL(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     py_layer,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         ::paddle::platform::float16>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         ::paddle::platform::bfloat16>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::PyLayerOpKernel<phi::GPUContext, float>,
+    ops::PyLayerOpKernel<phi::GPUContext, ::paddle::platform::float16>,
+    ops::PyLayerOpKernel<phi::GPUContext, ::paddle::platform::bfloat16>,
+    ops::PyLayerOpKernel<phi::GPUContext, double>,
+    ops::PyLayerOpKernel<phi::GPUContext, int>,
+    ops::PyLayerOpKernel<phi::GPUContext, int64_t>,
 
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, bool>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, uint8_t>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int16_t>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int8_t>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         ::paddle::platform::complex<float>>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         ::paddle::platform::complex<double>>);
+    ops::PyLayerOpKernel<phi::GPUContext, bool>,
+    ops::PyLayerOpKernel<phi::GPUContext, uint8_t>,
+    ops::PyLayerOpKernel<phi::GPUContext, int16_t>,
+    ops::PyLayerOpKernel<phi::GPUContext, int8_t>,
+    ops::PyLayerOpKernel<phi::GPUContext, ::paddle::platform::complex<float>>,
+    ops::PyLayerOpKernel<phi::GPUContext, ::paddle::platform::complex<double>>);
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

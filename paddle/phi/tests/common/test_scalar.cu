@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -159,7 +160,7 @@ TEST(Scalar, ConstructFromDenseTensor7) {
       alloc.get(),
       phi::DenseTensorMeta(
           phi::DataType::FLOAT32, phi::make_ddim({1}), phi::DataLayout::NCHW));
-  phi::GPUContext dev_ctx;
+  phi::GPUContext dev_ctx{phi::GPUPlace()};
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(phi::GPUPlace())
                            .get());
@@ -181,7 +182,7 @@ TEST(Scalar, ConstructFromTensor) {
       phi::DenseTensorMeta(
           phi::DataType::FLOAT32, phi::make_ddim({1}), phi::DataLayout::NCHW));
 
-  phi::GPUContext dev_ctx;
+  phi::GPUContext dev_ctx{phi::GPUPlace()};
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(phi::GPUPlace())
                            .get());

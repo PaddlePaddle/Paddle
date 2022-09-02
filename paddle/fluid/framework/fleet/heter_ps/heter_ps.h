@@ -26,15 +26,13 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-template <typename FVAccessor>
+template <typename GPUAccessor, template <typename T> class GPUOptimizer>
 class HeterPs : public HeterPsBase {
  public:
   HeterPs() {}
   HeterPs(size_t capacity,
           std::shared_ptr<HeterPsResource> resource,
-          std::unordered_map<std::string, float> fleet_config,
-          std::string accessor_type,
-          int optimizer_type);
+          GPUAccessor& gpu_accessor);
   virtual ~HeterPs();
   HeterPs(const HeterPs&) = delete;
   HeterPs& operator=(const HeterPs&) = delete;
@@ -43,6 +41,8 @@ class HeterPs : public HeterPsBase {
                    FeatureKey* d_keys,
                    float* d_vals,
                    size_t len) override;
+  // void build_ps(int num, FeatureKey* h_keys, float* h_vals, size_t len,
+  //               size_t chunk_size, int stream_num) override;
   void build_ps(int num,
                 FeatureKey* h_keys,
                 char* pool,
@@ -56,7 +56,6 @@ class HeterPs : public HeterPsBase {
                               int comm_size) override;
   void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) override;
 
-  void set_accessor(FVAccessor& accessor);
 #endif
 
   void set_sparse_sgd(const OptimizerConfig& optimizer_config) override;
@@ -65,17 +64,25 @@ class HeterPs : public HeterPsBase {
   void end_pass() override;
   int get_index_by_devid(int devid) override;
   void show_one_table(int gpu_num) override;
-  void push_sparse(int num,
-                   FeatureKey* d_keys,
-                   float* d_grads,
-                   size_t len) override;
-
- private:
-  std::shared_ptr<HeterComm<FeatureKey, float*, float*, FVAccessor>> comm_;
+  void push_sparse(int num, FeatureKey* d_keys, float* d_grads, size_t len);
+  void show_table_collisions() override;
 #if defined(PADDLE_WITH_CUDA)
-  FVAccessor feature_value_accessor_;
-  std::string accessor_type_;
-  int optimizer_type_;
+  // dedup
+  int dedup_keys_and_fillidx(const int gpu_id,
+                             const int total_fea_num,
+                             const FeatureKey* d_keys,   // input
+                             FeatureKey* d_merged_keys,  // output
+                             FeatureKey* d_sorted_keys,
+                             uint32_t* d_restore_idx,
+                             uint32_t* d_sorted_idx,
+                             uint32_t* d_offset,
+                             uint32_t* d_merged_cnts,
+                             bool filter_zero);
+#endif
+ private:
+  std::shared_ptr<HeterComm<FeatureKey, float*, float*, GPUAccessor>> comm_;
+#if defined(PADDLE_WITH_CUDA)
+  GPUOptimizer<GPUAccessor> opt_;
 #endif
 };
 

@@ -24,7 +24,7 @@ endif()
 include(ExternalProject)
 
 set(PADDLE2ONNX_PROJECT "extern_paddle2onnx")
-set(PADDLE2ONNX_VERSION "1.0.0rc")
+set(PADDLE2ONNX_VERSION "1.0.0rc2")
 set(PADDLE2ONNX_PREFIX_DIR ${THIRD_PARTY_PATH}/paddle2onnx)
 set(PADDLE2ONNX_SOURCE_DIR
     ${THIRD_PARTY_PATH}/paddle2onnx/src/${PADDLE2ONNX_PROJECT})

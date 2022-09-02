@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/sparse/cpu/convolution.h"
+#include "paddle/phi/kernels/sparse/cpu/conv.h"
 
 namespace phi {
 namespace sparse {
@@ -34,22 +34,27 @@ template <typename T, typename IntT = int>
 void Conv3dCooGradCPUKernel(const CPUContext& dev_ctx,
                             const SparseCooTensor& x,
                             const DenseTensor& kernel,
+                            const SparseCooTensor& out,
                             const DenseTensor& rulebook,
+                            const DenseTensor& counter,
                             const SparseCooTensor& out_grad,
                             const std::vector<int>& paddings,
                             const std::vector<int>& dilations,
                             const std::vector<int>& strides,
                             const int groups,
                             const bool subm,
+                            const std::string& key,
                             SparseCooTensor* x_grad,
                             DenseTensor* kernel_grad) {
   const auto& kernel_dims = kernel.dims();
   const int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
-  const IntT* rulebook_ptr = rulebook.data<IntT>();
 
-  const int rulebook_len = rulebook.dims()[1];
+  int rulebook_len = 0;
+  const IntT* rulebook_ptr = phi::funcs::sparse::GetRulebookPtr<IntT>(
+      out, rulebook, key, &rulebook_len);
+  const int* counter_ptr = phi::funcs::sparse::GetCounterPtr(out, counter, key);
 
   DenseTensorMeta in_features_meta(
       x.dtype(), {rulebook_len, in_channels}, DataLayout::NCHW);
@@ -73,55 +78,48 @@ void Conv3dCooGradCPUKernel(const CPUContext& dev_ctx,
 
   int half_kernel_size = kernel_size / 2;
   auto blas = phi::funcs::GetBlas<CPUContext, T>(dev_ctx);
-  DenseTensor x_grad_indices =
-      phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
-  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  DenseTensor x_grad_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
+  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.values());
   T* x_grad_values_ptr = x_grad_values.data<T>();
   memset(x_grad_values_ptr, 0, sizeof(T) * x_grad_values.numel());
   memset(d_x_features_ptr, 0, sizeof(T) * d_x_features.numel());
-  phi::Copy<CPUContext>(dev_ctx,
-                        x.non_zero_indices(),
-                        dev_ctx.GetPlace(),
-                        false,
-                        &x_grad_indices);
+  phi::Copy<CPUContext>(
+      dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &x_grad_indices);
   x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), true);
 
-  std::vector<IntT> offsets(kernel_size + 1), counter(kernel_size, 0);
-  for (int i = 0; i < rulebook_len; i++) {
-    counter[rulebook_ptr[i]] += 1;
-  }
-  IntT offset = 0, max_count = 0;
+  std::vector<IntT> offsets(kernel_size + 1);
+  IntT offset = 0;
+  int max_count = 0;
   for (int i = 0; i < kernel_size; i++) {
     offsets[i] = offset;
-    offset += counter[i];
+    offset += counter_ptr[i];
     if (i < half_kernel_size) {
-      max_count = std::max(max_count, counter[i]);
+      max_count = std::max(max_count, counter_ptr[i]);
     }
   }
   offsets[kernel_size] = offset;
 
   if (subm) {
-    phi::funcs::sparse::SubmPreProcess<T, CPUContext>(
-        dev_ctx,
-        x,
-        kernel,
-        out_grad.non_zero_elements(),
-        in_channels,
-        out_channels,
-        half_kernel_size,
-        kernel_grad,
-        &x_grad_values);
+    phi::funcs::sparse::SubmPreProcess<T, CPUContext>(dev_ctx,
+                                                      x,
+                                                      kernel,
+                                                      out_grad.values(),
+                                                      in_channels,
+                                                      out_channels,
+                                                      half_kernel_size,
+                                                      kernel_grad,
+                                                      &x_grad_values);
     if (max_count == 0) {
       return;
     }
   }
 
-  Gather<T, IntT>(x.non_zero_elements().data<T>(),
+  Gather<T, IntT>(x.values().data<T>(),
                   rulebook_ptr + rulebook_len,
                   rulebook_len,
                   in_channels,
                   in_features_ptr);
-  Gather<T, IntT>(out_grad.non_zero_elements().data<T>(),
+  Gather<T, IntT>(out_grad.values().data<T>(),
                   rulebook_ptr + rulebook_len * 2,
                   rulebook_len,
                   out_channels,
@@ -129,11 +127,11 @@ void Conv3dCooGradCPUKernel(const CPUContext& dev_ctx,
 
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
-    if (counter[i] <= 0 || (subm && i == half_kernel_size)) {
+    if (counter_ptr[i] <= 0 || (subm && i == half_kernel_size)) {
       continue;
     }
 
-    const int M = counter[i];
+    const int M = counter_ptr[i];
     const int K = in_channels;
     const int N = out_channels;
     T* tmp_in_ptr = in_features_ptr + offsets[i] * in_channels;
@@ -171,7 +169,7 @@ void Conv3dCooGradCPUKernel(const CPUContext& dev_ctx,
 
   // 4. scatter
   Scatter<T, IntT>(d_x_features_ptr,
-                   rulebook.data<IntT>() + rulebook_len,
+                   rulebook_ptr + rulebook_len,
                    rulebook_len,
                    in_channels,
                    x_grad_values_ptr);
@@ -181,27 +179,33 @@ template <typename T, typename Context>
 void Conv3dCooGradKernel(const Context& dev_ctx,
                          const SparseCooTensor& x,
                          const DenseTensor& kernel,
+                         const SparseCooTensor& out,
                          const DenseTensor& rulebook,
+                         const DenseTensor& counter,
                          const SparseCooTensor& out_grad,
                          const std::vector<int>& paddings,
                          const std::vector<int>& dilations,
                          const std::vector<int>& strides,
                          const int groups,
                          const bool subm,
+                         const std::string& key,
                          SparseCooTensor* x_grad,
                          DenseTensor* kernel_grad) {
-  PD_VISIT_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "Conv3dCooGradCPUKernel", ([&] {
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      x.indices().dtype(), "Conv3dCooGradCPUKernel", ([&] {
         Conv3dCooGradCPUKernel<T, data_t>(dev_ctx,
                                           x,
                                           kernel,
+                                          out,
                                           rulebook,
+                                          counter,
                                           out_grad,
                                           paddings,
                                           dilations,
                                           strides,
                                           groups,
                                           subm,
+                                          key,
                                           x_grad,
                                           kernel_grad);
       }));
