@@ -1561,7 +1561,7 @@ static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
   auto csr_tensor = self->tensor.to_sparse_csr();
   egr::EagerUtils::autograd_meta(&csr_tensor)
       ->SetStopGradient(
-          egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient());
+          egr::EagerUtils::autograd_meta(&(self->tensor))->StopGradient());
   egr::EagerUtils::autograd_meta(&csr_tensor)
       ->SetPersistable(
           egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
