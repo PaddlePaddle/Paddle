@@ -64,16 +64,6 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
         "input(x)");
     AddAttr<AttrType>("min", "float number, the minimum value to clip by.");
     AddAttr<AttrType>("max", "float number, the maximum value to clip by.");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
     AddComment(R"DOC(
 Clip Operator.
 
