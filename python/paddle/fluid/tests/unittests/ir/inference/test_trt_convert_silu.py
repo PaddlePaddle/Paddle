@@ -60,7 +60,7 @@ class TrtConvertSwishTest(TrtLayerAutoScanTest):
                     inputs={
                         "input_data":
                         TensorConfig(
-                            data_gen=partial(generate_input1, dims, dics))
+                            data_gen=partial(generate_input1, dims, {}))
                     },
                     outputs=["output_data"])
 
