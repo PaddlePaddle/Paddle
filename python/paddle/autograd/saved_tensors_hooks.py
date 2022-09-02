@@ -68,7 +68,7 @@ class saved_tensors_hooks():
         import paddle
         from paddle.autograd import PyLayer
 
-        class cus_tanh(PyLayer):
+        class cus_multiply(PyLayer):
             @staticmethod
             def forward(ctx, a, b):
                 y = paddle.multiply(a, b)
@@ -95,7 +95,7 @@ class saved_tensors_hooks():
         a.stop_gradient = False
         b.stop_gradient = False
         with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
-            y = cus_tanh.apply(a, b)
+            y = cus_multiply.apply(a, b)
         y.sum().backward()
     """
 
