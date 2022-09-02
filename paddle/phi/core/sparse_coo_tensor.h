@@ -80,7 +80,7 @@ class SparseCooTensor : public TensorBase,
   bool is_coalesced() const { return coalesced_; }
 
   /// \brief Set the coalesced
-  /// \param coalesced whether the indices has coalesced
+  /// \param coalesced whether the indices have been coalesced
   void SetCoalesced(const bool coalesced) { coalesced_ = coalesced; }
 
   /// \brief Returns the name of the class for type traits.
