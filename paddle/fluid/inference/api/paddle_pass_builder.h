@@ -232,10 +232,9 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   void DisableMkldnnFcPasses() override;
 
  protected:
-
- /// \brief Erase MKLDNN fc passes.
+  /// \brief Erase MKLDNN fc passes.
   void EraseFcMkldnnPasses();
-  
+
   /// \cond Protected
   bool use_mkldnn_quantizer_{false};
   bool use_mkldnn_bfloat16_{false};

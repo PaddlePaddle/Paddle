@@ -353,12 +353,15 @@ TEST(AnalysisPredictor, mkldnn_fc_pass_strategy) {
 TEST(AnalysisPredictor, mkldnn_fc_passes_cpu_pass_strategy) {
   CpuPassStrategy cpuPassStrategy;
   cpuPassStrategy.EnableMKLDNN();
-  const std::vector<std::string> fc_passes_to_erase({"fc_mkldnn_pass", "fc_act_mkldnn_fuse_pass", "fc_elementwise_add_mkldnn_fuse_pass"});
-  for(const auto& pass: fc_passes_to_erase){
+  const std::vector<std::string> fc_passes_to_erase(
+      {"fc_mkldnn_pass",
+       "fc_act_mkldnn_fuse_pass",
+       "fc_elementwise_add_mkldnn_fuse_pass"});
+  for (const auto& pass : fc_passes_to_erase) {
     ASSERT_NE(cpuPassStrategy.GetPassIndex(pass), (size_t)-1);
   }
   cpuPassStrategy.DisableMkldnnFcPasses();
-  for(const auto& pass: fc_passes_to_erase){
+  for (const auto& pass : fc_passes_to_erase) {
     ASSERT_EQ(cpuPassStrategy.GetPassIndex(pass), (size_t)-1);
   }
 }
