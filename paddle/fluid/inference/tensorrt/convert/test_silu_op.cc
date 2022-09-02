@@ -32,9 +32,7 @@ TEST(silu_op, test_silu) {
   framework::OpDesc desc;
   desc.SetType("silu");
   desc.SetInput("X", {"silu_input"});
-  desc.SetOutput("Out", {"ilu_out"});
-
-  // desc.SetAttr("beta", 2.0f);
+  desc.SetOutput("Out", {"silu_out"});
 
   validator.SetOp(*desc.Proto());
 
