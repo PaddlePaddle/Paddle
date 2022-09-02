@@ -129,13 +129,13 @@ class SparseCooTensor : public TensorBase,
               const int64_t num_sparse_dims,
               const int64_t num_non_zero);
 
-  /// \brief set the member of sparse coo tensor.
+  /// \brief set the members of sparse coo tensor.
   /// \param non_zero_indices The indices of non zero elements in original dense
   /// tensor.
   /// \param non_zero_elements The non zero elements of original dense tensor.
   /// \param dims The dims of original dense tensor.
-  /// \param coalesced whether the indices has coalesced.
-  void SetMember(const DenseTensor& non_zero_indices,
+  /// \param coalesced whether the indices have been coalesced.
+  void SetMembers(const DenseTensor& non_zero_indices,
                  const DenseTensor& non_zero_elements,
                  const DDim& dims,
                  const bool coalesced = false);
@@ -217,9 +217,9 @@ class SparseCooTensor : public TensorBase,
   DenseTensor non_zero_indices_;
   // save the non zero elements of original dense tensor
   DenseTensor non_zero_elements_;
-  /// whether the indices has coalesced
+  /// whether the indices have been coalesced
   bool coalesced_ = false;
-  // save the number of non zero elements in each batch
+  // save the shape of the original dense tensor
   DDim dims_;
 
   // for submanifold conv
