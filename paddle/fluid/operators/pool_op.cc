@@ -151,9 +151,8 @@ void Pool2dOpMaker::Make() {
                             "(vector<int>) The pooling window "
                             "size(height, width) of the pooling operator. "
                             "If global_pooling = true, ksize and paddings will "
-                            "be ignored.");  // TODO(Chengduo): Add checker.
-                                             // (Currently,
-  // TypedAttrChecker don't support vector type.)
+                            "be ignored.")
+      .SupportTensor();
   AddAttr<bool>(
       "global_pooling",
       "(bool) Whether to use the global pooling. "
@@ -371,8 +370,7 @@ void Pool3dOpMaker::Make() {
       "(vector<int>) The pooling window size(depth, height, "
       "width) of pooling operator. "
       "If global_pooling = true, ksize and paddings will "
-      "be ignored.")
-      .SupportTensor();
+      "be ignored.");
   AddAttr<bool>(
       "global_pooling",
       "(bool) Whether to use the global pooling. "
