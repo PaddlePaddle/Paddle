@@ -1,4 +1,8 @@
 
 set -e
 lists=`python tools/gen_ut_cmakelists.py -f $* |grep 'modified/new:'|cut -f 2 -d :`
-git add $lists
+echo process >> /tmp/p.txt
+num=`echo $lists |wc -w`
+echo $num >> /tmp/num.txt
+[[ $num -ge 1 ]] && git add $lists &&  echo error > /tmp/err.log && exit 1
+exit 0

@@ -11,7 +11,6 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   set_tests_properties(test_allreduce PROPERTIES TIMEOUT "120" LABELS
                                                  "RUN_TYPE=DIST")
 endif()
-
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_broadcast MODULES test_broadcast ENVS
@@ -273,6 +272,14 @@ if((WITH_GPU
     ENVS
     "PADDLE_DIST_UT_PORT=21298;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
   )
+endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  py_test_modules(
+    test_communication_stream_allreduce_api MODULES
+    test_communication_stream_allreduce_api ENVS
+    "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
+  set_tests_properties(test_communication_stream_allreduce_api
+                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
 endif()
 add_subdirectory(fleet)
 add_subdirectory(multinode)
