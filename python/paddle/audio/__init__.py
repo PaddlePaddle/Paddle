@@ -16,5 +16,6 @@ from . import compliance
 from . import features
 from . import functional
 from . import utils
+from . import datasets
 
-__all__ = ["compliance", "functional", "features", "utils"]
+__all__ = ["compliance", "functional", "features", "utils", "datasets"]
