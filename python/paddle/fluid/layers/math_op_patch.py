@@ -21,6 +21,7 @@ from .. import core
 from ..framework import Variable, unique_name, static_only
 from .layer_function_generator import OpProtoHolder
 from .control_flow import array_write, array_length
+from paddle.fluid.dygraph.base import in_declarative_mode
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
@@ -211,15 +212,34 @@ def monkey_patch_variable():
         
         """
         if not isinstance(var, Variable):
-            raise TypeError(
-                "Required input var should be Variable, but received {}".format(
-                    type(var)))
+            if in_declarative_mode():
+                """ in dy2static mode, x may be tensorable values such as int, float, np.array
+                """
+                from paddle.tensor.creation import to_tensor
+                var = to_tensor(var)
+            else:
+                raise TypeError(
+                    "Required input var should be Variable, but received {}".
+                    format(type(var)))
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
                 "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}"
                 .format(self.type))
-
         array_write(x=var, i=array_length(self), array=self)
+
+    @static_only
+    def pop(self, *args):
+        """
+         **Notes**:
+            **The type variable must be LoD Tensor Array.
+        
+        """
+        from paddle.fluid.dygraph.dygraph_to_static.convert_operators import _run_paddle_pop
+        if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            raise TypeError(
+                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}"
+                .format(self.type))
+        return _run_paddle_pop(self, *args)
 
     def _scalar_op_(var, scale, bias):
         block = current_block(var)
@@ -389,6 +409,7 @@ def monkey_patch_variable():
         ('cpu', cpu),
         ('cuda', cuda),
         ('append', append),
+        ('pop', pop),
         ('dim', lambda x: len(x.shape)),
         ('ndimension', lambda x: len(x.shape)),
         ('ndim', _ndim_),

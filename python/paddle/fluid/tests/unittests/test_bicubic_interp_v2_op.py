@@ -622,6 +622,44 @@ class TestBicubicOpError(unittest.TestCase):
             self.test_imperative_errors()
 
 
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestBicubicInterpOpForFloat16(unittest.TestCase):
+
+    def init_test_case(self):
+        self.interp_method = 'bicubic'
+        self.input_shape = [2, 3, 5, 5]
+        self.out_size = np.array([3, 3]).astype("int32")
+        self.align_corners = True
+        self.data_layout = 'NCHW'
+
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x_np = x_np.astype(dtype)
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        y = interpolate(x,
+                        size=self.out_size.tolist(),
+                        mode=self.interp_method,
+                        align_corners=self.align_corners,
+                        data_format=self.data_layout)
+        x_g = paddle.grad(y, x)
+        y_np = y[0].numpy().astype('float32')
+        x_g_np = x_g[0].numpy().astype('float32')
+        paddle.enable_static()
+        return y_np, x_g_np
+
+    def test_main(self):
+        self.init_test_case()
+        x_np = np.random.random(self.input_shape).astype("float16")
+
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
+
+        np.testing.assert_allclose(y_np_1, y_np_2)
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
