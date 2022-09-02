@@ -89,9 +89,12 @@ class StaticCode1():
             x_v = x_v + 1
             return
 
-        _jst.IfElse(
-            paddle.mean(x_v)[0] > 5, true_fn_0, false_fn_0, get_args_0,
-            set_args_0, ('x_v', ))
+        _jst.IfElse(paddle.mean(x_v)[0] > 5,
+                    true_fn_0,
+                    false_fn_0,
+                    get_args_0,
+                    set_args_0, ('x_v', ),
+                    push_pop_names=None)
 
         def get_args_1():
             nonlocal __return_0, __return_1, __return_value_0, loss
@@ -114,9 +117,13 @@ class StaticCode1():
             __return_value_0 = x_v
             return
 
-        _jst.IfElse(label is not None, true_fn_1, false_fn_1, get_args_1,
+        _jst.IfElse(label is not None,
+                    true_fn_1,
+                    false_fn_1,
+                    get_args_1,
                     set_args_1,
-                    ('__return_0', '__return_1', '__return_value_0', 'loss'))
+                    ('__return_0', '__return_1', '__return_value_0', 'loss'),
+                    push_pop_names=None)
         return __return_value_0
 
 
@@ -146,9 +153,12 @@ class StaticCode2():
             x_v = x_v + 1
             return
 
-        _jst.IfElse(
-            paddle.mean(x_v)[0] > 5, true_fn_2, false_fn_2, get_args_2,
-            set_args_2, ('x_v', ))
+        _jst.IfElse(paddle.mean(x_v)[0] > 5,
+                    true_fn_2,
+                    false_fn_2,
+                    get_args_2,
+                    set_args_2, ('x_v', ),
+                    push_pop_names=None)
 
         def get_args_3():
             nonlocal __return_2, __return_3, __return_value_1, loss
@@ -171,9 +181,13 @@ class StaticCode2():
             __return_value_1 = x_v
             return
 
-        _jst.IfElse(label is not None, true_fn_3, false_fn_3, get_args_3,
+        _jst.IfElse(label is not None,
+                    true_fn_3,
+                    false_fn_3,
+                    get_args_3,
                     set_args_3,
-                    ('__return_2', '__return_3', '__return_value_1', 'loss'))
+                    ('__return_2', '__return_3', '__return_value_1', 'loss'),
+                    push_pop_names=None)
         return __return_value_1
 
 
@@ -195,7 +209,7 @@ class TestDygraphToStaticCode(unittest.TestCase):
     def test_decorator(self):
         program_translator = ProgramTranslator()
         code = program_translator.get_code(dyfunc_with_if_else)
-        #print(code)
+        print(code)
         answer = get_source_code(StaticCode1.dyfunc_with_if_else)
         self.assertEqual(
             answer.replace('\n', '').replace(' ', ''),
@@ -205,6 +219,7 @@ class TestDygraphToStaticCode(unittest.TestCase):
         answer = get_source_code(StaticCode2.dyfunc_with_if_else)
         program_translator = ProgramTranslator()
         code = program_translator.get_code(dyfunc_with_if_else)
+        print(code)
         self.assertEqual(
             answer.replace('\n', '').replace(' ', ''),
             code.replace('\n', '').replace(' ', ''))
