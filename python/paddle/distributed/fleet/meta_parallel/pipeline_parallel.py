@@ -41,12 +41,6 @@ class PipelineParallel(MetaParallelBase):
         self.use_sharding_parallel = self._hcg.get_sharding_parallel_world_size(
         ) > 1
 
-        self._virtual_pp_world_size = None
-        self._virtual_pp_rank = None
-
-        self._real_pp_world_size = None
-        self._real_pp_rank = None
-
         self.total_loss = None
 
         self.micro_batch_size = self._strategy.pipeline_configs[
@@ -60,6 +54,8 @@ class PipelineParallel(MetaParallelBase):
         self.stage_id = self._hcg.get_stage_id()
         self.pp_group = self._hcg.get_pipe_parallel_group()
 
+        self._virtual_pp_world_size = None
+        self._virtual_pp_rank = None
         self._real_pp_world_size = self.num_stages
         self._real_pp_rank = self.stage_id
 
@@ -278,9 +274,7 @@ class PipelineParallel(MetaParallelBase):
         if self.is_pipeline_first_stage():
             input_tensor = self._load_micro_batch(self.micro_batch_id)
 
-        if self.use_interleave:
-            assert chunk_id is not None
-            assert isinstance(chunk_id, int)
+        assert chunk_id is None or isinstance(chunk_id, int)
 
         output_tensor = self._layers.forward(input_tensor, chunk_id=chunk_id)
 
