@@ -916,3 +916,11 @@ if(LOCAL_ALL_ARCH AND (LINUX))
   )
   set_tests_properties(test_hdfs3 PROPERTIES TIMEOUT "200")
 endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  py_test_modules(
+    test_fleet_checkpoint MODULES test_fleet_checkpoint ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(
+    test_fleet_checkpoint PROPERTIES TIMEOUT "200" LABELS
+                                     "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+endif()
