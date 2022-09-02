@@ -142,7 +142,6 @@ class PostTrainingQuantization(object):
                  is_use_cache_file=False,
                  skip_tensor_list=None,
                  same_scale_tensor_list=None,
-                 scale_trainable=False,
                  cache_dir=None,
                  scale_dict=None,
                  return_graph=False):
@@ -232,7 +231,6 @@ class PostTrainingQuantization(object):
                 `conv2d/depthwise_conv2d + bn`, the weights scale for all channel will
                 be different. In address this problem, fuse the pattern before
                 quantization. Default False.
-            scale_trainable(bool, optional): whether scale can be train.
             is_use_cache_file(bool, optional): This param is deprecated.
             cache_dir(str, optional): This param is deprecated.
         Returns:
@@ -367,7 +365,6 @@ class PostTrainingQuantization(object):
         self._quantized_threshold = {}
         self._same_scale_tensor_list = same_scale_tensor_list
         self._freeze_model = freeze_model
-        self._scale_trainable = scale_trainable
         self._scale_dict = scale_dict
         self._return_graph = return_graph
         self.FLAG = False
@@ -1006,8 +1003,7 @@ class PostTrainingQuantization(object):
                 activation_bits=self._activation_bits,
                 activation_quantize_type=self._activation_quantize_type,
                 weight_quantize_type=self._weight_quantize_type,
-                quantizable_op_type=major_quantizable_op_types,
-                is_test=not self._scale_trainable)
+                quantizable_op_type=major_quantizable_op_types)
         else:
             transform_pass = QuantizationTransformPassV2(
                 scope=self._scope,
@@ -1016,8 +1012,7 @@ class PostTrainingQuantization(object):
                 activation_bits=self._activation_bits,
                 activation_quantize_type=self._activation_quantize_type,
                 weight_quantize_type=self._weight_quantize_type,
-                quantizable_op_type=major_quantizable_op_types,
-                is_test=not self._scale_trainable)
+                quantizable_op_type=major_quantizable_op_types)
 
         for sub_graph in graph.all_sub_graphs():
             # Insert fake_quant/fake_dequantize op must in test graph, so
@@ -1034,15 +1029,13 @@ class PostTrainingQuantization(object):
             add_quant_dequant_pass = AddQuantDequantPass(
                 scope=self._scope,
                 place=self._place,
-                quantizable_op_type=minor_quantizable_op_types,
-                is_test=not self._scale_trainable)
+                quantizable_op_type=minor_quantizable_op_types)
         else:
             add_quant_dequant_pass = AddQuantDequantPassV2(
                 scope=self._scope,
                 place=self._place,
                 quantizable_op_type=minor_quantizable_op_types,
-                is_full_quantized=self._is_full_quantize,
-                is_test=not self._scale_trainable)
+                is_full_quantized=self._is_full_quantize)
 
         for sub_graph in graph.all_sub_graphs():
             sub_graph._for_test = True
@@ -1274,7 +1267,6 @@ class PostTrainingQuantizationProgram(PostTrainingQuantization):
                  is_use_cache_file=False,
                  skip_tensor_list=None,
                  same_scale_tensor_list=None,
-                 scale_trainable=False,
                  cache_dir=None,
                  scale_dict=None,
                  return_graph=True):
@@ -1285,8 +1277,8 @@ class PostTrainingQuantizationProgram(PostTrainingQuantization):
                          activation_bits, weight_bits, activation_quantize_type,
                          weight_quantize_type, onnx_format, freeze_model,
                          optimize_model, is_use_cache_file, skip_tensor_list,
-                         same_scale_tensor_list, scale_trainable, cache_dir,
-                         scale_dict, return_graph)
+                         same_scale_tensor_list, cache_dir, scale_dict,
+                         return_graph)
         self.FLAG = False
         self._program = program
         if self._program is not None:
