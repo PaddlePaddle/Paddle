@@ -175,11 +175,12 @@ class DGCMomentumOptimizer(Optimizer):
             self.reduce_order += 1
 
             if self.reduce_order == self.reduce_count:
-                _C_ops.dgc_wait_comm([grad], self.new_group.id)
+                _legacy_C_ops.dgc_wait_comm([grad], self.new_group.id)
                 print("=======wait all===========")
 
         @imperative_base.no_grad
         def reduce_grad(gg):
+            print(pp.name, "===========order=======>", self.reduce_order)
             self._reduce_var_ready[pp.name] = 1
             comm_grad = gg.scale(1.0 / self.new_group.nranks)
             order = self._reduce_var_index[pp.name]
@@ -215,38 +216,41 @@ class DGCMomentumOptimizer(Optimizer):
                 param_var.regularizer)
 
         u_out, v_out, k_out, encoded_out, gather_out = [paddle.empty([])] * 5
-        in_out = [(u_var, u_out), (v_var,v_out), (k_var, k_out), (encoded_var, encoded_out), (gather_var, gather_out)]
+        in_out = [(u_var, u_out), (v_var, v_out), (k_var, k_out),
+                  (encoded_var, encoded_out), (gather_var, gather_out)]
 
-        paddle.fluid.framework._dygraph_tracer().trace_op(
-            type="dgc_fuse",
-            inputs={
-                "U": u_var,
-                "V": v_var,
-                "Grad": clip_var,
-                "Param": param_var,
-                "current_step": self._global_step_var,
-                "nranks": self._nranks_var,
-            },
-            outputs={
-                "U_out": u_out,
-                "V_out": v_out,
-                "EncodeGrad": encoded_out,
-                "k": k_out,
-                "Grad_out": grad_var,
-                "GatherBuff": gather_out,
-            },
-            attrs={
-                "m": self._momentum,
-                "sparsity": self._sparsity,
-                "use_nesterov": self._use_nesterov,
-                "rampup_begin_step": float(self._rampup_begin_step),
-                "rampup_step": float(self._rampup_step),
-                "regular_coeff": float(regular_coeff),
-                "regular_type": int(regular_type),
-                "is_use_dgc": is_use_dgc
-            })
+        with paddle.no_grad():
+            paddle.fluid.framework._dygraph_tracer().trace_op(
+                type="dgc_fuse",
+                inputs={
+                    "U": u_var,
+                    "V": v_var,
+                    "Grad": clip_var,
+                    "Param": param_var,
+                    "current_step": self._global_step_var,
+                    "nranks": self._nranks_var,
+                },
+                outputs={
+                    "U_out": u_out,
+                    "V_out": v_out,
+                    "EncodeGrad": encoded_out,
+                    "k": k_out,
+                    "Grad_out": grad_var,
+                    "GatherBuff": gather_out,
+                },
+                attrs={
+                    "m": self._momentum,
+                    "sparsity": self._sparsity,
+                    "use_nesterov": self._use_nesterov,
+                    "rampup_begin_step": float(self._rampup_begin_step),
+                    "rampup_step": float(self._rampup_step),
+                    "regular_coeff": float(regular_coeff),
+                    "regular_type": int(regular_type),
+                    "is_use_dgc": is_use_dgc
+                })
 
-        map(lambda y: y[0].reconstruct_from_(y[1], False), filter(lambda x: sum(x[1].shape), in_out))
+        map(lambda y: y[0].reconstruct_from_(y[1], False),
+            filter(lambda x: sum(x[1].shape), in_out))
 
     def _clip_by_norm(self, x, max_norm, name=None):
         args = {'x': x, 'max_norm': max_norm, 'name': name}
@@ -410,12 +414,7 @@ class DGCMomentumOptimizer(Optimizer):
 
     def clear_grad(self, set_to_zero=True):
         for p in self.trainable_params:
-            try:
-                p.clear_gradient(set_to_zero)
-            except Exception as e:
-                print(p.name, "=======ERROR=========", e)
-                print(p.grad)
-                raise e
+            p.clear_gradient(set_to_zero)
 
     @imperative_base.no_grad
     def step(self):
@@ -430,6 +429,9 @@ class DGCMomentumOptimizer(Optimizer):
                 param.name]
 
             assert velocity_acc is not None
+
+            param_out = paddle.empty_like(param)
+            velocity_acc_out = paddle.empty_like(velocity_acc)
 
             if not self._is_use_dgc(param, grad):
                 if self._grad_clip is not None:
@@ -448,17 +450,17 @@ class DGCMomentumOptimizer(Optimizer):
                     "LearningRate": lr,
                 }
                 outputs = {
-                    "ParamOut": param,
-                    "VelocityOut": velocity_acc,
+                    "ParamOut": param_out,
+                    "VelocityOut": velocity_acc_out,
                 }
                 attrs = {
                     "mu": self._momentum,
                     "use_nesterov": self._use_nesterov
                 }
-                _, _, _ = _C_ops.momentum(param, grad, velocity_acc, lr, (None),
-                                          param, velocity_acc, (None), 'mu',
-                                          self._momentum, 'use_nesterov',
-                                          self._use_nesterov)
+                #_, _, _ = _legacy_C_ops.momentum(param, grad, velocity_acc, lr, (None),
+                #                          param, velocity_acc, (None), 'mu',
+                #                          self._momentum, 'use_nesterov',
+                #                          self._use_nesterov)
             else:
                 print(param.name, "===========dgc_momentum========")
                 opt_type = "dgc_momentum"
@@ -480,18 +482,13 @@ class DGCMomentumOptimizer(Optimizer):
                     "use_nesterov": self._use_nesterov,
                     "rampup_begin_step": float(self._rampup_begin_step)
                 }
-                _, _, _ = _legacy_C_ops.dgc_momentum(param, grad, velocity_acc, lr, self._global_step_var, self._nranks_var,
-                                                    'mu',self._momentum, 'use_nesterov', self._use_nesterov, 'rampup_begin_step',float(self._rampup_begin_step))
 
-            #with paddle.no_grad():
-            #    paddle.fluid.framework._dygraph_tracer().trace_op(
-            #        type=opt_type,
-            #        inputs=inputs,
-            #        outputs=outputs,
-            #        attrs=attrs)
+            with paddle.no_grad():
+                paddle.fluid.framework._dygraph_tracer().trace_op(
+                    type=opt_type, inputs=inputs, outputs=outputs, attrs=attrs)
 
-        self._global_step_var = _C_ops.increment(self._global_step_var, 'step',
-                                                 1)
+        self._global_step_var = _legacy_C_ops.increment(self._global_step_var,
+                                                        'step', 1)
         self._clear_counters()
 
     @framework.dygraph_only

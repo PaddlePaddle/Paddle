@@ -63,8 +63,8 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
 
     fleet_env._context = {}
 
-    if strategy.dgc:
-        dgc_config = strategy.dgc_configs
+    if fleet_env._user_defined_strategy.dgc:
+        dgc_config = fleet_env._user_defined_strategy.dgc_configs
         return DGCMomentumOptimizer(
             optimizer._parameter_list, optimizer._learning_rate,
             optimizer._momentum, dgc_config["rampup_begin_step"],
