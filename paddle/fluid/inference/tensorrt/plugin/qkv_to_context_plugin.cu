@@ -468,7 +468,7 @@ int QkvToContextPluginDynamic::enqueue(
     int need_padding = false;
     // fake qk_bias
     if (ProductDim(input_desc[1].dims) == ProductDim(input_desc[0].dims)) {
-      seq_len = (seq_len + 7) / 8 * 8;
+      seq_len = round_up(real_seq_len, 8);
       scratch_size = batch * head_number_ * seq_len * seq_len * 1;
       input_num = batch * seq_len * 3 * head_number_ * head_size_;
       multihead_temp_tensor.Resize({scratch_size + input_num});
