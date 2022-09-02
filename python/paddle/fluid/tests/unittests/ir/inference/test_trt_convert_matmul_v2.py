@@ -20,6 +20,7 @@ from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
+
 class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
@@ -44,45 +45,43 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
                 # if not trans_x and not trans_y:
                 #     input1_shape = [batch, 32, 6]
                 #     input2_shape = [batch, 6, 11]
-                for alpha in [0.3, 1.0]:
-                    dics = [{
-                        "transpose_X": trans_x,
-                        "transpose_Y": trans_y,
-                        "alpha": alpha,
-                        "fused_reshape_X": [],
-                        "fused_reshape_Y": [],
-                        "fused_transpose_X": [],
-                        "fused_transpose_Y": [],
-                        "fused_reshape_Out": [],
-                        "fused_transpose_Out": []
-                    }]
-                    ops_config = [{
-                        "op_type": "matmul_v2",
-                        "op_inputs": {
-                            "X": ["input1_data"],
-                            "Y": ["input2_data"]
-                        },
-                        "op_outputs": {
-                            "Out": ["output_data"]
-                        },
-                        "op_attrs": dics[0]
-                    }]
-                    ops = self.generate_op_config(ops_config)
+                dics = [{
+                    "transpose_X": trans_x,
+                    "transpose_Y": trans_y,
+                    "fused_reshape_X": [],
+                    "fused_reshape_Y": [],
+                    "fused_transpose_X": [],
+                    "fused_transpose_Y": [],
+                    "fused_reshape_Out": [],
+                    "fused_transpose_Out": []
+                }]
+                ops_config = [{
+                    "op_type": "matmul_v2",
+                    "op_inputs": {
+                        "X": ["input1_data"],
+                        "Y": ["input2_data"]
+                    },
+                    "op_outputs": {
+                        "Out": ["output_data"]
+                    },
+                    "op_attrs": dics[0]
+                }]
+                ops = self.generate_op_config(ops_config)
 
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "input1_data":
-                            TensorConfig(
-                                data_gen=partial(generate_input, input1_shape)),
-                            "input2_data":
-                            TensorConfig(
-                                data_gen=partial(generate_input, input2_shape))
-                        },
-                        outputs=["output_data"])
+                program_config = ProgramConfig(
+                    ops=ops,
+                    weights={},
+                    inputs={
+                        "input1_data":
+                        TensorConfig(
+                            data_gen=partial(generate_input, input1_shape)),
+                        "input2_data":
+                        TensorConfig(
+                            data_gen=partial(generate_input, input2_shape))
+                    },
+                    outputs=["output_data"])
 
-                    yield program_config
+                yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
