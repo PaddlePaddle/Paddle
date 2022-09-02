@@ -12,8 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/gather_nd_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -38,10 +41,11 @@ class GatherNdNPUKernel : public framework::OpKernel<T> {
       return;
     }
 
-    const auto &index_type = index->type();
+    const auto &index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(index_type_match, true,
+    PADDLE_ENFORCE_EQ(index_type_match,
+                      true,
                       platform::errors::InvalidArgument(
                           "Index holds the wrong type, it holds [%s],"
                           "but desires to be [%s] or [%s]",
@@ -80,7 +84,7 @@ class GatherNdGradNPUKernel : public framework::OpKernel<T> {
     if (index_dims.size() == 1) {
       tmp_tensor.ShareDataWith(*index);
       std::vector<int64_t> new_dim = {1, index_dims[0]};
-      tmp_tensor.Resize(framework::make_ddim(new_dim));
+      tmp_tensor.Resize(phi::make_ddim(new_dim));
       index = &tmp_tensor;
 
       tmp_tensor2.ShareDataWith(*dout);
@@ -88,13 +92,13 @@ class GatherNdGradNPUKernel : public framework::OpKernel<T> {
       for (int i = index->numel(); i < x->dims().size(); i++) {
         new_dim2.push_back(x->dims()[i]);
       }
-      tmp_tensor2.Resize(framework::make_ddim(new_dim2));
+      tmp_tensor2.Resize(phi::make_ddim(new_dim2));
       dout = &tmp_tensor2;
     }
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
-    platform::NPUMemsetAsync(static_cast<void *>(p), 0, dx->numel() * sizeof(T),
-                             stream);
+    platform::NPUMemsetAsync(
+        static_cast<void *>(p), 0, dx->numel() * sizeof(T), stream);
 
     const auto &runner_scatter = NpuOpRunner(
         "ScatterNdAdd", {*dx, *index, *dout}, {*dx}, {{"use_locking", false}});

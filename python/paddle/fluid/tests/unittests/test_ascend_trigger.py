@@ -28,11 +28,10 @@ class TestAscendTriggerOP(unittest.TestCase):
         with fluid.program_guard(program):
             x = fluid.data(name='x', shape=[1], dtype='int64', lod_level=0)
             y = fluid.data(name='y', shape=[1], dtype='int64', lod_level=0)
-            block.append_op(
-                type="ascend_trigger",
-                inputs={"FeedList": [x]},
-                outputs={"FetchList": [y]},
-                attrs={'graph_idx': 0})
+            block.append_op(type="ascend_trigger",
+                            inputs={"FeedList": [x]},
+                            outputs={"FetchList": [y]},
+                            attrs={'graph_idx': 0})
 
         exe = paddle.static.Executor(paddle.CPUPlace())
         try:

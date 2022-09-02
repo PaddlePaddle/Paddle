@@ -14,32 +14,23 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 
-#include "paddle/fluid/operators/gelu_op.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
 
 class GeluOp : public framework::OperatorWithKernel {
  public:
-  GeluOp(const std::string &type, const framework::VariableNameMap &inputs,
+  GeluOp(const std::string &type,
+         const framework::VariableNameMap &inputs,
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(%s) of GeluOp should not be null.", "X"));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(%s) of GeluOp should not be null.", "Out"));
-
-    ctx->ShareDim("X", /*->*/ "Out");
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -65,14 +56,17 @@ class GeluGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
+        ctx->HasInput(framework::GradVarName("Out")),
+        true,
         platform::errors::InvalidArgument(
             "Input(%s) of GeluGradOp should not be null.", "DOut"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(%s) of GeluGradOp should not be null.", "X"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")), true,
+        ctx->HasOutput(framework::GradVarName("X")),
+        true,
         platform::errors::InvalidArgument(
             "Output(%s) of GeluGradOp should not be null.", "DX"));
     auto x_grad_name = framework::GradVarName("X");
@@ -156,13 +150,13 @@ class GeluGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(gelu, ops::GeluOp, ops::GeluOpMaker,
+DECLARE_INFER_SHAPE_FUNCTOR(gelu,
+                            GeluInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+REGISTER_OPERATOR(gelu,
+                  ops::GeluOp,
+                  ops::GeluOpMaker,
                   ops::GeluGradOpMaker<paddle::framework::OpDesc>,
-                  ops::GeluGradOpMaker<paddle::imperative::OpBase>);
+                  ops::GeluGradOpMaker<paddle::imperative::OpBase>,
+                  GeluInferShapeFunctor);
 REGISTER_OPERATOR(gelu_grad, ops::GeluGradOp);
-REGISTER_OP_CPU_KERNEL(
-    gelu, ops::GeluKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GeluKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    gelu_grad, ops::GeluGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GeluGradKernel<paddle::platform::CPUDeviceContext, double>);

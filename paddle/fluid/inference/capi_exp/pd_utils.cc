@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/capi_exp/pd_utils.h"
+
 #include <string>
 
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/capi_exp/pd_utils.h"
 #include "paddle/fluid/inference/capi_exp/utils_internal.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -78,6 +79,17 @@ void PD_OneDimArrayCstrDestroy(__pd_take PD_OneDimArrayCstr* array) {
     delete array;
   }
 }
+
+void PD_CstrDestroy(__pd_take PD_Cstr* cstr) {
+  if (cstr != NULL) {
+    if (cstr->size != 0) {
+      cstr->size = 0;
+      delete[] cstr->data;
+      cstr->data = NULL;
+    }
+    delete cstr;
+  }
+}
 namespace paddle_infer {
 
 __pd_give PD_OneDimArrayCstr* CvtVecToOneDimArrayCstr(
@@ -101,6 +113,18 @@ std::vector<std::string> CvtOneDimArrayToVecCstr(
   return vec;
 }
 
+__pd_give PD_Cstr* CvtStrToCstr(const std::string& str) {
+  PD_Cstr* cstr = new PD_Cstr;
+  if (str.empty()) {
+    cstr->size = 0;
+    cstr->data = NULL;
+  } else {
+    cstr->size = str.length() + 1;
+    cstr->data = new char[str.length() + 1];
+    memcpy(cstr->data, str.c_str(), str.length() + 1);
+  }
+  return cstr;
+}
 }  // namespace paddle_infer
 
 #define DESTROY_TWO_DIM_ARRAY(type)                                           \

@@ -174,8 +174,8 @@ class DataFeedDesc(object):
                 "Only MultiSlotDataFeed needs set_dense_slots, please check your datafeed.proto"
             )
         for name in dense_slots_name:
-            self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
-                name]].is_dense = True
+            self.proto_desc.multi_slot_desc.slots[
+                self.__name_to_index[name]].is_dense = True
 
     def set_use_slots(self, use_slots_name):
         """
@@ -219,8 +219,8 @@ class DataFeedDesc(object):
                 "Only MultiSlotDataFeed needs set_use_slots, please check your datafeed.proto"
             )
         for name in use_slots_name:
-            self.proto_desc.multi_slot_desc.slots[self.__name_to_index[
-                name]].is_used = True
+            self.proto_desc.multi_slot_desc.slots[
+                self.__name_to_index[name]].is_used = True
 
     def desc(self):
         """

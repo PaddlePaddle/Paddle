@@ -85,7 +85,7 @@ class IouSimilarityNPUKernel : public framework::OpKernel<T> {
     bool normalized = ctx.Attr<bool>("box_normalized");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
 
-    auto _type = x->type();
+    auto _type = x->dtype();
     auto place = ctx.GetPlace();
 
     IouFunction<T> F(ctx);
@@ -188,5 +188,6 @@ class IouSimilarityNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(iou_similarity, ops::IouSimilarityNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(iou_similarity,
+                       ops::IouSimilarityNPUKernel<float>,
                        ops::IouSimilarityNPUKernel<plat::float16>);

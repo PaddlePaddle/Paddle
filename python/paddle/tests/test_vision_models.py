@@ -20,6 +20,7 @@ import paddle.vision.models as models
 
 
 class TestVisonModels(unittest.TestCase):
+
     def models_infer(self, arch, pretrained=False, batch_norm=False):
 
         x = np.array(np.random.random((2, 3, 224, 224)), dtype=np.float32)
@@ -39,6 +40,12 @@ class TestVisonModels(unittest.TestCase):
 
     def test_mobilenetv1(self):
         self.models_infer('mobilenet_v1')
+
+    def test_mobilenetv3_small(self):
+        self.models_infer('mobilenet_v3_small')
+
+    def test_mobilenetv3_large(self):
+        self.models_infer('mobilenet_v3_large')
 
     def test_vgg11(self):
         self.models_infer('vgg11')

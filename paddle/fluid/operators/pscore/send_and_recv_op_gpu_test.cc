@@ -15,13 +15,16 @@ limitations under the License. */
 #if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSCORE)
 
 #include <stdlib.h>
+
 #include <memory>
+#include <random>
+#include <sstream>
 #include <string>
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/service/heter_client.h"
-#include "paddle/fluid/distributed/service/heter_server.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_server.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -35,31 +38,41 @@ namespace memory = paddle::memory;
 using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_OP(send_and_recv);
 
 std::shared_ptr<distributed::HeterServer> b_rpc_service2;
 
+std::string get_ip_port() {
+  std::mt19937 rng;
+  rng.seed(std::random_device()());
+  std::uniform_int_distribution<std::mt19937::result_type> dist(4444, 25000);
+  int port = dist(rng);
+  std::string ip_port;
+  std::stringstream temp_str;
+  temp_str << "127.0.0.1:";
+  temp_str << port;
+  temp_str >> ip_port;
+  return ip_port;
+}
+
 framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
   auto root_block = program->MutableBlock(0);
   auto* block = program->AppendBlock(*root_block);
-
   framework::OpDesc* op = block->AppendOp();
   op->SetType("scale");
   op->SetInput("X", {"x"});
   op->SetOutput("Out", {"res"});
   op->SetAttr("scale", 0.5f);
-
   auto& out = *root_block->Var("res");
   out.SetType(framework::proto::VarType::LOD_TENSOR);
   out.SetShape({1, 10});
-
   return block;
 }
 
 void CreateVarsOnScope(framework::Scope* scope) {
   auto w_var = scope->Var("w");
-  w_var->GetMutable<framework::SelectedRows>();
+  w_var->GetMutable<phi::SelectedRows>();
 
   auto out_var = scope->Var("out");
   out_var->GetMutable<framework::LoDTensor>();
@@ -77,7 +90,8 @@ void CreateVarsOnScope(framework::Scope* scope) {
   res_var->GetMutable<framework::LoDTensor>();
 }
 
-void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
+void InitTensorsOnClient(framework::Scope* scope,
+                         int64_t rows_numel,
                          const platform::DeviceContext& ctx) {
   CreateVarsOnScope(scope);
   const auto place = ctx.GetPlace();
@@ -86,8 +100,7 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   //    ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}),
   //    *place);
   // for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
-  auto stream =
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+  auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
 
   auto micro_id_var =
       scope->Var("microbatch_id")->GetMutable<framework::LoDTensor>();
@@ -96,12 +109,14 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   std::vector<float> temp_vec{0};
   float* temp_ptr = temp_vec.data();
 
-  memory::Copy(
-      BOOST_GET_CONST(platform::CUDAPlace, place),
-      reinterpret_cast<void*>(micro_id_ptr), platform::CPUPlace(),
-      reinterpret_cast<void*>(temp_ptr),
-      micro_id_var->numel() * framework::SizeOfType(micro_id_var->type()),
-      stream);
+  memory::Copy(place,
+               reinterpret_cast<void*>(micro_id_ptr),
+               platform::CPUPlace(),
+               reinterpret_cast<void*>(temp_ptr),
+               micro_id_var->numel() *
+                   framework::SizeOfType(
+                       framework::TransToProtoVarType(micro_id_var->dtype())),
+               stream);
 
   auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
   float* x_ptr =
@@ -109,10 +124,12 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   std::vector<float> x_vec;
   for (int64_t i = 0; i < rows_numel; ++i) x_vec.push_back(1.0);
   float* x_vec_ptr = x_vec.data();
-  memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place),
-               reinterpret_cast<void*>(x_ptr), platform::CPUPlace(),
+  memory::Copy(place,
+               reinterpret_cast<void*>(x_ptr),
+               platform::CPUPlace(),
                reinterpret_cast<void*>(x_vec_ptr),
-               x_var->numel() * framework::SizeOfType(x_var->type()), stream);
+               x_var->numel() * framework::DataTypeSize(x_var->dtype()),
+               stream);
 
   // auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
   // float* res_ptr =
@@ -120,10 +137,11 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   // for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
 }
 
-void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnServer(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
-  auto w = scope->Var("w")->GetMutable<framework::SelectedRows>();
+  auto w = scope->Var("w")->GetMutable<phi::SelectedRows>();
   auto w_value = w->mutable_value();
   w_value->Resize({rows_numel, 10});
   for (int64_t i = 0; i < rows_numel; ++i) w->AutoGrownIndex(i, true);
@@ -144,7 +162,7 @@ void StartSendAndRecvServer(std::string endpoint) {
   framework::Scope scope;
   platform::CPUPlace place;
   framework::Executor exe(place);
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
   LOG(INFO) << "before AppendSendAndRecvBlock";
   auto block = AppendSendAndRecvBlock(&program);
   std::string in_var_name("x");
@@ -154,8 +172,8 @@ void StartSendAndRecvServer(std::string endpoint) {
   InitTensorsOnServer(&scope, &place, 10);
   LOG(INFO) << "end InitTensorsOnServer";
 
-  std::shared_ptr<distributed::RequestSendAndRecvHandler> b_req_handler;
-  b_req_handler.reset(new distributed::RequestSendAndRecvHandler());
+  std::shared_ptr<distributed::SendAndRecvVariableHandler> b_req_handler;
+  b_req_handler.reset(new distributed::SendAndRecvVariableHandler());
   LOG(INFO) << "before SetDevCtx";
   b_req_handler->SetDevCtx(&ctx);
   LOG(INFO) << "before SetScope";
@@ -164,23 +182,27 @@ void StartSendAndRecvServer(std::string endpoint) {
   b_rpc_service2 = distributed::HeterServer::GetInstance();
   b_rpc_service2->SetEndPoint(endpoint);
   LOG(INFO) << "before HeterServer::RegisterServiceHandler";
-  b_rpc_service2->RegisterServiceHandler(
-      in_var_name, [&](const MultiVarMsg* request, MultiVarMsg* response,
-                       brpc::Controller* cntl) -> int {
-        return b_req_handler->Handle(request, response, cntl);
-      });
+  b_rpc_service2->RegisterServiceHandler(in_var_name,
+                                         [&](const MultiVarMsg* request,
+                                             MultiVarMsg* response,
+                                             brpc::Controller* cntl) -> int {
+                                           return b_req_handler->Handle(
+                                               request, response, cntl);
+                                         });
 
-  b_rpc_service2->SetRequestHandler(b_req_handler);
+  b_rpc_service2->SetServiceHandler(b_req_handler);
   LOG(INFO) << "before HeterServer::RunServer";
-  std::thread server_thread(std::bind(RunServer, b_rpc_service2));
-  server_thread.join();
+
+  RunServer(b_rpc_service2);
+  // std::thread server_thread(std::bind(RunServer, b_rpc_service2));
+  // server_thread.join();
 }
 
 TEST(SENDANDRECV, GPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
-  std::string endpoint = "127.0.0.1:4445";
-  std::string previous_endpoint = "127.0.0.1:4445";
+  std::string endpoint = get_ip_port();
+  std::string previous_endpoint = endpoint;
   LOG(INFO) << "before StartSendAndRecvServer";
   b_rpc_service2 = distributed::HeterServer::GetInstance();
   std::thread server_thread(StartSendAndRecvServer, endpoint);
@@ -204,26 +226,29 @@ TEST(SENDANDRECV, GPU) {
       std::unordered_map<int,
                          std::shared_ptr<::paddle::framework::BlockingQueue<
                              std::pair<std::string, int>>>>;
-  using SharedTaskQueue = std::shared_ptr<std::unordered_map<
-      int, std::shared_ptr<::paddle::framework::BlockingQueue<
-               std::pair<std::string, int>>>>>;
+  using SharedTaskQueue = std::shared_ptr<
+      std::unordered_map<int,
+                         std::shared_ptr<::paddle::framework::BlockingQueue<
+                             std::pair<std::string, int>>>>>;
   SharedTaskQueue task_queue_(new TaskQueue{});
   (*task_queue_)[0] = std::make_shared<
       ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>();
   b_rpc_service2->SetTaskQueue(task_queue_);
 
   LOG(INFO) << "before HeterClient::GetInstance";
-  distributed::HeterClient* rpc_client =
-      distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0)
-          .get();
-
-  PADDLE_ENFORCE_NE(rpc_client, nullptr,
-                    platform::errors::InvalidArgument(
-                        "Client Start Fail, Check Your Code & Env"));
+  std::shared_ptr<distributed::HeterClient> heter_client_ptr_ =
+      distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0);
+  if (heter_client_ptr_ == nullptr) {
+    LOG(ERROR) << "heter_client_ptr_ is null";
+  }
 
   framework::Scope* scope = (*micro_scope)[0];
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(place, ctx.stream())
+                       .get());
+  ctx.PartialInitWithAllocator();
 
   framework::Executor exe(place);
   // create var on local scope
@@ -287,17 +312,18 @@ TEST(SENDANDRECV, GPU) {
   auto task = (*task_queue_)[0]->Pop();
   LOG(INFO) << "client get from task queue";
   PADDLE_ENFORCE_EQ(
-      task.first, "x",
+      task.first,
+      "x",
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   auto task2 = (*task_queue_)[0]->Pop();
   PADDLE_ENFORCE_EQ(
-      task2.first, "x",
+      task2.first,
+      "x",
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
-  rpc_client->FinalizeWorker();
   b_rpc_service2->Stop();
   LOG(INFO) << "end server Stop";
   server_thread.join();

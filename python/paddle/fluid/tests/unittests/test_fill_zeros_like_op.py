@@ -20,6 +20,7 @@ from op_test import OpTest
 
 
 class TestFillZerosLikeOp(OpTest):
+
     def setUp(self):
         self.op_type = "fill_zeros_like"
         self.dtype = np.float32
@@ -35,6 +36,7 @@ class TestFillZerosLikeOp(OpTest):
 
 
 class TestFillZerosLikeOpFp16(TestFillZerosLikeOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 

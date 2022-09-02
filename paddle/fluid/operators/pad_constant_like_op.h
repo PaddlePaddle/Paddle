@@ -16,11 +16,12 @@ limitations under the License. */
 
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/padding.h"
+#include "paddle/phi/kernels/funcs/padding.h"
 
 namespace paddle {
 namespace operators {
@@ -50,8 +51,13 @@ class PadConstantLikeKernel : public framework::OpKernel<T> {
       pads[j * 2 + 1] = static_cast<int>(in_x->dims()[j] - in_y->dims()[j]);
     }
 
-    math::PaddingFunctor<DeviceContext, T>(rank, context, pads, pad_value,
-                                           *in_y, out);
+    phi::funcs::PaddingFunctor<DeviceContext, T>(
+        rank,
+        context.template device_context<DeviceContext>(),
+        pads,
+        pad_value,
+        *in_y,
+        out);
   }
 };
 
@@ -82,8 +88,12 @@ class PadConstantLikeGradKernel : public framework::OpKernel<T> {
       pads[j * 2 + 1] = static_cast<int>(in_dout->dims()[j] - in_y->dims()[j]);
     }
 
-    math::PaddingGradFunctor<DeviceContext, T>(rank, context, pads, *in_dout,
-                                               d_y);
+    phi::funcs::PaddingGradFunctor<DeviceContext, T>(
+        rank,
+        context.template device_context<DeviceContext>(),
+        pads,
+        *in_dout,
+        d_y);
   }
 };
 

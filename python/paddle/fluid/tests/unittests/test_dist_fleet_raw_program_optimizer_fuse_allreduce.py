@@ -22,6 +22,7 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestFleetMetaOptimizerAllReduceFusePrecision(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False

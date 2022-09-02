@@ -26,7 +26,9 @@ class ClearFloatStatusOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput("FloatStatusOut"), "Output", "FloatStatusOut",
+    OP_INOUT_CHECK(ctx->HasOutput("FloatStatusOut"),
+                   "Output",
+                   "FloatStatusOut",
                    "clear_float_status");
     ctx->SetOutputDim("FloatStatusOut", ctx->GetInputDim("FloatStatus"));
   }
@@ -66,10 +68,12 @@ class ClearFloatStatusKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
-    clear_float_status, ops::ClearFloatStatusOp, ops::ClearFloatStatusMaker,
+    clear_float_status,
+    ops::ClearFloatStatusOp,
+    ops::ClearFloatStatusMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 

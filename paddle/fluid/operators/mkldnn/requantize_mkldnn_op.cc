@@ -46,13 +46,18 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     bool with_shift = shift_in != 0.0f || shift_out != 0.0f;
     auto* output = ctx.Output<Tensor>("Output");
 
-    PADDLE_ENFORCE_NE(scale_in, 0.0f, platform::errors::InvalidArgument(
-                                          "Scale of input cannot be 0.0"));
-    PADDLE_ENFORCE_NE(scale_out, 0.0f, platform::errors::InvalidArgument(
-                                           "Scale of output cannot be 0.0"));
+    PADDLE_ENFORCE_NE(
+        scale_in,
+        0.0f,
+        platform::errors::InvalidArgument("Scale of input cannot be 0.0"));
+    PADDLE_ENFORCE_NE(
+        scale_out,
+        0.0f,
+        platform::errors::InvalidArgument("Scale of output cannot be 0.0"));
     if (shift_in != 0.0f) {
       PADDLE_ENFORCE_EQ(
-          input->type(), framework::proto::VarType::UINT8,
+          framework::TransToProtoVarType(input->dtype()),
+          framework::proto::VarType::UINT8,
           platform::errors::Unimplemented("Requantize does not support nonzero "
                                           "shift for signed input."));
     }
@@ -61,12 +66,12 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& engine = dev_ctx.GetEngine();
 
-    auto src_tz = paddle::framework::vectorize(input->dims());
+    auto src_tz = phi::vectorize(input->dims());
 
     float reorder_scale = scale_out / scale_in;
 
-    std::string key = platform::CreateKey(dev_ctx, src_tz, scale_in, scale_out,
-                                          ctx.OutputName("Output"));
+    std::string key = platform::CreateKey(
+        dev_ctx, src_tz, scale_in, scale_out, ctx.OutputName("Output"));
     key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
     const std::string key_prim = key + "@r";
     const std::string key_src_mem = key + "@s";
@@ -80,13 +85,14 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
 
     if (reorder_p == nullptr) {
-      auto dst_tz = framework::vectorize(output->dims());
-      auto src_dt = framework::ToMKLDNNDataType(input->type());
+      auto dst_tz = phi::vectorize(output->dims());
+      auto src_dt = framework::ToMKLDNNDataType(
+          framework::TransToProtoVarType(input->dtype()));
       auto dst_dt = with_shift ? framework::MKLDNNDataType::u8 : src_dt;
 
       auto src_md = platform::MKLDNNMemDesc({src_tz}, src_dt, input->format());
-      src_memory = std::make_shared<dnnl::memory>(src_md, engine,
-                                                  to_void_cast<T>(input_data));
+      src_memory = std::make_shared<dnnl::memory>(
+          src_md, engine, to_void_cast<T>(input_data));
       auto dst_md = platform::MKLDNNMemDesc({dst_tz}, dst_dt, input->format());
 
       dnnl::primitive_attr attri;
@@ -136,12 +142,9 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     }
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    {
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
-      reorder_p->execute(astream, *src_memory, *dst_memory);
-      astream.wait();
-    }
+
+    reorder_p->execute(astream, *src_memory, *dst_memory);
+    astream.wait();
 
     output->set_layout(framework::DataLayout::kMKLDNN);
     output->set_format(platform::GetMKLDNNFormat(*dst_memory));
@@ -153,6 +156,9 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(requantize, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::ReQuantOpKernel<int8_t>, ops::ReQuantOpKernel<uint8_t>,
+REGISTER_OP_KERNEL(requantize,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::ReQuantOpKernel<int8_t>,
+                   ops::ReQuantOpKernel<uint8_t>,
                    ops::ReQuantOpKernel<paddle::platform::bfloat16>);

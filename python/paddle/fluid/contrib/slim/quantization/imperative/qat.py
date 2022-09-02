@@ -20,21 +20,37 @@ import os
 import warnings
 
 import paddle
+import paddle.nn as nn
 import paddle.nn.quant.quant_layers as quant_layers
 from paddle.fluid import dygraph, core, framework, unique_name
+from paddle.fluid.framework import IrGraph
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.initializer import Constant
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.io import load_inference_model, save_inference_model
+from ..quantization_pass import ReplaceFakeQuantDequantPass, QuantWeightPass
 from paddle.fluid.log_helper import get_logger
 from .. import quantization_pass
 from . import utils
+from . import fuse_utils
 
 __all__ = ['ImperativeQuantAware']
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+
+
+def lazy_import_fleet(layer_name_map, fake_quant_input_layers):
+    from paddle.distributed import fleet
+    layer_name_map[
+        'ColumnParallelLinear'] = fleet.meta_parallel.parallel_layers.mp_layers.ColumnParallelLinear
+    layer_name_map[
+        'RowParallelLinear'] = fleet.meta_parallel.parallel_layers.mp_layers.RowParallelLinear
+    fake_quant_input_layers.append(fleet.meta_parallel.RowParallelLinear)
+    fake_quant_input_layers.append(fleet.meta_parallel.ColumnParallelLinear)
+    return layer_name_map, fake_quant_input_layers
 
 
 class ImperativeQuantAware(object):
@@ -42,18 +58,21 @@ class ImperativeQuantAware(object):
     Applying quantization aware training (QAT) to the dgraph model.
     """
 
-    def __init__(
-            self,
-            quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
-            weight_quantize_type='abs_max',
-            activation_quantize_type='moving_average_abs_max',
-            weight_bits=8,
-            activation_bits=8,
-            moving_rate=0.9,
-            weight_preprocess_layer=None,
-            act_preprocess_layer=None,
-            weight_quantize_layer=None,
-            act_quantize_layer=None):
+    def __init__(self,
+                 quantizable_layer_type=[
+                     'Conv2D', 'Linear', 'Conv2DTranspose',
+                     'ColumnParallelLinear', 'RowParallelLinear'
+                 ],
+                 weight_quantize_type='abs_max',
+                 activation_quantize_type='moving_average_abs_max',
+                 weight_bits=8,
+                 activation_bits=8,
+                 moving_rate=0.9,
+                 fuse_conv_bn=False,
+                 weight_preprocess_layer=None,
+                 act_preprocess_layer=None,
+                 weight_quantize_layer=None,
+                 act_quantize_layer=None):
         """
         The constructor for ImperativeQuantAware.
 
@@ -74,6 +93,7 @@ class ImperativeQuantAware(object):
             activation_bits(int): quantization bit number for activations.
             moving_rate(float): the parameter for 'moving_average_abs_max'
                 quantization.
+            fuse_conv_bn(bool): Whether to fuse conv and bn, default is False.
             weight_preprocess_layer(paddle.nn.Layer, optional): A paddle
                 Layer that defines how to preprocess weight before quantization.
                 Using this can quickly test if user's preprocess method works
@@ -186,6 +206,7 @@ class ImperativeQuantAware(object):
                 model_path="./imperative_model_qat")
         """
         super(ImperativeQuantAware, self).__init__()
+        self.fuse_conv_bn = fuse_conv_bn
 
         kwargs = {
             "quantizable_layer_type": quantizable_layer_type,
@@ -254,8 +275,13 @@ class ImperativeQuantAware(object):
         """
         assert isinstance(model, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
+
+        if self.fuse_conv_bn:
+            fuse_utils.fuse_conv_bn(model)
+
         self._quantize_inputs.apply(model)
         self._quantize_outputs.apply(model)
+        return model
 
     def save_quantized_model(self, layer, path, input_spec=None, **config):
         self._quantize_outputs.save_quantized_model(layer, path, input_spec,
@@ -268,32 +294,32 @@ class ImperativeQuantizeInputs(object):
     logic both for activation inputs and weight inputs.
     """
 
-    def __init__(
-            self,
-            quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
-            weight_quantize_type='abs_max',
-            activation_quantize_type='moving_average_abs_max',
-            weight_bits=8,
-            activation_bits=8,
-            moving_rate=0.9,
-            weight_preprocess_layer=None,
-            act_preprocess_layer=None,
-            weight_quantize_layer=None,
-            act_quantize_layer=None):
+    def __init__(self,
+                 quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
+                 weight_quantize_type='abs_max',
+                 activation_quantize_type='moving_average_abs_max',
+                 weight_bits=8,
+                 activation_bits=8,
+                 moving_rate=0.9,
+                 weight_preprocess_layer=None,
+                 act_preprocess_layer=None,
+                 weight_quantize_layer=None,
+                 act_quantize_layer=None):
         """
         The constructor for ImperativeQuantizeInputs. 
 
         Please refer to the args of ImperativeQuantAware.
         """
         super(ImperativeQuantizeInputs, self).__init__()
+        self.layer_name_map, self.fake_quant_input_layers = lazy_import_fleet(
+            utils.layer_name_map, utils.fake_quant_input_layers)
 
         self._quantizable_layer_type = tuple(
-            utils.layer_name_map[layer]
-            if layer in utils.layer_name_map else layer
-            for layer in quantizable_layer_type)
+            self.layer_name_map[layer] if layer in
+            self.layer_name_map else layer for layer in quantizable_layer_type)
         for layer in self._quantizable_layer_type:
             assert not isinstance(layer, str) \
-                and layer in utils.fake_quant_input_layers, \
+                and layer in self.fake_quant_input_layers, \
                 "%s is unspported to be quantized." % layer
 
         quantize_type = {
@@ -370,7 +396,7 @@ class ImperativeQuantizeInputs(object):
     def _get_input_quantized_layer(self, layer):
         quant_layer_name = None
 
-        for key, value in utils.layer_name_map.items():
+        for key, value in self.layer_name_map.items():
             if isinstance(layer, value):
                 quant_layer_name = 'Quantized' + key
                 break
@@ -421,16 +447,23 @@ class ImperativeQuantizeOutputs(object):
             parent_layer, sub_name = \
                 utils.find_parent_layer_and_sub_name(model, cur_name)
 
+            reduce_type = None
+
             if isinstance(cur_layer, tuple(utils.fake_quant_output_layers)):
                 cur_quant_layer = quant_layers.FakeQuantMAOutputScaleLayer(
-                    cur_layer, self._moving_rate)
+                    cur_layer, self._moving_rate, reduce_type=reduce_type)
             else:
                 cur_quant_layer = quant_layers.MAOutputScaleLayer(
-                    cur_layer, self._moving_rate)
+                    cur_layer, self._moving_rate, reduce_type=reduce_type)
 
             setattr(parent_layer, sub_name, cur_quant_layer)
 
-    def save_quantized_model(self, model, path, input_spec=None, **config):
+    def save_quantized_model(self,
+                             model,
+                             path,
+                             input_spec=None,
+                             onnx_format=False,
+                             **config):
         """
         Save the quantized model for the inference.
 
@@ -443,6 +476,8 @@ class ImperativeQuantizeOutputs(object):
                 InputSpec or example Tensor. If None, all input variables of 
                 the original Layer's forward method would be the inputs of
                 the saved model. Default None.
+            onnx_format (bool, optional): Whether to export the quantized model 
+                with format of ONNX. Default is False.
             **configs (dict, optional): Other save configuration options for
                 compatibility. We do not recommend using these configurations,
                 they may be removed in the future. If not necessary, DO NOT use
@@ -477,26 +512,45 @@ class ImperativeQuantizeOutputs(object):
         model_filename = basename + INFER_MODEL_SUFFIX
         params_filename = basename + INFER_PARAMS_SUFFIX
 
-        [infer_program, feed_target_names, fetch_targets] = (
-            load_inference_model(
-                dirname=dirname,
-                executor=exe,
-                model_filename=model_filename,
-                params_filename=params_filename))
+        [infer_program, feed_target_names, fetch_targets
+         ] = (load_inference_model(dirname=dirname,
+                                   executor=exe,
+                                   model_filename=model_filename,
+                                   params_filename=params_filename))
 
-        self._gather_scales(infer_program, scope)
+        self._gather_scales(infer_program, scope, fetch_targets)
+
+        # Remove `moving_average_abs_max_scale` node in sub graphs.
+        graph = IrGraph(core.Graph(infer_program.desc), for_test=False)
+        for sub_graph in graph.all_sub_graphs():
+            for _op in sub_graph.all_op_nodes():
+                if _op.name() == "moving_average_abs_max_scale":
+                    sub_graph.safe_remove_nodes(_op)
+            sub_graph.resolve_hazard()
+        infer_program = graph.to_program()
 
         self._set_skip_quant_attr(infer_program)
 
-        save_inference_model(
-            dirname=dirname,
-            feeded_var_names=feed_target_names,
-            target_vars=fetch_targets,
-            executor=exe,
-            main_program=infer_program.clone(),
-            model_filename=model_filename,
-            params_filename=params_filename,
-            clip_extra=True)
+        clip_extra = False
+        if onnx_format:
+            graph = IrGraph(core.Graph(infer_program.desc), for_test=False)
+            transform_pass = ReplaceFakeQuantDequantPass(scope, place)
+            transform_pass.apply(graph)
+
+            quant_weight_pass = QuantWeightPass(scope, place)
+            quant_weight_pass.apply(graph)
+            infer_program = graph.to_program()
+
+            clip_extra = True
+
+        save_inference_model(dirname=dirname,
+                             feeded_var_names=feed_target_names,
+                             target_vars=fetch_targets,
+                             executor=exe,
+                             main_program=infer_program.clone(),
+                             model_filename=model_filename,
+                             params_filename=params_filename,
+                             clip_extra=clip_extra)
 
         if is_dynamic_mode:
             paddle.disable_static()
@@ -520,10 +574,10 @@ class ImperativeQuantizeOutputs(object):
 
         return flag
 
-    def _gather_scales(self, program, scope):
+    def _gather_scales(self, program, scope, fetch_targets):
         """
         Get all scales from fake ops, save them into the corresponding ops
-        and delete all moving_average_abs_max_scale ops. 
+        and delete all moving_average_abs_max_scale ops.
         """
 
         def _gather_input_scale():
@@ -580,6 +634,11 @@ class ImperativeQuantizeOutputs(object):
 
                 for next_op in next_ops:
                     next_op._rename_input(out_var_name, in_var_name)
+                    # If next_op is `fetch` and out_var_name in fetch_targets,
+                    # fetch_targets must update to in_var_name when rename input.
+                    for i in range(len(fetch_targets)):
+                        if fetch_targets[i].name == out_var_name:
+                            fetch_targets[i] = block.var(in_var_name)
 
         _gather_input_scale()
         _gather_output_scale()

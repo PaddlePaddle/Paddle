@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph.h"
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -24,8 +25,10 @@ namespace framework {
 
 class NOP : public OperatorBase {
  public:
-  NOP(const std::string &type, const VariableNameMap &inputs,
-      const VariableNameMap &outputs, const AttributeMap &attrs)
+  NOP(const std::string &type,
+      const VariableNameMap &inputs,
+      const VariableNameMap &outputs,
+      const AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
  private:
@@ -71,11 +74,16 @@ class DummyOpVarTypeInference : public VarTypeInference {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OPERATOR(sum, paddle::framework::NOP, paddle::framework::SumOpMaker,
+REGISTER_OPERATOR(sum,
+                  paddle::framework::NOP,
+                  paddle::framework::SumOpMaker,
                   paddle::framework::SumOpVarTypeInference);
-REGISTER_OPERATOR(dummy, paddle::framework::NOP, paddle::framework::SumOpMaker,
+REGISTER_OPERATOR(dummy,
+                  paddle::framework::NOP,
+                  paddle::framework::SumOpMaker,
                   paddle::framework::SumOpVarTypeInference);
-REGISTER_OPERATOR(sum_without_infer_var_type, paddle::framework::NOP,
+REGISTER_OPERATOR(sum_without_infer_var_type,
+                  paddle::framework::NOP,
                   paddle::framework::SumOpMaker);
 
 namespace paddle {

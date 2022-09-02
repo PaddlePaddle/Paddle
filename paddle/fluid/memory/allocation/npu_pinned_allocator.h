@@ -32,16 +32,16 @@ class NPUPinnedAllocator : public Allocator {
  public:
   bool IsAllocThreadSafe() const override { return true; }
   void ProcessEventsAndFree();
-  void RecordEvent(Allocation *allocation, aclrtStream stream);
+  void RecordEvent(phi::Allocation *allocation, aclrtStream stream);
   constexpr static size_t kAlignment = 4096UL;
 
  protected:
-  Allocation *AllocateImpl(size_t size) override;
-  void FreeImpl(Allocation *allocation) override;
+  phi::Allocation *AllocateImpl(size_t size) override;
+  void FreeImpl(phi::Allocation *allocation) override;
   uint64_t ReleaseImpl(const platform::Place &place) override;
 
  private:
-  std::unordered_map<Allocation *, aclrtEvent> npu_events_;
+  std::unordered_map<phi::Allocation *, aclrtEvent> npu_events_;
   mutable std::mutex mtx_;
 };
 

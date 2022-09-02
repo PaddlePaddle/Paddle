@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,10 +22,12 @@ import unittest
 
 
 class TrtConvertPreluTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input(batch, dim1, dim2, dim3):
             shape = [batch]
             if dim1 != 0:
@@ -108,16 +110,16 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                                 program_config = ProgramConfig(
                                     ops=ops,
                                     weights={
-                                        "alpha_weight": TensorConfig(
-                                            data_gen=partial(generate_alpha,
-                                                             dics, dim1, dim2,
-                                                             dim3))
+                                        "alpha_weight":
+                                        TensorConfig(data_gen=partial(
+                                            generate_alpha, dics, dim1, dim2,
+                                            dim3))
                                     },
                                     inputs={
-                                        "input_data": TensorConfig(
-                                            data_gen=partial(generate_input,
-                                                             batch, dim1, dim2,
-                                                             dim3)),
+                                        "input_data":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input, batch, dim1, dim2,
+                                            dim3)),
                                     },
                                     outputs=["output_data"])
 
@@ -125,18 +127,25 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             if self.dim1 == 0:
-                self.dynamic_shape.min_input_shape = {"input_data": [1], }
-                self.dynamic_shape.max_input_shape = {"input_data": [4], }
-                self.dynamic_shape.opt_input_shape = {"input_data": [2], }
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [4],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [2],
+                }
             else:
                 if self.dim2 == 0 and self.dim3 == 0:
                     self.dynamic_shape.min_input_shape = {
                         "input_data": [1, 1],
                     }
                     self.dynamic_shape.max_input_shape = {
-                        "input_data": [4, 64],
+                        "input_data": [4, 32],
                     }
                     self.dynamic_shape.opt_input_shape = {
                         "input_data": [2, 3],
@@ -146,7 +155,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                         "input_data": [1, 1, 1, 1],
                     }
                     self.dynamic_shape.max_input_shape = {
-                        "input_data": [4, 64, 128, 128],
+                        "input_data": [4, 3, 16, 32],
                     }
                     self.dynamic_shape.opt_input_shape = {
                         "input_data": [2, 3, 16, 32],
@@ -156,10 +165,10 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                         "input_data": [1, 1, 1],
                     }
                     self.dynamic_shape.max_input_shape = {
-                        "input_data": [4, 64, 256],
+                        "input_data": [4, 3, 32],
                     }
                     self.dynamic_shape.opt_input_shape = {
-                        "input_data": [2, 3, 128],
+                        "input_data": [2, 3, 16],
                     }
 
         def clear_dynamic_shape():
@@ -168,33 +177,33 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
+
+        def generate_trt_nodes_num(attrs, dynamic_shape):
+            if not dynamic_shape and self.dim1 == 0 and self.dim2 == 0 and self.dim3 == 0:
+                return 0, 3
+            return 1, 2
 
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 2), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 2), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), (1e-3, 1e-3)
 
     def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if self.dim1 == 0 and self.dim2 == 0 and self.dim3 == 0:
-                return True
-            return False
-
-        self.add_skip_case(teller1, SkipReasons.TRT_NOT_SUPPORT,
-                           "Trt does not support 1-dimensional input.")
-
         ver = paddle_infer.get_trt_compile_version()
         if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 7000:
 

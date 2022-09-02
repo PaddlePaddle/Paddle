@@ -21,6 +21,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -33,13 +34,9 @@ namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 template <typename T>
 using Vector = framework::Vector<T>;
-#else
-template <typename T>
-using Vector = framework::CPUVector<T>;
-#endif
 
 template <typename T>
 class ShuffleBatchKernel : public framework::OpKernel<T> {
@@ -107,7 +104,7 @@ class ShuffleBatchKernel : public framework::OpKernel<T> {
     // std::shuffle(idx_vec.begin(), idx_vec.end(), engine);
 
     // ShuffleIdx record shuffle order
-    shuffleidx->Resize(framework::make_ddim({(int64_t)idx_vec.size()}));
+    shuffleidx->Resize(phi::make_ddim({(int64_t)idx_vec.size()}));
     auto *shuffleidx_data =
         shuffleidx->mutable_data<int64_t>(context.GetPlace());
     for (size_t i = 0; i < idx_vec.size(); i++) {
@@ -117,12 +114,13 @@ class ShuffleBatchKernel : public framework::OpKernel<T> {
     auto *x_data = x->data<T>();
     auto *out_data = out->mutable_data<T>(context.GetPlace());
     for (auto i = 0; i < elem_size; i++) {
-      memcpy(out_data + idx_vec[i] * x_embed_size, x_data + i * x_embed_size,
+      memcpy(out_data + idx_vec[i] * x_embed_size,
+             x_data + i * x_embed_size,
              x_embed_size * sizeof(T));
     }
     // set new seed
-    *seed_out->mutable_data<int64_t>(framework::make_ddim({1}),
-                                     context.GetPlace()) = engine();
+    *seed_out->mutable_data<int64_t>(phi::make_ddim({1}), context.GetPlace()) =
+        engine();
   }
 };
 
@@ -150,7 +148,8 @@ class ShuffleBatchGradKernel : public framework::OpKernel<T> {
     auto *x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
     for (auto i = 0; i < elem_size; i++) {
       memcpy(x_grad_data + idx_vec_grad[i] * embed_size,
-             out_grad_data + i * embed_size, embed_size * sizeof(T));
+             out_grad_data + i * embed_size,
+             embed_size * sizeof(T));
     }
   }
 };

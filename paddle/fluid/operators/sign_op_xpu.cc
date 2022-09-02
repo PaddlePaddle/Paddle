@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-
-#include "paddle/fluid/operators/sign_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 namespace paddle {
 namespace operators {
@@ -27,10 +27,9 @@ class SignXPUKernel : public framework::OpKernel<T> {
     auto* in = context.Input<framework::Tensor>("X");
     out->mutable_data<T>(in->place());
     auto xpu_context = context.device_context<DeviceContext>().x_context();
-    int r = xpu::activation_forward(xpu_context, xpu::Activation_t::SIGN,
-                                    in->numel(), in->data<T>(), out->data<T>());
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::Fatal("XPU sign kernel error!"));
+    // int sign(Context* ctx, const T* x , T* y, int len);
+    int r = xpu::sign(xpu_context, in->data<T>(), out->data<T>(), in->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "sign");
   }
 };
 

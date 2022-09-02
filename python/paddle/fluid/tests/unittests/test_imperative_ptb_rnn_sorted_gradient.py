@@ -26,10 +26,12 @@ from test_imperative_base import new_program_scope
 from test_imperative_ptb_rnn import PtbModel
 import numpy as np
 import six
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDygraphPtbRnnSortGradient(unittest.TestCase):
-    def test_ptb_rnn_sort_gradient(self):
+
+    def func_ptb_rnn_sort_gradient(self):
         for is_sparse in [True, False]:
             self.ptb_rnn_sort_gradient_cpu_float32(is_sparse)
 
@@ -49,16 +51,15 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             paddle.framework.random._manual_program_seed(seed)
 
             # TODO: marsyang1993 Change seed to
-            ptb_model = PtbModel(
-                hidden_size=hidden_size,
-                vocab_size=vocab_size,
-                num_layers=num_layers,
-                num_steps=num_steps,
-                init_scale=init_scale,
-                is_sparse=is_sparse)
+            ptb_model = PtbModel(hidden_size=hidden_size,
+                                 vocab_size=vocab_size,
+                                 num_layers=num_layers,
+                                 num_steps=num_steps,
+                                 init_scale=init_scale,
+                                 is_sparse=is_sparse)
 
-            sgd = SGDOptimizer(
-                learning_rate=1e-3, parameter_list=ptb_model.parameters())
+            sgd = SGDOptimizer(learning_rate=1e-3,
+                               parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -72,14 +73,14 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
-                init_cell_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros((num_layers, batch_size, hidden_size),
+                                          dtype='float32')
                 x = to_variable(x_data)
                 y = to_variable(y_data)
                 init_hidden = to_variable(init_hidden_data)
                 init_cell = to_variable(init_cell_data)
-                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
-                                                            init_cell)
+                dy_loss, last_hidden, last_cell = ptb_model(
+                    x, y, init_hidden, init_cell)
                 if i == 0:
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()
@@ -98,24 +99,26 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
-            ptb_model = PtbModel(
-                hidden_size=hidden_size,
-                vocab_size=vocab_size,
-                num_layers=num_layers,
-                num_steps=num_steps,
-                init_scale=init_scale,
-                is_sparse=is_sparse)
+            ptb_model = PtbModel(hidden_size=hidden_size,
+                                 vocab_size=vocab_size,
+                                 num_layers=num_layers,
+                                 num_steps=num_steps,
+                                 init_scale=init_scale,
+                                 is_sparse=is_sparse)
 
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             sgd = SGDOptimizer(learning_rate=1e-3)
-            x = fluid.layers.data(
-                name="x", shape=[-1, num_steps, 1], dtype='int64')
+            x = fluid.layers.data(name="x",
+                                  shape=[-1, num_steps, 1],
+                                  dtype='int64')
             y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32')
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32')
+            init_hidden = fluid.layers.data(name="init_hidden",
+                                            shape=[1],
+                                            dtype='float32')
+            init_cell = fluid.layers.data(name="init_cell",
+                                          shape=[1],
+                                          dtype='float32')
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell)
@@ -140,8 +143,8 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
-                init_cell_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros((num_layers, batch_size, hidden_size),
+                                          dtype='float32')
                 fetch_list = [static_loss, static_last_hidden, static_last_cell]
                 fetch_list.extend(static_param_name_list)
                 out = exe.run(fluid.default_main_program(),
@@ -161,15 +164,20 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                         static_param_updated[static_param_name_list[k -
                                                                     3]] = out[k]
 
-        self.assertTrue(np.array_equal(static_loss_value, dy_loss_value))
-        self.assertTrue(
-            np.array_equal(static_last_cell_value, dy_last_cell_value))
-        self.assertTrue(
-            np.array_equal(static_last_hidden_value, dy_last_hidden_value))
+        np.testing.assert_array_equal(static_loss_value, dy_loss_value)
+        np.testing.assert_array_equal(static_last_cell_value,
+                                      dy_last_cell_value)
+        np.testing.assert_array_equal(static_last_hidden_value,
+                                      dy_last_hidden_value)
         for key, value in six.iteritems(static_param_init):
-            self.assertTrue(np.array_equal(value, dy_param_init[key]))
+            np.testing.assert_array_equal(value, dy_param_init[key])
         for key, value in six.iteritems(static_param_updated):
-            self.assertTrue(np.array_equal(value, dy_param_updated[key]))
+            np.testing.assert_array_equal(value, dy_param_updated[key])
+
+    def test_ptb_rnn_sort_gradient(self):
+        with _test_eager_guard():
+            self.func_ptb_rnn_sort_gradient()
+        self.func_ptb_rnn_sort_gradient()
 
 
 if __name__ == '__main__':

@@ -14,11 +14,10 @@
 #pragma once
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 namespace egr {
 class TensorWrapper;
 }
@@ -30,22 +29,39 @@ class GradTestNode : public egr::GradNodeBase {
   GradTestNode(float val, int in_num, int out_num)
       : GradNodeBase(in_num, out_num), val_(val) {}
   GradTestNode() : GradNodeBase() { val_ = 1.0; }
-  std::vector<std::vector<egr::EagerTensor>> operator()(
-      const std::vector<std::vector<egr::EagerTensor>>& grads) override {
-    val_ = std::dynamic_pointer_cast<pten::DenseTensor>(grads[0][0].impl())
+  std::string name() override { return "GradTestNode"; }
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  egr::kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) override {
+    val_ = std::dynamic_pointer_cast<phi::DenseTensor>(grads[0][0].impl())
                ->data<float>()[0];
-    pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-        pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
-    std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
-        std::make_shared<paddle::experimental::DefaultAllocator>(
-            paddle::platform::CPUPlace()),
+    phi::DenseTensorMeta meta =
+        phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+    std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
+        std::make_unique<paddle::experimental::DefaultAllocator>(
+            paddle::platform::CPUPlace())
+            .get(),
         meta);
-    auto* dt_ptr = dt->mutable_data<float>();
+    auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
     dt_ptr[0] = 6.0f;
-    egr::EagerTensor et1(dt);
-    std::vector<std::vector<egr::EagerTensor>> res = {{et1}};
+    paddle::experimental::Tensor et1(dt);
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        res = {{et1}};
     return res;
   }
+  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    {
+      auto copied_node = std::shared_ptr<GradTestNode>(new GradTestNode(*this));
+      return copied_node;
+    }
+  }
+
   float val_;
 };
 }  // namespace eager_test

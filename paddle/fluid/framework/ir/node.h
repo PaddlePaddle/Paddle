@@ -75,18 +75,22 @@ class Node {
   std::string Name() const { return name_; }
 
   VarDesc* Var() const {
-    PADDLE_ENFORCE_EQ(IsVar(), true,
+    PADDLE_ENFORCE_EQ(IsVar(),
+                      true,
                       platform::errors::InvalidArgument(
-                          "Node(%s) must be kVariable type, but not %d.", name_,
+                          "Node(%s) must be kVariable type, but not %d.",
+                          name_,
                           static_cast<int>(type_)));
     return var_desc_.get();
   }
 
   OpDesc* Op() const {
-    PADDLE_ENFORCE_EQ(IsOp(), true,
+    PADDLE_ENFORCE_EQ(IsOp(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Node(%s) must be kOperation type, but not %d.",
-                          name_, static_cast<int>(type_)));
+                          name_,
+                          static_cast<int>(type_)));
     return op_desc_.get();
   }
 
@@ -109,7 +113,8 @@ class Node {
     } catch (paddle::bad_any_cast&) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Invalid wrapper type error, expected %s, actual %s.",
-          typeid(T).name(), wrapper_type_.name()));
+          typeid(T).name(),
+          wrapper_type_.name()));
     }
   }
 
@@ -122,6 +127,11 @@ class Node {
   // Please don't use this API!
   int id() const { return id_; }
 
+  // Only use this for auto parallel.
+  // A node does not have original desc if the return is zero.
+  uint64_t OriginalDescId() const { return original_desc_id_; }
+  int GraphId() const { return graph_id_; }
+
   bool IsOp() const { return type_ == Type::kOperation; }
   bool IsVar() const { return type_ == Type::kVariable; }
   bool IsCtrlVar() const {
@@ -131,7 +141,8 @@ class Node {
 
   void RenameVar(const std::string& new_name) {
     PADDLE_ENFORCE_EQ(
-        type_ == Type::kVariable && var_desc_, true,
+        type_ == Type::kVariable && var_desc_,
+        true,
         platform::errors::InvalidArgument("Node must be type of variable."));
     name_ = new_name;
     var_desc_->SetName(new_name);
@@ -141,7 +152,8 @@ class Node {
 
   int GetVarNodeBlockId() const {
     PADDLE_ENFORCE_EQ(
-        type_ == Type::kVariable && var_desc_, true,
+        type_ == Type::kVariable && var_desc_,
+        true,
         platform::errors::InvalidArgument("Node must be type of variable."));
     return block_id_;
   }
@@ -162,10 +174,10 @@ class Node {
         auto comparator = [](Node* a, Node* b) {
           return a->Name() > b->Name();
         };
-        std::stable_sort(sorted_inputs.begin(), sorted_inputs.end(),
-                         comparator);
-        std::stable_sort(sorted_outputs.begin(), sorted_outputs.end(),
-                         comparator);
+        std::stable_sort(
+            sorted_inputs.begin(), sorted_inputs.end(), comparator);
+        std::stable_sort(
+            sorted_outputs.begin(), sorted_outputs.end(), comparator);
 
         std::string out_str = "{";
         std::string pre_str = "";
@@ -239,9 +251,15 @@ class Node {
   int desc_order_;
   int block_id_{-1};
 
+  // Store the original id of var desc or op desc.
+  // Only use this for auto parallel.
+  uint64_t original_desc_id_{0};
+  int graph_id_{-1};
+
  private:
   // ID can only set by a Graph.
   void SetId(int id) { id_ = id; }
+  void SetGraphId(int graph_id) { graph_id_ = graph_id; }
 
   // desc_order can only set by a Graph when constructing a Graph from a
   // BlockDesc.
@@ -267,14 +285,16 @@ class Node {
         op_desc_(nullptr),
         type_(Type::kVariable),
         desc_order_(NO_DESC_ORDER),
-        block_id_(block_id) {}
+        block_id_(block_id),
+        original_desc_id_(var_desc->OriginalId()) {}
 
   explicit Node(OpDesc* op_desc)
       : name_(op_desc->Type()),
         var_desc_(nullptr),
         op_desc_(new OpDesc(*op_desc, op_desc->Block())),
         type_(Type::kOperation),
-        desc_order_(NO_DESC_ORDER) {}
+        desc_order_(NO_DESC_ORDER),
+        original_desc_id_(op_desc->OriginalId()) {}
 
   Node() = delete;
 

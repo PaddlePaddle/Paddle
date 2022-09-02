@@ -26,7 +26,7 @@
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/platform/variant.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
@@ -76,7 +76,8 @@ class CostModel {
   ~CostModel() {}
 
   CostData ProfileMeasure(
-      const ProgramDesc& main_program, const ProgramDesc& startup_program,
+      const ProgramDesc& main_program,
+      const ProgramDesc& startup_program,
       const std::string& device,
       const std::vector<std::string>& fetch_cost_list) const;
 };

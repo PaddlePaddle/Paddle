@@ -18,9 +18,6 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
-std::once_flag nvtx_dso_flag;
-void *nvtx_dso_handle;
-
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 NVTX_ROUTINE_EACH(DEFINE_WRAP);

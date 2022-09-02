@@ -23,15 +23,17 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
 ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
-    ExecutionStrategy strategy, std::vector<Scope *> local_scopes,
-    std::vector<Scope *> local_exec_scopes, std::vector<VariableInfo> var_infos,
+    ExecutionStrategy strategy,
+    std::vector<Scope *> local_scopes,
+    std::vector<Scope *> local_exec_scopes,
+    std::vector<VariableInfo> var_infos,
     std::vector<platform::Place> places,
     std::unique_ptr<SSAGraphExecutor> &&underlying_executor)
     : strategy_(std::move(strategy)),
@@ -42,12 +44,14 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
       places_(std::move(places)),
       scope_monitor_(places_, local_exec_scopes_) {
   PADDLE_ENFORCE_EQ(
-      local_scopes_.size(), local_exec_scopes_.size(),
+      local_scopes_.size(),
+      local_exec_scopes_.size(),
       platform::errors::InvalidArgument(
           "The number of local scopes and the number of local execution scopes "
           "should be equal, but got number of local scopes is %d and "
           "number of local execution scopes is %d.",
-          local_scopes_.size(), local_exec_scopes_.size()));
+          local_scopes_.size(),
+          local_exec_scopes_.size()));
   PrepareLocalExeScopes();
 }
 
@@ -75,7 +79,8 @@ FetchResultType ScopeBufferedSSAGraphExecutor::Run(
 #endif
 
   if (drop_scope_counter_ == 0) {
-    platform::RecordEvent e("InitLocalVars");
+    platform::RecordEvent e(
+        "InitLocalVars", platform::TracerEventType::UserDefined, 2);
     InitVariables();
   }
 
@@ -164,7 +169,8 @@ void ScopeBufferedSSAGraphExecutor::InitVariables() {
 }
 
 void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes(bool need_wait) {
-  platform::RecordEvent drop_scope_event("DropLocalExeScopes");
+  platform::RecordEvent drop_scope_event(
+      "DropLocalExeScopes", platform::TracerEventType::UserDefined, 2);
   drop_scope_counter_ = 0;
   if (need_wait) {
     for (auto &p : places_) {

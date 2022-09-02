@@ -53,22 +53,15 @@ class AvgPool1D(Layer):
         name(str, optional): For eed to detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no nset and None by default.
 
-    Returns:
-        A callable object of AvgPool1D.
-
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ValueError: If `padding` is a list or tuple but its length greater than 1.
-        ShapeError: If the input is not a 3-D tensor.
-        ShapeError: If the output's shape calculated is not greater than 0.
-
     Shape:
         - x(Tensor): The input tensor of avg pool1d operator, which is a 3-D tensor.
           The data type can be float32, float64.
         - output(Tensor): The output tensor of avg pool1d  operator, which is a 3-D tensor.
           The data type is same as input x.
 
+    Returns:
+        A callable object of AvgPool1D.
+        
     Examples:
 
         .. code-block:: python
@@ -164,10 +157,7 @@ class AvgPool2D(Layer):
 
     Returns:
         A callable object of AvgPool2D.
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
+
     Examples:
         .. code-block:: python
 
@@ -204,16 +194,15 @@ class AvgPool2D(Layer):
         self.name = name
 
     def forward(self, x):
-        return F.avg_pool2d(
-            x,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            ceil_mode=self.ceil_mode,
-            exclusive=self.exclusive,
-            divisor_override=self.divisor,
-            data_format=self.data_format,
-            name=self.name)
+        return F.avg_pool2d(x,
+                            kernel_size=self.ksize,
+                            stride=self.stride,
+                            padding=self.padding,
+                            ceil_mode=self.ceil_mode,
+                            exclusive=self.exclusive,
+                            divisor_override=self.divisor,
+                            data_format=self.data_format,
+                            name=self.name)
 
     def extra_repr(self):
         return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
@@ -256,10 +245,6 @@ class AvgPool3D(Layer):
 
     Returns:
         A callable object of AvgPool3D.
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
 
     Shape:
         - x(Tensor): The input tensor of avg pool3d operator, which is a 5-D tensor.
@@ -302,16 +287,15 @@ class AvgPool3D(Layer):
         self.name = name
 
     def forward(self, x):
-        return F.avg_pool3d(
-            x,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            ceil_mode=self.ceil_mode,
-            exclusive=self.exclusive,
-            divisor_override=self.divisor,
-            data_format=self.data_format,
-            name=self.name)
+        return F.avg_pool3d(x,
+                            kernel_size=self.ksize,
+                            stride=self.stride,
+                            padding=self.padding,
+                            ceil_mode=self.ceil_mode,
+                            exclusive=self.exclusive,
+                            divisor_override=self.divisor,
+                            data_format=self.data_format,
+                            name=self.name)
 
     def extra_repr(self):
         return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
@@ -507,15 +491,14 @@ class MaxPool2D(Layer):
         self.name = name
 
     def forward(self, x):
-        return F.max_pool2d(
-            x,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            return_mask=self.return_mask,
-            ceil_mode=self.ceil_mode,
-            data_format=self.data_format,
-            name=self.name)
+        return F.max_pool2d(x,
+                            kernel_size=self.ksize,
+                            stride=self.stride,
+                            padding=self.padding,
+                            return_mask=self.return_mask,
+                            ceil_mode=self.ceil_mode,
+                            data_format=self.data_format,
+                            name=self.name)
 
     def extra_repr(self):
         return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
@@ -605,15 +588,14 @@ class MaxPool3D(Layer):
         self.name = name
 
     def forward(self, x):
-        return F.max_pool3d(
-            x,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            return_mask=self.return_mask,
-            ceil_mode=self.ceil_mode,
-            data_format=self.data_format,
-            name=self.name)
+        return F.max_pool3d(x,
+                            kernel_size=self.ksize,
+                            stride=self.stride,
+                            padding=self.padding,
+                            return_mask=self.return_mask,
+                            ceil_mode=self.ceil_mode,
+                            data_format=self.data_format,
+                            name=self.name)
 
     def extra_repr(self):
         return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
@@ -623,38 +605,28 @@ class MaxPool3D(Layer):
 class AdaptiveAvgPool1D(Layer):
     r"""
 
-    This operation applies a 1D adaptive average pooling over an input signal composed
-    of several input planes, based on the input, output_size, return_mask parameters.
-    Input(X) and output(Out) are in NCL format, where N is batch
-    size, C is the number of channels, L is the length of the feature.
-    The output tensor shape will be [N, C, output_size].
+    A 1D adaptive average pooling over an input signal composed
+    of several input planes, based on :attr:`output_size`.
+    Input and output are in NCL format, where N is batch
+    size, C is the number of channels and L is the length of the feature.
+    The shape of output will be :math:`[N, C, output\_size]`.
 
-    For average adaptive pool1d:
+    The formulation for average adaptive pool1d is
 
     ..  math::
 
-        lstart &= floor(i * L_{in} / L_{out})
+        lstart &= \lfloor i * L_{in} / L_{out}\rfloor,
 
-        lend &= ceil((i + 1) * L_{in} / L_{out})
+        lend &= \lceil(i + 1) * L_{in} / L_{out}\rceil,
 
-        Output(i) &= \frac{ \sum Input[lstart:lend]}{lend - lstart}
+        Output(i) &= \frac{\sum Input[lstart:lend]}{lend - lstart}.
 
     Parameters:
-        output_size(int): The target output size. It must be an integer.
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
-            Usually name is no need to set and None by default.
+        output_size(int): The target output size. Its data type must be int.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        A callable object of AdaptiveAvgPool1D.
-
-    Raises:
-        ValueError: 'output_size' should be an integer.
-
-    Shape:
-        - x(Tensor): 3-D tensor. The input tensor of adaptive avg pool1d operator, which is a 3-D tensor.
-          The data type can be float32, float64.
-        - output(Tensor): 3-D tensor. The output tensor of adaptive avg pool1d operator, which is a 3-D tensor.
-          The data type is same as input x.
+        A callable object for computing 1D adaptive average pooling.
 
     Examples:
         .. code-block:: python
@@ -769,11 +741,10 @@ class AdaptiveAvgPool2D(Layer):
         self._name = name
 
     def forward(self, x):
-        return F.adaptive_avg_pool2d(
-            x,
-            output_size=self._output_size,
-            data_format=self._data_format,
-            name=self._name)
+        return F.adaptive_avg_pool2d(x,
+                                     output_size=self._output_size,
+                                     data_format=self._data_format,
+                                     name=self._name)
 
     def extra_repr(self):
         return 'output_size={}'.format(self._output_size)
@@ -862,11 +833,10 @@ class AdaptiveAvgPool3D(Layer):
         self._name = name
 
     def forward(self, x):
-        return F.adaptive_avg_pool3d(
-            x,
-            output_size=self._output_size,
-            data_format=self._data_format,
-            name=self._name)
+        return F.adaptive_avg_pool3d(x,
+                                     output_size=self._output_size,
+                                     data_format=self._data_format,
+                                     name=self._name)
 
     def extra_repr(self):
         return 'output_size={}'.format(self._output_size)
@@ -1026,11 +996,10 @@ class AdaptiveMaxPool2D(Layer):
         self._name = name
 
     def forward(self, x):
-        return F.adaptive_max_pool2d(
-            x,
-            output_size=self._output_size,
-            return_mask=self._return_mask,
-            name=self._name)
+        return F.adaptive_max_pool2d(x,
+                                     output_size=self._output_size,
+                                     return_mask=self._return_mask,
+                                     name=self._name)
 
     def extra_repr(self):
         return 'output_size={}, return_mask={}'.format(self._output_size,
@@ -1119,19 +1088,99 @@ class AdaptiveMaxPool3D(Layer):
         self._name = name
 
     def forward(self, x):
-        return F.adaptive_max_pool3d(
-            x,
-            output_size=self._output_size,
-            return_mask=self._return_mask,
-            name=self._name)
+        return F.adaptive_max_pool3d(x,
+                                     output_size=self._output_size,
+                                     return_mask=self._return_mask,
+                                     name=self._name)
 
     def extra_repr(self):
         return 'output_size={}, return_mask={}'.format(self._output_size,
                                                        self._return_mask)
 
 
-class MaxUnPool2D(Layer):
+class MaxUnPool1D(Layer):
+    r"""
+    This API implements max unpooling 1d opereation.
+
+    `max_unpool1d` accepts the output of `max_pool1d` as input, 
+    including the indices of the maximum value and calculate the partial inverse. 
+    All non-maximum values ​​are set to zero.
+
+    - Input: :math:`(N, C, L_{in})`
+    - Output: :math:`(N, C, L_{out})`, where
+    
+    .. math::
+        L_{out} = (L_{in} - 1) * stride - 2 * padding + kernel\_size
+
+    or as given by :attr:`output_size` in the call operator.
+    
+    Parameters:
+        kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
+            it must contain an integer.
+        stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
+            it must contain an integer.
+        padding (int | tuple): Padding that was added to the input.
+        output_size(list|tuple, optional): The target output size. If output_size is not specified, 
+                           the actual output shape will be automatically calculated by (input_shape,
+                           kernel_size, stride, padding).
+        data_format (string): The data format of the input and output data.
+                        The default is `"NCL"`. When it is `"NCL"`, the data is stored in the order of:
+                        `[batch_size, input_channels, input_length]`.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+
+
+    Returns:
+        A callable object of MaxUnPool1D.
+
+    Examples:
+        .. code-block:: python
+        
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
+
+            data = paddle.rand(shape=[1, 3, 16])
+            pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
+            # pool_out shape: [1, 3, 8],  indices shape: [1, 3, 8]
+            Unpool1D = paddle.nn.MaxUnPool1D(kernel_size=2, padding=0)
+            unpool_out = Unpool1D(pool_out, indices)
+            # unpool_out shape: [1, 3, 16]
+
     """
+
+    def __init__(self,
+                 kernel_size,
+                 stride=None,
+                 padding=0,
+                 data_format="NCL",
+                 output_size=None,
+                 name=None):
+        super(MaxUnPool1D, self).__init__()
+        self.ksize = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.data_format = data_format
+        self.output_size = output_size
+        self.name = name
+
+    def forward(self, x, indices):
+        return F.max_unpool1d(x,
+                              indices,
+                              kernel_size=self.ksize,
+                              stride=self.stride,
+                              padding=self.padding,
+                              data_format=self.data_format,
+                              output_size=self.output_size,
+                              name=self.name)
+
+    def extra_repr(self):
+        return 'output_size={}'.format(self.output_size)
+
+
+class MaxUnPool2D(Layer):
+    r"""
     This API implements max unpooling 2d opereation.
 
     'max_unpool2d' accepts the output of 'max_unpool2d' as input
@@ -1175,13 +1224,12 @@ class MaxUnPool2D(Layer):
         
         import paddle
         import paddle.nn.functional as F
-        import numpy as np
 
-        data = paddle.rand(shape=[1,1,7,7])
+        data = paddle.rand(shape=[1,1,6,6])
         pool_out, indices = F.max_pool2d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
         # pool_out shape: [1, 1, 3, 3],  indices shape: [1, 1, 3, 3]
         Unpool2D = paddle.nn.MaxUnPool2D(kernel_size=2, padding=0)
-        unpool_out = UnPool2D(pool_out, indices)
+        unpool_out = Unpool2D(pool_out, indices)
         # unpool_out shape: [1, 1, 6, 6]
 
     """
@@ -1202,15 +1250,102 @@ class MaxUnPool2D(Layer):
         self.name = name
 
     def forward(self, x, indices):
-        return F.max_unpool2d(
-            x,
-            indices,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            data_format=self.data_format,
-            output_size=self.output_size,
-            name=self.name)
+        return F.max_unpool2d(x,
+                              indices,
+                              kernel_size=self.ksize,
+                              stride=self.stride,
+                              padding=self.padding,
+                              data_format=self.data_format,
+                              output_size=self.output_size,
+                              name=self.name)
+
+    def extra_repr(self):
+        return 'output_size={}'.format(self.output_size)
+
+
+class MaxUnPool3D(Layer):
+    r"""
+    This API implements max unpooling 3d opereation.
+
+    `max_unpool3d` accepts the output of `max_pool3d` as input, 
+    including the indices of the maximum value and calculate the partial inverse. 
+    All non-maximum values ​​are set to zero.
+
+    - Input: :math:`(N, C, D_{in}, H_{in}, W_{in})`
+    - Output: :math:`(N, C, D_{out}, H_{out}, W_{out})`, where
+    
+    .. math::
+        D_{out} = (D_{in} - 1) * stride[0] - 2 * padding[0] + kernel\_size[0]
+
+    .. math::
+        H_{out} = (H_{in} - 1) * stride[1] - 2 * padding[1] + kernel\_size[1]
+
+    .. math::
+        W_{out} = (W_{in} - 1) * stride[2] - 2 * padding[2] + kernel\_size[2]
+
+    or as given by :attr:`output_size` in the call operator
+
+    
+    Parameters:
+        kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
+            it must contain an integer.
+        stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
+            it must contain an integer.
+        padding (int | tuple): Padding that was added to the input.
+        output_size(list|tuple, optional): The target output size. If output_size is not specified, 
+                           the actual output shape will be automatically calculated by (input_shape,
+                           kernel_size, stride, padding).
+        data_format (string): The data format of the input and output data.
+                        The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
+                        `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+
+
+    Returns:
+        A callable object of MaxUnPool3D.
+
+    Examples:
+        .. code-block:: python
+        
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
+
+            data = paddle.rand(shape=[1, 1, 4, 4, 6])
+            pool_out, indices = F.max_pool3d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
+            # pool_out shape: [1, 1, 2, 2, 3],  indices shape: [1, 1, 2, 2, 3]
+            Unpool3D = paddle.nn.MaxUnPool3D(kernel_size=2, padding=0)
+            unpool_out = Unpool3D(pool_out, indices)
+            # unpool_out shape: [1, 1, 4, 4, 6]
+
+    """
+
+    def __init__(self,
+                 kernel_size,
+                 stride=None,
+                 padding=0,
+                 data_format="NCDHW",
+                 output_size=None,
+                 name=None):
+        super(MaxUnPool3D, self).__init__()
+        self.ksize = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.data_format = data_format
+        self.output_size = output_size
+        self.name = name
+
+    def forward(self, x, indices):
+        return F.max_unpool3d(x,
+                              indices,
+                              kernel_size=self.ksize,
+                              stride=self.stride,
+                              padding=self.padding,
+                              data_format=self.data_format,
+                              output_size=self.output_size,
+                              name=self.name)
 
     def extra_repr(self):
         return 'output_size={}'.format(self.output_size)

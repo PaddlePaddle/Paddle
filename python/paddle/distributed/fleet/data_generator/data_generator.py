@@ -237,6 +237,7 @@ class DataGenerator(object):
 # add more generalized DataGenerator that can adapt user-defined slot
 # for example, [(name, float_list), (name, str_list), (name, int_list)]
 class MultiSlotStringDataGenerator(DataGenerator):
+
     def _gen_str(self, line):
         '''
         Further processing the output of the process() function rewritten by
@@ -281,6 +282,7 @@ class MultiSlotStringDataGenerator(DataGenerator):
 
 
 class MultiSlotDataGenerator(DataGenerator):
+
     def _gen_str(self, line):
         '''
         Further processing the output of the process() function rewritten by
@@ -338,8 +340,8 @@ class MultiSlotDataGenerator(DataGenerator):
                 for elem in elements:
                     if isinstance(elem, float):
                         self._proto_info[-1] = (name, "float")
-                    elif not isinstance(elem, int) and not isinstance(elem,
-                                                                      long):
+                    elif not isinstance(elem, int) and not isinstance(
+                            elem, long):
                         raise ValueError(
                             "the type of element%s must be in int or float" %
                             type(elem))
@@ -347,7 +349,8 @@ class MultiSlotDataGenerator(DataGenerator):
         else:
             if len(line) != len(self._proto_info):
                 raise ValueError(
-                    "the complete field set of two given line are inconsistent.")
+                    "the complete field set of two given line are inconsistent."
+                )
             for index, item in enumerate(line):
                 name, elements = item
                 if not isinstance(name, str):
@@ -370,8 +373,8 @@ class MultiSlotDataGenerator(DataGenerator):
                     if self._proto_info[index][1] != "float":
                         if isinstance(elem, float):
                             self._proto_info[index] = (name, "float")
-                        elif not isinstance(elem, int) and not isinstance(elem,
-                                                                          long):
+                        elif not isinstance(elem, int) and not isinstance(
+                                elem, long):
                             raise ValueError(
                                 "the type of element%s must be in int or float"
                                 % type(elem))

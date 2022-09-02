@@ -14,9 +14,10 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/context_project.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -40,11 +41,13 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     bool padding_trainable = context.Attr<bool>("paddingTrainable");
 
     PADDLE_ENFORCE_EQ(
-        in->lod().empty(), false,
+        in->lod().empty(),
+        false,
         platform::errors::InvalidArgument("Input(X) Tensor of SequenceConvOp "
                                           "does not contain LoD information."));
     PADDLE_ENFORCE_EQ(
-        in->lod().size(), 1UL,
+        in->lod().size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Only support input sequence with lod level equal to 1 at "
             "present. But received: lod level %u.",
@@ -64,15 +67,22 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     Tensor col;
     col.mutable_data<T>(col_shape, context.GetPlace());
     // Because if padding_trainable is false, padding data should be zeros.
-    math::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     set_zero(dev_ctx, &col, static_cast<T>(0));
     math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
 
-    seq_project_functor(dev_ctx, *in, padding_data, padding_trainable,
-                        context_start, context_length, context_stride, up_pad,
-                        down_pad, &col);
+    seq_project_functor(dev_ctx,
+                        *in,
+                        padding_data,
+                        padding_trainable,
+                        context_start,
+                        context_length,
+                        context_stride,
+                        up_pad,
+                        down_pad,
+                        &col);
 
     blas.MatMul(col, filter, out);
   }
@@ -96,7 +106,8 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     bool padding_trainable = context.Attr<bool>("paddingTrainable");
 
     PADDLE_ENFORCE_EQ(
-        in->lod().size(), 1UL,
+        in->lod().size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Only support input sequence with lod level equal to 1 at "
             "present. But received: lod level %u.",
@@ -107,9 +118,9 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     int down_pad = std::max(0, context_start + context_length - 1);
     auto sequence_width = static_cast<int64_t>(in->dims()[1]);
 
-    math::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     // use col_shape in the im2col calculation
     framework::DDim col_shape = {in->dims()[0],
                                  sequence_width * context_length};
@@ -129,9 +140,18 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       in_g->set_lod(in->lod());
       set_zero(dev_ctx, in_g, static_cast<T>(0));
 
-      seq_project_grad_functor(dev_ctx, *in_g, padding_trainable, context_start,
-                               context_length, context_stride, up_pad, down_pad,
-                               false, true, padding_data_g, &col);
+      seq_project_grad_functor(dev_ctx,
+                               *in_g,
+                               padding_trainable,
+                               context_start,
+                               context_length,
+                               context_stride,
+                               up_pad,
+                               down_pad,
+                               false,
+                               true,
+                               padding_data_g,
+                               &col);
     }
 
     if (padding_trainable && padding_data_g) {
@@ -139,9 +159,18 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       set_zero(dev_ctx, padding_data_g, static_cast<T>(0));
 
       LoDTensor* input = const_cast<LoDTensor*>(in);
-      seq_project_grad_functor(
-          dev_ctx, *input, padding_trainable, context_start, context_length,
-          context_stride, up_pad, down_pad, true, false, padding_data_g, &col);
+      seq_project_grad_functor(dev_ctx,
+                               *input,
+                               padding_trainable,
+                               context_start,
+                               context_length,
+                               context_stride,
+                               up_pad,
+                               down_pad,
+                               true,
+                               false,
+                               padding_data_g,
+                               &col);
     }
 
     if (filter_g) {
@@ -156,9 +185,16 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
         padding_data = context.Input<Tensor>("PaddingData");
       }
 
-      seq_project_functor(dev_ctx, *in, padding_data, padding_trainable,
-                          context_start, context_length, context_stride, up_pad,
-                          down_pad, &col);
+      seq_project_functor(dev_ctx,
+                          *in,
+                          padding_data,
+                          padding_trainable,
+                          context_start,
+                          context_length,
+                          context_stride,
+                          up_pad,
+                          down_pad,
+                          &col);
 
       blas.MatMul(col, true, out_grad, false, &filter_grad);
     }

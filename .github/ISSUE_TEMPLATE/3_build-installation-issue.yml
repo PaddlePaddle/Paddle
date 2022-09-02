@@ -1,0 +1,65 @@
+name: 🗂 安装 Build/Installation Issue
+description: 报告一个安装问题。 Report an issue related to build or install Paddle.
+labels: [type/build, status/new-issue]
+
+body:
+- type: markdown
+  attributes:
+    value: >
+      #### 安装请参考[官网文档](https://www.paddlepaddle.org.cn/install/quick?docurl=/documentation/docs/zh/develop/install/pip/linux-pip.html)，若未能解决你的问题，你可以在这里提issue。
+      
+      #### Before submitting a Build/Installation Issue, please make sure you have visited the [official website](https://www.paddlepaddle.org.cn/documentation/docs/en/install/index_en.html).     
+
+- type: textarea
+  id: error
+  attributes:
+    label: 问题描述 Issue Description
+    description: |
+      请详细描述你的问题，同步贴出报错信息、日志/代码关键片段、复现步骤，以便我们快速排查问题。
+      Please describe your problem in detail, and synchronously post the error message, key log/code snippet, and reproduction steps, so that we can quickly troubleshoot the problem.
+  validations:
+    required: true
+    
+- type: textarea
+  id: environment
+  attributes:
+    label: 版本&环境信息 Version & Environment Information
+    description: |
+      请参考以下命令运行脚本[summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py)获取版本&环境信息，并将输出拷贝在这里。
+      Please run the following and paste the output below.
+      ```shell
+      wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/tools/summary_env.py
+      python3 -m pip install distro
+      python3 summary_env.py
+      ```
+      若运行脚本出现问题，请在issue中说明，并提供以下信息：
+      1. PaddlePaddle版本：请提供你的PaddlePaddle版本号（如2.0.0）或CommitID。
+      2. CPU（可选）：请提供CPU型号，MKL/OpenBlas/MKLDNN/等数学库的使用情况，是否支持AVX指令集。
+      3. GPU：请提供GPU型号，CUDA（如cuda10.2）和CUDNN版本号（如cudnn7.6.5）。
+      4. 系统环境：请说明系统类型、版本（如Mac OS 10.14）。
+      5. Python版本（如python 3.7）。
+      6. （可选）若安装过程遇到问题，请提供安装方式（pip/conda/docker/源码编译）和相应的安装命令。
+      7. （可选）若使用paddle过程中，遇到了无法使用gpu相关问题，请在命令行中键入`nvidia-smi`和`nvcc -V`，提供这两个命令输出的截图。
+      8. （可选）若使用特殊硬件，请单独注明。
+      
+     
+    placeholder: |
+      ****************************************
+      Paddle version: 
+      Paddle With CUDA: 
+    
+      OS: 
+      Python version: 
+    
+      CUDA version: 
+      cuDNN version: 
+      Nvidia driver version: 
+      ****************************************
+  validations:
+    required: true
+    
+    
+- type: markdown
+  attributes:
+    value: >
+      感谢你的贡献 🎉！Thanks for your contribution 🎉!

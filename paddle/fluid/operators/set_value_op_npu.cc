@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/set_value_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -51,9 +52,11 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     }
 
     auto in_dims = in->dims();
-    CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends, &steps);
-    auto slice_dims = GetSliceDims(in_dims, axes, starts, ends, &steps);
-    auto decrease_slice_dims = GetDecreasedDims(slice_dims, decrease_axes);
+    phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends, &steps);
+    auto slice_dims =
+        phi::funcs::GetSliceDims(in_dims, axes, starts, ends, &steps);
+    auto decrease_slice_dims =
+        phi::funcs::GetDecreasedDims(slice_dims, decrease_axes);
 
     auto slice_dims_for_assign = decrease_slice_dims;
     if (!none_axes.empty()) {
@@ -78,10 +81,10 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
         none_axes_cur++;
       }
 
-      slice_dims_for_assign = framework::make_ddim(slice_dims_with_none);
+      slice_dims_for_assign = phi::make_ddim(slice_dims_with_none);
     }
 
-    TensorCopy(*in, ctx.GetPlace(), out);
+    paddle::framework::TensorCopy(*in, ctx.GetPlace(), out);
 
     auto starts_indices = std::vector<int64_t>(in_dims.size(), 0);
     auto ends_indices = std::vector<int64_t>(in_dims.size(), 0);
@@ -99,7 +102,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
       strides_indices[axis_index] = steps[i];
     }
 
-    int64_t stride_step = framework::product(in_dims);
+    int64_t stride_step = phi::product(in_dims);
     std::vector<int64_t> index_indices(1, 0);
     for (size_t i = 0; i < strides_indices.size(); ++i) {
       auto index_size = index_indices.size();
@@ -123,7 +126,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(
         static_cast<int64_t>(index_indices.size()),
-        framework::product(slice_dims_for_assign),
+        phi::product(slice_dims_for_assign),
         platform::errors::InvalidArgument(
             "OP(set_value) error index indices and value update not match "));
 
@@ -131,12 +134,13 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     if (value_tensor != nullptr) {
       value_t.ShareDataWith(*value_tensor);
     } else {
-      auto value_dims = framework::make_ddim(shape);
+      auto value_dims = phi::make_ddim(shape);
       CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
       value_t.mutable_data<T>(value_dims, ctx.GetPlace());
-      auto value_name = GetValueName(in->type());
-      CopyVecotorToTensor<T>(value_name.c_str(), &value_t, ctx);
+      auto value_name =
+          GetValueName(framework::TransToProtoVarType(in->dtype()));
+      CopyVectorToTensor<T>(value_name.c_str(), &value_t, ctx);
       value_t.Resize(value_dims);
     }
 
@@ -151,21 +155,21 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
       NpuOpRunner runner_brd;
       runner_brd.SetType("BroadcastTo")
           .AddInput(value_t)
-          .AddInput(framework::vectorize(slice_dims_for_assign))
+          .AddInput(phi::vectorize(slice_dims_for_assign))
           .AddOutput(value_temp)
           .Run(stream);
     }
 
-    int64_t input_numel = framework::product(in_dims);
+    int64_t input_numel = phi::product(in_dims);
     int64_t index_numel = index_indices.size();
 
     Tensor in_temp, out_temp, val_temp;
     in_temp.ShareDataWith(*in);
     out_temp.ShareDataWith(*out);
     val_temp.ShareDataWith(value_temp);
-    in_temp.Resize(framework::make_ddim({input_numel}));
-    out_temp.Resize(framework::make_ddim({input_numel}));
-    val_temp.Resize(framework::make_ddim({index_numel}));
+    in_temp.Resize(phi::make_ddim({input_numel}));
+    out_temp.Resize(phi::make_ddim({input_numel}));
+    val_temp.Resize(phi::make_ddim({index_numel}));
 
     NpuOpRunner runner;
     runner.SetType("ScatterUpdate")
@@ -173,6 +177,9 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
         .AddInput(std::move(index_indices))
         .AddInput(val_temp)
         .AddOutput(out_temp)
+#if (CANN_VERSION_CODE >= 504000)
+        .AddAttrs({{"use_locking", false}})
+#endif
         .Run(stream);
   }
 };
@@ -182,7 +189,8 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_NPU_KERNEL(set_value, ops::SetValueNPUKernel<int>,
+REGISTER_OP_NPU_KERNEL(set_value,
+                       ops::SetValueNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64
                        ops::SetValueNPUKernel<int64_t>,
 #endif

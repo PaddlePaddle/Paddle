@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
+
 #include <mutex>
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
-#include "paddle/fluid/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
 
 namespace paddle {
 namespace memory {
@@ -29,13 +30,15 @@ bool NeedSplit(size_t block_size, size_t alignment, size_t allock_size) {
 VirtualMemoryAutoGrowthBestFitAllocator::
     VirtualMemoryAutoGrowthBestFitAllocator(
         const std::shared_ptr<Allocator> &underlying_allocator,
-        size_t alignment, const platform::CUDAPlace &place)
+        size_t alignment,
+        const platform::CUDAPlace &place)
     : underlying_allocator_(
           std::make_shared<AlignedAllocator>(underlying_allocator, alignment)),
       alignment_(alignment),
       place_(place) {}
 
-Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
+phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocateImpl(
+    size_t size) {
   std::lock_guard<SpinLock> guard(spinlock_);
   size = AlignedSize(size, alignment_);
   auto result = AllocFromFreeBlocks(size);
@@ -48,7 +51,8 @@ Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
   return result;
 }
 
-void VirtualMemoryAutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
+void VirtualMemoryAutoGrowthBestFitAllocator::FreeImpl(
+    phi::Allocation *allocation) {
   std::lock_guard<SpinLock> guard(spinlock_);
   auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
   TryMergeBlock2Blocks(block_it);
@@ -225,7 +229,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
   }
 }
 
-Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocFromFreeBlocks(
+phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocFromFreeBlocks(
     size_t size) {
   auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
   if (iter != free_blocks_.end()) {

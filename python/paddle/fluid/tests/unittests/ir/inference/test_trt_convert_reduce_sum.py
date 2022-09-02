@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,11 +23,11 @@ import unittest
 
 
 class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         ## dim should be in (-rank, rank), and not NONE
@@ -37,26 +37,28 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
                 return False
         if len(attrs[0]["dim"]) == 0:
             return False
-        ## skip not use 
-        if attrs[0]["out_dtype"] != -1:
-            return False
 
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.random.random([1, 3, 64, 64]).astype(np.float32)
 
-        for keep_dim in [False, True]:
+        def generate_input1(dtype, attrs: List[Dict[str, Any]]):
+            if dtype == -1 or dtype == 5:
+                return np.random.random([1, 3, 32, 32]).astype(np.float32)
+            elif dtype == 2:
+                return np.random.random([1, 3, 32, 32]).astype(np.int32)
+
+        for keep_dim in [True, False]:
             for dim in [[], [1], [0], [0, 1], [1, 2, 3], [-2, 0, 3], [-3],
                         [-4, 1], [3, 4, 5]]:
-                for reduce_all in [False, True]:
-                    for out_dtype in [-1, 0, 1]:
+                for reduce_all in [True, False]:
+                    for out_dtype in [-1, 2, 5]:
                         dics = [{
                             "keep_dim": keep_dim,
                             "dim": dim,
                             "reduce_all": reduce_all,
-                            "out_dtype": out_dtype
+                            "out_dtype": out_dtype,
+                            "in_dtype": out_dtype,
                         }, {}]
 
                         ops_config = [{
@@ -75,8 +77,9 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
                             ops=ops,
                             weights={},
                             inputs={
-                                "input_data": TensorConfig(data_gen=partial(
-                                    generate_input1, dics))
+                                "input_data":
+                                TensorConfig(data_gen=partial(
+                                    generate_input1, out_dtype, dics))
                             },
                             outputs=["reduce_output_data"])
 
@@ -86,10 +89,11 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
                         yield program_config
 
     def sample_predictor_configs(self, program_config):
+
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 32, 32]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -109,8 +113,7 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
                     return 1, 2
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for static_shape
@@ -134,16 +137,6 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
         pass
 
     def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs['out_dtype'] != -1:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "NOT Implemented: we will add out_dtype not equal to  -1 in the future"
-        )
-
         pass
 
     def test(self):

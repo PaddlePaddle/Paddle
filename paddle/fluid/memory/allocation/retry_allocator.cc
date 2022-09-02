@@ -39,19 +39,20 @@ class WaitedAllocateSizeGuard {
   size_t requested_size_;
 };
 
-void RetryAllocator::FreeImpl(Allocation* allocation) {
+void RetryAllocator::FreeImpl(phi::Allocation* allocation) {
   // Delete underlying allocation first.
   size_t size = allocation->size();
   underlying_allocator_->Free(allocation);
   if (UNLIKELY(waited_allocate_size_)) {
-    VLOG(10) << "Free " << size << " bytes and notify all waited threads, "
-                                   "where waited_allocate_size_ = "
+    VLOG(10) << "Free " << size
+             << " bytes and notify all waited threads, "
+                "where waited_allocate_size_ = "
              << waited_allocate_size_;
     cv_.notify_all();
   }
 }
 
-Allocation* RetryAllocator::AllocateImpl(size_t size) {
+phi::Allocation* RetryAllocator::AllocateImpl(size_t size) {
   auto alloc_func = [&, this]() {
     return underlying_allocator_->Allocate(size).release();
   };

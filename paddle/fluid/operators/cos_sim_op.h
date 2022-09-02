@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/cos_sim_functor.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -44,19 +44,25 @@ class CosSimKernel : public framework::OpKernel<T> {
     out_y_norm->mutable_data<T>(context.GetPlace());
     out_z->set_lod(in_x->lod());
 
-    int cols = framework::product(in_x->dims()) / rows_x;
+    int cols = phi::product(in_x->dims()) / rows_x;
 
     if (rows_x == rows_y) {
-      math::CosSimFunctor<T, true> functor(
-          in_x->data<T>(), in_y->data<T>(), out_x_norm->data<T>(),
-          out_y_norm->data<T>(), out_z->data<T>(), cols);
+      math::CosSimFunctor<T, true> functor(in_x->data<T>(),
+                                           in_y->data<T>(),
+                                           out_x_norm->data<T>(),
+                                           out_y_norm->data<T>(),
+                                           out_z->data<T>(),
+                                           cols);
       platform::ForRange<DeviceContext> for_range(
           static_cast<const DeviceContext&>(context.device_context()), rows_x);
       for_range(functor);
     } else {
-      math::CosSimFunctor<T, false> functor(
-          in_x->data<T>(), in_y->data<T>(), out_x_norm->data<T>(),
-          out_y_norm->data<T>(), out_z->data<T>(), cols);
+      math::CosSimFunctor<T, false> functor(in_x->data<T>(),
+                                            in_y->data<T>(),
+                                            out_x_norm->data<T>(),
+                                            out_y_norm->data<T>(),
+                                            out_z->data<T>(),
+                                            cols);
       platform::ForRange<DeviceContext> for_range(
           static_cast<const DeviceContext&>(context.device_context()), rows_x);
       for_range(functor);
@@ -81,15 +87,20 @@ class CosSimGradKernel : public framework::OpKernel<T> {
     // compute gradident
     int rows_x = in_x->dims()[0];
     int rows_y = in_y->dims()[0];
-    int cols = framework::product(in_x->dims()) / rows_x;
+    int cols = phi::product(in_x->dims()) / rows_x;
 
     if (rows_x == rows_y) {
       if (out_grad_x) {
         out_grad_x->Resize(in_x->dims());
         math::CosSimGradFunctor<T> functor(
-            in_x_norm->data<T>(), in_y_norm->data<T>(), in_x->data<T>(),
-            in_y->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
-            out_grad_x->mutable_data<T>(context.GetPlace()), cols);
+            in_x_norm->data<T>(),
+            in_y_norm->data<T>(),
+            in_x->data<T>(),
+            in_y->data<T>(),
+            in_z->data<T>(),
+            in_grad_z->data<T>(),
+            out_grad_x->mutable_data<T>(context.GetPlace()),
+            cols);
         platform::ForRange<DeviceContext> for_range(
             static_cast<const DeviceContext&>(context.device_context()),
             rows_x);
@@ -98,9 +109,14 @@ class CosSimGradKernel : public framework::OpKernel<T> {
       if (out_grad_y) {
         out_grad_y->Resize(in_y->dims());
         math::CosSimGradFunctor<T> functor(
-            in_y_norm->data<T>(), in_x_norm->data<T>(), in_y->data<T>(),
-            in_x->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
-            out_grad_y->mutable_data<T>(context.GetPlace()), cols);
+            in_y_norm->data<T>(),
+            in_x_norm->data<T>(),
+            in_y->data<T>(),
+            in_x->data<T>(),
+            in_z->data<T>(),
+            in_grad_z->data<T>(),
+            out_grad_y->mutable_data<T>(context.GetPlace()),
+            cols);
         platform::ForRange<DeviceContext> for_range(
             static_cast<const DeviceContext&>(context.device_context()),
             rows_x);
@@ -110,9 +126,14 @@ class CosSimGradKernel : public framework::OpKernel<T> {
       if (out_grad_x) {
         out_grad_x->Resize(in_x->dims());
         math::CosSimDxFunctor<T> functor(
-            in_x_norm->data<T>(), in_y_norm->data<T>(), in_x->data<T>(),
-            in_y->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
-            out_grad_x->mutable_data<T>(context.GetPlace()), cols);
+            in_x_norm->data<T>(),
+            in_y_norm->data<T>(),
+            in_x->data<T>(),
+            in_y->data<T>(),
+            in_z->data<T>(),
+            in_grad_z->data<T>(),
+            out_grad_x->mutable_data<T>(context.GetPlace()),
+            cols);
         platform::ForRange<DeviceContext> for_range(
             static_cast<const DeviceContext&>(context.device_context()),
             rows_x);
@@ -121,15 +142,21 @@ class CosSimGradKernel : public framework::OpKernel<T> {
       if (out_grad_y) {
         out_grad_y->Resize(in_y->dims());
         out_grad_y->mutable_data<T>(context.GetPlace());
-        math::SetConstant<DeviceContext, T> set_zero;
+        phi::funcs::SetConstant<DeviceContext, T> set_zero;
         auto& dev_ctx = context.template device_context<DeviceContext>();
         set_zero(dev_ctx, out_grad_y, static_cast<T>(0));
 
         math::CosSimDyFunctor<DeviceContext, T> functor;
-        functor(dev_ctx, in_x_norm->data<T>(), in_y_norm->data<T>(),
-                in_x->data<T>(), in_y->data<T>(), in_z->data<T>(),
-                in_grad_z->data<T>(), static_cast<size_t>(rows_x),
-                static_cast<size_t>(cols), out_grad_y->data<T>());
+        functor(dev_ctx,
+                in_x_norm->data<T>(),
+                in_y_norm->data<T>(),
+                in_x->data<T>(),
+                in_y->data<T>(),
+                in_z->data<T>(),
+                in_grad_z->data<T>(),
+                static_cast<size_t>(rows_x),
+                static_cast<size_t>(cols),
+                out_grad_y->data<T>());
       }
     }
   }

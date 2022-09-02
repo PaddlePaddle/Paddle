@@ -45,7 +45,6 @@ class SplitNPUKernel : public framework::OpKernel<T> {
     }
 
     std::vector<Tensor> outputs;
-    auto place = ctx.GetPlace();
     for (size_t j = 0; j < outs.size(); ++j) {
       outs[j]->mutable_data<T>(ctx.GetPlace());
       outputs.push_back(*outs[j]);
@@ -78,6 +77,7 @@ class SplitNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(split, ops::SplitNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(split,
+                       ops::SplitNPUKernel<float>,
                        ops::SplitNPUKernel<int>,
                        ops::SplitNPUKernel<plat::float16>);

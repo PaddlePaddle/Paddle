@@ -26,11 +26,6 @@ class Variable;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-struct CPUPlace;
-struct CUDAPlace;
-struct float16;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -58,6 +53,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    assign, ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    assign,
+    ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, double>)

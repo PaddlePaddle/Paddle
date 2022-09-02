@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #include <stack>
-#include "paddle/fluid/operators/math/math_function.h"
+
 #include "paddle/fluid/operators/math/tree2col.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -22,8 +23,13 @@ namespace math {
 using Tensor = framework::Tensor;
 using Node = paddle::operators::math::TreeNode;
 template <typename T>
-__global__ void tree2col(const T* eta, const int* node, const int* index,
-                         const T* vectors, T* result, int feature_size, int n) {
+__global__ void tree2col(const T* eta,
+                         const int* node,
+                         const int* index,
+                         const T* vectors,
+                         T* result,
+                         int feature_size,
+                         int n) {
   const int thread_id =
       (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
   const int patch_id = thread_id / feature_size;
@@ -45,18 +51,19 @@ __global__ void tree2col(const T* eta, const int* node, const int* index,
   }
 }
 template <typename T>
-class Tree2ColFunctor<platform::CUDADeviceContext, T> {
+class Tree2ColFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const paddle::platform::CUDADeviceContext& context,
+  void operator()(const phi::GPUContext& context,
                   const framework::Tensor& EdgeSet,
                   const framework::Tensor& node_features,
-                  framework::Tensor* patch, int max_depth) {
+                  framework::Tensor* patch,
+                  int max_depth) {
     std::vector<std::vector<int>> tr;
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
+    auto gpu_place = context.GetPlace();
     auto cpu_place = platform::CPUPlace();
     auto stream = context.stream();
     auto feature_dims = node_features.dims();
-    math::SetConstant<platform::CUDADeviceContext, T> constant;
+    phi::funcs::SetConstant<phi::GPUContext, T> constant;
 
     Tensor EdgeSet_cpu;
     framework::TensorCopy(EdgeSet, cpu_place, &EdgeSet_cpu);
@@ -111,24 +118,29 @@ class Tree2ColFunctor<platform::CUDADeviceContext, T> {
         {static_cast<int64_t>(max_size), static_cast<int64_t>(patch_elem_size)},
         gpu_place);
     constant(context, patch, 0);
-    tree2col<T><<<grid, threads, 0, stream>>>(
-        eta_gpu.data<T>(), node_gpu.data<int>(), index_gpu.data<int>(),
-        node_features.data<T>(), patch->data<T>(), feature_size, patch_size);
+    tree2col<T><<<grid, threads, 0, stream>>>(eta_gpu.data<T>(),
+                                              node_gpu.data<int>(),
+                                              index_gpu.data<int>(),
+                                              node_features.data<T>(),
+                                              patch->data<T>(),
+                                              feature_size,
+                                              patch_size);
   }
 };
 template <typename T>
-class Col2TreeFunctor<platform::CUDADeviceContext, T> {
+class Col2TreeFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
+  void operator()(const phi::GPUContext& context,
                   const framework::Tensor& EdgeSet,
                   const framework::Tensor& patch_grad,
-                  framework::Tensor* embedding_grad, int max_depth) {
+                  framework::Tensor* embedding_grad,
+                  int max_depth) {
     std::vector<std::vector<int>> tr;
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
+    auto gpu_place = context.GetPlace();
     auto cpu_place = platform::CPUPlace();
     auto stream = context.stream();
     auto output_dims = patch_grad.dims();
-    math::SetConstant<platform::CUDADeviceContext, T> constant;
+    phi::funcs::SetConstant<phi::GPUContext, T> constant;
 
     Tensor EdgeSet_cpu;
     framework::TensorCopy(EdgeSet, cpu_place, &EdgeSet_cpu);
@@ -192,17 +204,20 @@ class Col2TreeFunctor<platform::CUDADeviceContext, T> {
         gpu_place);
 
     constant(context, embedding_grad, 0);
-    tree2col<T><<<grid, threads, 0, stream>>>(
-        eta_gpu.data<T>(), node_gpu.data<int>(), index_gpu.data<int>(),
-        patch_grad.data<T>(), embedding_grad->data<T>(), output_size,
-        grad_size);
+    tree2col<T><<<grid, threads, 0, stream>>>(eta_gpu.data<T>(),
+                                              node_gpu.data<int>(),
+                                              index_gpu.data<int>(),
+                                              patch_grad.data<T>(),
+                                              embedding_grad->data<T>(),
+                                              output_size,
+                                              grad_size);
   }
 };
 
-template class Tree2ColFunctor<platform::CUDADeviceContext, float>;
-template class Tree2ColFunctor<platform::CUDADeviceContext, double>;
-template class Col2TreeFunctor<platform::CUDADeviceContext, float>;
-template class Col2TreeFunctor<platform::CUDADeviceContext, double>;
+template class Tree2ColFunctor<phi::GPUContext, float>;
+template class Tree2ColFunctor<phi::GPUContext, double>;
+template class Col2TreeFunctor<phi::GPUContext, float>;
+template class Col2TreeFunctor<phi::GPUContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

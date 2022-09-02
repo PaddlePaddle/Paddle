@@ -12,8 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/group_norm_op.h"
 #include <vector>
+
+#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -30,18 +32,22 @@ struct GroupNormFunction {
     stream = ctx.template device_context<paddle::platform::NPUDeviceContext>()
                  .stream();
   }
-  void ReduceMean(const Tensor* x, Tensor* y, const std::vector<int>& dim,
+  void ReduceMean(const Tensor* x,
+                  Tensor* y,
+                  const std::vector<int>& dim,
                   bool keep_dims = true) {
     //  y should be init first
-    const auto& runner = NpuOpRunner("ReduceMeanD", {*x}, {*y},
-                                     {{"axes", dim}, {"keep_dims", keep_dims}});
+    const auto& runner = NpuOpRunner(
+        "ReduceMeanD", {*x}, {*y}, {{"axes", dim}, {"keep_dims", keep_dims}});
     runner.Run(stream);
   }
-  void ReduceSum(const Tensor* x, Tensor* y, const std::vector<int>& dim,
+  void ReduceSum(const Tensor* x,
+                 Tensor* y,
+                 const std::vector<int>& dim,
                  bool keep_dims = true) {
     //  y should be init first
-    const auto& runner = NpuOpRunner("ReduceSumD", {*x}, {*y},
-                                     {{"axes", dim}, {"keep_dims", keep_dims}});
+    const auto& runner = NpuOpRunner(
+        "ReduceSumD", {*x}, {*y}, {{"axes", dim}, {"keep_dims", keep_dims}});
     runner.Run(stream);
   }
   void Add(const Tensor* x, const Tensor* y, Tensor* z) {
@@ -85,9 +91,13 @@ struct GroupNormFunction {
     const auto& runner = NpuOpRunner("Adds", {*x}, {*y}, {{"value", scalar}});
     runner.Run(stream);
   }
-  Tensor ReduceMeanToNG(const Tensor* x, const DataLayout& data_layout,
-                        const int64_t N, const int64_t C, const int64_t H,
-                        const int64_t W, const int G) {
+  Tensor ReduceMeanToNG(const Tensor* x,
+                        const DataLayout& data_layout,
+                        const int64_t N,
+                        const int64_t C,
+                        const int64_t H,
+                        const int64_t W,
+                        const int G) {
     Tensor y(x->type());
     // y.mutable_data<T>( {N,G,1}, place );
     if (data_layout == DataLayout::kNCHW) {
@@ -136,7 +146,7 @@ class GroupNormNPUKernel : public framework::OpKernel<T> {
       xnorm.Resize({x->dims()[0], x->dims()[3], x->dims()[1], x->dims()[2]});
       F.Transpose(x, &xnorm, std::vector<int>{0, 3, 1, 2});
     } else {
-      TensorCopy(*x, platform::NPUPlace(), &xnorm);
+      paddle::framework::TensorCopy(*x, platform::NPUPlace(), &xnorm);
     }
     auto N = xnorm.dims()[0];
     auto C = xnorm.dims()[1];
@@ -224,12 +234,12 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
       C = y->dims()[1];
       H = y->dims()[2];
       W = y->dims()[3];
-      scale_bias_dim = framework::make_ddim({C, 1, 1});
+      scale_bias_dim = phi::make_ddim({C, 1, 1});
     } else {
       C = y->dims()[3];
       H = y->dims()[1];
       W = y->dims()[2];
-      scale_bias_dim = framework::make_ddim({1, 1, C});
+      scale_bias_dim = phi::make_ddim({1, 1, C});
     }
     scale_share.Resize(scale_bias_dim);
     bias_share.Resize(scale_bias_dim);
@@ -300,7 +310,9 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(group_norm, ops::GroupNormNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(group_norm,
+                       ops::GroupNormNPUKernel<float>,
                        ops::GroupNormNPUKernel<plat::float16>);
-REGISTER_OP_NPU_KERNEL(group_norm_grad, ops::GroupNormGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(group_norm_grad,
+                       ops::GroupNormGradNPUKernel<float>,
                        ops::GroupNormGradNPUKernel<plat::float16>);

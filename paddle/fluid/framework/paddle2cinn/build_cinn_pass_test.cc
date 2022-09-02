@@ -19,15 +19,16 @@ limitations under the License. */
 #include <string>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/operators/cinn_launch_op.h"
+#include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 
 namespace paddle {
 namespace framework {
@@ -46,16 +47,17 @@ inline bool CheckNodeExisted(const std::unordered_set<Node*>& nodes,
 inline int CountNode(const std::unordered_set<Node*>& nodes,
                      const std::string& op_name) {
   return std::count_if(
-      nodes.begin(), nodes.end(),
-      [&op_name](const Node* node) { return node->Name() == op_name; });
+      nodes.begin(), nodes.end(), [&op_name](const Node* node) {
+        return node->Name() == op_name;
+      });
 }
 
 inline Node* GetNode(const std::unordered_set<Node*>& nodes,
                      const std::string& op_name) {
-  return *std::find_if(nodes.begin(), nodes.end(),
-                       [&op_name](const Node* node) {
-                         return node->Name().find(op_name) != std::string::npos;
-                       });
+  return *std::find_if(
+      nodes.begin(), nodes.end(), [&op_name](const Node* node) {
+        return node->Name().find(op_name) != std::string::npos;
+      });
 }
 
 inline bool CheckGraphIndependence(const std::unordered_set<Node*>& nodes) {
@@ -88,12 +90,12 @@ inline bool CheckGraphIndependence(const std::unordered_set<Node*>& nodes) {
 }
 
 // Get compilation_key values
-std::vector<std::string> GetCompilationKeys(const Graph& graph) {
-  std::vector<std::string> compilation_keys;
+std::vector<int64_t> GetCompilationKeys(const Graph& graph) {
+  std::vector<int64_t> compilation_keys;
   for (auto& node : graph.Nodes()) {
     if (node->IsOp() && node->Name() == kCinnLaunchOp) {
-      compilation_keys.emplace_back(BOOST_GET_CONST(
-          std::string, node->Op()->GetAttr(operators::kCompilationKey)));
+      compilation_keys.emplace_back(PADDLE_GET_CONST(
+          int64_t, node->Op()->GetAttr(operators::kCompilationKey)));
     }
   }
   return compilation_keys;
@@ -169,7 +171,7 @@ std::unique_ptr<Graph> BuildAllOpSupportCinnGraph() {
   //                    v4 --
 
   OpDesc add_op;
-  add_op.SetType("add");
+  add_op.SetType("elementwise_add");
   OpDesc mul_op;
   mul_op.SetType("mul");
   OpDesc relu_op;
@@ -253,13 +255,15 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   ASSERT_EQ(
       std::unordered_set<Node*>(cinn_op->inputs.begin(), cinn_op->inputs.end()),
       std::unordered_set<Node*>({v0, v1, v2, v4}));
-  ASSERT_EQ(cinn_op->outputs, std::vector<Node*>({v6, v7}));
+  ASSERT_EQ(std::unordered_set<Node*>(cinn_op->outputs.begin(),
+                                      cinn_op->outputs.end()),
+            std::unordered_set<Node*>({v6, v7}));
   ASSERT_EQ(v1->outputs, std::vector<Node*>({cinn_op}));
   ASSERT_EQ(v6->inputs, std::vector<Node*>({cinn_op}));
 
   // previous op (mul, add, relu) should all removed
   ASSERT_FALSE(CheckNodeExisted(nodes, "mul"));
-  ASSERT_FALSE(CheckNodeExisted(nodes, "add"));
+  ASSERT_FALSE(CheckNodeExisted(nodes, "elementwise_add"));
   ASSERT_FALSE(CheckNodeExisted(nodes, "relu"));
 
   // After search, there should has just one cinn subgraph
@@ -273,13 +277,13 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   const auto& subgraph = cinn_compiler->FindGraph(compilation_keys[0]);
 
   const auto& subnodes = subgraph.Nodes();
-  ASSERT_EQ(subnodes.size(), static_cast<size_t>(12));
+  ASSERT_EQ(subnodes.size(), static_cast<size_t>(13));
   ASSERT_TRUE(CheckGraphIndependence(subnodes));
 
   ASSERT_TRUE(CheckNodeExisted(subnodes, "mul"));
-  ASSERT_TRUE(CheckNodeExisted(subnodes, "add"));
+  ASSERT_TRUE(CheckNodeExisted(subnodes, "elementwise_add"));
   ASSERT_TRUE(CheckNodeExisted(subnodes, "relu"));
-  ASSERT_EQ(CountNode(subnodes, "feed"), 2);
+  ASSERT_EQ(CountNode(subnodes, "feed"), 3);
   ASSERT_EQ(CountNode(subnodes, "fetch"), 1);
 
   // No-parameter input should has feed op
@@ -289,9 +293,10 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   ASSERT_EQ(new_v1->inputs[0]->Name(), "feed");
   ASSERT_EQ(new_v1->outputs[0]->Name(), "mul");
 
-  // Parameter input should not has feed op
+  // Parameter input should also have the feed op
   auto new_v2 = GetNode(subnodes, "var2");
-  ASSERT_TRUE(new_v2->inputs.empty());
+  ASSERT_EQ(new_v2->inputs.size(), static_cast<size_t>(1));
+  ASSERT_EQ(new_v2->inputs[0]->Name(), "feed");
   ASSERT_EQ(new_v2->outputs.size(), static_cast<size_t>(1));
   ASSERT_EQ(new_v2->outputs[0]->Name(), "mul");
 
@@ -396,12 +401,12 @@ TEST(BuildCinnPassTest, OneCinnSubgraph) {
   const auto& subgraph = cinn_compiler->FindGraph(compilation_keys[0]);
 
   const auto& subnodes = subgraph.Nodes();
-  ASSERT_EQ(subnodes.size(), static_cast<size_t>(8));
+  ASSERT_EQ(subnodes.size(), static_cast<size_t>(9));
   ASSERT_TRUE(CheckGraphIndependence(subnodes));
 
   ASSERT_TRUE(CheckNodeExisted(subnodes, "mul"));
   ASSERT_TRUE(CheckNodeExisted(subnodes, "relu"));
-  ASSERT_EQ(CountNode(subnodes, "feed"), 1);
+  ASSERT_EQ(CountNode(subnodes, "feed"), 2);
   ASSERT_EQ(CountNode(subnodes, "fetch"), 1);
 }
 
@@ -522,11 +527,147 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
 
   if (CheckNodeExisted(subnodes1, "relu")) {
     ASSERT_EQ(subnodes1.size(), static_cast<size_t>(5));
-    ASSERT_EQ(subnodes2.size(), static_cast<size_t>(6));
+    ASSERT_EQ(subnodes2.size(), static_cast<size_t>(7));
   } else {
     ASSERT_EQ(subnodes2.size(), static_cast<size_t>(5));
-    ASSERT_EQ(subnodes1.size(), static_cast<size_t>(6));
+    ASSERT_EQ(subnodes1.size(), static_cast<size_t>(7));
   }
+}
+
+std::unique_ptr<Graph> BuildGraphWithNoNeedBufferInput() {
+  ProgramDesc prog;
+  auto g = std::make_unique<Graph>(prog);
+
+  // fake1 --> v1 --                 --> v4 --> relu_grad --> v6
+  //           v2 -- | --> add_grad |
+  //           v3 --                 --> v5 --> fake2
+
+  OpDesc fake1_op;
+  fake1_op.SetType("fake1");
+  OpDesc add_grad_op;
+  add_grad_op.SetType("elementwise_add_grad");
+  add_grad_op.SetInput(::paddle::framework::GradVarName("Out"), {"var1"});
+  add_grad_op.SetInput("X", {"var2"});
+  add_grad_op.SetInput("Y", {"var3"});
+  OpDesc relu_grad_op;
+  relu_grad_op.SetType("relu_grad");
+  OpDesc fake2_op;
+  fake2_op.SetType("fake2");
+
+  VarDesc var1("var1");
+  VarDesc var2("var2");
+  VarDesc var3("var3");
+  VarDesc var4("var4");
+  VarDesc var5("var5");
+  VarDesc var6("var6");
+
+  ir::Node* fake1 = g->CreateOpNode(&fake1_op);
+  ir::Node* add_grad = g->CreateOpNode(&add_grad_op);
+  ir::Node* relu_grad = g->CreateOpNode(&relu_grad_op);
+  ir::Node* fake2 = g->CreateOpNode(&fake2_op);
+
+  ir::Node* v1 = g->CreateVarNode(&var1);
+  ir::Node* v2 = g->CreateVarNode(&var2);
+  ir::Node* v3 = g->CreateVarNode(&var3);
+  ir::Node* v4 = g->CreateVarNode(&var4);
+  ir::Node* v5 = g->CreateVarNode(&var5);
+  ir::Node* v6 = g->CreateVarNode(&var6);
+
+  // fill op node
+  fake1->outputs = {v1};
+  add_grad->inputs = {v1, v2, v3};
+  add_grad->outputs = {v4, v5};
+  relu_grad->inputs = {v4};
+  relu_grad->outputs = {v6};
+  fake2->inputs = {v5};
+
+  // fill variable node
+  v1->inputs = {fake1};
+  v1->outputs = {add_grad};
+
+  v2->outputs = {add_grad};
+  v3->outputs = {add_grad};
+
+  v4->inputs = {add_grad};
+  v4->outputs = {relu_grad};
+  v5->inputs = {add_grad};
+  v5->outputs = {fake2};
+
+  v6->inputs = {relu_grad};
+
+  return g;
+}
+
+TEST(BuildCinnPassTest, NoNeedBufferInput) {
+  auto g = BuildGraphWithNoNeedBufferInput();
+
+  auto pass =
+      paddle::framework::ir::PassRegistry::Instance().Get("build_cinn_pass");
+  pass->Apply(g.get());
+
+  // After search, the graph should as following
+  // fake1 --> v1 --                     --> v6
+  //           v2 -- | -->kCinnLaunchOp |
+  //           v3 --                     --> v5 --> fake2
+  const auto& nodes = g->Nodes();
+  ASSERT_EQ(nodes.size(), static_cast<size_t>(8));
+  ASSERT_TRUE(CheckGraphIndependence(nodes));
+
+  // A new op named kCinnLaunchOp should be added and
+  // its input arguments are set correctly
+  ASSERT_TRUE(CheckNodeExisted(nodes, kCinnLaunchOp));
+  ASSERT_EQ(CountNode(nodes, kCinnLaunchOp), 1);
+  auto* cinn_op_node = GetNode(nodes, kCinnLaunchOp);
+  ASSERT_EQ(cinn_op_node->Op()->Input(operators::kX),
+            std::vector<std::string>({"var1"}));
+  auto& no_need_buffer_x = cinn_op_node->Op()->Input(operators::kNoNeedBufferX);
+  ASSERT_EQ(std::unordered_set<std::string>(no_need_buffer_x.begin(),
+                                            no_need_buffer_x.end()),
+            std::unordered_set<std::string>({"var2", "var3"}));
+
+  // previous op (add_grad, relu_grad) should be removed
+  ASSERT_FALSE(CheckNodeExisted(nodes, "add_grad"));
+  ASSERT_FALSE(CheckNodeExisted(nodes, "relu_grad"));
+
+  // previous op (fake1, fake2) should be preserved
+  ASSERT_TRUE(CheckNodeExisted(nodes, "fake1"));
+  ASSERT_TRUE(CheckNodeExisted(nodes, "fake2"));
+
+  // After search, there should has just one cinn subgraph
+  // feed --> v1 --                                     --> v6 --> fetch
+  // feed --> v2 -- | -->add_grad --> v4 --> relu_grad |
+  // feed --> v3 --                                     --> v5 --> fetch
+  auto compilation_keys = GetCompilationKeys(*g);
+  ASSERT_EQ(compilation_keys.size(), static_cast<size_t>(1));
+  auto* cinn_compiler = CinnCompiler::GetInstance();
+  const auto& subgraph = cinn_compiler->FindGraph(compilation_keys[0]);
+
+  const auto& subnodes = subgraph.Nodes();
+  ASSERT_EQ(subnodes.size(), static_cast<size_t>(13));
+  ASSERT_TRUE(CheckGraphIndependence(subnodes));
+
+  ASSERT_TRUE(CheckNodeExisted(subnodes, "elementwise_add_grad"));
+  ASSERT_TRUE(CheckNodeExisted(subnodes, "relu_grad"));
+  ASSERT_EQ(CountNode(subnodes, "feed"), 3);
+  ASSERT_EQ(CountNode(subnodes, "fetch"), 2);
+  const auto& no_need_buffer_feeds =
+      subgraph.Get<std::unordered_set<std::string>>(kNoNeedBufferFeeds);
+  ASSERT_EQ(no_need_buffer_feeds.size(), 2);
+  ASSERT_EQ(no_need_buffer_feeds,
+            std::unordered_set<std::string>({"var2", "var3"}));
+
+  // check the attributes of variable lists are saved correctly
+  ASSERT_TRUE(subgraph.Has(kInputVars));
+  EXPECT_EQ(subgraph.Get<std::vector<std::string>>(kInputVars),
+            std::vector<std::string>({"var1"}));
+  ASSERT_TRUE(subgraph.Has(kInternalVars));
+  EXPECT_EQ(subgraph.Get<std::vector<std::string>>(kInternalVars),
+            std::vector<std::string>({"var4"}));
+  ASSERT_TRUE(subgraph.Has(kOutputVars));
+  const auto& output_vars = subgraph.Get<std::vector<std::string>>(kOutputVars);
+  EXPECT_EQ(
+      std::unordered_set<std::string>(output_vars.begin(), output_vars.end()),
+      std::unordered_set<std::string>({"var5", "var6"}));
 }
 
 }  // namespace paddle2cinn
@@ -534,3 +675,8 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
 }  // namespace paddle
 
 USE_PASS(build_cinn_pass);
+USE_OP_ITSELF(mul);
+USE_OP_ITSELF(relu);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(relu_grad);
+USE_OP_ITSELF(elementwise_add_grad);

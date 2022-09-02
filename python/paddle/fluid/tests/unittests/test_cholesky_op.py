@@ -26,7 +26,8 @@ from decorator_helper import prog_scope
 
 
 @skip_check_grad_ci(
-    reason="The input of cholesky_op should always be symmetric positive-definite. "
+    reason=
+    "The input of cholesky_op should always be symmetric positive-definite. "
     "However, OpTest calculates the numeric gradient of each element in input "
     "via small finite difference, which makes the input no longer symmetric "
     "positive-definite thus can not compute the Cholesky decomposition. "
@@ -34,13 +35,15 @@ from decorator_helper import prog_scope
     "check of cholesky_op, since it supports check gradient with a program "
     "and we can construct symmetric positive-definite matrices in the program")
 class TestCholeskyOp(OpTest):
+
     def setUp(self):
         self.op_type = "cholesky"
         self._input_shape = (2, 32, 32)
         self._upper = True
         self.init_config()
         self.trans_dims = list(range(len(self._input_shape) - 2)) + [
-            len(self._input_shape) - 1, len(self._input_shape) - 2
+            len(self._input_shape) - 1,
+            len(self._input_shape) - 2
         ]
         self.root_data = np.random.random(self._input_shape).astype("float64")
         # construct symmetric positive-definite matrice
@@ -69,8 +72,8 @@ class TestCholeskyOp(OpTest):
         root_data = self.root_data[..., :3, :3]
         prog = fluid.Program()
         with fluid.program_guard(prog):
-            root = layers.create_parameter(
-                dtype=root_data.dtype, shape=root_data.shape)
+            root = layers.create_parameter(dtype=root_data.dtype,
+                                           shape=root_data.shape)
             root_t = layers.transpose(root, self.trans_dims)
             x = layers.matmul(x=root, y=root_t) + 1e-05
             out = paddle.cholesky(x, upper=self.attrs["upper"])
@@ -81,16 +84,19 @@ class TestCholeskyOp(OpTest):
 
 
 class TestCholeskyOpLower(TestCholeskyOp):
+
     def init_config(self):
         self._upper = False
 
 
 class TestCholeskyOp2D(TestCholeskyOp):
+
     def init_config(self):
         self._input_shape = (64, 64)
 
 
 class TestDygraph(unittest.TestCase):
+
     def test_dygraph(self):
         if core.is_compiled_with_rocm():
             paddle.disable_static(place=fluid.CPUPlace())
@@ -104,6 +110,7 @@ class TestDygraph(unittest.TestCase):
 
 
 class TestCholeskySingularAPI(unittest.TestCase):
+
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and (not core.is_compiled_with_rocm()):

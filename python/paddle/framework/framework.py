@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define framework api 
+# TODO: define framework api
 from paddle.fluid.layer_helper_base import LayerHelperBase
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.framework import _dygraph_tracer
@@ -24,7 +24,7 @@ __all__ = []
 
 def set_default_dtype(d):
     """
-    Set default dtype. The default dtype is initially float32
+    Set default dtype. The default dtype is initially float32.
 
     Args:
         d(string|np.dtype): the dtype to make the default. It only
@@ -116,3 +116,28 @@ def set_grad_enabled(mode):
             tracer._has_grad = prev_mode
     else:
         yield
+
+
+def is_grad_enabled():
+    """
+    Returns whether current dygraph gradient calculation mode is enabled.
+
+    Returns:
+        bool: True if current dygraph gradient calculation mode is enabled, otherwise false.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
+            
+            # Dygraph gradient calculation mode is enabled by default.
+            paddle.is_grad_enabled() # True
+
+            with paddle.set_grad_enabled(False):
+                paddle.is_grad_enabled() # False
+
+            paddle.enable_static()
+            paddle.is_grad_enabled() # False
+    """
+    tracer = _dygraph_tracer()
+    return tracer._has_grad if tracer else False

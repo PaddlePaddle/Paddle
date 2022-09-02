@@ -26,49 +26,55 @@ import hypothesis.strategies as st
 
 
 class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_config(self, draw):
         x_shape = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=4), min_size=4, max_size=4))
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=4,
+                     max_size=4))
         pooling_type = draw(st.sampled_from(["max", "avg"]))
 
         data_format = "NCHW"  #trt support this format only
         strides = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=4), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=2,
+                     max_size=2))
 
-        paddings = [0, 0]  # only 0 0 is right
+        paddings = draw(
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=2,
+                     max_size=2))
+
         ceil_mode = draw(st.booleans())
         exclusive = draw(st.booleans())
-        global_pooling = False  #only false is right
+        global_pooling = draw(st.booleans())
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VAILD"]))
 
-        pool_op = OpConfig(
-            "pool2d",
-            inputs={"X": ["input_data"]},
-            outputs={"Out": ["pool_output"]},
-            ksize=[1, 1],
-            adaptive=True,
-            pooling_type=pooling_type,
-            data_format=data_format,
-            strides=strides,
-            paddings=paddings,
-            ceil_mode=ceil_mode,
-            global_pooling=global_pooling,
-            padding_algorithm=padding_algorithm,
-            exclusive=exclusive)
+        pool_op = OpConfig("pool2d",
+                           inputs={"X": ["input_data"]},
+                           outputs={"Out": ["pool_output"]},
+                           ksize=[1, 1],
+                           adaptive=True,
+                           pooling_type=pooling_type,
+                           data_format=data_format,
+                           strides=strides,
+                           paddings=paddings,
+                           ceil_mode=ceil_mode,
+                           global_pooling=global_pooling,
+                           padding_algorithm=padding_algorithm,
+                           exclusive=exclusive)
         ops = [pool_op]
 
-        program_config = ProgramConfig(
-            ops=ops,
-            weights={},
-            inputs={"input_data": TensorConfig(shape=x_shape), },
-            outputs=["pool_output"])
+        program_config = ProgramConfig(ops=ops,
+                                       weights={},
+                                       inputs={
+                                           "input_data":
+                                           TensorConfig(shape=x_shape),
+                                       },
+                                       outputs=["pool_output"])
 
         return program_config
 
@@ -83,35 +89,11 @@ class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
             use_calib_mode=False)
         yield config, ['pool2d'], (1e-5, 1e-5)
 
-    def add_ignore_pass_case(self):
-        # Here we put some skip rules to avoid known bugs
-        def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs["pooling_type"] == "max":
-                x_shape = list(program_config.inputs["input_data"].shape)
-                if x_shape[-1] != 1 or x_shape[-2] != 1:
-                    return True
-            return False
-
-        def teller2(program_config, predictor_config):
-            if program_config.ops[0].attrs["padding_algorithm"] == "SAME":
-                return True
-            return False
-
-        self.add_ignore_check_case(
-            teller1,
-            IgnoreReasons.PASS_ACCURACY_ERROR,
-            "max pooling has diff if H or W is not equals to 1", )
-        self.add_ignore_check_case(
-            teller2,
-            IgnoreReasons.PASS_ACCURACY_ERROR,
-            "output has wrong result if padding_algorithm equals to SAME", )
-
     def test(self):
-        self.run_and_statis(
-            quant=False,
-            max_examples=100,
-            passes=["adaptive_pool2d_convert_global_pass"],
-            min_success_num=40)
+        self.run_and_statis(quant=False,
+                            max_examples=300,
+                            passes=["adaptive_pool2d_convert_global_pass"],
+                            min_success_num=40)
 
 
 if __name__ == "__main__":

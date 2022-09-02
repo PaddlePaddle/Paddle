@@ -15,6 +15,7 @@
 
 import sys
 import os
+
 __all__ = [
     'TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer',
     'HeterXpuTrainer', 'HeterPipelineTrainer'
@@ -111,6 +112,10 @@ class TrainerDesc(object):
 
     def _set_fleet_desc(self, fleet_desc):
         self._fleet_desc = fleet_desc
+        ## serialize fleet_desc
+        from google.protobuf import text_format
+        fleet_desc_str = text_format.MessageToString(fleet_desc)
+        self.proto_desc.fleet_desc = fleet_desc_str
 
     def _gen_trainer_desc(self):
         pass
@@ -150,6 +155,9 @@ class TrainerDesc(object):
     def _set_dump_fields(self, dump_fields):
         for field in dump_fields:
             self.proto_desc.dump_fields.append(field)
+
+    def _set_is_dump_in_simple_mode(self, is_dump_in_simple_mode):
+        self.proto_desc.is_dump_in_simple_mode = is_dump_in_simple_mode
 
     def _set_dump_fields_path(self, path):
         self.proto_desc.dump_fields_path = path

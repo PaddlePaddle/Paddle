@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,8 +30,14 @@ SEED = 2049
 np.random.seed(SEED)
 
 
+def matrix_rank_wraper(x, tol=None, use_default_tol=True, hermitian=False):
+    return paddle.linalg.matrix_rank(x, tol, hermitian)
+
+
 class TestMatrixRankOP(OpTest):
+
     def setUp(self):
+        self.python_api = matrix_rank_wraper
         self.op_type = "matrix_rank"
         self.init_data()
         self.inputs = {'X': self.x}
@@ -44,7 +50,7 @@ class TestMatrixRankOP(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def init_data(self):
         self.x = np.eye(3, dtype=np.float32)
@@ -56,6 +62,7 @@ class TestMatrixRankOP(OpTest):
 
 
 class TestMatrixRankOP1(TestMatrixRankOP):
+
     def init_data(self):
         self.x = np.eye(3, k=1, dtype=np.float64)
         self.tol_tensor = None
@@ -67,6 +74,7 @@ class TestMatrixRankOP1(TestMatrixRankOP):
 
 
 class TestMatrixRankOP2(TestMatrixRankOP):
+
     def init_data(self):
         self.x = np.random.rand(3, 4, 5, 6).astype(np.float32)
         self.tol_tensor = np.random.random([3, 4]).astype(self.x.dtype)
@@ -78,6 +86,7 @@ class TestMatrixRankOP2(TestMatrixRankOP):
 
 
 class TestMatrixRankOP3(TestMatrixRankOP):
+
     def init_data(self):
         self.x = np.eye(200, dtype=np.float64)
         self.tol_tensor = None
@@ -89,6 +98,7 @@ class TestMatrixRankOP3(TestMatrixRankOP):
 
 
 class TestMatrixRankOP4(TestMatrixRankOP):
+
     def init_data(self):
         self.x = np.random.rand(1, 10).astype(np.float32)
         self.tol_tensor = None
@@ -100,6 +110,7 @@ class TestMatrixRankOP4(TestMatrixRankOP):
 
 
 class TestMatrixRankOP5(TestMatrixRankOP):
+
     def init_data(self):
         self.x = np.random.rand(5, 1).astype(np.float64)
         self.tol_tensor = np.random.random([1, 4]).astype(self.x.dtype)
@@ -110,7 +121,32 @@ class TestMatrixRankOP5(TestMatrixRankOP):
                                          self.hermitian)
 
 
+class TestMatrixRankOP6(TestMatrixRankOP):
+
+    def init_data(self):
+        self.x = np.random.rand(3, 4, 5, 6).astype(np.float32)
+        self.tol_tensor = None
+        self.tol = None
+        self.use_default_tol = False
+        self.hermitian = False
+        self.out = np.linalg.matrix_rank(self.x, self.tol_tensor,
+                                         self.hermitian)
+
+
+class TestMatrixRankOP7(TestMatrixRankOP):
+
+    def init_data(self):
+        self.x = np.eye(200, dtype=np.float64)
+        self.tol_tensor = np.random.random([200, 200]).astype(self.x.dtype)
+        self.tol = None
+        self.use_default_tol = True
+        self.hermitian = True
+        self.out = np.linalg.matrix_rank(self.x, self.tol_tensor,
+                                         self.hermitian)
+
+
 class TestMatrixRankAPI(unittest.TestCase):
+
     def test_dygraph(self):
         paddle.disable_static()
 
@@ -118,7 +154,7 @@ class TestMatrixRankAPI(unittest.TestCase):
         x_pd = paddle.to_tensor(x_np)
         rank_np = np.linalg.matrix_rank(x_np, hermitian=True)
         rank_pd = paddle.linalg.matrix_rank(x_pd, hermitian=True)
-        self.assertTrue(np.allclose(rank_np, rank_pd))
+        np.testing.assert_allclose(rank_np, rank_pd, rtol=1e-05)
 
         x_np = np.random.rand(3, 4, 7, 8).astype(np.float64)
         tol_np = np.random.random([3, 4]).astype(np.float32)
@@ -126,14 +162,14 @@ class TestMatrixRankAPI(unittest.TestCase):
         tol_pd = paddle.to_tensor(tol_np)
         rank_np = np.linalg.matrix_rank(x_np, tol_np, hermitian=False)
         rank_pd = paddle.linalg.matrix_rank(x_pd, tol_pd, hermitian=False)
-        self.assertTrue(np.allclose(rank_np, rank_pd))
+        np.testing.assert_allclose(rank_np, rank_pd, rtol=1e-05)
 
         x_np = np.random.rand(3, 4, 7, 8).astype(np.float64)
         x_pd = paddle.to_tensor(x_np)
         tol = 0.1
         rank_np = np.linalg.matrix_rank(x_np, tol, hermitian=False)
         rank_pd = paddle.linalg.matrix_rank(x_pd, tol, hermitian=False)
-        self.assertTrue(np.allclose(rank_np, rank_pd))
+        np.testing.assert_allclose(rank_np, rank_pd, rtol=1e-05)
 
     def test_static(self):
         paddle.enable_static()
@@ -145,45 +181,52 @@ class TestMatrixRankAPI(unittest.TestCase):
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 x_np = np.random.rand(3, 4, 7, 7).astype(np.float64)
                 tol_np = np.random.random([3, 4]).astype(np.float32)
-                x_pd = paddle.fluid.data(
-                    name="X", shape=[3, 4, 7, 7], dtype='float64')
-                tol_pd = paddle.fluid.data(
-                    name="TolTensor", shape=[3, 4], dtype='float32')
+                x_pd = paddle.fluid.data(name="X",
+                                         shape=[3, 4, 7, 7],
+                                         dtype='float64')
+                tol_pd = paddle.fluid.data(name="TolTensor",
+                                           shape=[3, 4],
+                                           dtype='float32')
                 rank_np = np.linalg.matrix_rank(x_np, tol_np, hermitian=False)
-                rank_pd = paddle.linalg.matrix_rank(
-                    x_pd, tol_pd, hermitian=False)
+                rank_pd = paddle.linalg.matrix_rank(x_pd,
+                                                    tol_pd,
+                                                    hermitian=False)
                 exe = fluid.Executor(place)
                 fetches = exe.run(fluid.default_main_program(),
-                                  feed={"X": x_np,
-                                        "TolTensor": tol_np},
+                                  feed={
+                                      "X": x_np,
+                                      "TolTensor": tol_np
+                                  },
                                   fetch_list=[rank_pd])
-                self.assertTrue(np.allclose(fetches[0], rank_np))
+                np.testing.assert_allclose(fetches[0], rank_np, rtol=1e-05)
 
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 x_np = np.random.rand(3, 4, 7, 7).astype(np.float64)
-                x_pd = paddle.fluid.data(
-                    name="X", shape=[3, 4, 7, 7], dtype='float64')
+                x_pd = paddle.fluid.data(name="X",
+                                         shape=[3, 4, 7, 7],
+                                         dtype='float64')
                 rank_np = np.linalg.matrix_rank(x_np, hermitian=True)
                 rank_pd = paddle.linalg.matrix_rank(x_pd, hermitian=True)
                 exe = fluid.Executor(place)
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={"X": x_np},
                                   fetch_list=[rank_pd])
-                self.assertTrue(np.allclose(fetches[0], rank_np))
+                np.testing.assert_allclose(fetches[0], rank_np, rtol=1e-05)
 
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 x_np = np.random.rand(3, 4, 7, 7).astype(np.float64)
-                x_pd = paddle.fluid.data(
-                    name="X", shape=[3, 4, 7, 7], dtype='float64')
+                x_pd = paddle.fluid.data(name="X",
+                                         shape=[3, 4, 7, 7],
+                                         dtype='float64')
                 rank_np = np.linalg.matrix_rank(x_np, 0.1, hermitian=False)
                 rank_pd = paddle.linalg.matrix_rank(x_pd, 0.1, hermitian=False)
                 exe = fluid.Executor(place)
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={"X": x_np},
                                   fetch_list=[rank_pd])
-                self.assertTrue(np.allclose(fetches[0], rank_np))
+                np.testing.assert_allclose(fetches[0], rank_np, rtol=1e-05)
 
 
 if __name__ == '__main__':

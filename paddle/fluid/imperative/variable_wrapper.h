@@ -19,11 +19,13 @@
 #include <string>
 #include <utility>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/op_base.h"
+#include "paddle/phi/common/layout.h"
 
 namespace paddle {
 namespace imperative {
@@ -104,8 +106,8 @@ class VariableWrapper {
       const framework::Tensor* tensor = nullptr;
       if (var_.IsType<framework::LoDTensor>()) {
         tensor = &(var_.Get<framework::LoDTensor>());
-      } else if (var_.IsType<framework::SelectedRows>()) {
-        tensor = &(var_.Get<framework::SelectedRows>().value());
+      } else if (var_.IsType<phi::SelectedRows>()) {
+        tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {
         PADDLE_THROW(platform::errors::PermissionDenied(
             "Only support LoDTensor and SelectedRows for gradient var"));
@@ -153,7 +155,7 @@ class VariableWrapper {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
         tensor = &(var_.Get<framework::LoDTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
-        tensor = &(var_.Get<framework::SelectedRows>().value());
+        tensor = &(var_.Get<phi::SelectedRows>().value());
       } else if (type_ == framework::proto::VarType::VOCAB) {
         const framework::Vocab* data = nullptr;
         data = &(var_.Get<framework::Vocab>());
@@ -169,7 +171,7 @@ class VariableWrapper {
       }
     }
     if (tensor && tensor->IsInitialized()) {
-      return tensor->type();
+      return framework::TransToProtoVarType(tensor->dtype());
     } else {
       VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
 
@@ -185,6 +187,12 @@ class VariableWrapper {
     return fwd_data_type_;
   }
 
+  paddle::experimental::DataLayout DataLayout() { return layout_; }
+
+  void SetDataLayout(const paddle::experimental::DataLayout layout) {
+    layout_ = layout;
+  }
+
   const platform::Place Place() const {
     const framework::Tensor* tensor = nullptr;
     auto place =
@@ -193,7 +201,7 @@ class VariableWrapper {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
         tensor = &(var_.Get<framework::LoDTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
-        tensor = &(var_.Get<framework::SelectedRows>().value());
+        tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {
         VLOG(6) << "Variable " << name_ << " is not initialized";
         return place;
@@ -209,13 +217,23 @@ class VariableWrapper {
 
   uint32_t InplaceVersionSnapshot() const { return inplace_version_snapshot_; }
 
-  void ResetInplaceVersion() {
-    auto new_version = var_.CurrentInplaceVersion();
+  void ResetInplaceVersion(bool set_to_zero = false) {
+    if (!set_to_zero) {
+      auto new_version = var_.CurrentInplaceVersion();
 
-    VLOG(6) << "The wrapper version of VariableWrapper '" << name_
-            << "' will be updated from " << inplace_version_snapshot_ << "to "
-            << new_version;
-    inplace_version_snapshot_ = new_version;
+      VLOG(6) << "The wrapper version of VariableWrapper '" << name_
+              << "' will be updated from " << inplace_version_snapshot_ << "to "
+              << new_version;
+      inplace_version_snapshot_ = new_version;
+
+    } else {
+      // Reset Snapshot & InplaceVersion to zero
+      inplace_version_snapshot_ = 0;
+      auto var = this->MutableVar();
+      if (var) {
+        var->SetInplaceVersionToZero();
+      }
+    }
   }
 
   bool hasCacheKey(const paddle::framework::OpKernelType& key) {
@@ -270,7 +288,8 @@ class VariableWrapper {
     auto shared_var = grad_var_.lock();
     if (shared_var != var) {
       PADDLE_ENFORCE_EQ(
-          shared_var, nullptr,
+          shared_var,
+          nullptr,
           platform::errors::PermissionDenied(
               "Cannot set gradient variable wrapper twice for %s", name_));
       grad_var_ = var;
@@ -288,7 +307,8 @@ class VariableWrapper {
       if (grad_node->InplaceGradNameMap().empty()) {
         // grad_node doesn't have Inplace message
         PADDLE_ENFORCE_EQ(
-            shared_node, nullptr,
+            shared_node,
+            nullptr,
             platform::errors::PermissionDenied(
                 "Cannot set gradient op twice unless using Inplace Strategy."));
       } else if (shared_node) {
@@ -346,6 +366,10 @@ class VariableWrapper {
   // training
   // NOTE: Now no need to support remove void hook
   std::vector<std::shared_ptr<std::function<void()>>> void_hooks_;
+
+  // DataLayout for layoutAutotune
+  paddle::experimental::DataLayout layout_{
+      paddle::experimental::DataLayout::UNDEFINED};
 };
 
 }  // namespace imperative

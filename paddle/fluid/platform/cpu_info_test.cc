@@ -27,6 +27,7 @@ TEST(CpuMemoryUsage, Print) {
   float use_percent = FLAGS_fraction_of_cpu_memory_to_use * 100;
 
   std::cout << paddle::string::Sprintf("\n%.2f %% of CPU Memory Usage: %d GB\n",
-                                       use_percent, memory_size)
+                                       use_percent,
+                                       memory_size)
             << std::endl;
 }

@@ -17,10 +17,11 @@ limitations under the License. */
 
 #include <hccl/hccl.h>
 #include <hccl/hccl_types.h>
+
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/phi/backends/dynload/port.h"
 
 #define HCOM_GROUP_PREFIX "HCOM_GROUP_"
 

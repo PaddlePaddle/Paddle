@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/batch_norm_act_fuse_pass.h"
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -81,9 +82,10 @@ FuseBatchNormActOneDNNPass::FuseBatchNormActOneDNNPass() {
 void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     Graph *graph, const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument(
-                 "The input graph of "
-                 "FuseBatchNormActOneDNNPass should not be nullptr."));
+      graph,
+      platform::errors::InvalidArgument(
+          "The input graph of "
+          "FuseBatchNormActOneDNNPass should not be nullptr."));
   FusePassBase::Init("bn_act", graph);
 
   GraphPatternDetector gpd;
@@ -108,18 +110,9 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     GET_IR_NODE_FROM_SUBGRAPH(act, act, bn_act_pattern);
 
     auto *bn_op = batch_norm->Op();
-
-    if (bn_op->HasAttr("use_mkldnn")) {
-      PADDLE_ENFORCE(
-          BOOST_GET_CONST(bool, bn_op->GetAttr("use_mkldnn")),
-          platform::errors::PreconditionNotMet(
-              "The BatchNorm+Act fusion may happen only when oneDNN library "
-              "is used."));
-    }
-
     if (bn_op->HasAttr("trainable_statistics")) {
       PADDLE_ENFORCE(
-          !BOOST_GET_CONST(bool, bn_op->GetAttr("trainable_statistics")),
+          !PADDLE_GET_CONST(bool, bn_op->GetAttr("trainable_statistics")),
           platform::errors::PreconditionNotMet(
               "The BatchNorm+Act fusion may happen only when mean and variance "
               "are not calculated by current batch statistics."));
@@ -127,7 +120,7 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
 
     if (bn_op->HasAttr("is_test")) {
       PADDLE_ENFORCE(
-          BOOST_GET_CONST(bool, bn_op->GetAttr("is_test")),
+          PADDLE_GET_CONST(bool, bn_op->GetAttr("is_test")),
           platform::errors::PreconditionNotMet(
               "The BatchNorm+Act fusion may happen only during inference."));
     }

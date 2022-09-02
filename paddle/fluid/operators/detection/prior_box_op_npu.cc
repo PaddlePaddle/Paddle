@@ -29,12 +29,14 @@ class PriorBoxNPUKernel : public framework::OpKernel<T> {
     auto* boxes = ctx.Output<Tensor>("Boxes");
     auto* variances = ctx.Output<Tensor>("Variances");
 
-    PADDLE_ENFORCE_EQ(boxes->dims(), variances->dims(),
+    PADDLE_ENFORCE_EQ(boxes->dims(),
+                      variances->dims(),
                       platform::errors::Unimplemented(
                           "the shape of boxes and variances must be same in "
                           "the npu kernel of prior_box, but got boxes->dims() "
                           "= [%s], variances->dims() = [%s]",
-                          boxes->dims(), variances->dims()));
+                          boxes->dims(),
+                          variances->dims()));
 
     auto min_sizes = ctx.Attr<std::vector<float>>("min_sizes");
     auto max_sizes = ctx.Attr<std::vector<float>>("max_sizes");
@@ -49,9 +51,9 @@ class PriorBoxNPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
 
     Tensor out(input->type());
-    auto out_dims = framework::vectorize(boxes->dims());
+    auto out_dims = phi::vectorize(boxes->dims());
     out_dims.insert(out_dims.begin(), 2);
-    out.Resize(framework::make_ddim(out_dims));
+    out.Resize(phi::make_ddim(out_dims));
     out.mutable_data<T>(place);
 
     framework::NPUAttributeMap attr_input = {{"min_size", min_sizes},
@@ -72,7 +74,7 @@ class PriorBoxNPUKernel : public framework::OpKernel<T> {
         NpuOpRunner("PriorBox", {*input, *image}, {out}, attr_input);
     runner.Run(stream);
 
-    out.Resize(framework::make_ddim({out.numel()}));
+    out.Resize(phi::make_ddim({out.numel()}));
     Tensor out_boxes = out.Slice(0, boxes->numel());
     Tensor out_variances = out.Slice(boxes->numel(), out.numel());
 
@@ -83,11 +85,15 @@ class PriorBoxNPUKernel : public framework::OpKernel<T> {
     variances->mutable_data<T>(place);
 
     framework::TensorCopy(
-        out_boxes, place,
-        ctx.template device_context<platform::NPUDeviceContext>(), boxes);
+        out_boxes,
+        place,
+        ctx.template device_context<platform::NPUDeviceContext>(),
+        boxes);
     framework::TensorCopy(
-        out_variances, place,
-        ctx.template device_context<platform::NPUDeviceContext>(), variances);
+        out_variances,
+        place,
+        ctx.template device_context<platform::NPUDeviceContext>(),
+        variances);
   }
 };
 
@@ -98,5 +104,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    prior_box, ops::PriorBoxNPUKernel<plat::NPUDeviceContext, float>,
+    prior_box,
+    ops::PriorBoxNPUKernel<plat::NPUDeviceContext, float>,
     ops::PriorBoxNPUKernel<plat::NPUDeviceContext, plat::float16>);

@@ -24,19 +24,18 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 USE_OP(increment);
 USE_OP_DEVICE_KERNEL(increment, NPU);
 
 template <typename T>
-void Compare(f::Scope* scope, const p::DeviceContext& ctx,
+void Compare(f::Scope* scope,
+             const p::DeviceContext& ctx,
              std::string op_type) {
   // init
   auto x = scope->Var("X");
@@ -45,7 +44,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   std::vector<T> init;
   init.push_back(static_cast<T>(1.0));
 
-  TensorFromVector(init, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({1});
 
   ctx.Wait();
@@ -55,13 +54,13 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   auto tensor_out = out->GetMutable<f::LoDTensor>();
 
   f::AttributeMap attr_input = {{"step", static_cast<float>(2.0)}};
-  auto op = f::OpRegistry::CreateOp("increment", {{"X", {"X"}}},
-                                    {{"Out", {"Out"}}}, attr_input);
+  auto op = f::OpRegistry::CreateOp(
+      "increment", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attr_input);
 
   op->Run(*scope, place);
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
 

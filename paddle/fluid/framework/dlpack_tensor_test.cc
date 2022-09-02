@@ -13,14 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/dlpack_tensor.h"
+
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-namespace paddle {
-namespace platform {
-struct float16;
-}  // namespace platform
-}  // namespace paddle
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace framework {
@@ -45,7 +42,7 @@ constexpr uint8_t GetDLDataTypeCode() {
                     : (std::is_integral<T>::value ? static_cast<uint8_t>(kDLInt)
                                                   : static_cast<uint8_t>(-1)));
 }
-}  // NOLINT
+}  // namespace
 
 template <typename T>
 void TestMain(const platform::Place &place, uint16_t lanes) {
@@ -63,8 +60,7 @@ void TestMain(const platform::Place &place, uint16_t lanes) {
     CHECK_EQ(0, dl_tensor.device.device_id);
   } else if (platform::is_gpu_place(place)) {
     CHECK_EQ(kDLGPU, dl_tensor.device.device_type);
-    CHECK_EQ(BOOST_GET_CONST(platform::CUDAPlace, place).device,
-             dl_tensor.device.device_id);
+    CHECK_EQ(place.device, dl_tensor.device.device_id);
   } else if (platform::is_cuda_pinned_place(place)) {
     CHECK_EQ(kDLCPUPinned, dl_tensor.device.device_type);
     CHECK_EQ(0, dl_tensor.device.device_id);

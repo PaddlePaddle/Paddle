@@ -45,8 +45,8 @@ Program CreateAddProgram() {
   NetBuilder builder("net_builder");
   auto a = builder.CreateInput(Float(32), {M, N});
   auto b = builder.CreateInput(Float(32), {M, N});
-  auto c = builder.add(a, b);
-  auto d = builder.add(a, c);
+  auto c = builder.Add(a, b);
+  auto d = builder.Add(a, c);
   auto program = builder.Build();
 
   return program;
@@ -64,7 +64,9 @@ void SetRandData(hlir::framework::Tensor tensor, Target target) {
   }
 
 #ifdef PADDLE_WITH_CUDA
-  cudaMemcpy(data, random_data.data(), num_ele * sizeof(float),
+  cudaMemcpy(data,
+             random_data.data(),
+             num_ele * sizeof(float),
              cudaMemcpyHostToDevice);
 #else
   std::copy(random_data.begin(), random_data.end(), data);
@@ -116,8 +118,8 @@ TEST(net_build, program_execute_fc) {
   auto w = builder.CreateInput(Float(32), {N, K}, "W");  // weight
   auto b = builder.CreateInput(Float(32), {N}, "B");     // bias
 
-  auto mul_out = builder.mul(a, w, 2, 1);
-  auto add_out = builder.add(mul_out, b);
+  auto mul_out = builder.Mul(a, w, 2, 1);
+  auto add_out = builder.Add(mul_out, b);
   auto program = builder.Build();
 
 #ifdef PADDLE_WITH_CUDA

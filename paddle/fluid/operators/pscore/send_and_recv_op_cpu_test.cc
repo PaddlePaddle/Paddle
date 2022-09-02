@@ -14,13 +14,16 @@ limitations under the License. */
 
 #if defined PADDLE_WITH_PSCORE
 #include <stdlib.h>
+
 #include <memory>
+#include <random>
+#include <sstream>
 #include <string>
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/service/heter_client.h"
-#include "paddle/fluid/distributed/service/heter_server.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_server.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -31,10 +34,21 @@ namespace distributed = paddle::distributed;
 using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_OP(send_and_recv);
 
-std::shared_ptr<distributed::HeterServer> b_rpc_service;
+std::string get_ip_port() {
+  std::mt19937 rng;
+  rng.seed(std::random_device()());
+  std::uniform_int_distribution<std::mt19937::result_type> dist(4444, 25000);
+  int port = dist(rng);
+  std::string ip_port;
+  std::stringstream temp_str;
+  temp_str << "127.0.0.1:";
+  temp_str << port;
+  temp_str >> ip_port;
+  return ip_port;
+}
 
 framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
   auto root_block = program->MutableBlock(0);
@@ -55,7 +69,7 @@ framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
 
 void CreateVarsOnScope(framework::Scope* scope) {
   auto w_var = scope->Var("w");
-  w_var->GetMutable<framework::SelectedRows>();
+  w_var->GetMutable<phi::SelectedRows>();
 
   auto out_var = scope->Var("out");
   out_var->GetMutable<framework::LoDTensor>();
@@ -73,10 +87,11 @@ void CreateVarsOnScope(framework::Scope* scope) {
   res_var->GetMutable<framework::LoDTensor>();
 }
 
-void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnServer(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
-  auto w = scope->Var("w")->GetMutable<framework::SelectedRows>();
+  auto w = scope->Var("w")->GetMutable<phi::SelectedRows>();
   auto w_value = w->mutable_value();
   w_value->Resize({rows_numel, 10});
   for (int64_t i = 0; i < rows_numel; ++i) w->AutoGrownIndex(i, true);
@@ -88,7 +103,8 @@ void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
   }
 }
 
-void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnClient(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
   auto ids_var = scope->Var("ids")->GetMutable<framework::LoDTensor>();
@@ -122,7 +138,7 @@ void StartSendAndRecvServer(std::string endpoint) {
   framework::Scope scope;
   platform::CPUPlace place;
   framework::Executor exe(place);
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
   LOG(INFO) << "before AppendSendAndRecvBlock";
   auto block = AppendSendAndRecvBlock(&program);
   std::string in_var_name("x");
@@ -133,36 +149,42 @@ void StartSendAndRecvServer(std::string endpoint) {
   InitTensorsOnServer(&scope, &place, 10);
   LOG(INFO) << "end InitTensorsOnServer";
 
-  std::shared_ptr<distributed::RequestSendAndRecvHandler> b_req_handler;
-  b_req_handler.reset(new distributed::RequestSendAndRecvHandler());
+  std::shared_ptr<distributed::SendAndRecvVariableHandler> b_req_handler;
+  b_req_handler.reset(new distributed::SendAndRecvVariableHandler());
   LOG(INFO) << "before SetDevCtx";
   b_req_handler->SetDevCtx(&ctx);
   LOG(INFO) << "before SetScope";
   b_req_handler->SetScope(&scope);
   LOG(INFO) << "before HeterServer::GetInstance";
-  b_rpc_service = distributed::HeterServer::GetInstance();
+  std::shared_ptr<distributed::HeterServer> b_rpc_service =
+      distributed::HeterServer::GetInstance();
   b_rpc_service->SetEndPoint(endpoint);
   LOG(INFO) << "before HeterServer::RegisterServiceHandler";
-  b_rpc_service->RegisterServiceHandler(
-      in_var_name, [&](const MultiVarMsg* request, MultiVarMsg* response,
-                       brpc::Controller* cntl) -> int {
-        return b_req_handler->Handle(request, response, cntl);
-      });
+  b_rpc_service->RegisterServiceHandler(in_var_name,
+                                        [&](const MultiVarMsg* request,
+                                            MultiVarMsg* response,
+                                            brpc::Controller* cntl) -> int {
+                                          return b_req_handler->Handle(
+                                              request, response, cntl);
+                                        });
 
-  b_rpc_service->SetRequestHandler(b_req_handler);
+  b_rpc_service->SetServiceHandler(b_req_handler);
   LOG(INFO) << "before HeterServer::RunServer";
-  std::thread server_thread(std::bind(RunServer, b_rpc_service));
 
-  server_thread.join();
+  RunServer(b_rpc_service);
+
+  // std::thread server_thread(std::bind(RunServer, b_rpc_service));
+  // server_thread.join();
 }
 
 TEST(SENDANDRECV, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
-  std::string endpoint = "127.0.0.1:4444";
-  std::string previous_endpoint = "127.0.0.1:4444";
+  std::string endpoint = get_ip_port();
+  std::string previous_endpoint = endpoint;
   LOG(INFO) << "before StartSendAndRecvServer";
-  b_rpc_service = distributed::HeterServer::GetInstance();
+  std::shared_ptr<distributed::HeterServer> b_rpc_service =
+      distributed::HeterServer::GetInstance();
   std::thread server_thread(StartSendAndRecvServer, endpoint);
   b_rpc_service->WaitServerReady();
   using MicroScope =
@@ -184,9 +206,10 @@ TEST(SENDANDRECV, CPU) {
       std::unordered_map<int,
                          std::shared_ptr<::paddle::framework::BlockingQueue<
                              std::pair<std::string, int>>>>;
-  using SharedTaskQueue = std::shared_ptr<std::unordered_map<
-      int, std::shared_ptr<::paddle::framework::BlockingQueue<
-               std::pair<std::string, int>>>>>;
+  using SharedTaskQueue = std::shared_ptr<
+      std::unordered_map<int,
+                         std::shared_ptr<::paddle::framework::BlockingQueue<
+                             std::pair<std::string, int>>>>>;
   SharedTaskQueue task_queue_(new TaskQueue{});
   (*task_queue_)[0] = std::make_shared<
       ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>();
@@ -197,13 +220,14 @@ TEST(SENDANDRECV, CPU) {
       distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0)
           .get();
 
-  PADDLE_ENFORCE_NE(rpc_client, nullptr,
+  PADDLE_ENFORCE_NE(rpc_client,
+                    nullptr,
                     platform::errors::InvalidArgument(
                         "Client Start Fail, Check Your Code & Env"));
 
   framework::Scope* scope = (*micro_scope)[0];
   platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
 
   framework::Executor exe(place);
   // create var on local scope
@@ -260,20 +284,23 @@ TEST(SENDANDRECV, CPU) {
   exe.RunPreparedContext(prepared.get(), scope, false);
 
   LOG(INFO) << "client wait for Pop";
+
   auto task = (*task_queue_)[0]->Pop();
   LOG(INFO) << "client get from task queue";
+
   PADDLE_ENFORCE_EQ(
-      task.first, "x",
+      task.first,
+      "x",
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   auto task2 = (*task_queue_)[0]->Pop();
   PADDLE_ENFORCE_EQ(
-      task2.first, "x",
+      task2.first,
+      "x",
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
-  rpc_client->FinalizeWorker();
   b_rpc_service->Stop();
   LOG(INFO) << "end server Stop";
   server_thread.join();

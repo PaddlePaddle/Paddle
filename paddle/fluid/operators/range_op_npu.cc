@@ -29,20 +29,26 @@ class RangeNPUKernel : public framework::OpKernel<T> {
 
     framework::Tensor n;
     framework::TensorCopy(
-        *start_t, platform::CPUPlace(),
-        context.template device_context<platform::NPUDeviceContext>(), &n);
+        *start_t,
+        platform::CPUPlace(),
+        context.template device_context<platform::NPUDeviceContext>(),
+        &n);
     context.template device_context<paddle::platform::NPUDeviceContext>()
         .Wait();
     T start = n.data<T>()[0];
     framework::TensorCopy(
-        *end_t, platform::CPUPlace(),
-        context.template device_context<platform::NPUDeviceContext>(), &n);
+        *end_t,
+        platform::CPUPlace(),
+        context.template device_context<platform::NPUDeviceContext>(),
+        &n);
     context.template device_context<paddle::platform::NPUDeviceContext>()
         .Wait();
     T end = n.data<T>()[0];
     framework::TensorCopy(
-        *step_t, platform::CPUPlace(),
-        context.template device_context<platform::NPUDeviceContext>(), &n);
+        *step_t,
+        platform::CPUPlace(),
+        context.template device_context<platform::NPUDeviceContext>(),
+        &n);
     context.template device_context<paddle::platform::NPUDeviceContext>()
         .Wait();
     T step = n.data<T>()[0];
@@ -50,7 +56,7 @@ class RangeNPUKernel : public framework::OpKernel<T> {
     int64_t size = 0;
     GetSize(start, end, step, &size);
 
-    out->Resize(framework::make_ddim({size}));
+    out->Resize(phi::make_ddim({size}));
     out->mutable_data<T>(context.GetPlace());
 
     std::vector<T> odata;
@@ -67,7 +73,8 @@ class RangeNPUKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_NPU_KERNEL(range, paddle::operators::RangeNPUKernel<int>,
+REGISTER_OP_NPU_KERNEL(range,
+                       paddle::operators::RangeNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64
                        paddle::operators::RangeNPUKernel<int64_t>,
 #endif

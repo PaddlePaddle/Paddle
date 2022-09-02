@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/cvm_op.h"
+
 #include <memory>
-#include "paddle/fluid/operators/math/math_function.h"
+
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -31,7 +33,8 @@ class CVMOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), 2UL,
+        x_dims.size(),
+        2UL,
         platform::errors::InvalidArgument(
             "Input(X)'s rank should be 2, but got %d", x_dims.size()));
 
@@ -62,36 +65,46 @@ class CVMGradientOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CVMGradient");
     OP_INOUT_CHECK(ctx->HasInput("CVM"), "Input", "CVM", "CVMGradient");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
-                   framework::GradVarName("Y"), "CVMGradient");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   framework::GradVarName("X"), "CVMGradient");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")),
+                   "Input",
+                   framework::GradVarName("Y"),
+                   "CVMGradient");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   framework::GradVarName("X"),
+                   "CVMGradient");
 
     auto x_dims = ctx->GetInputDim("X");
     auto cvm_dims = ctx->GetInputDim("CVM");
     auto dy_dims = ctx->GetInputDim(framework::GradVarName("Y"));
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), 2,
+        x_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Expect Input(X)'s rank == 2, but got %d", x_dims.size()));
     PADDLE_ENFORCE_EQ(
-        dy_dims.size(), 2,
+        dy_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Expect Input(X)'s rank == 2, but got %d", dy_dims.size()));
     PADDLE_ENFORCE_EQ(
-        cvm_dims.size(), 2,
+        cvm_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Expect Input(X)'s rank == 2, but got %d", cvm_dims.size()));
 
     PADDLE_ENFORCE_EQ(
-        x_dims[0], dy_dims[0],
+        x_dims[0],
+        dy_dims[0],
         platform::errors::InvalidArgument(
             "The 1st dimension of Input(X) and Input(Y@Grad) should "
             "be equal, X is %d, Y@Grad is %d",
-            x_dims[0], dy_dims[0]));
+            x_dims[0],
+            dy_dims[0]));
 
     PADDLE_ENFORCE_EQ(
-        cvm_dims[1], 2,
+        cvm_dims[1],
+        2,
         platform::errors::InvalidArgument(
             "When Attr(soft_label) == false, the 2nd dimension of "
             "Input(CVM) should be 2, but got %d cvm_dims[1]"));
@@ -159,15 +172,19 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(CVMGradNoNeedBufferVarInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(cvm, ops::CVMOp, ops::CVMOpMaker,
+REGISTER_OPERATOR(cvm,
+                  ops::CVMOp,
+                  ops::CVMOpMaker,
                   ops::CVMGradOpMaker<paddle::framework::OpDesc>,
                   ops::CVMGradOpMaker<paddle::imperative::OpBase>,
                   ops::CVMNoNeedBufferVarInferer);
 
-REGISTER_OPERATOR(cvm_grad, ops::CVMGradientOp,
+REGISTER_OPERATOR(cvm_grad,
+                  ops::CVMGradientOp,
                   ops::CVMGradNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL(cvm, ops::CVMOpKernel<float>, ops::CVMOpKernel<double>);
 
-REGISTER_OP_CPU_KERNEL(cvm_grad, ops::CVMGradOpKernel<float>,
+REGISTER_OP_CPU_KERNEL(cvm_grad,
+                       ops::CVMGradOpKernel<float>,
                        ops::CVMGradOpKernel<double>);

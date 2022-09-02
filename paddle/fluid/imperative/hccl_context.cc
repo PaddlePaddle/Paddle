@@ -14,15 +14,14 @@
 
 #include "paddle/fluid/imperative/hccl_context.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
-
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
-
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -33,28 +32,37 @@ class Variable;
 namespace paddle {
 namespace imperative {
 
-static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
+static void AllReduce(const framework::Tensor &src,
+                      framework::Tensor *dst,
                       const aclrtStream stream,
                       const platform::HCCLComm *comm) {
   const auto &place = src.place();
   PADDLE_ENFORCE_EQ(
-      platform::is_npu_place(place), true,
+      platform::is_npu_place(place),
+      true,
       platform::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
 
-  void *src_ptr = const_cast<void *>(src.data<void>());
+  void *src_ptr = const_cast<void *>(src.data());
   dst->Resize(src.dims());
-  void *dst_ptr = dst->mutable_data(src.place(), src.type());
-  HcclDataType hccl_dtype = platform::ToHCCLDataType(src.type());
+  void *dst_ptr = dst->mutable_data(src.place(), src.dtype());
+  HcclDataType hccl_dtype =
+      platform::ToHCCLDataType(framework::TransToProtoVarType(src.dtype()));
 
-  PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
-      src_ptr, dst_ptr, src.numel(), hccl_dtype, HCCL_REDUCE_SUM, comm->comm(),
-      reinterpret_cast<void *>(stream)));
+  PADDLE_ENFORCE_NPU_SUCCESS(
+      platform::dynload::HcclAllReduce(src_ptr,
+                                       dst_ptr,
+                                       src.numel(),
+                                       hccl_dtype,
+                                       HCCL_REDUCE_SUM,
+                                       comm->comm(),
+                                       reinterpret_cast<void *>(stream)));
 }
 
 void HCCLParallelContext::BcastHCCLId(
     std::vector<HcclRootInfo> &hccl_ids,  // NOLINT
-    int root, int server_fd) {
+    int root,
+    int server_fd) {
   if (strategy_.local_rank_ == root) {
     std::vector<std::string> other_trainers;
     for (auto &ep : strategy_.trainer_endpoints_) {
@@ -64,8 +72,8 @@ void HCCLParallelContext::BcastHCCLId(
     }
     platform::SendBroadCastCommID(other_trainers, &hccl_ids);
   } else {
-    platform::RecvBroadCastCommID(server_fd, strategy_.current_endpoint_,
-                                  &hccl_ids);
+    platform::RecvBroadCastCommID(
+        server_fd, strategy_.current_endpoint_, &hccl_ids);
   }
 }
 
@@ -86,20 +94,22 @@ void HCCLParallelContext::Init() {
   }
   BcastHCCLId(hccl_ids, 0, server_fd);
 
-  int npu_id = BOOST_GET_CONST(platform::NPUPlace, place_).device;
+  int npu_id = place_.device;
   for (int ring_id = 0; ring_id < strategy_.nrings_; ring_id++) {
     VLOG(0) << "init hccl context nranks: " << strategy_.nranks_
             << " local rank: " << strategy_.local_rank_ << " npu id: " << npu_id
             << " ring id: " << ring_id;
     // it will assign hccl_comm in NPUDeviceContext within ring_id
-    platform::HCCLCommContext::Instance().CreateHCCLComm(
-        &hccl_ids[ring_id], strategy_.nranks_, strategy_.local_rank_, npu_id,
-        ring_id);
+    platform::HCCLCommContext::Instance().CreateHCCLComm(&hccl_ids[ring_id],
+                                                         strategy_.nranks_,
+                                                         strategy_.local_rank_,
+                                                         npu_id,
+                                                         ring_id);
 
-    compute_events_.emplace_back(platform::NpuEventResourcePool::Instance().New(
-        BOOST_GET_CONST(platform::NPUPlace, place_).device));
-    comm_events_.emplace_back(platform::NpuEventResourcePool::Instance().New(
-        BOOST_GET_CONST(platform::NPUPlace, place_).device));
+    compute_events_.emplace_back(
+        platform::NpuEventResourcePool::Instance().New(place_.device));
+    comm_events_.emplace_back(
+        platform::NpuEventResourcePool::Instance().New(place_.device));
   }
 }
 
@@ -117,7 +127,7 @@ void HCCLParallelContext::InitWithRingID(int ring_id) {
   }
   BcastHCCLId(hccl_ids, 0, server_fd);
 
-  int npu_id = BOOST_GET_CONST(platform::NPUPlace, place_).device;
+  int npu_id = place_.device;
   VLOG(0) << "init hccl context nranks: " << strategy_.nranks_
           << " local rank: " << strategy_.local_rank_ << " npu id: " << npu_id
           << " ring id: " << ring_id;
@@ -125,17 +135,19 @@ void HCCLParallelContext::InitWithRingID(int ring_id) {
   platform::HCCLCommContext::Instance().CreateHCCLComm(
       &hccl_ids[0], strategy_.nranks_, strategy_.local_rank_, npu_id, ring_id);
 
-  compute_events_.emplace_back(platform::NpuEventResourcePool::Instance().New(
-      BOOST_GET_CONST(platform::NPUPlace, place_).device));
-  comm_events_.emplace_back(platform::NpuEventResourcePool::Instance().New(
-      BOOST_GET_CONST(platform::NPUPlace, place_).device));
+  compute_events_.emplace_back(
+      platform::NpuEventResourcePool::Instance().New(place_.device));
+  comm_events_.emplace_back(
+      platform::NpuEventResourcePool::Instance().New(place_.device));
 }
 
 void HCCLParallelContext::AllReduceByStream(const framework::Variable &src,
                                             framework::Variable *dst,
-                                            int ring_id, bool use_calc_stream) {
+                                            int ring_id,
+                                            bool use_calc_stream) {
   PADDLE_ENFORCE_EQ(
-      platform::is_npu_place(place_), true,
+      platform::is_npu_place(place_),
+      true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
   auto *dev_ctx = static_cast<platform::NPUDeviceContext *>(
@@ -149,7 +161,9 @@ void HCCLParallelContext::AllReduceByStream(const framework::Variable &src,
       dst->Clear();
     }
     AllReduce(src.Get<framework::LoDTensor>(),
-              dst->GetMutable<framework::LoDTensor>(), stream, comm);
+              dst->GetMutable<framework::LoDTensor>(),
+              stream,
+              comm);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "XPU unsupported variable type %s for imperative allreduce, only "
@@ -168,11 +182,16 @@ void HCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
     aclrtStream stream = comm->stream();
 
     void *src_ptr =
-        reinterpret_cast<void *>(const_cast<void *>(src_tensor->data<void>()));
-    auto hccl_dtype = platform::ToHCCLDataType(src_tensor->type());
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
-        src_ptr, src_tensor->numel(), hccl_dtype, 0, comm->comm(),
-        reinterpret_cast<void *>(stream)));
+        reinterpret_cast<void *>(const_cast<void *>(src_tensor->data()));
+    auto hccl_dtype = platform::ToHCCLDataType(
+        framework::TransToProtoVarType(src_tensor->dtype()));
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        platform::dynload::HcclBroadcast(src_ptr,
+                                         src_tensor->numel(),
+                                         hccl_dtype,
+                                         0,
+                                         comm->comm(),
+                                         reinterpret_cast<void *>(stream)));
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unsupported variable type %s for imperative allreduce, only "
@@ -190,13 +209,17 @@ paddle::platform::DeviceContext *HCCLParallelContext::GetDeviceContext(
 }
 
 void HCCLParallelContext::WaitCompute(int ring_id) {
-  PADDLE_ENFORCE_GE(ring_id, 0, platform::errors::OutOfRange(
-                                    "ring id must >= 0, but got %d", ring_id));
-  PADDLE_ENFORCE_LT(ring_id, compute_events_.size(),
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      platform::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
+  PADDLE_ENFORCE_LT(ring_id,
+                    compute_events_.size(),
                     platform::errors::OutOfRange(
                         "ring id must < compute events size,"
                         "but got ring id = %d, compute events size = %d",
-                        ring_id, compute_events_.size()));
+                        ring_id,
+                        compute_events_.size()));
 
   auto compute_stream = static_cast<platform::NPUDeviceContext *>(
                             platform::DeviceContextPool::Instance().Get(place_))
@@ -211,13 +234,17 @@ void HCCLParallelContext::WaitCompute(int ring_id) {
 }
 
 void HCCLParallelContext::WaitComm(int ring_id) {
-  PADDLE_ENFORCE_GE(ring_id, 0, platform::errors::OutOfRange(
-                                    "ring id must >= 0, but got %d", ring_id));
-  PADDLE_ENFORCE_LT(ring_id, comm_events_.size(),
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      platform::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
+  PADDLE_ENFORCE_LT(ring_id,
+                    comm_events_.size(),
                     platform::errors::OutOfRange(
                         "ring id must < comm events size,"
                         "but got ring id = %d, comm events size = %d",
-                        ring_id, comm_events_.size()));
+                        ring_id,
+                        comm_events_.size()));
 
   auto compute_stream = static_cast<platform::NPUDeviceContext *>(
                             platform::DeviceContextPool::Instance().Get(place_))

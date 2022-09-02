@@ -25,6 +25,7 @@ import os
 
 
 class TestRawProgramOptimizer(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
@@ -35,16 +36,15 @@ class TestRawProgramOptimizer(unittest.TestCase):
         prediction = paddle.static.nn.fc(x=[fc_2],
                                          size=label_dim,
                                          activation='softmax')
-        cost = paddle.nn.functional.cross_entropy(
-            input=prediction, label=input_y)
+        cost = paddle.nn.functional.cross_entropy(input=prediction,
+                                                  label=input_y)
         avg_cost = paddle.mean(x=cost)
         return avg_cost
 
     def gen_data(self):
         return {
             "x": np.random.random(size=(128, 32)).astype('float32'),
-            "y": np.random.randint(
-                2, size=(128, 1)).astype('int64')
+            "y": np.random.randint(2, size=(128, 1)).astype('int64')
         }
 
     def test_single_gpu(self):
@@ -56,10 +56,12 @@ class TestRawProgramOptimizer(unittest.TestCase):
         strategy.without_graph_optimization = True
         with fluid.program_guard(sharding_program, sharding_startup_program):
             with fluid.unique_name.guard():
-                input_x = paddle.static.data(
-                    name="x", shape=[None, 32], dtype='float32')
-                input_y = paddle.static.data(
-                    name="y", shape=[None, 1], dtype='int64')
+                input_x = paddle.static.data(name="x",
+                                             shape=[None, 32],
+                                             dtype='float32')
+                input_y = paddle.static.data(name="y",
+                                             shape=[None, 1],
+                                             dtype='int64')
                 cost = self.mlp(input_x=input_x, input_y=input_y)
                 output_name = cost.name
                 optimizer = fleet.distributed_optimizer(fluid.optimizer.Adam(),

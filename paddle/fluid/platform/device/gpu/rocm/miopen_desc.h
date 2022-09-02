@@ -26,11 +26,9 @@
 #include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
-}  // namespace paddle
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace platform {
@@ -133,7 +131,7 @@ class TensorDescriptor {
   T* desc() const { return desc_.get(); }
 
   void set(const Tensor& tensor, const int groups = 1) {
-    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dims = phi::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {
@@ -144,7 +142,8 @@ class TensorDescriptor {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
-        (miopenTensorDescriptor_t)(desc_.get()), ToCudnnDataType(tensor.type()),
+        (miopenTensorDescriptor_t)(desc_.get()),
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));
@@ -152,10 +151,11 @@ class TensorDescriptor {
 
   void set(const Tensor& tensor, const miopenTensorFormat_t format) {
     const int groups = 1;
-    PADDLE_ENFORCE_EQ(format, MIOPEN_TENSOR_NCHW,
+    PADDLE_ENFORCE_EQ(format,
+                      MIOPEN_TENSOR_NCHW,
                       platform::errors::InvalidArgument(
                           "format should ONLY be NCHW in MIOPEN."));
-    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dims = phi::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {
@@ -166,7 +166,8 @@ class TensorDescriptor {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
-        (miopenTensorDescriptor_t)(desc_.get()), ToCudnnDataType(tensor.type()),
+        (miopenTensorDescriptor_t)(desc_.get()),
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));
@@ -195,12 +196,14 @@ class FilterDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
 
-  void set(const Tensor& tensor, const miopenTensorFormat_t format,
+  void set(const Tensor& tensor,
+           const miopenTensorFormat_t format,
            const int groups = 1) {
-    PADDLE_ENFORCE_EQ(format, MIOPEN_TENSOR_NCHW,
+    PADDLE_ENFORCE_EQ(format,
+                      MIOPEN_TENSOR_NCHW,
                       platform::errors::InvalidArgument(
                           "format should ONLY be NCHW in MIOPEN."));
-    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dims = phi::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {
@@ -211,7 +214,8 @@ class FilterDescriptor {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
-        (miopenTensorDescriptor_t)(desc_.get()), ToCudnnDataType(tensor.type()),
+        (miopenTensorDescriptor_t)(desc_.get()),
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));
@@ -242,13 +246,18 @@ class ConvolutionDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
 
-  void set(miopenDataType_t dtype, const std::vector<int>& pads,
-           const std::vector<int>& strides, const std::vector<int>& dilations,
-           bool allow_tf32, const int groups = 1) {
+  void set(miopenDataType_t dtype,
+           const std::vector<int>& pads,
+           const std::vector<int>& strides,
+           const std::vector<int>& dilations,
+           bool allow_tf32,
+           const int groups = 1) {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenInitConvolutionNdDescriptor(
         (miopenConvolutionDescriptor_t)desc_.get(),
-        static_cast<int>(pads.size()), const_cast<int*>(pads.data()),
-        const_cast<int*>(strides.data()), const_cast<int*>(dilations.data()),
+        static_cast<int>(pads.size()),
+        const_cast<int*>(pads.data()),
+        const_cast<int*>(strides.data()),
+        const_cast<int*>(dilations.data()),
         miopenConvolution));
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::miopenSetConvolutionGroupCount(

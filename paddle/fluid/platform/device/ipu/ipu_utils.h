@@ -17,15 +17,53 @@ limitations under the License. */
 #include <popart/ndarraywrapper.hpp>
 #include <popart/tensordata.hpp>
 #include <popart/tensorinfo.hpp>
+#include <popart/vendored/any.hpp>
 
-#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/float16.h"
+
+using float16 = paddle::platform::float16;
+using Tensor = paddle::framework::Tensor;
+using LoDTensor = paddle::framework::LoDTensor;
+using Scope = paddle::framework::Scope;
+using OpDesc = paddle::framework::OpDesc;
+using Graph = paddle::framework::ir::Graph;
+using Node = paddle::framework::ir::Node;
+using BlockDesc = paddle::framework::BlockDesc;
+using VarType = paddle::framework::proto::VarType;
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 
-// onnx dtype
+template <typename T>
+T GetSingleVarFromScope(const Scope* scope, const std::string& var_name) {
+  auto var = scope->GetVar(var_name);
+  auto tensor = var->Get<framework::LoDTensor>();
+  return tensor.data<T>()[0];
+}
+
+struct IpuCustomOpIdentifier {
+  IpuCustomOpIdentifier(const std::string& _paddle_op,
+                        const std::string& _popart_op,
+                        const std::string& _domain,
+                        unsigned int _version)
+      : paddle_op(_paddle_op), popart_op(_domain, _popart_op, _version) {}
+
+  std::string repr() {
+    std::ostringstream os;
+    os << "paddle_op: " << paddle_op << ", domain: " << popart_op.domain
+       << ", type: " << popart_op.type << ", version: " << popart_op.version;
+    return os.str();
+  }
+
+  std::string paddle_op;
+  popart::OperatorIdentifier popart_op;
+};
+
+// Onnx dtype
 // https://github.com/onnx/onnx/blob/master/onnx/onnx-ml.proto3
 enum ONNXDataType : int {
   UNDEFINED = 0,
@@ -47,54 +85,22 @@ enum ONNXDataType : int {
   BFLOAT16 = 16
 };
 
-class PaddleIArray final : public popart::IArray {
- public:
-  explicit PaddleIArray(framework::Tensor *tensor) : tensor_(tensor) {
-    for (int i = 0; i < tensor->dims().size(); ++i) {
-      shape_.push_back(tensor->dims().at(i));
-    }
-  }
-
- public:
-  void *data();
-  popart::DataType dataType() const;
-  std::size_t rank() const;
-  int64_t dim(size_t index) const;
-  std::size_t nelms() const;
-  const popart::Shape shape() const;
-
- private:
-  framework::Tensor *tensor_;
-  std::vector<int64_t> shape_;
-};
-
-popart::DataType VarType2PopartType(const framework::proto::VarType::Type type);
-framework::proto::VarType::Type PopartType2VarType(const popart::DataType type);
-popart::DataType OnnxDtype2PopartType(const int type);
-bool GetBoolEnv(std::string str);
-
-template <typename T>
-std::unique_ptr<popart::NDArrayWrapper<T>> Tensor2IArray(
-    const framework::Tensor &tensor) {
-  auto dtype = VarType2PopartType(tensor.type());
-  auto shape = std::vector<int64_t>();
-  for (size_t i = 0; i < tensor.dims().size(); ++i) {
-    shape.push_back(tensor.dims().at(i));
-  }
-  popart::TensorInfo tensor_info(dtype, shape);
-
-  return std::make_unique<popart::NDArrayWrapper<T>>(
-      reinterpret_cast<T *>(tensor.data<void>()), tensor_info);
-}
-
-template <typename T>
-std::unique_ptr<popart::NDArrayWrapper<T>> LoDTensor2IArray(
-    framework::LoDTensor const &lod_tensor) {
-  PADDLE_ENFORCE_EQ(
-      lod_tensor.lod().size(), 0UL,
-      platform::errors::InvalidArgument("LoDTensor2IArray is Unimplemented"));
-  return Tensor2IArray<T>(lod_tensor);
-}
+// VarType::Type to popart::DataType
+const popart::DataType VarType2PopartDType(const VarType::Type type);
+// phi::DataType to popart::DataType
+const popart::DataType PhiDType2PopartDType(const phi::DataType type);
+// popart::DataType to VarType::Type
+const VarType::Type PopartDType2VarType(const popart::DataType type);
+// ONNXDataType to popart::DataType
+const popart::DataType OnnxDType2PopartType(const ONNXDataType type);
+// VarType::Type to ONNXDataType
+const ONNXDataType VarType2OnnxDType(const VarType::Type type);
+// VarType::Type to String in Popart
+const std::string VarType2PopartStr(const VarType::Type type);
+// Get bool from envirnment varaible
+const bool GetBoolEnv(const std::string& str);
+// Request number of ipus must be pow(2, n)
+const int RequestIpus(const int num_ipus);
 
 }  // namespace ipu
 }  // namespace platform

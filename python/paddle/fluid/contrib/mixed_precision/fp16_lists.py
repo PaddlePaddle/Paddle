@@ -17,6 +17,11 @@ from ... import core
 
 __all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
 
+# lookup_table fp16 is slower than fp32, though fp16 is supported.
+_extra_unsupported_fp16_list = {
+    'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
+}
+
 
 class AutoMixedPrecisionLists(object):
     """
@@ -60,6 +65,8 @@ class AutoMixedPrecisionLists(object):
                 elif op_name in self.gray_list:
                     self.gray_list.remove(op_name)
                 self.white_list.add(op_name)
+                if op_name in _extra_unsupported_fp16_list:
+                    self.unsupported_list.remove(op_name)
         if self._custom_black_list:
             for op_name in self._custom_black_list:
                 if op_name in self.white_list:
@@ -100,6 +107,11 @@ black_list = {
     # fp16 is slower than fp32, though fp16 is supported.
     'lookup_table',
     'lookup_table_v2',
+    'linear_interp_v2',
+    'nearest_interp_v2',
+    'bilinear_interp_v2',
+    'bicubic_interp_v2',
+    'trilinear_interp_v2',
     # default fp32 can avoid return inf when the sum value large than 65504
     'reduce_sum',
 }
@@ -155,6 +167,7 @@ gray_list = {
     'split',
     'fused_feedforward',
     'fused_attention',
+    'fused_multi_transformer',
 }
 
 # The set of ops that don't support fp16 calculation
@@ -166,11 +179,13 @@ if core.is_compiled_with_xpu():
 elif core.is_compiled_with_npu():
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
         'NPU', core.VarDesc.VarType.FP16)
+elif core.is_compiled_with_mlu():
+    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+        'MLU', core.VarDesc.VarType.FP16)
 else:
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
         'GPU', core.VarDesc.VarType.FP16)
 
-unsupported_fp16_list = {'lookup_table',
-                         'lookup_table_v2'} | _sys_unsupported_fp16_list
+unsupported_fp16_list = _extra_unsupported_fp16_list | _sys_unsupported_fp16_list
 
 CustomOpLists = AutoMixedPrecisionLists

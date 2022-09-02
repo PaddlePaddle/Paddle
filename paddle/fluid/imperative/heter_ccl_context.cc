@@ -81,7 +81,8 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
   VLOG(0) << "init node size " << node_nranks << " rank "
           << node_strategy_.local_rank_;
 
-  PADDLE_ENFORCE_NE(node_nranks, 0,
+  PADDLE_ENFORCE_NE(node_nranks,
+                    0,
                     platform::errors::InvalidArgument(
                         "The number of local nranks should not be zero."));
   node_strategy_.nranks_ = node_nranks;
@@ -92,8 +93,10 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
     inter_strategy_.local_rank_ = inter_rank;
     inter_strategy_.current_endpoint_ = strategy_.current_endpoint_;
     inter_strategy_.trainer_endpoints_ = inter_endpoints;
+#ifdef PADDLE_WITH_GLOO
     inter_parallel_ctx_ = std::make_shared<GLOOParallelContext>(
         inter_strategy_, platform::CPUPlace());
+#endif
   }
 
   VLOG(0) << "init inter size " << inter_endpoints.size() << " rank "
@@ -118,7 +121,8 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
 
 void HeterParallelContext::Init() {
   PADDLE_ENFORCE_NE(
-      node_parallel_ctx_, nullptr,
+      node_parallel_ctx_,
+      nullptr,
       platform::errors::Unavailable(
           "The heter parallel context has not been initialized."));
 

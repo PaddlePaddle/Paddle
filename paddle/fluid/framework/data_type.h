@@ -20,23 +20,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
-
-namespace paddle {
-namespace platform {
-struct bfloat16;
-template <typename T>
-struct complex;
-struct float16;
-template <typename T>
-struct complex;
-}  // namespace platform
-}  // namespace paddle
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
 namespace framework {
+
+extern std::string DataTypeToString(const proto::VarType::Type type);
+extern size_t SizeOfType(proto::VarType::Type type);
 
 template <typename T>
 struct IsComplex : public std::false_type {};
@@ -69,25 +61,55 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(callback, uint8_t, UINT8);                     \
   _ForEachDataTypeHelper_(callback, int16_t, INT16);                     \
   _ForEachDataTypeHelper_(callback, int8_t, INT8);                       \
-  _ForEachDataTypeHelper_(callback, ::paddle::platform::complex<float>,  \
-                          COMPLEX64);                                    \
-  _ForEachDataTypeHelper_(callback, ::paddle::platform::complex<double>, \
-                          COMPLEX128);
+  _ForEachDataTypeHelper_(                                               \
+      callback, ::paddle::platform::complex<float>, COMPLEX64);          \
+  _ForEachDataTypeHelper_(                                               \
+      callback, ::paddle::platform::complex<double>, COMPLEX128);
 
-#define _ForEachDataTypeSmall_(callback)                                 \
-  _ForEachDataTypeHelper_(callback, float, FP32);                        \
-  _ForEachDataTypeHelper_(callback, double, FP64);                       \
-  _ForEachDataTypeHelper_(callback, int, INT32);                         \
-  _ForEachDataTypeHelper_(callback, int64_t, INT64);                     \
-  _ForEachDataTypeHelper_(callback, ::paddle::platform::complex<float>,  \
-                          COMPLEX64);                                    \
-  _ForEachDataTypeHelper_(callback, ::paddle::platform::complex<double>, \
-                          COMPLEX128);
+#define _ForEachIntDataType_(callback)               \
+  _ForEachDataTypeHelper_(callback, int, INT32);     \
+  _ForEachDataTypeHelper_(callback, int64_t, INT64); \
+  _ForEachDataTypeHelper_(callback, uint8_t, UINT8); \
+  _ForEachDataTypeHelper_(callback, int16_t, INT16); \
+  _ForEachDataTypeHelper_(callback, int8_t, INT8);
+
+#define _ForEachDataTypeSmall_(callback)                        \
+  _ForEachDataTypeHelper_(callback, float, FP32);               \
+  _ForEachDataTypeHelper_(callback, double, FP64);              \
+  _ForEachDataTypeHelper_(callback, int, INT32);                \
+  _ForEachDataTypeHelper_(callback, int64_t, INT64);            \
+  _ForEachDataTypeHelper_(                                      \
+      callback, ::paddle::platform::complex<float>, COMPLEX64); \
+  _ForEachDataTypeHelper_(                                      \
+      callback, ::paddle::platform::complex<double>, COMPLEX128);
+
+#define _ForEachDataTypeNormal_(callback)            \
+  _ForEachDataTypeHelper_(callback, float, FP32);    \
+  _ForEachDataTypeHelper_(callback, double, FP64);   \
+  _ForEachDataTypeHelper_(callback, int, INT32);     \
+  _ForEachDataTypeHelper_(callback, int64_t, INT64); \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::float16, FP16);
 
 // For the use of thrust, as index-type elements can be only integers.
 #define _ForEachDataTypeTiny_(callback)          \
   _ForEachDataTypeHelper_(callback, int, INT32); \
   _ForEachDataTypeHelper_(callback, int64_t, INT64);
+
+// It's only for DataParallel in HIP, bf16 not support in HIP.
+#define _ForEachDataTypeForHIP_(callback)                               \
+  _ForEachDataTypeHelper_(callback, float, FP32);                       \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::float16, FP16); \
+  _ForEachDataTypeHelper_(callback, double, FP64);                      \
+  _ForEachDataTypeHelper_(callback, int, INT32);                        \
+  _ForEachDataTypeHelper_(callback, int64_t, INT64);                    \
+  _ForEachDataTypeHelper_(callback, bool, BOOL);                        \
+  _ForEachDataTypeHelper_(callback, uint8_t, UINT8);                    \
+  _ForEachDataTypeHelper_(callback, int16_t, INT16);                    \
+  _ForEachDataTypeHelper_(callback, int8_t, INT8);                      \
+  _ForEachDataTypeHelper_(                                              \
+      callback, ::paddle::platform::complex<float>, COMPLEX64);         \
+  _ForEachDataTypeHelper_(                                              \
+      callback, ::paddle::platform::complex<double>, COMPLEX128);
 
 #define DefineDataTypeTrait(cpp_type, proto_type)                           \
   template <>                                                               \
@@ -133,6 +155,39 @@ inline void VisitDataTypeSmall(proto::VarType::Type type, Visitor visitor) {
 #undef VisitDataTypeCallbackSmall
 }
 
+// for normal dtype, int, int64, float, float64, float16
+template <typename Visitor>
+inline void VisitDataTypeNormal(proto::VarType::Type type, Visitor visitor) {
+#define VisitDataTypeCallbackNormal(cpp_type, proto_type) \
+  do {                                                    \
+    if (type == proto_type) {                             \
+      visitor.template apply<cpp_type>();                 \
+      return;                                             \
+    }                                                     \
+  } while (0)
+
+  _ForEachDataTypeNormal_(VisitDataTypeCallbackNormal);
+#undef VisitDataTypeCallbackNormal
+}
+
+template <typename Visitor>
+inline void VisitIntDataType(proto::VarType::Type type, Visitor visitor) {
+#define VisitIntDataTypeCallback(cpp_type, proto_type) \
+  do {                                                 \
+    if (type == proto_type) {                          \
+      visitor.template apply<cpp_type>();              \
+      return;                                          \
+    }                                                  \
+  } while (0)
+
+  _ForEachIntDataType_(VisitIntDataTypeCallback);
+
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Expected integral data type, but got %s", DataTypeToString(type)));
+
+#undef VisitIntDataTypeCallback
+}
+
 template <typename Visitor>
 inline void VisitDataTypeTiny(proto::VarType::Type type, Visitor visitor) {
 #define VisitDataTypeCallbackTiny(cpp_type, proto_type) \
@@ -147,15 +202,27 @@ inline void VisitDataTypeTiny(proto::VarType::Type type, Visitor visitor) {
 #undef VisitDataTypeCallbackTiny
 }
 
-extern std::string DataTypeToString(const proto::VarType::Type type);
-extern size_t SizeOfType(proto::VarType::Type type);
+template <typename Visitor>
+inline void VisitDataTypeForHIP(proto::VarType::Type type, Visitor visitor) {
+#define VisitDataTypeCallbackHIP(cpp_type, proto_type) \
+  do {                                                 \
+    if (type == proto_type) {                          \
+      visitor.template apply<cpp_type>();              \
+      return;                                          \
+    }                                                  \
+  } while (0)
+
+  _ForEachDataTypeForHIP_(VisitDataTypeCallbackHIP);
+#undef VisitDataTypeCallbackHIP
+}
+
 inline std::ostream& operator<<(std::ostream& out,
                                 const proto::VarType::Type& type) {
   out << DataTypeToString(type);
   return out;
 }
 
-extern inline bool IsComplexType(const proto::VarType::Type type) {
+extern inline bool IsComplexType(const proto::VarType::Type& type) {
   return (type == proto::VarType::COMPLEX64 ||
           type == proto::VarType::COMPLEX128);
 }

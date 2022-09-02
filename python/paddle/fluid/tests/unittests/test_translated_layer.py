@@ -16,6 +16,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import tempfile
+import os
 import paddle
 import paddle.nn as nn
 import paddle.optimizer as opt
@@ -31,6 +33,7 @@ CLASS_NUM = 10
 
 # define a random dataset
 class RandomDataset(paddle.io.Dataset):
+
     def __init__(self, num_samples):
         self.num_samples = num_samples
 
@@ -45,13 +48,16 @@ class RandomDataset(paddle.io.Dataset):
 
 
 class LinearNet(nn.Layer):
+
     def __init__(self):
         super(LinearNet, self).__init__()
         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+        self._dropout = paddle.nn.Dropout(p=0.5)
 
     @paddle.jit.to_static(input_spec=[
-        paddle.static.InputSpec(
-            shape=[None, IMAGE_SIZE], dtype='float32', name='x')
+        paddle.static.InputSpec(shape=[None, IMAGE_SIZE],
+                                dtype='float32',
+                                name='x')
     ])
     def forward(self, x):
         return self._linear(x)
@@ -71,6 +77,10 @@ def train(layer, loader, loss_fn, opt):
 
 
 class TestTranslatedLayer(unittest.TestCase):
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def setUp(self):
         # enable dygraph mode
         place = paddle.CPUPlace()
@@ -88,19 +98,21 @@ class TestTranslatedLayer(unittest.TestCase):
 
         # create data loader
         dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-        self.loader = paddle.io.DataLoader(
-            dataset,
-            places=place,
-            batch_size=BATCH_SIZE,
-            shuffle=True,
-            drop_last=True,
-            num_workers=0)
+        self.loader = paddle.io.DataLoader(dataset,
+                                           places=place,
+                                           batch_size=BATCH_SIZE,
+                                           shuffle=True,
+                                           drop_last=True,
+                                           num_workers=0)
+
+        self.temp_dir = tempfile.TemporaryDirectory()
 
         # train
         train(self.layer, self.loader, self.loss_fn, self.sgd)
 
         # save
-        self.model_path = "linear.example.model"
+        self.model_path = os.path.join(self.temp_dir.name,
+                                       './linear.example.model')
         paddle.jit.save(self.layer, self.model_path)
 
     def test_inference_and_fine_tuning(self):
@@ -120,7 +132,7 @@ class TestTranslatedLayer(unittest.TestCase):
         translated_layer.eval()
         pred = translated_layer(x)
 
-        self.assertTrue(np.array_equal(orig_pred.numpy(), pred.numpy()))
+        np.testing.assert_array_equal(orig_pred.numpy(), pred.numpy())
 
     def load_and_fine_tuning(self):
         # load
@@ -136,10 +148,11 @@ class TestTranslatedLayer(unittest.TestCase):
                       parameters=translated_layer.parameters())
         loss = train(translated_layer, self.loader, self.loss_fn, sgd)
 
-        self.assertTrue(
-            np.array_equal(orig_loss.numpy(), loss.numpy()),
-            msg="original loss:\n{}\nnew loss:\n{}\n".format(orig_loss.numpy(),
-                                                             loss.numpy()))
+        np.testing.assert_array_equal(
+            orig_loss.numpy(),
+            loss.numpy(),
+            err_msg='original loss:\n{}\nnew loss:\n{}\n'.format(
+                orig_loss.numpy(), loss.numpy()))
 
     def test_get_program(self):
         # load
@@ -160,8 +173,9 @@ class TestTranslatedLayer(unittest.TestCase):
         translated_layer = paddle.jit.load(self.model_path)
 
         expect_spec = [
-            paddle.static.InputSpec(
-                shape=[None, IMAGE_SIZE], dtype='float32', name='x')
+            paddle.static.InputSpec(shape=[None, IMAGE_SIZE],
+                                    dtype='float32',
+                                    name='x')
         ]
         actual_spec = translated_layer._input_spec()
 
@@ -173,15 +187,28 @@ class TestTranslatedLayer(unittest.TestCase):
         translated_layer = paddle.jit.load(self.model_path)
 
         expect_spec = [
-            paddle.static.InputSpec(
-                shape=[None, CLASS_NUM],
-                dtype='float32',
-                name='translated_layer/scale_0.tmp_1')
+            paddle.static.InputSpec(shape=[None, CLASS_NUM],
+                                    dtype='float32',
+                                    name='translated_layer/scale_0.tmp_1')
         ]
         actual_spec = translated_layer._output_spec()
 
         for spec_x, spec_y in zip(expect_spec, actual_spec):
             self.assertEqual(spec_x, spec_y)
+
+    def test_layer_state(self):
+        # load
+        translated_layer = paddle.jit.load(self.model_path)
+        translated_layer.eval()
+        self.assertEqual(translated_layer.training, False)
+        for layer in translated_layer.sublayers():
+            print("123")
+            self.assertEqual(layer.training, False)
+
+        translated_layer.train()
+        self.assertEqual(translated_layer.training, True)
+        for layer in translated_layer.sublayers():
+            self.assertEqual(layer.training, True)
 
 
 if __name__ == '__main__':

@@ -24,21 +24,20 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, NPU);
-USE_OP(elementwise_sub);
+USE_OP_ITSELF(elementwise_sub);
 USE_OP_DEVICE_KERNEL(elementwise_sub, NPU);
 
 template <typename T>
-void Compare(f::Scope *scope, const p::DeviceContext &ctx,
+void Compare(f::Scope *scope,
+             const p::DeviceContext &ctx,
              std::string op_type) {
   // init
   auto x = scope->Var("X");
@@ -57,9 +56,9 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx,
     init_y.push_back(static_cast<T>(2.0));
   }
 
-  TensorFromVector(init_x, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
   tensor_x->Resize({10, 10});
-  TensorFromVector(init_y, ctx, tensor_y);
+  paddle::framework::TensorFromVector(init_y, ctx, tensor_y);
   tensor_y->Resize({10, 10});
 
   auto place = ctx.GetPlace();
@@ -68,16 +67,16 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx,
 
   // run
   f::AttributeMap attrs;
-  auto op = f::OpRegistry::CreateOp(op_type, {{"X", {"X"}}, {"Y", {"Y"}}},
-                                    {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      op_type, {{"X", {"X"}}, {"Y", {"Y"}}}, {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
-  float expected;
+  float expected = 0.0;
   if (op_type == "elementwise_add") {
     expected = 3.0;
   } else if (op_type == "elementwise_sub") {
@@ -90,7 +89,8 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx,
 }
 
 template <typename T>
-void CompareGrad(f::Scope *scope, const p::DeviceContext &ctx,
+void CompareGrad(f::Scope *scope,
+                 const p::DeviceContext &ctx,
                  std::string op_type) {
   // init
   auto dout = scope->Var("DOut");
@@ -116,26 +116,28 @@ void CompareGrad(f::Scope *scope, const p::DeviceContext &ctx,
     init_dout.push_back(static_cast<T>(1.0));
   }
 
-  TensorFromVector(init_dout, ctx, tensor_dout);
+  paddle::framework::TensorFromVector(init_dout, ctx, tensor_dout);
   tensor_dout->Resize({2, 3, 5});
 
   // run
   f::AttributeMap attrs;
   auto op = f::OpRegistry::CreateOp(
-      op_type, {{"Out@GRAD", {"DOut"}}, {"X", {"X"}}, {"Y", {"Y"}}},
-      {{"X@GRAD", {"DX"}}, {"Y@GRAD", {"DY"}}}, attrs);
+      op_type,
+      {{"Out@GRAD", {"DOut"}}, {"X", {"X"}}, {"Y", {"Y"}}},
+      {{"X@GRAD", {"DX"}}, {"Y@GRAD", {"DY"}}},
+      attrs);
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);
 
   std::vector<T> dx_vec;
-  TensorToVector(*tensor_dx, ctx, &dx_vec);
+  paddle::framework::TensorToVector(*tensor_dx, ctx, &dx_vec);
 
   std::vector<T> dy_vec;
-  TensorToVector(*tensor_dy, ctx, &dy_vec);
+  paddle::framework::TensorToVector(*tensor_dy, ctx, &dy_vec);
 
   ctx.Wait();
-  float expected_x, expected_y;
+  float expected_x = 0, expected_y = 0;
   if (op_type == "elementwise_add_grad") {
     expected_x = 1.0;
     expected_y = 6.0;

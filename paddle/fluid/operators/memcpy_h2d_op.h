@@ -15,16 +15,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/stream.h"
 
-namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class Variable;
 class SelectedRows;
 }  // namespace framework
@@ -42,14 +40,18 @@ class MemcpyH2DFunctor {
   void operator()(const framework::LoDTensor &lod_tensor) const {
     auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    out_tensor.mutable_data(
-        BOOST_GET_CONST(platform::CUDAPlace, dev_ctx_.GetPlace()),
-        lod_tensor.type(),
-        static_cast<const platform::CUDADeviceContext *>(&dev_ctx_)->stream());
+    auto stream = static_cast<const phi::GPUContext *>(&dev_ctx_)->stream();
+#else
+    auto stream = nullptr;
 #endif
-    if (dst_place_type_ == 0 || dst_place_type_ == 1) {
-      framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
-                            &out_tensor);
+    out_tensor.mutable_data(
+        dev_ctx_.GetPlace(),
+        lod_tensor.dtype(),
+        phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+
+    if (dst_place_type_ >= 0 && dst_place_type_ <= 3) {
+      framework::TensorCopy(
+          lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
@@ -57,7 +59,7 @@ class MemcpyH2DFunctor {
     out_tensor.set_lod(lod_tensor.lod());
   }
 
-  void operator()(const framework::SelectedRows &rows) const {
+  void operator()(const phi::SelectedRows &rows) const {
     // (JZ-LIANG) to support SelectedRows
     PADDLE_THROW(platform::errors::Unimplemented(
         "Memcpy for SelectedRows is NOT support yet."));
@@ -66,7 +68,8 @@ class MemcpyH2DFunctor {
   template <typename T>
   void operator()(const T &v) const {
     PADDLE_ENFORCE_EQ(
-        true, false,
+        true,
+        false,
         platform::errors::PermissionDenied(
             "Not support type for Memcpy  op with type %s", typeid(T).name()));
   }

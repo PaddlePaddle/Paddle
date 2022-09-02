@@ -18,6 +18,7 @@ import os
 
 
 class TestInstallCheck(unittest.TestCase):
+
     def test_paddle_fluid(self):
         paddle.fluid.install_check.run_check()
 

@@ -26,6 +26,7 @@ paddle.enable_static()
 
 
 class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
+
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
@@ -47,7 +48,7 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
             img, label = init_feed_dict()
             feed_dict_data = {"image": img, "label": label}
 
-        not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
+        not_fuse_op_first_loss, not_fuse_op_last_loss, _ = self.check_network_convergence(
             model,
             feed_dict=feed_dict_data,
             get_data_from_feeder=get_data_from_feeder,
@@ -55,7 +56,7 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
             fuse_all_reduce_ops=False,
             fuse_all_optimizer_ops=fuse_all_optimizer_ops,
             optimizer=optimizer)
-        fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
+        fuse_op_first_loss, fuse_op_last_loss, _ = self.check_network_convergence(
             model,
             feed_dict=feed_dict_data,
             get_data_from_feeder=get_data_from_feeder,
@@ -77,13 +78,13 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
 
 
 class TestFuseAllReduceOps(TestFuseAllReduceOpsBase):
+
     def _decorate_compare_fused_all_reduce(self, model, use_device):
-        self.compare_fuse_all_reduce_ops(
-            model,
-            use_device,
-            init_feed_dict=init_data,
-            optimizer=self.optimizer,
-            fuse_all_optimizer_ops=True)
+        self.compare_fuse_all_reduce_ops(model,
+                                         use_device,
+                                         init_feed_dict=init_data,
+                                         optimizer=self.optimizer,
+                                         fuse_all_optimizer_ops=True)
 
     def test_simple_fc_with_fuse_all_reduce(self):
         self._decorate_compare_fused_all_reduce(simple_fc_net, DeviceType.CUDA)
@@ -101,16 +102,17 @@ class TestFuseAllReduceOps(TestFuseAllReduceOpsBase):
 
 
 class TestFuseAllReduceOpsAndOptiOps(TestFuseAllReduceOps):
+
     def _decorate_compare_fused_all_reduce(self, model, use_device):
-        self.compare_fuse_all_reduce_ops(
-            model,
-            use_device,
-            init_feed_dict=init_data,
-            optimizer=self.optimizer,
-            fuse_all_optimizer_ops=True)
+        self.compare_fuse_all_reduce_ops(model,
+                                         use_device,
+                                         init_feed_dict=init_data,
+                                         optimizer=self.optimizer,
+                                         fuse_all_optimizer_ops=True)
 
 
 class TestFuseAllReduceOpsWithSparseGrad(TestFuseAllReduceOpsBase):
+
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)

@@ -42,6 +42,7 @@ class Collective(object):
         self.nrings = nrings
         self.endpoints = None
         self.current_endpoint = None
+        self.other_endpoints = None
         self.nranks = None
         self.rank = None
         self.startup_program = None
@@ -79,6 +80,12 @@ class Collective(object):
         self.endpoints = endpoints
         self.current_endpoint = current_endpoint
 
+        if current_endpoint:
+            nranks = len(endpoints)
+            other_endpoints = endpoints[:]
+            other_endpoints.remove(current_endpoint)
+            self.other_endpoints = other_endpoints
+
         self.wait_port = wait_port
 
         self.startup_program._origin_program = self.startup_program.clone()
@@ -115,69 +122,63 @@ class Collective(object):
 
         block = program.global_block()
         if core.is_compiled_with_npu():
-            hccl_id_var = block.create_var(
-                name=unique_name.generate('hccl_id'),
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
+            hccl_id_var = block.create_var(name=unique_name.generate('hccl_id'),
+                                           persistable=True,
+                                           type=core.VarDesc.VarType.RAW)
             endpoint_to_index_map = {e: idx for idx, e in enumerate(endpoints)}
-            block.append_op(
-                type='c_gen_hccl_id',
-                inputs={},
-                outputs={'Out': hccl_id_var},
-                attrs={
-                    'rank': rank,
-                    'endpoint': current_endpoint,
-                    'other_endpoints': other_endpoints,
-                    self.op_role_key: OpRole.Forward
-                })
-            block.append_op(
-                type='c_comm_init_hccl',
-                inputs={'X': hccl_id_var},
-                outputs={},
-                attrs={
-                    'rank': rank,
-                    'ring_id': ring_id,
-                    'device_id': int(os.getenv("FLAGS_selected_npus")),
-                    'rank_ids': nranks,
-                    self.op_role_key: OpRole.Forward
-                })
+            block.append_op(type='c_gen_hccl_id',
+                            inputs={},
+                            outputs={'Out': hccl_id_var},
+                            attrs={
+                                'rank': rank,
+                                'endpoint': current_endpoint,
+                                'other_endpoints': other_endpoints,
+                                self.op_role_key: OpRole.Forward
+                            })
+            block.append_op(type='c_comm_init_hccl',
+                            inputs={'X': hccl_id_var},
+                            outputs={},
+                            attrs={
+                                'rank': rank,
+                                'ring_id': ring_id,
+                                'device_id':
+                                int(os.getenv("FLAGS_selected_npus")),
+                                'rank_ids': nranks,
+                                self.op_role_key: OpRole.Forward
+                            })
         else:
-            nccl_id_var = block.create_var(
-                name=unique_name.generate('nccl_id'),
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
-            block.append_op(
-                type='c_gen_nccl_id',
-                inputs={},
-                outputs={'Out': nccl_id_var},
-                attrs={
-                    'rank': rank,
-                    'endpoint': current_endpoint,
-                    'other_endpoints': other_endpoints,
-                    self.op_role_key: OpRole.Forward
-                })
+            nccl_id_var = block.create_var(name=unique_name.generate('nccl_id'),
+                                           persistable=True,
+                                           type=core.VarDesc.VarType.RAW)
+            block.append_op(type='c_gen_nccl_id',
+                            inputs={},
+                            outputs={'Out': nccl_id_var},
+                            attrs={
+                                'rank': rank,
+                                'endpoint': current_endpoint,
+                                'other_endpoints': other_endpoints,
+                                self.op_role_key: OpRole.Forward
+                            })
             if not has_multitrainer:
-                block.append_op(
-                    type='c_comm_init',
-                    inputs={'X': nccl_id_var},
-                    outputs={},
-                    attrs={
-                        'nranks': nranks,
-                        'rank': rank,
-                        'ring_id': ring_id,
-                        self.op_role_key: OpRole.Forward
-                    })
+                block.append_op(type='c_comm_init',
+                                inputs={'X': nccl_id_var},
+                                outputs={},
+                                attrs={
+                                    'nranks': nranks,
+                                    'rank': rank,
+                                    'ring_id': ring_id,
+                                    self.op_role_key: OpRole.Forward
+                                })
             else:
-                block.append_op(
-                    type='c_comm_init_multitrainer',
-                    inputs={'X': nccl_id_var},
-                    outputs={},
-                    attrs={
-                        'ntrainers': nranks,
-                        'trainer_id': rank,
-                        'ring_id': ring_id,
-                        self.op_role_key: OpRole.Forward
-                    })
+                block.append_op(type='c_comm_init_multitrainer',
+                                inputs={'X': nccl_id_var},
+                                outputs={},
+                                attrs={
+                                    'ntrainers': nranks,
+                                    'trainer_id': rank,
+                                    'ring_id': ring_id,
+                                    self.op_role_key: OpRole.Forward
+                                })
 
     def _broadcast_params(self):
         block = self.startup_program.global_block()
@@ -187,23 +188,23 @@ class Collective(object):
                 continue
 
             ring_id = (ring_id + 1) % self.nrings
-            block.append_op(
-                type='c_broadcast',
-                inputs={'X': param},
-                outputs={'Out': param},
-                attrs={
-                    'ring_id': ring_id,
-                    'root': 0,
-                    self.op_role_key: OpRole.Forward
-                })
+            block.append_op(type='c_broadcast',
+                            inputs={'X': param},
+                            outputs={'Out': param},
+                            attrs={
+                                'ring_id': ring_id,
+                                'root': 0,
+                                self.op_role_key: OpRole.Forward
+                            })
 
         for ring_id in range(self.nrings):
-            block.append_op(
-                type='c_sync_comm_stream',
-                inputs={'X': param},
-                outputs={'Out': param},
-                attrs={'ring_id': ring_id,
-                       self.op_role_key: OpRole.Forward})
+            block.append_op(type='c_sync_comm_stream',
+                            inputs={'X': param},
+                            outputs={'Out': param},
+                            attrs={
+                                'ring_id': ring_id,
+                                self.op_role_key: OpRole.Forward
+                            })
 
     def _is_loss_grad_op(self, op):
         if self.op_role_key not in op.attr_names:
@@ -245,15 +246,14 @@ class GradAllReduce(Collective):
         for idx, op in reversed(list(enumerate(block.ops))):
             if self._is_loss_grad_op(op):
                 loss_grad_var = block.vars[op.output_arg_names[0]]
-                block._insert_op(
-                    idx + 1,
-                    type='scale',
-                    inputs={'X': loss_grad_var},
-                    outputs={'Out': loss_grad_var},
-                    attrs={
-                        'scale': 1.0 / self.nranks,
-                        self.op_role_key: OpRole.Backward
-                    })
+                block._insert_op(idx + 1,
+                                 type='scale',
+                                 inputs={'X': loss_grad_var},
+                                 outputs={'Out': loss_grad_var},
+                                 attrs={
+                                     'scale': 1.0 / self.nranks,
+                                     self.op_role_key: OpRole.Backward
+                                 })
 
     def _insert_allreduce_ops(self):
         block = self.main_program.global_block()
@@ -288,15 +288,14 @@ class GradAllReduce(Collective):
                     # As we search ops reversedly, we should insert c_allreduce_sum
                     # op in the same way to keep the ring_id alternate
                     ring_id = (ring_id + 1) % self.nrings
-                    block._insert_op(
-                        offset,
-                        type='c_allreduce_sum',
-                        inputs={'X': grad},
-                        outputs={'Out': grad},
-                        attrs={
-                            'ring_id': ring_id,
-                            self.op_role_key: OpRole.Backward
-                        })
+                    block._insert_op(offset,
+                                     type='c_allreduce_sum',
+                                     inputs={'X': grad},
+                                     outputs={'Out': grad},
+                                     attrs={
+                                         'ring_id': ring_id,
+                                         self.op_role_key: OpRole.Backward
+                                     })
 
         if grad is None:
             return
@@ -304,15 +303,14 @@ class GradAllReduce(Collective):
         for idx, op in enumerate(block.ops):
             if self._is_optimizer_op(op):
                 for ring_id in range(self.nrings):
-                    block._insert_op(
-                        idx + ring_id,
-                        type='c_sync_comm_stream',
-                        inputs={'X': grad},
-                        outputs={'Out': grad},
-                        attrs={
-                            'ring_id': ring_id,
-                            self.op_role_key: OpRole.Backward
-                        })
+                    block._insert_op(idx + ring_id,
+                                     type='c_sync_comm_stream',
+                                     inputs={'X': grad},
+                                     outputs={'Out': grad},
+                                     attrs={
+                                         'ring_id': ring_id,
+                                         self.op_role_key: OpRole.Backward
+                                     })
                 break
 
 
@@ -335,16 +333,14 @@ class LocalSGD(Collective):
                 non_dist_params.append(param)
 
         for param in non_dist_params:
-            snapshot = block.create_var(
-                name=self.snapshot_name(param.name),
-                shape=param.shape,
-                persistable=True,
-                stop_gradient=True)
-            block.append_op(
-                type='assign',
-                inputs={'X': [param]},
-                outputs={'Out': [snapshot]},
-                attrs={self.op_role_key: OpRole.Forward})
+            snapshot = block.create_var(name=self.snapshot_name(param.name),
+                                        shape=param.shape,
+                                        persistable=True,
+                                        stop_gradient=True)
+            block.append_op(type='assign',
+                            inputs={'X': [param]},
+                            outputs={'Out': [snapshot]},
+                            attrs={self.op_role_key: OpRole.Forward})
 
     def snapshot_name(self, param_name):
         return param_name + self.snapshot_key
@@ -359,69 +355,67 @@ class LocalSGD(Collective):
                 if param.is_distributed:
                     continue
 
-                snapshot = block.create_var(
-                    name=self.snapshot_name(param.name),
-                    shape=param.shape,
-                    persistable=True,
-                    stop_gradient=True,
-                    dtype=param.dtype)
+                snapshot = block.create_var(name=self.snapshot_name(param.name),
+                                            shape=param.shape,
+                                            persistable=True,
+                                            stop_gradient=True,
+                                            dtype=param.dtype)
 
-                block._insert_op(
-                    idx + 1,
-                    type='elementwise_sub',
-                    inputs={'X': [snapshot],
-                            'Y': [param]},
-                    outputs={'Out': [param]},
-                    attrs={self.op_role_key: OpRole.Optimize})
-                block._insert_op(
-                    idx + 2,
-                    type='c_sync_calc_stream',
-                    inputs={'X': param},
-                    outputs={'Out': param},
-                    attrs={self.op_role_key: OpRole.Optimize})
+                block._insert_op(idx + 1,
+                                 type='elementwise_sub',
+                                 inputs={
+                                     'X': [snapshot],
+                                     'Y': [param]
+                                 },
+                                 outputs={'Out': [param]},
+                                 attrs={self.op_role_key: OpRole.Optimize})
+                block._insert_op(idx + 2,
+                                 type='c_sync_calc_stream',
+                                 inputs={'X': param},
+                                 outputs={'Out': param},
+                                 attrs={self.op_role_key: OpRole.Optimize})
                 ring_id = (ring_id + 1) % self.nrings
-                block._insert_op(
-                    idx + 3,
-                    type='c_allreduce_sum',
-                    inputs={'X': [param]},
-                    outputs={'Out': [param]},
-                    attrs={
-                        'ring_id': ring_id,
-                        self.op_role_key: OpRole.Optimize
-                    })
+                block._insert_op(idx + 3,
+                                 type='c_allreduce_sum',
+                                 inputs={'X': [param]},
+                                 outputs={'Out': [param]},
+                                 attrs={
+                                     'ring_id': ring_id,
+                                     self.op_role_key: OpRole.Optimize
+                                 })
 
                 ordered_param_snapshot.append((param, snapshot))
 
         for ring_id in range(self.nrings):
-            block.append_op(
-                type='c_sync_comm_stream',
-                inputs={'X': param},
-                outputs={'Out': param},
-                attrs={'ring_id': ring_id,
-                       self.op_role_key: OpRole.Optimize})
+            block.append_op(type='c_sync_comm_stream',
+                            inputs={'X': param},
+                            outputs={'Out': param},
+                            attrs={
+                                'ring_id': ring_id,
+                                self.op_role_key: OpRole.Optimize
+                            })
 
         for param_snapshot in reversed(ordered_param_snapshot):
             param = param_snapshot[0]
             snapshot = param_snapshot[1]
-            block.append_op(
-                type='scale',
-                inputs={'X': [param]},
-                outputs={'Out': [param]},
-                attrs={
-                    'scale': 1.0 / self.nranks,
-                    self.op_role_key: OpRole.Optimize
-                })
-            block.append_op(
-                type='elementwise_sub',
-                inputs={'X': [snapshot],
-                        'Y': [param]},
-                outputs={'Out': [param]},
-                attrs={self.op_role_key: OpRole.Optimize})
-            block.append_op(
-                type='assign',
-                inputs={'X': [param]},
-                outputs={'Out': [snapshot]},
-                attrs={self.op_role_key: OpRole.Optimize})
+            block.append_op(type='scale',
+                            inputs={'X': [param]},
+                            outputs={'Out': [param]},
+                            attrs={
+                                'scale': 1.0 / self.nranks,
+                                self.op_role_key: OpRole.Optimize
+                            })
+            block.append_op(type='elementwise_sub',
+                            inputs={
+                                'X': [snapshot],
+                                'Y': [param]
+                            },
+                            outputs={'Out': [param]},
+                            attrs={self.op_role_key: OpRole.Optimize})
+            block.append_op(type='assign',
+                            inputs={'X': [param]},
+                            outputs={'Out': [snapshot]},
+                            attrs={self.op_role_key: OpRole.Optimize})
 
 
 class SingleProcessMultiThread(GradAllReduce):
@@ -457,14 +451,31 @@ class MultiThread(GradAllReduce):
             print("total endpoints: ", self.endpoints)
             print("rank: %d, ring_id: %d" % (self.rank, self.nrings))
             for ring_id in range(self.nrings):
-                self._init_communicator(
-                    self.startup_program, self.current_endpoint, self.endpoints,
-                    self.rank, ring_id, self.wait_port, True)
+                self._init_communicator(self.startup_program,
+                                        self.current_endpoint, self.endpoints,
+                                        self.rank, ring_id, self.wait_port,
+                                        True)
 
         else:
-            print("begin to _transpile_startup_program for single-node")
-            block = self.startup_program.global_block()
-            block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
+            if "xpu" in self.trans_mode:
+                print(
+                    "begin to _transpile_startup_program for single-node in XPU"
+                )
+                block = self.startup_program.global_block()
+                block.append_op(
+                    type='c_comm_init_all',
+                    attrs={
+                        'devices':
+                        list(
+                            map(int,
+                                os.getenv("FLAGS_selected_gpus").split(","))),
+                        'ring_id':
+                        0
+                    })
+            else:
+                print("begin to _transpile_startup_program for single-node")
+                block = self.startup_program.global_block()
+                block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
 
     def _transpile_main_program(self):
         self._insert_scale_loss_grad_ops()
@@ -476,6 +487,11 @@ class MultiThread(GradAllReduce):
         elif self.trans_mode == "fuse_all_reduce":
             print("begin to transpile in fuse all-reduce mode")
             self._insert_fuse_allreduce_ops()
+        elif self.trans_mode == "all_reduce_xpu" and len(
+                os.getenv("FLAGS_selected_gpus").split(",")) == 1:
+            print(
+                "skip transpile in all-reduce-xpu mode when number of devices is only one"
+            )
         else:
             print("begin to transpile in all-reduce mode")
             self._insert_allreduce_ops()
@@ -521,16 +537,15 @@ class MultiThread(GradAllReduce):
                     # As we search ops reversedly, we should insert c_allgather
                     # op in the same way to keep the ring_id alternate
                     ring_id = (ring_id + 1) % self.nrings
-                    block._insert_op(
-                        offset,
-                        type='c_allgather',
-                        inputs={'X': grad},
-                        outputs={'Out': new_grad_var},
-                        attrs={
-                            'nranks': self.allgather_ranks,
-                            'ring_id': ring_id,
-                            self.op_role_key: OpRole.Backward
-                        })
+                    block._insert_op(offset,
+                                     type='c_allgather',
+                                     inputs={'X': grad},
+                                     outputs={'Out': new_grad_var},
+                                     attrs={
+                                         'nranks': self.allgather_ranks,
+                                         'ring_id': ring_id,
+                                         self.op_role_key: OpRole.Backward
+                                     })
 
         if grad is None:
             return
@@ -538,15 +553,14 @@ class MultiThread(GradAllReduce):
         for idx, op in enumerate(block.ops):
             if self._is_optimizer_op(op):
                 for ring_id in range(self.nrings):
-                    block._insert_op(
-                        idx + ring_id,
-                        type='c_sync_comm_stream',
-                        inputs={'X': grad},
-                        outputs={'Out': grad},
-                        attrs={
-                            'ring_id': ring_id,
-                            self.op_role_key: OpRole.Backward
-                        })
+                    block._insert_op(idx + ring_id,
+                                     type='c_sync_comm_stream',
+                                     inputs={'X': grad},
+                                     outputs={'Out': grad},
+                                     attrs={
+                                         'ring_id': ring_id,
+                                         self.op_role_key: OpRole.Backward
+                                     })
                 break
 
     def _update_adam_ops(self):
@@ -577,10 +591,14 @@ class MultiThread(GradAllReduce):
                     "Beta2PowOut": block.vars[op.output("Beta2PowOut")[0]]
                 }
                 attrs = {
-                    "epsilon": op.attr('epsilon'),
-                    "beta1": op.attr('beta1'),
-                    "beta2": op.attr('beta2'),
-                    "lazy_mode": op.attr('lazy_mode'),
+                    "epsilon":
+                    op.attr('epsilon'),
+                    "beta1":
+                    op.attr('beta1'),
+                    "beta2":
+                    op.attr('beta2'),
+                    "lazy_mode":
+                    op.attr('lazy_mode'),
                     "min_row_size_to_use_multithread":
                     op.attr('min_row_size_to_use_multithread')
                 }
@@ -592,25 +610,27 @@ class MultiThread(GradAllReduce):
                         dtype=core.VarDesc.VarType.FP32,
                         stop_gradient=True) for i in range(self.allgather_ranks)
                 ]
-                block._insert_op(
-                    offset,
-                    type="split",
-                    inputs={
-                        'X': block.vars[op.input("Param")[0] + "_allgather"]
-                    },
-                    outputs={'Out': split_vars},
-                    attrs={'num': self.allgather_ranks,
-                           'axis': 0})
+                block._insert_op(offset,
+                                 type="split",
+                                 inputs={
+                                     'X':
+                                     block.vars[op.input("Param")[0] +
+                                                "_allgather"]
+                                 },
+                                 outputs={'Out': split_vars},
+                                 attrs={
+                                     'num': self.allgather_ranks,
+                                     'axis': 0
+                                 })
                 offset += 1
 
                 for i in range(self.allgather_ranks):
                     inputs["Grad"] = split_vars[i]
-                    block._insert_op(
-                        offset,
-                        type=op.type,
-                        inputs=inputs,
-                        outputs=outputs,
-                        attrs=attrs)
+                    block._insert_op(offset,
+                                     type=op.type,
+                                     inputs=inputs,
+                                     outputs=outputs,
+                                     attrs=attrs)
                     offset += 1
                 # remove the original adam op
                 block._remove_op(offset)
@@ -660,47 +680,45 @@ class MultiThread(GradAllReduce):
             if self._is_optimizer_op(op):
                 for segment in segments:
                     # insert coalesce tensor
-                    tmp_var = block.create_var(
-                        name=unique_name.generate('FusedOutput_{}'.format(
-                            segment[0].name)),
-                        dtype=segment[0].dtype,
-                        persistable=False,
-                        stop_gradient=True)
+                    tmp_var = block.create_var(name=unique_name.generate(
+                        'FusedOutput_{}'.format(segment[0].name)),
+                                               dtype=segment[0].dtype,
+                                               persistable=False,
+                                               stop_gradient=True)
                     fused_vars.append(tmp_var)
-                    block._insert_op(
-                        idx,
-                        type="coalesce_tensor",
-                        inputs={"Input": segment},
-                        outputs={"Output": segment,
-                                 "FusedOutput": tmp_var},
-                        attrs={
-                            "copy_data": True,
-                            "use_align": True,
-                            "dtype": segment[0].dtype,
-                            self.op_role_key: OpRole.Backward
-                        })
+                    block._insert_op(idx,
+                                     type="coalesce_tensor",
+                                     inputs={"Input": segment},
+                                     outputs={
+                                         "Output": segment,
+                                         "FusedOutput": tmp_var
+                                     },
+                                     attrs={
+                                         "copy_data": True,
+                                         "use_align": True,
+                                         "dtype": segment[0].dtype,
+                                         self.op_role_key: OpRole.Backward
+                                     })
                 break
 
         # insert the allreduce_sum op
         for idx, op in enumerate(block.ops):
             if self._is_optimizer_op(op):
                 for fused_var in fused_vars:
-                    block._insert_op(
-                        idx,
-                        type='c_allreduce_sum',
-                        inputs={'X': fused_var},
-                        outputs={'Out': fused_var},
-                        attrs={
-                            'ring_id': ring_id,
-                            'use_calc_stream': False,
-                            self.op_role_key: OpRole.Backward
-                        })
-                    block._insert_op(
-                        idx,
-                        type='c_sync_calc_stream',
-                        inputs={'X': fused_var},
-                        outputs={'Out': fused_var},
-                        attrs={self.op_role_key: OpRole.Backward})
+                    block._insert_op(idx,
+                                     type='c_allreduce_sum',
+                                     inputs={'X': fused_var},
+                                     outputs={'Out': fused_var},
+                                     attrs={
+                                         'ring_id': ring_id,
+                                         'use_calc_stream': False,
+                                         self.op_role_key: OpRole.Backward
+                                     })
+                    block._insert_op(idx,
+                                     type='c_sync_calc_stream',
+                                     inputs={'X': fused_var},
+                                     outputs={'Out': fused_var},
+                                     attrs={self.op_role_key: OpRole.Backward})
                 break
 
         if len(fused_vars) == 0:
@@ -710,14 +728,13 @@ class MultiThread(GradAllReduce):
         # insert the sync comm op
         for idx, op in enumerate(block.ops):
             if self._is_optimizer_op(op):
-                block._insert_op(
-                    idx,
-                    type='c_sync_comm_stream',
-                    inputs={'X': fused_vars[0]},
-                    outputs={'Out': fused_vars[0]},
-                    attrs={
-                        'ring_id': ring_id,
-                        self.op_role_key: OpRole.Backward
-                    })
+                block._insert_op(idx,
+                                 type='c_sync_comm_stream',
+                                 inputs={'X': fused_vars[0]},
+                                 outputs={'Out': fused_vars[0]},
+                                 attrs={
+                                     'ring_id': ring_id,
+                                     self.op_role_key: OpRole.Backward
+                                 })
                 break
         block._sync_with_cpp()

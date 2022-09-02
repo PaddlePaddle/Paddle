@@ -23,10 +23,65 @@
 namespace paddle {
 namespace platform {
 
+#ifdef PADDLE_WITH_CUDA
+#define PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(__cond,                            \
+                                           __kernel_func,                     \
+                                           __grid,                            \
+                                           __block,                           \
+                                           __sm_size,                         \
+                                           __stream,                          \
+                                           __seed_inc,                        \
+                                           __seed_expr,                       \
+                                           __offset_expr,                     \
+                                           ...)                               \
+  do {                                                                        \
+    if (::paddle::platform::CUDAGraph::IsThisThreadCapturing() && (__cond)) { \
+      using __Helper =                                                        \
+          ::paddle::platform::IsSameKernelHelper<decltype(&__kernel_func),    \
+                                                 &__kernel_func>;             \
+      auto *dev_ctx =                                                         \
+          ::paddle::platform::DeviceContextPool::Instance().GetByPlace(       \
+              ::paddle::platform::CUDAGraph::CapturingPlace());               \
+      auto __set_seed_func =                                                  \
+          [=](::paddle::platform::CUDAKernelParams *__params,                 \
+              bool __check_only) -> bool {                                    \
+        if (__check_only) {                                                   \
+          return __params->func() == &__kernel_func &&                        \
+                 __Helper::Compare(*__params, __VA_ARGS__);                   \
+        }                                                                     \
+        auto &KERNEL_PARAMS = *__params;                                      \
+        uint64_t __seed, __offset;                                            \
+        ::paddle::operators::GetSeedDataAndIncrement(                         \
+            *dev_ctx, nullptr, false, 0, __seed_inc, &__seed, &__offset);     \
+        __seed_expr = static_cast<decltype(__seed_expr)>(__seed);             \
+        __offset_expr = static_cast<decltype(__offset_expr)>(__offset);       \
+        return true;                                                          \
+      };                                                                      \
+      ::paddle::platform::CUDAGraph::RecordRandomKernelInfo(__set_seed_func); \
+    }                                                                         \
+    __kernel_func<<<__grid, __block, __sm_size, __stream>>>(__VA_ARGS__);     \
+  } while (0)
+#else
+#define PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(__cond,                        \
+                                           __kernel_func,                 \
+                                           __grid,                        \
+                                           __block,                       \
+                                           __sm_size,                     \
+                                           __stream,                      \
+                                           __seed_inc,                    \
+                                           __seed_expr,                   \
+                                           __offset_expr,                 \
+                                           ...)                           \
+  do {                                                                    \
+    __kernel_func<<<__grid, __block, __sm_size, __stream>>>(__VA_ARGS__); \
+  } while (0)
+#endif
+
 // NOTE: These APIs are not thread-safe.
 #ifdef PADDLE_WITH_CUDA
 void BeginCUDAGraphCapture(platform::CUDAPlace place,
-                           cudaStreamCaptureMode mode);
+                           cudaStreamCaptureMode mode,
+                           int64_t pool_id = CUDAGraph::kInvalidPoolID);
 std::unique_ptr<CUDAGraph> EndCUDAGraphCapture();
 #endif
 
@@ -58,6 +113,23 @@ inline void AddResetCallbackIfCapturingCUDAGraph(Callback &&callback) {
   }
 #endif
   callback();
+}
+
+template <typename T>
+inline T *RestoreHostMemIfCapturingCUDAGraph(T *host_mem, size_t size) {
+  static_assert(std::is_trivial<T>::value, "T must be trivial type");
+  static_assert(!std::is_same<T, void>::value, "T cannot be void");
+#ifdef PADDLE_WITH_CUDA
+  if (UNLIKELY(IsCUDAGraphCapturing())) {
+    size_t nbytes = size * sizeof(T);
+    void *new_host_mem = new uint8_t[nbytes];
+    std::memcpy(new_host_mem, host_mem, nbytes);
+    AddResetCallbackIfCapturingCUDAGraph(
+        [new_host_mem] { delete[] reinterpret_cast<uint8_t *>(new_host_mem); });
+    return reinterpret_cast<T *>(new_host_mem);
+  }
+#endif
+  return host_mem;
 }
 
 class SkipCUDAGraphCaptureGuard {

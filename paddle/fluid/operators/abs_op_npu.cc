@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the Licnse. */
 
-#include "paddle/fluid/operators/abs_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -33,7 +33,8 @@ class AbsNPUKernel : public framework::OpKernel<T> {
                                      {
                                          *x,
                                      },
-                                     {*out}, {});
+                                     {*out},
+                                     {});
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -68,9 +69,11 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    abs, ops::AbsNPUKernel<plat::NPUDeviceContext, float>,
+    abs,
+    ops::AbsNPUKernel<plat::NPUDeviceContext, float>,
     ops::AbsNPUKernel<plat::NPUDeviceContext, plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    abs_grad, ops::AbsGradNPUKernel<plat::NPUDeviceContext, float>,
+    abs_grad,
+    ops::AbsGradNPUKernel<plat::NPUDeviceContext, float>,
     ops::AbsGradNPUKernel<plat::NPUDeviceContext, plat::float16>);

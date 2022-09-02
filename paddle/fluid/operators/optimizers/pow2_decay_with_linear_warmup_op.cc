@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/optimizers/pow2_decay_with_linear_warmup_op.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -25,7 +26,7 @@ class Pow2DecayWithLinearWarmupOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    auto dim = framework::make_ddim({1});
+    auto dim = phi::make_ddim({1});
     ctx->SetOutputDim("LearningRateOut", dim);
     ctx->SetOutputDim("StepOut", dim);
   }
@@ -84,5 +85,5 @@ REGISTER_OP_WITHOUT_GRADIENT(pow2_decay_with_linear_warmup,
                              ops::Pow2DecayWithLinearWarmupOpMaker);
 REGISTER_OP_CPU_KERNEL(
     pow2_decay_with_linear_warmup,
-    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CPUDeviceContext, double>,
-    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CPUDeviceContext, float>);
+    ops::Pow2DecayWithLinearWarmupOpKernel<phi::CPUContext, double>,
+    ops::Pow2DecayWithLinearWarmupOpKernel<phi::CPUContext, float>);

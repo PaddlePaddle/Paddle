@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/expand_v2_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
@@ -28,18 +29,20 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
 
     auto in_dims = X->dims();
     auto expand_shape = get_expand_shape(ctx);
-    auto vec_in_dims = framework::vectorize<int>(in_dims);
+    auto vec_in_dims = phi::vectorize<int>(in_dims);
     auto diff = expand_shape.size() - vec_in_dims.size();
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
     std::vector<int> final_expand_shape(vec_in_dims.size());
     for (size_t i = 0; i < vec_in_dims.size(); ++i) {
-      PADDLE_ENFORCE_NE(expand_shape[i], 0,
+      PADDLE_ENFORCE_NE(expand_shape[i],
+                        0,
                         platform::errors::InvalidArgument(
                             "The expanded size cannot be zero."));
       if (i < diff) {  // expand_shape = [3,4,-1,-1], X = [10,2] -->
                        // final_expand_shape = [3,4,10,2]
         PADDLE_ENFORCE_GT(
-            expand_shape[i], 0,
+            expand_shape[i],
+            0,
             platform::errors::InvalidArgument(
                 "The expanded size (%d) for non-existing dimensions must be "
                 "positive for expand_v2 op.",
@@ -50,11 +53,13 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
                                          // [3,4,10,4]
         if (vec_in_dims[i] != 1) {
           PADDLE_ENFORCE_EQ(
-              vec_in_dims[i], expand_shape[i],
+              vec_in_dims[i],
+              expand_shape[i],
               platform::errors::InvalidArgument(
                   "The value (%d) of the non-singleton dimension does not match"
                   " the corresponding value (%d) in shape for expand_v2 op.",
-                  vec_in_dims[i], expand_shape[i]));
+                  vec_in_dims[i],
+                  expand_shape[i]));
           final_expand_shape[i] = expand_shape[i];
         } else {
           final_expand_shape[i] = expand_shape[i];
@@ -62,7 +67,8 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
       } else {  // expand_shape = [3,4,-1,-1], X = [10,2] --> final_expand_shape
                 // = [3,4,10,2]
         PADDLE_ENFORCE_EQ(
-            expand_shape[i], -1,
+            expand_shape[i],
+            -1,
             platform::errors::InvalidArgument(
                 "When the value in shape is negative for expand_v2 op, "
                 "only -1 is supported, but the value received is %d.",
@@ -76,33 +82,40 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
     auto rank = X->dims().size();
 
     PADDLE_ENFORCE_GE(
-        rank, 1,
+        rank,
+        1,
         platform::errors::InvalidArgument(
             "The rank of the input 'X' for expand_v2_npu op must be positive, "
             "but the value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
-        rank, MAX_RANK_SUPPORTED,
+        rank,
+        MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
             "The rank of the input 'X' for expand_v2_npu op must be less than "
             "or equal to %d, but the value received is %d.",
-            MAX_RANK_SUPPORTED, rank));
+            MAX_RANK_SUPPORTED,
+            rank));
     auto shape_size = final_expand_shape.size();
     PADDLE_ENFORCE_GE(
-        shape_size, rank,
+        shape_size,
+        rank,
         platform::errors::InvalidArgument(
             "The number (%d) of elements of 'shape' for expand_v2_npu op must "
             "be "
             "greater than or equal to the rank (%d) of the input 'X'.",
-            shape_size, rank));
-    PADDLE_ENFORCE_LE(shape_size, MAX_RANK_SUPPORTED,
+            shape_size,
+            rank));
+    PADDLE_ENFORCE_LE(shape_size,
+                      MAX_RANK_SUPPORTED,
                       platform::errors::InvalidArgument(
                           "The number (%d) of elements of 'shape' for "
                           "expand_v2_npu op must be "
                           "less than or equal to %d.",
-                          shape_size, MAX_RANK_SUPPORTED));
+                          shape_size,
+                          MAX_RANK_SUPPORTED));
 
-    framework::DDim out_dims = framework::make_ddim(final_expand_shape);
+    framework::DDim out_dims = phi::make_ddim(final_expand_shape);
     Out->Resize(out_dims);
     Out->mutable_data<T>(ctx.GetPlace());
 
@@ -116,12 +129,22 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
       runner.Run(dev_ctx.stream());
     };
 
-    if (X->type() == framework::proto::VarType::BOOL) {
-      NpuOpRunner::TypeAdapter({*X}, {*Out}, attr_input, dev_ctx, op_func,
+    if (framework::TransToProtoVarType(X->dtype()) ==
+        framework::proto::VarType::BOOL) {
+      NpuOpRunner::TypeAdapter({*X},
+                               {*Out},
+                               attr_input,
+                               dev_ctx,
+                               op_func,
                                {framework::proto::VarType::UINT8},
                                {framework::proto::VarType::UINT8});
-    } else if (X->type() == framework::proto::VarType::INT64) {
-      NpuOpRunner::TypeAdapter({*X}, {*Out}, attr_input, dev_ctx, op_func,
+    } else if (framework::TransToProtoVarType(X->dtype()) ==
+               framework::proto::VarType::INT64) {
+      NpuOpRunner::TypeAdapter({*X},
+                               {*Out},
+                               attr_input,
+                               dev_ctx,
+                               op_func,
                                {framework::proto::VarType::INT32},
                                {framework::proto::VarType::INT32});
     } else {
@@ -151,18 +174,20 @@ class ExpandV2NPUGradKernel : public framework::OpKernel<T> {
       axes.push_back(i);
     }
 
-    Tensor tmp_dout(dout->type());
-    Tensor reduced_dout(dx->type());
+    Tensor tmp_dout(dout->dtype());
+    Tensor reduced_dout(dx->dtype());
     tmp_dout.ShareDataWith(*dout);
     if (axes.size() != 0) {
       std::vector<int64_t> reduced_dout_dims;
       for (auto i = reduce_ndim; i < dout->dims().size(); ++i) {
         reduced_dout_dims.push_back(dout->dims()[i]);
       }
-      tmp_dout.Resize(framework::make_ddim(reduced_dout_dims));
-      reduced_dout.Resize(framework::make_ddim(reduced_dout_dims));
+      tmp_dout.Resize(phi::make_ddim(reduced_dout_dims));
+      reduced_dout.Resize(phi::make_ddim(reduced_dout_dims));
       reduced_dout.mutable_data<T>(ctx.GetPlace());
-      const auto& runner = NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},
+      const auto& runner = NpuOpRunner("ReduceSumD",
+                                       {*dout},
+                                       {reduced_dout},
                                        {{"axes", axes}, {"keep_dims", false}});
       runner.Run(stream);
       tmp_dout = reduced_dout;
@@ -180,7 +205,9 @@ class ExpandV2NPUGradKernel : public framework::OpKernel<T> {
       }
     }
     if (axes.size() != 0) {
-      const auto& runner = NpuOpRunner("ReduceSumD", {tmp_dout}, {*dx},
+      const auto& runner = NpuOpRunner("ReduceSumD",
+                                       {tmp_dout},
+                                       {*dx},
                                        {{"axes", axes}, {"keep_dims", true}});
       runner.Run(stream);
     } else {

@@ -16,15 +16,18 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/api/include/tensor.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||          \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_XPU_BKCL) || \
+    defined(PADDLE_WITH_CNCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
@@ -38,11 +41,16 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/allreduce.h>
+
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/device/npu/hccl_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_CNCL)
+#include "paddle/fluid/platform/device/mlu/cncl_helper.h"
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
@@ -84,7 +92,8 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
     T* recv_buff = out->mutable_data<T>(in->dims(), place);
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
     PADDLE_ENFORCE_EQ(
-        gloo->IsInitialized(), true,
+        gloo->IsInitialized(),
+        true,
         platform::errors::PreconditionNotMet(
             "You must initialize the gloo environment first to use it."));
     gloo::AllreduceOptions opts(gloo->GetContext());
@@ -112,7 +121,8 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
                 &gloo::product<T>));
         break;
       default:
-        PADDLE_ENFORCE_EQ(true, false,
+        PADDLE_ENFORCE_EQ(true,
+                          false,
                           platform::errors::InvalidArgument(
                               "Invalid reduce type: %d.", red_type));
     }
@@ -144,7 +154,7 @@ inline bool ContainsNan(const paddle::platform::NPUDeviceContext& dev_ctx,
   try {
     const auto& runner_mean = paddle::operators::NpuOpRunner(
         "ReduceMeanD", {*in}, {mean}, {{"axes", axes}, {"keep_dims", false}});
-    TensorToVector(mean, dev_ctx, &vec);
+    paddle::framework::TensorToVector(mean, dev_ctx, &vec);
   } catch (...) {
     LOG(WARNING) << "ContainsNan catch exception";
     return true;
@@ -173,7 +183,8 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
     auto place = ctx.GetPlace();
-    HcclDataType dtype = platform::ToHCCLDataType(in->type());
+    HcclDataType dtype =
+        platform::ToHCCLDataType(framework::TransToProtoVarType(in->dtype()));
     int64_t numel = in->numel();
 
     void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
@@ -231,7 +242,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
 
     bool found_nan = false;
 
-    auto d_type = in->type();
+    auto d_type = framework::TransToProtoVarType(in->dtype());
     switch (d_type) {
       case framework::proto::VarType::FP16: {
         break;
@@ -263,9 +274,14 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
             << ", sendbuff:" << sendbuff << ", recvbuff:" << recvbuff
             << ", out_size:" << out->memory_size();
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
-        sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
-        reinterpret_cast<void*>(stream)));
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        platform::dynload::HcclAllReduce(sendbuff,
+                                         recvbuff,
+                                         numel,
+                                         dtype,
+                                         hccl_red_type,
+                                         comm->comm(),
+                                         reinterpret_cast<void*>(stream)));
 
     out->Resize(in->dims());
 #else
@@ -284,7 +300,8 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<framework::Tensor>("Out");
 
     auto place = ctx.GetPlace();
-    BKCLDataType dtype = platform::ToBKCLDataType(in->type());
+    BKCLDataType dtype =
+        platform::ToBKCLDataType(framework::TransToProtoVarType(in->dtype()));
     int64_t numel = in->numel();
     const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
@@ -326,10 +343,16 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
             "Invalid reduce type: %d", red_type));
     }
 
-    PADDLE_ENFORCE_EQ(bkcl_all_reduce(comm->comm(), sendbuff, recvbuff, numel,
-                                      dtype, bkcl_red_type, stream),
-                      BKCL_SUCCESS, platform::errors::PreconditionNotMet(
-                                        "BKCL all reduce failed"));
+    PADDLE_ENFORCE_EQ(
+        bkcl_all_reduce(comm->comm(),
+                        sendbuff,
+                        recvbuff,
+                        numel,
+                        dtype,
+                        bkcl_red_type,
+                        stream),
+        BKCL_SUCCESS,
+        platform::errors::PreconditionNotMet("BKCL all reduce failed"));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should be compiled with XPU."));
@@ -344,21 +367,59 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
+    int rid = ctx.Attr<int>("ring_id");
 
     auto place = ctx.GetPlace();
-    ncclDataType_t dtype = platform::ToNCCLDataType(in->type());
+    ncclDataType_t dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
     int64_t numel = in->numel();
     const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
-    int rid = ctx.Attr<int>("ring_id");
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(rid)) {
+      // Use ProcessGroup
+      distributed::ProcessGroup* pg = map->get(rid);
+      std::vector<phi::DenseTensor> in_tensor;
+      std::vector<phi::DenseTensor> out_tensor;
+      in_tensor.push_back(*in);
+      out_tensor.push_back(*out);
+
+      distributed::AllreduceOptions opts;
+      switch (red_type) {
+        case kRedSum:
+          opts.reduce_op = distributed::ReduceOp::SUM;
+          break;
+
+        case kRedMax:
+          opts.reduce_op = distributed::ReduceOp::MAX;
+          break;
+
+        case kRedMin:
+          opts.reduce_op = distributed::ReduceOp::MIN;
+          break;
+
+        case kRedProd:
+          opts.reduce_op = distributed::ReduceOp::PRODUCT;
+          break;
+
+        default:
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Invalid reduce type: %d", red_type));
+      }
+
+      auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+      task->Wait();
+      return;
+    }
+
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
     }
@@ -395,6 +456,65 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
+template <ReduceType red_type, typename T>
+class CAllReduceOpMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+#if defined(PADDLE_WITH_CNCL)
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
+
+    auto place = ctx.GetPlace();
+    cnclDataType_t dtype =
+        platform::ToCNCLDataType(framework::TransToProtoVarType(in->dtype()));
+    int64_t numel = in->numel();
+    const void* sendbuff = in->data<T>();
+    out->Resize(in->dims());
+    void* recvbuff = out->mutable_data<T>(place);
+
+    int rid = ctx.Attr<int>("ring_id");
+    auto comm = platform::CNCLCommContext::Instance().Get(rid, place);
+
+    mluStream stream = nullptr;
+    if (ctx.Attr<bool>("use_calc_stream")) {
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<platform::MLUDeviceContext*>(dev_ctx)->stream();
+    } else {
+      stream = comm->stream();
+    }
+
+    cnclReduceOp_t cncl_red_type = cnclSum;
+    switch (red_type) {
+      case kRedSum:
+        cncl_red_type = cnclSum;
+        break;
+
+      case kRedMax:
+        cncl_red_type = cnclMax;
+        break;
+
+      case kRedMin:
+        cncl_red_type = cnclMin;
+        break;
+
+      case kRedProd:
+        cncl_red_type = cnclProd;
+        break;
+
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Invalid reduce type: %d", red_type));
+    }
+
+    PADDLE_ENFORCE_MLU_SUCCESS(cnclAllReduce(
+        sendbuff, recvbuff, numel, dtype, cncl_red_type, comm->comm(), stream));
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with MLU."));
+#endif
+  }
+};
+
 class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
@@ -423,7 +543,8 @@ Call collective AllReduce with reduce type %s. If input and output are
 the same variable, in-place allreduce will be used.
 Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/usage/operations.html#allreduce
 )DOC",
-                               GetName(), GetName()));
+                               GetName(),
+                               GetName()));
   }
 
  protected:

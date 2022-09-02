@@ -25,6 +25,7 @@ import paddle.fluid.dygraph as dg
 
 
 class TestErfOp(OpTest):
+
     def setUp(self):
         self.op_type = "erf"
         self.dtype = self._init_dtype()
@@ -45,6 +46,7 @@ class TestErfOp(OpTest):
 
 
 class TestErfLayer(unittest.TestCase):
+
     def _test_case(self, place):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float64)
         y_ref = erf(x)
@@ -52,7 +54,7 @@ class TestErfLayer(unittest.TestCase):
             x_var = dg.to_variable(x)
             y_var = fluid.layers.erf(x_var)
             y_test = y_var.numpy()
-        self.assertTrue(np.allclose(y_ref, y_test))
+        np.testing.assert_allclose(y_ref, y_test, rtol=1e-05)
 
     def test_case(self):
         self._test_case(fluid.CPUPlace())

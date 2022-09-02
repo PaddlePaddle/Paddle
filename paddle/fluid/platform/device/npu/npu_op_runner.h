@@ -21,6 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "acl/acl.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 
@@ -69,7 +70,7 @@ class NpuOpRunner {
   NpuOpRunner &AddInput(const Tensor &tensor);
 
   // NOTE(zhiqiu): CANN-5.0.2 support input tensors on host.
-  // Specifically, the tensor of shape, tensor of dims, etc, which are are small
+  // Specifically, the tensor of shape, tensor of dims, etc, which are small
   // vector/list.
   NpuOpRunner &AddInput(const Tensor &tensor, aclMemType mem_type);
 
@@ -104,12 +105,14 @@ class NpuOpRunner {
   void Run(aclrtStream stream = nullptr) const;
 
   static void TypeAdapter(
-      const std::vector<Tensor> &inputs, const std::vector<Tensor> &outputs,
-      const NPUAttributeMap &attrs, const platform::NPUDeviceContext &dev_ctx,
+      const std::vector<Tensor> &inputs,
+      const std::vector<Tensor> &outputs,
+      const NPUAttributeMap &attrs,
+      const platform::NPUDeviceContext &dev_ctx,
       std::function<void(const std::vector<Tensor> &,
-                         const std::vector<Tensor> &, const NPUAttributeMap &,
-                         const platform::NPUDeviceContext &)>
-          op_runner,
+                         const std::vector<Tensor> &,
+                         const NPUAttributeMap &,
+                         const platform::NPUDeviceContext &)> op_runner,
       const std::vector<framework::proto::VarType::Type> &input_type,
       const std::vector<framework::proto::VarType::Type> &output_type);
 
@@ -135,31 +138,35 @@ aclrtStream GetCurrentNPUStream(int device_id = -1);
 template <typename T>
 void FillNpuTensorWithConstant(Tensor *tensor, T val) {
   PADDLE_ENFORCE_EQ(
-      tensor->IsInitialized(), true,
+      tensor->IsInitialized(),
+      true,
       platform::errors::InvalidArgument("The tensor should be initialized."));
   PADDLE_ENFORCE_EQ(
-      platform::is_npu_place(tensor->place()), true,
+      platform::is_npu_place(tensor->place()),
+      true,
       platform::errors::InvalidArgument("The tensor should be on NPUPlace."));
 
   int numel = tensor->numel();
   if (numel == 1) {
-    Tensor npu_pinned_tensor(tensor->type());
+    Tensor npu_pinned_tensor(tensor->dtype());
     platform::NPUPinnedPlace npu_pinned_place;
     auto npu_pinned_ptr =
         npu_pinned_tensor.mutable_data<T>({1}, npu_pinned_place);
     *npu_pinned_ptr = val;
 
-    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, tensor->place()),
-                 tensor->data<void>(), npu_pinned_place, npu_pinned_ptr,
-                 sizeof(T), GetCurrentNPUStream());
+    memory::Copy(tensor->place(),
+                 tensor->data(),
+                 npu_pinned_place,
+                 npu_pinned_ptr,
+                 sizeof(T),
+                 GetCurrentNPUStream());
 
     auto npu_pinned_allocator =
         static_cast<paddle::memory::allocation::NPUPinnedAllocator *>(
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    paddle::memory::allocation::Allocation *allocation =
-        npu_pinned_tensor.Holder().get();
+    phi::Allocation *allocation = npu_pinned_tensor.Holder().get();
 
     npu_pinned_allocator->RecordEvent(allocation, GetCurrentNPUStream());
   } else {

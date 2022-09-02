@@ -17,11 +17,13 @@ from __future__ import print_function
 import unittest
 
 import numpy
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 
 
 class TestExecutor(unittest.TestCase):
+
     def net(self):
         lr = fluid.data(name="lr", shape=[1], dtype='float32')
         x = fluid.data(name="x", shape=[None, 1], dtype='float32')
@@ -29,7 +31,7 @@ class TestExecutor(unittest.TestCase):
         y_predict = fluid.layers.fc(input=x, size=1, act=None)
 
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
 
         opt = fluid.optimizer.Adam(learning_rate=lr)
         opt.minimize(avg_cost)
@@ -50,8 +52,10 @@ class TestExecutor(unittest.TestCase):
                 y_true = [[2.0], [4.0], [6.0], [8.0]]
                 a = 0
                 with self.assertRaises(ValueError):
-                    exe.run(feed={'x': train_data,
-                                  'lr': a},
+                    exe.run(feed={
+                        'x': train_data,
+                        'lr': a
+                    },
                             fetch_list=[lr, cost],
                             return_numpy=False,
                             use_prune=True)
@@ -73,8 +77,10 @@ class TestExecutor(unittest.TestCase):
                 a = 0
                 with self.assertRaises(ValueError):
                     exe.run(compiled_prog,
-                            feed={'x': train_data,
-                                  'lr': a},
+                            feed={
+                                'x': train_data,
+                                'lr': a
+                            },
                             fetch_list=[lr, cost],
                             return_numpy=False,
                             use_prune=True)

@@ -17,11 +17,13 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
-from op_test import OpTest
-from op_test_xpu import XPUOpTest
+
 import paddle
 import paddle.fluid as fluid
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
 
@@ -34,64 +36,50 @@ def np_masked_select(x, mask):
     return result.flatten()
 
 
-class TestMaskedSelectOp(XPUOpTest):
-    def set_xpu(self):
-        self.__class__.use_xpu = True
+class XPUTestMaskedSelectOp(XPUOpTestWrapper):
 
-    def setUp(self):
-        self.set_xpu()
-        self.init()
-        self.init_dtype()
-        self.place = paddle.XPUPlace(0)
-        self.op_type = "masked_select"
-        x = np.random.random(self.shape).astype(self.dtype)
-        mask = np.array(np.random.randint(2, size=self.shape, dtype=bool))
-        out = np_masked_select(x, mask)
-        self.inputs = {'X': x, 'Mask': mask}
-        self.outputs = {'Y': out}
+    def __init__(self):
+        self.op_name = 'masked_select'
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place)
+    class TestMaskedSelectOp(XPUOpTest):
 
-    def test_check_grad(self):
-        pass
+        def setUp(self):
+            self.init()
+            self.dtype = self.in_type
+            self.place = paddle.XPUPlace(0)
+            self.op_type = "masked_select"
+            self.__class__.no_need_check_grad = True
 
-    def init(self):
-        self.shape = (50, 3)
+            x = np.random.random(self.shape).astype(self.dtype)
+            mask = np.array(np.random.randint(2, size=self.shape, dtype=bool))
+            out = np_masked_select(x, mask)
+            self.inputs = {'X': x, 'Mask': mask}
+            self.outputs = {'Y': out}
 
-    def init_dtype(self):
-        self.dtype = np.float32
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
 
+        def init(self):
+            self.shape = (50, 3)
 
-class TestMaskedSelectOp1(TestMaskedSelectOp):
-    def init(self):
-        self.shape = (6, 8, 9, 18)
+    class TestMaskedSelectOp1(TestMaskedSelectOp):
 
+        def init(self):
+            self.shape = (6, 8, 9, 18)
 
-class TestMaskedSelectOp2(TestMaskedSelectOp):
-    def init(self):
-        self.shape = (168, )
+    class TestMaskedSelectOp2(TestMaskedSelectOp):
+
+        def init(self):
+            self.shape = (168, )
 
 
-class TestMaskedSelectOpInt32(TestMaskedSelectOp):
-    def init_dtype(self):
-        self.dtype = np.int32
-
-    # skip_check_grad_ci(reason="get_numeric_gradient not support int32")
-    def test_check_grad(self):
-        pass
-
-
-class TestMaskedSelectOpInt64(TestMaskedSelectOp):
-    def init_dtype(self):
-        self.dtype = np.int64
-
-    # skip_check_grad_ci(reason="get_numeric_gradient not support int64")
-    def test_check_grad(self):
-        pass
+support_types = get_xpu_op_support_types('masked_select')
+for stype in support_types:
+    create_test_class(globals(), XPUTestMaskedSelectOp, stype)
 
 
 class TestMaskedSelectAPI(unittest.TestCase):
+
     def test_imperative_mode(self):
         paddle.disable_static(paddle.XPUPlace(0))
         shape = (88, 6, 8)
@@ -117,13 +105,16 @@ class TestMaskedSelectAPI(unittest.TestCase):
         exe = paddle.static.Executor(place=paddle.XPUPlace(0))
 
         res = exe.run(paddle.static.default_main_program(),
-                      feed={"x": np_x,
-                            "mask": np_mask},
+                      feed={
+                          "x": np_x,
+                          "mask": np_mask
+                      },
                       fetch_list=[out])
         self.assertEqual(np.allclose(res, np_out), True)
 
 
 class TestMaskedSelectError(unittest.TestCase):
+
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
@@ -131,8 +122,9 @@ class TestMaskedSelectError(unittest.TestCase):
             shape = [8, 9, 6]
             x = paddle.fluid.data(shape=shape, dtype='float32', name='x')
             mask = paddle.fluid.data(shape=shape, dtype='bool', name='mask')
-            mask_float = paddle.fluid.data(
-                shape=shape, dtype='float32', name='mask_float')
+            mask_float = paddle.fluid.data(shape=shape,
+                                           dtype='float32',
+                                           name='mask_float')
             np_x = np.random.random(shape).astype('float32')
             np_mask = np.array(np.random.randint(2, size=shape, dtype=bool))
 

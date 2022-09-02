@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+
+#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
@@ -22,25 +24,104 @@ namespace {
 using OperatorBase = TaskNode::OperatorBase;
 }
 
-TaskNode::TaskNode(const framework::ProgramDesc& program, int64_t rank,
-                   int64_t max_run_times, int64_t max_slot_nums)
+TaskNode::TaskNode(paddle::framework::ProgramDesc* program,
+                   int64_t rank,
+                   int64_t max_run_times,
+                   int64_t max_slot_nums)
     : program_(program),
       rank_(rank),
       max_run_times_(max_run_times),
       max_slot_nums_(max_slot_nums) {
   // Should be serially invoked, not thread-safe
+  // NOTE: when instantiate TaskNode with program, won't init task node
+  // immediately, since the provided program may be updated later (with
+  // high probability) by adding_feed_fetch_ops or by RuntimeGraph.
+  // So, delay the init part to the Init() function.
   static int64_t task_node_cnt = 0;
   task_id_ = task_node_cnt++;
-  for (const auto& op_desc : program.Block(0).AllOps()) {
-    ops_vec_.emplace_back(framework::OpRegistry::CreateOp(*op_desc));
+}
+
+TaskNode::TaskNode(paddle::framework::ProgramDesc* program,
+                   int64_t rank,
+                   int64_t task_id,
+                   int64_t max_run_times,
+                   int64_t max_slot_nums)
+    : program_(program),
+      rank_(rank),
+      task_id_(task_id),
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {
+  // TODO(liyurui): Will be removed when execute program is supported.
+  Init();
+}
+
+TaskNode::TaskNode(paddle::framework::ProgramDesc* program, int64_t rank)
+    : program_(program), rank_(rank), task_id_(rank) {
+  max_run_times_ = 1;
+  max_slot_nums_ = 1;
+  LOG(INFO)
+      << "Constructing TaskNode for DistModelInf. The TaskNode's id is: "
+      << rank
+      << ". And the TaskNode's max_run_time and max_slot_num will be set to 1.";
+}
+
+void TaskNode::SetProgram(paddle::framework::ProgramDesc* program) {
+  program_ = program;
+}
+
+void TaskNode::Init(bool use_feed_fetch_ops) {
+  if (!use_feed_fetch_ops) {
+    VLOG(3) << "TaskNode will be inited without feed and fetch ops";
+  }
+  if (ops_.empty()) {
+    // Q (for fleet executor dev): should we need another reset funct?
+    VLOG(3) << "Task node will be inited by calling Init().";
+    for (const auto& op_desc : program_->Block(0).AllOps()) {
+      if (!use_feed_fetch_ops &&
+          (op_desc->Type() == "feed" || op_desc->Type() == "fetch")) {
+        VLOG(3) << "TaskNode will skip [" << op_desc->Input("X")[0] << "], "
+                << op_desc->Type() << " -> " << op_desc->Output("Out")[0];
+        continue;
+      }
+      ops_vec_.emplace_back(framework::OpRegistry::CreateOp(*op_desc));
+    }
+    for (const auto& op : ops_vec_) {
+      ops_.emplace_back(op.get());
+    }
+  }
+}
+
+TaskNode::TaskNode(int64_t rank, int64_t task_id, int64_t max_run_times)
+    : rank_(rank), task_id_(task_id), max_run_times_(max_run_times) {}
+
+TaskNode::TaskNode(int32_t role,
+                   const std::vector<framework::OpDesc*>& op_descs,
+                   int64_t rank,
+                   int64_t task_id,
+                   int64_t max_run_times,
+                   int64_t max_slot_nums)
+    : role_(role),
+      rank_(rank),
+      task_id_(task_id),
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {
+  if (op_descs.empty()) {
+    return;
+  }
+  VLOG(3) << "Task node will be inited by providing list of ops.";
+  for (const auto& desc : op_descs) {
+    ops_vec_.emplace_back(framework::OpRegistry::CreateOp(*desc));
   }
   for (const auto& op : ops_vec_) {
     ops_.emplace_back(op.get());
   }
 }
 
-TaskNode::TaskNode(int32_t role, const std::vector<OperatorBase*>& ops,
-                   int64_t rank, int64_t task_id, int64_t max_run_times,
+TaskNode::TaskNode(int32_t role,
+                   const std::vector<framework::OperatorBase*>& ops,
+                   int64_t rank,
+                   int64_t task_id,
+                   int64_t max_run_times,
                    int64_t max_slot_nums)
     : ops_(ops),
       role_(role),
@@ -49,8 +130,11 @@ TaskNode::TaskNode(int32_t role, const std::vector<OperatorBase*>& ops,
       max_run_times_(max_run_times),
       max_slot_nums_(max_slot_nums) {}
 
-TaskNode::TaskNode(int32_t role, int64_t rank, int64_t task_id,
-                   int64_t max_run_times, int64_t max_slot_nums)
+TaskNode::TaskNode(int32_t role,
+                   int64_t rank,
+                   int64_t task_id,
+                   int64_t max_run_times,
+                   int64_t max_slot_nums)
     : role_(role),
       rank_(rank),
       task_id_(task_id),
@@ -78,14 +162,16 @@ std::string TaskNode::DebugString() const {
 }
 
 void TaskNode::SetRunPerSteps(int64_t value) {
-  PADDLE_ENFORCE_GE(value, 1,
+  PADDLE_ENFORCE_GE(value,
+                    1,
                     platform::errors::InvalidArgument(
                         "run_per_steps must >= 1, but received %ld", value));
   run_per_steps_ = value;
 }
 
 void TaskNode::SetRunAtOffset(int64_t value) {
-  PADDLE_ENFORCE_GE(value, 0,
+  PADDLE_ENFORCE_GE(value,
+                    0,
                     platform::errors::InvalidArgument(
                         "run_at_offset must >= 0, but received %ld", value));
   run_at_offset_ = value;
@@ -93,15 +179,19 @@ void TaskNode::SetRunAtOffset(int64_t value) {
 
 void TaskNode::SetReplyUpPerSteps(int64_t value) {
   PADDLE_ENFORCE_GE(
-      value, 1, platform::errors::InvalidArgument(
-                    "reply_up_per_steps must >= 1, but received %ld", value));
+      value,
+      1,
+      platform::errors::InvalidArgument(
+          "reply_up_per_steps must >= 1, but received %ld", value));
   reply_up_per_steps_ = value;
 }
 
 void TaskNode::SetSendDownPerSteps(int64_t value) {
   PADDLE_ENFORCE_GE(
-      value, 1, platform::errors::InvalidArgument(
-                    "send_down_per_steps must >= 1, but received %ld", value));
+      value,
+      1,
+      platform::errors::InvalidArgument(
+          "send_down_per_steps must >= 1, but received %ld", value));
   send_down_per_steps_ = value;
 }
 

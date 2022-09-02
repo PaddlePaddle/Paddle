@@ -14,10 +14,11 @@
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
 
 namespace paddle {
 namespace operators {
@@ -28,7 +29,8 @@ class ReduceMeanXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(context.GetPlace()), true,
+        platform::is_xpu_place(context.GetPlace()),
+        true,
         platform::errors::Unavailable("This kernel only runs on XPU."));
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto* input = context.Input<Tensor>("X");
@@ -41,19 +43,32 @@ class ReduceMeanXPUKernel : public framework::OpKernel<T> {
       xdims.push_back(input->dims()[i]);
     }
     auto rdims = context.Attr<std::vector<int>>("dim");
+    const auto& input_dim_size = input->dims().size();
+    std::vector<int> reduce_dims;
     if (reduce_all) {
-      rdims.clear();
       for (size_t i = 0; i < xdims.size(); i++) {
-        rdims.push_back(static_cast<int>(i));
+        reduce_dims.push_back(static_cast<int>(i));
+      }
+    } else {
+      for (size_t i = 0; i < rdims.size(); ++i) {
+        if (rdims[i] < 0) {
+          reduce_dims.push_back(rdims[i] + input_dim_size);
+        } else {
+          reduce_dims.push_back(rdims[i]);
+        }
       }
     }
-    int r = xpu::reduce_mean(
-        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(input->data<T>()),
-        reinterpret_cast<XPUType*>(output->data<T>()), xdims, rdims);
+    int r = xpu::reduce_mean(dev_ctx.x_context(),
+                             reinterpret_cast<const XPUType*>(input->data<T>()),
+                             reinterpret_cast<XPUType*>(output->data<T>()),
+                             xdims,
+                             reduce_dims);
 
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
-                          "XPU reduce_mean kernel return wrong value[%d %s]", r,
+                          "XPU reduce_mean kernel return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };
@@ -75,6 +90,7 @@ class ReduceMeanGradXPUKernel : public framework::OpKernel<T> {
 
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
+    bool keep_dim = ctx.Attr<bool>("keep_dim");
 
     std::vector<int> xdims;
     for (int i = 0; i < input->dims().size(); i++) {
@@ -99,24 +115,35 @@ class ReduceMeanGradXPUKernel : public framework::OpKernel<T> {
       reduce_numel *= xdims[d];
     }
 
+    if (keep_dim != true) {
+      sort(reduce_dims.begin(), reduce_dims.end());
+      for (auto& d : reduce_dims) {
+        ydims.insert(ydims.begin() + d, 1);
+      }
+    }
+
     float val = 1.0f / static_cast<float>(reduce_numel);
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    int r = xpu::constant(dev_ctx.x_context(), x_data, input->numel(),
-                          static_cast<XPUType>(val));
+    int r = xpu::constant(
+        dev_ctx.x_context(), x_data, input->numel(), static_cast<XPUType>(val));
 
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
-                          "XPU constant kernel return wrong value[%d %s]", r,
+                          "XPU constant kernel return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
-    r = xpu::broadcast_mul(dev_ctx.x_context(), x_data, dy_data, x_data, xdims,
-                           ydims);
+    r = xpu::broadcast_mul(
+        dev_ctx.x_context(), x_data, dy_data, x_data, xdims, ydims);
 
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
                           "XPU broadcast_mul kernel return wrong value[%d %s]",
-                          r, XPUAPIErrorMsg[r]));
+                          r,
+                          XPUAPIErrorMsg[r]));
   }
 };
 

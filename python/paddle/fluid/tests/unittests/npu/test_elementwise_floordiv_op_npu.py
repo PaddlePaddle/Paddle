@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -25,6 +26,7 @@ paddle.enable_static()
 
 
 class TestElementwiseFloorDiv(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_floordiv"
         self.set_npu()
@@ -55,6 +57,7 @@ class TestElementwiseFloorDiv(OpTest):
 
 
 class TestElementwiseFloorDiv2(TestElementwiseFloorDiv):
+
     def init_dtype(self):
         self.dtype = "int32"
 

@@ -23,20 +23,19 @@ TEST(OpKernelType, ToString) {
   using DataLayout = paddle::framework::DataLayout;
   using LibraryType = paddle::framework::LibraryType;
 
-  OpKernelType op_kernel_type(DataType::FP32, CPUPlace(), DataLayout::kNCHW,
-                              LibraryType::kCUDNN);
+  OpKernelType op_kernel_type(
+      DataType::FP32, CPUPlace(), DataLayout::kNCHW, LibraryType::kCUDNN);
 
   ASSERT_EQ(paddle::framework::KernelTypeToString(op_kernel_type),
-            "data_type[float]:data_layout[NCHW]:place[CPUPlace]:library_type["
-            "CUDNN]");
+            "{data_type[float]; data_layout[NCHW]; place[Place(cpu)]; "
+            "library_type[CUDNN]}");
 
   using CUDAPlace = paddle::platform::CUDAPlace;
-  OpKernelType op_kernel_type2(DataType::FP16, CUDAPlace(0), DataLayout::kNCHW,
-                               LibraryType::kCUDNN);
+  OpKernelType op_kernel_type2(
+      DataType::FP16, CUDAPlace(0), DataLayout::kNCHW, LibraryType::kCUDNN);
   ASSERT_EQ(paddle::framework::KernelTypeToString(op_kernel_type2),
-            "data_type[::paddle::platform::float16]:data_layout[NCHW]:place["
-            "CUDAPlace(0)]:library_"
-            "type[CUDNN]");
+            "{data_type[::paddle::platform::float16]; data_layout[NCHW]; "
+            "place[Place(gpu:0)]; library_type[CUDNN]}");
 }
 
 TEST(OpKernelType, Hash) {
@@ -47,10 +46,10 @@ TEST(OpKernelType, Hash) {
   using DataLayout = paddle::framework::DataLayout;
   using LibraryType = paddle::framework::LibraryType;
 
-  OpKernelType op_kernel_type_1(DataType::FP32, CPUPlace(), DataLayout::kNCHW,
-                                LibraryType::kCUDNN);
-  OpKernelType op_kernel_type_2(DataType::FP32, CUDAPlace(0), DataLayout::kNCHW,
-                                LibraryType::kCUDNN);
+  OpKernelType op_kernel_type_1(
+      DataType::FP32, CPUPlace(), DataLayout::kNCHW, LibraryType::kCUDNN);
+  OpKernelType op_kernel_type_2(
+      DataType::FP32, CUDAPlace(0), DataLayout::kNCHW, LibraryType::kCUDNN);
 
   OpKernelType::Hash hasher;
   ASSERT_NE(hasher(op_kernel_type_1), hasher(op_kernel_type_2));

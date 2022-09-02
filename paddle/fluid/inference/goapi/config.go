@@ -161,6 +161,36 @@ func (config *Config) EnableUseGpu(memorySize uint64, deviceId int32) {
 }
 
 ///
+/// \brief Turn on ONNXRuntime.
+///
+func (config *Config) EnableONNXRuntime() {
+	C.PD_ConfigEnableONNXRuntime(config.c)
+}
+
+///
+/// \brief Turn off ONNXRuntime.
+///
+func (config *Config) DisableONNXRuntime() {
+	C.PD_ConfigDisableONNXRuntime(config.c)
+}
+
+///
+/// \brief A boolean state telling whether the ONNXRuntime is turned on.
+///
+/// \return bool Whether the ONNXRuntime is turned on.
+///
+func (config *Config) ONNXRuntimeEnabled() bool {
+	return cvtPDBoolToGo(C.PD_ConfigONNXRuntimeEnabled(config.c))
+}
+
+///
+/// \brief Turn on ONNXRuntime Optimization.
+///
+func (config *Config) EnableORTOptimization() {
+	C.PD_ConfigEnableORTOptimization(config.c)
+}
+
+///
 /// \brief Turn on XPU.
 ///
 /// \param l3_workspace_size The size of the video memory allocated by the l3 cache, the maximum is 16M.
@@ -470,8 +500,8 @@ func (config *Config) DisableTensorRtOPs(ops []string) {
 /// may be more high-performance. Libnvinfer_plugin.so greater than
 /// V7.2.1 is needed.
 ///
-func (config *Config) EnableTensorRtOSS() {
-	C.PD_ConfigEnableTensorRtOSS(config.c)
+func (config *Config) EnableVarseqlen() {
+	C.PD_ConfigEnableVarseqlen(config.c)
 }
 
 ///
@@ -833,7 +863,7 @@ func (config *Config) AllPasses() []string {
 ///
 func (config *Config) Summary() string {
 	cSummary := C.PD_ConfigSummary(config.c)
-	summary := C.GoString(cSummary)
-	C.free(unsafe.Pointer(cSummary))
+	summary := C.GoString(cSummary.data)
+	C.PD_CstrDestroy(cSummary)
 	return summary
 }

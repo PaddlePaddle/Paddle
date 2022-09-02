@@ -16,16 +16,17 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_meta.h"
 
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/tensor_meta.h"
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
 namespace egr {
 
@@ -34,21 +35,25 @@ TEST(Forward, SingleNode) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<egr::EagerTensor> target_tensors;
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  std::vector<paddle::experimental::Tensor> target_tensors;
+  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor t = egr_utils_api::CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
+  paddle::experimental::Tensor t =
+      egr_utils_api::CreateTensorWithValue(ddim,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           5.0 /*value*/,
+                                           false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
-  egr::EagerTensor& tensor = target_tensors[0];
+  paddle::experimental::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
 
   // Run Forward
   float scale = 2.0;
   float bias = 3.0;
-  egr::EagerTensor out = egr::scale(
+  paddle::experimental::Tensor out = egr::scale(
       tensor, scale, bias, true /*bias_after_scale*/, true /*trace_backward*/);
 
   // Examine Forward Output
@@ -80,28 +85,34 @@ TEST(Forward, LinearNodes) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<egr::EagerTensor> target_tensors;
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  std::vector<paddle::experimental::Tensor> target_tensors;
+  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor t = egr_utils_api::CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
+  paddle::experimental::Tensor t =
+      egr_utils_api::CreateTensorWithValue(ddim,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           5.0 /*value*/,
+                                           false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
-  egr::EagerTensor& tensor = target_tensors[0];
+  paddle::experimental::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
 
   // Run Forward Node 0
   float scale0 = 2.0;
   float bias0 = 3.0;
-  egr::EagerTensor out0 =
-      egr::scale(tensor, scale0, bias0, true /*bias_after_scale*/,
-                 true /*trace_backward*/);
+  paddle::experimental::Tensor out0 = egr::scale(tensor,
+                                                 scale0,
+                                                 bias0,
+                                                 true /*bias_after_scale*/,
+                                                 true /*trace_backward*/);
 
   // Run Forward Node 1
   float scale1 = 5.0;
   float bias1 = 10.0;
-  egr::EagerTensor out1 = egr::scale(
+  paddle::experimental::Tensor out1 = egr::scale(
       out0, scale1, bias1, true /*bias_after_scale*/, true /*trace_backward*/);
 
   // Examine Forward Output 0
@@ -133,12 +144,16 @@ TEST(Forward, LinearNodes) {
 
     // 2. TensorWrapper: No TensorWrapper for ScaleNode
     // 3. NextEdges: Node 1 -> Node 0
-    const std::vector<std::vector<Edge>>& node1_edges = grad_node1->GetEdges();
-    const auto& node1_edge = node1_edges[0];
+    const paddle::small_vector<std::vector<GradSlotMeta>,
+                               egr::kSlotSmallVectorSize>& node1_metas =
+        grad_node1->OutputMeta();
+    const auto& node1_meta = node1_metas[0];
 
-    CHECK_EQ(static_cast<int>(node1_edge[0].GetEdgeRankInfo().first), 0);
-    CHECK_EQ(static_cast<int>(node1_edge[0].GetEdgeRankInfo().second), 0);
-    CHECK_EQ(node1_edge[0].GetGradNode(), grad_node0);
+    CHECK_EQ(static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().first),
+             0);
+    CHECK_EQ(static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().second),
+             0);
+    CHECK_EQ(node1_meta[0].GetEdge().GetGradNode(), grad_node0);
   }
 }
 
@@ -156,34 +171,40 @@ TEST(Forward, BranchedNodes) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<egr::EagerTensor> target_tensors;
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  std::vector<paddle::experimental::Tensor> target_tensors;
+  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  egr::EagerTensor t = egr_utils_api::CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-      pten::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
+  paddle::experimental::Tensor t =
+      egr_utils_api::CreateTensorWithValue(ddim,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           5.0 /*value*/,
+                                           false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
-  egr::EagerTensor& tensor = target_tensors[0];
+  paddle::experimental::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
 
   // Run Forward Node 0
   float scale0 = 2.0;
   float bias0 = 3.0;
-  egr::EagerTensor out0 =
-      egr::scale(tensor, scale0, bias0, true /*bias_after_scale*/,
-                 true /*trace_backward*/);
+  paddle::experimental::Tensor out0 = egr::scale(tensor,
+                                                 scale0,
+                                                 bias0,
+                                                 true /*bias_after_scale*/,
+                                                 true /*trace_backward*/);
 
   // Run Forward Node 1
   float scale1 = 5.0;
   float bias1 = 10.0;
-  egr::EagerTensor out1 = egr::scale(
+  paddle::experimental::Tensor out1 = egr::scale(
       out0, scale1, bias1, true /*bias_after_scale*/, true /*trace_backward*/);
 
   // Run Forward Node 2
   float scale2 = 10.0;
   float bias2 = 20.0;
-  egr::EagerTensor out2 = egr::scale(
+  paddle::experimental::Tensor out2 = egr::scale(
       out0, scale2, bias2, true /*bias_after_scale*/, true /*trace_backward*/);
 
   // Examine Forward Output 0
@@ -228,16 +249,19 @@ TEST(Forward, BranchedNodes) {
     // 2. TensorWrapper: No TensorWrapper for ScaleNode
     // 3. NextEdges
     // Node 1 -> Node 0
-    const std::vector<std::vector<Edge>>& node1_edges = grad_node1->GetEdges();
-    const Edge& node1_edge = node1_edges[0][0];
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+        node1_metas = grad_node1->OutputMeta();
+    const Edge& node1_edge = node1_metas[0][0].GetEdge();
 
     CHECK_EQ(static_cast<int>(node1_edge.GetEdgeRankInfo().first), 0);
     CHECK_EQ(static_cast<int>(node1_edge.GetEdgeRankInfo().second), 0);
     CHECK_EQ(node1_edge.GetGradNode(), grad_node0);
 
     // Node 2 -> Node 0
-    const std::vector<std::vector<Edge>>& node2_edges = grad_node2->GetEdges();
-    const Edge& node2_edge = node2_edges[0][0];
+    const paddle::small_vector<std::vector<egr::GradSlotMeta>,
+                               egr::kSlotSmallVectorSize>& node2_metas =
+        grad_node2->OutputMeta();
+    const Edge& node2_edge = node2_metas[0][0].GetEdge();
 
     CHECK_EQ(static_cast<int>(node2_edge.GetEdgeRankInfo().first), 0);
     CHECK_EQ(static_cast<int>(node2_edge.GetEdgeRankInfo().second), 0);

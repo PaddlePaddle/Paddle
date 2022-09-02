@@ -19,12 +19,14 @@ import unittest
 import paddle
 import paddle.nn as nn
 import numpy as np
+from paddle.fluid.framework import _test_eager_guard
 
 paddle.disable_static()
 
 
 class EmbeddingDygraph(unittest.TestCase):
-    def test_1(self):
+
+    def func_1(self):
         x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
         paddle.disable_static(paddle.CPUPlace())
         x = paddle.to_tensor(x_data, stop_gradient=False)
@@ -34,15 +36,20 @@ class EmbeddingDygraph(unittest.TestCase):
         w0 = np.full(shape=(10, 3), fill_value=2).astype(np.float32)
         embedding.weight.set_value(w0)
 
-        adam = paddle.optimizer.Adam(
-            parameters=[embedding.weight], learning_rate=0.01)
+        adam = paddle.optimizer.Adam(parameters=[embedding.weight],
+                                     learning_rate=0.01)
         adam.clear_grad()
 
         out = embedding(x)
         out.backward()
         adam.step()
 
-    def test_2(self):
+    def test_1(self):
+        with _test_eager_guard():
+            self.func_1()
+        self.func_1()
+
+    def func_2(self):
         x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
         y_data = np.arange(6, 12).reshape((3, 2)).astype(np.float32)
         paddle.disable_static(paddle.CPUPlace())
@@ -57,6 +64,11 @@ class EmbeddingDygraph(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             embedding = paddle.nn.Embedding(10, -3, sparse=True)
+
+    def test_2(self):
+        with _test_eager_guard():
+            self.func_2()
+        self.func_2()
 
 
 if __name__ == '__main__':

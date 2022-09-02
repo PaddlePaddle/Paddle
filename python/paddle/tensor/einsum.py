@@ -13,13 +13,21 @@
 # limitations under the License.
 
 import itertools
+import numpy as np
 import re
 
-from ..fluid.layers import reshape, transpose
-from .linalg import matmul
-from .manipulation import squeeze, unsqueeze
+from .linalg import dot, matmul, transpose
+from .manipulation import squeeze, unsqueeze, reshape
 from .math import multiply
 from .math import sum as paddle_sum
+from ..fluid.framework import _in_legacy_dygraph
+from paddle import _C_ops, _legacy_C_ops
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+import collections
+import string
+import opt_einsum
 
 from paddle.common_ops_import import dygraph_only
 
@@ -112,36 +120,6 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
         f"Invalid equation: duplicate output labels are found.")
 
 
-#     '''
-#     Tests if the two operands can perform a broadcast operation on the given ranges of dimensions. 
-#     We follow the Numpy broadcasting convention which states that, by lining up the shape arrays
-#     starting from the right most dimension, all the aligned dimensions either have equal sizes or
-#     one of them is sized one.
-#     Parameters
-#     ----------
-#     args:
-#         *args unpacks into operand one's axes range, shape, operand two's axes range, shape
-#     f: 
-#         if available, is used as a callback for postprocessing the aligned operand dimensions.
-#     '''
-#     xran, xshape, yran, yshape = args
-#
-#     xran_inv, yran_inv = xran[::-1], yran[::-1]
-#
-#     for xi, yi in zip(xran_inv, yran_inv):
-#         xs, ys = xshape[xi], yshape[yi]
-#         cond = xs == ys or xs == 1 or ys == 1
-#         if not cond:
-#             return False
-#
-#     if not f:
-#         return True
-#
-#     # Apply the callback to each aligned dimension pair
-#     for xi, yi in zip(xran_inv, yran_inv):
-#         f(xi, yi)
-
-
 def build_view(in_labels, out_labels):
     '''
     Build an inverse map of dimension indices. Three conditions must hold for 
@@ -181,10 +159,11 @@ def build_view(in_labels, out_labels):
         # fill the broadcast dimension indices from right to left.
         if s:
             for ax, dim in zip(
-                    range(start, end)[::-1], range(s.start(), s.end())[::-1]):
+                    range(start, end)[::-1],
+                    range(s.start(), s.end())[::-1]):
                 inv_map[ax] = dim
 
-    # Now work on non-broadcast dimensions 
+    # Now work on non-broadcast dimensions
     if r:
         it = itertools.chain(range(start), range(end, len(out_labels)))
     else:
@@ -292,37 +271,10 @@ def build_global_shape(g_view, g_labels, op_shapes):
 
     g_shape = [sizes.pop() if len(sizes) > 0 else 1 for sizes in g_shape]
 
-    g_masks = [[s > 1 for s in view_shape] for view_shape in view_shapes]
+    g_masks = [[s > 1 or s == -1 for s in view_shape]
+               for view_shape in view_shapes]
 
     return g_shape, g_masks
-
-
-def dim_strides(shape):
-    '''
-    Returns the dimension strides for a tensor shape
-    '''
-    strides = []
-    stride = 1
-    for size in shape[::-1]:
-        strides.append(stride)
-        stride = stride * size
-    return strides
-
-
-def create_view(operand, *view_def):
-    '''
-    Create and materialize a view.
-    
-    Parameters
-    ----------
-    operand:
-        the base tensor operand
-    view_def: 
-        include two lists which define the view's dimension sizes and strides
-    '''
-    assert False, f'Diagonal and trace not implemented yet.'
-    view_shape, view_strides = view_def
-    return operand.create_view(view_shape, view_strides)
 
 
 def has_duplicated_labels(labels):
@@ -338,46 +290,17 @@ def diagonalize(labels, operand):
     Merges dimensions with duplicate labels. 
     
     For those dimensions with duplicate labels, merge them into one dimension
-    which represents the diagonal elements. That requires the duplicate labeled
-    dimensions equal sized. The order of dimensions is kept unchanged up to 
-    the left-most appearance of each label.
+    which represents the diagonal elements. This requires the dimensions with
+    duplicate labels are equal sized.
     
     Examples
     -------- 
     'ijj...i' would be merged into 'ij...'
     '''
-    if not has_duplicated_labels(labels):
-        return labels, operand
+    assert not has_duplicated_labels(labels), (
+        f'Duplicate labels are not supported.')
 
-    strides = dim_strides(operand.shape)
-    shape = operand.shape
-    new_labels = []
-    new_shape = []
-    new_strides = []
-
-    for ax, l in enumerate(labels):
-        if l == '.' or l not in new_labels:
-            # not duplicate
-            new_labels.append(l)
-            new_strides.append(strides[ax])
-            new_shape.append(shape[ax])
-        else:
-            # duplicate label
-            diag_ax = new_labels.index(l)
-            new_strides[diag_ax] += strides[ax]
-
-    # Call framework API to build a new tensor
-    new_op = create_view(operand, new_shape, new_strides)
-    return new_labels, new_op
-
-
-def prod(iter, default=1):
-    if len(iter):
-        res = 1
-        for s in iter:
-            res *= s
-        return res
-    return default
+    return labels, operand
 
 
 def plan_reduce(plan, op, reduce_dims, keepdim):
@@ -409,102 +332,110 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
 
     op1_view, op2_view = [g_view[op] for op in (op1, op2)]
 
-    # Note, I may index into -1
-    I1_dims = [op1_view[ax] for ax in I if op1_view[ax] >= 0]
-    I2_dims = [op2_view[ax] for ax in I if op2_view[ax] >= 0]
-    J1_dims = [op1_view[ax] for ax in J1]
-    J2_dims = [op2_view[ax] for ax in J2]
-    K1_dims = [op1_view[ax] for ax in K]
-    K2_dims = [op2_view[ax] for ax in K]
+    I1 = [idx for idx in I if op1_view[idx] >= 0]
+    I2 = [idx for idx in I if op2_view[idx] >= 0]
+    op1_view = np.array(op1_view)
+    op1_dims = op1_view[I1 + J1 + K]
+
+    op2_view = np.array(op2_view)
+    op2_dims = op2_view[I2 + J2 + K]
 
     op1_mask, op2_mask = [g_supports[op] for op in (op1, op2)]
-    op1_vshape = [s if m else 1 for s, m in zip(g_shape, op1_mask)]
-    op2_vshape = [s if m else 1 for s, m in zip(g_shape, op2_mask)]
+    op1_vshape = np.array([s if m else 1 for s, m in zip(g_shape, op1_mask)])
+    op2_vshape = np.array([s if m else 1 for s, m in zip(g_shape, op2_mask)])
+    vshape = np.maximum(op1_vshape, op2_vshape)
 
-    I1_shape, J1_shape, K1_shape = [[op1_vshape[ax] for ax in axes]
-                                    for axes in (I, J1, K)]
-    I2_shape, J2_shape, K2_shape = [[op2_vshape[ax] for ax in axes]
-                                    for axes in (I, J2, K)]
+    i1, i2, j1, j2, k = map(len, (I1, I2, J1, J2, K))
 
-    K1_size, J1_size, J2_size = prod(K1_shape), prod(J1_shape), prod(J2_shape)
-
-    perm1 = I1_dims + J1_dims + K1_dims
-    perm2 = I2_dims + J2_dims + K2_dims
-
-    if any(i != dim for i, dim in enumerate(perm1)):
+    if any(op1_dims != np.arange(len(op1_dims))):
         # print(f'perm1: {perm1}')
-        step = transpose, [var1], var1, perm1
+        step = transpose, [var1], var1, list(op1_dims)
         plan.add_step(step)
 
-    if any(i != dim for i, dim in enumerate(perm2)):
+    if any(op2_dims != np.arange(len(op2_dims))):
         # print(f'perm2: {perm2}')
-        step = transpose, [var2], var2, perm2
+        step = transpose, [var2], var2, list(op2_dims)
         plan.add_step(step)
 
-    # In case of no K... dimensions, do a broadcast
-    if not K:
-        # unsqueeze operands include J1...J2... dimensions
-        if J2:
-            fill_start = len(I2_dims) + len(J1)
-            fill_end = fill_start + len(J2)
-            fill = list(range(fill_start, fill_end))
-            step = unsqueeze, [var1], var1, fill
-            plan.add_step(step)
-        if J1:
-            fill_start = len(I2_dims)
-            fill_end = fill_start + len(J1)
-            fill = list(range(fill_start, fill_end))
-            step = unsqueeze, [var2], var2, fill
-            plan.add_step(step)
-        # make broadcast
-        step = multiply, [var1, var2], var2
-        plan.add_step(step)
-    # K... are there, let's reason about I... and J...
-    # In case I... and J... are empty, do the vector-vector version of matmul
-    elif not I and not J1 and not J2:
-        # merge K dimensions
-        if len(K) > 1:
-            for var in var1, var2:
-                step = reshape, [var], var, [K1_size]
-                plan.add_step(step)
-        # Build vector-vector matmul
-        step = matmul, [var1, var2], var2
-        plan.add_step(step)
-    # General case, there are K... and some I... and J..., the actual operation will be 
-    # matrix-vector or matrix-matrix multiplies, depending on the operands' shapes.
-    else:
+    # Check if conditions hold for turnning the operation into a matmul
+    if j1 + j2 > 0 and k > 0 and -1 not in np.concatenate(
+        (op1_vshape, op2_vshape)):
+        op1_shape = list(op1_vshape[I]) + [np.prod(op1_vshape[J1])
+                                           ] + [np.prod(op1_vshape[K])]
+        op2_shape = list(op2_vshape[I]) + [np.prod(op2_vshape[J2])
+                                           ] + [np.prod(op2_vshape[K])]
+
         # Merge J dims and K dims by reshaping
-        merged_shape1 = I1_shape + [J1_size] + [K1_size]
-        merged_shape2 = I2_shape + [J2_size] + [K1_size]
-
-        step = reshape, [var1], var1, merged_shape1
+        step = reshape, [var1], var1, op1_shape
         plan.add_step(step)
-        step = reshape, [var2], var2, merged_shape2
+        step = reshape, [var2], var2, op2_shape
         plan.add_step(step)
 
         # Matmul
         step = matmul, [var1, var2], var2, False, True
         plan.add_step(step)
 
-    # The result shape is in I..., J1, J2. Let's reshape back to known dimensions
-    # Note, this is static deduction, not by reading the tensor shape at runtime
-    result_shape = [1] * len(I)
-    for i, ax in enumerate(I):
-        result_shape[i] = max(op1_vshape[ax], op2_vshape[ax])
-    if J1:
-        result_shape += J1_shape
-    if J2:
-        result_shape += J2_shape
-
-    # Need a scalar dimension somehow
-    if result_shape:
-        step = reshape, [var2], var2, result_shape
+        # Reshape back
+        shape = list(vshape[I + J1 + J2])
+        step = reshape, [var2], var2, shape
         plan.add_step(step)
+
+    elif j1 == j2 == k == 1:
+        # Can still do matmul even unknown shapes are present
+        step = matmul, [var1, var2], var2, False, True
+        plan.add_step(step)
+
+    # In the rest cases we opt for ops other than matmul
+    else:
+        # unsqueeze operands include J1...J2... dimensions
+        if j2:
+            fill = list(range(i1 + j1, i1 + j1 + j2))
+            step = unsqueeze, [var1], var1, fill
+            plan.add_step(step)
+        if j1:
+            fill = list(range(i2, i2 + j1))
+            step = unsqueeze, [var2], var2, fill
+            plan.add_step(step)
+        # In case of no dimensions to contract, do an elementwise multiply
+        if k == 0:
+            # make broadcast
+            step = multiply, [var1, var2], var2
+            plan.add_step(step)
+        # Contract and no join, turn into a dot
+        elif j1 + j2 == 0 and k == 1:
+            step = unsqueeze, [var1], var1, [-2]
+            plan.add_step(step)
+            step = unsqueeze, [var2], var2, [-1]
+            plan.add_step(step)
+            step = matmul, [var1, var2], var2
+            plan.add_step(step)
+            step = squeeze, [var2], var2, [-1, -2]
+            plan.add_step(step)
+        elif j1 + j2 == 0 and not -1 in np.concatenate(
+            (op1_vshape[K], op2_vshape[K])):
+            assert all(op1_vshape[K] == op2_vshape[K])
+            step = reshape, [
+                var1
+            ], var1, list(op1_vshape[I]) + [1] + [np.prod(op1_vshape[K])]
+            plan.add_step(step)
+            step = reshape, [
+                var2
+            ], var2, list(op2_vshape[I]) + [1] + [np.prod(op2_vshape[K])]
+            plan.add_step(step)
+            step = matmul, [var1, var2], var2, False, True
+            plan.add_step(step)
+            step = squeeze, [var2], var2, [-1, -2]
+            plan.add_step(step)
+        else:
+            step = multiply, [var1, var2], var2
+            plan.add_step(step)
+            reduce_dims = list(range(-k, 0))
+            plan_reduce(plan, op2, reduce_dims, keepdim=False)
 
     # Wrap up, updating auxiliary data
     # Updating g_mask for I and J axes
-    for i, ax in enumerate(I + J1 + J2):
-        op2_mask[ax] = (result_shape[i] > 1)
+    for ax in I + J1 + J2:
+        op2_mask[ax] = vshape[ax] > 1 or vshape[ax] == -1
 
     for ax in K:
         op2_mask[ax] = False
@@ -514,6 +445,8 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
     dim = 0
     for ax in I + J1 + J2:
         op2_view[ax], dim = dim, dim + 1
+
+    g_view[op2] = list(op2_view)
 
 
 def plan_summation(plan, g_view, op1, op2, g_supports, g_shape, g_count,
@@ -531,8 +464,8 @@ def plan_summation(plan, g_view, op1, op2, g_supports, g_shape, g_count,
 
     I, K, J1, J2 = list(range(n_bcast)), [], [], []
 
-    for ax, dim1, dim2 in zip(
-            range(n_bcast, ndim), op1_view[n_bcast:], op2_view[n_bcast:]):
+    for ax, dim1, dim2 in zip(range(n_bcast, ndim), op1_view[n_bcast:],
+                              op2_view[n_bcast:]):
 
         if (dim1 != -1) != (dim2 != -1):
             if dim1 != -1:
@@ -598,6 +531,7 @@ def plan_broadcast(plan, operands, nop_axes):
 
 
 class Plan:
+
     def __init__(self):
         self.env = {}
         self.steps = []
@@ -683,8 +617,8 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
         # We'd like to arrange the dimensions in the following way:
         # [I...  J... K...]
         # [I...  J... K...]
-        # where  
-        #       I... are aligned and not to be combined immediately 
+        # where
+        #       I... are aligned and not to be combined immediately
         #       J... are not aligned and not to be combined immediately
         #       K... are aligned and should be immediately combined
         # At this point the non-trivial broadcast dimensinos in K are already reduced
@@ -738,7 +672,170 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
     return plan
 
 
-@dygraph_only
+def preprocess(equation, *operands):
+    """
+    check equation / raise error, default right labels generation
+    """
+    equation = equation.replace(" ", "")
+    nop = len(operands)
+    assert nop > 0, "Required at least one operand in Einsum API, but received %s " % nop
+
+    # Part the equation to left hand side and right hand side
+    lhs, *rhs = equation.lower().split('->')
+    assert len(rhs) < 2, "Invalid equation: multiple `->` were found."
+
+    labels = parse_labels(lhs, operands)
+    # Note, we distinguish between 'ij->' and 'ij' by setting rhs to '' and None
+    rhs = rhs[0] if rhs else None
+    if rhs is None:
+        rhs = rhs_inference(lhs)
+
+    assert len(lhs.split(',')) == len(operands), (
+        f"Invalid equation: the number of operands is {len(operands)}, "
+        f"but found {len(lhs.split(','))} segments in the label equation.")
+
+    assert not ('...' in lhs and '...' not in rhs
+                ), f'Invalid equation: missing ellipsis in output labels.'
+
+    assert not (len(list(filter(has_duplicated_labels, lhs.split(',')))) >
+                0), f'Duplicate labels are not supported.'
+
+    assert not has_duplicated_labels(
+        rhs), f'Invalid equation: duplicate output labels are found.'
+
+    return lhs, rhs, labels
+
+
+def parse_fake_shape(equation, operands, labels):
+    """ 
+    this shape is just used for operands planning. may differ with the original shape.
+    for example: 
+    ... is replaced by 1
+    -1  is replaced by 1
+    Results
+    -------
+    list of shape
+    """
+    shaped = collections.namedtuple('shaped', ['shape'])
+
+    def fake_shape(label, op):
+        assert len(op.shape) == len(
+            label
+        ), "length of shape and length of label must be the same, but received %d != %d" % (
+            len(op.shape), len(label))
+        fakes = [s for i, (l, s) in enumerate(zip(label, op.shape)) if l != '.']
+        fakes = list(map(abs, fakes))  # make -1 -> 1
+        if '.' in label:
+            fakes.insert(label.index('.'), 1)
+        return shaped(fakes)
+
+    out = list(map(fake_shape, labels, operands))
+    return out
+
+
+def rhs_inference(lhs):
+
+    def is_free(key):
+        return cnt.get(key) == 1 and key not in ['.', ',']
+
+    cnt = collections.Counter(lhs)
+    rhs = "..." if '...' in lhs else ""
+    rhs = rhs + "".join(filter(is_free, sorted(cnt.elements())))
+    return rhs
+
+
+def gen_equation_for_opteinsum(lhs, rhs):
+    """ 
+    1. gen rhs if rhs is None
+    2. '...' -> 'A'
+    """
+
+    def get_used_label(counter):
+        used = set(counter.elements())
+        for c in string.ascii_lowercase:
+            if c not in used: return c
+        raise ValueError(
+            "You have used all `a` - `z`, there can't find a unused for einsum optimization"
+        )
+
+    cnt = collections.Counter(lhs)
+    broadcast_label = get_used_label(cnt)
+    if rhs is None:
+        rhs = rhs_inference(lhs)
+    lhs = lhs.replace("...", broadcast_label)
+    rhs = rhs.replace("...", broadcast_label)
+    return lhs + "->" + rhs, broadcast_label
+
+
+def einsum_v2(equation, *operands):
+    """ 
+    einsum v2 implementation.
+    1. Implement C++ EinsumOp.
+    2. V2 create the EinsumOp to calculate, so just a little verifty work in python.
+    3. V2 use opt_einsum.contract_path to optimize the multivariable einsum.
+    """
+    n_op = len(operands)
+    lhs, rhs, labels = preprocess(equation, *operands)
+
+    if n_op <= 2:
+        return gen_einsum_op(lhs + '->' + rhs, *operands)
+
+    shapes = parse_fake_shape(lhs, operands, labels)
+    opt_equation, broadcast_label = gen_equation_for_opteinsum(lhs, rhs)
+    _, cons = opt_einsum.contract_path(opt_equation, *shapes, einsum_call=True)
+    var_list = list(operands)
+    for path in cons:
+        (a, b), _, eq, *__ = path
+        assert a > b, "Assume the first var_idx is smaller than the second_idx. opt_einsum can guarantee it."
+        var_s = [var_list.pop(a), var_list.pop(b)]
+        eq = eq.replace(broadcast_label, "...")
+        var_list.append(gen_einsum_op(eq, *var_s))
+    assert len(
+        var_list
+    ) == 1, "There must be one elements in list, but received %d." % len(
+        var_list)
+    return var_list[0]
+
+
+def gen_einsum_op(equation, *operands):
+    """ 
+    EinsumOp Python Interface: 
+    """
+    assert len(operands) <= 2, "Only support two operands in EinsumOp."
+    if in_dygraph_mode():
+        return _C_ops.einsum(operands, equation)[0]
+
+    if _in_legacy_dygraph():
+        # dygraph
+        return _legacy_C_ops.einsum(operands, len(operands), len(operands),
+                                    'equation', equation)[0]
+
+    for inp in operands:
+        check_variable_and_dtype(inp, 'dtype', ['float32', 'float64'], 'einsum')
+    check_type(equation, 'equation', str, 'einsum')
+    helper = LayerHelper('einsum', **locals())
+    out = helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+    attrs = dict()
+    attrs['equation'] = equation
+    caches = [
+        helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+        for i in range(len(operands))
+    ]
+    xshape = [
+        helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+        for i in range(len(operands))
+    ]
+    helper.append_op(type='einsum',
+                     inputs={'Operands': operands},
+                     outputs={
+                         'Out': out,
+                         "InnerCache": caches,
+                         "XShape": xshape
+                     },
+                     attrs=attrs)
+    return out
+
+
 def einsum(equation, *operands):
     r"""
     einsum(equation, *operands)
@@ -792,10 +889,10 @@ def einsum(equation, *operands):
                 - For any free label which is not present for the output, it's lowered to
                 a dummy label.
         - Examples
-            - '...ij, ...jk'，where i and k are free labels, j is dummy. The output label
+            - '...ij, ...jk', where i and k are free labels, j is dummy. The output label
             string is '...ik'
             - 'ij -> i', where i is a free label and j is a dummy label. 
-            - '...ij, ...jk -> ...ijk'，where i, j and k are all free labels.
+            - '...ij, ...jk -> ...ijk', where i, j and k are all free labels.
             - '...ij, ...jk -> ij', an invalid equation since `...` is not present for
             the output.
 
@@ -896,6 +993,9 @@ def einsum(equation, *operands):
         #     [0.50226176, 0.24512935, 0.39881429],
         #     [0.51476848, 0.23367381, 0.39229113]]])
     """
+    import os
+    if int(os.environ.get('FLAGS_new_einsum', "1")):
+        return einsum_v2(equation, *operands)
 
     nop = len(operands)
     assert nop > 0, "At least one operand is expected."
@@ -919,12 +1019,12 @@ def einsum(equation, *operands):
     n_bcast_dims = max(map(lambda s: s.count('.'), nop_labels))
 
     # Build the data structures for planning. It's helpful to think of all the operands
-    # broadcasting together from a global view. In this view, dimensions from multiple 
+    # broadcasting together from a global view. In this view, dimensions from multiple
     # operands are mapped to the same position if they are labeled uniquely. Broadcasting
     # dimensions are mapped to adjacent positions with the right bound fixed. Subject to
-    # each operand, the map is injective but for all operands the map is on-to.  
+    # each operand, the map is injective but for all operands the map is on-to.
     # g_labels:
-    #   The labels of the global view 
+    #   The labels of the global view
     # g_view:
     #   Includes a list of maps from each operand's dimensions to the global view's dimensions
     #   which we refer to as ax or axes in the code to distinguish from operand's dims
@@ -938,8 +1038,8 @@ def einsum(equation, *operands):
     # g_count
     #   Counting how many non-trivial dimensions remain for each ax
 
-    g_labels, g_view, g_nout, g_count = build_global_view(nop_labels, rhs,
-                                                          n_bcast_dims)
+    g_labels, g_view, g_nout, g_count = build_global_view(
+        nop_labels, rhs, n_bcast_dims)
     g_shape, g_supports = build_global_shape(g_view, g_labels,
                                              [op.shape for op in operands])
 

@@ -42,24 +42,21 @@ def net(batch_size=4, lr=0.01):
     dnn_input_dim, lr_input_dim = int(2), int(2)
 
     with fluid.device_guard("cpu"):
-        dnn_data = fluid.layers.data(
-            name="dnn_data",
-            shape=[-1, 1],
-            dtype="int64",
-            lod_level=1,
-            append_batch_size=False)
-        lr_data = fluid.layers.data(
-            name="lr_data",
-            shape=[-1, 1],
-            dtype="int64",
-            lod_level=1,
-            append_batch_size=False)
-        label = fluid.layers.data(
-            name="click",
-            shape=[-1, 1],
-            dtype="float32",
-            lod_level=0,
-            append_batch_size=False)
+        dnn_data = fluid.layers.data(name="dnn_data",
+                                     shape=[-1, 1],
+                                     dtype="int64",
+                                     lod_level=1,
+                                     append_batch_size=False)
+        lr_data = fluid.layers.data(name="lr_data",
+                                    shape=[-1, 1],
+                                    dtype="int64",
+                                    lod_level=1,
+                                    append_batch_size=False)
+        label = fluid.layers.data(name="click",
+                                  shape=[-1, 1],
+                                  dtype="float32",
+                                  lod_level=0,
+                                  append_batch_size=False)
 
         datas = [dnn_data, lr_data, label]
 
@@ -73,8 +70,8 @@ def net(batch_size=4, lr=0.01):
                 name="deep_embedding",
                 initializer=fluid.initializer.Constant(value=0.01)),
             is_sparse=True)
-        dnn_pool = fluid.layers.sequence_pool(
-            input=dnn_embedding, pool_type="sum")
+        dnn_pool = fluid.layers.sequence_pool(input=dnn_embedding,
+                                              pool_type="sum")
         dnn_out = dnn_pool
 
         # build lr model
@@ -104,7 +101,7 @@ def net(batch_size=4, lr=0.01):
         predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
 
         cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
     return datas, avg_cost
 
 

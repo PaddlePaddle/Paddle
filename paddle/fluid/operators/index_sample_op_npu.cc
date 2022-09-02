@@ -12,8 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/index_sample_op.h"
-
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -22,7 +21,9 @@ using Tensor = framework::Tensor;
 
 template <typename IndexT>
 void IndexSampleGather(const paddle::platform::NPUDeviceContext& dev_ctx,
-                       const Tensor* index, const Tensor* input, Tensor* out) {
+                       const Tensor* index,
+                       const Tensor* input,
+                       Tensor* out) {
   auto index_dims = index->dims();
   auto input_dims = input->dims();
   auto batch_size = input_dims[0];
@@ -60,7 +61,7 @@ class IndexSampleNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       IndexSampleGather<int32_t>(dev_ctx, index, input, out);
     } else {
@@ -71,7 +72,8 @@ class IndexSampleNPUKernel : public framework::OpKernel<T> {
 
 template <typename IndexT>
 void IndexSampleGradScatter(const paddle::platform::NPUDeviceContext& dev_ctx,
-                            const Tensor* index, const Tensor* out_grad,
+                            const Tensor* index,
+                            const Tensor* out_grad,
                             Tensor* x_grad) {
   auto index_dims = index->dims();
   auto input_dims = x_grad->dims();
@@ -95,7 +97,7 @@ void IndexSampleGradScatter(const paddle::platform::NPUDeviceContext& dev_ctx,
   runner.SetType("ScatterNd")
       .AddInput(scatter_index)
       .AddInput(*out_grad)
-      .AddInput(framework::vectorize<IndexT>(x_grad->dims()))
+      .AddInput(phi::vectorize<IndexT>(x_grad->dims()))
       .AddOutput(*x_grad);
   runner.Run(dev_ctx.stream());
 }
@@ -113,7 +115,7 @@ class IndexSampleGradNPUKernel : public framework::OpKernel<T> {
         ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     x_grad->mutable_data<T>(ctx.GetPlace());
 
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       IndexSampleGradScatter<int32_t>(dev_ctx, index, out_grad, x_grad);
     } else {
@@ -128,7 +130,8 @@ class IndexSampleGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(index_sample, ops::IndexSampleNPUKernel<plat::float16>,
+REGISTER_OP_NPU_KERNEL(index_sample,
+                       ops::IndexSampleNPUKernel<plat::float16>,
                        ops::IndexSampleNPUKernel<float>,
                        ops::IndexSampleNPUKernel<int32_t>,
                        ops::IndexSampleNPUKernel<int64_t>);

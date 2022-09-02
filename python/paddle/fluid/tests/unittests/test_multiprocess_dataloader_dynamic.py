@@ -32,6 +32,7 @@ from test_multiprocess_dataloader_static import EPOCH_NUM, BATCH_SIZE, IMAGE_SIZ
 
 
 class SimpleFCNet(fluid.dygraph.Layer):
+
     def __init__(self):
         super(SimpleFCNet, self).__init__()
 
@@ -43,20 +44,18 @@ class SimpleFCNet(fluid.dygraph.Layer):
         in_channel = IMAGE_SIZE
         for hidden_size in [10, 20, 30]:
             self._fcs.append(
-                Linear(
-                    in_channel,
-                    hidden_size,
-                    act='tanh',
-                    param_attr=param_attr,
-                    bias_attr=bias_attr))
+                Linear(in_channel,
+                       hidden_size,
+                       act='tanh',
+                       param_attr=param_attr,
+                       bias_attr=bias_attr))
             in_channel = hidden_size
         self._fcs.append(
-            Linear(
-                in_channel,
-                CLASS_NUM,
-                act='softmax',
-                param_attr=param_attr,
-                bias_attr=bias_attr))
+            Linear(in_channel,
+                   CLASS_NUM,
+                   act='softmax',
+                   param_attr=param_attr,
+                   bias_attr=bias_attr))
 
     def forward(self, image):
         out = image
@@ -66,6 +65,7 @@ class SimpleFCNet(fluid.dygraph.Layer):
 
 
 class TestDygraphDataLoader(unittest.TestCase):
+
     def run_main(self, num_workers, places, persistent_workers):
         fluid.default_startup_program().random_seed = 1
         fluid.default_main_program().random_seed = 1
@@ -74,12 +74,11 @@ class TestDygraphDataLoader(unittest.TestCase):
             optimizer = fluid.optimizer.Adam(parameter_list=fc_net.parameters())
 
             dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
-            dataloader = DataLoader(
-                dataset,
-                num_workers=num_workers,
-                batch_size=BATCH_SIZE,
-                drop_last=True,
-                persistent_workers=persistent_workers)
+            dataloader = DataLoader(dataset,
+                                    num_workers=num_workers,
+                                    batch_size=BATCH_SIZE,
+                                    drop_last=True,
+                                    persistent_workers=persistent_workers)
             assert len(dataloader) == int(SAMPLE_NUM / BATCH_SIZE)
 
             step_list = []
@@ -117,10 +116,9 @@ class TestDygraphDataLoader(unittest.TestCase):
                     print(self.__class__.__name__, p, num_workers,
                           persistent_workers)
                     sys.stdout.flush()
-                    ret = self.run_main(
-                        num_workers=num_workers,
-                        places=p,
-                        persistent_workers=persistent_workers)
+                    ret = self.run_main(num_workers=num_workers,
+                                        places=p,
+                                        persistent_workers=persistent_workers)
                     results.append(ret)
                 diff = np.max(
                     np.abs(results[0]['loss'] - results[1]['loss']) /
@@ -129,6 +127,7 @@ class TestDygraphDataLoader(unittest.TestCase):
 
 
 class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
+
     def run_main(self, num_workers, places, persistent_workers):
         fluid.default_startup_program().random_seed = 1
         fluid.default_main_program().random_seed = 1
@@ -137,12 +136,11 @@ class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
             optimizer = fluid.optimizer.Adam(parameter_list=fc_net.parameters())
 
             dataset = RandomBatchedDataset(SAMPLE_NUM, CLASS_NUM)
-            dataloader = DataLoader(
-                dataset,
-                num_workers=num_workers,
-                batch_size=None,
-                drop_last=True,
-                persistent_workers=persistent_workers)
+            dataloader = DataLoader(dataset,
+                                    num_workers=num_workers,
+                                    batch_size=None,
+                                    drop_last=True,
+                                    persistent_workers=persistent_workers)
             assert len(dataloader) == int(SAMPLE_NUM / BATCH_SIZE)
 
             step_list = []

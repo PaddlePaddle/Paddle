@@ -18,10 +18,11 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace operators {
@@ -34,7 +35,8 @@ class LoadOpKernel : public framework::OpKernel<T> {
     // it to save an output stream.
     auto filename = ctx.Attr<std::string>("file_path");
     std::ifstream fin(filename, std::ios::binary);
-    PADDLE_ENFORCE_EQ(static_cast<bool>(fin), true,
+    PADDLE_ENFORCE_EQ(static_cast<bool>(fin),
+                      true,
                       platform::errors::Unavailable(
                           "Load operator fail to open file %s, please check "
                           "whether the model file is complete or damaged.",
@@ -50,7 +52,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
 
     if (out_var->IsType<framework::LoDTensor>()) {
       LoadLodTensor(fin, place, out_var, ctx);
-    } else if (out_var->IsType<framework::SelectedRows>()) {
+    } else if (out_var->IsType<phi::SelectedRows>()) {
       LoadSelectedRows(fin, place, out_var);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -60,7 +62,8 @@ class LoadOpKernel : public framework::OpKernel<T> {
     }
   }
 
-  void LoadLodTensor(std::istream &fin, const platform::Place &place,
+  void LoadLodTensor(std::istream &fin,
+                     const platform::Place &place,
                      framework::Variable *var,
                      const framework::ExecutionContext &ctx) const {
     // get device context from pool
@@ -71,17 +74,19 @@ class LoadOpKernel : public framework::OpKernel<T> {
     auto seek = ctx.Attr<int64_t>("seek");
 
     if (seek != -1) {
-      PADDLE_ENFORCE_GE(seek, 0,
+      PADDLE_ENFORCE_GE(seek,
+                        0,
                         platform::errors::InvalidArgument(
                             "seek witn tensor must great than or equal to 0"));
       auto shape = ctx.Attr<std::vector<int64_t>>("shape");
-      DeserializeFromStream(fin, tensor, dev_ctx, seek, shape);
+      paddle::framework::DeserializeFromStream(
+          fin, tensor, dev_ctx, seek, shape);
     } else {
-      DeserializeFromStream(fin, tensor, dev_ctx);
+      paddle::framework::DeserializeFromStream(fin, tensor, dev_ctx);
     }
 
     auto load_as_fp16 = ctx.Attr<bool>("load_as_fp16");
-    auto in_dtype = tensor->type();
+    auto in_dtype = framework::TransToProtoVarType(tensor->dtype());
     auto out_dtype = load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
 
     if (in_dtype != out_dtype) {
@@ -91,8 +96,8 @@ class LoadOpKernel : public framework::OpKernel<T> {
       framework::LoDTensor fp16_tensor;
       // copy LoD info to the new tensor
       fp16_tensor.set_lod(tensor->lod());
-      framework::TransDataType(in_kernel_type, out_kernel_type, *tensor,
-                               &fp16_tensor);
+      framework::TransDataType(
+          in_kernel_type, out_kernel_type, *tensor, &fp16_tensor);
 
       // reset output tensor
       var->Clear();
@@ -102,9 +107,10 @@ class LoadOpKernel : public framework::OpKernel<T> {
     }
   }
 
-  void LoadSelectedRows(std::istream &fin, const platform::Place &place,
+  void LoadSelectedRows(std::istream &fin,
+                        const platform::Place &place,
                         framework::Variable *var) const {
-    auto *selectedRows = var->GetMutable<framework::SelectedRows>();
+    auto *selectedRows = var->GetMutable<phi::SelectedRows>();
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);

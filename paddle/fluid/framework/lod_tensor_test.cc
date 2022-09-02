@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/lod_tensor.h"
+
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/phi/core/lod_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -98,7 +100,7 @@ TEST(LoD, AppendLoD) {
   origin.push_back(std::vector<size_t>({0, 1, 6}));
   origin.push_back(std::vector<size_t>({0, 2, 5, 7, 10, 12, 15}));
 
-  paddle::framework::AppendLoD(&origin, lod_lens);
+  phi::AppendLoD(&origin, lod_lens);
 
   LoD expected;
   expected.push_back(std::vector<size_t>({0, 2, 4}));
@@ -147,7 +149,7 @@ TEST(LoD, SplitLoDTensor) {
   lod1.push_back(std::vector<size_t>({0, 1, 2}));
   lod1.push_back(std::vector<size_t>({0, 2, 7}));
 
-  auto lods = lod_tensor.SplitLoDTensor(places);
+  auto lods = SplitLoDTensor(lod_tensor, places);
   EXPECT_EQ(lods[0].lod(), lod0);
   EXPECT_EQ(lods[1].lod(), lod1);
 }
@@ -167,7 +169,7 @@ TEST(LoD, SplitLoDTensorWithZeroBatchSize) {
   LoD lod_res;
   lod_res.push_back(std::vector<size_t>({0}));
 
-  auto lods = lod_tensor.SplitLoDTensor(places);
+  auto lods = SplitLoDTensor(lod_tensor, places);
   EXPECT_EQ(lods[0].lod(), lod_res);
   EXPECT_EQ(lods[1].lod(), lod_res);
 }
@@ -213,7 +215,7 @@ TEST(LoD, MergeLoDTensor) {
   std::vector<const LoDTensor*> lods{&lod_tensor0, &lod_tensor1, &lod_tensor2};
 
   LoDTensor lod_tensor;
-  lod_tensor.MergeLoDTensor(lods, place);
+  MergeLoDTensor(&lod_tensor, lods, place);
   EXPECT_EQ(lod_tensor.lod(), lod);
 }
 
@@ -277,7 +279,7 @@ TEST(LoD, ConvertToLengthBasedLoD) {
   offset_lod.push_back(std::vector<size_t>({0, 1, 3}));
   offset_lod.push_back(std::vector<size_t>({0, 2, 4, 5}));
 
-  LoD length_lod = ConvertToLengthBasedLoD(offset_lod);
+  LoD length_lod = phi::ConvertToLengthBasedLoD(offset_lod);
 
   LoD expected;
   expected.push_back(std::vector<size_t>({2}));

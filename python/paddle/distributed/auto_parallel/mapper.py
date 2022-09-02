@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import os
 import operator
 import functools
 import json
@@ -117,11 +118,11 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
     return comm_volume
 
 
-def analyze_comm_requirements_from_op(op, rank):
+def analyze_comm_requirements_from_op(op, rank, g_process_group_map):
     comm_requirements_to_ranks = {}
     if is_collective_comm_op(op):
         process_group_id = op.attr("ring_id")
-        process_group = get_process_group(process_group_id)
+        process_group = get_process_group(process_group_id, g_process_group_map)
         if rank not in process_group.ranks:
             return comm_requirements_to_ranks
         for tgt_rank in process_group.ranks:
@@ -141,7 +142,9 @@ def analyze_comm_requirements_from_op(op, rank):
     return comm_requirements_to_ranks
 
 
-def analyze_requirements_for_program(program, rank):
+def analyze_requirements_for_program(src_info, rank):
+    program = src_info[0]
+    g_process_group_map = src_info[1]
     resource_requirements = {}
     comm_requirements_to_ranks = {}
     # only support device_type and only support GPU for now
@@ -149,7 +152,7 @@ def analyze_requirements_for_program(program, rank):
     for block in program.blocks:
         for op in block.ops:
             cur_comm_requirements_to_ranks = analyze_comm_requirements_from_op(
-                op, rank)
+                op, rank, g_process_group_map)
             for tgt_rank, link_info in cur_comm_requirements_to_ranks.items():
                 if tgt_rank in comm_requirements_to_ranks:
                     comm_requirements_to_ranks[tgt_rank][
@@ -163,24 +166,36 @@ def analyze_requirements_for_program(program, rank):
 
 def build_process_graph(distributed_program):
     graph = Graph()
-    for src_rank, src_program in distributed_program.items():
+    for src_rank, src_info in distributed_program.items():
         resource_requirements, comm_requirements_to_ranks = analyze_requirements_for_program(
-            src_program, src_rank)
+            src_info, src_rank)
         graph.add_node(src_rank, resource_requirements=resource_requirements)
         for tgt_rank, comm_requirements in comm_requirements_to_ranks.items():
-            graph.add_edge(
-                src_rank, tgt_rank, comm_requirements=comm_requirements)
+            graph.add_edge(src_rank,
+                           tgt_rank,
+                           comm_requirements=comm_requirements)
     return graph
 
 
 def build_cluster_graph(cluster):
     graph = Graph()
+    cuda_visible_devices_env = os.getenv("CUDA_VISIBLE_DEVICES")
+    cuda_visible_devices = []
+    if cuda_visible_devices_env is not None and cuda_visible_devices_env != "":
+        cuda_visible_devices = [
+            int(d.strip()) for d in cuda_visible_devices_env.split(",")
+        ]
     for machine in cluster.machines.values():
         for device in machine.devices.values():
             graph.add_node(device.global_id, device=device)
+            if cuda_visible_devices and device.local_id not in cuda_visible_devices:
+                graph.nodes[device.global_id]["occupied"] = True
+            else:
+                graph.nodes[device.global_id]["occupied"] = False
         for link in machine.links.values():
-            graph.add_edge(
-                link.source.global_id, link.target.global_id, link=link)
+            graph.add_edge(link.source.global_id,
+                           link.target.global_id,
+                           link=link)
     return graph
 
 
@@ -194,9 +209,6 @@ def mapping(distributed_program, cluster):
 
     for cur_rank_node in process_graph:
         cur_rank_node["visited"] = False
-
-    for cur_device_node in cluster_graph:
-        cur_device_node["occupied"] = False
 
     def sort_by_comm_volume(rank_edge):
         return rank_edge["comm_requirements"]["comm_volume"]
@@ -223,8 +235,8 @@ def mapping(distributed_program, cluster):
             device_type = cur_rank_node["resource_requirements"]["device_type"]
             cur_device_node = None
             for device_node in cluster_graph.nodes.values():
-                if (device_node["device"].type == device_type) and (
-                        not device_node["occupied"]):
+                if (device_node["device"].type
+                        == device_type) and (not device_node["occupied"]):
                     device_node["occupied"] = True
                     cur_rank_node["visited"] = True
                     cur_rank_node["device"] = device_node["device"]
@@ -247,8 +259,8 @@ def mapping(distributed_program, cluster):
             nbr_device_edges.sort(key=sort_by_comm_bandwidth)
 
             for nbr_rank_edge in nbr_rank_edges:
-                src_rank_node = process_graph.nodes[nbr_rank_edge.src_id][
-                    "visited"]
+                src_rank_node = process_graph.nodes[
+                    nbr_rank_edge.src_id]["visited"]
                 if src_rank_node:
                     continue
                 device_type = src_rank_node["resource_requirements"][

@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace operators {
@@ -33,7 +33,7 @@ template <typename T>
 class MarkerOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     auto marker_role = ctx.Attr<std::string>("marker_role");
     auto marker_pos = ctx.Attr<std::string>("marker_pos");
@@ -45,10 +45,13 @@ class MarkerOpCUDAKernel : public framework::OpKernel<T> {
     auto* in_temp = A.mutable_data<T>({32, 1}, ctx.GetPlace());
     auto* out_temp = B.mutable_data<T>({32, 1}, ctx.GetPlace());
     platform::RecordEvent record_event(
-        "MarkerCUDA", platform::EventRole::kInnerOp,
-        "marker_" + marker_role + "_" + marker_pos);
-    SimpleMarkerKernel<T><<<1, 32, 0, dev_ctx.stream()>>>(in_temp, out_temp,
-                                                          32);
+        "MarkerCUDA",
+        "marker_" + marker_role + "_" + marker_pos,
+        platform::TracerEventType::OperatorInner,
+        1,
+        platform::EventRole::kInnerOp);
+    SimpleMarkerKernel<T>
+        <<<1, 32, 0, dev_ctx.stream()>>>(in_temp, out_temp, 32);
   }
 };
 

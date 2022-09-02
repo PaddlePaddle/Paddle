@@ -19,10 +19,10 @@
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 
 // When in inference scenario, the scopes will not be written by two threads in
 // a mean time, but a scope may be read by multiple threads concurrently, and
@@ -54,9 +54,12 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   bool HasOutput(const std::string& name) const override;
 
+  bool HasAttr(const std::string& name) const override;
+
   bool HasInputs(const std::string& name) const override;
 
-  bool HasOutputs(const std::string& name) const override;
+  bool HasOutputs(const std::string& name,
+                  bool allow_null = false) const override;
 
   AttrReader Attrs() const override;
 
@@ -68,32 +71,41 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   std::string GetOutputNameByIdx(size_t idx) const override;
 
-  void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
+  void ShareDim(const std::string& in,
+                const std::string& out,
+                size_t i = 0,
                 size_t j = 0) override;
 
   void ShareAllLoD(const std::string& in,
                    const std::string& out) const override;
 
-  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
+  void ShareLoD(const std::string& in,
+                const std::string& out,
+                size_t i = 0,
                 size_t j = 0) const override;
 
   int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override;
 
-  void SetLoDLevel(const std::string& out, int32_t lod_level,
+  void SetLoDLevel(const std::string& out,
+                   int32_t lod_level,
                    size_t j = 0) const override;
 
   bool IsRuntime() const override;
 
-  // TODO(paddle-dev): Can this be template?
-  std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) override;
+  bool IsRunMKLDNNKernel() const override;
 
-  std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) override;
+  // TODO(paddle-dev): Can this be template?
+  paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+  GetInputVarPtrs(const std::string& name) const override;
+
+  paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  GetOutputVarPtrs(const std::string& name) const override;
 
   DDim GetInputDim(const std::string& name) const override;
 
   std::vector<DDim> GetInputsDim(const std::string& name) const override;
+
+  proto::VarType::Type GetInputVarType(const std::string& name) const override;
 
   std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string& name) const override;
@@ -105,6 +117,10 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   void SetOutputsDim(const std::string& name,
                      const std::vector<DDim>& dims) override;
+
+  const phi::ArgumentMappingFn* GetPhiArgumentMappingFn() const override;
+
+  const phi::KernelSignature* GetPhiDefaultKernelSignature() const override;
 
   void SetSkipLoD(bool skip);
 
@@ -152,29 +168,7 @@ struct VariableMetaInfo {
       : var_ref_count_(var_ref_count), var_desc_(var_desc) {}
 };
 
-class VariableScope;
-class VariableScopeListener : public ScopeListener {
- public:
-  explicit VariableScopeListener(VariableScope* var_scope_);
-  void onCreateVariable(const std::string& name, Variable* v) override;
-  void onDeleteVariable(const std::string& name) override;
-  void onRenameVariable(const std::string& old_name,
-                        const std::string& new_name) override;
-  void onCreateScope(Scope* Scope) override;
-  void onDeleteScope(Scope* Scope) override;
-  void onClear() override;
-
- private:
-  VariableScope* var_scope_;  // not owned
-};
-
-// TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
-
-// NOTE(xiongkun03): Use scope as a member of VariableScope, we don't need
-// ScopeBase. Scope manager the variables and VariableScope is just a quick
-// access machanism. ScopeListener is the callback to sync changes in Original
-// Scope. We can make it a membership of VariableScope. Here we use inherent.
-class VariableScope : public ScopeBase {
+class VariableScope {
  public:
   explicit VariableScope(Scope* scope);
 
@@ -182,9 +176,9 @@ class VariableScope : public ScopeBase {
 
   Scope* GetMutableLocalScope() const;
 
-  void SetLocalScope(Scope* local_scope);
+  void SetScope(Scope* scope);
 
-  Variable* FindVar(const std::string& name) const;
+  void SetLocalScope(Scope* local_scope);
 
   ~VariableScope();
 
@@ -198,16 +192,11 @@ class VariableScope : public ScopeBase {
 
   int VarId(const std::string& name) const;
 
-  Variable* Var(int id) const;
-
-  Variable* Var(const std::string& name) const;
-
   size_t VarSize() const;
 
-  void AddVar(const std::string& name, VarDesc* var_desc,
-              bool local_scope = false);
+  void AddVar(const std::string& name, VarDesc* var_desc);
 
-  void AddVar(const std::string& name, const Variable& var);
+  Variable* VarRef(int id) const;
 
   void SetVarDesc(const std::string& name, framework::VarDesc* var_desc);
 
@@ -225,25 +214,36 @@ class VariableScope : public ScopeBase {
     return vec_meta_info_;
   }
 
-  const std::shared_ptr<VariableScopeListener>& Listener() const {
-    return listener_;
+  const std::vector<std::pair<std::string, int>>& DataTransferAddedVars()
+      const {
+    return data_transfer_added_vars_;
   }
+
+  std::vector<std::pair<std::string, int>>& MutableDataTransferAddedVars() {
+    return data_transfer_added_vars_;
+  }
+
+  std::vector<Variable*>& MutableVarList() { return var_list_; }
 
   void SetVarSikpInplace(const std::string& name, bool skip);
 
   bool GetVarSikpInplace(int id) const;
 
-  friend class VariableScopeListener;
-
  private:
+  // not owned, better remove it since all vars should be
+  // accessed by Scope instead of VariableScope
   std::vector<Variable*> var_list_;
+
   std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
+
   Scope* scope_{nullptr};
   // TODO(zhiqiu): find a better way to support local scope.
   Scope* local_scope_{nullptr};
   // mutable RWLock vars_lock_;
-  std::shared_ptr<VariableScopeListener> listener_{nullptr};
+
+  // var_name -> var_type
+  std::vector<std::pair<std::string, int>> data_transfer_added_vars_;
 };
 
 class NextInstruction {
@@ -282,7 +282,7 @@ struct InstructionInfo {
 
 enum class OpFuncType {
   kQueueSync = 0,   // CPU kernel, block host
-  kQueueAsync = 1,  // GPU Kernel or d2h, h2d, send, recv, broadcast
+  kQueueAsync = 1,  // GPU、XPU Kernel or d2h, h2d, send, recv, broadcast
 };
 class RuntimeInferShapeContext;
 
@@ -293,14 +293,21 @@ struct OpFuncNode {
   std::map<std::string, std::vector<int>> output_index;
   std::unordered_set<int> no_data_transform_index;
 
+  std::map<int, int> inplace_back_map;
+
   OpKernelComputeFunc kernel_func_;
   platform::DeviceContext* dev_ctx_;  // not owned
+
+  // fit for phi kernel
+  phi::Kernel* phi_kernel_{nullptr};  // not owned
+
   OpFuncType type_;
 };
 
 class Instruction {
  public:
-  Instruction(size_t id, OpFuncNode&& op_func_node,
+  Instruction(size_t id,
+              OpFuncNode&& op_func_node,
               const platform::DeviceContext& dev_ctx);
 
   size_t Id() const;
@@ -313,7 +320,11 @@ class Instruction {
 
   OpKernelComputeFunc KernelFunc() const;
 
+  phi::Kernel* PhiKernel() const;
+
   OpFuncType KernelType() const;
+
+  const std::map<int, int>& InplaceBackMap() const;
 
   OperatorBase* OpBase() const;
 
@@ -328,6 +339,10 @@ class Instruction {
   void ResetContext(const VariableValueMap& in_vars,
                     const VariableValueMap& out_vars);
 
+  void ResetContextWithScope(const VariableValueMap& in_vars,
+                             const VariableValueMap& out_vars,
+                             const framework::Scope& scope);
+
   std::shared_ptr<RuntimeContext> InnerRuntimeContext() const;
 
   std::shared_ptr<InterpretercoreInferShapeContext> InnerInferShapeContext()
@@ -340,6 +355,8 @@ class Instruction {
   const std::vector<std::pair<Variable*, Variable*>>& InplaceInfo() const;
 
   void AddInplace(Variable* in, Variable* out);
+
+  void ClearInplace();
 
   const std::vector<EventInter>& InputEvents() const;
 
@@ -386,6 +403,12 @@ static bool IsMemcpyD2H(const Instruction& instr) {
 
 static bool IsCpuOp(const Instruction& instr) {
   return platform::is_cpu_place(instr.DeviceContext().GetPlace());
+}
+
+// is supported heterogeneous place
+static bool IsSupportedHetePlace(const phi::Place& place) {
+  return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
+         platform::is_xpu_place(place) || platform::is_ipu_place(place);
 }
 
 }  // namespace interpreter

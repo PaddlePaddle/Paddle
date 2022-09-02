@@ -34,7 +34,8 @@ namespace tensorrt {
 class GatherOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid gather op to tensorrt gather layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -46,7 +47,7 @@ class GatherOpConverter : public OpConverter {
 
     int axis = 0;
     if (op_desc.HasAttr("axis")) {
-      axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
+      axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
     }
 
     auto reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *index_tensor);
@@ -56,9 +57,11 @@ class GatherOpConverter : public OpConverter {
     index_shape.d[0] = -1;
 
     reshape_layer->setReshapeDimensions(index_shape);
+    reshape_layer->setName(
+        ("Gather: Shuffle: (Output: " + output_name + ")").c_str());
 
-    auto layer = TRT_ENGINE_ADD_LAYER(engine_, Gather, *input_tensor,
-                                      *reshape_layer->getOutput(0), axis);
+    auto layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Gather, *input_tensor, *reshape_layer->getOutput(0), axis);
     layer->setNbElementWiseDims(0);
 
     RreplenishLayerAndOutput(layer, "gather", {output_name}, test_mode);

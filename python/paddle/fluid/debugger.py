@@ -68,31 +68,30 @@ def repr_lodtensor(proto):
 
     level = proto.type.lod_tensor.lod_level
     reprs = repr_tensor(proto.type.lod_tensor.tensor)
-    return reprtpl.format(
-        ttype="LoDTensor" if level > 0 else "Tensor",
-        name=proto.name,
-        reprs="level=%d, %s" % (level, reprs) if level > 0 else reprs)
+    return reprtpl.format(ttype="LoDTensor" if level > 0 else "Tensor",
+                          name=proto.name,
+                          reprs="level=%d, %s" %
+                          (level, reprs) if level > 0 else reprs)
 
 
 def repr_selected_rows(proto):
     if proto.type.type != framework_pb2.VarType.SELECTED_ROWS:
         return
 
-    return reprtpl.format(
-        ttype="SelectedRows",
-        name=proto.name,
-        reprs=repr_tensor(proto.type.selected_rows))
+    return reprtpl.format(ttype="SelectedRows",
+                          name=proto.name,
+                          reprs=repr_tensor(proto.type.selected_rows))
 
 
 def repr_tensor_array(proto):
     if proto.type.type != framework_pb2.VarType.LOD_TENSOR_ARRAY:
         return
 
-    return reprtpl.format(
-        ttype="TensorArray",
-        name=proto.name,
-        reprs="level=%d, %s" % (proto.type.tensor_array.lod_level,
-                                repr_tensor(proto.type.lod_tensor.tensor)))
+    return reprtpl.format(ttype="TensorArray",
+                          name=proto.name,
+                          reprs="level=%d, %s" %
+                          (proto.type.tensor_array.lod_level,
+                           repr_tensor(proto.type.lod_tensor.tensor)))
 
 
 type_handlers = [
@@ -119,6 +118,7 @@ def pprint_program_codes(program_desc):
 
 
 def pprint_block_codes(block_desc, show_backward=False):
+
     def is_op_backward(op_desc):
         if op_desc.type.endswith('_grad'): return True
 
@@ -155,7 +155,8 @@ def pprint_block_codes(block_desc, show_backward=False):
         idx=block_desc.idx,
         pidx=block_desc.parent_idx,
         vars='\n'.join(var_reprs),
-        ops='\n'.join(op_reprs), )
+        ops='\n'.join(op_reprs),
+    )
 
 
 def repr_attr(desc):
@@ -187,7 +188,9 @@ def _repr_op_fill_constant(optype, inputs, outputs, attrs):
             shape=str(attrs['shape']))
 
 
-op_repr_handlers = [_repr_op_fill_constant, ]
+op_repr_handlers = [
+    _repr_op_fill_constant,
+]
 
 
 def repr_op(opdesc):
@@ -218,12 +221,11 @@ def repr_op(opdesc):
         res = handler(opdesc.type, inputs, outputs, attr_dict)
         if res: return res
 
-    return tpl.format(
-        outputs=', '.join(outputs),
-        optype=opdesc.type,
-        inputs=', '.join(inputs),
-        attrs="{%s}" % ','.join(attrs),
-        is_target=", is_target" if is_target else "")
+    return tpl.format(outputs=', '.join(outputs),
+                      optype=opdesc.type,
+                      inputs=', '.join(inputs),
+                      attrs="{%s}" % ','.join(attrs),
+                      is_target=", is_target" if is_target else "")
 
 
 def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
@@ -251,10 +253,9 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
         # TODO(gongwb): format the var.type
         # create var
         if var.persistable:
-            varn = graph.add_param(
-                var.name,
-                str(var.type).replace("\n", "<br />", 1),
-                highlight=need_highlight(var.name))
+            varn = graph.add_param(var.name,
+                                   str(var.type).replace("\n", "<br />", 1),
+                                   highlight=need_highlight(var.name))
         else:
             varn = graph.add_arg(var.name, highlight=need_highlight(var.name))
         vars[var.name] = varn

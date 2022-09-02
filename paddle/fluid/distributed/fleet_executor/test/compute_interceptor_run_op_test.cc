@@ -16,16 +16,20 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
+#include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-USE_OP(elementwise_add);
-USE_OP(fill_constant);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(fill_constant);
+
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace distributed {
@@ -33,15 +37,16 @@ namespace distributed {
 std::vector<framework::OperatorBase*> GetOps() {
   framework::AttributeMap attrs;
   attrs["dtype"] = framework::proto::VarType::FP32;
-  attrs["shape"] = framework::vectorize<int>({2, 3});
+  attrs["shape"] = phi::vectorize<int>({2, 3});
   attrs["value"] = 1.0f;
 
-  auto zero_op = framework::OpRegistry::CreateOp("fill_constant", {},
-                                                 {{"Out", {"x"}}}, attrs);
+  auto zero_op = framework::OpRegistry::CreateOp(
+      "fill_constant", {}, {{"Out", {"x"}}}, attrs);
 
-  auto op = framework::OpRegistry::CreateOp(
-      "elementwise_add", {{"X", {"x"}}, {"Y", {"x"}}}, {{"Out", {"out"}}},
-      framework::AttributeMap());
+  auto op = framework::OpRegistry::CreateOp("elementwise_add",
+                                            {{"X", {"x"}}, {"Y", {"x"}}},
+                                            {{"Out", {"out"}}},
+                                            framework::AttributeMap());
 
   // NOTE: don't delete
   return {zero_op.release(), op.release()};
@@ -61,35 +66,49 @@ TEST(ComputeInterceptor, Compute) {
   std::vector<framework::Scope*> scopes = {scope, scope};
   platform::Place place = platform::CPUPlace();
 
-  Carrier& carrier = Carrier::Instance();
+  std::string carrier_id = "0";
+  Carrier* carrier =
+      GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
+  carrier->Init(0, {{SOURCE_ID, 0}, {0, 0}, {1, 0}, {SINK_ID, 0}});
 
-  MessageBus& msg_bus = MessageBus::Instance();
-  msg_bus.Init({{0, 0}, {1, 0}}, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
+  MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
+  msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
 
   // FIXME: don't delete, otherwise interceptor will use undefined node
+  TaskNode* source =
+      new TaskNode(0, SOURCE_ID, 2);  // rank, task_id, max_run_times
   TaskNode* node_a =
       new TaskNode(0, ops, 0, 0, 2, 0);  // role, ops, rank, task_id
   TaskNode* node_b = new TaskNode(0, 0, 1, 2, 0);
+  TaskNode* sink = new TaskNode(0, SINK_ID, 2);
 
-  // a->b
+  // source->a->b->sink
+  source->AddDownstreamTask(0);
+  node_a->AddUpstreamTask(SOURCE_ID);
   node_a->AddDownstreamTask(1);
   node_b->AddUpstreamTask(0);
+  sink->AddUpstreamTask(1);
+  node_b->AddDownstreamTask(SINK_ID);
 
-  auto* a = carrier.SetInterceptor(
+  carrier->SetInterceptor(
+      SOURCE_ID, InterceptorFactory::Create("Source", SOURCE_ID, source));
+  auto* a = carrier->SetInterceptor(
       0, InterceptorFactory::Create("Compute", 0, node_a));
-  carrier.SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
+  carrier->SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
+  carrier->SetInterceptor(SINK_ID,
+                          InterceptorFactory::Create("Sink", SINK_ID, sink));
 
   a->SetPlace(place);
   a->SetMicroBatchScope(scopes);
 
-  carrier.SetCreatingFlag(false);
-
   // start
   InterceptorMessage msg;
-  msg.set_message_type(DATA_IS_READY);
-  msg.set_src_id(-1);
-  msg.set_dst_id(0);
-  carrier.EnqueueInterceptorMessage(msg);
+  msg.set_message_type(START);
+  msg.set_dst_id(SOURCE_ID);
+  carrier->EnqueueInterceptorMessage(msg);
+
+  carrier->Wait();
+  carrier->Release();
 }
 
 }  // namespace distributed

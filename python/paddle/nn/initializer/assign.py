@@ -11,11 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from ...fluid import framework
-from ...fluid import core
-from ...fluid import unique_name
-from ...fluid.core import VarDesc
+import paddle
 from ...fluid.data_feeder import check_type
 from ...fluid.initializer import NumpyArrayInitializer
 
@@ -88,13 +84,14 @@ class Assign(NumpyArrayInitializer):
     def __init__(self, value, name=None):
         import numpy
         check_type(value, 'value',
-                   (numpy.ndarray, list, tuple, framework.Variable), 'Assign')
+                   (numpy.ndarray, list, tuple, paddle.static.Variable),
+                   'Assign')
 
         if (isinstance(value, (list, tuple))):
             value = numpy.array(value)
 
         # TODO: value is already is a tensor, accounting efficiency maybe it does not need to convert tensor to numpy data and then initialized.
-        if (isinstance(value, framework.Variable)):
+        if (isinstance(value, paddle.static.Variable)):
             value = value.numpy()
 
         super(Assign, self).__init__(value)

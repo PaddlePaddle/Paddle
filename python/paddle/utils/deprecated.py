@@ -109,8 +109,9 @@ def deprecated(update_to="", since="", reason="", level=0):
             v_since = [int(i) for i in _since.split(".")]
             v_since += [0] * (4 - len(v_since))
             if paddle.__version__ == "0.0.0" or _since == "" or v_current >= v_since:
-                warnings.warn(
-                    warningmsg, category=DeprecationWarning, stacklevel=2)
+                warnings.warn(warningmsg,
+                              category=DeprecationWarning,
+                              stacklevel=2)
 
             return func(*args, **kwargs)
 

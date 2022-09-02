@@ -12,11 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/scale_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
+
+template <typename T>
+static inline T GetAttrFromTensor(const framework::Tensor* tensor) {
+  const auto* tensor_data = tensor->data<T>();
+  framework::Tensor cpu_tensor;
+  if (platform::is_gpu_place(tensor->place()) ||
+      platform::is_npu_place(tensor->place())) {
+    paddle::framework::TensorCopySync(
+        *tensor, platform::CPUPlace(), &cpu_tensor);
+    tensor_data = cpu_tensor.data<T>();
+  }
+  return tensor_data[0];
+}
 
 template <typename T>
 class ScaleNPUKernel : public framework::OpKernel<T> {
@@ -57,21 +70,31 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
                       const std::vector<Tensor>& outputs,
                       const NPUAttributeMap& attrs,
                       const platform::NPUDeviceContext& dev_ctx) {
-      const auto& muls_runner = NpuOpRunner("Muls", {inputs[0]}, {outputs[0]},
-                                            {{"value", attrs.at("scale")}});
+      const auto& muls_runner = NpuOpRunner(
+          "Muls", {inputs[0]}, {outputs[0]}, {{"value", attrs.at("scale")}});
       muls_runner.Run(dev_ctx.stream());
 
-      const auto& adds_runner = NpuOpRunner("Adds", {outputs[0]}, {outputs[0]},
-                                            {{"value", attrs.at("shift")}});
+      const auto& adds_runner = NpuOpRunner(
+          "Adds", {outputs[0]}, {outputs[0]}, {{"value", attrs.at("shift")}});
       adds_runner.Run(dev_ctx.stream());
     };
 
-    if (x->type() == framework::proto::VarType::INT32) {
-      NpuOpRunner::TypeAdapter({*x}, {*out}, attrs, dev_ctx, op_func,
+    if (framework::TransToProtoVarType(x->dtype()) ==
+        framework::proto::VarType::INT32) {
+      NpuOpRunner::TypeAdapter({*x},
+                               {*out},
+                               attrs,
+                               dev_ctx,
+                               op_func,
                                {framework::proto::VarType::INT32},
                                {framework::proto::VarType::INT32});
-    } else if (x->type() == framework::proto::VarType::INT64) {
-      NpuOpRunner::TypeAdapter({*x}, {*out}, attrs, dev_ctx, op_func,
+    } else if (framework::TransToProtoVarType(x->dtype()) ==
+               framework::proto::VarType::INT64) {
+      NpuOpRunner::TypeAdapter({*x},
+                               {*out},
+                               attrs,
+                               dev_ctx,
+                               op_func,
                                {framework::proto::VarType::INT32},
                                {framework::proto::VarType::INT32});
     } else {
@@ -85,7 +108,8 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_NPU_KERNEL(
-    scale, paddle::operators::ScaleNPUKernel<float>,
+    scale,
+    paddle::operators::ScaleNPUKernel<float>,
     paddle::operators::ScaleNPUKernel<paddle::platform::float16>,
     paddle::operators::ScaleNPUKernel<int64_t>,
     paddle::operators::ScaleNPUKernel<int>);

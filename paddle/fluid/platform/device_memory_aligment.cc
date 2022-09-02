@@ -31,9 +31,11 @@ size_t Alignment(size_t size, const platform::Place &place, int align_size) {
       alignment = alignment;
 #elif defined(PADDLE_WITH_ASCEND_CL)
       alignment = NPUMinChunkSize();
+#elif defined(PADDLE_WITH_MLU)
+      alignment = MLUMinChunkSize();
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "Fluid is not compiled with CUDA/XPU/NPU."));
+          "Fluid is not compiled with CUDA/XPU/NPU/MLU."));
 #endif
     }
   }

@@ -46,8 +46,9 @@ def sigmoid_focal_loss_forward(x_data, label_data, fg_num_data, gamma, alpha,
         p = 1. / (1. + math.exp(-x))
         FLT_MIN = 1.175494351e-38
         term_pos = math.pow((1. - p), gamma) * math.log(max(FLT_MIN, p))
-        term_neg = math.pow(p, gamma) * (
-            -1. * x * (x >= 0) - math.log(1. + math.exp(x - 2. * x * (x >= 0))))
+        term_neg = math.pow(p, gamma) * (-1. * x * (x >= 0) -
+                                         math.log(1. + math.exp(x - 2. * x *
+                                                                (x >= 0))))
         out_data[idx] = 0.0
         out_data[idx] += -c_pos * term_pos * z_pos
         out_data[idx] += -c_neg * term_neg * z_neg
@@ -57,6 +58,7 @@ def sigmoid_focal_loss_forward(x_data, label_data, fg_num_data, gamma, alpha,
 
 
 class TestSigmoidFocalLossOp1(OpTest):
+
     def set_argument(self):
         self.num_anchors = 10
         self.num_classes = 10
@@ -84,9 +86,10 @@ class TestSigmoidFocalLossOp1(OpTest):
             'gamma': self.gamma,
             'alpha': self.alpha,
         }
-        loss = sigmoid_focal_loss_forward(
-            self.inputs['X'], self.inputs['Label'], self.inputs['FgNum'],
-            self.gamma, self.alpha, self.num_classes)
+        loss = sigmoid_focal_loss_forward(self.inputs['X'],
+                                          self.inputs['Label'],
+                                          self.inputs['FgNum'], self.gamma,
+                                          self.alpha, self.num_classes)
         self.outputs = {'Out': loss.astype('float64')}
 
     def test_check_output(self):
@@ -99,17 +102,20 @@ class TestSigmoidFocalLossOp1(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestSigmoidFocalLossOp2(TestSigmoidFocalLossOp1):
+
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place, atol=2e-3)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', max_relative_error=0.002)
+        self.check_grad_with_place(place, ['X'],
+                                   'Out',
+                                   max_relative_error=0.002)
 
 
 class TestSigmoidFocalLossOp3(TestSigmoidFocalLossOp1):
+
     def set_argument(self):
         self.num_anchors = 200
         self.num_classes = 10
@@ -120,36 +126,47 @@ class TestSigmoidFocalLossOp3(TestSigmoidFocalLossOp1):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestSigmoidFocalLossOp4(TestSigmoidFocalLossOp3):
+
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place, atol=2e-3)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', max_relative_error=0.002)
+        self.check_grad_with_place(place, ['X'],
+                                   'Out',
+                                   max_relative_error=0.002)
 
 
 class TestSigmoidFocalLossOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
-            label1 = fluid.layers.fill_constant(
-                shape=[10, 1], dtype="int32", value=1)
-            fg_num1 = fluid.layers.fill_constant(
-                shape=[1], dtype="int32", value=5)
+            label1 = fluid.layers.fill_constant(shape=[10, 1],
+                                                dtype="int32",
+                                                value=1)
+            fg_num1 = fluid.layers.fill_constant(shape=[1],
+                                                 dtype="int32",
+                                                 value=5)
 
             # The `x` must be Variable and the data type of `x` Tensor must be one of float32 and float64.
             def test_x_type():
                 x1 = [2]
-                fluid.layers.sigmoid_focal_loss(
-                    x=x1, label=label1, fg_num=fg_num1, gamma=2., alpha=0.25)
+                fluid.layers.sigmoid_focal_loss(x=x1,
+                                                label=label1,
+                                                fg_num=fg_num1,
+                                                gamma=2.,
+                                                alpha=0.25)
 
             self.assertRaises(TypeError, test_x_type)
 
             def test_x_tensor_dtype():
                 x2 = fluid.layers.data(name='x2', shape=[10, 10], dtype="int16")
-                fluid.layers.sigmoid_focal_loss(
-                    x=x2, label=label1, fg_num=fg_num1, gamma=2., alpha=0.25)
+                fluid.layers.sigmoid_focal_loss(x=x2,
+                                                label=label1,
+                                                fg_num=fg_num1,
+                                                gamma=2.,
+                                                alpha=0.25)
 
             self.assertRaises(TypeError, test_x_tensor_dtype)
 
@@ -158,32 +175,46 @@ class TestSigmoidFocalLossOpError(unittest.TestCase):
             # The `label` must be Variable and the data type of `label` Tensor must be int32.
             def test_label_type():
                 label2 = [2]
-                fluid.layers.sigmoid_focal_loss(
-                    x=x3, label=label2, fg_num=fg_num1, gamma=2., alpha=0.25)
+                fluid.layers.sigmoid_focal_loss(x=x3,
+                                                label=label2,
+                                                fg_num=fg_num1,
+                                                gamma=2.,
+                                                alpha=0.25)
 
             self.assertRaises(TypeError, test_label_type)
 
             def test_label_tensor_dtype():
-                label3 = fluid.layers.fill_constant(
-                    shape=[10, 1], dtype="float32", value=1.)
-                fluid.layers.sigmoid_focal_loss(
-                    x=x3, label=label3, fg_num=fg_num1, gamma=2., alpha=0.25)
+                label3 = fluid.layers.fill_constant(shape=[10, 1],
+                                                    dtype="float32",
+                                                    value=1.)
+                fluid.layers.sigmoid_focal_loss(x=x3,
+                                                label=label3,
+                                                fg_num=fg_num1,
+                                                gamma=2.,
+                                                alpha=0.25)
 
             self.assertRaises(TypeError, test_label_tensor_dtype)
 
             # The `fg_num` must be Variable and the data type of `fg_num` Tensor must be int32.
             def test_fgnum_type():
                 fg_num2 = [2]
-                fluid.layers.sigmoid_focal_loss(
-                    x=x3, label=label1, fg_num=fg_num2, gamma=2., alpha=0.25)
+                fluid.layers.sigmoid_focal_loss(x=x3,
+                                                label=label1,
+                                                fg_num=fg_num2,
+                                                gamma=2.,
+                                                alpha=0.25)
 
             self.assertRaises(TypeError, test_fgnum_type)
 
             def test_fgnum_tensor_dtype():
-                fg_num3 = fluid.layers.fill_constant(
-                    shape=[1], dtype="float32", value=5.)
-                fluid.layers.sigmoid_focal_loss(
-                    x=x3, label=label1, fg_num=fg_num3, gamma=2., alpha=0.25)
+                fg_num3 = fluid.layers.fill_constant(shape=[1],
+                                                     dtype="float32",
+                                                     value=5.)
+                fluid.layers.sigmoid_focal_loss(x=x3,
+                                                label=label1,
+                                                fg_num=fg_num3,
+                                                gamma=2.,
+                                                alpha=0.25)
 
             self.assertRaises(TypeError, test_fgnum_tensor_dtype)
 

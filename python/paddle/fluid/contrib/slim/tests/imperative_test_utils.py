@@ -24,8 +24,9 @@ from paddle.nn import BatchNorm1D
 
 from paddle.fluid.log_helper import get_logger
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 def fix_model_dict(model):
@@ -67,7 +68,7 @@ def train_lenet(lenet, reader, optimizer):
 
         out = lenet(img)
         loss = fluid.layers.cross_entropy(out, label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
         avg_loss.backward()
 
         optimizer.minimize(avg_loss)
@@ -81,6 +82,7 @@ def train_lenet(lenet, reader, optimizer):
 
 
 class ImperativeLenet(fluid.dygraph.Layer):
+
     def __init__(self, num_classes=10):
         super(ImperativeLenet, self).__init__()
         conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
@@ -93,50 +95,36 @@ class ImperativeLenet(fluid.dygraph.Layer):
         fc_b2_attr = fluid.ParamAttr(name="fc_b_2")
         fc_b3_attr = fluid.ParamAttr(name="fc_b_3")
         self.features = Sequential(
-            Conv2D(
-                in_channels=1,
-                out_channels=6,
-                kernel_size=3,
-                stride=1,
-                padding=1,
-                weight_attr=conv2d_w1_attr,
-                bias_attr=False),
-            BatchNorm2D(6),
-            ReLU(),
-            MaxPool2D(
-                kernel_size=2, stride=2),
-            Conv2D(
-                in_channels=6,
-                out_channels=16,
-                kernel_size=5,
-                stride=1,
-                padding=0,
-                weight_attr=conv2d_w2_attr,
-                bias_attr=conv2d_b2_attr),
-            BatchNorm2D(16),
-            PReLU(),
-            MaxPool2D(
-                kernel_size=2, stride=2))
+            Conv2D(in_channels=1,
+                   out_channels=6,
+                   kernel_size=3,
+                   stride=1,
+                   padding=1,
+                   weight_attr=conv2d_w1_attr,
+                   bias_attr=False), BatchNorm2D(6), ReLU(),
+            MaxPool2D(kernel_size=2, stride=2),
+            Conv2D(in_channels=6,
+                   out_channels=16,
+                   kernel_size=5,
+                   stride=1,
+                   padding=0,
+                   weight_attr=conv2d_w2_attr,
+                   bias_attr=conv2d_b2_attr), BatchNorm2D(16), PReLU(),
+            MaxPool2D(kernel_size=2, stride=2))
 
         self.fc = Sequential(
-            Linear(
-                in_features=400,
-                out_features=120,
-                weight_attr=fc_w1_attr,
-                bias_attr=fc_b1_attr),
-            LeakyReLU(),
-            Linear(
-                in_features=120,
-                out_features=84,
-                weight_attr=fc_w2_attr,
-                bias_attr=fc_b2_attr),
-            Sigmoid(),
-            Linear(
-                in_features=84,
-                out_features=num_classes,
-                weight_attr=fc_w3_attr,
-                bias_attr=fc_b3_attr),
-            Softmax())
+            Linear(in_features=400,
+                   out_features=120,
+                   weight_attr=fc_w1_attr,
+                   bias_attr=fc_b1_attr), LeakyReLU(),
+            Linear(in_features=120,
+                   out_features=84,
+                   weight_attr=fc_w2_attr,
+                   bias_attr=fc_b2_attr), Sigmoid(),
+            Linear(in_features=84,
+                   out_features=num_classes,
+                   weight_attr=fc_w3_attr,
+                   bias_attr=fc_b3_attr), Softmax())
         self.add = paddle.nn.quant.add()
         self.quant_stub = paddle.nn.quant.QuantStub()
 
@@ -151,6 +139,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
 
 
 class ImperativeLenetWithSkipQuant(fluid.dygraph.Layer):
+
     def __init__(self, num_classes=10):
         super(ImperativeLenetWithSkipQuant, self).__init__()
 
@@ -164,53 +153,48 @@ class ImperativeLenetWithSkipQuant(fluid.dygraph.Layer):
         fc_b1_attr = fluid.ParamAttr(name="fc_b_1")
         fc_b2_attr = fluid.ParamAttr(name="fc_b_2")
         fc_b3_attr = fluid.ParamAttr(name="fc_b_3")
-        self.conv2d_0 = Conv2D(
-            in_channels=1,
-            out_channels=6,
-            kernel_size=3,
-            stride=1,
-            padding=1,
-            weight_attr=conv2d_w1_attr,
-            bias_attr=conv2d_b1_attr)
+        self.conv2d_0 = Conv2D(in_channels=1,
+                               out_channels=6,
+                               kernel_size=3,
+                               stride=1,
+                               padding=1,
+                               weight_attr=conv2d_w1_attr,
+                               bias_attr=conv2d_b1_attr)
         self.conv2d_0.skip_quant = True
 
         self.batch_norm_0 = BatchNorm2D(6)
         self.relu_0 = ReLU()
         self.pool2d_0 = MaxPool2D(kernel_size=2, stride=2)
-        self.conv2d_1 = Conv2D(
-            in_channels=6,
-            out_channels=16,
-            kernel_size=5,
-            stride=1,
-            padding=0,
-            weight_attr=conv2d_w2_attr,
-            bias_attr=conv2d_b2_attr)
+        self.conv2d_1 = Conv2D(in_channels=6,
+                               out_channels=16,
+                               kernel_size=5,
+                               stride=1,
+                               padding=0,
+                               weight_attr=conv2d_w2_attr,
+                               bias_attr=conv2d_b2_attr)
         self.conv2d_1.skip_quant = False
 
         self.batch_norm_1 = BatchNorm2D(16)
         self.relu6_0 = ReLU6()
         self.pool2d_1 = MaxPool2D(kernel_size=2, stride=2)
-        self.linear_0 = Linear(
-            in_features=400,
-            out_features=120,
-            weight_attr=fc_w1_attr,
-            bias_attr=fc_b1_attr)
+        self.linear_0 = Linear(in_features=400,
+                               out_features=120,
+                               weight_attr=fc_w1_attr,
+                               bias_attr=fc_b1_attr)
         self.linear_0.skip_quant = True
 
         self.leaky_relu_0 = LeakyReLU()
-        self.linear_1 = Linear(
-            in_features=120,
-            out_features=84,
-            weight_attr=fc_w2_attr,
-            bias_attr=fc_b2_attr)
+        self.linear_1 = Linear(in_features=120,
+                               out_features=84,
+                               weight_attr=fc_w2_attr,
+                               bias_attr=fc_b2_attr)
         self.linear_1.skip_quant = False
 
         self.sigmoid_0 = Sigmoid()
-        self.linear_2 = Linear(
-            in_features=84,
-            out_features=num_classes,
-            weight_attr=fc_w3_attr,
-            bias_attr=fc_b3_attr)
+        self.linear_2 = Linear(in_features=84,
+                               out_features=num_classes,
+                               weight_attr=fc_w3_attr,
+                               bias_attr=fc_b3_attr)
         self.linear_2.skip_quant = False
         self.softmax_0 = Softmax()
 
@@ -237,6 +221,7 @@ class ImperativeLenetWithSkipQuant(fluid.dygraph.Layer):
 
 
 class ImperativeLinearBn(fluid.dygraph.Layer):
+
     def __init__(self):
         super(ImperativeLinearBn, self).__init__()
 
@@ -250,11 +235,10 @@ class ImperativeLinearBn(fluid.dygraph.Layer):
             name="bn_weight",
             initializer=paddle.nn.initializer.Constant(value=0.5))
 
-        self.linear = Linear(
-            in_features=10,
-            out_features=10,
-            weight_attr=fc_w_attr,
-            bias_attr=fc_b_attr)
+        self.linear = Linear(in_features=10,
+                             out_features=10,
+                             weight_attr=fc_w_attr,
+                             bias_attr=fc_b_attr)
         self.bn = BatchNorm1D(10, weight_attr=bn_w_attr)
 
     def forward(self, inputs):
@@ -265,6 +249,7 @@ class ImperativeLinearBn(fluid.dygraph.Layer):
 
 
 class ImperativeLinearBn_hook(fluid.dygraph.Layer):
+
     def __init__(self):
         super(ImperativeLinearBn_hook, self).__init__()
 
@@ -272,8 +257,9 @@ class ImperativeLinearBn_hook(fluid.dygraph.Layer):
             name="linear_weight",
             initializer=paddle.nn.initializer.Constant(value=0.5))
 
-        self.linear = Linear(
-            in_features=10, out_features=10, weight_attr=fc_w_attr)
+        self.linear = Linear(in_features=10,
+                             out_features=10,
+                             weight_attr=fc_w_attr)
         self.bn = BatchNorm1D(10)
 
         forward_pre = self.linear.register_forward_pre_hook(pre_hook)

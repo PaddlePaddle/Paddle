@@ -17,10 +17,11 @@ from __future__ import print_function
 import unittest
 import paddle
 import paddle.fluid.core as core
-import numpy
+import numpy as np
 
 
 class TestLoDTensorArray(unittest.TestCase):
+
     def test_get_set(self):
         scope = core.Scope()
         arr = scope.var('tmp_lod_tensor_array')
@@ -29,7 +30,7 @@ class TestLoDTensorArray(unittest.TestCase):
         cpu = core.CPUPlace()
         for i in range(10):
             t = core.LoDTensor()
-            t.set(numpy.array([i], dtype='float32'), cpu)
+            t.set(np.array([i], dtype='float32'), cpu)
             t.set_recursive_sequence_lengths([[1]])
             tensor_array.append(t)
 
@@ -37,21 +38,20 @@ class TestLoDTensorArray(unittest.TestCase):
 
         for i in range(10):
             t = tensor_array[i]
-            self.assertEqual(numpy.array(t), numpy.array([i], dtype='float32'))
+            self.assertEqual(np.array(t), np.array([i], dtype='float32'))
             self.assertEqual([[1]], t.recursive_sequence_lengths())
 
             t = core.LoDTensor()
-            t.set(numpy.array([i + 10], dtype='float32'), cpu)
+            t.set(np.array([i + 10], dtype='float32'), cpu)
             t.set_recursive_sequence_lengths([[1]])
             tensor_array[i] = t
             t = tensor_array[i]
-            self.assertEqual(
-                numpy.array(t), numpy.array(
-                    [i + 10], dtype='float32'))
+            self.assertEqual(np.array(t), np.array([i + 10], dtype='float32'))
             self.assertEqual([[1]], t.recursive_sequence_lengths())
 
 
 class TestCreateArray(unittest.TestCase):
+
     def setUp(self):
         self.place = paddle.CPUPlace()
         self.shapes = [[10, 4], [8, 12], [1]]
@@ -59,13 +59,12 @@ class TestCreateArray(unittest.TestCase):
     def test_initialized_list_and_error(self):
         paddle.disable_static()
         init_data = [
-            numpy.random.random(shape).astype('float32')
-            for shape in self.shapes
+            np.random.random(shape).astype('float32') for shape in self.shapes
         ]
         array = paddle.tensor.create_array(
             'float32', [paddle.to_tensor(x) for x in init_data])
         for res, gt in zip(array, init_data):
-            self.assertTrue(numpy.array_equal(res, gt))
+            np.testing.assert_array_equal(res, gt)
 
         # test for None
         array = paddle.tensor.create_array('float32')

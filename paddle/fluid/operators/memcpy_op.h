@@ -19,15 +19,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class Variable;
 class SelectedRows;
 }  // namespace framework
@@ -56,20 +53,20 @@ class MemcpyFunctor {
     auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
 
     if (dst_place_type_ == DeviceType::CUDA_PINNED) {
-      framework::TensorCopy(lod_tensor, platform::CUDAPinnedPlace(), dev_ctx_,
-                            &out_tensor);
+      framework::TensorCopy(
+          lod_tensor, platform::CUDAPinnedPlace(), dev_ctx_, &out_tensor);
     } else if (dst_place_type_ == DeviceType::CUDA) {
-      framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
-                            &out_tensor);
+      framework::TensorCopy(
+          lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
     } else if (dst_place_type_ == DeviceType::CPU) {
       framework::TensorCopySync(lod_tensor, platform::CPUPlace(), &out_tensor);
 #ifdef PADDLE_WITH_ASCEND_CL
     } else if (dst_place_type_ == DeviceType::NPU) { /* npu_pin->npu */
-      framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
-                            &out_tensor);
+      framework::TensorCopy(
+          lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
     } else if (dst_place_type_ == DeviceType::NPU_PINNED) { /* npu->npu_pin */
-      framework::TensorCopy(lod_tensor, platform::NPUPinnedPlace(), dev_ctx_,
-                            &out_tensor);
+      framework::TensorCopy(
+          lod_tensor, platform::NPUPinnedPlace(), dev_ctx_, &out_tensor);
 #endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -78,7 +75,7 @@ class MemcpyFunctor {
     out_tensor.set_lod(lod_tensor.lod());
   }
 
-  void operator()(const framework::SelectedRows &rows) const {
+  void operator()(const phi::SelectedRows &rows) const {
     // (JZ-LIANG) to support SelectedRows
     PADDLE_THROW(platform::errors::Unimplemented(
         "Memcpy for SelectedRows is NOT support yet."));
@@ -87,7 +84,8 @@ class MemcpyFunctor {
   template <typename T>
   void operator()(const T &v) const {
     PADDLE_ENFORCE_EQ(
-        true, false,
+        true,
+        false,
         platform::errors::PermissionDenied(
             "Not support type for Memcpy  op with type %s", typeid(T).name()));
   }

@@ -19,29 +19,30 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_kernel_type.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace framework {
 
 class OpKernelType;
-class Tensor;
 class Variable;
 
 void TransformData(const OpKernelType &expected_kernel_type,
                    const OpKernelType &kernel_type_for_var,
-                   const Tensor &input_tensor, Tensor *out);
+                   const Tensor &input_tensor,
+                   Tensor *out);
 
 /**
  * Set OutVar from InVar, except the tensor is shared with `tensor`
  */
-void SetTensorToVariable(const Variable &in_var, const Tensor &tensor,
+void SetTensorToVariable(const Variable &in_var,
+                         const Tensor &tensor,
                          Variable *out_var);
 }  // namespace framework
 }  // namespace paddle

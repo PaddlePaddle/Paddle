@@ -18,8 +18,9 @@ import op_test
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-from paddle.static import Program, program_guard
+from paddle.static import Program, program_guard, Executor
+from paddle.framework import _non_static_mode
+from paddle.fluid.framework import _test_eager_guard
 
 SUPPORTED_DTYPES = [
     bool, np.int8, np.int16, np.int32, np.int64, np.float32, np.float64
@@ -108,13 +109,13 @@ TEST_META_WRONG_SHAPE_DATA = {
 
 def run_static(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     paddle.enable_static()
-    startup_program = fluid.Program()
-    main_program = fluid.Program()
+    startup_program = Program()
+    main_program = Program()
     place = paddle.CPUPlace()
-    if use_gpu and fluid.core.is_compiled_with_cuda():
+    if use_gpu and paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
-    exe = fluid.Executor(place)
-    with fluid.program_guard(main_program, startup_program):
+    exe = Executor(place)
+    with program_guard(main_program, startup_program):
         x = paddle.static.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
         op = getattr(paddle, op_str)
         feed_list = {'x': x_np}
@@ -131,7 +132,7 @@ def run_static(x_np, y_np, op_str, use_gpu=False, binary_op=True):
 
 def run_dygraph(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     place = paddle.CPUPlace()
-    if use_gpu and fluid.core.is_compiled_with_cuda():
+    if use_gpu and paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     paddle.disable_static(place)
     op = getattr(paddle, op_str)
@@ -142,6 +143,22 @@ def run_dygraph(x_np, y_np, op_str, use_gpu=False, binary_op=True):
         y = paddle.to_tensor(y_np, dtype=y_np.dtype)
         dygraph_result = op(x, y)
     return dygraph_result
+
+
+def run_eager(x_np, y_np, op_str, use_gpu=False, binary_op=True):
+    place = paddle.CPUPlace()
+    if use_gpu and paddle.is_compiled_with_cuda():
+        place = paddle.CUDAPlace(0)
+    paddle.disable_static(place)
+    with _test_eager_guard():
+        op = getattr(paddle, op_str)
+        x = paddle.to_tensor(x_np, dtype=x_np.dtype)
+        if not binary_op:
+            dygraph_result = op(x)
+        else:
+            y = paddle.to_tensor(y_np, dtype=y_np.dtype)
+            dygraph_result = op(x, y)
+        return dygraph_result
 
 
 def np_data_generator(np_shape, dtype, *args, **kwargs):
@@ -161,10 +178,10 @@ def test(unit_test, use_gpu=False, test_error=False):
             META_DATA = dict(TEST_META_WRONG_SHAPE_DATA)
         for shape_data in META_DATA.values():
             for data_type in SUPPORTED_DTYPES:
-                meta_data['x_np'] = np_data_generator(
-                    shape_data['x_shape'], dtype=data_type)
-                meta_data['y_np'] = np_data_generator(
-                    shape_data['y_shape'], dtype=data_type)
+                meta_data['x_np'] = np_data_generator(shape_data['x_shape'],
+                                                      dtype=data_type)
+                meta_data['y_np'] = np_data_generator(shape_data['y_shape'],
+                                                      dtype=data_type)
                 if meta_data['binary_op'] and test_error:
                     # catch C++ Exception
                     unit_test.assertRaises(BaseException, run_static,
@@ -174,16 +191,19 @@ def test(unit_test, use_gpu=False, test_error=False):
                     continue
                 static_result = run_static(**meta_data)
                 dygraph_result = run_dygraph(**meta_data)
+                eager_result = run_eager(**meta_data)
                 if meta_data['binary_op']:
                     np_result = np_op(meta_data['x_np'], meta_data['y_np'])
                 else:
                     np_result = np_op(meta_data['x_np'])
                 unit_test.assertTrue((static_result == np_result).all())
-                unit_test.assertTrue((dygraph_result.numpy() == np_result).all(
-                ))
+                unit_test.assertTrue(
+                    (dygraph_result.numpy() == np_result).all())
+                unit_test.assertTrue((eager_result.numpy() == np_result).all())
 
 
 def test_type_error(unit_test, use_gpu, type_str_map):
+
     def check_type(op_str, x, y, binary_op):
         op = getattr(paddle, op_str)
         error_type = ValueError
@@ -194,16 +214,16 @@ def test_type_error(unit_test, use_gpu, type_str_map):
         if binary_op:
             if type_str_map['x'] != type_str_map['y']:
                 unit_test.assertRaises(error_type, op, x=x, y=y)
-            if not fluid.in_dygraph_mode():
+            if not _non_static_mode():
                 error_type = TypeError
                 unit_test.assertRaises(error_type, op, x=x, y=y, out=1)
         else:
-            if not fluid.in_dygraph_mode():
+            if not _non_static_mode():
                 error_type = TypeError
                 unit_test.assertRaises(error_type, op, x=x, out=1)
 
     place = paddle.CPUPlace()
-    if use_gpu and fluid.core.is_compiled_with_cuda():
+    if use_gpu and paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     for op_data in TEST_META_OP_DATA:
         meta_data = dict(op_data)
@@ -218,10 +238,12 @@ def test_type_error(unit_test, use_gpu, type_str_map):
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
-            x = paddle.static.data(
-                name='x', shape=[10], dtype=type_str_map['x'])
-            y = paddle.static.data(
-                name='y', shape=[10], dtype=type_str_map['y'])
+            x = paddle.static.data(name='x',
+                                   shape=[10],
+                                   dtype=type_str_map['x'])
+            y = paddle.static.data(name='y',
+                                   shape=[10],
+                                   dtype=type_str_map['y'])
             check_type(meta_data['op_str'], x, y, binary_op)
 
 
@@ -233,6 +255,7 @@ def type_map_factory():
 
 
 class TestCPU(unittest.TestCase):
+
     def test(self):
         test(self)
 
@@ -246,6 +269,7 @@ class TestCPU(unittest.TestCase):
 
 
 class TestCUDA(unittest.TestCase):
+
     def test(self):
         test(self, True)
 
@@ -259,4 +283,5 @@ class TestCUDA(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

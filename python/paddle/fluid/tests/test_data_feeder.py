@@ -22,6 +22,7 @@ paddle.enable_static()
 
 
 class TestDataFeeder(unittest.TestCase):
+
     def test_lod_level_0_converter(self):
         img = fluid.layers.data(name='image', shape=[1, 28, 28])
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -42,16 +43,18 @@ class TestDataFeeder(unittest.TestCase):
     def test_lod_level_1_converter(self):
         # lod_level = 1
         # each sentence has a different number of words
-        sentences = fluid.layers.data(
-            name='sentences', shape=[1], dtype='int64', lod_level=1)
+        sentences = fluid.layers.data(name='sentences',
+                                      shape=[1],
+                                      dtype='int64',
+                                      lod_level=1)
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         feeder = fluid.DataFeeder([sentences, label], fluid.CPUPlace())
 
         # lod = [[0, 3, 5, 9]]
         # data = [[1, 2, 3], [4, 5], [6, 7, 8, 9]]
         # label = [1] * len(data)
-        result = feeder.feed(
-            [([1, 2, 3], [1]), ([4, 5], [1]), ([6, 7, 8, 9], [1])])
+        result = feeder.feed([([1, 2, 3], [1]), ([4, 5], [1]),
+                              ([6, 7, 8, 9], [1])])
 
         self.assertEqual(result['sentences'].shape(), [9, 1])
         self.assertEqual(result['label'].shape(), [3, 1])
@@ -62,16 +65,18 @@ class TestDataFeeder(unittest.TestCase):
     def test_lod_level_2_converter(self):
         # lod_level = 2
         # paragraphs -> sentences -> words
-        paragraphs = fluid.layers.data(
-            name='paragraphs', shape=[1], dtype='int64', lod_level=2)
+        paragraphs = fluid.layers.data(name='paragraphs',
+                                       shape=[1],
+                                       dtype='int64',
+                                       lod_level=2)
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         feeder = fluid.DataFeeder([paragraphs, label], fluid.CPUPlace())
 
         # lod = [[0, 2, 3], [0, 3, 5, 9]]
         # data = [[[1, 2, 3], [4, 5]], [[6, 7, 8, 9]]]
         # label = [1] * len(data)
-        result = feeder.feed(
-            [([[1, 2, 3], [4, 5]], [1]), ([[6, 7, 8, 9]], [1])])
+        result = feeder.feed([([[1, 2, 3], [4, 5]], [1]), ([[6, 7, 8,
+                                                             9]], [1])])
 
         self.assertEqual(result['paragraphs'].shape(), [9, 1])
         self.assertEqual(result['label'].shape(), [2, 1])

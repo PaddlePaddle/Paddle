@@ -9,7 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/optimizers/rmsprop_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -50,15 +50,15 @@ class RMSPROPNPUKernel : public framework::OpKernel<T> {
         const Tensor *rho_tensor = nullptr;
         const Tensor *momentum_tensor = nullptr;
         const Tensor *epsilon_tensor = nullptr;
-        Tensor rho_tmp(framework::proto::VarType::FP32);
+        Tensor rho_tmp(experimental::DataType::FLOAT32);
         rho_tmp.mutable_data<T>({1}, ctx.GetPlace());
         FillNpuTensorWithConstant<T>(&rho_tmp, rho);
         rho_tensor = &rho_tmp;
-        Tensor momentum_tmp(framework::proto::VarType::FP32);
+        Tensor momentum_tmp(experimental::DataType::FLOAT32);
         momentum_tmp.mutable_data<T>({1}, ctx.GetPlace());
         FillNpuTensorWithConstant<T>(&momentum_tmp, momentum);
         momentum_tensor = &momentum_tmp;
-        Tensor epsilon_tmp(framework::proto::VarType::FP32);
+        Tensor epsilon_tmp(experimental::DataType::FLOAT32);
         epsilon_tmp.mutable_data<T>({1}, ctx.GetPlace());
         FillNpuTensorWithConstant<T>(&epsilon_tmp, epsilon);
         epsilon_tensor = &epsilon_tmp;
@@ -67,8 +67,15 @@ class RMSPROPNPUKernel : public framework::OpKernel<T> {
         mean_grad_out->mutable_data<T>(ctx.GetPlace());
         const auto &runner_applycenterrmsprop = NpuOpRunner(
             std::string("ApplyCenteredRMSPropD"),
-            {*p_tensor, *mg_tensor, *ms_tensor, *mom_tensor, *lr_tensor,
-             *rho_tensor, *momentum_tensor, *epsilon_tensor, *grad_tensor},
+            {*p_tensor,
+             *mg_tensor,
+             *ms_tensor,
+             *mom_tensor,
+             *lr_tensor,
+             *rho_tensor,
+             *momentum_tensor,
+             *epsilon_tensor,
+             *grad_tensor},
             {*param_out, *mean_grad_out, *mean_square_out, *moment_out},
             {attr_input});
         runner_applycenterrmsprop.Run(stream);
@@ -78,11 +85,13 @@ class RMSPROPNPUKernel : public framework::OpKernel<T> {
         const auto &runner_applyrmsprop = NpuOpRunner(
             std::string("ApplyRMSPropD"),
             {*p_tensor, *ms_tensor, *mom_tensor, *lr_tensor, *grad_tensor},
-            {*param_out, *mean_square_out, *moment_out}, {attr_input});
+            {*param_out, *mean_square_out, *moment_out},
+            {attr_input});
         runner_applyrmsprop.Run(stream);
       }
     } else {
-      PADDLE_ENFORCE_EQ(false, true,
+      PADDLE_ENFORCE_EQ(false,
+                        true,
                         platform::errors::PermissionDenied(
                             "Unsupported Variable Type of Grad "
                             "in RmspropOp. Excepted LodTensor, "

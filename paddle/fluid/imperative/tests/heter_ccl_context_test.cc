@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/imperative/heter_ccl_context.h"
+
 #include <chrono>
 #include <thread>  // NOLINT
 
+#include "gtest/gtest.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/imperative/heter_ccl_context.h"
-
-#include "gtest/gtest.h"
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;
@@ -39,7 +39,7 @@ imperative::ParallelStrategy GetStrategy(int local_rank) {
 void AllReduceByStream(int local_rank, int device_id) {
   int data_size = 32;
   const auto& place = platform::CUDAPlace(device_id);
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
 
   // heter_parallel_ctx
   imperative::HeterParallelContext hpc(GetStrategy(local_rank), device_id);
@@ -50,7 +50,7 @@ void AllReduceByStream(int local_rank, int device_id) {
   // input and output data
   framework::Variable* src_dev_var(new framework::Variable());
   auto* src_dev_tensor = src_dev_var->GetMutable<framework::LoDTensor>();
-  src_dev_tensor->mutable_data<float>(framework::make_ddim({data_size}), place);
+  src_dev_tensor->mutable_data<float>(phi::make_ddim({data_size}), place);
 
   std::vector<float> src_vec;
   for (int i = 0; i < data_size; i++) {
@@ -61,7 +61,7 @@ void AllReduceByStream(int local_rank, int device_id) {
 
   framework::Variable* dst_dev_var(new framework::Variable());
   auto* dst_dev_tensor = dst_dev_var->GetMutable<framework::LoDTensor>();
-  dst_dev_tensor->mutable_data<float>(framework::make_ddim({data_size}), place);
+  dst_dev_tensor->mutable_data<float>(phi::make_ddim({data_size}), place);
 
   // call allreduce
   hpc.AllReduceByStream(*src_dev_var, dst_dev_var, 0, false);

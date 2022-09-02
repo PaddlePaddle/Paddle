@@ -27,20 +27,23 @@ class SamplingIdOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SampleIn");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "X", "SampleOut");
     PADDLE_ENFORCE_LT(
-        ctx->Attrs().Get<float>("min"), ctx->Attrs().Get<float>("max"),
+        ctx->Attrs().Get<float>("min"),
+        ctx->Attrs().Get<float>("max"),
         platform::errors::InvalidArgument(
             "min must less then max, but here min is %f, max is %f",
-            ctx->Attrs().Get<float>("min"), ctx->Attrs().Get<float>("max")));
+            ctx->Attrs().Get<float>("min"),
+            ctx->Attrs().Get<float>("max")));
 
     auto input_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(
-        input_dims.size(), 2,
+        input_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Input(X, Filter) should be 2-D tensor. But X dim is %d",
             input_dims.size()));
 
     auto dim0 = input_dims[0];
-    framework::DDim dims = framework::make_ddim({dim0});
+    framework::DDim dims = phi::make_ddim({dim0});
     ctx->SetOutputDim("Out", dims);
     ctx->ShareLoD("X", "Out");
   }
@@ -75,9 +78,12 @@ A layer for sampling id from multinomial distribution from the
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    sampling_id, ops::SamplingIdOp, ops::SamplingIdOpMaker,
+    sampling_id,
+    ops::SamplingIdOp,
+    ops::SamplingIdOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(sampling_id, paddle::operators::SamplingIdKernel<float>,
+REGISTER_OP_CPU_KERNEL(sampling_id,
+                       paddle::operators::SamplingIdKernel<float>,
                        paddle::operators::SamplingIdKernel<double>);

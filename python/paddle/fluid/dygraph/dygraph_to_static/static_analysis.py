@@ -181,8 +181,9 @@ class AstVarEnv(object):
         self.cur_scope = AstVarScope()
 
     def enter_scope(self, scope_name, scope_type):
-        self.cur_scope = AstVarScope(
-            scope_name, scope_type, parent_scope=self.cur_scope)
+        self.cur_scope = AstVarScope(scope_name,
+                                     scope_type,
+                                     parent_scope=self.cur_scope)
         return self.cur_scope
 
     def exit_scope(self):
@@ -334,6 +335,13 @@ class StaticAnalysisVisitor(object):
                 if isinstance(target, gast.Name):
                     self.node_to_wrapper_map[target].node_var_type = ret_type
                     self.var_env.set_var_type(target.id, ret_type)
+                # Handle statements like `a, b = paddle.shape(x)`
+                elif isinstance(target, gast.Tuple):
+                    for sub_target in target.elts:
+                        if isinstance(sub_target, gast.Name):
+                            self.node_to_wrapper_map[
+                                sub_target].node_var_type = ret_type
+                            self.var_env.set_var_type(sub_target.id, ret_type)
             return ret_type
 
         if isinstance(node, gast.AnnAssign):
@@ -342,7 +350,11 @@ class StaticAnalysisVisitor(object):
             ret_type = {NodeVarType.type_from_annotation(node.annotation)}
             # if annotation and value(Constant) are diffent type, we use value type
             if node.value:
-                ret_type = self.node_to_wrapper_map[node.value].node_var_type
+                node_value_type = self.node_to_wrapper_map[
+                    node.value].node_var_type
+                if not (node_value_type
+                        & {NodeVarType.UNKNOWN, NodeVarType.STATEMENT}):
+                    ret_type = node_value_type
             if isinstance(node.target, gast.Name):
                 self.node_to_wrapper_map[node.target].node_var_type = ret_type
                 self.var_env.set_var_type(node.target.id, ret_type)

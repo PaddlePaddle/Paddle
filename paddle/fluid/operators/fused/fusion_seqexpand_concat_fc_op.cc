@@ -13,33 +13,39 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_seqexpand_concat_fc_op.h"
+
 #include <string>
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/cpu_vec.h"
-#include "paddle/fluid/operators/math/fc.h"
+
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/cpu_vec.h"
+#include "paddle/phi/kernels/funcs/fc_functor.h"
 
 namespace paddle {
 namespace operators {
 
 void FusionSeqExpandConcatFCOp::InferShape(
     framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE_GT(ctx->Inputs("X").size(), 1UL,
+  PADDLE_ENFORCE_GT(ctx->Inputs("X").size(),
+                    1UL,
                     platform::errors::InvalidArgument(
                         "Inputs(X) of FusionSeqExpandConcatFCOp should larger "
                         "than 1, but received value is: %d.",
                         ctx->Inputs("X").size()));
-  OP_INOUT_CHECK(ctx->HasInput("FCWeight"), "Input", "FCWeight",
+  OP_INOUT_CHECK(ctx->HasInput("FCWeight"),
+                 "Input",
+                 "FCWeight",
                  "fusion_seqexpand_concat_fc");
-  OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                 "fusion_seqexpand_concat_fc");
-  OP_INOUT_CHECK(ctx->HasOutput("FCOut"), "Output", "FCOut",
-                 "fusion_seqexpand_concat_fc");
+  OP_INOUT_CHECK(
+      ctx->HasOutput("Out"), "Output", "Out", "fusion_seqexpand_concat_fc");
+  OP_INOUT_CHECK(
+      ctx->HasOutput("FCOut"), "Output", "FCOut", "fusion_seqexpand_concat_fc");
 
   auto ins_dims = ctx->GetInputsDim("X");
   auto w_dims = ctx->GetInputDim("FCWeight");  // (M0+M1+M2+..) x D
   PADDLE_ENFORCE_EQ(
-      w_dims.size(), 2,
+      w_dims.size(),
+      2,
       platform::errors::InvalidArgument(
           "Input(FCWeight)'s rank must be 2, but received value is: %d.",
           w_dims.size()));
@@ -48,35 +54,45 @@ void FusionSeqExpandConcatFCOp::InferShape(
   for (size_t i = 1; i < ins_dims.size(); ++i) {
     sum += ins_dims[i][1];
   }
-  PADDLE_ENFORCE_EQ(sum, w_dims[0], platform::errors::InvalidArgument(
-                                        "FC height should be sum of all inputs "
+  PADDLE_ENFORCE_EQ(
+      sum,
+      w_dims[0],
+      platform::errors::InvalidArgument("FC height should be sum of all inputs "
                                         "width, but received FC height is: %d, "
                                         "sum of all inputs width is: %d.",
-                                        w_dims[0], sum));
+                                        w_dims[0],
+                                        sum));
   if (ctx->HasInput("FCBias")) {
     auto b_dims = ctx->GetInputDim("FCBias");
     PADDLE_ENFORCE_EQ(
-        b_dims.size() == 1 || b_dims.size() == 2, true,
+        b_dims.size() == 1 || b_dims.size() == 2,
+        true,
         platform::errors::InvalidArgument(
             "FCBias dim should be 1 or 2, but received value is: %d.",
             b_dims.size()));
     if (b_dims.size() == 1) {
-      PADDLE_ENFORCE_EQ(b_dims[0], D,
+      PADDLE_ENFORCE_EQ(b_dims[0],
+                        D,
                         platform::errors::InvalidArgument(
                             "FCBias shapes must be %d when FCBias dim = 1, but "
                             "received value is: %d.",
-                            D, b_dims[0]));
+                            D,
+                            b_dims[0]));
     } else {
-      PADDLE_ENFORCE_EQ(b_dims[0], 1,
+      PADDLE_ENFORCE_EQ(b_dims[0],
+                        1,
                         platform::errors::InvalidArgument(
                             "FCBias shapes must be 1x%d, when FCBias dim = 2, "
                             "but received dim[0] is: %d.",
-                            D, b_dims[0]));
-      PADDLE_ENFORCE_EQ(b_dims[1], D,
+                            D,
+                            b_dims[0]));
+      PADDLE_ENFORCE_EQ(b_dims[1],
+                        D,
                         platform::errors::InvalidArgument(
                             "FCBias shapes must be 1x%d, when FCBias dim = 2, "
                             "but received dim[1] is: %d.",
-                            D, b_dims[1]));
+                            D,
+                            b_dims[1]));
     }
   }
 
@@ -133,7 +149,7 @@ template <typename T>
 class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using DeviceContext = paddle::platform::CPUDeviceContext;
+    using DeviceContext = phi::CPUContext;
     auto ins = ctx.MultiInput<LoDTensor>("X");
     auto* w = ctx.Input<Tensor>("FCWeight");
     auto* b = ctx.Input<Tensor>("FCBias");
@@ -155,51 +171,63 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
     // some check and fcout should be reshape here
     // since infershape can not get lod info
     PADDLE_ENFORCE_EQ(
-        ref_lod.size(), 1UL,
+        ref_lod.size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Only support input lod size is 1, but received value is: %d.",
             ref_lod.size()));
     PADDLE_ENFORCE_EQ(
-        in1_lod.size(), 1UL,
+        in1_lod.size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Only support input lod size is 1, but received value is: %d.",
             in1_lod.size()));
-    PADDLE_ENFORCE_EQ(static_cast<int>(in1_lod[0].size() - 1), N,
+    PADDLE_ENFORCE_EQ(static_cast<int>(in1_lod[0].size() - 1),
+                      N,
                       platform::errors::InvalidArgument(
                           "Batch size of all inputs should be equal to %d, but "
                           "received value is: %d.",
-                          N, static_cast<int>(in1_lod[0].size() - 1)));
+                          N,
+                          static_cast<int>(in1_lod[0].size() - 1)));
     PADDLE_ENFORCE_EQ(
-        static_cast<int>(in1_lod[0][N]), N,
+        static_cast<int>(in1_lod[0][N]),
+        N,
         platform::errors::InvalidArgument("Seq_length of other inputs should "
                                           "be %d, but received value is: %d.",
-                                          N, static_cast<int>(in1_lod[0][N])));
+                                          N,
+                                          static_cast<int>(in1_lod[0][N])));
     PADDLE_ENFORCE_EQ(
-        in1_dims[0], N,
+        in1_dims[0],
+        N,
         platform::errors::InvalidArgument(
             "input height should be batch size: %d, but received value is %d.",
-            N, in1_dims[0]));
+            N,
+            in1_dims[0]));
     for (size_t i = 2; i < ins.size(); ++i) {
-      PADDLE_ENFORCE_EQ(ins[i]->dims()[0], N,
+      PADDLE_ENFORCE_EQ(ins[i]->dims()[0],
+                        N,
                         platform::errors::InvalidArgument(
                             "All other inputs height should be equal to %d, "
                             "but received value is: %d.",
-                            N, ins[i]->dims()[0]));
-      PADDLE_ENFORCE_EQ(ins[i]->lod(), in1_lod,
+                            N,
+                            ins[i]->dims()[0]));
+      PADDLE_ENFORCE_EQ(ins[i]->lod(),
+                        in1_lod,
                         platform::errors::InvalidArgument(
                             "All other inputs should have same lod: %d, but "
                             "received value is: %d.",
-                            in1_lod, ins[i]->lod()));
+                            in1_lod,
+                            ins[i]->lod()));
     }
     fc_out->Resize({N, D});
 
     std::function<void(const int, const T*, T*)> fc_act;
     auto& fc_act_str = ctx.Attr<std::string>("fc_activation");
     if (platform::MayIUse(platform::avx)) {
-      math::VecActivations<T, platform::avx> act_functor;
+      phi::funcs::VecActivations<T, platform::avx> act_functor;
       fc_act = act_functor(fc_act_str);
     } else {
-      math::VecActivations<T, platform::isa_any> act_functor;
+      phi::funcs::VecActivations<T, platform::isa_any> act_functor;
       fc_act = act_functor(fc_act_str);
     }
 
@@ -209,11 +237,17 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
     T* fc_out_data = fc_out->mutable_data<T>(ctx.GetPlace());
 
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
-    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-    math::FCFunctor<DeviceContext, T> fc;
-    fc(dev_ctx, total_T, D, M0, ref_in_data, w_data, out_data,
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
+    fc(dev_ctx,
+       total_T,
+       D,
+       M0,
+       ref_in_data,
+       w_data,
+       out_data,
        b ? b->data<T>() : NULL);
     w_data = w_data + M0 * D;
     // first write on
@@ -223,8 +257,19 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
       // add on
       const T* in_data = ins[i]->data<T>();
       const int K = ins[i]->dims()[1];
-      blas.GEMM(CblasNoTrans, CblasNoTrans, N, D, K, static_cast<T>(1), in_data,
-                K, w_data, D, static_cast<T>(1), fc_out_data, D);
+      blas.GEMM(CblasNoTrans,
+                CblasNoTrans,
+                N,
+                D,
+                K,
+                static_cast<T>(1),
+                in_data,
+                K,
+                w_data,
+                D,
+                static_cast<T>(1),
+                fc_out_data,
+                D);
       w_data = w_data + K * D;
     }
     T* cur_out_data = out_data;
@@ -244,7 +289,8 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fusion_seqexpand_concat_fc, ops::FusionSeqExpandConcatFCOp,
+REGISTER_OPERATOR(fusion_seqexpand_concat_fc,
+                  ops::FusionSeqExpandConcatFCOp,
                   ops::FusionSeqExpandConcatFCOpMaker);
 
 REGISTER_OP_CPU_KERNEL(fusion_seqexpand_concat_fc,

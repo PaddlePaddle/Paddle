@@ -23,7 +23,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class SGDOneDNNKernel : public SGDOpKernel<pplat::CPUDeviceContext, T> {
+class SGDOneDNNKernel : public SGDOpKernel<phi::CPUContext, T> {
  protected:
   void dense_param_and_grad_kernel(
       const framework::ExecutionContext &ctx) const override {
@@ -48,7 +48,7 @@ class SGDOneDNNKernel : public SGDOpKernel<pplat::CPUDeviceContext, T> {
     VLOG(4) << "[ONEDNN]: sgd_dense_param_kernel<T, SelectedRows>";
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
-    const auto *grad = ctx.Input<framework::SelectedRows>("Grad");
+    const auto *grad = ctx.Input<phi::SelectedRows>("Grad");
 
     const auto &grad_value = grad->value();
     const auto &grad_rows = grad->rows();
@@ -64,11 +64,13 @@ class SGDOneDNNKernel : public SGDOpKernel<pplat::CPUDeviceContext, T> {
 
     for (size_t i = 0; i < grad_rows.size(); ++i) {
       PADDLE_ENFORCE_LT(
-          grad_rows[i], grad_height,
+          grad_rows[i],
+          grad_height,
           pplat::errors::OutOfRange(
               "Grad rows index value should be less than grad height."
               "Got [%s], but expected less than [%s]",
-              grad_rows[i], grad_height));
+              grad_rows[i],
+              grad_height));
       const int64_t row = grad_rows[i];
       const auto *src = grad_data + i * grad_width;
       auto *dst = out_data + row * grad_width;
@@ -81,5 +83,8 @@ class SGDOneDNNKernel : public SGDOpKernel<pplat::CPUDeviceContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(sgd, MKLDNN, pplat::CPUPlace, ops::SGDOneDNNKernel<float>,
+REGISTER_OP_KERNEL(sgd,
+                   MKLDNN,
+                   pplat::CPUPlace,
+                   ops::SGDOneDNNKernel<float>,
                    ops::SGDOneDNNKernel<pplat::bfloat16>);

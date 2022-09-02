@@ -21,15 +21,12 @@
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
@@ -40,10 +37,18 @@ using DataLayout = framework::DataLayout;
 
 class TransferLayoutFunctor {
  public:
-  TransferLayoutFunctor(const framework::Variable *in, framework::Variable *out,
+  TransferLayoutFunctor(const framework::Variable *in,
+                        framework::Variable *out,
                         const platform::DeviceContext &dev_ctx,
-                        const int dst_layout)
-      : in_(in), out_(out), dev_ctx_(dev_ctx), dst_layout_(dst_layout) {}
+                        const int src_layout,
+                        const int dst_layout,
+                        std::string in_name)
+      : in_(in),
+        out_(out),
+        dev_ctx_(dev_ctx),
+        src_layout_(src_layout),
+        dst_layout_(dst_layout),
+        in_name_(in_name) {}
 
   void operator()() const {
     auto &in_tensor = *framework::GetLoDTensorOrSelectedRowsValueFromVar(*in_);
@@ -53,10 +58,22 @@ class TransferLayoutFunctor {
     out_tensor.set_layout(out_layout);
 
 #ifdef PADDLE_WITH_MKLDNN
-    auto in_layout = in_tensor.layout();
+    // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
+    // data_transfer.cc
+    auto in_layout = static_cast<DataLayout>(src_layout_);
+    auto *tensor_out = out_->GetMutable<framework::LoDTensor>();
+    VLOG(4) << in_layout << "->" << out_layout << " " << in_tensor.layout();
+    if (!in_tensor.IsInitialized() && in_layout == DataLayout::kMKLDNN &&
+        out_layout == DataLayout::kNHWC) {
+      tensor_out->Resize(in_tensor.dims());
+      tensor_out->set_layout(out_layout);
+      platform::MatchShapeToLayout(tensor_out, in_layout, out_layout);
+      return;
+    }
     if (in_layout == DataLayout::kMKLDNN || out_layout == DataLayout::kMKLDNN) {
       PADDLE_ENFORCE_NE(
-          in_layout, out_layout,
+          in_layout,
+          out_layout,
           platform::errors::PreconditionNotMet(
               "No layout transform needed between two MKLDNN OPKernels."));
 
@@ -66,22 +83,36 @@ class TransferLayoutFunctor {
         // Just set layout/format. No real transform occur
 
         auto out_format = platform::MKLDNNFormatForSize(
-            in_tensor.dims().size(), ToMKLDNNFormat(in_layout));
+            in_tensor.dims().size(), framework::ToMKLDNNFormat(in_layout));
         out_tensor.ShareDataWith(in_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
-        platform::MatchShapeToLayout(&out_tensor, in_layout, out_layout);
-        paddle::platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-            in_layout);
+        if (in_layout == DataLayout::kNHWC) {
+          VLOG(4) << "kNHWC";
+          platform::MatchShapeToLayout(&out_tensor, in_layout, out_layout);
+          paddle::platform::MKLDNNDeviceContext::tls()
+              .set_cur_paddle_data_layout(in_layout);
+        }
         out_tensor.set_layout(DataLayout::kMKLDNN);
         out_tensor.set_format(out_format);
       } else {
+        auto target_layout = paddle::platform::MKLDNNDeviceContext::tls()
+                                 .get_cur_paddle_data_layout();
+        // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in
+        // fetch_op.cc
+        if (out_layout == DataLayout::kNCHW &&
+            in_name_ == framework::GradVarName("Filter")) {
+          target_layout = out_layout;
+        }
+        VLOG(4) << "innerTransDataLayoutFromMKLDNN: " << in_layout << "->"
+                << target_layout;
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib
-        innerTransDataLayoutFromMKLDNN(
-            in_layout, paddle::platform::MKLDNNDeviceContext::tls()
-                           .get_cur_paddle_data_layout(),
-            in_tensor, &out_tensor, dev_ctx_.GetPlace());
+        paddle::framework::innerTransDataLayoutFromMKLDNN(in_layout,
+                                                          target_layout,
+                                                          in_tensor,
+                                                          &out_tensor,
+                                                          dev_ctx_.GetPlace());
       }
     } else {
       // Case3 - transfrom between Non-MKLDNN OPKernels
@@ -99,7 +130,8 @@ class TransferLayoutFunctor {
                        const framework::Tensor &in,
                        framework::Tensor *out) const {
     PADDLE_ENFORCE_EQ(
-        framework::arity(in.dims()), 4,
+        phi::arity(in.dims()),
+        4,
         platform::errors::InvalidArgument(
             "Input dimension arity only can be 4, the input dimension is %s.",
             in.dims()));
@@ -113,17 +145,20 @@ class TransferLayoutFunctor {
       dst_dim[i] = src_dim[axis[i]];
     }
 
-    out->Resize(framework::make_ddim(dst_dim));
+    out->Resize(phi::make_ddim(dst_dim));
     out->mutable_data(in.place(), in.type());
 
     framework::VisitDataType(
-        in.type(), framework::CastDataLayout(&dev_ctx, axis, in, out));
+        framework::TransToProtoVarType(in.dtype()),
+        framework::CastDataLayout(&dev_ctx, axis, in, out));
   }
 
   const framework::Variable *in_;
   framework::Variable *out_;
   const platform::DeviceContext &dev_ctx_;
+  const int src_layout_;
   const int dst_layout_;
+  std::string in_name_;
 };
 
 }  // namespace operators

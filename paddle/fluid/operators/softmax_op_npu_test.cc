@@ -22,15 +22,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
-USE_OP(softmax);
+USE_OP_ITSELF(softmax);
 USE_OP_DEVICE_KERNEL(softmax, NPU);
 
 template <typename T>
@@ -44,7 +42,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
     init.push_back(static_cast<T>(i));
   }
 
-  TensorFromVector(init, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({2, 3});
 
   ctx.Wait();
@@ -58,19 +56,21 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // run
   int axis = 1;
   f::AttributeMap attrs = {
-      {"axis", axis},        {"use_cudnn", false},
-      {"use_mkldnn", false}, {"mkldnn_data_type", std::string("float32")},
+      {"axis", axis},
+      {"use_cudnn", false},
+      {"use_mkldnn", false},
+      {"mkldnn_data_type", std::string("float32")},
       {"is_test", false},
   };
 
-  auto op = f::OpRegistry::CreateOp("softmax", {{"X", {"X"}}},
-                                    {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      "softmax", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
   ctx.Wait();
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   for (int i = 0; i < static_cast<int>(out_vec.size()); ++i) {
     VLOG(3) << "out_vec[" << i << "] : " << out_vec[i];
@@ -96,7 +96,7 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   out_init.push_back(static_cast<T>(0.4112));
   out_init.push_back(static_cast<T>(0.5457));
 
-  TensorFromVector(out_init, ctx, tensor_out);
+  paddle::framework::TensorFromVector(out_init, ctx, tensor_out);
   tensor_out->Resize({2, 3});
 
   ctx.Wait();
@@ -109,7 +109,7 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
     dout_init.push_back(static_cast<T>(1.0));
   }
 
-  TensorFromVector(dout_init, ctx, tensor_dout);
+  paddle::framework::TensorFromVector(dout_init, ctx, tensor_dout);
   tensor_dout->Resize({2, 3});
 
   ctx.Wait();
@@ -132,7 +132,8 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   };
   auto op = f::OpRegistry::CreateOp("softmax_grad",
                                     {{"Out", {"Out"}}, {"Out@GRAD", {"DOut"}}},
-                                    {{"X@GRAD", {"DX"}}}, attrs);
+                                    {{"X@GRAD", {"DX"}}},
+                                    attrs);
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);
@@ -144,7 +145,7 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   std::vector<float> out_vec;
-  TensorToVector(*tensor_dx, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_dx, ctx, &out_vec);
 
   ctx.Wait();
 

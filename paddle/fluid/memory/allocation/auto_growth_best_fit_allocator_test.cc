@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cstdlib>
-
-#include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
 
+#include <cstdlib>
+
 #include "gtest/gtest.h"
+#include "paddle/fluid/memory/allocation/aligned_allocator.h"
 
 DECLARE_bool(free_idle_chunk);
 DECLARE_bool(free_when_no_cache_hit);
@@ -28,12 +28,12 @@ namespace allocation {
 
 class RecordedAllocator : public Allocator {
  protected:
-  Allocation *AllocateImpl(size_t size) override {
+  phi::Allocation *AllocateImpl(size_t size) override {
     allocated_size_ += size;
     return new Allocation(malloc(size), size, platform::CPUPlace());
   }
 
-  void FreeImpl(Allocation *allocation) {
+  void FreeImpl(phi::Allocation *allocation) {
     allocated_size_ -= allocation->size();
     free(allocation->ptr());
     delete allocation;
@@ -79,7 +79,7 @@ class LimitedResourceAllocator : public Allocator {
   size_t AllocatedSize() const { return allocated_size_; }
 
  protected:
-  Allocation *AllocateImpl(size_t size) override {
+  phi::Allocation *AllocateImpl(size_t size) override {
     if (allocated_size_ + size > capacity_) {
       throw BadAlloc("", __FILE__, __LINE__);
     }
@@ -88,7 +88,7 @@ class LimitedResourceAllocator : public Allocator {
     return new Allocation(malloc(size), size, platform::CPUPlace());
   }
 
-  void FreeImpl(Allocation *allocation) {
+  void FreeImpl(phi::Allocation *allocation) {
     allocated_size_ -= allocation->size();
     free(allocation->ptr());
     delete allocation;

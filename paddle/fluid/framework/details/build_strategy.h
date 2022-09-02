@@ -1,4 +1,5 @@
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +21,6 @@
 #include <utility>
 #include <vector>
 
-#include "boost/optional.hpp"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -72,7 +72,7 @@ struct BuildStrategy {
   // For CPU, if you want to fix the order of summing to make the result
   // of kAllReduce and kReduce no diff, you can add
   // `FLAGS_cpu_deterministic=true` to env.
-  enum class ReduceStrategy { kAllReduce = 0, kReduce = 1 };
+  enum class ReduceStrategy { kAllReduce = 0, kReduce = 1, kNoReduce = 2 };
 
   enum class GradientScaleStrategy {
     kCoeffNumDevice = 0,
@@ -124,6 +124,8 @@ struct BuildStrategy {
   paddle::optional<bool> fuse_broadcast_ops_{paddle::none};
   // replace batch_norm with sync_batch_norm.
   bool sync_batch_norm_{false};
+  // Fuse GEMM+Epilogue via cublasLt epilogue.
+  bool fuse_gemm_epilogue_{false};
 
   // mkldnn_enabled_op_types specify the operator type list to
   // use MKLDNN acceleration. It is null in default, means
@@ -144,6 +146,10 @@ struct BuildStrategy {
   bool enable_addto_{false};
 
   bool allow_cuda_graph_capture_{false};
+
+  // Inference pass
+  bool inference_{false};  // switch for infernce pass
+  bool del_dropout_{false};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
@@ -191,7 +197,8 @@ struct BuildStrategy {
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
-  ir::Graph *Apply(ir::Graph *graph, const std::vector<platform::Place> &places,
+  ir::Graph *Apply(ir::Graph *graph,
+                   const std::vector<platform::Place> &places,
                    const std::string &loss_var_name,
                    const std::vector<Scope *> &local_scopes,
                    const size_t &nranks,

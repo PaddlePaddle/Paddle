@@ -34,13 +34,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/phi/backends/dynload/port.h"
+
+#ifdef PADDLE_WITH_PSLIB
+#include "proto/the_one_ps.pb.h"
+#endif
 
 namespace paddle {
 namespace framework {
 
 class Dataset;
-class LoDTensor;
 class ProgramDesc;
 class PullDenseWorker;
 class Scope;
@@ -126,6 +129,7 @@ class MultiTrainer : public TrainerBase {
   std::vector<DataFeed*> readers_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
   std::vector<std::string> need_merge_var_names_;
+  std::vector<std::string> trainable_param_;
 #ifdef PADDLE_WITH_HETERPS
   std::vector<platform::Place> places_;
 #endif
@@ -156,7 +160,7 @@ class DistMultiTrainer : public MultiTrainer {
 
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP || \
      defined PADDLE_WITH_XPU) &&                            \
-    (defined PADDLE_WITH_PSLIB)
+    (defined PADDLE_WITH_PSLIB) && (!defined(PADDLE_WITH_HETERPS))
 class HeterServiceContext {
  public:
   HeterServiceContext() {}
@@ -203,12 +207,14 @@ class HeterXpuTrainer : public TrainerBase {
   virtual void InitDumpEnv() {}
   template <typename T>
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void HeterMemCpy(LoDTensor* tensor, LoDTensor* root_tensor,
+  void HeterMemCpy(LoDTensor* tensor,
+                   LoDTensor* root_tensor,
                    const paddle::platform::Place& thread_place,
                    gpuStream_t stream);
 #endif
 #ifdef PADDLE_WITH_XPU
-  void HeterMemCpy(LoDTensor* thread_tensor, LoDTensor* root_tensor,
+  void HeterMemCpy(LoDTensor* thread_tensor,
+                   LoDTensor* root_tensor,
                    const paddle::platform::Place& thread_place);
 #endif
   void CreateThreadParam(const ProgramDesc& program, int num);
@@ -245,7 +251,8 @@ class HeterXpuTrainer : public TrainerBase {
 
 #endif
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
+     defined PADDLE_WITH_XPU_BKCL) &&                        \
     (defined PADDLE_WITH_PSLIB)
 class PSGPUTrainer : public TrainerBase {
  public:
@@ -268,6 +275,7 @@ class PSGPUTrainer : public TrainerBase {
 
   template <typename T>
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  void InitializeGPUServer(const TrainerDesc& trainer_desc);
 
  protected:
   Dataset* dataset_;
@@ -288,6 +296,9 @@ class PSGPUTrainer : public TrainerBase {
   int mpi_rank_;
   int mpi_size_;
   int dump_file_num_;
+
+  // _ps_param for gpups optimizer config
+  ::paddle::PSParameter _ps_param;
 };
 #endif
 
@@ -320,7 +331,8 @@ class PipelineTrainer : public TrainerBase {
   // microbatch_scopes_: [microbatch_id]
   std::vector<Scope*> microbatch_scopes_;
 
-  void CopyParameters(int microbatch_id, const ProgramDesc& program,
+  void CopyParameters(int microbatch_id,
+                      const ProgramDesc& program,
                       const platform::Place& place);
 };
 #endif
@@ -356,9 +368,10 @@ class HeterPipelineTrainer : public TrainerBase {
   std::unordered_map<int, std::shared_ptr<paddle::framework::DeviceWorker>>
       workers_;
 
-  std::shared_ptr<std::unordered_map<
-      int, std::shared_ptr<::paddle::framework::BlockingQueue<
-               std::pair<std::string, int>>>>>
+  std::shared_ptr<
+      std::unordered_map<int,
+                         std::shared_ptr<::paddle::framework::BlockingQueue<
+                             std::pair<std::string, int>>>>>
       task_queue_;
 
   platform::DeviceContext* dev_ctx_ = nullptr;

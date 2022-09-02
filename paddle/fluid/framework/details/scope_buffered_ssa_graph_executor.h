@@ -14,6 +14,7 @@
 
 #pragma once
 #include <ThreadPool.h>
+
 #include <deque>
 #include <list>
 #include <memory>
@@ -21,6 +22,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/scope_buffered_monitor.h"
@@ -41,9 +43,11 @@ struct VariableInfo {
 class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
  public:
   ScopeBufferedSSAGraphExecutor(
-      ExecutionStrategy strategy, std::vector<Scope*> local_scopes,
+      ExecutionStrategy strategy,
+      std::vector<Scope*> local_scopes,
       std::vector<Scope*> local_exec_scopes,
-      std::vector<VariableInfo> var_infos, std::vector<platform::Place> places,
+      std::vector<VariableInfo> var_infos,
+      std::vector<platform::Place> places,
       std::unique_ptr<SSAGraphExecutor>&& underlying_executor);
 
   const ir::Graph& Graph() const override {

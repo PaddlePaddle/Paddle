@@ -15,6 +15,7 @@
 import sys
 import unittest
 import numpy as np
+
 sys.path.append("..")
 
 import paddle
@@ -25,6 +26,7 @@ paddle.enable_static()
 
 
 class TestPnormOp(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -51,10 +53,9 @@ class TestPnormOp(OpTest):
             self.check_output_with_place(paddle.NPUPlace(0))
 
     def test_check_grad(self):
-        if self.dtype == "float16":
-            return
-        self.check_grad_with_place(
-            paddle.NPUPlace(0), ['X'], 'Out', user_defined_grads=self.gradient)
+        self.check_grad_with_place(paddle.NPUPlace(0), ['X'],
+                                   'Out',
+                                   user_defined_grads=self.gradient)
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -97,6 +98,7 @@ class TestPnormOp(OpTest):
 
 
 class TestPnormOp2(TestPnormOp):
+
     def init_test_case(self):
         self.shape = [3, 20, 3]
         self.axis = 2
@@ -107,6 +109,7 @@ class TestPnormOp2(TestPnormOp):
 
 
 class TestPnormOp3(TestPnormOp):
+
     def init_test_case(self):
         self.shape = [3, 20, 3]
         self.axis = 2
@@ -117,6 +120,7 @@ class TestPnormOp3(TestPnormOp):
 
 
 class TestPnormOp4(TestPnormOp3):
+
     def init_test_case(self):
         self.shape = [3, 20, 3]
         self.axis = 2
@@ -127,6 +131,7 @@ class TestPnormOp4(TestPnormOp3):
 
 
 class TestPnormOp5(TestPnormOp3):
+
     def init_test_case(self):
         self.shape = [3, 20, 3]
         self.axis = 2
@@ -137,6 +142,7 @@ class TestPnormOp5(TestPnormOp3):
 
 
 class TestPnormOp6(TestPnormOp3):
+
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
         self.axis = 1
@@ -147,26 +153,31 @@ class TestPnormOp6(TestPnormOp3):
 
 
 class TestPnormOpfp16(TestPnormOp):
+
     def init_dtype(self):
         self.dtype = "float16"
 
 
 class TestPnormOp2fp16(TestPnormOp2):
+
     def init_dtype(self):
         self.dtype = "float16"
 
 
 class TestPnormOp3fp16(TestPnormOp3):
+
     def init_dtype(self):
         self.dtype = "float16"
 
 
 class TestPnormOp4fp16(TestPnormOp4):
+
     def init_dtype(self):
         self.dtype = "float16"
 
 
 class TestPnormOp5fp16(TestPnormOp5):
+
     def init_dtype(self):
         self.dtype = "float16"
 

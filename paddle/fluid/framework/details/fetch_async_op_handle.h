@@ -22,17 +22,17 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 
+namespace phi {
+class DenseTensor;
+}  // namespace phi
+
 namespace paddle {
 namespace framework {
-class LoDTensor;
 
 namespace ir {
 class Node;
 }  // namespace ir
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -41,7 +41,9 @@ namespace details {
 
 struct FetchAsyncOpHandle : public OpHandleBase {
  public:
-  FetchAsyncOpHandle(ir::Node *node, FetchResultType *data, size_t offset,
+  FetchAsyncOpHandle(ir::Node *node,
+                     FetchResultType *data,
+                     size_t offset,
                      std::vector<Scope *> *local_scopes,
                      std::vector<Scope *> *local_exec_scopes,
                      bool return_merged);

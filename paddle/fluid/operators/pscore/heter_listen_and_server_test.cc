@@ -14,12 +14,15 @@ limitations under the License. */
 
 #include <stdlib.h>
 #include <unistd.h>
+
+#include <random>
+#include <sstream>
 #include <string>
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/service/heter_client.h"
-#include "paddle/fluid/distributed/service/heter_server.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_server.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -33,8 +36,21 @@ using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 DECLARE_double(eager_delete_tensor_gb);
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_NO_KERNEL_OP(heter_listen_and_serv);
+
+std::string get_ip_port() {
+  std::mt19937 rng;
+  rng.seed(std::random_device()());
+  std::uniform_int_distribution<std::mt19937::result_type> dist(4444, 25000);
+  int port = dist(rng);
+  std::string ip_port;
+  std::stringstream temp_str;
+  temp_str << "127.0.0.1:";
+  temp_str << port;
+  temp_str >> ip_port;
+  return ip_port;
+}
 
 framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
   framework::BlockDesc* block =
@@ -53,16 +69,13 @@ framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
   return block;
 }
 
-void GetHeterListenAndServProgram(framework::ProgramDesc* program) {
+void GetHeterListenAndServProgram(framework::ProgramDesc* program,
+                                  std::string endpoint) {
   auto root_block = program->MutableBlock(0);
-
   auto* sub_block = AppendSendAndRecvBlock(program);
   std::vector<framework::BlockDesc*> optimize_blocks;
   optimize_blocks.push_back(sub_block);
-
   std::vector<std::string> message_to_block_id = {"x:1"};
-  std::string endpoint = "127.0.0.1:19944";
-
   framework::OpDesc* op = root_block->AppendOp();
   op->SetType("heter_listen_and_serv");
   op->SetInput("X", {});
@@ -84,7 +97,8 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   res_var->GetMutable<framework::LoDTensor>();
 }
 
-void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnClient(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
   auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
@@ -104,7 +118,8 @@ void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
 }
 
-void InitTensorsOnClient2(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnClient2(framework::Scope* scope,
+                          platform::CPUPlace* place,
                           int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
   auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
@@ -124,20 +139,21 @@ void InitTensorsOnClient2(framework::Scope* scope, platform::CPUPlace* place,
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
 }
 
-void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnServer(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
 }
 
-void StartHeterServer() {
+void RunHeterServerOp(std::string endpoint) {
   framework::ProgramDesc program;
   framework::Scope scope;
   platform::CPUPlace place;
   framework::Executor exe(place);
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
 
   LOG(INFO) << "before GetHeterListenAndServProgram";
-  GetHeterListenAndServProgram(&program);
+  GetHeterListenAndServProgram(&program, endpoint);
   auto prepared = exe.Prepare(program, 0);
 
   LOG(INFO) << "before InitTensorsOnServer";
@@ -150,15 +166,14 @@ void StartHeterServer() {
 TEST(HETER_LISTEN_AND_SERV, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
-  std::string endpoint = "127.0.0.1:19944";
-  std::string previous_endpoint = "127.0.0.1:19944";
+  std::string endpoint = get_ip_port();
+  std::string previous_endpoint = endpoint;
   LOG(INFO) << "before StartSendAndRecvServer";
   FLAGS_eager_delete_tensor_gb = -1;
-  std::thread server_thread(StartHeterServer);
+  std::thread server_thread(RunHeterServerOp, endpoint);
   sleep(1);
-
-  auto b_rpc_service = distributed::HeterServer::GetInstance();
-  b_rpc_service->WaitServerReady();
+  auto heter_server_ptr_ = distributed::HeterServer::GetInstance();
+  heter_server_ptr_->WaitServerReady();
   using MicroScope =
       std::unordered_map<int, std::shared_ptr<std::vector<framework::Scope*>>>;
   using MiniScope = std::unordered_map<int, framework::Scope*>;
@@ -173,33 +188,30 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
   (*micro_scope).push_back(micro_scope_0);
   (*micro_scope).push_back(micro_scope_1);
   (*micro_scopes)[0] = micro_scope;
-  b_rpc_service->SetMicroBatchScopes(micro_scopes);
-  b_rpc_service->SetMiniBatchScopes(mini_scopes);
+  heter_server_ptr_->SetMicroBatchScopes(micro_scopes);
+  heter_server_ptr_->SetMiniBatchScopes(mini_scopes);
 
   using TaskQueue =
       std::unordered_map<int,
                          std::shared_ptr<::paddle::framework::BlockingQueue<
                              std::pair<std::string, int>>>>;
-  using SharedTaskQueue = std::shared_ptr<std::unordered_map<
-      int, std::shared_ptr<::paddle::framework::BlockingQueue<
-               std::pair<std::string, int>>>>>;
+  using SharedTaskQueue = std::shared_ptr<
+      std::unordered_map<int,
+                         std::shared_ptr<::paddle::framework::BlockingQueue<
+                             std::pair<std::string, int>>>>>;
   SharedTaskQueue task_queue_(new TaskQueue{});
   (*task_queue_)[0] = std::make_shared<
       ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>();
-  b_rpc_service->SetTaskQueue(task_queue_);
+  heter_server_ptr_->SetTaskQueue(task_queue_);
 
   LOG(INFO) << "before HeterClient::GetInstance";
-  distributed::HeterClient* rpc_client =
+  distributed::HeterClient* heter_client_ptr_ =
       distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0)
           .get();
 
-  PADDLE_ENFORCE_NE(rpc_client, nullptr,
-                    platform::errors::InvalidArgument(
-                        "Client Start Fail, Check Your Code & Env"));
-
   framework::Scope* scope = (*micro_scope)[0];
   platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
 
   // create var on local scope
   int64_t rows_numel = 10;
@@ -212,25 +224,27 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
   std::vector<std::string> recv_var = {};
 
   LOG(INFO) << "before SendAndRecvAsync";
-  rpc_client->SendAndRecvAsync(ctx, *scope, in_var_name, send_var, recv_var,
-                               "forward");
+  heter_client_ptr_->SendAndRecvAsync(
+      ctx, *scope, in_var_name, send_var, recv_var, "forward");
   auto task = (*task_queue_)[0]->Pop();
   PADDLE_ENFORCE_EQ(
-      task.first, "x",
+      task.first,
+      "x",
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   InitTensorsOnClient2((*micro_scope)[1], &place, rows_numel);
   LOG(INFO) << "before SendAndRecvAsync 2";
-  rpc_client->SendAndRecvAsync(ctx, *((*micro_scope)[1]), in_var_name, send_var,
-                               recv_var, "backward");
+  heter_client_ptr_->SendAndRecvAsync(
+      ctx, *((*micro_scope)[1]), in_var_name, send_var, recv_var, "backward");
   auto task2 = (*task_queue_)[0]->Pop();
   PADDLE_ENFORCE_EQ(
-      task2.first, "x",
+      task2.first,
+      "x",
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
-  rpc_client->Stop();
+  heter_client_ptr_->Stop();
   LOG(INFO) << "end server Stop";
   server_thread.join();
   LOG(INFO) << "end server thread join";

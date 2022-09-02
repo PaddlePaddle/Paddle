@@ -74,13 +74,18 @@ class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
         bcast_ydims.push_back(x_dim[i]);
       }
 
-      int ret = xpu::broadcast<int8_t>(
-          dev_ctx.x_context(), reinterpret_cast<const int8_t*> x_ptr,
-          reinterpret_cast<int8_t*> broadcast_x_ptr, bcast_xdims, bcast_ydims);
-      PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+      int ret =
+          xpu::broadcast<int8_t>(dev_ctx.x_context(),
+                                 reinterpret_cast<const int8_t*> x_ptr,
+                                 reinterpret_cast<int8_t*> broadcast_x_ptr,
+                                 bcast_xdims,
+                                 bcast_ydims);
+      PADDLE_ENFORCE_EQ(ret,
+                        XPU_SUCCESS,
                         platform::errors::External(
                             "XPU broadcast kernel return wrong value[%d %s]",
-                            ret, XPUAPIErrorMsg[ret]));
+                            ret,
+                            XPUAPIErrorMsg[ret]));
       x_ptr = (const T*)broadcast_x_ptr;
       need_broad_cast = true;
     }
@@ -105,13 +110,18 @@ class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
         bcast_ydims.push_back(y_dim[i]);
       }
 
-      int ret = xpu::broadcast<int8_t>(
-          dev_ctx.x_context(), reinterpret_cast<const int8_t*> y_ptr,
-          reinterpret_cast<int8_t*> broadcast_y_ptr, bcast_xdims, bcast_ydims);
-      PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+      int ret =
+          xpu::broadcast<int8_t>(dev_ctx.x_context(),
+                                 reinterpret_cast<const int8_t*> y_ptr,
+                                 reinterpret_cast<int8_t*> broadcast_y_ptr,
+                                 bcast_xdims,
+                                 bcast_ydims);
+      PADDLE_ENFORCE_EQ(ret,
+                        XPU_SUCCESS,
                         platform::errors::External(
                             "XPU broadcast kernel return wrong value[%d %s]",
-                            ret, XPUAPIErrorMsg[ret]));
+                            ret,
+                            XPUAPIErrorMsg[ret]));
       y_ptr = (const T*)broadcast_y_ptr;
       need_broad_cast = true;
     }
@@ -120,22 +130,24 @@ class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
     int ret = XPU_SUCCESS;
     switch (xpu_type) {
       case XpuLogicalType::XPU_OR:
-        ret = xpu::logical_or<bool>(dev_ctx.x_context(), x_ptr, y_ptr, out_ptr,
-                                    out->numel());
+        ret = xpu::logical_or<bool>(
+            dev_ctx.x_context(), x_ptr, y_ptr, out_ptr, out->numel());
         break;
       case XpuLogicalType::XPU_AND:
-        ret = xpu::logical_and<bool>(dev_ctx.x_context(), x_ptr, y_ptr, out_ptr,
-                                     out->numel());
+        ret = xpu::logical_and<bool>(
+            dev_ctx.x_context(), x_ptr, y_ptr, out_ptr, out->numel());
       default:
         LOG(ERROR) << "xpu not support logical xpu type = "
                    << XpuLogicalType2Str(xpu_type);
         break;
     }
     PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
+        ret,
+        XPU_SUCCESS,
         platform::errors::External("XPU API return wrong value[%d %s] in "
                                    "op_name[%s].",
-                                   ret, XPUAPIErrorMsg[ret],
+                                   ret,
+                                   XPUAPIErrorMsg[ret],
                                    XpuLogicalType2Str(xpu_type)));
 
     if (need_broad_cast && dev_ctx.x_context()->xpu_stream != nullptr) {
@@ -156,12 +168,13 @@ class UnaryLogicalOpXPUKernel : public framework::OpKernel<T> {
     out->mutable_data<bool>(context.GetPlace());
     auto& dev_ctx =
         context.template device_context<paddle::platform::XPUDeviceContext>();
-    int ret = xpu::logical_not<bool>(dev_ctx.x_context(), x->data<T>(),
-                                     out->data<T>(), x->numel());
+    int ret = xpu::logical_not<bool>(
+        dev_ctx.x_context(), x->data<T>(), out->data<T>(), x->numel());
     PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External("XPU API return wrong value[%d %s].", ret,
-                                   XPUAPIErrorMsg[ret]));
+        ret,
+        XPU_SUCCESS,
+        platform::errors::External(
+            "XPU API return wrong value[%d %s].", ret, XPUAPIErrorMsg[ret]));
   }
 };
 

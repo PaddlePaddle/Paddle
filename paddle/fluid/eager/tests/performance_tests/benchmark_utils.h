@@ -15,9 +15,10 @@
 #pragma once
 
 #include <math.h>
+
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/pten/api/all.h"
+#include "paddle/phi/api/all.h"
 
 /* MLP Configurations */
 // Out1 = X[M, N] x W[N, K] + B[K]
@@ -47,26 +48,23 @@ inline std::unordered_map<std::string, float> compute_mlp_expected_results() {
 }
 
 /* ---- Eager Scale ---- */
-void benchmark_eager_scale(const EagerTensor& tensor,
+void benchmark_eager_scale(const paddle::experimental::Tensor& tensor,
                            bool accuracy_check = false);
 
 /* ---- Eager MatMul ---- */
-/*
-void benchmark_eager_matmul(const EagerTensor& X, const EagerTensor& Y,
+void benchmark_eager_matmul(const paddle::experimental::Tensor& X,
+                            const paddle::experimental::Tensor& Y,
                             bool accuracy_check = false);
-void benchmark_eager_mlp(const EagerTensor& X,
-                         const std::vector<EagerTensor>& Ws,
-                         const std::vector<EagerTensor>& Bs,
-                         bool accuracy_check = false);
-*/
-void benchmark_eager_intermediate_matmul(const EagerTensor& X,
-                                         const EagerTensor& Y,
+
+void benchmark_eager_intermediate_matmul(const paddle::experimental::Tensor& X,
+                                         const paddle::experimental::Tensor& Y,
                                          bool accuracy_check = false);
 
-void benchmark_eager_intermediate_mlp(const EagerTensor& X,
-                                      const std::vector<EagerTensor>& Ws,
-                                      const std::vector<EagerTensor>& Bs,
-                                      bool accuracy_check = false);
+void benchmark_eager_intermediate_mlp(
+    const paddle::experimental::Tensor& X,
+    const std::vector<paddle::experimental::Tensor>& Ws,
+    const std::vector<paddle::experimental::Tensor>& Bs,
+    bool accuracy_check = false);
 
 }  // namespace egr
 
@@ -76,20 +74,23 @@ namespace imperative {
 // TODO(jiabin): Change this and remove nolint
 void benchmark_fluid_scale(
     const std::shared_ptr<imperative::VarBase>& X,  // NOLINT
-    const paddle::platform::Place& place, bool accuracy_check = false);
+    const paddle::platform::Place& place,
+    bool accuracy_check = false);
 
 /* ---- Fluid MatMul ---- */
 void benchmark_fluid_matmul(
     const std::shared_ptr<imperative::VarBase>& X,
     const std::shared_ptr<imperative::VarBase>& Y,  // NOLINT
-    const paddle::platform::Place& place, bool accuracy_check = false);
+    const paddle::platform::Place& place,
+    bool accuracy_check = false);
 
 /* ---- Fluid MLP ---- */
 void benchmark_fluid_mlp(
     const std::shared_ptr<imperative::VarBase>& X,
     const std::vector<std::shared_ptr<imperative::VarBase>>& Ws,
     const std::vector<std::shared_ptr<imperative::VarBase>>& Bs,
-    const paddle::platform::Place& place, bool accuracy_check = false);
+    const paddle::platform::Place& place,
+    bool accuracy_check = false);
 
 }  // namespace imperative
 }  // namespace paddle

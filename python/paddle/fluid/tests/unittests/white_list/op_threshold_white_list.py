@@ -49,7 +49,9 @@ NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'sparse_attention', \
     'svd', \
     'matrix_power', \
+    'cholesky_solve', \
     'solve', \
+    'qr', \
 ]
 
 NEED_FIX_FP64_CHECK_OUTPUT_THRESHOLD_OP_LIST = ['bilinear_interp',\

@@ -15,10 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_padding.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -37,7 +38,8 @@ class SequenceUnpadOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     framework::Tensor seq_len_cpu =
         ctx.AllocateTmpTensor<T, DeviceContext>(len_t->dims(), dev_ctx);
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (platform::is_gpu_place(ctx.GetPlace()) ||
+        platform::is_xpu_place(ctx.GetPlace())) {
       seq_len_cpu.mutable_data<int64_t>(platform::CPUPlace());
       framework::TensorCopySync(*len_t, platform::CPUPlace(), &seq_len_cpu);
     } else {
@@ -62,7 +64,7 @@ class SequenceUnpadOpKernel : public framework::OpKernel<T> {
         out_dims_vec.push_back(x_t->dims()[i]);
       }
     }
-    out_t->Resize(framework::make_ddim(out_dims_vec));
+    out_t->Resize(phi::make_ddim(out_dims_vec));
 
     // after set the lod of output, allocate the memory
     out_t->mutable_data<T>(ctx.GetPlace());
@@ -87,13 +89,19 @@ class SequenceUnpadGradOpKernel : public framework::OpKernel<T> {
       LoDTensor zero_pads;
       zero_pads.Resize({1, 1});
       zero_pads.mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<DeviceContext, T> set_zero;
+      phi::funcs::SetConstant<DeviceContext, T> set_zero;
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       set_zero(dev_ctx, &zero_pads, static_cast<T>(0));
 
       math::PaddingLoDTensorFunctor<DeviceContext, T>()(
-          ctx.template device_context<DeviceContext>(), *d_out, d_x, zero_pads,
-          padded_length, 0, false, math::kBatchLengthWidth);
+          ctx.template device_context<DeviceContext>(),
+          *d_out,
+          d_x,
+          zero_pads,
+          padded_length,
+          0,
+          false,
+          math::kBatchLengthWidth);
     }
   }
 };

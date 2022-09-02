@@ -20,6 +20,7 @@ import os
 import sys
 import time
 import numpy as np
+import struct
 from collections import namedtuple
 
 __all__ = []
@@ -50,10 +51,11 @@ class ProgressBar(object):
         self._last_update = 0
         self.name = name
 
-        self._dynamic_display = (
-            (hasattr(self.file, 'isatty') and
-             self.file.isatty()) or 'ipykernel' in sys.modules or
-            'posix' in sys.modules or 'PYCHARM_HOSTED' in os.environ)
+        self._dynamic_display = ((hasattr(self.file, 'isatty')
+                                  and self.file.isatty())
+                                 or 'ipykernel' in sys.modules
+                                 or 'posix' in sys.modules
+                                 or 'PYCHARM_HOSTED' in os.environ)
 
     def _get_max_width(self):
         if sys.version_info > (3, 3):
@@ -78,6 +80,20 @@ class ProgressBar(object):
 
     def update(self, current_num, values={}):
         now = time.time()
+
+        def convert_uint16_to_float(in_list):
+            in_list = np.asarray(in_list)
+            out = np.vectorize(
+                lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+                otypes=[np.float32])(in_list.flat)
+            return np.reshape(out, in_list.shape)
+
+        for i, (k, val) in enumerate(values):
+            if k == "loss":
+                val = val if isinstance(val, list) or isinstance(
+                    val, np.ndarray) else [val]
+                if isinstance(val[0], np.uint16):
+                    values[i] = ("loss", list(convert_uint16_to_float(val)))
 
         if current_num:
             time_per_unit = (now - self._start) / current_num
@@ -104,8 +120,8 @@ class ProgressBar(object):
             if self._num is not None:
                 numdigits = int(np.log10(self._num)) + 1
 
-                bar_chars = (self.name + ' %' + str(numdigits) + 'd/%d [') % (
-                    current_num, self._num)
+                bar_chars = (self.name + ' %' + str(numdigits) +
+                             'd/%d [') % (current_num, self._num)
                 prog = float(current_num) / self._num
                 prog_width = int(self._width * prog)
 
@@ -164,8 +180,8 @@ class ProgressBar(object):
         elif self._verbose == 2 or self._verbose == 3:
             if self._num:
                 numdigits = int(np.log10(self._num)) + 1
-                count = (self.name + ' %' + str(numdigits) + 'd/%d') % (
-                    current_num, self._num)
+                count = (self.name + ' %' + str(numdigits) +
+                         'd/%d') % (current_num, self._num)
             else:
                 count = self.name + ' %3d' % current_num
             info = count + info

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
@@ -32,32 +33,8 @@ static inline framework::DDim UnbindOutsDims(const framework::DDim in_dims,
   for (int i = 0; i < in_dims.size(); i++) {
     if (i != axis) out_dims.push_back(in_dims[i]);
   }
-  return framework::make_ddim(out_dims);
+  return phi::make_ddim(out_dims);
 }
-template <typename DeviceContext, typename T>
-class UnbindOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
-    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
-    int axis = ctx.Attr<int>("axis");
-
-    auto in_dims = in->dims();
-
-    auto place = ctx.GetPlace();
-
-    axis = axis < 0 ? in_dims.size() + axis : axis;
-    std::vector<const framework::Tensor*> shape_refer;
-    for (size_t j = 0; j < outs.size(); ++j) {
-      outs[j]->mutable_data<T>(ctx.GetPlace());
-      shape_refer.emplace_back(outs[j]);
-    }
-
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::SplitFunctor<DeviceContext, T> functor;
-    functor(dev_ctx, *in, shape_refer, axis, &outs);
-  }
-};
 
 template <typename T>
 class UnbindGradMaker : public framework::SingleGradOpMaker<T> {

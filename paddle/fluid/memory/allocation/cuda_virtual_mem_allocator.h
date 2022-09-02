@@ -16,10 +16,12 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
 #include <mutex>  // NOLINT
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -37,8 +39,8 @@ class CUDAVirtualMemAllocator : public Allocator {
   bool IsAllocThreadSafe() const override;
 
  protected:
-  void FreeImpl(Allocation* allocation) override;
-  Allocation* AllocateImpl(size_t size) override;
+  void FreeImpl(phi::Allocation* allocation) override;
+  phi::Allocation* AllocateImpl(size_t size) override;
 
  private:
   platform::CUDAPlace place_;

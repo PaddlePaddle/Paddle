@@ -33,7 +33,7 @@ class SyncBatchNormGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("SavedVariance", this->Output("SavedVariance"));
 
     // used when setting use_global_stats True during training
-    if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
+    if (PADDLE_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
       op->SetInput("Mean", this->Output("MeanOut"));
       op->SetInput("Variance", this->Output("VarianceOut"));
     }
@@ -50,7 +50,10 @@ class SyncBatchNormGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sync_batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
+
+REGISTER_OPERATOR(sync_batch_norm,
+                  ops::BatchNormOp,
+                  ops::BatchNormOpMaker,
                   ops::BatchNormOpInferVarType,
                   ops::SyncBatchNormGradMaker<paddle::framework::OpDesc>,
                   ops::SyncBatchNormGradMaker<paddle::imperative::OpBase>);

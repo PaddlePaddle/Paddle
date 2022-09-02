@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 
@@ -24,8 +25,8 @@ template <typename DeviceContext, typename T>
 class MergeSelectedRowsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<framework::SelectedRows>("X");
-    auto* out = context.Output<framework::SelectedRows>("Out");
+    auto* x = context.Input<phi::SelectedRows>("X");
+    auto* out = context.Output<phi::SelectedRows>("Out");
 
     math::scatter::MergeAdd<DeviceContext, T> merge_func;
     merge_func(context.template device_context<DeviceContext>(), *x, out);

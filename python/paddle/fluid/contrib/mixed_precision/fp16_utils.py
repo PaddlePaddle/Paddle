@@ -27,8 +27,9 @@ import numpy as np
 
 __all__ = ["fp16_guard", "cast_model_to_fp16", "cast_parameters_to_fp16"]
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 _valid_types = [
     core.VarDesc.VarType.LOD_TENSOR, core.VarDesc.VarType.SELECTED_ROWS,
@@ -80,10 +81,26 @@ def _dtype_to_str(dtype):
         return 'fp32'
 
 
+_keep_layer_norm_scale_bias_to_fp32_flag = True
+
+
+def _keep_layer_norm_scale_bias_to_fp32(*args):
+    global _keep_layer_norm_scale_bias_to_fp32_flag
+    if len(args) == 0:
+        return _keep_layer_norm_scale_bias_to_fp32_flag
+    else:
+        assert len(args) == 1 and isinstance(args[0], bool)
+        old_value = _keep_layer_norm_scale_bias_to_fp32_flag
+        _keep_layer_norm_scale_bias_to_fp32_flag = args[0]
+        return old_value
+
+
 def _keep_fp32_input(op, in_name):
     op_type = op.type
-    if op_type in ['batch_norm', 'layer_norm']:
+    if op_type == 'batch_norm':
         # Scale, Bias, Mean, Variance should be float32.
+        return in_name != 'X'
+    if op_type == 'layer_norm' and _keep_layer_norm_scale_bias_to_fp32():
         return in_name != 'X'
     if op_type == 'fused_bn_add_activation':
         return in_name not in {'X', 'Z'}
@@ -93,12 +110,16 @@ def _keep_fp32_input(op, in_name):
         return in_name in {
             'LnScale', 'LnBias', 'Ln2Scale', 'Ln2Bias', "Ln1Scale", "Ln1Bias"
         }
+    if op_type == 'fused_multi_transformer':
+        return in_name in {'LnScale', 'LnBias', 'FFNLnScale', 'FFNLnBias'}
     return False
 
 
 def _keep_fp32_output(op, out_name):
     op_type = op.type
-    if op_type in ['batch_norm', 'fused_bn_add_activation', 'layer_norm']:
+    if op_type in ['batch_norm', 'fused_bn_add_activation']:
+        return out_name != 'Y'
+    if op_type == 'layer_norm' and _keep_layer_norm_scale_bias_to_fp32():
         return out_name != 'Y'
     if op_type == 'resnet_unit':
         return out_name not in {'Y', 'ConvX', 'ConvZ'}
@@ -127,8 +148,8 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     num_cast_ops = 0
 
     for in_name in op.input_names:
-        if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(op,
-                                                                       in_name):
+        if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
+                op, in_name):
             continue
         for in_var_name in op.input(in_name):
             in_var = block._find_var_recursive(in_var_name)
@@ -165,16 +186,18 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                         persistable=False,
                         stop_gradient=in_var.stop_gradient)
 
-                    block._insert_op_without_sync(
-                        idx,
-                        type="cast",
-                        inputs={"X": in_var},
-                        outputs={"Out": out_var},
-                        attrs={
-                            "in_dtype": in_var.dtype,
-                            "out_dtype": out_var.dtype,
-                            "op_device": op_device
-                        })
+                    block._insert_op_without_sync(idx,
+                                                  type="cast",
+                                                  inputs={"X": in_var},
+                                                  outputs={"Out": out_var},
+                                                  attrs={
+                                                      "in_dtype": in_var.dtype,
+                                                      "out_dtype":
+                                                      out_var.dtype,
+                                                      "op_device": op_device,
+                                                      "op_role":
+                                                      op.attr("op_role"),
+                                                  })
                     num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
             else:
@@ -210,21 +233,20 @@ def _insert_cast_post_op(block, op, idx, src_dtype, dest_dtype, target_name,
     cast_name = target_var.name + '.cast_' + _dtype_to_str(dest_dtype)
     cast_var = block.vars.get(cast_name)
     if cast_var is None or cast_var.dtype != dest_dtype:
-        cast_var = block.create_var(
-            name=cast_name,
-            dtype=dest_dtype,
-            persistable=False,
-            stop_gradient=target_var.stop_gradient)
-        block._insert_op(
-            idx,
-            type="cast",
-            inputs={"X": target_var},
-            outputs={"Out": cast_var},
-            attrs={
-                "in_dtype": target_var.dtype,
-                "out_dtype": cast_var.dtype,
-                "op_device": op.attr("op_device")
-            })
+        cast_var = block.create_var(name=cast_name,
+                                    dtype=dest_dtype,
+                                    persistable=False,
+                                    stop_gradient=target_var.stop_gradient)
+        block._insert_op(idx,
+                         type="cast",
+                         inputs={"X": target_var},
+                         outputs={"Out": cast_var},
+                         attrs={
+                             "in_dtype": target_var.dtype,
+                             "out_dtype": cast_var.dtype,
+                             "op_device": op.attr("op_device"),
+                             "op_role": op.attr("op_role"),
+                         })
         num_cast_ops += 1
         op_var_rename_map[block.idx][target_var.name] = cast_var.name
 
@@ -397,7 +419,9 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                 keep_fp32_ops.add(op)
                 continue  # processed below
             for in_name in op.input_names:
-                if _keep_fp32_input(op, in_name):
+                # for ipu, all inputs must be converted to fp16
+                if not core.is_compiled_with_ipu() and _keep_fp32_input(
+                        op, in_name):
                     continue
                 for in_var_name in op.input(in_name):
                     in_var = None
@@ -425,7 +449,9 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                         format(op.type, in_var_name, in_var.dtype))
 
             for out_name in op.output_names:
-                if _keep_fp32_output(op, out_name):
+                # for ipu, all outputs must be converted to fp16
+                if not core.is_compiled_with_ipu() and _keep_fp32_output(
+                        op, out_name):
                     continue
                 for out_var_name in op.output(out_name):
                     out_var = None
@@ -448,8 +474,8 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                         out_var.desc.set_dtype(core.VarDesc.VarType.FP16)
 
                     _logger.debug(
-                        "-- op type: {}, out var name: {}, out var dtype: {} --".
-                        format(op.type, out_var_name, out_var.dtype))
+                        "-- op type: {}, out var name: {}, out var dtype: {} --"
+                        .format(op.type, out_var_name, out_var.dtype))
             if op.has_attr('in_dtype') and op.attr(
                     'in_dtype') == core.VarDesc.VarType.FP32:
                 op._set_attr('in_dtype', core.VarDesc.VarType.FP16)
@@ -670,13 +696,12 @@ def update_role_var_grad(main_prog, params_grads):
             # add new op in the python and cpp at the same time
             new_op_desc = block.desc.append_op()
             new_op_desc.copy_from(op.desc)
-            new_op = framework.Operator(
-                block=block,
-                desc=new_op_desc,
-                type=None,
-                inputs=None,
-                outputs=None,
-                attrs=None)
+            new_op = framework.Operator(block=block,
+                                        desc=new_op_desc,
+                                        type=None,
+                                        inputs=None,
+                                        outputs=None,
+                                        attrs=None)
             block.ops.append(new_op)
             op_idx = find_op_index(block.desc, op.desc)
             if op_idx == -1:

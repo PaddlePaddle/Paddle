@@ -18,7 +18,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/inference/capi_exp/pd_config.h"
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
+#include "paddle/fluid/inference/capi_exp/pd_utils.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -34,6 +36,8 @@ void predictor_run() {
   PD_ConfigSetCpuMathLibraryNumThreads(config, 10);
   PD_ConfigSwitchIrDebug(config, TRUE);
   PD_ConfigSetModel(config, prog_file.c_str(), params_file.c_str());
+  PD_Cstr *config_summary = PD_ConfigSummary(config);
+  LOG(INFO) << config_summary->data;
 
   PD_Predictor *predictor = PD_PredictorCreate(config);
   PD_Tensor *tensor = PD_PredictorGetInputHandle(predictor, "data");
@@ -51,6 +55,7 @@ void predictor_run() {
 
   delete[] input;
   PD_TensorDestroy(tensor);
+  PD_CstrDestroy(config_summary);
   PD_PredictorDestroy(predictor);
 }
 

@@ -12,14 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/dlpack_tensor.h"
-#include "paddle/fluid/framework/data_type.h"
 
-namespace paddle {
-namespace platform {
-struct bfloat16;
-struct float16;
-}  // namespace platform
-}  // namespace paddle
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/data_type.h"
 
 namespace paddle {
 namespace framework {
@@ -66,19 +61,26 @@ static DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
   static auto type_to_dtype_map = CreateDLDataTypeMap();
   static auto type_to_dtype_map_end_it = type_to_dtype_map.end();
   auto it = type_to_dtype_map.find(static_cast<int>(type));
-  PADDLE_ENFORCE_NE(it, type_to_dtype_map_end_it,
+  PADDLE_ENFORCE_NE(it,
+                    type_to_dtype_map_end_it,
                     platform::errors::InvalidArgument(
                         "Unsupported data type (%s).", DataTypeToString(type)));
   return it->second;
 #undef REG_DL_DATA_TYPE
 }
 
-struct DLDeviceVisitor : public boost::static_visitor<::DLDevice> {
+struct DLDeviceVisitor
+    : public std::unary_function<const platform::Place &, ::DLDevice> {
   inline ::DLDevice operator()(const platform::CPUPlace &place) const {
     ::DLDevice device;
     device.device_type = kDLCPU;
     device.device_id = 0;
     return device;
+  }
+
+  inline ::DLDevice operator()(const platform::IPUPlace &place) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("platform::IPUPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const platform::XPUPlace &place) const {
@@ -94,6 +96,16 @@ struct DLDeviceVisitor : public boost::static_visitor<::DLDevice> {
   inline ::DLDevice operator()(const platform::NPUPinnedPlace &place) const {
     PADDLE_THROW(platform::errors::Unimplemented(
         "platform::NPUPinnedPlace is not supported"));
+  }
+
+  inline ::DLDevice operator()(const platform::MLUPlace &place) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("platform::MLUPlace is not supported"));
+  }
+
+  inline ::DLDevice operator()(const platform::CustomPlace &place) const {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "platform::CustomPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const platform::CUDAPlace &place) const {
@@ -124,14 +136,15 @@ struct DLDeviceVisitor : public boost::static_visitor<::DLDevice> {
 
 DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
   // init data, data buffer
-  t_.data = const_cast<void *>(tensor.data<void>());
+  t_.data = const_cast<void *>(tensor.data());
 
   // init device, DLDevice type with device_type and device_id
   auto place = tensor.place();
-  t_.device = boost::apply_visitor(internal::DLDeviceVisitor(), place);
+  t_.device = paddle::platform::VisitPlace(place, internal::DLDeviceVisitor());
 
   // init dtype
-  t_.dtype = internal::GetDLDataTypeFromTypeIndex(tensor.type());
+  t_.dtype = internal::GetDLDataTypeFromTypeIndex(
+      framework::TransToProtoVarType(tensor.dtype()));
   t_.dtype.lanes = lanes;
 
   // init ndim, tensor rank

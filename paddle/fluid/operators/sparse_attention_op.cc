@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -43,6 +44,14 @@ class SparseAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor, default: Tensor<int32>), The input tensor of columns in "
              "CSR sparse format, "
              "whose dimension : `[batch_size, num_heads, sparse_nnz_num]`.");
+    AddInput("KeyPaddingMask",
+             "(Tensor), The input tensor of key padding mask"
+             "whose dimension : `[batch_size, target_len]`.")
+        .AsDispensable();
+    AddInput("AttnMask",
+             "(Tensor), The input tensor of attention mask"
+             "whose dimension : `[target_len, target_len]`.")
+        .AsDispensable();
     AddOutput(
         "Out",
         "(Tensor), The output tensor of result in attention, "
@@ -71,28 +80,33 @@ class SparseAttentionOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Q"), "Input", "Q", "sparse_attention");
     OP_INOUT_CHECK(ctx->HasInput("K"), "Input", "K", "sparse_attention");
     OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "sparse_attention");
-    OP_INOUT_CHECK(ctx->HasInput("Offset"), "Input", "Offset",
-                   "sparse_attention");
-    OP_INOUT_CHECK(ctx->HasInput("Columns"), "Input", "Columns",
-                   "sparse_attention");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Offset"), "Input", "Offset", "sparse_attention");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Columns"), "Input", "Columns", "sparse_attention");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "sparse_attention");
-    OP_INOUT_CHECK(ctx->HasOutput("SparseDotSdd"), "Output", "SparseDotSdd",
+    OP_INOUT_CHECK(ctx->HasOutput("SparseDotSdd"),
+                   "Output",
+                   "SparseDotSdd",
                    "sparse_attention");
-    OP_INOUT_CHECK(ctx->HasOutput("Softmax"), "Output", "Softmax",
-                   "sparse_attention");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Softmax"), "Output", "Softmax", "sparse_attention");
 
     auto dims_q = ctx->GetInputDim("Q");
     auto dims_k = ctx->GetInputDim("K");
     auto dims_v = ctx->GetInputDim("V");
     auto dims_columns = ctx->GetInputDim("Columns");
 
-    PADDLE_ENFORCE_EQ(dims_q.size(), static_cast<size_t>(4),
+    PADDLE_ENFORCE_EQ(dims_q.size(),
+                      static_cast<size_t>(4),
                       platform::errors::InvalidArgument(
                           "Dimension in query' shapes should be 4."));
-    PADDLE_ENFORCE_EQ(dims_k.size(), static_cast<size_t>(4),
+    PADDLE_ENFORCE_EQ(dims_k.size(),
+                      static_cast<size_t>(4),
                       platform::errors::InvalidArgument(
                           "Dimension in key' shapes should be 4."));
-    PADDLE_ENFORCE_EQ(dims_v.size(), static_cast<size_t>(4),
+    PADDLE_ENFORCE_EQ(dims_v.size(),
+                      static_cast<size_t>(4),
                       platform::errors::InvalidArgument(
                           "Dimension in value' shapes should be 4."));
 
@@ -125,16 +139,20 @@ class SparseAttentionOpGrad : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Q"), "Input", "Q", "sparse_attention_grad");
     OP_INOUT_CHECK(ctx->HasInput("K"), "Input", "K", "sparse_attention_grad");
     OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "sparse_attention_grad");
-    OP_INOUT_CHECK(ctx->HasInput("Offset"), "Input", "Offset",
+    OP_INOUT_CHECK(
+        ctx->HasInput("Offset"), "Input", "Offset", "sparse_attention_grad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Columns"), "Input", "Columns", "sparse_attention_grad");
+    OP_INOUT_CHECK(ctx->HasInput("SparseDotSdd"),
+                   "Input",
+                   "SparseDotSdd",
                    "sparse_attention_grad");
-    OP_INOUT_CHECK(ctx->HasInput("Columns"), "Input", "Columns",
+    OP_INOUT_CHECK(
+        ctx->HasInput("Softmax"), "Input", "Softmax", "sparse_attention_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
                    "sparse_attention_grad");
-    OP_INOUT_CHECK(ctx->HasInput("SparseDotSdd"), "Input", "SparseDotSdd",
-                   "sparse_attention_grad");
-    OP_INOUT_CHECK(ctx->HasInput("Softmax"), "Input", "Softmax",
-                   "sparse_attention_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "sparse_attention_grad");
 
     auto x_grad_name = framework::GradVarName("Q");
     auto y_grad_name = framework::GradVarName("K");
@@ -185,7 +203,8 @@ class SparseAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sparse_attention, ops::SparseAttentionOp,
+REGISTER_OPERATOR(sparse_attention,
+                  ops::SparseAttentionOp,
                   ops::SparseAttentionOpMaker,
                   ops::SparseAttentionGradOpMaker<paddle::framework::OpDesc>,
                   ops::SparseAttentionGradOpMaker<paddle::imperative::OpBase>);

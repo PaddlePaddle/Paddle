@@ -16,6 +16,7 @@ import os
 import time
 import unittest
 
+os.environ["WITH_DISTRIBUTE"] = "ON"
 import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid.transpiler.details.program_utils as pu
@@ -24,6 +25,7 @@ paddle.enable_static()
 
 
 class TestDistStrategyTrainerDescConfig(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_PSERVER_NUMS"] = "2"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
@@ -42,13 +44,15 @@ class TestDistStrategyTrainerDescConfig(unittest.TestCase):
         x = paddle.fluid.layers.data(name='x', shape=[1], dtype='float32')
         y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = paddle.fluid.layers.square_error_cost(input=x, label=y)
-        avg_cost = paddle.fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        strategy.a_sync_configs = {"launch_barrier": 0}
         config = {
             "dump_fields_path": "dump_data",
             "dump_fields": ["xxx", "yyy"],
-            "dump_param": []
+            "dump_param": ['zzz']
         }
         strategy.trainer_desc_configs = config
 
@@ -59,7 +63,18 @@ class TestDistStrategyTrainerDescConfig(unittest.TestCase):
         program = paddle.static.default_main_program()
         self.assertEqual(program._fleet_opt["dump_fields_path"], "dump_data")
         self.assertEqual(len(program._fleet_opt["dump_fields"]), 2)
-        self.assertEqual(len(program._fleet_opt["dump_param"]), 0)
+        self.assertEqual(len(program._fleet_opt["dump_param"]), 1)
+        self.assertEqual(program._fleet_opt["mpi_size"],
+                         int(os.environ["PADDLE_TRAINERS_NUM"]))
+
+        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+        optimizer.minimize([avg_cost])
+
+        program = avg_cost.block.program
+        self.assertEqual(program._fleet_opt["dump_fields_path"], "dump_data")
+        self.assertEqual(len(program._fleet_opt["dump_fields"]), 2)
+        self.assertEqual(len(program._fleet_opt["dump_param"]), 1)
         self.assertEqual(program._fleet_opt["mpi_size"],
                          int(os.environ["PADDLE_TRAINERS_NUM"]))
 

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/tensor.h"
 
 namespace paddle {
@@ -76,7 +77,8 @@ inline void im2col_common(const framework::Tensor& im,
  */
 template <typename T>
 inline void im2col_sh1sw1dh1dw1ph0pw0(
-    const framework::Tensor& im, framework::Tensor* col,
+    const framework::Tensor& im,
+    framework::Tensor* col,
     const DataLayout data_layout = DataLayout::kNCHW) {
   int im_channels =
       (data_layout != DataLayout::kNHWC ? im.dims()[0] : im.dims()[2]);
@@ -231,8 +233,9 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const framework::Tensor& im,
     T* dst_data_kh = dst_data_ic;
     for (int kh = 0; kh < filter_height; ++kh) {
       for (T* dst_data :
-           {dst_data_kh, dst_data_kh + (filter_width - prw) * col_matrix_width +
-                             output_width - 1}) {
+           {dst_data_kh,
+            dst_data_kh + (filter_width - prw) * col_matrix_width +
+                output_width - 1}) {
         // TODO(TJ): from plh, saving repeated assignment
         for (int oh = 0; oh < output_height; ++oh) {
           *dst_data = pad;
@@ -262,7 +265,8 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const framework::Tensor& im,
         // try to unify
         for (int kw = 0; kw < plw; ++kw) {
           if (data_layout != DataLayout::kNHWC) {
-            std::memcpy(dst_data + (plw - kw), src_data,
+            std::memcpy(dst_data + (plw - kw),
+                        src_data,
                         sizeof(T) * (output_width - (plw - kw)));
           } else {
             for (int kow = 0; kow < output_width - (plw - kw); ++kow) {
@@ -277,8 +281,8 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const framework::Tensor& im,
         }
         for (int kw = plw; kw < filter_width - prw; ++kw) {
           if (data_layout != DataLayout::kNHWC) {
-            std::memcpy(dst_data, src_data + (kw - plw),
-                        sizeof(T) * output_width);
+            std::memcpy(
+                dst_data, src_data + (kw - plw), sizeof(T) * output_width);
           } else {
             for (int kow = 0; kow < output_width; ++kow) {
               dst_data[kow] =
@@ -293,7 +297,8 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const framework::Tensor& im,
         int i = 1;
         for (int kw = filter_width - prw; kw < filter_width; ++kw, ++i) {
           if (data_layout != DataLayout::kNHWC) {
-            std::memcpy(dst_data, src_data + (kw - plw),
+            std::memcpy(dst_data,
+                        src_data + (kw - plw),
                         sizeof(T) * (output_width - i));
           } else {
             for (int kow = 0; kow < output_width - i; ++kow) {

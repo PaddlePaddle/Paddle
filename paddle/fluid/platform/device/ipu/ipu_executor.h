@@ -15,67 +15,93 @@ limitations under the License. */
 #pragma once
 
 #include <popart/dataflow.hpp>
+#include <popart/half.hpp>
 #include <popart/names.hpp>
+#include <popart/patterns/patterns.hpp>
 #include <popart/session.hpp>
+#include <popart/stepio.hpp>
+#include <popart/tensorinfo.hpp>
 
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/ipu/common.h"
-#include "paddle/fluid/platform/ipu/ipu_optimizer.h"
-#include "paddle/fluid/platform/ipu/ipu_strategy.h"
-#include "paddle/fluid/platform/ipu/ipu_utils.h"
+#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
+
+namespace paddle {
+namespace framework {
+class ExecutionContext;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 
+struct CompilerResources;
+class IpuStrategy;
+
+struct ExecutorResources {
+  // map<tensor_id, paddle_var_ptr>
+  popart::WeightsIO weights_io;
+  // <popart_var, paddle_var> pairs, include weights and optimizer states
+  std::vector<std::pair<popart::TensorId, std::string>> weights_and_opt_state;
+};
+
 class Executor {
  public:
-  Executor();
+  Executor() = default;
   ~Executor();
 
-  void Prepare(const std::string &proto,
-               const std::map<std::string, popart::TensorId> &tensors,
-               const std::vector<popart::TensorId> &outputs,
-               std::shared_ptr<popart::DeviceInfo> device);
+  // Build popart session
+  void Prepare(const std::string &proto);
 
-  void Run(const std::vector<popart::TensorId> &inputs_id,
-           const std::vector<const framework::Tensor *> &inputs,
-           const std::vector<popart::TensorId> &outputs_id,
-           const std::vector<framework::Tensor *> &outputs,
+  // Run popart session
+  void Run(const std::vector<const Tensor *> &inputs,
+           const std::vector<Tensor *> &outputs,
            const framework::ExecutionContext &ctx);
 
-  // Optimizer
-  void SetOptimizerType(const std::string &type);
-  void SetOptimizerAttr(const std::string &attr, float value);
-  void SetLoss(const std::string &loss);
-  void SetLR(float lr_rate);
-  void SetLRVarName(const std::string &name);
+  // Sync weights from popart to paddle
+  void WeightsToHost();
 
-  void SetWeights(const std::vector<popart::TensorId> &info);
+  // Detach IPU
+  void Detach();
 
+  // Reset session
+  void Reset();
+
+  // Scope
+  void SetScope(const Scope *scope) { scope_ = scope; }
+
+  // Strategy
+  void SetIpuStrategy(const IpuStrategy &strategy) {
+    ipu_strategy_ = &strategy;
+  }
+
+  // CompilerResources
+  void SetCompilerResources(CompilerResources *resources) {
+    compiler_resources_ = resources;
+  }
+
+  // Save model to onnx
+  void SaveModelToHost(const std::string &path);
+
+ private:
+  void AcquireDevice();
   void SetWeightsIO();
+  void ConvertWeights(bool);
   void WeightsFromPaddle();
   void WeightsToPaddle();
 
-  // Scope
-  void SetScope(const framework::Scope *scope) { scope_ = scope; }
-
-  // Strategy
-  void SetIpuStrategy(const IpuStrategy &strategy);
-
  private:
-  float GetLRFromScope();
-
- public:
-  OptmizerMetaInfo opt_info;
-  std::unique_ptr<popart::Session> session_;
-
- private:
-  const framework::Scope *scope_ = nullptr;
+  // Not own
+  const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
-  popart::WeightsIO weights_io_;
-  std::vector<popart::TensorId> weights_;
+  CompilerResources *compiler_resources_ = nullptr;
+  bool compile_only_ = false;
+
+  // Deviceinfo for popart session
+  std::shared_ptr<popart::DeviceInfo> device_;
+  // Popart session, where graph running
+  std::unique_ptr<popart::Session> session_;
+  // A ExecutorResources corresponds to a graph
+  std::unique_ptr<ExecutorResources> executor_resources_;
 };
 
 }  // namespace ipu
