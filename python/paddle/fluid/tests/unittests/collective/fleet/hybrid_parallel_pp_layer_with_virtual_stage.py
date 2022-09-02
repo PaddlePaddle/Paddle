@@ -19,7 +19,7 @@ import paddle
 from paddle.distributed import fleet
 import paddle.nn as nn
 from paddle.fluid.dygraph.layers import Layer
-from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
+from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer, PipelineParallelWithInterleave
 import paddle.nn.functional as F
 
 
@@ -103,6 +103,8 @@ class TestPipeLayerAPI(unittest.TestCase):
 
         # just make sure the model can be wrapped with distributed model
         dist_model = fleet.distributed_model(pipe_model)
+
+        assert isinstance(dist_model, PipelineParallelWithInterleave)
 
 
 if __name__ == '__main__':
