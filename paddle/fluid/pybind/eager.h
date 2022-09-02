@@ -28,6 +28,7 @@ typedef struct {
 
 typedef struct {
   PyObject_HEAD PyObject* container;
+  bool container_be_packed;
   PyObject* non_differentiable;
   PyObject* not_inplace_tensors;
   bool materialize_grads;

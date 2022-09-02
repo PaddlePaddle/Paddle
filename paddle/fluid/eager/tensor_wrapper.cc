@@ -28,13 +28,12 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/saved_tensors_hooks.h"
 #include "paddle/fluid/eager/utils.h"
-#include "paddle/fluid/pybind/eager.h"
-#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #if !(!defined(WITH_PYTHON) && defined(ON_INFER))
+#include "paddle/fluid/pybind/eager.h"
 #include "pybind11/pybind11.h"
-#endif
 #include "pybind11/pytypes.h"
+#endif
 
 #if !(!defined(WITH_PYTHON) && defined(ON_INFER))
 PyTypeObject* p_tensor_type_tensor_wrapper = nullptr;

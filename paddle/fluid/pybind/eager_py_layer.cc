@@ -78,6 +78,7 @@ PyObject* PyLayerNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   if (obj) {
     auto v = reinterpret_cast<PyLayerObject*>(obj);
     v->materialize_grads = true;
+    v->container_be_packed = false;
     new (&v->grad_node) std::weak_ptr<egr::GradNodePyLayer>();
     new (&v->forward_input_tensor_is_duplicable) std::vector<bool>();
     new (&v->forward_output_tensor_is_duplicable) std::vector<bool>();
@@ -455,23 +456,159 @@ PyObject* pylayer_method_apply(PyObject* cls,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* call_unpack_hook(PyObject* container) {
+  auto unpack_hook = PyTuple_GetItem(container, 0);
+  auto packed_value = PyTuple_GetItem(container, 1);
+
+  auto packed_value_size = PyTuple_GET_SIZE(packed_value);
+  auto unpacked_value = PyTuple_New(packed_value_size);
+
+  bool grad_tmp = egr::Controller::Instance().HasGrad();
+  egr::Controller::Instance().SetHasGrad(false);
+  ::pybind11::gil_scoped_acquire gil;
+
+  for (Py_ssize_t i = 0; i < packed_value_size; i++) {
+    PyObject* obj = PyTuple_GET_ITEM(packed_value, i);
+    if (PyList_Check(obj)) {
+      Py_ssize_t len = PyList_Size(obj);
+      auto tmp_list = PyList_New(len);
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyList_GetItem(obj, j);
+        auto args = PyTuple_New(1);
+        Py_INCREF(o);
+        PyTuple_SET_ITEM(args, 0, o);
+        PyTuple_SET_ITEM(
+            tmp_list, j, PyObject_Call(unpack_hook_, args, nullptr));
+        Py_XDECREF(args);
+      }
+      PyTuple_SET_ITEM(unpacked_value, i, tmp_list);
+    } else if (PyTuple_Check(obj)) {
+      Py_ssize_t len = PyTuple_Size(obj);
+      auto tmp_tuple = PyTuple_New(len);
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyTuple_GetItem(obj, j);
+        auto args = PyTuple_New(1);
+        Py_INCREF(o);
+        PyTuple_SET_ITEM(args, 0, o);
+        PyTuple_SET_ITEM(
+            tmp_tuple, j, PyObject_Call(unpack_hook_, args, nullptr));
+        Py_XDECREF(args);
+      }
+      PyTuple_SET_ITEM(unpacked_value, i, tmp_tuple);
+    } else {
+      auto args = PyTuple_New(1);
+      Py_INCREF(obj);
+      PyTuple_SET_ITEM(args, 0, obj);
+      PyTuple_SET_ITEM(
+          unpacked_value, i, PyObject_Call(unpack_hook_, args, nullptr));
+      Py_XDECREF(args);
+    }
+  }
+  egr::Controller::Instance().SetHasGrad(grad_tmp);
+
+  return unpacked_value;
+}
+
 PyObject* tensor_properties_get_container(PyLayerObject* self, void* closure) {
   EAGER_TRY
   if (self->container == nullptr) {
     RETURN_PY_NONE;
   }
-  Py_INCREF(self->container);
-  return self->container;
+  if (self->container_be_packed) {
+    return call_unpack_hook(self->container);
+  } else {
+    Py_INCREF(self->container);
+    return self->container;
+  }
   EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* call_pack_hook(PyObject* value) {
+  PyObject* saved_value = nullptr;
+  if (PyTuple_Check(value)) {
+    saved_value = value;
+  } else if (PyList_Check(value)) {
+    saved_value = PyList_AsTuple(value);
+  } else {
+    saved_value = PyTuple_New(1);
+    Py_INCREF(value);
+    PyTuple_SET_ITEM(saved_value, 0, value);
+  }
+
+  auto pack_hook = SavedTensorsHooks::GetInstance().get_pack_hook();
+  auto unpack_hook = SavedTensorsHooks::GetInstance().get_unpack_hook();
+
+  PyObject* container = PyTuple_New(2);
+  Py_INCREF(unpack_hook);
+  PyTuple_SET_ITEM(container, 0, unpack_hook);
+
+  auto saved_value_size = PyTuple_GET_SIZE(saved_value);
+  PyObject* packed_value = PyTuple_New(saved_value_size);
+
+  bool grad_tmp = egr::Controller::Instance().HasGrad();
+  egr::Controller::Instance().SetHasGrad(false);
+  ::pybind11::gil_scoped_acquire gil;
+
+  for (Py_ssize_t i = 0; i < saved_value_size; i++) {
+    PyObject* obj = PyTuple_GET_ITEM(saved_value, i);
+    if (IsEagerTensor(obj)) {
+      auto args = PyTuple_New(1);
+      Py_INCREF(obj);
+      PyTuple_SET_ITEM(args, 0, obj);
+      PyTuple_SET_ITEM(
+          packed_value, i, PyObject_Call(pack_hook, args, nullptr));
+      Py_XDECREF(args);
+    } else if (PyList_Check(obj)) {
+      Py_ssize_t len = PyList_Size(obj);
+      auto tmp_list = PyList_New(len);
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyList_GetItem(obj, j);
+        if (IsEagerTensor(o)) {
+          auto args = PyTuple_New(1);
+          Py_INCREF(o);
+          PyTuple_SET_ITEM(args, 0, o);
+          PyList_SET_ITEM(tmp_list, j, PyObject_Call(pack_hook, args, nullptr));
+          Py_XDECREF(args);
+        }
+      }
+      PyTuple_SET_ITEM(packed_value, i, tmp_list);
+    } else if (PyTuple_Check(obj)) {
+      Py_ssize_t len = PyTuple_Size(obj);
+      auto tmp_tuple = PyTuple_New(len);
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyTuple_GetItem(obj, j);
+        if (IsEagerTensor(o)) {
+          auto args = PyTuple_New(1);
+          Py_INCREF(o);
+          PyTuple_SET_ITEM(args, 0, o);
+          PyTuple_SET_ITEM(
+              tmp_tuple, j, PyObject_Call(pack_hook, args, nullptr));
+          Py_XDECREF(args);
+        }
+      }
+      PyTuple_SET_ITEM(packed_value, i, tmp_tuple);
+    }
+  }
+  egr::Controller::Instance().SetHasGrad(grad_tmp);
+
+  Py_INCREF(packed_value);
+  PyTuple_SET_ITEM(container, 1, packed_value);
+  return container;
 }
 
 int tensor_properties_set_container(PyLayerObject* self,
                                     PyObject* value,
                                     void* closure) {
   EAGER_TRY
-  Py_XINCREF(value);
-  Py_XDECREF(self->container);
-  self->container = value;
+  if (SavedTensorsHooks::GetInstance().is_enable()) {
+    Py_XDECREF(self->container);
+    self->container = call_pack_hook(value);
+    self->container_be_packed = true;
+  } else {
+    Py_XINCREF(value);
+    Py_XDECREF(self->container);
+    self->container = value;
+  }
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
