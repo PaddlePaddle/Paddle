@@ -279,26 +279,39 @@ void QkvToContextPluginDynamic::configurePlugin(
     int nb_inputs,
     const nvinfer1::DynamicPluginTensorDesc *out,
     int nb_outputs) TRT_NOEXCEPT {
-  if (in[0].desc.type == nvinfer1::DataType::kHALF) {
-    auto input_dims = in[0].desc.dims;
-    int batch = input_dims.d[0];
-    int real_seq_len = input_dims.d[1];
-    // paddding
-    int seq_len = round_up(real_seq_len, 8);
-    if (batch != -1 && real_seq_len != -1) {
-      int device_id = 0;
-      cudaGetDevice(&device_id);
-      auto *device_ctx = static_cast<phi::GPUContext *>(
-          platform::DeviceContextPool::Instance().Get(
-              platform::CUDAPlace(device_id)));
-      const phi::GPUContext &dev_ctx = *device_ctx;
-      auto stream = dev_ctx.stream();
-      mask_tensor.Resize({batch, seq_len, seq_len, head_number_});
+  auto input_dims = in[0].desc.dims;
+  int batch = input_dims.d[0];
+  int real_seq_len = input_dims.d[1];
+  int seq_len = round_up(real_seq_len, 8);
+  if (batch != -1 && real_seq_len != -1) {
+    int device_id = 0;
+    cudaGetDevice(&device_id);
+    auto *device_ctx = static_cast<phi::GPUContext *>(
+        platform::DeviceContextPool::Instance().Get(
+            platform::CUDAPlace(device_id)));
+    const phi::GPUContext &dev_ctx = *device_ctx;
+    auto stream = dev_ctx.stream();
+    tensor_.Resize({batch, seq_len, seq_len, head_number_});
+    int blocks = batch * head_number_ * seq_len;
+    if (in[0].desc.type == nvinfer1::DataType::kHALF) {
       mask_half_ = reinterpret_cast<half *>(
-          mask_tensor.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
-      int blocks = batch * head_number_ * seq_len;
+          tensor_.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
       reset_qk_bias<<<blocks, 1024, 0, stream>>>(
           mask_half_, real_seq_len, seq_len);
+    } else if (in[0].desc.type == nvinfer1::DataType::kFLOAT) {
+      fake_qk_bias_ = reinterpret_cast<float *>(
+          tensor_.mutable_data<int32_t>(platform::CUDAPlace(device_id)));
+      long size = sizeof(int32_t) * batch * seq_len * seq_len * head_number_;
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          hipMemsetAsync(fake_qk_bias_, 0, size, dev_ctx.stream()));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemsetAsync(fake_qk_bias_, 0, size, dev_ctx.stream()));
+#endif
+    } else {
+      PADDLE_THROW(platform::errors::Fatal(
+          "The QKV TRT Plugin's input type should be float or half."));
     }
   }
 }
@@ -429,9 +442,7 @@ int QkvToContextPluginDynamic::enqueue(
     }
     // fake qk_bias
     if (ProductDim(input_desc[1].dims) == ProductDim(input_desc[0].dims)) {
-      qk_bias = reinterpret_cast<float *>(workspace);
-      auto size = batch * head_number_ * seq_len * seq_len;
-      cudaMemset(qk_bias, 0, sizeof(float) * size);
+      qk_bias = fake_qk_bias_;
     }
     const float *input1_data = static_cast<const float *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
