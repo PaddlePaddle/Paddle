@@ -110,25 +110,21 @@ void MemcpyD2HKernel(const Context& dev_ctx,
 
 template <typename Context>
 void MemcpyD2HMultiIOKernel(const Context& dev_ctx,
-                            const std::vector<const DenseTensor*>& array,
+                            const TensorArray& array,
                             int dst_place_type,
-                            std::vector<DenseTensor*> out_array) {
+                            TensorArray* out_array) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out_array,
+      errors::PreconditionNotMet("output tesnor_array should not be nullptr"));
   PADDLE_ENFORCE_EQ(
       array.size(),
-      out_array.size(),
+      out_array->size(),
       errors::PreconditionNotMet(
-          "input size %d != output size %d", array.size(), out_array.size()));
+          "input size %d != output size %d", array.size(), out_array->size()));
 
   for (size_t i = 0; i < array.size(); i++) {
-    PADDLE_ENFORCE_NOT_NULL(
-        array[i],
-        errors::PreconditionNotMet("input tesnor %d should not be nullptr", i));
-    PADDLE_ENFORCE_NOT_NULL(out_array[i],
-                            errors::PreconditionNotMet(
-                                "output tesnor %d should not be nullptr", i));
-
-    const auto& x = *(array[i]);
-    MemcpyD2HKernel<Context>(dev_ctx, x, dst_place_type, out_array[i]);
+    const auto& x = array[i];
+    MemcpyD2HKernel<Context>(dev_ctx, x, dst_place_type, &(out_array->at(i)));
   }
 }
 
