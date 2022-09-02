@@ -233,7 +233,7 @@ def avg_pool1d(x,
     if in_dygraph_mode():
         output = _C_ops.pool2d(x, kernel_size, stride, padding, ceil_mode,
                                exclusive, data_format, 'avg', False, False,
-                               padding_algorithm)
+                               padding_algorithm, True)
         return squeeze(output, [2])
 
     if _in_legacy_dygraph():
@@ -350,7 +350,7 @@ def avg_pool2d(x,
         if in_dygraph_mode():
             output = _C_ops.pool2d(x, kernel_size, stride, padding, ceil_mode,
                                    exclusive, data_format, 'avg', False, False,
-                                   padding_algorithm)
+                                   padding_algorithm, True)
         else:
             output = _legacy_C_ops.pool2d(
                 x, 'pooling_type', 'avg', 'ksize', kernel_size,
@@ -601,7 +601,7 @@ def max_pool1d(x,
         else:
             pool_out = _C_ops.pool2d(x, kernel_size, stride, padding, ceil_mode,
                                      True, data_format, 'max', False, False,
-                                     padding_algorithm)
+                                     padding_algorithm, True)
             return squeeze(pool_out, [2])
 
     if _in_legacy_dygraph():
@@ -1140,7 +1140,7 @@ def max_pool2d(x,
         else:
             return _C_ops.pool2d(x, kernel_size, stride, padding, ceil_mode,
                                  True, data_format, 'max', False, False,
-                                 padding_algorithm)
+                                 padding_algorithm, True)
 
     if _in_legacy_dygraph():
         if return_mask:
@@ -1376,9 +1376,9 @@ def adaptive_avg_pool1d(x, output_size, name=None):
 
     x = unsqueeze(x, [2])
     if in_dygraph_mode():
-        pool_out = _C_ops.pool2d_gpudnn_unused(x, pool_size, [1, 1], [0, 0],
-                                               False, True, "NCHW", pool_type,
-                                               False, True, "EXPLICIT")
+        pool_out = _C_ops.pool2d(x, pool_size, [1, 1], [0, 0], False, True,
+                                 "NCHW", pool_type, False, True, "EXPLICIT",
+                                 False)
         return squeeze(pool_out, [2])
     if _in_legacy_dygraph():
         pool_out = _legacy_C_ops.pool2d(x, 'pooling_type', pool_type, 'ksize',
@@ -1486,9 +1486,8 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             output_size[1] = in_w
 
     if in_dygraph_mode():
-        return _C_ops.pool2d_gpudnn_unused(x, output_size, [1, 1], [0, 0],
-                                           False, True, data_format, 'avg',
-                                           False, True, "EXPLICIT")
+        return _C_ops.pool2d(x, output_size, [1, 1], [0, 0], False, True,
+                             data_format, 'avg', False, True, "EXPLICIT", False)
 
     if _in_legacy_dygraph():
         return _legacy_C_ops.pool2d(x, 'pooling_type', 'avg', 'ksize',
