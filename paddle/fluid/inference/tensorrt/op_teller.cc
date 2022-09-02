@@ -172,6 +172,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "recover_padding",
       "remove_padding",
       "fill_constant",
+      "fill_any_like",
+      "where",
+      "greater_equal",
+      "logical_not",
+      "sin",
+      "cos",
       "sum",
       "shape",
       "squeeze2",
@@ -280,6 +286,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "recover_padding",
       "remove_padding",
       "fill_constant",
+      "fill_any_like",
+      "where",
+      "greater_equal",
+      "logical_not",
+      "sin",
+      "cos",
       "sum",
       "shape",
       "squeeze2",
@@ -1315,7 +1327,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       }
     }
+    if (op_type == "fill_any_like") {
 
+    }
     if (op_type == "slice") {
       if (desc.HasAttr("decrease_axis")) {
         std::vector<int> decrease_axis =
@@ -2176,7 +2190,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
       if (in_dtype == 0) {
         VLOG(3) << "do not support input data type as bool now";
-        return false;
+        return true;
       }
       if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2) &&
             (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
