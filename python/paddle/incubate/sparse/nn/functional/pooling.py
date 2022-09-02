@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.layers import utils
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.nn.functional.pooling import _update_padding_nd
 
 __all__ = []
@@ -95,5 +95,4 @@ def max_pool3d(x,
     #TODO(zkh2016): remove the dependency on dilation from the backend
     dilation = [1, 1, 1]
 
-    return _C_ops.final_state_sparse_maxpool(x, kernel_size, padding, dilation,
-                                             stride)
+    return _C_ops.sparse_maxpool(x, kernel_size, padding, dilation, stride)
