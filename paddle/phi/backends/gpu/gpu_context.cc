@@ -267,8 +267,6 @@ struct GPUContext::Impl {
 
   const Place& GetPlace() const { return place_; }
 
-  const Place& GetPinnedPlace() const { return GPUPinnedPlace(); }
-
   bool IsTensorCoreAvailable() const {
     return blas_tensor_core_handle_ != nullptr;
   }
@@ -798,6 +796,8 @@ GPUContext::GPUContext(const GPUPlace& place, bool init)
 GPUContext::~GPUContext() = default;
 
 const Place& GPUContext::GetPlace() const { return impl_->GetPlace(); }
+
+const Place& GPUContext::GetPinnedPlace() const { return GPUPinnedPlace(); }
 
 gpuStream_t GPUContext::stream() const { return impl_->stream(); }
 
