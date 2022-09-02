@@ -47,11 +47,11 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
-            return np.ones([batch, attrs[0]['groups'] * 3, 64,
-                            64]).astype(np.float32)
+            return np.ones([batch, attrs[0]['groups'] * 3, 64, 64]).astype(
+                np.float32) / 4
 
         def generate_weight1(attrs: List[Dict[str, Any]]):
-            return np.random.random([24, 3, 3, 3]).astype(np.float32)
+            return np.random.random([9, 3, 3, 3]).astype(np.float32) - 0.5
 
         batch_options = [1, 2]
         strides_options = [[2, 2], [1, 2]]
@@ -162,7 +162,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
             attrs, False), (1e-3, 1e-3)
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-3, 1e-3)
+            attrs, False), (1e-2, 1e-2)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -174,7 +174,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
             attrs, True), (1e-3, 1e-3)
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-3, 1e-3)
+            attrs, True), (1e-2, 1e-2)
 
     def test(self):
         self.run_test()

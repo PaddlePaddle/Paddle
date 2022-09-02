@@ -29,7 +29,7 @@ OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 _skip_ops = [
     'create_py_reader', 'create_double_buffer_reader', 'read', 'slice', 'split',
-    'assign'
+    'assign', "send_v2"
 ]
 # update here to support new optimizers
 _supported_optimizer_type = [
@@ -140,6 +140,7 @@ class ShardingPass(PassBase):
             else:
                 sharding_group = dp_group
 
+            self._dist_context._sharding_group = sharding_group
             # TODO(JZ-LIANG) when support multiple dp groups in future, should group param and bind them to corresponding dp group
             params_in_group = [p for p, g in params_grads]
             assert len(params_in_group) == len(
@@ -160,7 +161,7 @@ class ShardingPass(PassBase):
         """
         self._shard_amp_related_op_and_vars(main_block, pass_context)
         self._shard_weight_decay(main_block)
-        self._shard_gradient_clip(main_block)
+        # self._shard_gradient_clip(main_block)
         self._shard_optimizer_ops_and_states(main_block, startup_block)
         self._insert_optimizer_broadcasts(main_block, startup_block)
 

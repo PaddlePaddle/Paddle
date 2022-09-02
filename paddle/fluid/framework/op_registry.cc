@@ -65,7 +65,15 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     op_base = std::unique_ptr<OperatorBase>(
         info.Creator()(type, inputs, outputs, attrs));
   }
-  op_base->SetRuntimeAttributeMap(runtime_attrs);
+  const auto& extra_attr_checkers =
+      operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(type);
+  if (!extra_attr_checkers.empty()) {
+    auto op_runtime_attr_map = runtime_attrs;
+    for (const auto& checker : extra_attr_checkers) {
+      checker(&op_runtime_attr_map, false);
+    }
+    op_base->SetRuntimeAttributeMap(op_runtime_attr_map);
+  }
   return op_base;
 }
 

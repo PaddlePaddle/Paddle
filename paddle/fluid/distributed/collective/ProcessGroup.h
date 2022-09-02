@@ -55,19 +55,27 @@ class ProcessGroup {
   class Task {
    public:
     Task(int rank,
-         const std::vector<phi::DenseTensor>& inputTensors,
-         CommType opType = CommType::UNKNOWN);
+         const std::vector<phi::DenseTensor>& inputs,
+         CommType comm_type);
+    Task(int rank,
+         const std::vector<phi::DenseTensor>& inputs,
+         CommType comm_type,
+         bool sync_op);
 
     virtual ~Task();
     virtual bool IsCompleted();
     virtual bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
     virtual void Synchronize();
+    bool IsSync() const { return sync_op_; }
 
    protected:
     const int rank_;
-    CommType comm_type_;
+    CommType comm_type_{CommType::UNKNOWN};
     std::mutex mutex_;
-    bool is_completed_ = false;
+    bool is_completed_{false};
+
+   private:
+    bool sync_op_{true};
   };
 
   explicit ProcessGroup(int rank,
@@ -82,12 +90,23 @@ class ProcessGroup {
 
   virtual const std::string GetBackendName() const = 0;
 
+  // TODO(liyurui): This API will be moved later
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& /* input tensors */,   // NOLINT
       std::vector<phi::DenseTensor>& /* output tensors */,  // NOLINT
       const AllreduceOptions& = AllreduceOptions()) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support allreduce", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
+      std::vector<phi::DenseTensor>& /* input tensors */,   // NOLINT
+      std::vector<phi::DenseTensor>& /* output tensors */,  // NOLINT
+      const AllreduceOptions&,
+      bool) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support allreduce with sync_op flag",
+        GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
