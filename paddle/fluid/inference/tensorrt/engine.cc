@@ -124,10 +124,7 @@ void TensorRTEngine::Execute(int batch_size,
     void *context_memory{nullptr};
     context_memory =
         inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-            .getContextMemory(
-                predictor_id_per_thread,
-                phi::GPUPlace(device_id_),
-                phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+            .getContextMemory(this);
     infer_context->setDeviceMemory(context_memory);
   }
   if (!with_dynamic_shape()) {

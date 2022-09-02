@@ -35,11 +35,8 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/stream.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {
@@ -820,10 +817,9 @@ class TRTEngineManager {
     max_ctx_mem_size_ = std::max(max_ctx_mem_size_, mem_size);
   }
 
-  void* getContextMemory(PredictorID predictor_id,
-                         const phi::GPUPlace& place,
-                         const phi::Stream& stream) {
+  void* getContextMemory(TensorRTEngine* trt_engine) {
     std::unique_lock<std::mutex> lock(mutex_);
+    auto predictor_id = trt_engine->predictor_id_per_thread;
     if (context_memorys_.count(predictor_id) == 0) {
       cudaMalloc(&context_memory_, max_ctx_mem_size_);
       if (context_memory_ == nullptr) {
