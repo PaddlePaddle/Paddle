@@ -695,6 +695,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
                       max_input_shape_,
                       opt_input_shape_);
       PrepareTRTEngine(scope, trt_engine_);
+      inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+          .updateContextMemorySize(trt_engine_->engine()->getDeviceMemorySize(),
+                                   trt_engine_);
     }
     return trt_engine_;
   }

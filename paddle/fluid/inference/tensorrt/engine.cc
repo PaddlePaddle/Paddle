@@ -82,15 +82,6 @@ void TensorRTEngine::InitNetwork() {
 }
 
 nvinfer1::IExecutionContext *TensorRTEngine::context() {
-#ifndef PADDLE_WITH_TESTING
-  PADDLE_ENFORCE_GT(
-      predictor_id_per_thread,
-      -1,
-      platform::errors::InvalidArgument(
-          "thread local var predictor_id_per_thread must be "
-          "initialized to >= 0, but now predictor_id_per_thread = %d",
-          predictor_id_per_thread));
-#endif
   std::unique_lock<std::mutex> lock(mutex_);
   if (infer_context_.find(predictor_id_per_thread) == infer_context_.end()) {
     PADDLE_ENFORCE_NOT_NULL(
@@ -101,7 +92,7 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
     // IExecutionContext...
     // It's ok. We will set it later.
     nvinfer1::IExecutionContext *infer_context{nullptr};
-    if (context_memory_shared_) {
+    if (context_memory_sharing_) {
       infer_context =
           infer_engine_->createExecutionContextWithoutDeviceMemory();
     } else {
@@ -129,7 +120,7 @@ void TensorRTEngine::Execute(int batch_size,
                              cudaStream_t stream) {
   freshDeviceId();
   auto infer_context = context();
-  if (context_memory_shared_) {
+  if (context_memory_sharing_) {
     void *context_memory{nullptr};
     context_memory =
         inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()

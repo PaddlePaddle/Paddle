@@ -293,15 +293,6 @@ class TensorRTEngine {
 
   int GetProfileIndex() {
     if (max_profile_num_ > 1) {
-#ifndef PADDLE_WITH_TESTING
-      PADDLE_ENFORCE_GT(
-          predictor_id_per_thread,
-          -1,
-          platform::errors::InvalidArgument(
-              "thread local var predictor_id_per_thread must be "
-              "initialized to >= 0, but now predictor_id_per_thread = %d",
-              predictor_id_per_thread));
-#endif
       std::unique_lock<std::mutex> lock(mutex_);
       return profile_index_[predictor_id_per_thread];
     } else {
@@ -320,15 +311,6 @@ class TensorRTEngine {
         infer_engine_,
         platform::errors::InvalidArgument(
             "You should build engine first and then set the context."));
-#ifndef PADDLE_WITH_TESTING
-    PADDLE_ENFORCE_GT(
-        predictor_id_per_thread,
-        -1,
-        platform::errors::InvalidArgument(
-            "thread local var predictor_id_per_thread must be "
-            "initialized to >= 0, but now predictor_id_per_thread = %d",
-            predictor_id_per_thread));
-#endif
     std::unique_lock<std::mutex> lock(mutex_);
     infer_context_[predictor_id_per_thread].reset(nullptr);
     infer_context_.erase(predictor_id_per_thread);
@@ -663,6 +645,10 @@ class TensorRTEngine {
 
   void SetUseInspector(bool use_inspector) { use_inspector_ = use_inspector; }
 
+  void SetContextMemorySharing(bool context_memory_sharing) {
+    context_memory_sharing_ = context_memory_sharing;
+  }
+
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
@@ -681,8 +667,8 @@ class TensorRTEngine {
   // batch size of the current data, will be updated each Executation.
   int batch_size_{-1};
 
-  // use for subengine context memory sharing
-  bool context_memory_shared_{true};
+  // use for engine context memory sharing
+  bool context_memory_sharing_{false};
 
   int device_id_;
   int max_profile_num_{1};
@@ -762,7 +748,6 @@ class TensorRTEngine {
 
 class TRTEngineManager {
   using PredictorID = int;
-  using AllocationPtr = phi::Allocator::AllocationPtr;
 
  public:
   bool Empty() const {
@@ -840,8 +825,8 @@ class TRTEngineManager {
                          const phi::Stream& stream) {
     std::unique_lock<std::mutex> lock(mutex_);
     if (context_memorys_.count(predictor_id) == 0) {
-      auto memory_addr = memory::Alloc(place, max_ctx_mem_size_, stream);
-      if (memory_addr == nullptr) {
+      cudaMalloc(&context_memory_, max_ctx_mem_size_);
+      if (context_memory_ == nullptr) {
         PADDLE_ENFORCE_EQ(
             max_ctx_mem_size_,
             0,
@@ -849,17 +834,15 @@ class TRTEngineManager {
                 "The context memory size is non-zero, but the "
                 "memory address we applied for is NULL, we failed to set it."));
       }
-      // context_memory_[predictor_id].reset(memory_addr.release());
-      context_memorys_[predictor_id] = std::move(memory_addr);
+      context_memorys_[predictor_id] = context_memory_;
     }
-    // ->ptr(): has offset in aligned memory
-    return context_memorys_[predictor_id].get()->ptr();
+    return context_memorys_[predictor_id];
   }
 
   void releaseContextMemory(PredictorID predictor_id) {
     std::unique_lock<std::mutex> lock(mutex_);
     if (context_memorys_.count(predictor_id)) {
-      context_memorys_[predictor_id].reset(nullptr);
+      cudaFree(context_memorys_[predictor_id]);
       context_memorys_.erase(predictor_id);
     }
   }
@@ -867,7 +850,8 @@ class TRTEngineManager {
  private:
   mutable std::mutex mutex_;
   size_t max_ctx_mem_size_{0};
-  std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
+  void* context_memory_{nullptr};
+  std::unordered_map<PredictorID, void*> context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
 };
 

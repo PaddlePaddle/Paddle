@@ -280,6 +280,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
+  CP_MEMBER(trt_engine_memory_sharing_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -530,6 +531,7 @@ void AnalysisConfig::EnableTensorRtEngine(
   }
 
   use_tensorrt_ = true;
+  trt_engine_memory_sharing_ = true;
   tensorrt_workspace_size_ = workspace_size;
   tensorrt_max_batchsize_ = max_batch_size;
   tensorrt_min_subgraph_size_ = min_subgraph_size;
@@ -577,7 +579,7 @@ void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {
-  auto info = SerializeInfoCache();
+  auto &&info = SerializeInfoCache();
   if (info == serialized_info_cache_) return;
 
   // Transfer pass_builder and copy the existing compatible passes.
@@ -828,6 +830,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << trt_dla_core_;
 
   ss << enable_memory_optim_;
+  ss << trt_engine_memory_sharing_;
 
   ss << use_mkldnn_;
   ss << mkldnn_cache_capacity_;
@@ -916,6 +919,10 @@ void AnalysisConfig::EnableMemoryOptim(bool x) {
 
 bool AnalysisConfig::enable_memory_optim() const {
   return enable_memory_optim_;
+}
+
+bool AnalysisConfig::trt_engine_memory_sharing() const {
+  return trt_engine_memory_sharing_;
 }
 
 void AnalysisConfig::SetModelBuffer(const char *prog_buffer,
@@ -1071,6 +1078,8 @@ std::string AnalysisConfig::Summary() {
       if (trt_use_dla_) {
         os.InsertRow({"tensorrt_dla_core", std::to_string(trt_dla_core_)});
       }
+      os.InsertRow({"trt_engine_memory_sharing",
+                    trt_engine_memory_sharing_ ? "true" : "false"});
 #endif
     }
   }
@@ -1174,11 +1183,11 @@ void AnalysisConfig::CollectShapeRangeInfo(
   shape_range_info_path_ = shape_range_info_path;
 }
 
-const std::string &AnalysisConfig::shape_range_info_path() {
+const std::string &AnalysisConfig::shape_range_info_path() const {
   return shape_range_info_path_;
 }
 
-bool AnalysisConfig::shape_range_info_collected() {
+bool AnalysisConfig::shape_range_info_collected() const {
   return collect_shape_range_info_;
 }
 
@@ -1189,11 +1198,11 @@ void AnalysisConfig::EnableTunedTensorRtDynamicShape(
   trt_tuned_dynamic_shape_ = true;
 }
 
-bool AnalysisConfig::tuned_tensorrt_dynamic_shape() {
+bool AnalysisConfig::tuned_tensorrt_dynamic_shape() const {
   return trt_tuned_dynamic_shape_;
 }
 
-bool AnalysisConfig::trt_allow_build_at_runtime() {
+bool AnalysisConfig::trt_allow_build_at_runtime() const {
   return trt_allow_build_at_runtime_;
 }
 

@@ -145,7 +145,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_calib_mode", new bool(use_calib_mode));
       pass->Set("precision_mode",
                 new AnalysisConfig::Precision(precision_mode));
-
+      pass->Set("context_memory_sharing",
+                new bool(argument->trt_engine_memory_sharing()));
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();

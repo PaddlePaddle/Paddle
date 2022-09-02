@@ -908,7 +908,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   }
 
 #ifdef PADDLE_WITH_TENSORRT
-  if (config_.tensorrt_engine_enabled()) {
+  if (config_.trt_engine_memory_sharing()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
         predictor_id_;
     VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
@@ -1101,6 +1101,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtAllowBuildAtRuntime(
         config_.trt_allow_build_at_runtime());
     argument_.SetTensorRtUseInspector(config_.trt_use_inspector_);
+    argument_.SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
   }
 
   if (config_.dlnne_enabled()) {
@@ -1641,7 +1642,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
 #endif
 
 #ifdef PADDLE_WITH_TENSORRT
-  if (config_.tensorrt_engine_enabled()) {
+  if (config_.trt_engine_memory_sharing()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
         predictor_id_;
     VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
