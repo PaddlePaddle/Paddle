@@ -468,11 +468,11 @@ def avg_pool3d(x,
     _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
     _check_value_limitation(stride, "stride", min_limit=1e-3)
 
-    if in_dygraph_mode() or _in_legacy_dygraph():
+    if _non_static_mode():
         if in_dygraph_mode():
             output = _C_ops.pool3d(x, kernel_size, stride, padding, ceil_mode,
                                    exclusive, data_format, 'avg', False, False,
-                                   padding_algorithm)
+                                   padding_algorithm, True)
         if _in_legacy_dygraph():
             output = _legacy_C_ops.pool3d(
                 x, 'pooling_type', 'avg', 'ksize', kernel_size, 'strides',
@@ -1281,7 +1281,7 @@ def max_pool3d(x,
         else:
             return _C_ops.pool3d(x, kernel_size, stride, padding, ceil_mode,
                                  True, data_format, 'max', False, False,
-                                 padding_algorithm)
+                                 padding_algorithm, True)
 
     if _in_legacy_dygraph():
         if return_mask:
@@ -1605,7 +1605,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
 
     if in_dygraph_mode():
         return _C_ops.pool3d(x, output_size, [1, 1, 1], [0, 0, 0], False, True,
-                             data_format, 'avg', False, True, "EXPLICIT")
+                             data_format, 'avg', False, True, "EXPLICIT", False)
     elif _in_legacy_dygraph():
         return _legacy_C_ops.pool3d(x, 'pooling_type', 'avg', 'ksize',
                                     output_size, 'global_pooling', False,
