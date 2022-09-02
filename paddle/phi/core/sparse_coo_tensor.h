@@ -123,11 +123,11 @@ class SparseCooTensor : public TensorBase,
 
   /// \brief resize sparse coo tensor.
   /// \param dense_dims The dims of original dense tensor.
-  /// \param sparse_dim number of sparse dimensions
-  /// \param non_zero_num The total number of non zero element
-  void Resize(const DDim& dense_dim,
-              const int64_t sparse_dim,
-              const int64_t non_zero_num);
+  /// \param num_sparse_dims number of sparse dimensions
+  /// \param num_non_zero The total number of non zero elements
+  void Resize(const DDim& dense_dims,
+              const int64_t num_sparse_dims,
+              const int64_t num_non_zero);
 
   /// \brief set the member of sparse coo tensor.
   /// \param non_zero_indices The indices of non zero elements in original dense
