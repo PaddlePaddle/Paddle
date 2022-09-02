@@ -274,7 +274,8 @@ void QkvToContextPluginDynamic::configurePlugin(
     auto input_dims = in[0].desc.dims;
     int batch = input_dims.d[0];
     int real_seq_len = input_dims.d[1];
-    int seq_len = (real_seq_len + 7) / 8 * 8;
+    // paddding
+    int seq_len = round_up(real_seq_len, 8);
     if (batch != -1 && real_seq_len != -1) {
       int device_id = 0;
       cudaGetDevice(&device_id);

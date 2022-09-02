@@ -1114,8 +1114,8 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(), (1e-3,
                                                                          1e-3)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(), (1e-3,
-                                                                         1e-3)
+        yield self.create_inference_config(), generate_trt_nodes_num(), (1e-5,
+                                                                         1e-5)
 
     def add_skip_trt_case(self):
         pass
