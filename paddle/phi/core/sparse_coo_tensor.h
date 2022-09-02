@@ -164,11 +164,11 @@ class SparseCooTensor : public TensorBase,
   /// \brief set the dims of original dense tensor
   void set_dims(const DDim& dims) { this->dims_ = dims; }
 
-  /// \brief get the sparse dim
-  int32_t sparse_dim() const;
+  /// \brief get the number of sparse dims
+  int32_t num_sparse_dims() const;
 
-  /// \brief get the dnese dim
-  int32_t dense_dim() const;
+  /// \brief get the number of dense dims
+  int32_t num_dense_dims() const;
 
   /// \brief query table according to key
   const std::pair<DenseTensor, DenseTensor>* IndicesPairs(
