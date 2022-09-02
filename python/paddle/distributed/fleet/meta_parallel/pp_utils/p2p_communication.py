@@ -19,7 +19,6 @@ import numpy as np
 from paddle import _C_ops, _legacy_C_ops
 import paddle.fluid.core as core
 from paddle.fluid.framework import _in_legacy_dygraph, _non_static_mode, in_dygraph_mode
-from ..pipeline_parallel import is_pipeline_last_stage, is_pipeline_first_stage
 
 _hcg = None
 _use_cache = False
@@ -438,8 +437,8 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
     return tensor_recv_prev, tensor_recv_next
 
 
-def recv_forward():
-    if is_pipeline_first_stage():
+def recv_forward(pp_first_stage):
+    if pp_first_stage:
         input_tensor = None
     else:
         if not _send_recv_meta.has_recv_meta:
@@ -453,8 +452,8 @@ def recv_forward():
     return input_tensor
 
 
-def recv_backward():
-    if is_pipeline_last_stage():
+def recv_backward(pp_last_stage):
+    if pp_last_stage:
         output_tensor_grad = None
     else:
         _, output_tensor_grad = _p2p_helper(tensor_send_next=None,
@@ -464,8 +463,8 @@ def recv_backward():
     return output_tensor_grad
 
 
-def send_forward(output_tensor):
-    if not is_pipeline_last_stage():
+def send_forward(output_tensor, pp_last_stage):
+    if not pp_last_stage:
         if not _send_recv_meta.has_send_meta:
             _send_recv_meta.set_send_message(output_tensor)
             _send_recv_meta.send_meta(output_tensor, _hcg.send_next_group)
@@ -477,16 +476,16 @@ def send_forward(output_tensor):
                     recv_next=False)
 
 
-def send_backward(input_tensor_grad):
-    if not is_pipeline_first_stage():
+def send_backward(input_tensor_grad, pp_first_stage):
+    if not pp_first_stage:
         _p2p_helper(tensor_send_next=None,
                     tensor_send_prev=input_tensor_grad,
                     recv_prev=False,
                     recv_next=False)
 
 
-def send_forward_recv_backward(output_tensor):
-    if is_pipeline_last_stage():
+def send_forward_recv_backward(output_tensor, pp_last_stage):
+    if pp_last_stage:
         output_tensor_grad = None
     else:
         _, output_tensor_grad = _p2p_helper(tensor_send_next=output_tensor,
@@ -496,8 +495,8 @@ def send_forward_recv_backward(output_tensor):
     return output_tensor_grad
 
 
-def send_backward_recv_forward(input_tensor_grad):
-    if is_pipeline_first_stage():
+def send_backward_recv_forward(input_tensor_grad, pp_first_stage):
+    if pp_first_stage:
         input_tensor = None
     else:
         input_tensor, _ = _p2p_helper(tensor_send_next=None,
