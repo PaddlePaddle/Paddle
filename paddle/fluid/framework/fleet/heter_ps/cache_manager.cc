@@ -28,7 +28,7 @@ DECLARE_bool(dump_cache_manager);
 namespace paddle {
 namespace framework {
 
-CacheManager::CacheManager(std::shared_ptr<HeterPsResource> resource): 
+CacheManager::CacheManager(std::shared_ptr<HeterPsResource> resource):
     resource_(resource), thread_num_(-1), batch_sz_(-1), worker_num_(1) {
 }
 
@@ -74,7 +74,7 @@ void CacheManager::clear_sign2fids() {
 void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
   VLOG(0) << "build_sign2fids: keylen:" << len;
   // pre-build the sign2fid_, in order not to use mutex
-  PADDLE_ENFORCE_GT(dev_feasign_cnts_.size(), 0,  
+  PADDLE_ENFORCE_GT(dev_feasign_cnts_.size(), 0,
       platform::errors::External("maybe not call CacheManager::init()"));
   if (sign2fid_.find(0) == sign2fid_.end()) {
     // padding feasign 0, set fid 0, to be processed specially later in pull/push
@@ -95,7 +95,7 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
   }
   int need_resize = 0;
   int origin_size = fid2meta_.size();
-  int curr_reserve_size = int(origin_size / worker_num_); 
+  int curr_reserve_size = int(origin_size / worker_num_);
   for (int i = 0; i < worker_num_; i++) {
     int inc_cnt = fea_cnts[i];
     int curr_cnt = *(dev_feasign_cnts_[i]);
@@ -104,7 +104,7 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
     }
   }
   if (need_resize > 0) {
-    fid2meta_.resize(need_resize * worker_num_); 
+    fid2meta_.resize(need_resize * worker_num_);
   }
   VLOG(0) << "build_sign2fids: worker_num:" << worker_num_
           << ", curr_reserve_size:" << curr_reserve_size
@@ -121,7 +121,7 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
         }
         int dev_id = keys[j] % worker_num_;
         int tmp = (*(dev_feasign_cnts_[dev_id]))++;
-        int tmp_fid = dev_id + tmp * worker_num_;  
+        int tmp_fid = dev_id + tmp * worker_num_;
         sign2fid_[keys[j]] = tmp_fid;
         PADDLE_ENFORCE_LT(tmp_fid, (int)fid2meta_.size(),
             platform::errors::External("fid2meta_ size too small"));
@@ -203,7 +203,7 @@ std::string CacheManager::dump_to_file() {
 
   ofs << "------------------------------------------" << std::endl;
   ofs.close();
-  return name_ss.str(); 
+  return name_ss.str();
 }
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
@@ -271,7 +271,7 @@ std::shared_ptr<std::vector<std::shared_ptr<std::vector<uint32_t>>>>
 }
 
 void CacheManager::build_batch_fidseq(
-    std::vector<std::deque<Record> *> & all_chan_recs, 
+    std::vector<std::deque<Record> *> & all_chan_recs,
                const std::vector<bool> & slot_is_dense) {
   platform::Timer timeline;
   timeline.Start();
@@ -290,7 +290,7 @@ void CacheManager::build_batch_fidseq(
       auto seq = std::make_shared<BatchFidSeq>();
       seq->h_fidseq = std::move(*(n_batch_bfidseq[i]));
       seq->h_bucket_sizes.resize(worker_num_);
- 
+
       auto & fidseq = seq->h_fidseq;
 
       ThreadBarrier partition_barrier(thread_num_);
@@ -337,8 +337,8 @@ void CacheManager::build_batch_fidseq(
           }
           resize_barrier.wait();
           if (t < (int)h_fid_buckets.size()) {
-            memcpy(&(seq->h_fidseq_bucket[0]) + t * max_bucket_size, 
-                                      &(h_fid_buckets[t][0]), 
+            memcpy(&(seq->h_fidseq_bucket[0]) + t * max_bucket_size,
+                                      &(h_fid_buckets[t][0]),
                   sizeof(uint32_t) * h_fid_buckets[t].size());
           }
         });
@@ -386,7 +386,7 @@ void CacheManager::prepare_next_batch(int worker_id) {
     //timeline.Pause();
     //total_time += timeline.ElapsedSec();
     //time_ss << ",worker0-getchan:" << timeline.ElapsedSec();
- 
+
     //timeline.Start();
 
     PADDLE_ENFORCE_NOT_NULL(current_batch_fidseq_);
@@ -402,7 +402,7 @@ void CacheManager::prepare_next_batch(int worker_id) {
     current_batch_fidseq_->h_cache_bfid_lods.resize(worker_num_);
     current_batch_fidseq_->d_cache_bfid_lods.resize(worker_num_, nullptr);
 
-    if (FLAGS_dump_cache_manager) { 
+    if (FLAGS_dump_cache_manager) {
       current_batch_fidseq_->debug_h_cache_bfids.resize(worker_num_);
       current_batch_fidseq_->debug_h_cache_fids.resize(worker_num_);
     }
@@ -419,13 +419,13 @@ void CacheManager::prepare_next_batch(int worker_id) {
   //timeline.Pause();
   //total_time += timeline.ElapsedSec();
   //time_ss << ",wait:" << timeline.ElapsedSec();
-  
+
   //timeline.Start();
   int dev_id = resource_->dev_id(worker_id);
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
-  
-  current_batch_fidseq_->d_fidseqs[worker_id] = memory::Alloc(place, 
+
+  current_batch_fidseq_->d_fidseqs[worker_id] = memory::Alloc(place,
           current_batch_fidseq_->h_fidseq.size() * sizeof(uint32_t));
   current_batch_fidseq_->d_bucket_sizes[worker_id] = memory::Alloc(place,
           current_batch_fidseq_->h_bucket_sizes.size() * sizeof(uint32_t));
@@ -439,9 +439,9 @@ void CacheManager::prepare_next_batch(int worker_id) {
   //timeline.Start();
   auto cpu_place = platform::CPUPlace();
   //auto & stream = comm_streams_[worker_id];
-  memory::Copy(place, 
+  memory::Copy(place,
               reinterpret_cast<uint32_t*>(
-                  current_batch_fidseq_->d_fidseqs[worker_id]->ptr()), 
+                  current_batch_fidseq_->d_fidseqs[worker_id]->ptr()),
               cpu_place,
               &(current_batch_fidseq_->h_fidseq[0]),
               current_batch_fidseq_->h_fidseq.size() * sizeof(uint32_t));
@@ -472,7 +472,7 @@ void CacheManager::convert_fid2bfid(int dev_id, uint32_t * fids, int fid_len) {
   PADDLE_ENFORCE_NOT_NULL(current_batch_fidseq_);
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
-  
+
   int worker_id = resource_->get_index_by_devid(dev_id);
   auto & stream = comm_streams_[worker_id];
   sync_stream(stream);
@@ -530,7 +530,7 @@ void CacheManager::prepare_merge_grad(int dev_id) {
         current_batch_fidseq_->d_cache_bfids[worker_id]->ptr(),
         cache_bfid_size * sizeof(int));
     xpu_wait(0);
-    
+
     //timeline.Pause();
     //total_time += timeline.ElapsedSec();
     //time_ss << ",copy_to_cpu:" << timeline.ElapsedSec();
@@ -541,7 +541,7 @@ void CacheManager::prepare_merge_grad(int dev_id) {
       PADDLE_ENFORCE_LT(h_cache_bfids[i], (int)bfid_uniq_count.size(),
                             platform::errors::External("error bfid"));
       bfid_uniq_count[h_cache_bfids[i]]++;
-    } 
+    }
 
     //timeline.Pause();
     //total_time += timeline.ElapsedSec();
@@ -606,7 +606,7 @@ void CacheManager::prepare_merge_grad(int dev_id) {
     //time_ss << ",sort-bfid-pairs-2:" << timeline.ElapsedSec();
     //timeline.Start();
 
-    current_batch_fidseq_->d_cache_bfid_resort_indexes[worker_id] = memory::Alloc(place, 
+    current_batch_fidseq_->d_cache_bfid_resort_indexes[worker_id] = memory::Alloc(place,
                                                               cache_bfid_size * sizeof(int));
     memory::Copy(place,
         current_batch_fidseq_->d_cache_bfid_resort_indexes[worker_id]->ptr(),
@@ -641,7 +641,7 @@ void CacheManager::prepare_merge_grad(int dev_id) {
 
 void CacheManager::get_merge_grad_params(int dev_id,
       int ** key_resort_idxs, int * out_key_resort_idx_len,
-                   int ** fidseq_lods, int * fidseq_lod_len) {
+                   int ** fidseq_lods, int * fidseq_lod_len, uint32_t * first_fidseq_elem) {
   PADDLE_ENFORCE_NOT_NULL(current_batch_fidseq_);
   int worker_id = resource_->get_index_by_devid(dev_id);
 
@@ -655,6 +655,9 @@ void CacheManager::get_merge_grad_params(int dev_id,
   *fidseq_lods = reinterpret_cast<int*>(
      current_batch_fidseq_->d_cache_bfid_lods[worker_id]->ptr());
   *fidseq_lod_len = current_batch_fidseq_->h_cache_bfid_lods[worker_id].size();
+  if (current_batch_fidseq_->h_bucket_sizes[0] > 0) {
+      *first_fidseq_elem = current_batch_fidseq_->h_fidseq_bucket[0];
+  }
 }
 
 void CacheManager::get_device_fidseq_bucket(int dev_id, uint32_t ** out_keys, int * out_key_len) {
@@ -708,7 +711,7 @@ void CacheManager::get_bfidseq(int dev_id, int ** out_keys, int * out_key_len) {
       current_batch_fidseq_->d_cache_bfids[worker_id]->ptr());
   *out_key_len = current_batch_fidseq_->h_cache_bfid_sizes[worker_id];
 
-  if (FLAGS_dump_cache_manager && 
+  if (FLAGS_dump_cache_manager &&
       current_batch_fidseq_->debug_h_cache_bfids[worker_id].size() == 0) {
     DevPlace place = DevPlace(dev_id);
     AnyDeviceGuard guard(dev_id);
@@ -743,12 +746,12 @@ void CacheManager::compress_bucket(int dev_id, void * vals, int val_len, int typ
   //int worker_id = resource_->get_index_by_devid(dev_id);
   //auto & stream = comm_streams_[worker_id];
   sync_stream(stream);
- 
+
   //VLOG(0) << "compress_bucket: h_fidseq.size():" << current_batch_fidseq_->h_fidseq.size()
   //        << ", h_fidseq_bucket.size():" << current_batch_fidseq_->h_fidseq_bucket.size();
   int buffer_size = current_batch_fidseq_->h_fidseq.size() * type_size;
   std::unique_ptr<char[]> h_val_buffer(new char[buffer_size]);
-  
+
   auto cpu_place = platform::CPUPlace();
   int buffer_offset = 0;
   auto & bucket_sizes = current_batch_fidseq_->h_bucket_sizes;

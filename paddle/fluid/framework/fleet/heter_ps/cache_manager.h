@@ -86,8 +86,8 @@ struct BatchFidSeq {
     data_ss << "\ndebug_h_cache_bfids:\n";
     for (size_t i = 0; i < debug_h_cache_bfids.size(); i++) {
       for (size_t j = 0; j < debug_h_cache_bfids[i].size(); j++) {
-        data_ss << "debug_h_cache_bfids-" << i << ": " << j  
-                << " " << debug_h_cache_fids[i][j] 
+        data_ss << "debug_h_cache_bfids-" << i << ": " << j
+                << " " << debug_h_cache_fids[i][j]
                 << " " << debug_h_cache_bfids[i][j] << "\n";
       }
     }
@@ -174,8 +174,8 @@ class CacheManager {
 
   void prepare_merge_grad(int dev_id);
   void get_merge_grad_params(int dev_id,
-      int ** key_resort_idxs, int * out_key_resort_idx_len, 
-                   int ** fidseq_lods, int * fidseq_lod_len);
+      int ** key_resort_idxs, int * out_key_resort_idx_len,
+                   int ** fidseq_lods, int * fidseq_lod_len, uint32_t * first_fidseq_elem);
 #endif
 
   std::string dump_to_file();
@@ -201,7 +201,7 @@ class CacheManager {
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
   // for batch fid sequence
-  ThreadBarrier worker_barrier_; 
+  ThreadBarrier worker_barrier_;
   std::thread batch_fidseq_proc_thread_;
   std::shared_ptr<BatchFidSeq> current_batch_fidseq_ = nullptr;
   std::shared_ptr<

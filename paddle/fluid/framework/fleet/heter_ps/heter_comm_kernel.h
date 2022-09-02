@@ -16,6 +16,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/place.h"
 
 #if defined(PADDLE_WITH_CUDA)
@@ -113,9 +114,16 @@ class HeterCommKernel {
                      StreamType stream = NULL, bool debug_synchronous = false);
 #endif
 
-  template <typename KeyT, typename ValueT, typename StreamType>
-  void merge_grad(KeyT* d_keys, ValueT* d_vals_in, int len, ValueT* d_vals_out,
-      const StreamType& stream);
+  template <typename TID, typename ValueT, typename StreamType>
+  void merge_grad(
+    uint32_t first_fidseq_elem,
+    TID* fidseq_grad_idxs,
+    TID* fidseq_lods,
+    int fidseq_lods_len,
+    ValueT* d_vals_in,
+    int len,
+    ValueT* d_vals_out,
+    const StreamType& stream);
 
 #if defined(PADDLE_WITH_XPU_KP)
 

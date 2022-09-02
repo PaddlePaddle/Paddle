@@ -55,13 +55,14 @@ struct FeatureValue {
   }
 };
 
+// If FeaturePushValue struct change, the FeaturePushValuePadded must change.
 struct FeaturePushValue {
   float show;
   float clk;
   int slot;
   float lr_g;
   float mf_g[MF_DIM];
-  
+
   friend std::ostream& operator<<(std::ostream& out, FeaturePushValue& val) {
     out << "show:" << val.show << " clk:" << val.clk << " slot:" << val.slot
         << " lr_g:" << val.lr_g;
@@ -70,6 +71,7 @@ struct FeaturePushValue {
     }
     return out;
   }
+
   // __device__ __forceinline__ FeaturePushValue
   // operator+(const FeaturePushValue& a) const {
   //  FeaturePushValue out;
@@ -82,6 +84,16 @@ struct FeaturePushValue {
   //  }
   //  return out;
   // }
+};
+
+// In order to use SIMD add, make sure the FeaturePushValuePadded to be aline with 16 float.
+struct FeaturePushValuePadded {
+  float show;
+  float clk;
+  int slot;
+  float lr_g;
+  float mf_g[MF_DIM];
+  float pad[4];
 };
 
 }  // end namespace framework

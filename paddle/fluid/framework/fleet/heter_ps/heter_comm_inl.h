@@ -990,10 +990,10 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   AnyDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(dev_num, 0);
 
-  //platform::Timer timeline;
-  //std::stringstream time_ss;
-  //time_ss << "dev:" << dev_num << ",key_len:" << len;
-  //double total_time = 0.0;
+  // platform::Timer timeline;
+  // std::stringstream time_ss;
+  // time_ss << "dev:" << dev_num << ",key_len:" << len;
+  // double total_time = 0.0;
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
 
@@ -1025,8 +1025,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   int fidseq_grad_idx_len = 0;
   int * fidseq_lods = nullptr;
   int fidseq_lod_len = 0;
+  uint32_t first_fidseq_elem = 0;
   cache_mgr_->get_merge_grad_params(
-      dev_id, &fidseq_grad_idxs, &fidseq_grad_idx_len, &fidseq_lods, &fidseq_lod_len);
+      dev_id, &fidseq_grad_idxs, &fidseq_grad_idx_len, &fidseq_lods, &fidseq_lod_len, &first_fidseq_elem);
   PADDLE_ENFORCE_EQ(fidseq_grad_idx_len, len);
   PADDLE_ENFORCE_EQ(fidseq_lod_len, all_fidseq_bucket_len + 1);
   // for new merge-grad impl end
@@ -1035,22 +1036,13 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   //total_time += timeline.ElapsedSec();
   //time_ss << ",get_merge_grad_params:" << timeline.ElapsedSec();
 
-  int* host_keys = (int*)malloc(sizeof(int) * len);
-  FeaturePushValue* host_grads = (FeaturePushValue*)malloc(sizeof(FeaturePushValue) * len);
-  FeaturePushValue* host_dest_ref = (FeaturePushValue*)malloc(sizeof(FeaturePushValue) * len);
-  xpu_memcpy(host_keys, (void*)d_bfids_ptr, sizeof(int) * len, XPU_DEVICE_TO_HOST);
-  xpu_memcpy(host_dest_ref, (void*)d_all_fidseq_bucket_grads_ptr, sizeof(FeaturePushValue) * len, XPU_DEVICE_TO_HOST);
-  xpu_memcpy(host_grads, (void*)d_grads, sizeof(FeaturePushValue)*len, XPU_DEVICE_TO_HOST);
-  cpu_merge_grad(host_keys, host_grads, host_dest_ref, len);
-  xpu_memcpy((void*)d_all_fidseq_bucket_grads_ptr, host_dest_ref, sizeof(FeaturePushValue) * len, XPU_HOST_TO_DEVICE);
-  free(host_keys);
-  free(host_grads);
-  free(host_dest_ref);
-  // heter_comm_kernel_->merge_grad(d_bfids_ptr, d_grads, len, d_all_fidseq_bucket_grads_ptr, stream);
-  //timeline.Pause();
-  //total_time += timeline.ElapsedSec();
-  //time_ss << ",merge_grad:" << timeline.ElapsedSec();
-  //timeline.Start();
+  heter_comm_kernel_->merge_grad(first_fidseq_elem, fidseq_grad_idxs, fidseq_lods, fidseq_lod_len,
+      d_grads, len, d_all_fidseq_bucket_grads_ptr, stream);
+
+  // timeline.Pause();
+  // total_time += timeline.ElapsedSec();
+  // time_ss << ",merge_grad:" << timeline.ElapsedSec();
+  // timeline.Start();
 
   // all_gather
   auto d_all_grads = memory::Alloc(place, all_fidseq_bucket_len * sizeof(GradType));
@@ -1060,13 +1052,19 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   GradType* d_all_grads_after_gather_ptr =
       reinterpret_cast<GradType*>(d_all_grads_after_gather->ptr());
   if (resource_->total_device() > 1) {
-    //sync_stream(stream);
+    // sync_stream(stream);
     auto comm = platform::BKCLCommContext::Instance().Get(0, place);
     VLOG(3) << "heter comm inl push sparse all gather start";
     bkcl_all_gather(comm->comm(), d_all_fidseq_bucket_grads_ptr,
         all_fidseq_bucket_len * sizeof(GradType) / sizeof(float),
         d_all_grads_after_gather_ptr, BKCL_FLOAT, stream);
     VLOG(3) << "heter comm inl push sparse all gather finish";
+
+    // sync_stream(stream);
+    // timeline.Pause();
+    // time_ss << "bkcl_all_gather, len: " << all_fidseq_bucket_len * sizeof(GradType)
+    // << ", time: " << timeline.ElapsedSec()
+    // << "s, speed: " << (all_fidseq_bucket_len * sizeof(GradType)) / timeline.ElapsedSec() << "B/s";
 
     heter_comm_kernel_->sum_fidseq_add_grad(d_all_grads_after_gather_ptr,
         all_fidseq_bucket_len, stream,
@@ -1091,7 +1089,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   // total_time += timeline.ElapsedSec();
   // time_ss << ",update:" << timeline.ElapsedSec();
 
-  //VLOG(0) << "push_sparse time cost:" << total_time
+  // VLOG(0) << "push_sparse time cost:" << total_time
   //        << " sec, detail:" << time_ss.str();
 #else
   int total_device = resource_->total_device();
