@@ -29,18 +29,18 @@
 #include "paddle/fluid/eager/saved_tensors_hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#if defined(WITH_PYTHON) || !defined(ON_INFER))
+#if defined(WITH_PYTHON) || !defined(ON_INFER)
 #include "paddle/fluid/pybind/eager.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/pytypes.h"
 #endif
 
-#if defined(WITH_PYTHON) || !defined(ON_INFER))
+#if defined(WITH_PYTHON) || !defined(ON_INFER)
 PyTypeObject* p_tensor_type_tensor_wrapper = nullptr;
 #endif
 namespace egr {
 
-#if defined(WITH_PYTHON) || !defined(ON_INFER))
+#if defined(WITH_PYTHON) || !defined(ON_INFER)
 PyObject* ToPyObject(const paddle::experimental::Tensor& value) {
   PyObject* obj = nullptr;
   obj = p_tensor_type_tensor_wrapper->tp_alloc(p_tensor_type_tensor_wrapper, 0);
@@ -113,7 +113,7 @@ TensorWrapper::TensorWrapper(const paddle::experimental::Tensor& tensor,
           "Unrecognized tensor type for no_need_buffer feature"));
     }
   } else {
-#if defined(WITH_PYTHON) || !defined(ON_INFER))
+#if defined(WITH_PYTHON) || !defined(ON_INFER)
     if (SavedTensorsHooks::GetInstance().is_enable() &&
         tensor.is_dense_tensor()) {
       phi::DenseTensor* dense_tensor =
@@ -138,7 +138,7 @@ TensorWrapper::TensorWrapper(const paddle::experimental::Tensor& tensor,
     } else {
 #endif
       intermidiate_tensor_.set_impl(tensor.impl());
-#if defined(WITH_PYTHON) || !defined(ON_INFER))
+#if defined(WITH_PYTHON) || !defined(ON_INFER)
     }
 #endif
   }
@@ -168,7 +168,7 @@ paddle::experimental::Tensor TensorWrapper::recover() {
     return paddle::experimental::Tensor();
   }
 
-#if defined(WITH_PYTHON) || !defined(ON_INFER))
+#if defined(WITH_PYTHON) || !defined(ON_INFER)
   if (packed_tensor_info_ && unpack_hook_) {
     bool grad_tmp = egr::Controller::Instance().HasGrad();
     egr::Controller::Instance().SetHasGrad(false);
@@ -200,7 +200,7 @@ paddle::experimental::Tensor TensorWrapper::recover() {
   } else {
 #endif
     check_inplace_version();
-#if defined(WITH_PYTHON) || !defined(ON_INFER))
+#if defined(WITH_PYTHON) || !defined(ON_INFER)
   }
 #endif
 
