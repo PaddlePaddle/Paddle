@@ -118,23 +118,22 @@ void QuantDequantMkldnnPass::CollectWeightScalesInfoFromONNXFormatDequantize(
           std::vector<float> scale_v = var_quant_scales->at(x_var_name);
           var_quant_scales->insert(std::make_pair(out_var_name, scale_v));
         }
-        continue;
-      }
-      *onnx_format_quantize_model = true;
-      auto scale_name = op_desc->Input("Scale")[0];
-      auto* var = scope->FindVar(scale_name);
-      PADDLE_ENFORCE_NOT_NULL(
-          var,
-          platform::errors::NotFound(
-              "The Scales variable [%s] of dequantize op is not found.", var));
+      } else {
+        *onnx_format_quantize_model = true;
+        auto scale_name = op_desc->Input("Scale")[0];
+        auto* var = scope->FindVar(scale_name);
+        PADDLE_ENFORCE_NOT_NULL(
+            var,
+            platform::errors::NotFound(
+                "The Scales variable [%s] of dequantize op is not found.",
+                var));
 
-      auto* scale_tensor = var->GetMutable<LoDTensor>();
-      auto* scale_data = scale_tensor->data<float>();
-      std::vector<float> thresholds{};
-      for (int i = 0; i < scale_tensor->numel(); i++) {
-        thresholds.push_back(scale_data[i]);
+        auto* scale_tensor = var->GetMutable<LoDTensor>();
+        auto* scale_data = scale_tensor->data<float>();
+        std::vector<float> thresholds(scale_data,
+                                      scale_data + scale_tensor->numel());
+        weight_thresholds->insert(std::make_pair(x_var_name, thresholds));
       }
-      weight_thresholds->insert(std::make_pair(x_var_name, thresholds));
     }
   }
 }
@@ -358,14 +357,17 @@ void QuantDequantMkldnnPass::CollectQuantizeDequantizeOpsFromONNXFormat(
       platform::errors::NotFound(
           "The input var [%s] of quantize op is not found.", x_var_name));
   PADDLE_ENFORCE_NOT_NULL(
+      fake_quant_in_scale,
+      platform::errors::NotFound(
+          "The scale var [%s] of quantize op is not found.", in_scale_name));
+  PADDLE_ENFORCE_NOT_NULL(
       fake_quant_out,
       platform::errors::NotFound(
           "The output var [%s] of quantize op is not found.", out_var_name));
 
   std::string input_act_name = fake_quant_in->Var()->Name();
   std::string output_act_name = fake_quant_out->Var()->Name();
-  auto outlinks = fake_quant_out->outputs;
-  for (auto* next_node : outlinks) {
+  for (auto* next_node : fake_quant_out->outputs) {
     if (!next_node->IsOp()) continue;
     next_node->Op()->RenameInput(output_act_name, input_act_name);
     IR_NODE_LINK_TO(fake_quant_in, next_node);

@@ -1,4 +1,4 @@
-#   copyright (c) 2018 paddlepaddle authors. all rights reserved.
+#   copyright (c) 2022 paddlepaddle authors. all rights reserved.
 #
 # licensed under the apache license, version 2.0 (the "license");
 # you may not use this file except in compliance with the license.
