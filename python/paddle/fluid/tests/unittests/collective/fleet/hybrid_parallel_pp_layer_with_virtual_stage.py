@@ -103,7 +103,6 @@ class TestPipeLayerAPI(unittest.TestCase):
 
         # just make sure the model can be wrapped with distributed model
         dist_model = fleet.distributed_model(pipe_model)
-
         assert isinstance(dist_model, PipelineParallelWithInterleave)
 
 
