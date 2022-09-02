@@ -74,6 +74,11 @@ list(
   sum_op.cc
   shape_op.cc
   fill_constant_op.cc
+  fill_any_like_op.cc
+  where_op.cc
+  greater_equal_op.cc
+  logical_not_op.cc
+  sin_op.cc
   fused_token_prune_op.cc)
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
