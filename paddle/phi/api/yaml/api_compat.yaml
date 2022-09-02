@@ -177,6 +177,13 @@
   outputs :
     out : Out
 
+- api : matmul (matmul_v2)
+  backward : matmul_grad (matmul_v2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, 'int[] fused_reshape_Out = {}', 'int[] fused_transpose_Out = {}',
+             str mkldnn_data_type = "float32", 'int[] fused_reshape_X = {}', 'int[] fused_reshape_Y = {}',
+             'int[] fused_transpose_X = {}', 'int[] fused_transpose_Y = {}',]
+
 - api : mv
   inputs :
     {x : X, vec : Vec}
