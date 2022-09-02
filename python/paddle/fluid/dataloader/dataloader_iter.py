@@ -376,7 +376,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # see _try_put_indices
         self._thread_lock = threading.Lock()
 
-        self._base_seed = int(np.random.randint(low=0, high=sys.maxsize, dtype=np.int64))
+        self._base_seed = int(
+            np.random.randint(low=0, high=sys.maxsize, dtype=np.int64))
 
         # init workers and indices queues and put 2 indices in each indices queue
         self._init_workers()
