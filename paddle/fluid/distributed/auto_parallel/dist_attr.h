@@ -143,6 +143,8 @@ class OperatorDistAttr {
 
   OperatorDistAttr& operator=(const OperatorDistAttr& dist_attr);
 
+  void initialize();
+
   void copy_from(const OperatorDistAttr& dist_attr);
 
   const OpDesc* op() const { return op_; }
