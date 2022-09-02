@@ -1470,7 +1470,7 @@ class OutScaleForTrainingPass(object):
                     data_type = 'float64' if in_node.dtype() \
                         == core.VarDesc.VarType.FP64 else 'float32'
                     try:
-                        scale_node = graph._find_node_by_name(
+                        graph._find_node_by_name(
                             graph.all_var_nodes(),
                             self._scale_name(in_node.name()))
                     except:
@@ -1487,8 +1487,8 @@ class OutScaleForTrainingPass(object):
                                 scale_value = np.ones([1], dtype=data_type)
                         else:
                             scale_value = np.ones([1], dtype=data_type)
-                        _init_var_node(scale_node, scale_value, self._scope,
-                                       self._place)
+                    _init_var_node(scale_node, scale_value, self._scope,
+                                   self._place)
 
                     ins = {'X': in_node}
                     outs = {'OutScale': scale_node}

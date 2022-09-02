@@ -370,6 +370,9 @@ class PostTrainingQuantization(object):
         self._scale_trainable = scale_trainable
         self._scale_dict = scale_dict
         self._return_graph = return_graph
+        self.FLAG = False
+        if self._program is not None:
+            self.FLAG = True
 
     def quantize(self):
         '''
@@ -441,7 +444,8 @@ class PostTrainingQuantization(object):
             self._update_program()
 
         # save out_threshold for quantized ops.
-        self._save_output_threshold()
+        if not self.FLAG:
+            self._save_output_threshold()
 
         if any(op_type in self._quantizable_op_type
                for op_type in self._dynamic_quantize_op_type):
@@ -1283,7 +1287,10 @@ class PostTrainingQuantizationProgram(PostTrainingQuantization):
                          optimize_model, is_use_cache_file, skip_tensor_list,
                          same_scale_tensor_list, scale_trainable, cache_dir,
                          scale_dict, return_graph)
+        self.FLAG = False
         self._program = program
+        if self._program is not None:
+            self.FLAG = True
         assert feed_list is not None, \
             "Feed list should not be None."
         assert fetch_list is not None, \
