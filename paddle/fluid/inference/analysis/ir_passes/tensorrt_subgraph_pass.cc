@@ -538,6 +538,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   trt_engine->SetWithErnie(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
       graph->Has(framework::ir::kMultiheadMatmulPass));
+  trt_engine->SetContextMemorySharing(Get<bool>("context_memory_sharing"));
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(

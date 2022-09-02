@@ -81,6 +81,40 @@ void TensorRTEngine::InitNetwork() {
     optim_profiles_[i] = infer_builder_->createOptimizationProfile();
 }
 
+nvinfer1::IExecutionContext *TensorRTEngine::context() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  if (infer_context_.find(predictor_id_per_thread) == infer_context_.end()) {
+    PADDLE_ENFORCE_NOT_NULL(
+        infer_engine_,
+        platform::errors::InvalidArgument(
+            "You should build engine first and then set the context."));
+    // We may see trt warning: Profile 0 has been chosen by another
+    // IExecutionContext...
+    // It's ok. We will set it later.
+    nvinfer1::IExecutionContext *infer_context{nullptr};
+    if (context_memory_sharing_) {
+      infer_context =
+          infer_engine_->createExecutionContextWithoutDeviceMemory();
+    } else {
+      infer_context = infer_engine_->createExecutionContext();
+    }
+    PADDLE_ENFORCE_NOT_NULL(
+        infer_context,
+        platform::errors::InvalidArgument(
+            "TensorRT engine can not build execution context."));
+    if (with_dynamic_shape_) {
+      // need new profile if it's not the first
+      if (cur_profile_num_ > 0) {
+        infer_context->setOptimizationProfile(cur_profile_num_);
+      }
+      profile_index_[predictor_id_per_thread] = cur_profile_num_;
+      ++cur_profile_num_;
+    }
+    infer_context_[predictor_id_per_thread].reset(infer_context);
+  }
+  return infer_context_[predictor_id_per_thread].get();
+}
+
 void TensorRTEngine::Execute(int batch_size,
                              std::vector<void *> *buffers,
                              cudaStream_t stream) {
@@ -311,12 +345,7 @@ void TensorRTEngine::FreezeNetwork() {
   // for engine context memory sharing
   if (context_memory_sharing_) {
     inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-<<<<<<< HEAD
-        .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
-                                 predictor_id_per_thread);
-=======
         .updateContextMemorySize(infer_engine_->getDeviceMemorySize(), nullptr);
->>>>>>> 5dd74af303... adjust implementation
   }
 
   GetEngineInfo();
