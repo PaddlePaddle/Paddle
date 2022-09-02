@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 
+#include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/operators/assign_op.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -76,20 +77,23 @@ class ConditionalBlockOp : public ConditionalOp {
       // Executors (executors declared inside control ops)
       platform::DontClearMKLDNNCache(dev_place);
 #endif
-      framework::Executor exec(dev_place);
+      // framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
+      framework::StandaloneExecutor exec(dev_place, *block->Program());
+
       VLOG(3) << "Conditional block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
       auto &skip_vars =
           Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
-      exec.Run(*block->Program(),
-               &cur_scope,
-               block->ID(),
-               false,
-               true,
-               skip_vars,
-               /* force_disable_gc */ false,
-               /* keep_kid_scopes */ true);
+      // exec.Run(*block->Program(),
+      //          &cur_scope,
+      //          block->ID(),
+      //          false,
+      //          true,
+      //          skip_vars,
+      //          /* force_disable_gc */ false,
+      //          /* keep_kid_scopes */ true);
+      exec.Run(&cur_scope, {}, skip_vars);
     }
   }
 };
