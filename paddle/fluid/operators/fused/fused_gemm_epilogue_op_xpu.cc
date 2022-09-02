@@ -43,7 +43,7 @@ class FusedGemmEpilogueXPUKernel : public framework::OpKernel<T> {
     bool trans_y = ctx.Attr<bool>("trans_y");
 
     std::string activation = ctx.Attr<std::string>("activation");
-    VLOG(0) << "trans_x = " << trans_x << " , trans_y = " << trans_y
+    VLOG(5) << "trans_x = " << trans_x << " , trans_y = " << trans_y
             << " , activation = " << activation;
 
     auto x_mat_dims =
@@ -54,7 +54,7 @@ class FusedGemmEpilogueXPUKernel : public framework::OpKernel<T> {
     // int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
     // int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
 
-    // 调用接口
+    // 调用新接口，这里先分开调用，等待qingpen的新接口
     int r = 0;
     xpu::Activation_t act = xpu::Activation_t::LINEAR;
     if (activation == "relu") {
@@ -78,15 +78,12 @@ class FusedGemmEpilogueXPUKernel : public framework::OpKernel<T> {
     XPUType* fc_out_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(out->numel());
     phi::MatMulXPUFunction<XPUType>(
         xpu_ctx, x_ptr, y_ptr, fc_out_ptr, fc_info, 1.0f);
-    VLOG(0) << "FusedGemmEpilogueXPUKernel 111";
     XPUType* bias_out_ptr = out_ptr;
     if (activation != "none" && reserve_space) {
-      VLOG(0) << "reserve_space = " << reserve_space;
       bias_out_ptr = reinterpret_cast<XPUType*>(
           reserve_space->mutable_data<T>(ctx.GetPlace()));
     }
     // 2 bias
-    VLOG(0) << "FusedGemmEpilogueXPUKernel 222";
     const XPUType* bias_ptr = reinterpret_cast<const XPUType*>(bias->data<T>());
     r = xpu::broadcast_add(xpu_ctx,
                            fc_out_ptr,
@@ -96,7 +93,6 @@ class FusedGemmEpilogueXPUKernel : public framework::OpKernel<T> {
                            {fc_info.n});
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
     // 3 act
-    VLOG(0) << "FusedGemmEpilogueXPUKernel 333";
     if (activation == "relu") {
       r = xpu::relu(xpu_ctx, bias_out_ptr, out_ptr, out->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu");
@@ -119,21 +115,28 @@ class FusedGemmEpilogueXPUGradKernel : public framework::OpKernel<T> {
     const Tensor* dout = ctx.Input<Tensor>("DOut");
     const Tensor* x = ctx.Input<Tensor>("X");
     const Tensor* y = ctx.Input<Tensor>("Y");
+
     const Tensor* reserve_space = ctx.Input<Tensor>("ReserveSpace");
 
     Tensor* dx = ctx.Output<Tensor>("DX");
     Tensor* dy = ctx.Output<Tensor>("DY");
     Tensor* dbias = ctx.Output<Tensor>("DBias");
 
-    std::string activation = ctx.Attr<std::string>("activation");
+    std::string activation = "none";
+    if (ctx.HasAttr("activation")) {
+      activation = ctx.Attr<std::string>("activation");
+    } else if (ctx.HasAttr("activation_grad")) {
+      activation = ctx.Attr<std::string>("activation_grad");
+    }
 
     auto* xpu_ctx = dev_ctx.x_context();
     xpu::ctx_guard RAII_GUARD(xpu_ctx);
-
     const XPUType* dout_ptr = reinterpret_cast<const XPUType*>(dout->data<T>());
+
     const XPUType* dout_fc_ptr = dout_ptr;
     const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x->data<T>());
     const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y->data<T>());
+
     // const XPUType*
     const XPUType* reserve_space_ptr =
         (reserve_space == NULL)
@@ -144,10 +147,10 @@ class FusedGemmEpilogueXPUGradKernel : public framework::OpKernel<T> {
       d_act_input_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(dout->numel());
       dout_fc_ptr = d_act_input_ptr;
     }
+
     // 1. act_grad  2. fc_grad 3. dbias
     int r = 0;
     if (activation == "relu") {
-      // Context* ctx, const T* x, const T* y, const T* dy, T* dx, int len
       r = xpu::relu_grad(xpu_ctx,
                          reserve_space_ptr,
                          reserve_space_ptr,
@@ -156,7 +159,6 @@ class FusedGemmEpilogueXPUGradKernel : public framework::OpKernel<T> {
                          dout->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu_grad");
     } else if (activation == "gelu") {
-      // Context* ctx, const T* x, const T* y, const T* dy, T* dx, int len
       r = xpu::gelu_grad(xpu_ctx,
                          reserve_space_ptr,
                          reserve_space_ptr,
@@ -166,8 +168,10 @@ class FusedGemmEpilogueXPUGradKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu_grad");
     }
 
+    auto x_mat_dims =
+        phi::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
     phi::XpuFcInfo info_forward;
-    phi::GetFCInfo(x->dims(), y->dims(), trans_x, trans_y, &info_forward);
+    phi::GetFCInfo(x_mat_dims, y->dims(), trans_x, trans_y, &info_forward);
 
     // 2. fc_grad
     const XPUType* a_1 = reinterpret_cast<const XPUType*>(NULL);
