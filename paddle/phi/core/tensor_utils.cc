@@ -297,7 +297,7 @@ void Copy(const Context& dev_ctx,
                      blocking,
                      dst->mutable_non_zero_elements());
   dst->set_dims(src.dims());
-  dst->SetCoalesced(src.coalesced());
+  dst->SetCoalesced(src.is_coalesced());
 }
 
 template <typename Context>

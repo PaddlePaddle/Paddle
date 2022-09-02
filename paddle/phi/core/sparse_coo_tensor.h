@@ -75,9 +75,9 @@ class SparseCooTensor : public TensorBase,
   /// Note: This function will be removed soon. It is recommended to use values()
   const DenseTensor& non_zero_elements() const { return non_zero_elements_; }
 
-  /// \brief Returns whether the indices has coalesced
-  /// \return whether the indices has coalesced
-  bool coalesced() const { return coalesced_; }
+  /// \brief Returns whether the indices have been coalesced
+  /// \return whether the indices have been coalesced
+  bool is_coalesced() const { return coalesced_; }
 
   /// \brief Set the coalesced
   /// \param coalesced whether the indices has coalesced
