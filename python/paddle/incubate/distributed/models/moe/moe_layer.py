@@ -330,8 +330,6 @@ class MoELayer(nn.Layer):
             self.world_size = self.group.nranks
         self.num_expert = len(experts)
         self.recompute_interval = recompute_interval
-        self.recompute_offload = recompute_offload
-        self.recompute_partition = recompute_partition
         assert experts is not None
         self.experts = experts
 
@@ -426,12 +424,8 @@ class MoELayer(nn.Layer):
         if self.recompute_interval <= 0 or x.shape[0] == 0:
             x = experts_fwd(x, fwd_expert_count.numpy(), self.experts)
         else:
-            x = fleet.recompute_hybrid(
-                {
-                    "mp_group": fleet.fleet._hcg.get_model_parallel_group(),
-                    "offload": self.recompute_offload,
-                    "partition": self.recompute_partition
-                }, experts_fwd, x, fwd_expert_count.numpy(), self.experts)
+            x = fleet.recompute_hybrid(self.recompute_ctx, experts_fwd, x,
+                                       fwd_expert_count.numpy(), self.experts)
 
         out_batch_size = inp.shape[0]
         if len(gate.shape) == 2:

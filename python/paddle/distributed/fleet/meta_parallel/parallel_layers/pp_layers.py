@@ -309,13 +309,13 @@ class PipelineLayer(Layer):
         self._loss_fn = loss_fn
         self._topo = topology
         self._recompute_interval = recompute_interval
+        self.recompute_ctx = recompute_ctx
 
         if recompute_interval > 0:
             assert recompute_ctx is not None, "recompute_ctx must be not None for recompute."
 
             offload = recompute_ctx.get('offload', False)
             partition = recompute_ctx.get('partition', False)
-            _initialize_recompute_setting(offload, partition)
             logger.info(
                 "Start Recompute for PipeLineParallel. recompute_offload: {}, recompute_partition: {}"
                 .format(offload, partition))
@@ -636,12 +636,8 @@ class PipelineLayer(Layer):
 
                 if self._need_recompute(funcs, input):
                     input = fleet.recompute_hybrid(
-                        {
-                            "mp_group":
-                            fleet.fleet._hcg.get_model_parallel_group(),
-                            "offload": self._recompute_offload,
-                            "partition": self._recompute_partition
-                        }, self.forward_function(start_idx, end_idx), *input)
+                        self.recompute_ctx,
+                        self.forward_function(start_idx, end_idx), *input)
                 else:
                     input = self.forward_function(start_idx, end_idx)(*input)
 
