@@ -272,7 +272,7 @@ if((WITH_GPU
   )
   set_tests_properties(test_gen_nccl_id_op PROPERTIES RUN_SERIAL 1)
 endif()
-if((WITH_GPU) AND (LINUX))
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_communication_stream_allreduce_api MODULES
     test_communication_stream_allreduce_api ENVS
