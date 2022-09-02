@@ -755,6 +755,20 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void EnableMkldnnQuantizer();
 
+
+  ///
+   /// \brief Set the scale file path of quantize model.
+   ///
+   ///
+   void SetScaleFilePath(const std::string& scale_file_path = "");
+
+   ///
+   /// \brief Return scale path for quantized model.
+   ///
+   ///
+   std::string ScaleFilePath() { return scale_file_path_; }
+
+
   ///
   /// \brief Turn on MKLDNN int8.
   ///
@@ -933,7 +947,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string model_dir_;
   mutable std::string prog_file_;
   mutable std::string params_file_;
-
+mutable std::string scale_file_path_;
   // Mixed precision.
   std::unordered_set<std::string> mixed_black_list_;
 

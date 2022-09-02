@@ -176,6 +176,10 @@ struct Argument {
   // The cache capacity of different input shapes for mkldnn.
   DECL_ARGUMENT_FIELD(mkldnn_cache_capacity, MkldnnCacheCapacity, int);
 
+
+  // scale file path for quantized model
+  DECL_ARGUMENT_FIELD(scale_file_path, ScaleFilePath, std::string);
+
 #ifdef PADDLE_WITH_MKLDNN
   // A set of op types to enable their quantized kernels
   DECL_ARGUMENT_FIELD(quantize_enabled_op_types,

@@ -303,6 +303,11 @@ void DeleteWeightQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
 
     auto* any_op2_desc = any_op2->Op();
 
+    if(any_op2_desc->HasAttr("has_quant_info", true))
+    {
+      std::cout << "has_quant_info" <<  std::endl;
+    }
+
     // get weight tensor
     auto* weight_tensor = scope->GetVar(weight_dequantize_linear_op_x->Name())
                               ->GetMutable<LoDTensor>();

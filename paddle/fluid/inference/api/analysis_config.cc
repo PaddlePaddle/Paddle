@@ -246,6 +246,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(opt_cache_dir_);
   CP_MEMBER(prog_file_);
   CP_MEMBER(params_file_);
+  CP_MEMBER(scale_file_path_);
 
   CP_MEMBER(use_fc_padding_);
   // GPU related.
@@ -508,6 +509,13 @@ void AnalysisConfig::EnableMkldnnInt8(
 
   Update();
 }
+
+void AnalysisConfig::SetScaleFilePath(const std::string &scale_file_path) {
+   scale_file_path_ = scale_file_path;
+   VLOG(1) << "Set quantize model scale file path: " + scale_file_path_;
+   Update();
+ }
+
 
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
@@ -805,6 +813,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << prog_file_;
   ss << params_file_;
 
+ss << scale_file_path_;
+
   ss << use_gpu_;
   ss << use_external_stream_;
   ss << exec_stream_;
@@ -987,6 +997,11 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"model_file", prog_file_});
     os.InsertRow({"params_file", params_file_});
   }
+
+  if (!(scale_file_path_.empty())) {
+     os.InsertRow({"scale_file_path", scale_file_path_});
+   }
+
   if (model_from_memory_) {
     os.InsertRow({"model_from_memory", params_file_});
   }
