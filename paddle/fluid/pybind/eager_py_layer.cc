@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
+#include "paddle/fluid/eager/saved_tensors_hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -478,7 +479,7 @@ PyObject* call_unpack_hook(PyObject* container) {
         Py_INCREF(o);
         PyTuple_SET_ITEM(args, 0, o);
         PyTuple_SET_ITEM(
-            tmp_list, j, PyObject_Call(unpack_hook_, args, nullptr));
+            tmp_list, j, PyObject_Call(unpack_hook, args, nullptr));
         Py_XDECREF(args);
       }
       PyTuple_SET_ITEM(unpacked_value, i, tmp_list);
@@ -491,7 +492,7 @@ PyObject* call_unpack_hook(PyObject* container) {
         Py_INCREF(o);
         PyTuple_SET_ITEM(args, 0, o);
         PyTuple_SET_ITEM(
-            tmp_tuple, j, PyObject_Call(unpack_hook_, args, nullptr));
+            tmp_tuple, j, PyObject_Call(unpack_hook, args, nullptr));
         Py_XDECREF(args);
       }
       PyTuple_SET_ITEM(unpacked_value, i, tmp_tuple);
@@ -500,7 +501,7 @@ PyObject* call_unpack_hook(PyObject* container) {
       Py_INCREF(obj);
       PyTuple_SET_ITEM(args, 0, obj);
       PyTuple_SET_ITEM(
-          unpacked_value, i, PyObject_Call(unpack_hook_, args, nullptr));
+          unpacked_value, i, PyObject_Call(unpack_hook, args, nullptr));
       Py_XDECREF(args);
     }
   }
@@ -535,8 +536,8 @@ PyObject* call_pack_hook(PyObject* value) {
     PyTuple_SET_ITEM(saved_value, 0, value);
   }
 
-  auto pack_hook = SavedTensorsHooks::GetInstance().get_pack_hook();
-  auto unpack_hook = SavedTensorsHooks::GetInstance().get_unpack_hook();
+  auto pack_hook = egr::SavedTensorsHooks::GetInstance().get_pack_hook();
+  auto unpack_hook = egr::SavedTensorsHooks::GetInstance().get_unpack_hook();
 
   PyObject* container = PyTuple_New(2);
   Py_INCREF(unpack_hook);
@@ -600,7 +601,7 @@ int tensor_properties_set_container(PyLayerObject* self,
                                     PyObject* value,
                                     void* closure) {
   EAGER_TRY
-  if (SavedTensorsHooks::GetInstance().is_enable()) {
+  if (egr::SavedTensorsHooks::GetInstance().is_enable()) {
     Py_XDECREF(self->container);
     self->container = call_pack_hook(value);
     self->container_be_packed = true;

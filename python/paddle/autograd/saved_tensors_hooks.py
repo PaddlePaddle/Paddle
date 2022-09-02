@@ -49,16 +49,18 @@ class saved_tensors_hooks():
 
         def pack_hook(x):
             print("Packing", x)
-            return x
+            return x.numpy()
 
         def unpack_hook(x):
-            print("Unpacking", x)
-            return x
+            print("UnPacking", x)
+            return paddle.to_tensor(x)
 
         a = paddle.ones([3,3])
         b = paddle.ones([3,3]) * 2
+        a.stop_gradient = False
+        b.stop_gradient = False
         with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
-            y = a * b
+            y = paddle.multiply(a, b)
         y.sum().backward()
     """
 
