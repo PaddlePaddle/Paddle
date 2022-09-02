@@ -16,7 +16,6 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
 
 namespace phi {
