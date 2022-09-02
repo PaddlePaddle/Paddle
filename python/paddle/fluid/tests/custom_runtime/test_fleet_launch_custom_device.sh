@@ -17,7 +17,7 @@
 set -e
 
 rm -rf PaddleCustomDevice && \
-git clone ${PLUGIN_REPO} \
+git clone ${PLUGIN_URL} \
 && pushd PaddleCustomDevice/backends/custom_cpu \
 && git checkout ${PLUGIN_TAG} -b dev \ 
 && mkdir build && pushd build && cmake .. && make -j8 && popd && popd
