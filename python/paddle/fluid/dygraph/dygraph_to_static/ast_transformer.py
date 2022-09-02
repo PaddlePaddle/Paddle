@@ -93,7 +93,7 @@ class DygraphToStaticAst(BaseTransformer):
             EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
             TensorShapeTransformer,  # Tensor.shape -> layers.shape(Tensor)
-            ListTransformer,  # List used in control flow
+            #ListTransformer,  # List used in control flow
             BreakContinueTransformer,  # break/continue in loops
             ReturnTransformer,  # return in functions
             LogicalTransformer,  # logical and/or/not

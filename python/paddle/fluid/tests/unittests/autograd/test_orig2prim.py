@@ -208,6 +208,26 @@ class TestExpOrig2Prim(TestElementWiseAddOrig2Prim):
         self.out_map = {0: self.output['Out']}
 
 
+class TestErfOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'erf'
+        X = paddle.static.data(name='X', shape=[3, 4], dtype='float')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.orig2prim_args = (X, )
+        self.all_ops = ['erf', 'erf_p']
+        self.out_map = {0: self.output['Out']}
+
+
 class TestLogOrig2Prim(TestElementWiseAddOrig2Prim):
 
     def init_data(self):
@@ -555,6 +575,51 @@ class TestMaxOrig2Prim(TestElementWiseAddOrig2Prim):
 
         self.orig2prim_args = (X, Y)
         self.all_ops = ['elementwise_max', 'max_p']
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Out']}
+
+
+class TestGeluOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'gelu'
+        X = paddle.static.data(name='X', shape=[5, 8], dtype='float')
+
+        self.input = {'X': X}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {'approximate': False}
+
+        self.orig2prim_args = (X, )
+        self.all_ops = [
+            'gelu', 'add_p', 'erf_p', 'fill_constant_p', 'fill_constant_p',
+            'fill_constant_p', 'mul_p', 'mul_p', 'mul_p'
+        ]
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Out']}
+
+
+class TestGeluApproximateOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'gelu'
+        X = paddle.static.data(name='X', shape=[5, 8], dtype='float')
+
+        self.input = {'X': X}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {'approximate': True}
+
+        self.orig2prim_args = (X, )
+        self.all_ops = [
+            'add_p', 'add_p', 'fill_constant_p', 'fill_constant_p',
+            'fill_constant_p', 'fill_constant_p', 'fill_constant_p', 'gelu',
+            'mul_p', 'mul_p', 'mul_p', 'mul_p', 'pow_p', 'tanh_p'
+        ]
         # { prim_op_output_index: orig_op_output_var }
         self.out_map = {0: self.output['Out']}
 
