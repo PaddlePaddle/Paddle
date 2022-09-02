@@ -215,7 +215,7 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
   if (in_layout == framework::DataLayout::ONEDNN &&
       out_layout != framework::DataLayout::ONEDNN) {
     auto target_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
-    VLOG(4) << "TransDataLayoutFromMKLDNN: " << in_layout << "->"
+    VLOG(4) << "TransDataLayoutFromOneDNN: " << in_layout << "->"
             << target_layout;
 
     if (out_layout == DataLayout::kNCHW &&
