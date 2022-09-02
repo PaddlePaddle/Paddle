@@ -27,13 +27,13 @@ namespace experimental {
 namespace sparse {
 
 Tensor to_sparse_coo_impl(const Tensor& x, const int64_t sparse_dim) {
-  if (x.layout() == phi::DataLayout::SPARSE_COO) {
+  if (x.is_sparse_coo_tensor()) {
     return x;
   }
 
   // 1. Get kernel signature and kernel
   std::string kernel_name = "dense_to_sparse_coo";
-  if (x.layout() == phi::DataLayout::SPARSE_CSR) {
+  if (x.is_sparse_csr_tensor()) {
     kernel_name = "sparse_csr_to_coo";
   }
 
@@ -52,7 +52,7 @@ Tensor to_sparse_coo_impl(const Tensor& x, const int64_t sparse_dim) {
   auto kernel_context = phi::KernelContext(dev_ctx);
 
   // 3. Auto data transform
-  if (x.layout() == phi::DataLayout::SPARSE_CSR) {
+  if (x.is_sparse_csr_tensor()) {
     auto input = std::dynamic_pointer_cast<phi::SparseCsrTensor>(x.impl());
     kernel_context.EmplaceBackInput(input.get());
   } else {
@@ -86,12 +86,12 @@ Tensor to_sparse_coo_impl(const Tensor& x, const int64_t sparse_dim) {
 }
 
 Tensor to_sparse_csr_impl(const Tensor& x) {
-  if (x.layout() == phi::DataLayout::SPARSE_CSR) {
+  if (x.is_sparse_csr_tensor()) {
     return x;
   }
   // 1. Get kernel signature and kernel
   std::string kernel_name = "dense_to_sparse_csr";
-  if (x.layout() == phi::DataLayout::SPARSE_COO) {
+  if (x.is_sparse_coo_tensor()) {
     kernel_name = "sparse_coo_to_csr";
   }
 
@@ -110,7 +110,7 @@ Tensor to_sparse_csr_impl(const Tensor& x) {
   auto kernel_context = phi::KernelContext(dev_ctx);
 
   // 3. Auto data transform
-  if (x.layout() == phi::DataLayout::SPARSE_COO) {
+  if (x.is_sparse_coo_tensor()) {
     auto input = std::dynamic_pointer_cast<phi::SparseCooTensor>(x.impl());
     kernel_context.EmplaceBackInput(input.get());
   } else {
@@ -132,14 +132,13 @@ Tensor to_sparse_csr_impl(const Tensor& x) {
 }
 
 Tensor to_dense_impl(const Tensor& x) {
-  if (x.layout() != phi::DataLayout::SPARSE_CSR &&
-      x.layout() != phi::DataLayout::SPARSE_COO) {
+  if (x.is_dense_tensor()) {
     return x;
   }
 
   // 1. Get kernel signature and kernel
   std::string kernel_name = "sparse_coo_to_dense";
-  if (x.layout() == phi::DataLayout::SPARSE_CSR) {
+  if (x.is_sparse_csr_tensor()) {
     kernel_name = "sparse_csr_to_dense";
   }
 
@@ -158,7 +157,7 @@ Tensor to_dense_impl(const Tensor& x) {
   auto kernel_context = phi::KernelContext(dev_ctx);
 
   // 3. Auto data transform
-  if (x.layout() == phi::DataLayout::SPARSE_COO) {
+  if (x.is_sparse_coo_tensor()) {
     auto input = std::dynamic_pointer_cast<phi::SparseCooTensor>(x.impl());
     kernel_context.EmplaceBackInput(input.get());
   } else {

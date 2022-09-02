@@ -178,9 +178,13 @@ class SparseAPI(ForwardAPI):
                         f"phi::DenseTensor::classof({self.inputs['names'][i]}.impl().get())"
                     )
             else:
-                condition_list.append(
-                    f"{self.inputs['names'][i]}.layout() == {sparse_type_map[in_type]}"
-                )
+                if in_type == 'sparse_coo':
+                    condition_list.append(
+                        f"{self.inputs['names'][i]}.is_sparse_coo_tensor()")
+                else:
+                    condition_list.append(
+                        f"{self.inputs['names'][i]}.is_sparse_csr_tensor()")
+
         return " && ".join(condition_list)
 
     def gene_dispatch_code(self, kernel_name, inplace_flag=False):
