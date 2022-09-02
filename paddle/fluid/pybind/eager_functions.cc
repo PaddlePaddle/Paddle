@@ -523,7 +523,7 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self,
       std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_indices.impl());
   auto dense_elements =
       std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_elements.impl());
-  // TODO(zhangkaihuo): After create SparseTensor, call coalesced() to sort and
+  // TODO(zhangkaihuo): After create SparseTensor, call coalesce() to sort and
   // merge duplicate indices
   std::shared_ptr<phi::SparseCooTensor> coo_tensor =
       std::make_shared<phi::SparseCooTensor>(
