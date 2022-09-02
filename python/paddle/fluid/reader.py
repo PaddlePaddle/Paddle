@@ -486,8 +486,8 @@ class DataLoader(object):
         assert prefetch_factor > 0, "prefetch_factor should be a positive value"
 
         self.use_shared_memory = use_shared_memory
-        if use_shared_memory and (sys.platform == 'darwin' or
-                                sys.platform == 'win32'):
+        if use_shared_memory and (sys.platform == 'darwin'
+                                  or sys.platform == 'win32'):
             warnings.warn(
                 "DataLoader with multi-process mode is not fully supported on MacOs and Windows currently." \
                 " Please use multi-process mode with use_shared_memory = False instead")
