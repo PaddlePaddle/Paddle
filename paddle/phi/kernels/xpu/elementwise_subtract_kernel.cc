@@ -30,13 +30,7 @@ void SubtractRawKernel(const Context& dev_ctx,
       dev_ctx, x, y, axis, out, xpu::broadcast_sub<XPUType>);
 }
 
-template <typename T, typename Context>
-void SubtractKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    DenseTensor* out) {
-  SubtractRawKernel<T, Context>(dev_ctx, x, y, -1, out);
-}
+
 
 }  // namespace phi
 PD_REGISTER_KERNEL(subtract_raw,
@@ -46,9 +40,4 @@ PD_REGISTER_KERNEL(subtract_raw,
                    float,
                    phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(subtract,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::SubtractKernel,
-                   float,
-                   phi::dtype::float16) {}
+

@@ -362,4 +362,10 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    phi::ElementwisePowKernel,
                    float,
                    phi::dtype::float16) {}
+PD_REGISTER_KERNEL(subtract,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SubtractKernel,
+                   float,
+                   phi::dtype::float16) {}
 #endif
