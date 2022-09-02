@@ -230,7 +230,13 @@ def avg_pool1d(x,
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        output = _C_ops.pool2d(x, kernel_size, stride, padding, ceil_mode,
+                               exclusive, data_format, 'avg', False, False,
+                               padding_algorithm)
+        return squeeze(output, [2])
+
+    if _in_legacy_dygraph():
         output = _legacy_C_ops.pool2d(x, 'pooling_type', 'avg', 'ksize',
                                       kernel_size, 'global_pooling', False,
                                       'strides', stride, 'paddings', padding,
@@ -340,7 +346,7 @@ def avg_pool2d(x,
                                                     channel_last,
                                                     ceil_mode=ceil_mode)
 
-    if in_dygraph_mode() or _in_legacy_dygraph():
+    if _non_static_mode():
         if in_dygraph_mode():
             output = _C_ops.pool2d(x, kernel_size, stride, padding, ceil_mode,
                                    exclusive, data_format, 'avg', False, False,
@@ -1369,7 +1375,12 @@ def adaptive_avg_pool1d(x, output_size, name=None):
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
 
     x = unsqueeze(x, [2])
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        pool_out = _C_ops.pool2d_gpudnn_unused(x, pool_size, [1, 1], [0, 0],
+                                               False, True, "NCHW", pool_type,
+                                               False, True, "EXPLICIT")
+        return squeeze(pool_out, [2])
+    if _in_legacy_dygraph():
         pool_out = _legacy_C_ops.pool2d(x, 'pooling_type', pool_type, 'ksize',
                                         pool_size, 'adaptive', True)
         return squeeze(pool_out, [2])
