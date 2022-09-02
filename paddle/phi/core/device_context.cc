@@ -315,6 +315,10 @@ void* DeviceContext::Alloc(TensorBase* tensor,
                            DataType dtype,
                            size_t requested_size,
                            bool pinned) const {
+  if (pinned) {
+    return impl_->Alloc(
+        tensor, GetPinnedPlace(GetPlace()), dtype, requested_size, pinned);
+  }
   return impl_->Alloc(tensor, GetPlace(), dtype, requested_size, pinned);
 }
 
