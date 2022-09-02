@@ -570,6 +570,10 @@ PyObject* call_pack_hook(PyObject* value) {
           PyTuple_SET_ITEM(args, 0, o);
           PyList_SET_ITEM(tmp_list, j, PyObject_Call(pack_hook, args, nullptr));
           Py_XDECREF(args);
+        } else {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "save_for_backward only support Tensor, list of Tensor, tuple of "
+              "Tensor."));
         }
       }
       PyTuple_SET_ITEM(packed_value, i, tmp_list);
@@ -585,9 +589,17 @@ PyObject* call_pack_hook(PyObject* value) {
           PyTuple_SET_ITEM(
               tmp_tuple, j, PyObject_Call(pack_hook, args, nullptr));
           Py_XDECREF(args);
+        } else {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "save_for_backward only support Tensor, list of Tensor, tuple of "
+              "Tensor."));
         }
       }
       PyTuple_SET_ITEM(packed_value, i, tmp_tuple);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "save_for_backward only support Tensor, list of Tensor, tuple of "
+          "Tensor."));
     }
   }
   egr::Controller::Instance().SetHasGrad(grad_tmp);
