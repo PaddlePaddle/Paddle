@@ -87,6 +87,7 @@ class TestPipeLayerAPI(unittest.TestCase):
 
         try:
             model_chunks[0](paddle.to_tensor([1., 2.]))
+            raise NotImplementedError
         except PermissionError:
             pass
 
