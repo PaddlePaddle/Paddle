@@ -97,8 +97,9 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_alltoall_single_api MODULES
     test_collective_alltoall_single_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_collective_alltoall_single_api
-                       PROPERTIES TIMEOUT "300" RUN_SERIAL 1)
+  set_tests_properties(
+    test_collective_alltoall_single_api PROPERTIES TIMEOUT "300" RUN_SERIAL 1
+                                                   LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -153,8 +154,9 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_isend_irecv_api MODULES test_collective_isend_irecv_api
     ENVS "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_collective_isend_irecv_api PROPERTIES TIMEOUT "300"
-                                                                  RUN_SERIAL 1)
+  set_tests_properties(
+    test_collective_isend_irecv_api PROPERTIES TIMEOUT "300" RUN_SERIAL 1
+                                               LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -206,8 +208,9 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_reduce_scatter_api MODULES
     test_collective_reduce_scatter_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_collective_reduce_scatter_api
-                       PROPERTIES TIMEOUT "300" RUN_SERIAL 1)
+  set_tests_properties(
+    test_collective_reduce_scatter_api PROPERTIES TIMEOUT "300" RUN_SERIAL 1
+                                                  LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
