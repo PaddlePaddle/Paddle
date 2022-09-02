@@ -22,7 +22,7 @@
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 
 #ifdef PADDLE_WITH_MKLDNN
- #include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #endif
 
 namespace paddle {
@@ -37,49 +37,47 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
   auto* the_graph = argument->ReleaseMainGraph();
   auto graph = std::unique_ptr<Graph>(the_graph);
 
-   std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
-   if (argument->Has("scale_file_path")) {
-     VLOG(5) << "Scale file path for quantized model: "
-             << argument->scale_file_path();
-     std::ifstream out_scale_file(argument->scale_file_path());
-     std::string one_line;
-     while (getline(out_scale_file, one_line)) {
-       if (one_line.find(" ") != one_line.npos) {
-         auto pos = one_line.find(" ");
-         std::string pre_str = one_line.substr(0, pos);
-         std::string pos_str = one_line.substr(pos);
-         if (pre_str.size() && pos_str.size()) {
-           std::string tensor_name = pre_str;
-           float scale = std::stod(pos_str);
-           if (std::isinf(scale) || std::isnan(scale)) {
-             continue;
-           }
-           std::vector<float> scales = {scale};
-           var_quant_scales[tensor_name] = scales;
-         }
-       }
-     }
-   }
-
-  auto op_node_sorted = framework::ir::TopologyVarientSort(
-      *graph, static_cast<framework::ir::SortKind>(0));
-  for (auto *op_node : op_node_sorted) {
-    auto op_desc = op_node->Op();
-    for (auto iter : op_desc->Inputs())
-    {
-      for (size_t i = 0; i < iter.second.size(); i++)
-      {
-        if (var_quant_scales.count(iter.second[i])) {
-          op_desc->SetAttr(iter.first + "_" + std::to_string(i), var_quant_scales[iter.second[i]][0]); 
+  std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
+  if (argument->Has("scale_file_path")) {
+    VLOG(5) << "Scale file path for quantized model: "
+            << argument->scale_file_path();
+    std::ifstream out_scale_file(argument->scale_file_path());
+    std::string one_line;
+    while (getline(out_scale_file, one_line)) {
+      if (one_line.find(" ") != one_line.npos) {
+        auto pos = one_line.find(" ");
+        std::string pre_str = one_line.substr(0, pos);
+        std::string pos_str = one_line.substr(pos);
+        if (pre_str.size() && pos_str.size()) {
+          std::string tensor_name = pre_str;
+          float scale = std::stod(pos_str);
+          if (std::isinf(scale) || std::isnan(scale)) {
+            continue;
+          }
+          std::vector<float> scales = {scale};
+          var_quant_scales[tensor_name] = scales;
         }
       }
     }
-    for (auto iter : op_desc->Outputs())
-    {
-      for (size_t i = 0; i < iter.second.size(); i++)
-      {
+  }
+
+  auto op_node_sorted = framework::ir::TopologyVarientSort(
+      *graph, static_cast<framework::ir::SortKind>(0));
+  for (auto* op_node : op_node_sorted) {
+    auto op_desc = op_node->Op();
+    for (auto iter : op_desc->Inputs()) {
+      for (size_t i = 0; i < iter.second.size(); i++) {
         if (var_quant_scales.count(iter.second[i])) {
-          op_desc->SetAttr(iter.first + "_" + std::to_string(i), var_quant_scales[iter.second[i]][0]); 
+          op_desc->SetAttr(iter.first + "_" + std::to_string(i),
+                           var_quant_scales[iter.second[i]][0]);
+        }
+      }
+    }
+    for (auto iter : op_desc->Outputs()) {
+      for (size_t i = 0; i < iter.second.size(); i++) {
+        if (var_quant_scales.count(iter.second[i])) {
+          op_desc->SetAttr(iter.first + "_" + std::to_string(i),
+                           var_quant_scales[iter.second[i]][0]);
         }
       }
     }

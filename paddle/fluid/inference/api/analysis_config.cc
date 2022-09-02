@@ -511,11 +511,10 @@ void AnalysisConfig::EnableMkldnnInt8(
 }
 
 void AnalysisConfig::SetScaleFilePath(const std::string &scale_file_path) {
-   scale_file_path_ = scale_file_path;
-   VLOG(1) << "Set quantize model scale file path: " + scale_file_path_;
-   Update();
- }
-
+  scale_file_path_ = scale_file_path;
+  VLOG(1) << "Set quantize model scale file path: " + scale_file_path_;
+  Update();
+}
 
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
@@ -813,7 +812,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << prog_file_;
   ss << params_file_;
 
-ss << scale_file_path_;
+  ss << scale_file_path_;
 
   ss << use_gpu_;
   ss << use_external_stream_;
@@ -999,8 +998,8 @@ std::string AnalysisConfig::Summary() {
   }
 
   if (!(scale_file_path_.empty())) {
-     os.InsertRow({"scale_file_path", scale_file_path_});
-   }
+    os.InsertRow({"scale_file_path", scale_file_path_});
+  }
 
   if (model_from_memory_) {
     os.InsertRow({"model_from_memory", params_file_});

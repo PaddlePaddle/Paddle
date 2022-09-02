@@ -750,11 +750,9 @@ void BindAnalysisConfig(py::module *m) {
       .def("to_native_config", &AnalysisConfig::ToNativeConfig)
       .def("enable_quantizer", &AnalysisConfig::EnableMkldnnQuantizer)
       .def("enable_mkldnn_bfloat16", &AnalysisConfig::EnableMkldnnBfloat16)
-.def("set_scale_file_path",
-            &AnalysisConfig::SetScaleFilePath,
-            py::arg("scale_file_path") = std::string(""))
-
-
+      .def("set_scale_file_path",
+           &AnalysisConfig::SetScaleFilePath,
+           py::arg("scale_file_path") = std::string(""))
 
 #ifdef PADDLE_WITH_MKLDNN
       .def("quantizer_config",
