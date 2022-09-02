@@ -72,7 +72,12 @@ class TestPipeLayerAPI(unittest.TestCase):
             seg_method="layer:Linear",
             num_stages=self.pipeline_parallel_size,
             num_virtual_pipeline_stages=2,
-            recompute_interval=1)
+            recompute_interval=1,
+            recompute_ctx={
+                "mp_group": self.hcg.get_model_parallel_group(),
+                "offload": False,
+                "partition": False
+            })
         assert len(pipe_model.parameters()) > 0
         model_chunks = pipe_model.get_model_chunks()
         assert model_chunks is not None

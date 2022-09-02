@@ -30,6 +30,9 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+int TensorRTEngine::runtime_batch_ = 1;
+thread_local int TensorRTEngine::predictor_id_per_thread = -1;
+
 void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
   nvinfer1::DataType nv_type = nvinfer1::DataType::kFLOAT;
   switch (type) {
@@ -58,8 +61,6 @@ void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
   }
   w_.type = nv_type;
 }
-
-int TensorRTEngine::runtime_batch_ = 1;
 
 void TensorRTEngine::InitNetwork() {
   freshDeviceId();
@@ -680,8 +681,9 @@ void TensorRTEngine::GetEngineInfo() {
   LOG(INFO) << "====== engine info ======";
   std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
       infer_engine_->createEngineInspector());
-  auto infer_context = context();
-  infer_inspector->setExecutionContext(infer_context);
+  auto infer_context = infer_ptr<nvinfer1::IExecutionContext>(
+      infer_engine_->createExecutionContextWithoutDeviceMemory());
+  infer_inspector->setExecutionContext(infer_context.get());
   LOG(INFO) << infer_inspector->getEngineInformation(
       nvinfer1::LayerInformationFormat::kONELINE);
   LOG(INFO) << "====== engine info end ======";

@@ -205,7 +205,7 @@ OP_NAMEMAPPING = {
     'elementwise_sub': 'subtract',
     'elementwise_mul': 'multiply',
     'elementwise_div': 'divide',
-    'elementwise_mod': 'modulo',
+    'elementwise_mod': 'remainder',
 }
 
 
@@ -3933,7 +3933,6 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     dtype = weight.dtype
 
     # create intput and parameters
-    inputs = {'Weight': weight}
     input_shape = weight.shape
     assert weight.numel() > 0, "Any dimension of input cannot be equal to 0."
     assert dim < len(input_shape), ("The input `dim` should be less than the "
@@ -3947,13 +3946,18 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
                                 dtype=dtype,
                                 default_initializer=Normal(0., 1.))
     u.stop_gradient = True
-    inputs['U'] = u
     v = helper.create_parameter(attr=ParamAttr(),
                                 shape=[w],
                                 dtype=dtype,
                                 default_initializer=Normal(0., 1.))
-    inputs['V'] = v
     v.stop_gradient = True
+
+    if in_dygraph_mode():
+        return _C_ops.spectral_norm(weight, u, v, dim, power_iters, eps)
+
+    inputs = {'Weight': weight}
+    inputs['U'] = u
+    inputs['V'] = v
 
     # create output
     out = helper.create_variable(dtype=dtype)
@@ -5180,7 +5184,10 @@ def split(input, num_or_sections, dim=-1, name=None):
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
         if in_dygraph_mode():
-            return _C_ops.split(input, [num], dim)
+            if isinstance(num_or_sections, int):
+                return _C_ops.split_with_num(input, num_or_sections, dim)
+            else:
+                return _C_ops.split(input, num_or_sections, dim)
         elif _in_legacy_dygraph():
             out = [_varbase_creator() for n in range(num)]
             _legacy_C_ops.split(input, out, *attrs)
@@ -5307,8 +5314,11 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     if len(x.shape) == 1:
         axis = 0
     if _non_static_mode():
-        _, out = _legacy_C_ops.norm(x, 'axis', 1 if axis is None else axis,
-                                    'epsilon', epsilon)
+        if in_dygraph_mode():
+            out, _ = _C_ops.norm(x, 1 if axis is None else axis, epsilon, False)
+        elif _in_legacy_dygraph():
+            _, out = _legacy_C_ops.norm(x, 'axis', 1 if axis is None else axis,
+                                        'epsilon', epsilon)
         return out
 
     check_variable_and_dtype(x, "X", ("float16", "float32", "float64"), "norm")
@@ -7062,6 +7072,10 @@ def pad(x, paddings, pad_value=0., name=None):
         'complex128'
     ], "pad")
 
+    check_type(pad_value, 'pad_value', (float, int, Variable), 'pad')
+    if isinstance(pad_value, int):
+        pad_value = float(pad_value)
+
     helper = LayerHelper('pad', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -7070,7 +7084,7 @@ def pad(x, paddings, pad_value=0., name=None):
                      outputs={'Out': out},
                      attrs={
                          'paddings': paddings,
-                         'pad_value': float(pad_value)
+                         'pad_value': pad_value
                      })
     return out
 
