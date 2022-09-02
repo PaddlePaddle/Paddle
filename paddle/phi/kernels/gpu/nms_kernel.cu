@@ -65,7 +65,9 @@ void NMSKernel(const Context& dev_ctx,
   dim3 block(threadsPerBlock);
   dim3 grid(blocks_per_line, blocks_per_line);
   auto mask_data = paddle::memory::Alloc(
-      dev_ctx, num_boxes * blocks_per_line * sizeof(uint64_t));
+      dev_ctx.GetPlace(),
+      num_boxes * blocks_per_line * sizeof(uint64_t),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   uint64_t* mask_dev = reinterpret_cast<uint64_t*>(mask_data->ptr());
   NMS<T><<<grid, block, 0, dev_ctx.stream()>>>(
       boxes.data<T>(), threshold, num_boxes, mask_dev);
