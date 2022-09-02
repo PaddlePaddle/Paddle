@@ -627,6 +627,12 @@ class DistributedStrategy(object):
                     % (table_class))
             table_data.table_class = 'MemorySparseTable'
             table_data.shard_num = config.get('sparse_shard_num', 1000)
+            table_data.enable_sparse_table_cache = config.get(
+                'sparse_enable_cache', True)
+            table_data.sparse_table_cache_rate = config.get(
+                'sparse_cache_rate', 0.00055)
+            table_data.sparse_table_cache_file_num = config.get(
+                'sparse_cache_file_num', 16)
 
             accessor_class = config.get("sparse_accessor_class",
                                         "DownpourCtrAccessor")

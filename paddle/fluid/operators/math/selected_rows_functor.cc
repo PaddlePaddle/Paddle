@@ -569,8 +569,8 @@ TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(platform::complex<double>)
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
-struct MergeAdd<platform::XPUDeviceContext, T> {
-  phi::SelectedRows operator()(const platform::XPUDeviceContext& context,
+struct MergeAdd<phi::XPUContext, T> {
+  phi::SelectedRows operator()(const phi::XPUContext& context,
                                const phi::SelectedRows& input,
                                const bool sorted_result = false) {
     phi::SelectedRows out;
@@ -578,7 +578,7 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
     return out;
   }
 
-  void operator()(const platform::XPUDeviceContext& context,
+  void operator()(const phi::XPUContext& context,
                   const phi::SelectedRows& input,
                   phi::SelectedRows* output,
                   const bool sorted_result = false) {
@@ -633,7 +633,7 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "merge_dup_rows");
   }
 
-  void operator()(const platform::XPUDeviceContext& context,
+  void operator()(const phi::XPUContext& context,
                   const std::vector<const phi::SelectedRows*>& inputs,
                   phi::SelectedRows* output,
                   const bool sorted_result = false) {
@@ -838,7 +838,7 @@ struct MergeAverage<phi::CPUContext, T> {
 };
 
 #ifdef PADDLE_WITH_XPU
-template struct MergeAdd<platform::XPUDeviceContext, float>;
+template struct MergeAdd<phi::XPUContext, float>;
 #endif
 
 template struct MergeAverage<phi::CPUContext, int>;

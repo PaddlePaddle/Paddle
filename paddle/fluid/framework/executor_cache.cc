@@ -137,6 +137,58 @@ void ParseSafeEagerDeletionSkipVars(
   VLOG(3) << "Found skip_eager_delete_vars: " << skip_eager_delete_vars->size();
 }
 
+void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
+                            std::set<std::string> *all_vars) {
+  for (auto &var : append_vars) {
+    all_vars->insert(var);
+  }
+}
+
+std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
+    const ProgramDesc &backward_program) {
+  std::set<std::string> skip_eager_delete_vars;
+  auto backward_ops = backward_program.Block(0).AllOps();
+  auto &op_info_map = OpInfoMap::Instance();
+  std::unordered_set<std::string> op_outputs;
+  std::unordered_set<std::string> op_inputs;
+  std::unordered_set<std::string> no_need_buffer_ins;
+  for (size_t i = 0; i < backward_ops.size(); ++i) {
+    framework::OpDesc *op = backward_ops[i];
+    if (op->Type() == "share_buffer") {
+      VLOG(1) << "skip share_buffer op";
+      continue;
+    }
+    // NOTE: skip NoNeedBufferVars of grad_op and GC its memory in advance.
+    auto &op_info = op_info_map.Get(op->Type());
+    auto &inferer = op_info.NoNeedBufferVarsInferer();
+    no_need_buffer_ins.clear();
+    if (inferer != nullptr) {
+      no_need_buffer_ins =
+          inferer(op->Inputs(), op->Outputs(), op->GetAttrMap());
+    }
+    for (auto &in_names : op->Inputs()) {
+      if (no_need_buffer_ins.count(in_names.first) == 0) {
+        for (auto &in_name : in_names.second) {
+          op_inputs.emplace(in_name);
+        }
+      } else {
+        VLOG(2) << op->Type() << " has no_need_buffer_in: " << in_names.first
+                << " , skip it.";
+      }
+    }
+    for (const std::string &out_arg_name : op->OutputArgumentNames()) {
+      op_outputs.emplace(out_arg_name);
+    }
+  }
+  for (const std::string &var_name : op_inputs) {
+    if (op_outputs.find(var_name) == op_outputs.end()) {
+      VLOG(1) << "skip eager var: " << var_name;
+      skip_eager_delete_vars.insert(var_name);
+    }
+  }
+  VLOG(1) << "Found skip_eager_delete_vars: " << skip_eager_delete_vars.size();
+  return skip_eager_delete_vars;
+}
 }  // namespace details
 
 // C++11 removes the need for manual locking. Concurrent execution shall wait if
@@ -223,6 +275,34 @@ CacheInfo GetExecutorInfoFromCache(const ProgramDesc &program_desc,
 
     return std::make_pair(parallel_executor, /*is_new_created=*/false);
   }
+}
+
+InterpreterCoreInfoCache &InterpreterCoreInfoCache::Instance() {
+  static InterpreterCoreInfoCache g_info_cache;
+  return g_info_cache;
+}
+
+std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
+    const ProgramDesc &program_desc,
+    const platform::Place &place,
+    bool is_grad,
+    int64_t program_id,
+    framework::Scope *scope) {
+  auto &interpretercore_info_cache =
+      framework::InterpreterCoreInfoCache::Instance();
+  if (interpretercore_info_cache.Size() > 4u /* max_cached_size*/) {
+    interpretercore_info_cache.Finalize();
+  }
+  auto core = std::make_shared<InterpreterCore>(
+      place,
+      program_desc.Block(0),
+      /*skip_gc_vars=*/std::set<std::string>(),
+      scope,
+      /*used_for_jit=*/true);
+  auto &cached_value =
+      interpretercore_info_cache.GetMutable(program_id, is_grad);
+  cached_value.core_ = core;
+  return core;
 }
 
 }  // namespace framework

@@ -80,18 +80,6 @@ void UniformRandomRawKernel(const Context& dev_ctx,
   }
 }
 
-template <typename T, typename Context>
-void UniformRandomKernel(const Context& dev_ctx,
-                         const IntArray& shape,
-                         DataType dtype,
-                         const Scalar& min,
-                         const Scalar& max,
-                         int seed,
-                         DenseTensor* out) {
-  UniformRandomRawKernel<T>(
-      dev_ctx, shape, dtype, min, max, seed, 0, 0, 0.0f, out);
-}
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(uniform_random_raw,
@@ -100,6 +88,3 @@ PD_REGISTER_KERNEL(uniform_random_raw,
                    phi::UniformRandomRawKernel,
                    float,
                    double) {}
-
-PD_REGISTER_KERNEL(
-    uniform_random, GPU, ALL_LAYOUT, phi::UniformRandomKernel, float, double) {}
