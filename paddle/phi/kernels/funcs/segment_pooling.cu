@@ -324,7 +324,7 @@ class SegmentPoolFunctor<phi::GPUContext, T, IndexT> {
                   const std::string pooltype = "SUM") {
     if (pooltype == "MEAN") {
       // Sum the segment id num first
-      T DimTileSize = 8;
+      IndexT DimTileSize = 8;
       auto input_length_size = segment_ids.numel();
       auto total_stripe_count =
           (input_length_size + DimTileSize - 1) / DimTileSize;
@@ -440,6 +440,7 @@ class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
 };
 
 using GPU = phi::GPUContext;
+using float16 = phi::dtype::float16;
 template class SegmentPoolFunctor<GPU, float, int>;
 template class SegmentPoolFunctor<GPU, float, int64_t>;
 template class SegmentPoolFunctor<GPU, double, int>;
@@ -448,6 +449,8 @@ template class SegmentPoolFunctor<GPU, int, int>;
 template class SegmentPoolFunctor<GPU, int, int64_t>;
 template class SegmentPoolFunctor<GPU, int64_t, int>;
 template class SegmentPoolFunctor<GPU, int64_t, int64_t>;
+template class SegmentPoolFunctor<GPU, float16, int>;
+template class SegmentPoolFunctor<GPU, float16, int64_t>;
 
 template class SegmentPoolGradFunctor<GPU, float, int>;
 template class SegmentPoolGradFunctor<GPU, float, int64_t>;
@@ -457,6 +460,8 @@ template class SegmentPoolGradFunctor<GPU, int, int>;
 template class SegmentPoolGradFunctor<GPU, int, int64_t>;
 template class SegmentPoolGradFunctor<GPU, int64_t, int>;
 template class SegmentPoolGradFunctor<GPU, int64_t, int64_t>;
+template class SegmentPoolGradFunctor<GPU, float16, int>;
+template class SegmentPoolGradFunctor<GPU, float16, int64_t>;
 
 }  // namespace funcs
 }  // namespace phi

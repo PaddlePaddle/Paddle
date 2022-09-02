@@ -163,8 +163,10 @@ class LazyZeros<phi::GPUContext, T> {
         paddle::memory::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));
     int64_t* h_starts = reinterpret_cast<int64_t*>(h_in_starts_mem->ptr());
 
-    auto d_in_starts_mem =
-        paddle::memory::Alloc(dev_ctx, (xs_size + 1) * sizeof(int64_t));
+    auto d_in_starts_mem = paddle::memory::Alloc(
+        dev_ctx.GetPlace(),
+        (xs_size + 1) * sizeof(int64_t),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     int64_t* d_starts = reinterpret_cast<int64_t*>(d_in_starts_mem->ptr());
 
     // the start index value of each tensor is
@@ -186,7 +188,10 @@ class LazyZeros<phi::GPUContext, T> {
         paddle::memory::Alloc(cpu_place, xs_size * sizeof(T*));
     T** h_out_addrs = reinterpret_cast<T**>(h_out_addrs_mem->ptr());
 
-    auto d_out_addrs_mem = paddle::memory::Alloc(dev_ctx, xs_size * sizeof(T*));
+    auto d_out_addrs_mem = paddle::memory::Alloc(
+        dev_ctx.GetPlace(),
+        xs_size * sizeof(T*),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     T** d_out_addrs = reinterpret_cast<T**>(d_out_addrs_mem->ptr());
 
     for (size_t i = 0; i < xs_size; ++i) {
@@ -287,8 +292,10 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
       paddle::memory::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));
   int64_t* h_starts = reinterpret_cast<int64_t*>(h_starts_tensor->ptr());
 
-  auto d_starts_tensor =
-      paddle::memory::Alloc(dev_ctx, (xs_size + 1) * sizeof(int64_t));
+  auto d_starts_tensor = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      (xs_size + 1) * sizeof(int64_t),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int64_t* d_starts = reinterpret_cast<int64_t*>(d_starts_tensor->ptr());
 
   // the start index value of each tensor is
@@ -311,7 +318,10 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
   const T** h_xs = reinterpret_cast<const T**>(h_mem->ptr());
   T** h_outs = reinterpret_cast<T**>(h_mem->ptr()) + xs_size;
 
-  auto d_mem = paddle::memory::Alloc(dev_ctx, 2 * xs_size * sizeof(T*));
+  auto d_mem = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      2 * xs_size * sizeof(T*),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   const T** d_xs = reinterpret_cast<const T**>(d_mem->ptr());
   T** d_outs = reinterpret_cast<T**>(d_mem->ptr()) + xs_size;
 
