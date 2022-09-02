@@ -50,12 +50,24 @@ inline MKLDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
 
 // Caution: proto::VarType::Type -> phi::DataType after transfer
 inline MKLDNNDataType ToMKLDNNDataType(DataType type) {
-  static std::unordered_map<DataType, MKLDNNDataType> dict{
-      {DataType::FLOAT32, MKLDNNDataType::f32},
-      {DataType::INT8, MKLDNNDataType::s8},
-      {DataType::UINT8, MKLDNNDataType::u8},
-      {DataType::INT32, MKLDNNDataType::s32},
-      {DataType::BFLOAT16, MKLDNNDataType::bf16}};
+  struct DataTypeHash {
+    std::size_t operator()(const DataType& f) const {
+      return std::hash<int>{}(static_cast<int>(f));
+    }
+  };
+  struct DataTypeEqual {
+    bool operator()(const DataType& lhs, const DataType& rhs) const {
+      return static_cast<int>(lhs) == static_cast<int>(rhs);
+    }
+  };
+
+  static std::
+      unordered_map<DataType, MKLDNNDataType, DataTypeHash, DataTypeEqual>
+          dict{{DataType::FLOAT32, MKLDNNDataType::f32},
+               {DataType::INT8, MKLDNNDataType::s8},
+               {DataType::UINT8, MKLDNNDataType::u8},
+               {DataType::INT32, MKLDNNDataType::s32},
+               {DataType::BFLOAT16, MKLDNNDataType::bf16}};
   auto iter = dict.find(type);
   if (iter != dict.end()) return iter->second;
   return MKLDNNDataType::undef;
