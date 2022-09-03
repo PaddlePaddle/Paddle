@@ -14,12 +14,23 @@
 
 #pragma once
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+
+#include <array>
 #include <iostream>
 #include <memory>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
 
+#include "paddle/fluid/distributed/store/socket.h"
 #include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/distributed/store/tcp_utils.h"
 
@@ -27,34 +38,54 @@ namespace paddle {
 namespace distributed {
 
 enum class ReplyType { WAITING, STOP_WAIT };
-enum class Command { ADD, GET, WAIT, STOP };
+enum class Command { ADD, GET, SET, WAIT, STOP };
 
 namespace detail {
 
 class MasterDaemon {
  public:
-  static std::unique_ptr<MasterDaemon> start(SocketType listen_socket);
+  static std::unique_ptr<MasterDaemon> start(SocketType listen_socket,
+                                             int nranks,
+                                             int timeout);
   MasterDaemon() = delete;
-  explicit MasterDaemon(SocketType listen_socket);
+  explicit MasterDaemon(SocketType listen_socket,
+                        int nranks,
+                        int stop_check_timeout);
   ~MasterDaemon();
 
  private:
   void run();
+  void ProcessCommands(std::vector<struct pollfd>* p_fds);
   void _do_add(SocketType socket);
   void _do_wait(SocketType socket);
   void _do_get(SocketType socket);
+  void _do_set(SocketType socket);
   void _do_stop(SocketType socket);
   SocketType _listen_socket;
   std::vector<SocketType> _sockets;
   std::unordered_map<std::string, std::vector<uint8_t>> _store;
   std::thread _background_thread{};
-  bool _stop = false;
+  int _nranks = -1;
+  int _timeout = 0;
+  bool _stop = false;  // all workers stopped
+  std::chrono::time_point<std::chrono::system_clock> _stop_time;
+  bool _has_stop = false;  // at least one worker stopped
+
+  void InitControlFd();
+  void CloseControlFd();
+  void StopByControlFd();
+#ifdef _WIN32
+#else
+  std::array<int, 2> _control_fd{{-1, -1}};
+#endif
 };
 
 class TCPServer {
  public:
   TCPServer() = default;
-  static std::unique_ptr<TCPServer> create(std::uint16_t port);
+  static std::unique_ptr<TCPServer> create(std::uint16_t port,
+                                           int nranks,
+                                           int stop_check_timeout);
 
  private:
   std::unique_ptr<MasterDaemon> _master_daemon;
@@ -85,18 +116,22 @@ class TCPClient {
 
 }  // namespace detail
 
+// TODO(gongwb) :Add IP6 support.
 class TCPStore : public Store {
  public:
   static constexpr std::uint16_t kDefaultPort = 6170;
-  explicit TCPStore(std::string host, uint16_t port = kDefaultPort,
-                    bool is_master = false, size_t num_workers = 1,
-                    std::chrono::seconds timeout = tcputils::kDefaultTimeout);
+  explicit TCPStore(std::string host,
+                    uint16_t port = kDefaultPort,
+                    bool is_master = false,
+                    size_t num_workers = 1,
+                    int timeout = 900);
 
   ~TCPStore();
 
   int64_t add(const std::string& key, int64_t value) override;
   std::vector<uint8_t> get(const std::string& key) override;
   void wait(const std::string& key) override;
+  void set(const std::string& key, const std::vector<uint8_t>& value) override;
 
  private:
   void waitWorkers();
@@ -105,7 +140,7 @@ class TCPStore : public Store {
 
   const std::string _init_key = "init/";
   const std::string _key_prefix = "/";
-  std::chrono::seconds _timeout;
+
   bool _is_master;
   int _num_workers;
 };

@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -29,6 +30,7 @@ alignment = 512
 
 
 class TestAllocContinuousSpace(OpTest):
+
     def setUp(self):
         self.__class__.use_npu = True
         self.op_type = "coalesce_tensor"
@@ -80,10 +82,12 @@ class TestAllocContinuousSpace(OpTest):
         self.check_output_with_place(
             place=paddle.NPUPlace(0),
             no_check_set=["FusedOutput"],
-            atol=1e-5, )
+            atol=1e-5,
+        )
 
 
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
+
     def init_attr(self):
         return {
             "copy_data": True,
@@ -98,7 +102,8 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
         self.check_output_with_place(
             place=paddle.NPUPlace(0),
             no_check_set=["FusedOutput"],
-            atol=1e-5, )
+            atol=1e-5,
+        )
 
 
 if __name__ == '__main__':

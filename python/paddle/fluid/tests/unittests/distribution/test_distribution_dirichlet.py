@@ -19,18 +19,21 @@ import paddle
 import scipy.stats
 
 import config
-from config import (ATOL, DEVICES, RTOL, TEST_CASE_NAME, parameterize, place,
-                    xrand)
+from config import ATOL, DEVICES, RTOL
+import parameterize as param
+
+np.random.seed(2022)
 
 
-@place(DEVICES)
-@parameterize(
-    (TEST_CASE_NAME, 'concentration'),
+@param.place(DEVICES)
+@param.param_cls(
+    (param.TEST_CASE_NAME, 'concentration'),
     [
-        ('test-one-dim', config.xrand((89, ))),
+        ('test-one-dim', param.xrand((89, ))),
         # ('test-multi-dim', config.xrand((10, 20, 30)))
     ])
 class TestDirichlet(unittest.TestCase):
+
     def setUp(self):
         self._paddle_diric = paddle.distribution.Dirichlet(
             paddle.to_tensor(self.concentration))
@@ -91,14 +94,19 @@ class TestDirichlet(unittest.TestCase):
         self.assertTrue(
             np.all(
                 self._paddle_diric._log_normalizer(
-                    paddle.to_tensor(config.xrand((100, 100, 100)))).numpy() <
-                0.0))
+                    paddle.to_tensor(param.xrand((100, 100,
+                                                  100)))).numpy() < 0.0))
 
-    @place(DEVICES)
-    @parameterize((TEST_CASE_NAME, 'concentration'),
-                  [('test-zero-dim', np.array(1.0))])
+    @param.place(DEVICES)
+    @param.param_cls((param.TEST_CASE_NAME, 'concentration'),
+                     [('test-zero-dim', np.array(1.0))])
     class TestDirichletException(unittest.TestCase):
+
         def TestInit(self):
             with self.assertRaises(ValueError):
-                paddle.distribution.Dirichlet(
-                    paddle.squeeze(self.concentration))
+                paddle.distribution.Dirichlet(paddle.squeeze(
+                    self.concentration))
+
+
+if __name__ == '__main__':
+    unittest.main()

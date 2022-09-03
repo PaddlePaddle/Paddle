@@ -17,13 +17,17 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append('..')
 from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 
+paddle.enable_static()
+
 
 class TestTopkOp(OpTest):
+
     def setUp(self):
         self.variable_k = False
         self.set_args()
@@ -64,10 +68,10 @@ class TestTopkOp(OpTest):
 
 
 class TestTopkFP16Op(TestTopkOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

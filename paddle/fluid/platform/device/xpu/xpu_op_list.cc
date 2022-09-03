@@ -9,6 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+
 #include <mutex>
 #include <string>
 #include <unordered_set>
@@ -17,18 +19,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/xpu2_op_list.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_kpfirst_list.h"
-#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 
 namespace paddle {
 namespace platform {
 
 bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type) {
-  auto& ops = get_kl1_ops();
   auto v = get_xpu_version(type.place_.device);
-  if (v == phi::backends::xpu::XPUVersion::XPU2) {
-    ops = get_kl2_ops();
-  }
-
+  auto& ops = (v == phi::backends::xpu::XPUVersion::XPU1) ? get_kl1_ops()
+                                                          : get_kl2_ops();
   if (ops.find(op_name) != ops.end() &&
       ops[op_name].find(type) != ops[op_name].end()) {
     return true;
@@ -38,7 +36,8 @@ bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type) {
 
 // ops_string contains op_list(e.g., 'mul,mul_grad'), parse the op string and
 // insert op to op set
-static void tokenize(const std::string& ops, char delim,
+static void tokenize(const std::string& ops,
+                     char delim,
                      std::unordered_set<std::string>* op_set) {
   std::string::size_type beg = 0;
   for (uint64_t end = 0; (end = ops.find(delim, end)) != std::string::npos;
@@ -78,12 +77,9 @@ bool is_in_xpu_black_list(const std::string& op_name) {
 #ifdef PADDLE_WITH_XPU_KP
 bool is_xpu_kp_support_op(const std::string& op_name,
                           const pOpKernelType& type) {
-  auto& ops = get_kl1_ops();
   auto v = get_xpu_version(type.place_.device);
-  if (v == phi::backends::xpu::XPUVersion::XPU2) {
-    ops = get_kp_ops();
-  }
-
+  auto& ops = (v == phi::backends::xpu::XPUVersion::XPU1) ? get_kl1_ops()
+                                                          : get_kp_ops();
   if (ops.find(op_name) != ops.end() &&
       ops[op_name].find(type) != ops[op_name].end()) {
     return true;
@@ -114,6 +110,22 @@ bool is_in_xpu_kpwhite_list(const std::string& op_name) {
     return true;
   }
   return false;
+}
+#endif
+
+#ifdef PADDLE_WITH_XPU_KP
+std::vector<vartype::Type> get_xpu_kp_op_support_type(
+    const std::string& op_name, phi::backends::xpu::XPUVersion version) {
+  std::vector<vartype::Type> res;
+  auto& ops = version == phi::backends::xpu::XPUVersion::XPU1 ? get_kl1_ops()
+                                                              : get_kp_ops();
+  if (ops.find(op_name) != ops.end()) {
+    XPUKernelSet& type_set = ops[op_name];
+    for (auto& item : type_set) {
+      res.push_back(item.data_type_);
+    }
+  }
+  return res;
 }
 #endif
 

@@ -15,10 +15,12 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/pooling.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 
 namespace paddle {
 namespace operators {
@@ -53,16 +55,36 @@ class SppKernel : public framework::OpKernel<T> {
       out_level.mutable_data<T>(output_shape, context.GetPlace());
       // pooling
       if (pooling_type == "max") {
-        math::Pool2dFunctor<DeviceContext, math::MaxPool<T>, T> pool_forward;
-        math::MaxPool<T> max_process;
-        pool_forward(context.template device_context<DeviceContext>(), *in_x,
-                     kernel_size, strides, paddings, true, false, &out_level,
+        phi::funcs::Pool2dFunctor<
+            typename framework::ConvertToPhiContext<DeviceContext>::TYPE,
+            phi::funcs::MaxPool<T>,
+            T>
+            pool_forward;
+        phi::funcs::MaxPool<T> max_process;
+        pool_forward(context.template device_context<DeviceContext>(),
+                     *in_x,
+                     kernel_size,
+                     strides,
+                     paddings,
+                     true,
+                     false,
+                     &out_level,
                      max_process);
       } else if (pooling_type == "avg") {
-        math::Pool2dFunctor<DeviceContext, math::AvgPool<T>, T> pool_forward;
-        math::AvgPool<T> avg_process;
-        pool_forward(context.template device_context<DeviceContext>(), *in_x,
-                     kernel_size, strides, paddings, true, false, &out_level,
+        phi::funcs::Pool2dFunctor<
+            typename framework::ConvertToPhiContext<DeviceContext>::TYPE,
+            phi::funcs::AvgPool<T>,
+            T>
+            pool_forward;
+        phi::funcs::AvgPool<T> avg_process;
+        pool_forward(context.template device_context<DeviceContext>(),
+                     *in_x,
+                     kernel_size,
+                     strides,
+                     paddings,
+                     true,
+                     false,
+                     &out_level,
                      avg_process);
       }
       // flatten pooling output shape
@@ -75,8 +97,11 @@ class SppKernel : public framework::OpKernel<T> {
       // concat
       auto out_level_stride = phi::stride(out_level.dims());
       StridedMemcpy<T>(context.template device_context<DeviceContext>(),
-                       out_level.data<T>(), out_level_stride, out_level.dims(),
-                       out_stride, out->data<T>() + output_offset);
+                       out_level.data<T>(),
+                       out_level_stride,
+                       out_level.dims(),
+                       out_stride,
+                       out->data<T>() + output_offset);
       output_offset += out_level.dims()[1] * out_level_stride[1];
     }
   }
@@ -95,7 +120,10 @@ class SppGradKernel : public framework::OpKernel<T> {
     std::string pooling_type =
         context.template Attr<std::string>("pooling_type");
     auto& device_ctx = context.template device_context<DeviceContext>();
-    phi::funcs::SetConstant<DeviceContext, T> zero;
+    phi::funcs::SetConstant<
+        typename framework::ConvertToPhiContext<DeviceContext>::TYPE,
+        T>
+        zero;
     in_x_grad->mutable_data<T>(context.GetPlace());
     zero(device_ctx, in_x_grad, static_cast<T>(0));
     auto out_stride = phi::stride(out->dims());
@@ -123,12 +151,17 @@ class SppGradKernel : public framework::OpKernel<T> {
       auto flatten_stride = phi::stride(out_level.dims());
       // memcpy
       StridedMemcpy<T>(context.template device_context<DeviceContext>(),
-                       out->data<T>() + out_offset, out_stride,
-                       out_level.dims(), flatten_stride, out_level.data<T>());
+                       out->data<T>() + out_offset,
+                       out_stride,
+                       out_level.dims(),
+                       flatten_stride,
+                       out_level.data<T>());
 
       StridedMemcpy<T>(context.template device_context<DeviceContext>(),
-                       out_grad->data<T>() + out_offset, out_stride,
-                       outgrad_level.dims(), flatten_stride,
+                       out_grad->data<T>() + out_offset,
+                       out_stride,
+                       outgrad_level.dims(),
+                       flatten_stride,
                        outgrad_level.data<T>());
       out_offset += out_level.dims()[1] * out_stride[1];
       // flatten backward to nchw
@@ -145,17 +178,36 @@ class SppGradKernel : public framework::OpKernel<T> {
       outgrad_level.Resize(out_shape);
       // pooling backward
       if (pooling_type == "max") {
-        math::MaxPool2dGradFunctor<DeviceContext, T> pool2d_backward;
-        pool2d_backward(context.template device_context<DeviceContext>(), *in_x,
-                        *&out_level, *&outgrad_level, kernel_size, strides,
-                        paddings, in_x_grad);
+        phi::funcs::MaxPool2dGradFunctor<
+            typename framework::ConvertToPhiContext<DeviceContext>::TYPE,
+            T>
+            pool2d_backward;
+        pool2d_backward(context.template device_context<DeviceContext>(),
+                        *in_x,
+                        *&out_level,
+                        *&outgrad_level,
+                        kernel_size,
+                        strides,
+                        paddings,
+                        in_x_grad);
       } else if (pooling_type == "avg") {
-        math::Pool2dGradFunctor<DeviceContext, math::AvgPoolGrad<T>, T>
+        phi::funcs::Pool2dGradFunctor<
+            typename framework::ConvertToPhiContext<DeviceContext>::TYPE,
+            phi::funcs::AvgPoolGrad<T>,
+            T>
             pool_backward;
-        math::AvgPoolGrad<T> avg_process;
-        pool_backward(context.template device_context<DeviceContext>(), *in_x,
-                      *&out_level, *&outgrad_level, kernel_size, strides,
-                      paddings, true, false, in_x_grad, avg_process);
+        phi::funcs::AvgPoolGrad<T> avg_process;
+        pool_backward(context.template device_context<DeviceContext>(),
+                      *in_x,
+                      *&out_level,
+                      *&outgrad_level,
+                      kernel_size,
+                      strides,
+                      paddings,
+                      true,
+                      false,
+                      in_x_grad,
+                      avg_process);
       }
     }
   }

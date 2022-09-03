@@ -34,8 +34,8 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& y,
                             const DenseTensor& dout,
-                            paddle::optional<const DenseTensor&> ddx,
-                            paddle::optional<const DenseTensor&> ddy,
+                            const paddle::optional<DenseTensor>& ddx,
+                            const paddle::optional<DenseTensor>& ddy,
                             bool transpose_x,
                             bool transpose_y,
                             DenseTensor* dx,
@@ -49,9 +49,9 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                             const DenseTensor& dout,
                             const DenseTensor& ddx,
                             const DenseTensor& ddy,
-                            paddle::optional<const DenseTensor&> d_dx,
-                            paddle::optional<const DenseTensor&> d_dy,
-                            paddle::optional<const DenseTensor&> d_ddout,
+                            const paddle::optional<DenseTensor>& d_dx,
+                            const paddle::optional<DenseTensor>& d_dy,
+                            const paddle::optional<DenseTensor>& d_ddout,
                             bool transpose_x,
                             bool transpose_y,
                             DenseTensor* out_d_x,
@@ -59,5 +59,29 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                             DenseTensor* out_d_dout,
                             DenseTensor* out_d_ddx,
                             DenseTensor* out_d_ddy);
+
+template <typename T, typename Context>
+void MatmulWithFlattenGradKernel(const Context& dev_ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 const DenseTensor& out_grad,
+                                 int x_num_col_dims,
+                                 int y_num_col_dims,
+                                 DenseTensor* x_grad,
+                                 DenseTensor* y_grad);
+
+template <typename T, typename Context>
+void MatmulWithFlattenDoubleGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& y,
+    const DenseTensor& out_grad,
+    const paddle::optional<DenseTensor>& x_grad_grad,
+    const paddle::optional<DenseTensor>& y_grad_grad,
+    int x_num_col_dims,
+    int y_num_col_dims,
+    DenseTensor* x_grad,
+    DenseTensor* y_grad,
+    DenseTensor* out_grad_grad);
 
 }  // namespace phi

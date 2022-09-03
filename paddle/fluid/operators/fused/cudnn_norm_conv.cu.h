@@ -37,56 +37,70 @@ struct NormConvolutionArgs {
     compute_type = platform::CudnnDataType<float>::type;
   }
 
-  void Set(const platform::CUDADeviceContext &ctx,
+  void Set(const phi::GPUContext &ctx,
            const std::vector<int> &input_shape,
            const std::vector<int> &filter_shape,
-           const std::vector<int> &output_shape, int padding, int stride,
-           int dilation, int group) {
+           const std::vector<int> &output_shape,
+           int padding,
+           int stride,
+           int dilation,
+           int group) {
     PADDLE_ENFORCE_EQ(
-        input_shape.size(), 4U,
+        input_shape.size(),
+        4U,
         platform::errors::InvalidArgument(
-            "The size of input_shape is expected to 4. But recieved "
+            "The size of input_shape is expected to 4. But received "
             "input_shape's size is %d, input_shape is [%s].",
-            input_shape.size(), phi::make_ddim(input_shape)));
+            input_shape.size(),
+            phi::make_ddim(input_shape)));
     PADDLE_ENFORCE_EQ(
-        filter_shape.size(), 4U,
+        filter_shape.size(),
+        4U,
         platform::errors::InvalidArgument(
-            "The size of filter_shape is expected to 4. But recieved "
+            "The size of filter_shape is expected to 4. But received "
             "filter_shape's size is %d, filter_shape is [%s].",
-            filter_shape.size(), phi::make_ddim(filter_shape)));
+            filter_shape.size(),
+            phi::make_ddim(filter_shape)));
     PADDLE_ENFORCE_EQ(filter_shape[1] == filter_shape[2] &&
                           (filter_shape[1] == 1 || filter_shape[1] == 3),
                       true,
                       platform::errors::InvalidArgument(
                           "The filter_shape is expected to store as nhwc, and "
-                          "h = w = 1 or 3. But recieved filter_shape is [%s].",
+                          "h = w = 1 or 3. But received filter_shape is [%s].",
                           phi::make_ddim(filter_shape)));
     PADDLE_ENFORCE_EQ((filter_shape[0] % 32 == 0 && filter_shape[3] % 8 == 0),
                       true,
                       platform::errors::InvalidArgument(
                           "The input channel is expected to be multiple of 8, "
                           "and the output channel is expected to be multiple "
-                          "of 32. But recieved input channel is %d, output "
+                          "of 32. But received input channel is %d, output "
                           "channel is %d.",
-                          filter_shape[3], filter_shape[0]));
+                          filter_shape[3],
+                          filter_shape[0]));
     PADDLE_ENFORCE_EQ(
-        output_shape.size(), 4U,
+        output_shape.size(),
+        4U,
         platform::errors::InvalidArgument(
-            "The size of output_shape is expected to 4. But recieved "
+            "The size of output_shape is expected to 4. But received "
             "filter_shape's size is %d, filter_shape is [%s].",
-            output_shape.size(), phi::make_ddim(output_shape)));
+            output_shape.size(),
+            phi::make_ddim(output_shape)));
     is_support = IsSupport(ctx, filter_shape, stride, dilation, group);
     PADDLE_ENFORCE_EQ(
-        is_support, true,
+        is_support,
+        true,
         platform::errors::InvalidArgument(
             "Current test is only supported in the platforms with "
             "compatiblity greater than or equal to 70 and the kernel size "
             "must be equal to 1 or 3. When the kernel size is 1, "
             "the stride must be 1 if the compatiblity is equal to 70. "
-            "Besides, the dilation and group must be equal to 1. But recieved "
+            "Besides, the dilation and group must be equal to 1. But received "
             "compatiblity is %d, kernel size is %d, stride is %d, "
             "dilation is %d, group is %d",
-            ctx.GetComputeCapability(), filter_shape[1], stride, dilation,
+            ctx.GetComputeCapability(),
+            filter_shape[1],
+            stride,
+            dilation,
             group));
 
     for (size_t i = 0; i < input_shape.size(); ++i) {
@@ -110,8 +124,10 @@ struct NormConvolutionArgs {
     conv_desc.set(dtype, paddings, strides, dilations, false, group);
   }
 
-  bool IsSupport(const platform::CUDADeviceContext &ctx,
-                 const std::vector<int> &filter_shape, int stride, int dilation,
+  bool IsSupport(const phi::GPUContext &ctx,
+                 const std::vector<int> &filter_shape,
+                 int stride,
+                 int dilation,
                  int group) {
     int kernel_size = filter_shape[1];
     if (dilation != 1 || group != 1) {
@@ -151,19 +167,30 @@ struct NormConvolutionArgs {
 template <typename T>
 class CudnnNormConvolution {
  public:
-  CudnnNormConvolution(const platform::CUDADeviceContext &ctx,
+  CudnnNormConvolution(const phi::GPUContext &ctx,
                        const std::vector<int> &input_shape,
                        const std::vector<int> &filter_shape,
-                       const std::vector<int> &output_shape, const int &padding,
-                       const int &stride, const int &dilation,
+                       const std::vector<int> &output_shape,
+                       const int &padding,
+                       const int &stride,
+                       const int &dilation,
                        const int &group) {
-    args_.Set(ctx, input_shape, filter_shape, output_shape, padding, stride,
-              dilation, group);
+    args_.Set(ctx,
+              input_shape,
+              filter_shape,
+              output_shape,
+              padding,
+              stride,
+              dilation,
+              group);
   }
   ~CudnnNormConvolution() {}
 
-  void Forward(const platform::CUDADeviceContext &ctx, const Tensor &input,
-               const Tensor &filter, Tensor *output, Tensor *sum,
+  void Forward(const phi::GPUContext &ctx,
+               const Tensor &input,
+               const Tensor &filter,
+               Tensor *output,
+               Tensor *sum,
                Tensor *sum_of_squares) {
     auto cudnn_handle = ctx.cudnn_handle();
     auto place = ctx.GetPlace();
@@ -201,21 +228,27 @@ class CudnnNormConvolution {
   }
 
  private:
-  CudnnFusionOp *GetForwardOp(const platform::CUDADeviceContext &ctx) {
+  CudnnFusionOp *GetForwardOp(const phi::GPUContext &ctx) {
     framework::AlgorithmsCache<CudnnFusionOp *> &cache =
         *(CudnnFusionOpCache::Instance().GetForward());
 
     CudnnFusionOp *fwd_op = cache.GetAlgorithm(
-        args_.in_dims, args_.filter_dims, args_.strides, args_.paddings,
-        args_.dilations, 0, static_cast<int64_t>(args_.dtype), [&]() {
+        args_.in_dims,
+        args_.filter_dims,
+        args_.strides,
+        args_.paddings,
+        args_.dilations,
+        0,
+        static_cast<int64_t>(args_.dtype),
+        [&]() {
           CudnnFusionOp *fwd_op =
               new CudnnFusionOp(CUDNN_FUSED_SCALE_BIAS_ACTIVATION_CONV_BNSTATS);
 
           // Set constant_param
-          fwd_op->SetOpConstParamAttr(
-              {CUDNN_PARAM_XDATA_PLACEHOLDER, CUDNN_PARAM_WDATA_PLACEHOLDER,
-               CUDNN_PARAM_YDATA_PLACEHOLDER},
-              CUDNN_PTR_16B_ALIGNED);
+          fwd_op->SetOpConstParamAttr({CUDNN_PARAM_XDATA_PLACEHOLDER,
+                                       CUDNN_PARAM_WDATA_PLACEHOLDER,
+                                       CUDNN_PARAM_YDATA_PLACEHOLDER},
+                                      CUDNN_PTR_16B_ALIGNED);
           fwd_op->SetOpConstParamAttr(
               {CUDNN_PARAM_YSUM_PLACEHOLDER, CUDNN_PARAM_YSQSUM_PLACEHOLDER},
               CUDNN_PTR_16B_ALIGNED);
@@ -251,21 +284,32 @@ class CudnnNormConvolution {
 template <typename T>
 class CudnnNormConvolutionGrad {
  public:
-  CudnnNormConvolutionGrad(const platform::CUDADeviceContext &ctx,
+  CudnnNormConvolutionGrad(const phi::GPUContext &ctx,
                            const std::vector<int> &input_shape,
                            const std::vector<int> &filter_shape,
                            const std::vector<int> &output_shape,
-                           const int &padding, const int &stride,
-                           const int &dilation, const int &group) {
-    args_.Set(ctx, input_shape, filter_shape, output_shape, padding, stride,
-              dilation, group);
+                           const int &padding,
+                           const int &stride,
+                           const int &dilation,
+                           const int &group) {
+    args_.Set(ctx,
+              input_shape,
+              filter_shape,
+              output_shape,
+              padding,
+              stride,
+              dilation,
+              group);
     dgrad_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
   }
   ~CudnnNormConvolutionGrad() {}
 
-  void Backward(const platform::CUDADeviceContext &ctx, const Tensor &input,
-                const Tensor &filter, const Tensor &output_grad,
-                Tensor *input_grad, Tensor *filter_grad,
+  void Backward(const phi::GPUContext &ctx,
+                const Tensor &input,
+                const Tensor &filter,
+                const Tensor &output_grad,
+                Tensor *input_grad,
+                Tensor *filter_grad,
                 bool use_addto = false) {
     auto place = ctx.GetPlace();
     T *input_ptr = const_cast<T *>(input.data<T>());
@@ -283,8 +327,10 @@ class CudnnNormConvolutionGrad {
   }
 
  private:
-  void BackwardFilter(const platform::CUDADeviceContext &ctx,
-                      T *output_grad_ptr, T *input_ptr, T *filter_grad_ptr) {
+  void BackwardFilter(const phi::GPUContext &ctx,
+                      T *output_grad_ptr,
+                      T *input_ptr,
+                      T *filter_grad_ptr) {
     auto cudnn_handle = ctx.cudnn_handle();
 
     CudnnFusionOp *wgrad_op = GetBackwardFilterOp(ctx);
@@ -309,8 +355,11 @@ class CudnnNormConvolutionGrad {
         workspace_size);
   }
 
-  void BackwardData(const platform::CUDADeviceContext &ctx, T *output_grad_ptr,
-                    T *filter_ptr, T *input_grad_ptr, bool use_addto = false) {
+  void BackwardData(const phi::GPUContext &ctx,
+                    T *output_grad_ptr,
+                    T *filter_ptr,
+                    T *input_grad_ptr,
+                    bool use_addto = false) {
     auto cudnn_handle = ctx.cudnn_handle();
     size_t workspace_size = GetWorkspaceSizeBwdData(ctx);
 
@@ -321,28 +370,43 @@ class CudnnNormConvolutionGrad {
         [&](void *cudnn_workspace_ptr) {
           PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::cudnnConvolutionBackwardData(
-                  cudnn_handle, &alpha, args_.filter_desc.desc(), filter_ptr,
-                  args_.out_desc.desc(), output_grad_ptr,
-                  args_.conv_desc.desc(), dgrad_algo_, cudnn_workspace_ptr,
-                  workspace_size, &beta, args_.in_desc.desc(), input_grad_ptr));
+                  cudnn_handle,
+                  &alpha,
+                  args_.filter_desc.desc(),
+                  filter_ptr,
+                  args_.out_desc.desc(),
+                  output_grad_ptr,
+                  args_.conv_desc.desc(),
+                  dgrad_algo_,
+                  cudnn_workspace_ptr,
+                  workspace_size,
+                  &beta,
+                  args_.in_desc.desc(),
+                  input_grad_ptr));
         },
         workspace_size);
   }
 
-  CudnnFusionOp *GetBackwardFilterOp(const platform::CUDADeviceContext &ctx) {
+  CudnnFusionOp *GetBackwardFilterOp(const phi::GPUContext &ctx) {
     framework::AlgorithmsCache<CudnnFusionOp *> &cache =
         *(CudnnFusionOpCache::Instance().GetBackward());
 
     CudnnFusionOp *wgrad_op = cache.GetAlgorithm(
-        args_.in_dims, args_.filter_dims, args_.strides, args_.paddings,
-        args_.dilations, 0, static_cast<int64_t>(args_.dtype), [&]() {
+        args_.in_dims,
+        args_.filter_dims,
+        args_.strides,
+        args_.paddings,
+        args_.dilations,
+        0,
+        static_cast<int64_t>(args_.dtype),
+        [&]() {
           CudnnFusionOp *wgrad_op =
               new CudnnFusionOp(CUDNN_FUSED_SCALE_BIAS_ACTIVATION_WGRAD);
 
-          wgrad_op->SetOpConstParamAttr(
-              {CUDNN_PARAM_DYDATA_PLACEHOLDER, CUDNN_PARAM_XDATA_PLACEHOLDER,
-               CUDNN_PARAM_DWDATA_PLACEHOLDER},
-              CUDNN_PTR_16B_ALIGNED);
+          wgrad_op->SetOpConstParamAttr({CUDNN_PARAM_DYDATA_PLACEHOLDER,
+                                         CUDNN_PARAM_XDATA_PLACEHOLDER,
+                                         CUDNN_PARAM_DWDATA_PLACEHOLDER},
+                                        CUDNN_PTR_16B_ALIGNED);
 
           // conv desc
           wgrad_op->SetOpConstParamDesc(CUDNN_PARAM_CONV_DESC,
@@ -366,13 +430,17 @@ class CudnnNormConvolutionGrad {
     return wgrad_op;
   }
 
-  size_t GetWorkspaceSizeBwdData(const platform::CUDADeviceContext &ctx) {
+  size_t GetWorkspaceSizeBwdData(const phi::GPUContext &ctx) {
     size_t workspace_size = 0U;
     auto handle = ctx.cudnn_handle();
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
-            handle, args_.filter_desc.desc(), args_.out_desc.desc(),
-            args_.conv_desc.desc(), args_.in_desc.desc(), dgrad_algo_,
+            handle,
+            args_.filter_desc.desc(),
+            args_.out_desc.desc(),
+            args_.conv_desc.desc(),
+            args_.in_desc.desc(),
+            dgrad_algo_,
             &workspace_size));
     return RoundUp(workspace_size, 512);
   }

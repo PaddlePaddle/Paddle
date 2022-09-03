@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,19 +16,19 @@ import math
 import warnings
 
 import numpy as np
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
+from paddle.distribution import distribution
+from paddle.fluid import core
+from paddle.fluid.data_feeder import (check_dtype, check_type,
+                                      check_variable_and_dtype, convert_dtype)
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
+                                 elementwise_mul, elementwise_sub, nn, ops,
+                                 tensor)
+from paddle.tensor import arange, concat, gather_nd, multinomial
 
-from ..fluid import core
-from ..fluid.data_feeder import (check_dtype, check_type,
-                                 check_variable_and_dtype, convert_dtype)
-from ..fluid.framework import in_dygraph_mode
-from ..fluid.layers import (control_flow, elementwise_add, elementwise_div,
-                            elementwise_mul, elementwise_sub, nn, ops, tensor)
-from ..tensor import arange, concat, gather_nd, multinomial
-from .distribution import Distribution
 
-
-class Uniform(Distribution):
+class Uniform(distribution.Distribution):
     r"""Uniform distribution with `low` and `high` parameters.
 
     Mathematical Details
@@ -90,7 +90,7 @@ class Uniform(Distribution):
     """
 
     def __init__(self, low, high, name=None):
-        if not in_dygraph_mode():
+        if not _non_static_mode():
             check_type(low, 'low',
                        (int, float, np.ndarray, tensor.Variable, list, tuple),
                        'Uniform')
@@ -116,13 +116,11 @@ class Uniform(Distribution):
         else:
             if isinstance(low, float) and isinstance(high, float):
                 self.all_arg_is_float = True
-            if isinstance(
-                    low,
-                    np.ndarray) and str(low.dtype) in ['float32', 'float64']:
+            if isinstance(low, np.ndarray) and str(
+                    low.dtype) in ['float32', 'float64']:
                 self.dtype = low.dtype
-            elif isinstance(
-                    high,
-                    np.ndarray) and str(high.dtype) in ['float32', 'float64']:
+            elif isinstance(high, np.ndarray) and str(
+                    high.dtype) in ['float32', 'float64']:
                 self.dtype = high.dtype
             # pylint: disable=unbalanced-tuple-unpacking
             self.low, self.high = self._to_tensor(low, high)
@@ -141,7 +139,7 @@ class Uniform(Distribution):
           Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         """
-        if not in_dygraph_mode():
+        if not _non_static_mode():
             check_type(shape, 'shape', (list), 'sample')
             check_type(seed, 'seed', (int), 'sample')
 
@@ -161,16 +159,16 @@ class Uniform(Distribution):
             zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
             uniform_random_tmp_reshape = nn.reshape(uniform_random_tmp,
                                                     output_shape)
-            output = uniform_random_tmp_reshape * (
-                zero_tmp_reshape + self.high - self.low)
+            output = uniform_random_tmp_reshape * (zero_tmp_reshape +
+                                                   self.high - self.low)
             output = elementwise_add(output, self.low, name=name)
             return output
         else:
             output_shape = shape + batch_shape
             output = nn.uniform_random(
                 output_shape, dtype=self.dtype, min=0., max=1.,
-                seed=seed) * (tensor.zeros(
-                    output_shape, dtype=self.dtype) + (self.high - self.low))
+                seed=seed) * (tensor.zeros(output_shape, dtype=self.dtype) +
+                              (self.high - self.low))
             output = elementwise_add(output, self.low, name=name)
             if self.all_arg_is_float:
                 return nn.reshape(output, shape, name=name)
@@ -188,15 +186,15 @@ class Uniform(Distribution):
 
         """
         value = self._check_values_dtype_in_probs(self.low, value)
-        if in_dygraph_mode():
+        if _non_static_mode():
             # ensure value in [low, high]
             lb_bool = self.low < value
             ub_bool = value < self.high
 
-            lb = _C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
-                             value.dtype)
-            ub = _C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
-                             value.dtype)
+            lb = _legacy_C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype,
+                                    'out_dtype', value.dtype)
+            ub = _legacy_C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype,
+                                    'out_dtype', value.dtype)
             return nn.log(lb * ub) - nn.log(self.high - self.low)
 
         name = self.name + '_log_prob'
@@ -204,8 +202,9 @@ class Uniform(Distribution):
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_sub(
-            nn.log(lb * ub), nn.log(self.high - self.low), name=name)
+        return elementwise_sub(nn.log(lb * ub),
+                               nn.log(self.high - self.low),
+                               name=name)
 
     def probs(self, value):
         """Probability density/mass function.
@@ -218,14 +217,14 @@ class Uniform(Distribution):
 
         """
         value = self._check_values_dtype_in_probs(self.low, value)
-        if in_dygraph_mode():
+        if _non_static_mode():
             lb_bool = self.low < value
             ub_bool = value < self.high
 
-            lb = _C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
-                             value.dtype)
-            ub = _C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
-                             value.dtype)
+            lb = _legacy_C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype,
+                                    'out_dtype', value.dtype)
+            ub = _legacy_C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype,
+                                    'out_dtype', value.dtype)
             return (lb * ub) / (self.high - self.low)
 
         name = self.name + '_probs'

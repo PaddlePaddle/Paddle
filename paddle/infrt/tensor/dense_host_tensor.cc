@@ -90,4 +90,6 @@ DenseHostTensor::~DenseHostTensor() {}
 
 void* DenseHostTensor::raw_data() const { return buffer_->data()->memory; }
 
+DType DenseHostTensor::dtype() const { return metadata().dtype; }
+
 }  // namespace infrt::tensor

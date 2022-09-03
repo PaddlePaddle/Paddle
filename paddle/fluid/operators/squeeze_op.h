@@ -17,7 +17,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -26,7 +25,8 @@ namespace paddle {
 namespace operators {
 
 framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
-                               const framework::DDim &in_dims, bool is_runtime);
+                               const framework::DDim &in_dims,
+                               bool is_runtime);
 
 template <typename DeviceContext, typename T>
 class SqueezeKernel : public framework::OpKernel<T> {
@@ -41,8 +41,10 @@ class SqueezeKernel : public framework::OpKernel<T> {
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
+        *in,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        out);
     out->Resize(out_dims);
   }
 };
@@ -76,8 +78,10 @@ class Squeeze2Kernel : public framework::OpKernel<T> {
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
+        *in,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        out);
     out->Resize(out_dims);
   }
 };

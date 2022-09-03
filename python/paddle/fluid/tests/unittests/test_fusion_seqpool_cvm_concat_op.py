@@ -23,6 +23,7 @@ from test_cvm_op import cvm_compute
 
 
 class TestFusionSeqPoolCVMConcatOp(OpTest):
+
     def setUp(self):
         self.w = 11
         self.use_cvm = True
@@ -76,22 +77,26 @@ class TestFusionSeqPoolCVMConcatOp(OpTest):
 
 
 class TestFusionSeqPoolCVMConcatOpCase1(TestFusionSeqPoolCVMConcatOp):
+
     def set_conf(self):
         self.lods = [[[1]]]
 
 
 class TestFusionSeqPoolCVMConcatOpCase2(TestFusionSeqPoolCVMConcatOp):
+
     def set_conf(self):
         self.lods = [[[1]], [[1]], [[1]]]
 
 
 class TestFusionSeqPoolCVMConcatOpCase3(TestFusionSeqPoolCVMConcatOp):
+
     def set_conf(self):
         self.lods = [[[1, 3, 4, 6]]]
         self.w = 10
 
 
 class TestFusionSeqPoolCVMConcatOpCase4(TestFusionSeqPoolCVMConcatOp):
+
     def set_conf(self):
         self.lods = [[[2, 13, 4]], [[1, 1, 1]], [[5, 3, 1]], [[9, 10, 3]]]
         self.w = 3
@@ -99,11 +104,14 @@ class TestFusionSeqPoolCVMConcatOpCase4(TestFusionSeqPoolCVMConcatOp):
 
 ## test avg pool and sqrt
 def create_test_avg_sqrt_class(parent):
+
     class TestSeqPoolAvgCase(parent):
+
         def set_pooltype(self):
             self.pooltype = "AVERAGE"
 
     class TestSeqPoolSqrtCase(parent):
+
         def set_pooltype(self):
             self.pooltype = "SQRT"
 

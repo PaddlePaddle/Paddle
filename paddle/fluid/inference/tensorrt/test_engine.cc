@@ -26,7 +26,7 @@ namespace tensorrt {
 class TensorRTEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ctx_ = new platform::CUDADeviceContext(platform::CUDAPlace(0));
+    ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
                            .get());
@@ -37,6 +37,10 @@ class TensorRTEngineTest : public ::testing::Test {
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(platform::CUDAPlace(0))
+            .get());
+    ctx_->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
 
@@ -65,7 +69,7 @@ class TensorRTEngineTest : public ::testing::Test {
   framework::Tensor input_;
   framework::Tensor output_;
   TensorRTEngine *engine_;
-  platform::CUDADeviceContext *ctx_;
+  phi::GPUContext *ctx_;
 };
 
 TEST_F(TensorRTEngineTest, add_layer) {
@@ -79,10 +83,10 @@ TEST_F(TensorRTEngineTest, add_layer) {
   LOG(INFO) << "create weights";
   TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, size);
   TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, size);
-  auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
-                                  nvinfer1::Dims3{1, 1, 1});
-  auto *fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *x, size,
-                                        weight.get(), bias.get());
+  auto *x = engine_->DeclareInput(
+      "x", nvinfer1::DataType::kFLOAT, nvinfer1::Dims3{1, 1, 1});
+  auto *fc_layer = TRT_ENGINE_ADD_LAYER(
+      engine_, FullyConnected, *x, size, weight.get(), bias.get());
   PADDLE_ENFORCE_NOT_NULL(fc_layer,
                           platform::errors::InvalidArgument(
                               "TRT fully connected layer building failed."));
@@ -134,10 +138,10 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
 
   TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, 4);
   TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, 2);
-  auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
-                                  nvinfer1::Dims3{1, 2, 1});
-  auto *fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *x, 2,
-                                        weight.get(), bias.get());
+  auto *x = engine_->DeclareInput(
+      "x", nvinfer1::DataType::kFLOAT, nvinfer1::Dims3{1, 2, 1});
+  auto *fc_layer = TRT_ENGINE_ADD_LAYER(
+      engine_, FullyConnected, *x, 2, weight.get(), bias.get());
   PADDLE_ENFORCE_NOT_NULL(fc_layer,
                           platform::errors::InvalidArgument(
                               "TRT fully connected layer building failed."));
@@ -179,11 +183,15 @@ TEST_F(TensorRTEngineTest, test_conv2d) {
 
   TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, 9);
   TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, 1);
-  auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
-                                  nvinfer1::Dims3{1, 3, 3});
-  auto *conv_layer =
-      TRT_ENGINE_ADD_LAYER(engine_, Convolution, *x, 1, nvinfer1::DimsHW{3, 3},
-                           weight.get(), bias.get());
+  auto *x = engine_->DeclareInput(
+      "x", nvinfer1::DataType::kFLOAT, nvinfer1::Dims3{1, 3, 3});
+  auto *conv_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                          Convolution,
+                                          *x,
+                                          1,
+                                          nvinfer1::DimsHW{3, 3},
+                                          weight.get(),
+                                          bias.get());
   PADDLE_ENFORCE_NOT_NULL(conv_layer,
                           platform::errors::InvalidArgument(
                               "TRT convolution layer building failed."));
@@ -195,8 +203,24 @@ TEST_F(TensorRTEngineTest, test_conv2d) {
   ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
 
   // fill in real data
-  std::vector<float> x_v = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-                            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+  std::vector<float> x_v = {1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0};
   std::vector<float> y_cpu;
   PrepareInputOutput(x_v, {18});
 
@@ -217,13 +241,13 @@ TEST_F(TensorRTEngineTest, test_conv2d) {
 
 TEST_F(TensorRTEngineTest, test_pool2d) {
   // Weight in CPU memory.
-  auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
-                                  nvinfer1::Dims3{1, 2, 2});
+  auto *x = engine_->DeclareInput(
+      "x", nvinfer1::DataType::kFLOAT, nvinfer1::Dims3{1, 2, 2});
 
   std::vector<void *> buffers(2);  // TRT binded inputs
   nvinfer1::PoolingType pool_t = nvinfer1::PoolingType::kAVERAGE;
-  auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *x, pool_t,
-                                          nvinfer1::DimsHW{2, 2});
+  auto *pool_layer = TRT_ENGINE_ADD_LAYER(
+      engine_, Pooling, *x, pool_t, nvinfer1::DimsHW{2, 2});
 
   PADDLE_ENFORCE_NOT_NULL(
       pool_layer,

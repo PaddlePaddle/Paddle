@@ -3,27 +3,35 @@
 
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/IR/OpBase.td"
-include "paddle/infrt/dialect/infrt_base.td"
+include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
 include "paddle/infrt/dialect/phi/ir/infrt_phi_base.td"
 
-def PHI_KernelDialect : Dialect {
-  let name = "phi_kernel";
+def PHI_CPUKernelDialect : Dialect {
+  let name = "phi_cpu";
 
   let description = [{
-    The PHI Kernel dialect.
+    The PHI CPU Kernel dialect.
+  }];
+
+  let cppNamespace = "::infrt::phi";
+}
+
+def PHI_GPUKernelDialect : Dialect {
+  let name = "phi_gpu";
+
+  let description = [{
+    The PHI GPU Kernel dialect.
   }];
 
   let cppNamespace = "::infrt::phi";
 }
 
 // PHI Kernel related ops.
-class PDT_Kernel<string mnemonic, list<OpTrait> traits = []> : Op<PHI_KernelDialect, mnemonic, !listconcat(traits, [PhiOpTrait, IsolatedFromAbove])> {
+class PDTCPU_Kernel<string mnemonic, list<OpTrait> traits = []> : Op<PHI_CPUKernelDialect, mnemonic, !listconcat(traits, [PhiOpTrait, IsolatedFromAbove])> {
 }
 
-def PDCK_AbsOp : PDT_Kernel<"phi.abs.host.fp32"> {
-  let arguments = (ins CPU_Context:$dev_ctx, DenseTensor:$x);
-  let results = (outs DenseTensor:$output);
+// PHI Kernel related ops.
+class PDTGPU_Kernel<string mnemonic, list<OpTrait> traits = []> : Op<PHI_GPUKernelDialect, mnemonic, !listconcat(traits, [PhiOpTrait, IsolatedFromAbove])> {
 }
 
 #endif
-

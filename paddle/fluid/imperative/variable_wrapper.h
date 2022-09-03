@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/op_base.h"
+#include "paddle/phi/common/layout.h"
 
 namespace paddle {
 namespace imperative {
@@ -186,6 +187,12 @@ class VariableWrapper {
     return fwd_data_type_;
   }
 
+  paddle::experimental::DataLayout DataLayout() { return layout_; }
+
+  void SetDataLayout(const paddle::experimental::DataLayout layout) {
+    layout_ = layout;
+  }
+
   const platform::Place Place() const {
     const framework::Tensor* tensor = nullptr;
     auto place =
@@ -281,7 +288,8 @@ class VariableWrapper {
     auto shared_var = grad_var_.lock();
     if (shared_var != var) {
       PADDLE_ENFORCE_EQ(
-          shared_var, nullptr,
+          shared_var,
+          nullptr,
           platform::errors::PermissionDenied(
               "Cannot set gradient variable wrapper twice for %s", name_));
       grad_var_ = var;
@@ -299,7 +307,8 @@ class VariableWrapper {
       if (grad_node->InplaceGradNameMap().empty()) {
         // grad_node doesn't have Inplace message
         PADDLE_ENFORCE_EQ(
-            shared_node, nullptr,
+            shared_node,
+            nullptr,
             platform::errors::PermissionDenied(
                 "Cannot set gradient op twice unless using Inplace Strategy."));
       } else if (shared_node) {
@@ -357,6 +366,10 @@ class VariableWrapper {
   // training
   // NOTE: Now no need to support remove void hook
   std::vector<std::shared_ptr<std::function<void()>>> void_hooks_;
+
+  // DataLayout for layoutAutotune
+  paddle::experimental::DataLayout layout_{
+      paddle::experimental::DataLayout::UNDEFINED};
 };
 
 }  // namespace imperative

@@ -55,6 +55,8 @@
 #include <mutex>
 #include <vector>
 
+#include "glog/logging.h"
+
 namespace paddle {
 namespace framework {
 
@@ -102,8 +104,8 @@ class EventCount {
       CheckState(state);
       uint64_t newstate = state + kWaiterInc;
       CheckState(newstate);
-      if (state_.compare_exchange_weak(state, newstate,
-                                       std::memory_order_seq_cst))
+      if (state_.compare_exchange_weak(
+              state, newstate, std::memory_order_seq_cst))
         return;
     }
   }
@@ -127,8 +129,8 @@ class EventCount {
                       std::memory_order_relaxed);
       }
       CheckState(newstate);
-      if (state_.compare_exchange_weak(state, newstate,
-                                       std::memory_order_acq_rel)) {
+      if (state_.compare_exchange_weak(
+              state, newstate, std::memory_order_acq_rel)) {
         if ((state & kSignalMask) == 0) {
           w->epoch += kEpochInc;
           Park(w);
@@ -152,8 +154,8 @@ class EventCount {
           ((state & kSignalMask) >> kSignalShift))
         newstate -= kSignalInc;
       CheckState(newstate);
-      if (state_.compare_exchange_weak(state, newstate,
-                                       std::memory_order_acq_rel))
+      if (state_.compare_exchange_weak(
+              state, newstate, std::memory_order_acq_rel))
         return;
     }
   }
@@ -184,8 +186,8 @@ class EventCount {
         newstate = (state & (kWaiterMask | kSignalMask)) | next;
       }
       CheckState(newstate);
-      if (state_.compare_exchange_weak(state, newstate,
-                                       std::memory_order_acq_rel)) {
+      if (state_.compare_exchange_weak(
+              state, newstate, std::memory_order_acq_rel)) {
         if (!notify_all && (signals < waiters))
           return;  // unblocked pre-wait thread
         if ((state & kStackMask) == kStackMask) return;
@@ -255,6 +257,7 @@ class EventCount {
     std::unique_lock<std::mutex> lock(w->mu);
     while (w->state != Waiter::kSignaled) {
       w->state = Waiter::kWaiting;
+      VLOG(10) << "Go to wait " << &(w->cv);
       w->cv.wait(lock);
     }
   }
@@ -270,7 +273,10 @@ class EventCount {
         w->state = Waiter::kSignaled;
       }
       // Avoid notifying if it wasn't waiting.
-      if (state == Waiter::kWaiting) w->cv.notify_one();
+      if (state == Waiter::kWaiting) {
+        VLOG(10) << "Go to notify " << &(w->cv);
+        w->cv.notify_one();
+      }
     }
   }
 };

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -21,37 +22,6 @@ limitations under the License. */
 
 namespace phi {
 namespace sparse {
-
-inline const DDim InferDenseDims(const DDim& x_dims,
-                                 const int64_t sparse_dim,
-                                 const int64_t non_zero_num) {
-  auto dense_dim = x_dims.size() - sparse_dim;
-  DDim values_dims;
-  if (dense_dim) {
-    std::vector<int64_t> dense_dim_vec(dense_dim + 1);
-    dense_dim_vec[0] = non_zero_num;
-    memcpy(&dense_dim_vec[1],
-           x_dims.Get() + sparse_dim,
-           dense_dim * sizeof(x_dims[0]));
-    values_dims = phi::make_ddim(dense_dim_vec);
-  } else {
-    values_dims = phi::make_ddim({non_zero_num});
-  }
-  return values_dims;
-}
-
-template <typename Context>
-inline void GetGpuLaunchConfig1D(const Context& dev_ctx,
-                                 const int64_t n,
-                                 int* grid_size,
-                                 int* block_size) {
-  const int MAX_BLOCK_DIM = dev_ctx.GetMaxThreadsPerBlock();
-  const int MAX_GRID_DIM = dev_ctx.GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
-  *block_size = (n >= MAX_BLOCK_DIM) ? MAX_BLOCK_DIM
-                                     : (1 << static_cast<int>(std::log2(n)));
-  *grid_size = n / *block_size;
-  *grid_size = (*grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : *grid_size;
-}
 
 template <typename T, typename Context>
 void DenseToSparseCooKernel(const Context& dev_ctx,
@@ -63,8 +33,8 @@ template <typename T, typename Context>
 SparseCooTensor DenseToSparseCoo(const Context& dev_ctx,
                                  const DenseTensor& x,
                                  const int64_t sparse_dim) {
-  DenseTensor indices = phi::Empty<T, Context>(dev_ctx);
-  DenseTensor values = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor indices;
+  DenseTensor values;
   SparseCooTensor coo(indices, values, x.dims());
   DenseToSparseCooKernel<T, Context>(dev_ctx, x, sparse_dim, &coo);
   return coo;
@@ -78,8 +48,8 @@ void SparseCsrToCooKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 SparseCooTensor SparseCsrToCoo(const Context& dev_ctx,
                                const SparseCsrTensor& x) {
-  DenseTensor indices = phi::Empty<T, Context>(dev_ctx);
-  DenseTensor values = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor indices;
+  DenseTensor values;
   SparseCooTensor coo(indices, values, x.dims());
   SparseCsrToCooKernel<T, Context>(dev_ctx, x, &coo);
   return coo;
@@ -93,11 +63,10 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 SparseCsrTensor SparseCooToCsr(const Context& dev_ctx,
                                const SparseCooTensor& x) {
-  DenseTensor non_zero_crows = phi::Empty<int64_t, Context>(dev_ctx);
-  DenseTensor non_zero_cols = phi::Empty<int64_t, Context>(dev_ctx);
-  DenseTensor non_zero_elements = phi::Empty<T, Context>(dev_ctx);
-  SparseCsrTensor csr(
-      non_zero_crows, non_zero_cols, non_zero_elements, x.dims());
+  DenseTensor crows;
+  DenseTensor cols;
+  DenseTensor non_zero_elements;
+  SparseCsrTensor csr(crows, cols, non_zero_elements, x.dims());
   SparseCooToCsrKernel<T, Context>(dev_ctx, x, &csr);
   return csr;
 }
@@ -113,8 +82,8 @@ void DenseToSparseCsrKernel(const Context& dev_ctx,
                     phi::errors::InvalidArgument(
                         "SparseCsrTensor only support 2-D or 3-D Tensor."));
   const int64_t sparse_dim = x_dims.size() == 2 ? 2 : 3;
-  DenseTensor indices = phi::Empty<T, Context>(dev_ctx);
-  DenseTensor values = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor indices;
+  DenseTensor values;
   SparseCooTensor coo(indices, values, x.dims());
   DenseToSparseCooKernel<T, Context>(dev_ctx, x, sparse_dim, &coo);
   SparseCooToCsrKernel<T, Context>(dev_ctx, coo, out);
@@ -122,11 +91,10 @@ void DenseToSparseCsrKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 SparseCsrTensor DenseToSparseCsr(const Context& dev_ctx, const DenseTensor& x) {
-  DenseTensor non_zero_crows = phi::Empty<int64_t, Context>(dev_ctx);
-  DenseTensor non_zero_cols = phi::Empty<int64_t, Context>(dev_ctx);
-  DenseTensor non_zero_elements = phi::Empty<T, Context>(dev_ctx);
-  SparseCsrTensor csr(
-      non_zero_crows, non_zero_cols, non_zero_elements, x.dims());
+  DenseTensor crows;
+  DenseTensor cols;
+  DenseTensor non_zero_elements;
+  SparseCsrTensor csr(crows, cols, non_zero_elements, x.dims());
   DenseToSparseCsrKernel<T, Context>(dev_ctx, x, &csr);
   return csr;
 }
@@ -138,7 +106,7 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 DenseTensor SparseCooToDense(const Context& dev_ctx, const SparseCooTensor& x) {
-  DenseTensorMeta meta(x.dtype(), x.dims(), x.layout());
+  DenseTensorMeta meta(x.dtype(), x.dims(), x.non_zero_elements().layout());
   DenseTensor dense = phi::Empty(dev_ctx, std::move(meta));
   SparseCooToDenseKernel<T, Context>(dev_ctx, x, &dense);
   return dense;
@@ -148,8 +116,8 @@ template <typename T, typename Context>
 void SparseCsrToDenseKernel(const Context& dev_ctx,
                             const SparseCsrTensor& x,
                             DenseTensor* out) {
-  DenseTensor indices = phi::Empty<T, Context>(dev_ctx);
-  DenseTensor values = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor indices;
+  DenseTensor values;
   SparseCooTensor coo(indices, values, x.dims());
   SparseCsrToCooKernel<T, Context>(dev_ctx, x, &coo);
   SparseCooToDenseKernel<T, Context>(dev_ctx, coo, out);
@@ -157,10 +125,34 @@ void SparseCsrToDenseKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 DenseTensor SparseCsrToDense(const Context& dev_ctx, const SparseCsrTensor& x) {
-  DenseTensorMeta meta(x.dtype(), x.dims(), x.layout());
+  DenseTensorMeta meta(x.dtype(), x.dims(), x.non_zero_elements().layout());
   DenseTensor dense = phi::Empty(dev_ctx, std::move(meta));
   SparseCsrToDenseKernel<T, Context>(dev_ctx, x, &dense);
   return dense;
+}
+
+template <typename T, typename Context>
+void CooValuesKernel(const Context& dev_ctx,
+                     const SparseCooTensor& x,
+                     DenseTensor* out) {
+  *out = x.non_zero_elements();
+}
+
+template <typename T, typename Context>
+void CsrValuesKernel(const Context& dev_ctx,
+                     const SparseCsrTensor& x,
+                     DenseTensor* out) {
+  *out = x.non_zero_elements();
+}
+
+template <typename T, typename Context>
+void SparseCooTensorKernel(const Context& dev_ctx,
+                           const DenseTensor& values,
+                           const DenseTensor& indices,
+                           const IntArray& dense_shape,
+                           SparseCooTensor* out) {
+  *out =
+      SparseCooTensor(indices, values, phi::make_ddim(dense_shape.GetData()));
 }
 
 }  // namespace sparse

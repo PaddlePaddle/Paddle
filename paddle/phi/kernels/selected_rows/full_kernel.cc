@@ -12,34 +12,36 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/selected_rows/full_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
-#include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
+namespace sr {
 
 template <typename T, typename Context>
-void FullSR(const Context& dev_ctx,
-            const ScalarArray& shape,
-            const Scalar& val,
-            DataType dtype,
-            SelectedRows* out) {
+void FullKernel(const Context& dev_ctx,
+                const IntArray& shape,
+                const Scalar& val,
+                DataType dtype,
+                SelectedRows* out) {
   phi::FullKernel<T>(dev_ctx, shape, val, dtype, out->mutable_value());
 }
 
+}  // namespace sr
 }  // namespace phi
 
 PD_REGISTER_KERNEL(full_sr,
                    CPU,
                    ALL_LAYOUT,
-                   phi::FullSR,
+                   phi::sr::FullKernel,
                    float,
                    double,
                    uint8_t,
@@ -56,7 +58,7 @@ PD_REGISTER_KERNEL(full_sr,
 PD_REGISTER_KERNEL(full_sr,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FullSR,
+                   phi::sr::FullKernel,
                    float,
                    double,
                    uint8_t,

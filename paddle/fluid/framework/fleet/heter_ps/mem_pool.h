@@ -18,7 +18,9 @@ limitations under the License. */
 // #include
 // "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #include <iostream>
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/managed.cuh"
+#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -59,9 +61,9 @@ class HBMMemoryPool : public managed {
     block_size_ = mem_pool->block_size();
     VLOG(3) << "hbm memory pool with capacity" << capacity_
             << " bs: " << block_size_;
-    cudaMalloc(&mem_, block_size_ * capacity_);
-    cudaMemcpy(mem_, mem_pool->mem(), mem_pool->byte_size(),
-               cudaMemcpyHostToDevice);
+    CUDA_CHECK(cudaMalloc(&mem_, block_size_ * capacity_));
+    CUDA_CHECK(cudaMemcpy(
+        mem_, mem_pool->mem(), mem_pool->byte_size(), cudaMemcpyHostToDevice));
   }
 
   ~HBMMemoryPool() {
@@ -77,22 +79,8 @@ class HBMMemoryPool : public managed {
     cudaFree(mem_);
     mem_ = NULL;
     capacity_ = capacity;
-    cudaMalloc(&mem_, (block_size_ * capacity / 8 + 1) * 8);
-    cudaMemset(mem_, 0, block_size_ * capacity);
-  }
-
-  friend std::ostream& operator<<(std::ostream& out, HBMMemoryPool& p) {
-    for (size_t k = 0; k < 5; k++) {
-      auto x = (FeatureValue*)(p.mem() + k * p.capacity());
-      out << "show: " << x->show << " clk: " << x->clk << " slot: " << x->slot
-          << " lr: " << x->lr << " mf_dim: " << x->mf_size
-          << " mf_size: " << x->mf_size << " mf:";
-      for (int i = 0; i < x->mf_size + 1; ++i) {
-        out << " " << x->mf[i];
-      }
-      out << "\n";
-    }
-    return out;
+    CUDA_CHECK(cudaMalloc(&mem_, (block_size_ * capacity / 8 + 1) * 8));
+    CUDA_CHECK(cudaMemset(mem_, 0, block_size_ * capacity));
   }
 
   char* mem() { return mem_; }
@@ -110,4 +98,5 @@ class HBMMemoryPool : public managed {
 
 }  // end namespace framework
 }  // end namespace paddle
+#endif
 #endif

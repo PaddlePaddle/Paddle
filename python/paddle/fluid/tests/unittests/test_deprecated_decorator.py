@@ -23,7 +23,8 @@ import paddle.fluid.core as core
 import sys
 import warnings
 import paddle.utils.deprecated as deprecated
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
+
 LOWEST_WARNING_POSTION = 3
 ERROR_WARNING_POSTION = sys.maxsize
 
@@ -81,7 +82,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
         # expected
         expected = LOWEST_WARNING_POSTION
 
-        # captured        
+        # captured
         captured = get_warning_index(fluid.data)
         paddle.disable_static()
 
@@ -104,7 +105,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
         # expected
         expected = LOWEST_WARNING_POSTION
 
-        # captured   
+        # captured
         captured = get_warning_index(fluid.layers.elementwise_mul)
 
         # testting
@@ -124,7 +125,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
         # expected
         expected = LOWEST_WARNING_POSTION
 
-        # captured        
+        # captured
         captured = get_warning_index(paddle.multiply)
 
         # testting
@@ -140,12 +141,12 @@ class TestDeprecatedDocorator(unittest.TestCase):
         b = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
         x = paddle.to_tensor(a)
         y = paddle.to_tensor(b)
-        res = _C_ops.elementwise_mul(x, y)
+        res = _legacy_C_ops.elementwise_mul(x, y)
 
         # expected
         expected = LOWEST_WARNING_POSTION
 
-        # captured        
+        # captured
         captured = get_warning_index(fluid.layers.elementwise_mul)
 
         # testting
@@ -175,8 +176,8 @@ class TestDeprecatedDocorator(unittest.TestCase):
         x = linear(data)
 
         with warnings.catch_warnings(record=True) as w:
-            out = paddle.nn.functional.softmax_with_cross_entropy(
-                logits=x, label=label)
+            out = paddle.nn.functional.softmax_with_cross_entropy(logits=x,
+                                                                  label=label)
             assert (
                 'API "paddle.nn.functional.loss.softmax_with_cross_entropy" is '
                 'deprecated since 2.0.0') in str(w[-1].message)

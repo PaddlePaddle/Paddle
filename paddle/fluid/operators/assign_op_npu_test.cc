@@ -23,18 +23,18 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
-USE_OP(assign);
+USE_OP_ITSELF(assign);
 USE_OP_DEVICE_KERNEL(assign, NPU);
 
 template <typename T>
-void Compare(f::Scope* scope, const p::DeviceContext& ctx,
+void Compare(f::Scope* scope,
+             const p::DeviceContext& ctx,
              std::string op_type) {
   // init
   auto x = scope->Var("X");

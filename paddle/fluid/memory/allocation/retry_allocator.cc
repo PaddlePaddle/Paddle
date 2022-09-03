@@ -44,8 +44,9 @@ void RetryAllocator::FreeImpl(phi::Allocation* allocation) {
   size_t size = allocation->size();
   underlying_allocator_->Free(allocation);
   if (UNLIKELY(waited_allocate_size_)) {
-    VLOG(10) << "Free " << size << " bytes and notify all waited threads, "
-                                   "where waited_allocate_size_ = "
+    VLOG(10) << "Free " << size
+             << " bytes and notify all waited threads, "
+                "where waited_allocate_size_ = "
              << waited_allocate_size_;
     cv_.notify_all();
   }

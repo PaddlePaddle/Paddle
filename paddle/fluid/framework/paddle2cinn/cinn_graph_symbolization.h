@@ -63,7 +63,8 @@ namespace paddle2cinn {
 class CinnGraphSymbolization {
  public:
   CinnGraphSymbolization(
-      int64_t graph_id, const ir::Graph& graph,
+      int64_t graph_id,
+      const ir::Graph& graph,
       const ::cinn::common::Target& target,
       const std::map<std::string, const LoDTensor*>& input_tensors)
       : graph_id_(graph_id),

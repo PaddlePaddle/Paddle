@@ -16,17 +16,20 @@
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 
-// only can include the headers in paddle/top/api dirs
-#include "paddle/phi/kernels/gpu/elementwise.h"
-
 namespace paddle {
 namespace operators {
 
-template <ElementwiseType ET, typename InT, typename OutT, typename Functor,
+template <ElementwiseType ET,
+          typename InT,
+          typename OutT,
+          typename Functor,
           int NumOuts = 1>
 void LaunchElementwiseCudaKernel(
-    const KPDevice &ctx, const std::vector<const framework::Tensor *> &ins,
-    std::vector<framework::Tensor *> *outs, int axis, Functor func) {
+    const KPDevice &ctx,
+    const std::vector<const framework::Tensor *> &ins,
+    std::vector<framework::Tensor *> *outs,
+    int axis,
+    Functor func) {
   std::vector<const phi::DenseTensor *> pt_inputs;
   std::vector<phi::DenseTensor *> pt_outputs;
   // TODO(YuanRisheng) *_tmp for cache DenseTensor, because the temporary

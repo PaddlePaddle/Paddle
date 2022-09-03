@@ -29,13 +29,18 @@ namespace interpreter {
  */
 class DataTranferHelper {
  public:
-  DataTranferHelper(const platform::Place& place, VariableScope* var_scope)
-      : place_(place), var_scope_(var_scope) {}
+  DataTranferHelper(const platform::Place& place,
+                    VariableScope* var_scope,
+                    Scope* local_scope)
+      : place_(place), var_scope_(var_scope), scope_(local_scope) {}
 
   bool apply(const OpKernelType& kernel_type_for_var,
              const OpKernelType& expected_kernel_key,
-             const std::string& var_name, std::string* new_var_name,
-             std::vector<OpFuncNode>* new_op_func_nodes, bool use_local_scope);
+             const std::string& var_name,
+             std::string* new_var_name,
+             std::vector<OpFuncNode>* new_op_func_nodes,
+             bool use_local_scope,
+             bool is_fetch_v2);
 
   void RunAndConstructShareNode(const std::string& src_var_name,
                                 const std::string& dst_var_name,
@@ -49,12 +54,15 @@ class DataTranferHelper {
  private:
   platform::Place place_;
   VariableScope* var_scope_;
+  Scope* scope_;
 };
 
 void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         const platform::Place& place,
                         VariableValueMap* ins_map_temp,
-                        VariableScope* var_scope, OpFuncNode* op_func_node,
+                        VariableValueMap* outs_map_temp,
+                        VariableScope* var_scope,
+                        OpFuncNode* op_func_node,
                         std::vector<OpFuncNode>* op_func_nodes,
                         bool use_local_scope = true);
 
@@ -65,9 +73,6 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
                                  VariableScope* var_scope,
                                  std::vector<OpFuncNode>* op_func_nodes,
                                  framework::Scope* local_scope);
-
-std::string get_memcpy_type(const platform::Place& src_place,
-                            const platform::Place& dst_place);
 
 inline bool need_device_transform(const OpKernelType& kernel_type_for_var,
                                   const OpKernelType& expected_kernel_key) {
@@ -98,7 +103,8 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
                                              DataLayout in_layout,
                                              DataLayout out_layout,
                                              VariableScope* var_scope,
-                                             framework::Scope* local_scope);
+                                             framework::Scope* local_scope,
+                                             bool is_fetch_v2);
 
 std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
                                             std::string* new_var_name,

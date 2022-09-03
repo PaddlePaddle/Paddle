@@ -13,19 +13,28 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <memory>
 
 #include "paddle/phi/api/backward/backward_api.h"
 #include "paddle/phi/api/include/api.h"
-
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_double_grad, CPU, ALL_LAYOUT);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
+#endif
+
 namespace paddle {
 namespace tests {
 
@@ -170,8 +179,18 @@ TEST(API, matmul_double_grad) {
   auto dx_grad = paddle::experimental::full({3, 3}, 2.0);
 
   // 2. test API
-  const auto out = paddle::experimental::matmul_double_grad(
-      x, y, out_grad, dx_grad, {}, false, false);
+  std::vector<std::vector<paddle::experimental::Tensor>> out(
+      3, std::vector<paddle::experimental::Tensor>(1));
+  paddle::experimental::matmul_double_grad(x,
+                                           y,
+                                           out_grad,
+                                           dx_grad,
+                                           {},
+                                           false,
+                                           false,
+                                           &out[0][0],
+                                           &out[1][0],
+                                           &out[2][0]);
 
   // 3. check result
   ASSERT_EQ(out.size(), 3UL);

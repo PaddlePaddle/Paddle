@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/custom_allocator.h"
+
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -23,7 +24,8 @@ namespace allocation {
 bool CustomAllocator::IsAllocThreadSafe() const { return true; }
 void CustomAllocator::FreeImpl(phi::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
-      allocation->place(), place_,
+      allocation->place(),
+      place_,
       platform::errors::PermissionDenied("CustomDevice memory is "
                                          "freed in incorrect device. "
                                          "This may be a bug"));
@@ -32,17 +34,16 @@ void CustomAllocator::FreeImpl(phi::Allocation* allocation) {
 }
 
 phi::Allocation* CustomAllocator::AllocateImpl(size_t size) {
-  std::call_once(once_flag_,
-                 [this] { platform::DeviceManager::SetDevice(place_); });
+  std::call_once(once_flag_, [this] { phi::DeviceManager::SetDevice(place_); });
 
   void* ptr =
-      platform::DeviceManager::GetDeviceWithPlace(place_)->MemoryAllocate(size);
+      phi::DeviceManager::GetDeviceWithPlace(place_)->MemoryAllocate(size);
   if (LIKELY(ptr)) {
     return new Allocation(ptr, size, place_);
   }
 
   size_t avail, total;
-  platform::DeviceManager::MemoryStats(place_, &total, &avail);
+  phi::DeviceManager::MemoryStats(place_, &total, &avail);
 
   auto dev_type = platform::PlaceHelper::GetDeviceType(place_);
   auto dev_id = platform::PlaceHelper::GetDeviceId(place_);
@@ -54,8 +55,15 @@ phi::Allocation* CustomAllocator::AllocateImpl(size_t size) {
       "Please check whether there is any other process using %s:%d.\n"
       "1. If yes, please stop them, or start PaddlePaddle on another %s.\n"
       "2. If no, please decrease the batch size of your model.\n\n",
-      dev_type, dev_id, string::HumanReadableSize(size), dev_type, dev_id,
-      string::HumanReadableSize(avail), dev_type, dev_id, dev_type));
+      dev_type,
+      dev_id,
+      string::HumanReadableSize(size),
+      dev_type,
+      dev_id,
+      string::HumanReadableSize(avail),
+      dev_type,
+      dev_id,
+      dev_type));
 }
 
 }  // namespace allocation

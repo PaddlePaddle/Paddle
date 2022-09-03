@@ -22,6 +22,7 @@ from paddle.fluid import Program, program_guard
 
 
 class TestCosSimOp(OpTest):
+
     def setUp(self):
         self.op_type = "cos_sim"
         self.inputs = {
@@ -45,15 +46,20 @@ class TestCosSimOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.06)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.06, no_grad_set=set("X"))
+        self.check_grad(['Y'],
+                        'Out',
+                        max_relative_error=0.06,
+                        no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.06, no_grad_set=set('Y'))
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=0.06,
+                        no_grad_set=set('Y'))
 
 
 class TestCosSimOp2(TestCosSimOp):
+
     def setUp(self):
         self.op_type = "cos_sim"
         self.inputs = {
@@ -72,6 +78,7 @@ class TestCosSimOp2(TestCosSimOp):
 
 
 class TestCosSimOp3(TestCosSimOp):
+
     def setUp(self):
         self.op_type = "cos_sim"
         self.inputs = {
@@ -90,6 +97,7 @@ class TestCosSimOp3(TestCosSimOp):
 
 
 class TestCosSimOp4(TestCosSimOp):
+
     def setUp(self):
         self.op_type = "cos_sim"
         self.inputs = {
@@ -108,13 +116,14 @@ class TestCosSimOp4(TestCosSimOp):
 
 
 class TestCosSimOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of batch_norm must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
-            x2 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
+            x2 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.cos_sim, x1, x2)
 
             # the input dtype of batch_norm must be float32

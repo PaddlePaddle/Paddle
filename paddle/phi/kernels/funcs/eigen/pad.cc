@@ -41,11 +41,11 @@ struct EigenPad<Eigen::DefaultDevice, T, Rank> {
     out.device(dev) = in.pad(padding, value);
   }
 
-  static void Eval(const Eigen::DefaultDevice& dev,
-                   OutType32BitIndex out,
-                   const InType32BitIndex& in,
-                   const Array32Bit& padding,
-                   const T value) {
+  static void Eval32(const Eigen::DefaultDevice& dev,
+                     OutType32BitIndex out,
+                     const InType32BitIndex& in,
+                     const Array32Bit& padding,
+                     const T value) {
     out.device(dev) = in.pad(padding, value);
   }
 };
@@ -56,7 +56,8 @@ struct EigenPad<Eigen::DefaultDevice, T, Rank> {
   template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 3>; \
   template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 4>; \
   template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 5>; \
-  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 6>
+  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 6>;
+
 INSTANTIATION(EigenPad, bool);
 INSTANTIATION(EigenPad, int);
 INSTANTIATION(EigenPad, int64_t);

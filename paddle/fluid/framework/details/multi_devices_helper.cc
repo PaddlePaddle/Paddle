@@ -162,7 +162,8 @@ static bool IsDataParallelInferenceGraphImpl(
   }
 
   PADDLE_ENFORCE_GE(
-      place_num, 1,
+      place_num,
+      1,
       platform::errors::NotFound(
           "No place found, this may be a bug.\nIt would be helpful if you "
           "could inform us of how this conversion went by opening a github "

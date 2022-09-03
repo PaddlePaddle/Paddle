@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/shape_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -47,7 +47,8 @@ class ShapeNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    shape, ops::ShapeNPUKernel<paddle::platform::NPUDeviceContext, bool>,
+    shape,
+    ops::ShapeNPUKernel<paddle::platform::NPUDeviceContext, bool>,
     ops::ShapeNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::ShapeNPUKernel<paddle::platform::NPUDeviceContext, int8_t>,
     ops::ShapeNPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,

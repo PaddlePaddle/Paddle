@@ -22,11 +22,8 @@ namespace infrt {
 namespace kernel {
 
 struct InferShapedKernelLauncher {
-  virtual void Invoke(host_context::KernelFrame* frame) = 0;
-
-  virtual ~InferShapedKernelLauncher() = default;
-
- protected:
+  explicit InferShapedKernelLauncher(int arg_size) : arg_size_(arg_size) {}
+  ~InferShapedKernelLauncher() = default;
   //! Initialize the kernel frame for InferShape kernel.
   // This method will create a new KernelFrame with all the Tensors(currently
   // only DenseHostTensor) converted into MetaTensors so that the infer-shape
@@ -46,6 +43,7 @@ struct InferShapedKernelLauncher {
   llvm::SmallVector<host_context::ValueRef, 3> values;
   llvm::SmallVector<::phi::DDim, 3> tensor_shape_cache;
   host_context::KernelFrameBuilder infershape_kernel_frame_builder;
+  const int arg_size_;
 };
 
 }  // namespace kernel

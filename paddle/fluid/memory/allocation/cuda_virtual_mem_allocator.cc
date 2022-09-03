@@ -18,6 +18,7 @@
 #endif
 
 #include <string>
+
 #include "paddle/fluid/memory/allocation/cuda_virtual_mem_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -103,7 +104,8 @@ bool CUDAVirtualMemAllocator::IsAllocThreadSafe() const { return false; }
 
 void CUDAVirtualMemAllocator::FreeImpl(phi::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
-      allocation->place(), place_,
+      allocation->place(),
+      place_,
       platform::errors::PermissionDenied(
           "GPU memory is freed in incorrect device. This may be a bug"));
 
@@ -152,7 +154,9 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
         "been allocated and "
         "available memory is only %s.\n\n"
         "Please decrease the batch size of your model.\n\n",
-        place_.device, string::HumanReadableSize(size), place_.device,
+        place_.device,
+        string::HumanReadableSize(size),
+        place_.device,
         string::HumanReadableSize(virtual_mem_alloced_offset_),
         string::HumanReadableSize(virtual_mem_size_ -
                                   virtual_mem_alloced_offset_),
@@ -182,9 +186,12 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
           "Please check whether there is any other process using GPU %d.\n"
           "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
           "2. If no, please decrease the batch size of your model.\n\n",
-          place_.device, string::HumanReadableSize(size), place_.device,
+          place_.device,
+          string::HumanReadableSize(size),
+          place_.device,
           string::HumanReadableSize(actual_allocated),
-          string::HumanReadableSize(actual_avail), place_.device));
+          string::HumanReadableSize(actual_avail),
+          place_.device));
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(result);
     }
@@ -217,8 +224,8 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
 
   virtual_mem_alloced_offset_ += size;
 
-  return new Allocation(reinterpret_cast<void*>(ptr), size,
-                        platform::Place(place_));
+  return new Allocation(
+      reinterpret_cast<void*>(ptr), size, platform::Place(place_));
 }
 
 }  // namespace allocation

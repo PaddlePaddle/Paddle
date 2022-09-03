@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 

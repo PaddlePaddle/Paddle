@@ -32,5 +32,22 @@ struct BroadcastOptions {
   int source_root = 0;
 };
 
+struct BarrierOptions {
+  std::vector<int> place_ids;
+};
+
+struct ReduceOptions {
+  ReduceOp reduce_op = ReduceOp::SUM;
+  int root_rank = 0;
+};
+
+struct ScatterOptions {
+  int root_rank = 0;
+};
+
+struct ReduceScatterOptions {
+  ReduceOp reduce_op = ReduceOp::SUM;
+};
+
 }  //  namespace distributed
 }  //  namespace paddle

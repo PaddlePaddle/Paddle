@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
+#include <sstream>
 #include <vector>
 
 #include "gflags/gflags.h"

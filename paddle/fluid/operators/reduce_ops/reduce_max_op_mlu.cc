@@ -27,11 +27,11 @@ class ReduceMaxMLUKernel : public framework::OpKernel<T> {
     int out_dtype = context.Attr<int>("out_dtype");
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto dims = context.Attr<std::vector<int>>("dim");
-    auto input_dims = framework::vectorize(input->dims());
+    auto input_dims = input->dims();
     const auto& input_dim_size = input->dims().size();
     std::vector<int> reduce_dims;
     if (reduce_all) {
-      for (size_t i = 0; i < input_dims.size(); i++) {
+      for (int i = 0; i < input_dims.size(); i++) {
         reduce_dims.push_back(static_cast<int>(i));
       }
     } else {
@@ -66,18 +66,28 @@ class ReduceMaxMLUKernel : public framework::OpKernel<T> {
       output->ShareDataWith(cast_out);
     }
 
-    MLUCnnlTensorDesc input_desc(*input, CNNL_LAYOUT_ARRAY,
-                                 ToCnnlDataType(input->dtype()));
-    MLUCnnlTensorDesc output_desc(*output, CNNL_LAYOUT_ARRAY,
-                                  ToCnnlDataType(output->dtype()));
+    MLUCnnlTensorDesc input_desc(
+        *input, CNNL_LAYOUT_ARRAY, ToCnnlDataType(input->dtype()));
+    MLUCnnlTensorDesc output_desc(
+        *output, CNNL_LAYOUT_ARRAY, ToCnnlDataType(output->dtype()));
 
-    MLUCnnlReduceDesc reduction_desc(
-        reduce_dims, CNNL_REDUCE_MAX, ToCnnlDataType<T>(),
-        CNNL_NOT_PROPAGATE_NAN, CNNL_REDUCE_NO_INDICES, CNNL_32BIT_INDICES);
+    MLUCnnlReduceDesc reduction_desc(reduce_dims,
+                                     CNNL_REDUCE_MAX,
+                                     ToCnnlDataType<T>(),
+                                     CNNL_NOT_PROPAGATE_NAN,
+                                     CNNL_REDUCE_NO_INDICES,
+                                     CNNL_32BIT_INDICES);
 
-    MLUCnnl::Reduce(context, true /*need_workspace*/, reduction_desc.get(),
-                    nullptr, input_desc.get(), GetBasePtr(input),
-                    0 /*indices_size*/, nullptr, nullptr, output_desc.get(),
+    MLUCnnl::Reduce(context,
+                    true /*need_workspace*/,
+                    reduction_desc.get(),
+                    nullptr,
+                    input_desc.get(),
+                    GetBasePtr(input),
+                    0 /*indices_size*/,
+                    nullptr,
+                    nullptr,
+                    output_desc.get(),
                     GetBasePtr(output));
   }
 };
@@ -88,6 +98,7 @@ class ReduceMaxMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(reduce_max, ops::ReduceMaxMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(reduce_max,
+                       ops::ReduceMaxMLUKernel<float>,
                        ops::ReduceMaxMLUKernel<plat::float16>,
                        ops::ReduceMaxMLUKernel<int>);

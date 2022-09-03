@@ -37,7 +37,8 @@ namespace details {
 
 class NCCLOpHandleBase : public OpHandleBase {
  public:
-  NCCLOpHandleBase(ir::Node* node, const std::vector<platform::Place>& places,
+  NCCLOpHandleBase(ir::Node* node,
+                   const std::vector<platform::Place>& places,
                    const platform::NCCLCommunicator* nccl_ctxs)
       : OpHandleBase(node), places_(places), nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs == nullptr) {
@@ -67,7 +68,8 @@ class NCCLOpHandleBase : public OpHandleBase {
   }
   void SetRunEnv(int run_order, bool use_hierarchical_allreduce) {
     PADDLE_ENFORCE_GE(
-        run_order, 0,
+        run_order,
+        0,
         platform::errors::InvalidArgument(
             "The argument run_order must be >= 0, but got %d.", run_order));
     run_order_ = run_order;
@@ -90,7 +92,8 @@ class NCCLOpHandleBase : public OpHandleBase {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(places_.size(), 1,
+    PADDLE_ENFORCE_EQ(places_.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "HierarchicalAllReduce can only run "
                           "one proccess with one card mode, but got %d cards.",
@@ -125,11 +128,15 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
   }
 
-  void FlatNCCLAllReduce(platform::Place place, const void* sendbuff,
-                         void* recvbuff, size_t count, ncclDataType_t datatype,
+  void FlatNCCLAllReduce(platform::Place place,
+                         const void* sendbuff,
+                         void* recvbuff,
+                         size_t count,
+                         ncclDataType_t datatype,
                          ncclRedOp_t op) {
     PADDLE_ENFORCE_GE(
-        run_order_, 0,
+        run_order_,
+        0,
         platform::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
@@ -146,11 +153,15 @@ class NCCLOpHandleBase : public OpHandleBase {
         sendbuff, recvbuff, count, datatype, op, comm, stream));
   }
 
-  void NCCLAllReduce(platform::Place place, const void* sendbuff,
-                     void* recvbuff, size_t count, ncclDataType_t datatype,
+  void NCCLAllReduce(platform::Place place,
+                     const void* sendbuff,
+                     void* recvbuff,
+                     size_t count,
+                     ncclDataType_t datatype,
                      ncclRedOp_t op) {
     PADDLE_ENFORCE_GE(
-        run_order_, 0,
+        run_order_,
+        0,
         platform::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     if (!use_hierarchical_allreduce_) {
@@ -161,11 +172,15 @@ class NCCLOpHandleBase : public OpHandleBase {
     HierarchicalAllReduce(place, sendbuff, recvbuff, count, datatype, op);
   }
 
-  void HierarchicalAllReduce(platform::Place place, const void* sendbuff,
-                             void* recvbuff, size_t count,
-                             ncclDataType_t datatype, ncclRedOp_t op) {
+  void HierarchicalAllReduce(platform::Place place,
+                             const void* sendbuff,
+                             void* recvbuff,
+                             size_t count,
+                             ncclDataType_t datatype,
+                             ncclRedOp_t op) {
     PADDLE_ENFORCE_GE(
-        run_order_, 0,
+        run_order_,
+        0,
         platform::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     InterReduce(place, sendbuff, recvbuff, count, datatype, op);
@@ -178,8 +193,12 @@ class NCCLOpHandleBase : public OpHandleBase {
   }
 
  protected:
-  void InterReduce(platform::Place place, const void* sendbuff, void* recvbuff,
-                   size_t count, ncclDataType_t datatype, ncclRedOp_t op) {
+  void InterReduce(platform::Place place,
+                   const void* sendbuff,
+                   void* recvbuff,
+                   size_t count,
+                   ncclDataType_t datatype,
+                   ncclRedOp_t op) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
     int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
@@ -206,13 +225,17 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
   }
 
-  void ExterAllReduce(platform::Place place, const void* sendbuff,
-                      void* recvbuff, size_t count, ncclDataType_t datatype,
+  void ExterAllReduce(platform::Place place,
+                      const void* sendbuff,
+                      void* recvbuff,
+                      size_t count,
+                      ncclDataType_t datatype,
                       ncclRedOp_t op) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalExterCtx(run_order_);
     PADDLE_ENFORCE_NOT_NULL(
-        nccl_ctxs_, platform::errors::NotFound(
-                        "Can't get exter %d nccl contexts.", run_order_));
+        nccl_ctxs_,
+        platform::errors::NotFound("Can't get exter %d nccl contexts.",
+                                   run_order_));
     int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
@@ -243,8 +266,11 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
   }
 
-  void InterBroadCast(platform::Place place, void* sendbuff, size_t count,
-                      ncclDataType_t datatype, ncclRedOp_t op) {
+  void InterBroadCast(platform::Place place,
+                      void* sendbuff,
+                      size_t count,
+                      ncclDataType_t datatype,
+                      ncclRedOp_t op) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
     int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);

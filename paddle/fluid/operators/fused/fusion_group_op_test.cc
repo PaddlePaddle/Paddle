@@ -55,7 +55,8 @@ framework::OpDesc* CreateFusionGroupOp(
     framework::ProgramDesc* program,
     const std::vector<std::string>& input_names,
     const std::vector<std::vector<int64_t>>& input_shapes,
-    const std::vector<std::string>& output_names, int type,
+    const std::vector<std::string>& output_names,
+    int type,
     std::string func_name) {
   EXPECT_EQ(input_names.size(), input_shapes.size());
 
@@ -89,7 +90,8 @@ framework::OpDesc* CreateFusionGroupOp(
   return op;
 }
 
-void PrepareDeviceCode(platform::Place place, std::string func_name,
+void PrepareDeviceCode(platform::Place place,
+                       std::string func_name,
                        std::string cuda_kernel_str) {
   paddle::platform::DeviceCodePool& pool =
       paddle::platform::DeviceCodePool::Init({place});
@@ -103,14 +105,15 @@ void PrepareDeviceCode(platform::Place place, std::string func_name,
 void CheckOutputs(framework::Scope* scope,
                   const std::vector<std::string>& output_names,
                   std::vector<framework::Tensor>* cpu_tensors,
-                  size_t num_inputs, CPUKernelFunc cpu_kernel_func) {
+                  size_t num_inputs,
+                  CPUKernelFunc cpu_kernel_func) {
   std::vector<framework::Tensor> cpu_outputs;
   cpu_outputs.resize(output_names.size());
   for (size_t j = 0; j < output_names.size(); ++j) {
     auto* var = scope->Var(output_names[j]);
     const auto& dev_tensor = var->Get<framework::LoDTensor>();
-    paddle::framework::TensorCopySync(dev_tensor, platform::CPUPlace(),
-                                      &(cpu_outputs[j]));
+    paddle::framework::TensorCopySync(
+        dev_tensor, platform::CPUPlace(), &(cpu_outputs[j]));
 
     cpu_tensors->at(num_inputs + j)
         .mutable_data<float>(dev_tensor.dims(), platform::CPUPlace());
@@ -136,8 +139,10 @@ void CheckOutputs(framework::Scope* scope,
 
 void TestMain(const std::vector<std::string>& input_names,
               const std::vector<std::vector<int64_t>>& input_shapes,
-              const std::vector<std::string>& output_names, int type,
-              std::string func_name, std::string cuda_kernel_str,
+              const std::vector<std::string>& output_names,
+              int type,
+              std::string func_name,
+              std::string cuda_kernel_str,
               CPUKernelFunc cpu_kernel_func) {
   // Compile the device code
   paddle::framework::InitDevices({0});
@@ -173,8 +178,8 @@ void TestMain(const std::vector<std::string>& input_names,
   dev_ctx->Wait();
 
   // Check the output.
-  CheckOutputs(&scope, output_names, &cpu_tensors, input_names.size(),
-               cpu_kernel_func);
+  CheckOutputs(
+      &scope, output_names, &cpu_tensors, input_names.size(), cpu_kernel_func);
 }
 
 TEST(FusionGroupOp, elementwise) {
@@ -217,8 +222,13 @@ void elementwise_cuda_kernel_0(size_t n, float *x, float* y, float* z) {
     }
   };
 
-  TestMain(input_names, input_shapes, output_names, 0,
-           "elementwise_cuda_kernel_0", kernel, elementwise_cpu_kernel_0);
+  TestMain(input_names,
+           input_shapes,
+           output_names,
+           0,
+           "elementwise_cuda_kernel_0",
+           kernel,
+           elementwise_cpu_kernel_0);
 }
 
 }  // namespace operators

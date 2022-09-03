@@ -13,13 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/stream_callback_manager.h"
+
 #include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
 namespace platform {
 
 #ifdef PADDLE_WITH_HIP
-static void StreamCallbackFunc(gpuStream_t stream, gpuError_t status,
+static void StreamCallbackFunc(gpuStream_t stream,
+                               gpuError_t status,
                                void *user_data)
 #endif
 #ifdef PADDLE_WITH_CUDA
@@ -81,9 +83,7 @@ void StreamCallbackManager<Stream>::AddCallback(
 
 #if PADDLE_WITH_MLU
   VLOG(3) << "MLULaunchCallback at stream: " << stream_;
-  LOG(ERROR) << "failed to call MLULaunchCallback, "
-             << "because mlu not support StreamAddCallback yet. "
-             << "function: " << func;
+  cnrtInvokeHostFunc(stream_, StreamCallbackFunc, func);
 #endif
 }
 

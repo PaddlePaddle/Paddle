@@ -127,9 +127,9 @@ def avx_supported():
             # Enable execute permissions
             PAGE_EXECUTE = ctypes.c_ulong(0x10)
             pfnVirtualProtect = ctypes.windll.kernel32.VirtualProtect
-            res = pfnVirtualProtect(
-                ctypes.c_void_p(address), ONE_PAGE, PAGE_EXECUTE,
-                ctypes.byref(ctypes.c_ulong(0)))
+            res = pfnVirtualProtect(ctypes.c_void_p(address),
+                                    ONE_PAGE, PAGE_EXECUTE,
+                                    ctypes.byref(ctypes.c_ulong(0)))
             if not res:
                 raise Exception("Failed VirtualProtect")
 
@@ -156,8 +156,8 @@ def avx_supported():
             # Convert the code_str into a function that returns uint
             func, address = asm_func(code_str)
             retval = func()
-            ctypes.windll.kernel32.VirtualFree(
-                ctypes.c_void_p(address), ctypes.c_size_t(0), ONE_PAGE)
+            ctypes.windll.kernel32.VirtualFree(ctypes.c_void_p(address),
+                                               ctypes.c_size_t(0), ONE_PAGE)
         except Exception as e:
             sys.stderr.write('Failed getting the AVX flag on Windows.\n'
                              'The original error is: %s\n' %
@@ -170,9 +170,10 @@ def avx_supported():
 
 def run_shell_command(cmd):
     import subprocess
-    out, err = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        shell=True).communicate()
+    out, err = subprocess.Popen(cmd,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                shell=True).communicate()
     if err:
         return None
     else:
@@ -232,7 +233,7 @@ def less_than_ver(a, b):
     return operator.lt(to_list(a), to_list(b))
 
 
-# NOTE(zhiqiu): An error may occurs when import paddle in linux platform with glibc < 2.22, 
+# NOTE(zhiqiu): An error may occurs when import paddle in linux platform with glibc < 2.22,
 # the error message of which is "dlopen: cannot load any more object with static TLS".
 # This happens when:
 # (1) the number of dynamic shared librarys (DSO) loaded > 14,
@@ -271,10 +272,6 @@ if avx_supported():
         from .core_avx import _is_dygraph_debug_enabled
         from .core_avx import _dygraph_debug_level
         from .core_avx import _switch_tracer
-        from .core_avx import _set_eager_tracer
-        from .core_avx import _disable_eager_mode
-        from .core_avx import _enable_eager_mode
-        from .core_avx import _in_eager_mode
         from .core_avx import _set_paddle_lib_path
         from .core_avx import _create_loaded_parameter
         from .core_avx import _cuda_synchronize
@@ -283,6 +280,7 @@ if avx_supported():
         from .core_avx import _set_cached_executor_build_strategy
         from .core_avx import _device_synchronize
         from .core_avx import _get_current_stream
+        from .core_avx import _Profiler, _ProfilerResult, _RecordEvent
         from .core_avx import _set_current_stream
         if sys.platform != 'win32':
             from .core_avx import _set_process_pids
@@ -331,10 +329,6 @@ if load_noavx:
         from .core_noavx import _is_dygraph_debug_enabled
         from .core_noavx import _dygraph_debug_level
         from .core_noavx import _switch_tracer
-        from .core_noavx import _set_eager_tracer
-        from .core_noavx import _disable_eager_mode
-        from .core_noavx import _enable_eager_mode
-        from .core_noavx import _in_eager_mode
         from .core_noavx import _set_paddle_lib_path
         from .core_noavx import _create_loaded_parameter
         from .core_noavx import _cuda_synchronize
@@ -344,6 +338,7 @@ if load_noavx:
         from .core_noavx import _device_synchronize
         from .core_noavx import _get_current_stream
         from .core_noavx import _set_current_stream
+        from .core_noavx import _Profiler, _ProfilerResult, _RecordEvent
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids
             from .core_noavx import _erase_process_pids

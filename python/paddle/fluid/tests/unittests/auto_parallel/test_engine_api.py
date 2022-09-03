@@ -12,123 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 import unittest
-import time
-import paddle.fluid as fluid
-import copy
 import os
-import numpy as np
+import sys
+import shutil
 import subprocess
-import paddle
-import paddle.nn as nn
-import paddle.fluid as fluid
-import paddle.static as static
-import paddle.nn.functional as F
-import paddle.utils as utils
-from paddle.fluid import layers
-from paddle.io import Dataset, IterableDataset, DataLoader
-from paddle.static import InputSpec
-from paddle.distributed import fleet
-import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.engine import Engine
-
-paddle.enable_static()
-global_process_mesh = auto.ProcessMesh(mesh=[0])
-batch_size = 1
-batch_num = 10
-hidden_size = 1024
-sequence_len = 512
-image_size = hidden_size
-class_num = 10
-
-paddle.seed(44)
-
-
-class MyDataset(Dataset):
-    def __init__(self, num_samples):
-        super(MyDataset, self).__init__()
-        self.num_samples = num_samples
-
-    def __getitem__(self, index):
-        input = np.random.uniform(size=image_size).astype("float32")
-        label = np.random.randint(0, class_num - 1, dtype="int64")
-        return input, label
-
-    def __len__(self):
-        return self.num_samples
-
-
-class MLPLayer(nn.Layer):
-    def __init__(self,
-                 hidden_size=1024,
-                 intermediate_size=4 * 1024,
-                 dropout_ratio=0.1,
-                 initializer_range=0.02):
-        super(MLPLayer, self).__init__()
-        d_model = hidden_size
-        dim_feedforward = intermediate_size
-        weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
-            mean=0.0, std=initializer_range))
-        bias_attr = None
-
-        self.linear0 = nn.Linear(
-            d_model, dim_feedforward, weight_attr, bias_attr=bias_attr)
-        self.linear1 = nn.Linear(
-            dim_feedforward, d_model, weight_attr, bias_attr=bias_attr)
-        self.linear2 = nn.Linear(d_model, 1, weight_attr, bias_attr=bias_attr)
-        # self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
-        # self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
-
-    def forward(self, input):
-        auto.shard_tensor(
-            input,
-            dist_attr={
-                "process_mesh": global_process_mesh,
-                "dims_mappig": [-1]
-            })
-        # out = self.norm(input)
-        out = self.linear0(input)
-        out = F.gelu(out, approximate=True)
-        out = self.linear1(out)
-        # out = self.dropout(out)
-        out = self.linear2(out)
-        return out
+from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 
 class TestEngineAPI(unittest.TestCase):
-    def test_engine_api(self):
-        mlp = MLPLayer(
-            hidden_size=hidden_size,
-            intermediate_size=4 * hidden_size,
-            dropout_ratio=0.1,
-            initializer_range=0.02)
-        loss = paddle.nn.CrossEntropyLoss()
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(
-            learning_rate=0.00001,
-            beta1=0.9,
-            beta2=0.999,
-            epsilon=1e-08,
-            grad_clip=None)
 
-        dataset = MyDataset(batch_num * batch_size)
-        data_spec = [
-            InputSpec([batch_size, hidden_size], 'float32', 'x'),
-            InputSpec([batch_size], 'int64', 'label')
+    def test_engine_api(self):
+        file_dir = os.path.dirname(os.path.abspath(__file__))
+        launch_model_path = os.path.join(file_dir, "engine_api.py")
+
+        if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
+            coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
+        else:
+            coverage_args = []
+
+        tmp_dir = tempfile.TemporaryDirectory()
+        cmd = [sys.executable, "-u"] + coverage_args + [
+            "-m", "paddle.distributed.launch", "--devices", "0,1", "--log_dir",
+            tmp_dir.name, launch_model_path
         ]
 
-        dist_strategy = fleet.DistributedStrategy()
-        dist_strategy.amp = False
-        dist_strategy.pipeline = False
-        dist_strategy.recompute = False
-        # init parallel optimizer
-        dist_strategy.semi_auto = True
-        fleet.init(is_collective=True, strategy=dist_strategy)
+        process = subprocess.Popen(cmd)
+        process.wait()
+        self.assertEqual(process.returncode, 0)
 
-        engine = Engine(mlp, data_spec, strategy=dist_strategy)
-        engine.prepare(optimizer, loss)
-        engine.fit(dataset,
-                   batch_size=batch_size,
-                   steps_per_epoch=batch_num * batch_size)
+        tmp_dir.cleanup()
 
 
 if __name__ == "__main__":

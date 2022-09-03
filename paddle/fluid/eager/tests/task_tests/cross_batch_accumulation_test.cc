@@ -16,20 +16,19 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
+#include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/grad_node_info.h"
-
-#include "paddle/fluid/eager/api/all.h"
-
+#include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-#include "paddle/fluid/eager/tests/test_utils.h"
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
 namespace egr {
 
@@ -39,9 +38,13 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
   std::vector<paddle::experimental::Tensor> target_tensors;
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
-  paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-      phi::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
+  paddle::experimental::Tensor tensor =
+      egr_utils_api::CreateTensorWithValue(ddim,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           1.0 /*value*/,
+                                           false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::experimental::Tensor& target_tensor = target_tensors[0];
 
@@ -65,14 +68,14 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
   meta->SetSingleOutRankWithSlot(0, 0);
   meta->SetGradNode(acc_node_ptr);
   std::vector<egr::AutogradMeta*> res = {meta};
-  scale_node_ptr->AddEdges(&res, 0);
+  scale_node_ptr->SetGradOutMeta(leaf_tensor, 0);
 
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(target_tensor, 1.0);
   eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 5.0);
 
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(target_tensor, 1.0);
   eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 10.0);

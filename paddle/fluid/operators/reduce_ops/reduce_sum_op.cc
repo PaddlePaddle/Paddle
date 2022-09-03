@@ -16,6 +16,10 @@
 
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -23,9 +27,6 @@ class OpDesc;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -82,9 +83,15 @@ class ReduceSumVarTypeInference : public paddle::framework::VarTypeInference {
  public:
   void operator()(paddle::framework::InferVarTypeContext* ctx) const override {
     auto data_type = static_cast<paddle::framework::proto::VarType::Type>(
-        BOOST_GET_CONST(int, ctx->GetAttr("out_dtype")));
+        PADDLE_GET_CONST(int, ctx->GetAttr("out_dtype")));
     if (data_type >= 0) {
       ctx->SetOutputDataType("Out", data_type);
+    } else {
+      auto x_type = ctx->GetInputDataType("X");
+      if (x_type == framework::proto::VarType::BOOL ||
+          x_type == framework::proto::VarType::INT32) {
+        ctx->SetOutputDataType("Out", framework::proto::VarType::INT64);
+      }
     }
   }
 };
@@ -98,24 +105,19 @@ class ReduceSumOpMaker : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_sum"; }
 };
 
-REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
+DECLARE_INFER_SHAPE_FUNCTOR(reduce_sum,
+                            ReduceSumInferShapeFunctor,
+                            PD_INFER_META(phi::SumRawInferMeta));
+
+REGISTER_OPERATOR(reduce_sum,
+                  ops::ReduceOp,
+                  ReduceSumOpMaker,
                   ops::ReduceSumVarTypeInference,
                   ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
-                  ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
+                  ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>,
+                  ReduceSumInferShapeFunctor);
+REGISTER_OPERATOR(reduce_sum_grad,
+                  ops::ReduceGradOp,
                   ops::ReduceSumDoubleOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumDoubleOpGradMaker<paddle::imperative::OpBase>,
                   ops::ReduceSumGradNoNeedBufferVarInferer);
-
-template <typename T>
-using CPUReduceSumGradKernel =
-    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, T,
-                             ops::SumGradFunctor, true>;
-
-REGISTER_OP_CPU_KERNEL(
-    reduce_sum_grad, CPUReduceSumGradKernel<bool>,
-    CPUReduceSumGradKernel<float>, CPUReduceSumGradKernel<double>,
-    CPUReduceSumGradKernel<paddle::platform::float16>,
-    CPUReduceSumGradKernel<int>, CPUReduceSumGradKernel<int64_t>,
-    CPUReduceSumGradKernel<paddle::platform::complex<float>>,
-    CPUReduceSumGradKernel<paddle::platform::complex<double>>);

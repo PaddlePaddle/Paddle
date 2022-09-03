@@ -12,12 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/take_along_axis_op.h"
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -25,38 +29,6 @@ namespace operators {
 class TakeAlongAxisOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Input"), true,
-        platform::errors::InvalidArgument(
-            "Input(Input) of TakeAlongAxisOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Index"), true,
-        platform::errors::InvalidArgument(
-            "Input(Index) of TakeAlongAxisOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Result"), true,
-        platform::errors::InvalidArgument(
-            "Output(Result) of TakeAlongAxisOp should not be null."));
-
-    auto input_dim = ctx->GetInputDim("Input");
-    auto index_dim = ctx->GetInputDim("Index");
-
-    PADDLE_ENFORCE_GT(input_dim.size(), 0,
-                      platform::errors::InvalidArgument(
-                          "Dimension of the input(Input) of TakeAlongAxisOp "
-                          "should be greater than 0.",
-                          input_dim));
-
-    PADDLE_ENFORCE_GT(index_dim.size(), 0,
-                      platform::errors::InvalidArgument(
-                          "Dimension of the input(Index) of TakeAlongAxisOp "
-                          "should be greater than 0.",
-                          index_dim));
-
-    ctx->SetOutputDim("Result", index_dim);
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -66,10 +38,11 @@ class TakeAlongAxisOp : public framework::OperatorWithKernel {
         ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -105,10 +78,11 @@ class TakeAlongAxisGradOp : public framework::OperatorWithKernel {
                                    ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -133,22 +107,14 @@ class TakeAlongAxisGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(take_along_axis, ops::TakeAlongAxisOp,
+DECLARE_INFER_SHAPE_FUNCTOR(take_along_axis,
+                            TakeAlongAxisInferShapeFunctor,
+                            PD_INFER_META(phi::TakeAlongAxisInferMeta));
+REGISTER_OPERATOR(take_along_axis,
+                  ops::TakeAlongAxisOp,
                   ops::TakeAlongAxisOpMaker,
                   ops::TakeAlongAxisGradOpMaker<paddle::framework::OpDesc>,
-                  ops::TakeAlongAxisGradOpMaker<paddle::imperative::OpBase>);
+                  ops::TakeAlongAxisGradOpMaker<paddle::imperative::OpBase>,
+                  TakeAlongAxisInferShapeFunctor);
 
 REGISTER_OPERATOR(take_along_axis_grad, ops::TakeAlongAxisGradOp);
-
-REGISTER_OP_CPU_KERNEL(take_along_axis, ops::TakeAlongAxisOpKernel<float>,
-                       ops::TakeAlongAxisOpKernel<double>,
-                       ops::TakeAlongAxisOpKernel<int>,
-                       ops::TakeAlongAxisOpKernel<uint8_t>,
-                       ops::TakeAlongAxisOpKernel<int64_t>);
-
-REGISTER_OP_CPU_KERNEL(take_along_axis_grad,
-                       ops::TakeAlongAxisGradOpKernel<float>,
-                       ops::TakeAlongAxisGradOpKernel<double>,
-                       ops::TakeAlongAxisGradOpKernel<int>,
-                       ops::TakeAlongAxisGradOpKernel<uint8_t>,
-                       ops::TakeAlongAxisGradOpKernel<int64_t>);

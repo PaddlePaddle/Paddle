@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/place.h"
 
 #ifdef PADDLE_WITH_XPU
@@ -54,11 +55,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
-#include "paddle/fluid/framework/custom_kernel.h"
+#include "paddle/phi/core/custom_kernel.h"
 
 DECLARE_int32(paddle_num_threads);
 PADDLE_DEFINE_EXPORTED_int32(
-    multiple_of_cupti_buffer_size, 1,
+    multiple_of_cupti_buffer_size,
+    1,
     "Multiple of the CUPTI device buffer size. If the timestamps have "
     "been dropped when you are profiling, try increasing this value.");
 
@@ -118,18 +120,20 @@ void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
   size_t attrValue = 0, attrValueSize = sizeof(size_t);
-#define MULTIPLY_ATTR_VALUE(attr)                                            \
-  {                                                                          \
-    PADDLE_ENFORCE_EQ(                                                       \
-        !platform::dynload::cuptiActivityGetAttribute(attr, &attrValueSize,  \
-                                                      &attrValue),           \
-        true, platform::errors::Unavailable("Get cupti attribute failed.")); \
-    attrValue *= FLAGS_multiple_of_cupti_buffer_size;                        \
-    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";                \
-    PADDLE_ENFORCE_EQ(                                                       \
-        !platform::dynload::cuptiActivitySetAttribute(attr, &attrValueSize,  \
-                                                      &attrValue),           \
-        true, platform::errors::Unavailable("Set cupti attribute failed.")); \
+#define MULTIPLY_ATTR_VALUE(attr)                                      \
+  {                                                                    \
+    PADDLE_ENFORCE_EQ(                                                 \
+        !platform::dynload::cuptiActivityGetAttribute(                 \
+            attr, &attrValueSize, &attrValue),                         \
+        true,                                                          \
+        platform::errors::Unavailable("Get cupti attribute failed.")); \
+    attrValue *= FLAGS_multiple_of_cupti_buffer_size;                  \
+    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";          \
+    PADDLE_ENFORCE_EQ(                                                 \
+        !platform::dynload::cuptiActivitySetAttribute(                 \
+            attr, &attrValueSize, &attrValue),                         \
+        true,                                                          \
+        platform::errors::Unavailable("Set cupti attribute failed.")); \
   }
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE);
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE_CDP);
@@ -144,7 +148,7 @@ void InitCupti() {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 void LoadCustomDevice(const std::string &library_dir) {
   LOG(INFO) << "Try loading custom device libs from: [" << library_dir << "]";
-  std::vector<std::string> libs = platform::ListAllLibraries(library_dir);
+  std::vector<std::string> libs = phi::ListAllLibraries(library_dir);
   for (const auto &lib_path : libs) {
     auto dso_handle = dlopen(lib_path.c_str(), RTLD_NOW);
     PADDLE_ENFORCE_NOT_NULL(
@@ -152,15 +156,17 @@ void LoadCustomDevice(const std::string &library_dir) {
         platform::errors::InvalidArgument(
             "Fail to open library: %s with error: %s", lib_path, dlerror()));
 
-    platform::LoadCustomRuntimeLib(lib_path, dso_handle);
-    framework::LoadCustomKernelLib(lib_path, dso_handle);
+    phi::LoadCustomRuntimeLib(lib_path, dso_handle);
   }
+  phi::CustomKernelMap::Instance().RegisterCustomKernels();
   LOG(INFO) << "Finished in LoadCustomDevice with libs_path: [" << library_dir
             << "]";
 }
 #endif
 
 void InitDevices() {
+  // set name at the entry point of Paddle
+  platform::SetCurrentThreadName("MainThread");
 // CUPTI attribute should be set before any CUDA context is created (see CUPTI
 // documentation about CUpti_ActivityAttribute).
 #ifdef PADDLE_WITH_CUDA
@@ -256,13 +262,13 @@ void InitDevices(const std::vector<int> devices) {
       LOG(INFO) << "ENV [CUSTOM_DEVICE_ROOT]=" << custom_kernel_root;
       LoadCustomDevice(custom_kernel_root);
 
-      auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
+      auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
       for (auto &dev_type : device_types) {
-        auto device_count = platform::DeviceManager::GetDeviceCount(dev_type);
+        auto device_list = phi::DeviceManager::GetSelectedDeviceList(dev_type);
         LOG(INFO) << "CustomDevice: " << dev_type
-                  << ", visible devices count: " << device_count;
-        for (size_t i = 0; i < device_count; i++) {
-          places.push_back(platform::CustomPlace(dev_type, i));
+                  << ", visible devices count: " << device_list.size();
+        for (auto &dev_id : device_list) {
+          places.push_back(platform::CustomPlace(dev_type, dev_id));
         }
       }
     } else {
@@ -347,7 +353,8 @@ bool StartsWith(const char *str, const char *prefix) {
 
 const char *ParseSignalErrorString(const std::string &str) {
   for (size_t i = 0;
-       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings))); ++i) {
+       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings)));
+       ++i) {
     if (std::string::npos != str.find(SignalErrorStrings[i].name)) {
       return SignalErrorStrings[i].error_string;
     }
@@ -407,7 +414,8 @@ void SignalHandle(const char *data, int size) {
 void DisableSignalHandler() {
 #ifndef _WIN32
   for (size_t i = 0;
-       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings))); ++i) {
+       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings)));
+       ++i) {
     int signal_number = SignalErrorStrings[i].signal_number;
     struct sigaction sig_action;
     memset(&sig_action, 0, sizeof(sig_action));
@@ -420,15 +428,22 @@ void DisableSignalHandler() {
 
 #ifdef WITH_WIN_DUMP_DBG
 typedef BOOL(WINAPI *MINIDUMP_WRITE_DUMP)(
-    IN HANDLE hProcess, IN DWORD ProcessId, IN HANDLE hFile,
+    IN HANDLE hProcess,
+    IN DWORD ProcessId,
+    IN HANDLE hFile,
     IN MINIDUMP_TYPE DumpType,
     IN CONST PMINIDUMP_EXCEPTION_INFORMATION ExceptionParam,
     OPTIONAL IN PMINIDUMP_USER_STREAM_INFORMATION UserStreamParam,
     OPTIONAL IN PMINIDUMP_CALLBACK_INFORMATION CallbackParam OPTIONAL);
 void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
                     EXCEPTION_POINTERS *pException) {
-  HANDLE hDumpFile = CreateFile(lpstrDumpFilePathName, GENERIC_WRITE, 0, NULL,
-                                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  HANDLE hDumpFile = CreateFile(lpstrDumpFilePathName,
+                                GENERIC_WRITE,
+                                0,
+                                NULL,
+                                CREATE_ALWAYS,
+                                FILE_ATTRIBUTE_NORMAL,
+                                NULL);
   MINIDUMP_EXCEPTION_INFORMATION dumpInfo;
   dumpInfo.ExceptionPointers = pException;
   dumpInfo.ThreadId = GetCurrentThreadId();
@@ -437,8 +452,13 @@ void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
   HMODULE hDbgHelp = LoadLibrary("DBGHELP.DLL");
   MiniDumpWriteDump_ =
       (MINIDUMP_WRITE_DUMP)GetProcAddress(hDbgHelp, "MiniDumpWriteDump");
-  MiniDumpWriteDump_(GetCurrentProcess(), GetCurrentProcessId(), hDumpFile,
-                     MiniDumpWithPrivateReadWriteMemory, &dumpInfo, NULL, NULL);
+  MiniDumpWriteDump_(GetCurrentProcess(),
+                     GetCurrentProcessId(),
+                     hDumpFile,
+                     MiniDumpWithPrivateReadWriteMemory,
+                     &dumpInfo,
+                     NULL,
+                     NULL);
   CloseHandle(hDumpFile);
 }
 
@@ -448,9 +468,14 @@ LONG ApplicationCrashHandler(EXCEPTION_POINTERS *pException) {
   localtime_s(&now_time, &time_seconds);
 
   char buf[1024];
-  sprintf_s(buf, "C:\\Paddle%04d%02d%02d-%02d%02d%02d.dmp",
-            1900 + now_time.tm_year, 1 + now_time.tm_mon, now_time.tm_mday,
-            now_time.tm_hour, now_time.tm_min, now_time.tm_sec);
+  sprintf_s(buf,
+            "C:\\Paddle%04d%02d%02d-%02d%02d%02d.dmp",
+            1900 + now_time.tm_year,
+            1 + now_time.tm_mon,
+            now_time.tm_mday,
+            now_time.tm_hour,
+            now_time.tm_min,
+            now_time.tm_sec);
 
   CreateDumpFile(buf, pException);
   return EXCEPTION_EXECUTE_HANDLER;

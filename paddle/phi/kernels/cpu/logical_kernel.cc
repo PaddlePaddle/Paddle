@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/elementwise.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/logical_functor.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -24,15 +24,15 @@
 
 namespace phi {
 
-#define DEFINE_LOGICAL_BINARY_KERNEL(type)                         \
-  template <typename T, typename Context>                          \
-  void Logical##type##Kernel(const Context& dev_ctx,               \
-                             const DenseTensor& x,                 \
-                             const DenseTensor& y,                 \
-                             DenseTensor* out) {                   \
-    funcs::Logical##type##Functor<T> binary_func;                  \
-    ElementwiseCompute<funcs::Logical##type##Functor<T>, T, bool>( \
-        dev_ctx, x, y, -1, binary_func, out);                      \
+#define DEFINE_LOGICAL_BINARY_KERNEL(type)                                \
+  template <typename T, typename Context>                                 \
+  void Logical##type##Kernel(const Context& dev_ctx,                      \
+                             const DenseTensor& x,                        \
+                             const DenseTensor& y,                        \
+                             DenseTensor* out) {                          \
+    funcs::Logical##type##Functor<T> binary_func;                         \
+    funcs::ElementwiseCompute<funcs::Logical##type##Functor<T>, T, bool>( \
+        dev_ctx, x, y, -1, binary_func, out);                             \
   }
 
 DEFINE_LOGICAL_BINARY_KERNEL(And)

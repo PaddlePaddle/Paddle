@@ -19,7 +19,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_XPU_KERNEL(
-    squeeze, ops::SqueezeKernel<paddle::platform::XPUDeviceContext, float>,
+    squeeze,
+    ops::SqueezeKernel<paddle::platform::XPUDeviceContext, float>,
     ops::SqueezeKernel<paddle::platform::XPUDeviceContext, double>,
     ops::SqueezeKernel<paddle::platform::XPUDeviceContext, plat::float16>,
     ops::SqueezeKernel<paddle::platform::XPUDeviceContext, bool>,
@@ -38,7 +39,8 @@ REGISTER_OP_XPU_KERNEL(
     ops::SqueezeGradKernel<paddle::platform::XPUDeviceContext, int8_t>,
     ops::SqueezeGradKernel<paddle::platform::XPUDeviceContext, int64_t>);
 REGISTER_OP_XPU_KERNEL(
-    squeeze2, ops::Squeeze2Kernel<paddle::platform::XPUDeviceContext, float>,
+    squeeze2,
+    ops::Squeeze2Kernel<paddle::platform::XPUDeviceContext, float>,
     ops::Squeeze2Kernel<paddle::platform::XPUDeviceContext, double>,
     ops::Squeeze2Kernel<paddle::platform::XPUDeviceContext, plat::float16>,
     ops::Squeeze2Kernel<paddle::platform::XPUDeviceContext, bool>,

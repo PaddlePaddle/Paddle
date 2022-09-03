@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,9 +19,10 @@ import paddle
 from .tensor.attribute import is_complex, is_floating_point
 from .fft import fft_r2c, fft_c2r, fft_c2c
 from .fluid.data_feeder import check_variable_and_dtype
-from .fluid.framework import in_dygraph_mode
+from .fluid.framework import _non_static_mode
 from .fluid.layer_helper import LayerHelper
-from . import _C_ops
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = [
     'stft',
@@ -119,34 +120,37 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
             f'Unexpected hop_length: {hop_length}. It should be an positive integer.'
         )
 
-    if frame_length > x.shape[axis]:
-        raise ValueError(
-            f'Attribute frame_length should be less equal than sequence length, '
-            f'but got ({frame_length}) > ({x.shape[axis]}).')
+    if _non_static_mode():
+        if frame_length > x.shape[axis]:
+            raise ValueError(
+                f'Attribute frame_length should be less equal than sequence length, '
+                f'but got ({frame_length}) > ({x.shape[axis]}).')
 
     op_type = 'frame'
 
     if in_dygraph_mode():
+        return _C_ops.frame(x, frame_length, hop_length, axis)
+
+    if _in_legacy_dygraph():
         attrs = ('frame_length', frame_length, 'hop_length', hop_length, 'axis',
                  axis)
-        op = getattr(_C_ops, op_type)
+        op = getattr(_legacy_C_ops, op_type)
         out = op(x, *attrs)
     else:
         check_variable_and_dtype(
-            x, 'x', ['int32', 'int64', 'float16', 'float32',
-                     'float64'], op_type)
+            x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'],
+            op_type)
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype=dtype)
-        helper.append_op(
-            type=op_type,
-            inputs={'X': x},
-            attrs={
-                'frame_length': frame_length,
-                'hop_length': hop_length,
-                'axis': axis
-            },
-            outputs={'Out': out})
+        helper.append_op(type=op_type,
+                         inputs={'X': x},
+                         attrs={
+                             'frame_length': frame_length,
+                             'hop_length': hop_length,
+                             'axis': axis
+                         },
+                         outputs={'Out': out})
     return out
 
 
@@ -214,22 +218,25 @@ def overlap_add(x, hop_length, axis=-1, name=None):
     op_type = 'overlap_add'
 
     if in_dygraph_mode():
+        out = _C_ops.overlap_add(x, hop_length, axis)
+    elif paddle.in_dynamic_mode():
         attrs = ('hop_length', hop_length, 'axis', axis)
-        op = getattr(_C_ops, op_type)
+        op = getattr(_legacy_C_ops, op_type)
         out = op(x, *attrs)
     else:
         check_variable_and_dtype(
-            x, 'x', ['int32', 'int64', 'float16', 'float32',
-                     'float64'], op_type)
+            x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'],
+            op_type)
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype=dtype)
-        helper.append_op(
-            type=op_type,
-            inputs={'X': x},
-            attrs={'hop_length': hop_length,
-                   'axis': axis},
-            outputs={'Out': out})
+        helper.append_op(type=op_type,
+                         inputs={'X': x},
+                         attrs={
+                             'hop_length': hop_length,
+                             'axis': axis
+                         },
+                         outputs={'Out': out})
     return out
 
 
@@ -305,9 +312,9 @@ def stft(x,
                     paddle.randn([8, 48000], dtype=paddle.float64)*1j  # [8, 48000] complex128
             y1 = stft(x, n_fft=512, center=False, onesided=False)  # [8, 512, 372]
     """
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'complex64', 'complex128'],
-        'stft')
+    check_variable_and_dtype(x, 'x',
+                             ['float32', 'float64', 'complex64', 'complex128'],
+                             'stft')
 
     x_rank = len(x.shape)
     assert x_rank in [1, 2], \
@@ -325,8 +332,9 @@ def stft(x,
     if win_length is None:
         win_length = n_fft
 
-    assert 0 < n_fft <= x.shape[-1], \
-        f'n_fft should be in (0, seq_length({x.shape[-1]})], but got {n_fft}.'
+    if _non_static_mode():
+        assert 0 < n_fft <= x.shape[-1], \
+            f'n_fft should be in (0, seq_length({x.shape[-1]})], but got {n_fft}.'
 
     assert 0 < win_length <= n_fft, \
         f'win_length should be in (0, n_fft({n_fft})], but got {win_length}.'
@@ -359,7 +367,7 @@ def stft(x,
     x_frames = x_frames.transpose(
         perm=[0, 2,
               1])  # switch n_fft to last dim, egs: (batch, num_frames, n_fft)
-    x_frames = x_frames * window
+    x_frames = paddle.multiply(x_frames, window)
 
     norm = 'ortho' if normalized else 'backward'
     if is_complex(x_frames):
@@ -367,17 +375,20 @@ def stft(x,
             'onesided should be False when input or window is a complex Tensor.'
 
     if not is_complex(x):
-        out = fft_r2c(
-            x=x_frames,
-            n=None,
-            axis=-1,
-            norm=norm,
-            forward=True,
-            onesided=onesided,
-            name=name)
+        out = fft_r2c(x=x_frames,
+                      n=None,
+                      axis=-1,
+                      norm=norm,
+                      forward=True,
+                      onesided=onesided,
+                      name=name)
     else:
-        out = fft_c2c(
-            x=x_frames, n=None, axis=-1, norm=norm, forward=True, name=name)
+        out = fft_c2c(x=x_frames,
+                      n=None,
+                      axis=-1,
+                      norm=norm,
+                      forward=True,
+                      name=name)
 
     out = out.transpose(perm=[0, 2, 1])  # (batch, n_fft, num_frames)
 
@@ -495,18 +506,22 @@ def istft(x,
     n_frames = x.shape[-1]
     fft_size = x.shape[-2]
 
-    if onesided:
-        assert (fft_size == n_fft // 2 + 1), \
-            'fft_size should be equal to n_fft // 2 + 1({}) when onesided is True, but got {}.'.format(n_fft // 2 + 1, fft_size)
-    else:
-        assert (fft_size == n_fft), \
-            'fft_size should be equal to n_fft({}) when onesided is False, but got {}.'.format(n_fft, fft_size)
+    if _non_static_mode():
+        if onesided:
+            assert (fft_size == n_fft // 2 + 1), \
+                'fft_size should be equal to n_fft // 2 + 1({}) when onesided is True, but got {}.'.format(n_fft // 2 + 1, fft_size)
+        else:
+            assert (fft_size == n_fft), \
+                'fft_size should be equal to n_fft({}) when onesided is False, but got {}.'.format(n_fft, fft_size)
 
     if window is not None:
         assert len(window.shape) == 1 and len(window) == win_length, \
             'expected a 1D window tensor of size equal to win_length({}), but got window with shape {}.'.format(win_length, window.shape)
     else:
-        window = paddle.ones(shape=(win_length, ))
+        window_dtype = paddle.float32 if x.dtype in [
+            paddle.float32, paddle.complex64
+        ] else paddle.float64
+        window = paddle.ones(shape=(win_length, ), dtype=window_dtype)
 
     if win_length < n_fft:
         pad_left = (n_fft - win_length) // 2
@@ -534,16 +549,16 @@ def istft(x,
             x = x[:, :, :n_fft // 2 + 1]
         out = fft_c2r(x=x, n=None, axis=-1, norm=norm, forward=False, name=None)
 
-    out = overlap_add(
-        x=(out * window).transpose(
-            perm=[0, 2, 1]),  # (batch, n_fft, num_frames)
-        hop_length=hop_length,
-        axis=-1)  # (batch, seq_length)
+    out = paddle.multiply(out, window).transpose(
+        perm=[0, 2, 1])  # (batch, n_fft, num_frames)
+    out = overlap_add(x=out, hop_length=hop_length,
+                      axis=-1)  # (batch, seq_length)
 
     window_envelop = overlap_add(
         x=paddle.tile(
-            x=window * window, repeat_times=[n_frames, 1]).transpose(
-                perm=[1, 0]),  # (n_fft, num_frames)
+            x=paddle.multiply(window, window).unsqueeze(0),
+            repeat_times=[n_frames,
+                          1]).transpose(perm=[1, 0]),  # (n_fft, num_frames)
         hop_length=hop_length,
         axis=-1)  # (seq_length, )
 
@@ -561,7 +576,7 @@ def istft(x,
         window_envelop = window_envelop[start:start + length]
 
     # Check whether the Nonzero Overlap Add (NOLA) constraint is met.
-    if window_envelop.abs().min().item() < 1e-11:
+    if _non_static_mode() and window_envelop.abs().min().item() < 1e-11:
         raise ValueError(
             'Abort istft because Nonzero Overlap Add (NOLA) condition failed. For more information about NOLA constraint please see `scipy.signal.check_NOLA`(https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.check_NOLA.html).'
         )

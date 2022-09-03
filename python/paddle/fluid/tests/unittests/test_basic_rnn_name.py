@@ -27,6 +27,7 @@ import numpy as np
 
 
 class TestBasicGRUApiName(unittest.TestCase):
+
     def setUp(self):
         self.name_set = set([
             "test1_fw_w_0_gate", "test1_fw_w_0_candidate", "test1_fw_b_0_gate",
@@ -45,14 +46,15 @@ class TestBasicGRUApiName(unittest.TestCase):
         batch_first = False
 
         with new_program_scope():
-            input = layers.data(
-                name="input",
-                shape=[-1, batch_size, input_size],
-                dtype='float32')
-            pre_hidden = layers.data(
-                name="pre_hidden", shape=[-1, hidden_size], dtype='float32')
-            sequence_length = layers.data(
-                name="sequence_length", shape=[-1], dtype='int32')
+            input = layers.data(name="input",
+                                shape=[-1, batch_size, input_size],
+                                dtype='float32')
+            pre_hidden = layers.data(name="pre_hidden",
+                                     shape=[-1, hidden_size],
+                                     dtype='float32')
+            sequence_length = layers.data(name="sequence_length",
+                                          shape=[-1],
+                                          dtype='int32')
 
 
             rnn_out, last_hidden = basic_gru( input, pre_hidden, hidden_size, num_layers = num_layers, \
@@ -67,6 +69,7 @@ class TestBasicGRUApiName(unittest.TestCase):
 
 
 class TestBasicLSTMApiName(unittest.TestCase):
+
     def setUp(self):
         self.name_set = set([
             "test1_fw_w_0", "test1_fw_b_0", "test1_fw_w_1", "test1_fw_b_1",
@@ -83,16 +86,18 @@ class TestBasicLSTMApiName(unittest.TestCase):
         batch_first = False
 
         with new_program_scope():
-            input = layers.data(
-                name="input",
-                shape=[-1, batch_size, input_size],
-                dtype='float32')
-            pre_hidden = layers.data(
-                name="pre_hidden", shape=[-1, hidden_size], dtype='float32')
-            pre_cell = layers.data(
-                name="pre_cell", shape=[-1, hidden_size], dtype='float32')
-            sequence_length = layers.data(
-                name="sequence_length", shape=[-1], dtype='int32')
+            input = layers.data(name="input",
+                                shape=[-1, batch_size, input_size],
+                                dtype='float32')
+            pre_hidden = layers.data(name="pre_hidden",
+                                     shape=[-1, hidden_size],
+                                     dtype='float32')
+            pre_cell = layers.data(name="pre_cell",
+                                   shape=[-1, hidden_size],
+                                   dtype='float32')
+            sequence_length = layers.data(name="sequence_length",
+                                          shape=[-1],
+                                          dtype='int32')
 
             rnn_out, last_hidden, last_cell = basic_lstm( input, pre_hidden, pre_cell, \
                 hidden_size, num_layers = num_layers, \

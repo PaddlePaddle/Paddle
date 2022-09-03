@@ -988,18 +988,6 @@ inline std::ostream& operator<<(std::ostream& os, const float16& a) {
   return os;
 }
 
-template <typename T>
-class MPTypeTrait {
- public:
-  using Type = T;
-};
-
-template <>
-class MPTypeTrait<float16> {
- public:
-  using Type = float;
-};
-
 }  // namespace dtype
 }  // namespace phi
 
@@ -1039,6 +1027,10 @@ struct is_unsigned<phi::dtype::float16> {
 inline bool isnan(const phi::dtype::float16& a) { return phi::dtype::isnan(a); }
 
 inline bool isinf(const phi::dtype::float16& a) { return phi::dtype::isinf(a); }
+
+inline bool isfinite(const phi::dtype::float16& a) {
+  return phi::dtype::isfinite(a);
+}
 
 template <>
 struct numeric_limits<phi::dtype::float16> {

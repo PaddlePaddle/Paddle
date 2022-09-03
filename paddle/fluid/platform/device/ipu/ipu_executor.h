@@ -19,25 +19,29 @@ limitations under the License. */
 #include <popart/names.hpp>
 #include <popart/patterns/patterns.hpp>
 #include <popart/session.hpp>
+#include <popart/stepio.hpp>
 #include <popart/tensorinfo.hpp>
 
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device/ipu/ipu_compiler.h"
-#include "paddle/fluid/platform/device/ipu/ipu_names.h"
-#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
 #include "paddle/fluid/platform/device/ipu/ipu_utils.h"
+
+namespace paddle {
+namespace framework {
+class ExecutionContext;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 
+struct CompilerResources;
+class IpuStrategy;
+
 struct ExecutorResources {
   // map<tensor_id, paddle_var_ptr>
   popart::WeightsIO weights_io;
   // <popart_var, paddle_var> pairs, include weights and optimizer states
-  std::vector<std::pair<popart::TensorId, popart::TensorId>>
-      weights_and_opt_state;
+  std::vector<std::pair<popart::TensorId, std::string>> weights_and_opt_state;
 };
 
 class Executor {
@@ -45,21 +49,22 @@ class Executor {
   Executor() = default;
   ~Executor();
 
-  // build popart session
+  // Build popart session
   void Prepare(const std::string &proto);
 
-  // run popart session
+  // Run popart session
   void Run(const std::vector<const Tensor *> &inputs,
            const std::vector<Tensor *> &outputs,
            const framework::ExecutionContext &ctx);
 
-  // detach IPU
+  // Sync weights from popart to paddle
+  void WeightsToHost();
+
+  // Detach IPU
   void Detach();
 
-  void SetWeightsIO();
-  void ConvertWeights(bool align_to_popart);
-  void WeightsFromPaddle();
-  void WeightsToPaddle();
+  // Reset session
+  void Reset();
 
   // Scope
   void SetScope(const Scope *scope) { scope_ = scope; }
@@ -79,21 +84,24 @@ class Executor {
 
  private:
   void AcquireDevice();
+  void SetWeightsIO();
+  void ConvertWeights(bool);
+  void WeightsFromPaddle();
+  void WeightsToPaddle();
 
  private:
-  // not own
+  // Not own
   const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
   CompilerResources *compiler_resources_ = nullptr;
+  bool compile_only_ = false;
 
-  // deviceinfo for popart session
+  // Deviceinfo for popart session
   std::shared_ptr<popart::DeviceInfo> device_;
-  // popart session, where graph running
+  // Popart session, where graph running
   std::unique_ptr<popart::Session> session_;
-  // one OneSession means a graph
+  // A ExecutorResources corresponds to a graph
   std::unique_ptr<ExecutorResources> executor_resources_;
-
-  int step_ = 0;
 };
 
 }  // namespace ipu

@@ -139,7 +139,8 @@ def setup(**attr):
                                 compiler using dict type with ``{'cxx': [...], 'nvcc': [...]}`` . Default is None.
         **attr(dict, optional): Specify other arguments same as ``setuptools.setup`` .
 
-    Returns: None
+    Returns: 
+        None
 
     """
     cmdclass = attr.get('cmdclass', {})
@@ -335,6 +336,7 @@ class BuildExtension(build_ext, object):
         """
 
         class cls_with_options(cls):
+
             def __init__(self, *args, **kwargs):
                 kwargs.update(options)
                 cls.__init__(self, *args, **kwargs)
@@ -379,8 +381,8 @@ class BuildExtension(build_ext, object):
         # cflags have changed and delete the built shared library to re-compile the source
         # even though source file content keep unchanged.
         so_name = self.get_ext_fullpath(self.extensions[0].name)
-        clean_object_if_change_cflags(
-            os.path.abspath(so_name), self.extensions[0])
+        clean_object_if_change_cflags(os.path.abspath(so_name),
+                                      self.extensions[0])
 
         # Consider .cu, .cu.cc as valid source extensions.
         self.compiler.src_extensions += ['.cu', '.cu.cc']
@@ -448,8 +450,9 @@ class BuildExtension(build_ext, object):
                     else:
                         cflags.append('-DPADDLE_WITH_CUDA')
 
-                add_std_without_repeat(
-                    cflags, self.compiler.compiler_type, use_std14=True)
+                add_std_without_repeat(cflags,
+                                       self.compiler.compiler_type,
+                                       use_std14=True)
                 original_compile(obj, src, ext, cc_args, cflags, pp_opts)
             finally:
                 # restore original_compiler
@@ -611,12 +614,11 @@ class BuildExtension(build_ext, object):
         """
         compiler_infos = ['clang'] + CLANG_COMPILE_FLAGS
         linker_infos = ['clang'] + CLANG_LINK_FLAGS
-        self.compiler.set_executables(
-            compiler=compiler_infos,
-            compiler_so=compiler_infos,
-            compiler_cxx=['clang'],
-            linker_exe=['clang'],
-            linker_so=linker_infos)
+        self.compiler.set_executables(compiler=compiler_infos,
+                                      compiler_so=compiler_infos,
+                                      compiler_cxx=['clang'],
+                                      linker_exe=['clang'],
+                                      linker_so=linker_infos)
 
     def _check_abi(self):
         """
@@ -711,6 +713,7 @@ class BuildCommand(build, object):
         """
 
         class cls_with_options(cls):
+
             def __init__(self, *args, **kwargs):
                 kwargs.update(options)
                 cls.__init__(self, *args, **kwargs)
@@ -845,8 +848,9 @@ def load(name,
     ), "Required type(extra_cuda_cflags) == list[str], but received {}".format(
         extra_cuda_cflags)
 
-    log_v("additional extra_cxx_cflags: [{}], extra_cuda_cflags: [{}]".format(
-        ' '.join(extra_cxx_cflags), ' '.join(extra_cuda_cflags)), verbose)
+    log_v(
+        "additional extra_cxx_cflags: [{}], extra_cuda_cflags: [{}]".format(
+            ' '.join(extra_cxx_cflags), ' '.join(extra_cuda_cflags)), verbose)
 
     # write setup.py file and compile it
     build_base_dir = os.path.join(build_directory, name)

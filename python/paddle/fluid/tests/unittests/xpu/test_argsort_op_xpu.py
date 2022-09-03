@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 
 import paddle
@@ -28,6 +29,7 @@ paddle.enable_static()
 
 
 class XPUTestArgsortOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'argsort'
         self.use_dynamic_create_class = True
@@ -44,6 +46,7 @@ class XPUTestArgsortOp(XPUOpTestWrapper):
         return base_class, classes
 
     class TestArgsortOp(XPUOpTest):
+
         def setUp(self):
             self.set_xpu()
             self.op_type = "argsort"
@@ -57,9 +60,10 @@ class XPUTestArgsortOp(XPUOpTestWrapper):
             if self.dtype == np.float32:
                 self.x = np.random.random(self.input_shape).astype(self.dtype)
             else:
-                self.x = np.random.randint(
-                    low=-1000, high=1000,
-                    size=self.input_shape).astype(self.dtype)
+                self.x = np.random.randint(low=-1000,
+                                           high=1000,
+                                           size=self.input_shape).astype(
+                                               self.dtype)
 
             self.inputs = {"X": self.x}
             self.attrs = {"axis": self.axis, "descending": self.descending}
@@ -69,15 +73,14 @@ class XPUTestArgsortOp(XPUOpTestWrapper):
         def get_output(self):
             if self.descending:
                 self.indices = np.flip(
-                    np.argsort(
-                        self.x, kind='heapsort', axis=self.axis),
+                    np.argsort(self.x, kind='heapsort', axis=self.axis),
                     self.axis)
                 self.sorted_x = np.flip(
-                    np.sort(
-                        self.x, kind='heapsort', axis=self.axis), self.axis)
+                    np.sort(self.x, kind='heapsort', axis=self.axis), self.axis)
             else:
-                self.indices = np.argsort(
-                    self.x, kind='heapsort', axis=self.axis)
+                self.indices = np.argsort(self.x,
+                                          kind='heapsort',
+                                          axis=self.axis)
                 self.sorted_x = np.sort(self.x, kind='heapsort', axis=self.axis)
 
         def set_xpu(self):

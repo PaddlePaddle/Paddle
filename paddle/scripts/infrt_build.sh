@@ -32,15 +32,18 @@ function update_pd_ops() {
    # compile and install paddle
    rm -rf ${PADDLE_ROOT}/build && mkdir -p ${PADDLE_ROOT}/build
    cd ${PADDLE_ROOT}/build
-   cmake .. -DWITH_PYTHON=ON -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3` -DWITH_XBYAK=OFF -DWITH_NCCL=OFF -DWITH_RCCL=OFF -DWITH_CRYPTO=OFF
-   make -j8 paddle_python
+   cmake .. -DWITH_PYTHON=ON -DWITH_MKL=OFF -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3` -DWITH_XBYAK=OFF -DWITH_NCCL=OFF -DWITH_RCCL=OFF -DWITH_CRYPTO=OFF
+   make -j8 paddle_python print_pten_kernels kernel_signature_generator
    cd ${PADDLE_ROOT}/build
+   ./paddle/phi/tools/print_pten_kernels > ../tools/infrt/kernels.json
+   ./paddle/fluid/pybind/kernel_signature_generator > ../tools/infrt/kernel_signature.json
    cd python/dist/
    python3 -m pip uninstall -y paddlepaddle
    python3 -m pip install  *whl
    # update pd_ops.td
    cd ${PADDLE_ROOT}/tools/infrt/
    python3 generate_pd_op_dialect_from_paddle_op_maker.py
+   python3 generate_phi_kernel_dialect.py
 }
 
 function init() {
@@ -59,17 +62,6 @@ function init() {
 
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
     export FLAGS_call_stack_level=2
-
-    # set CI_SKIP_CPP_TEST if only *.py changed
-    # In order to avoid using in some CI(such as daily performance), the current
-    # branch must not be `${BRANCH}` which is usually develop.
-    if [ ${CI_SKIP_CPP_TEST:-ON} == "OFF"  ];then
-        echo "CI_SKIP_CPP_TEST=OFF"
-    else
-        if [ "$(git branch | grep "^\*" | awk '{print $2}')" != "${BRANCH}" ]; then
-            git diff --name-only ${BRANCH} | grep -v "\.py$" || export CI_SKIP_CPP_TEST=ON
-        fi
-    fi
 }
 
 function infrt_gen_and_build() {
@@ -102,10 +94,21 @@ function infrt_gen_and_build() {
 
 function create_fake_models() {
     cd ${PADDLE_ROOT}/build
+    cd python/dist/
     # create multi_fc model, this will generate "multi_fc_model"
     python3 -m pip uninstall -y paddlepaddle
-    python3 -m pip install paddlepaddle
+    python3 -m pip install  *whl
+
+    # generate test model
+    cd ${PADDLE_ROOT}
+    mkdir -p ${PADDLE_ROOT}/build/models
+    python3 paddle/infrt/tests/models/abs_model.py ${PADDLE_ROOT}/build/paddle/infrt/tests/abs
+    python3 paddle/infrt/tests/models/resnet50_model.py ${PADDLE_ROOT}/build/models/resnet50/model
+    python3 paddle/infrt/tests/models/efficientnet-b4/model.py ${PADDLE_ROOT}/build/models/efficientnet-b4/model
+
+    cd ${PADDLE_ROOT}/build
     python3 ${PADDLE_ROOT}/tools/infrt/fake_models/multi_fc.py
+    python3 ${PADDLE_ROOT}/paddle/infrt/tests/models/linear.py
 }
 
 function test_infrt() {

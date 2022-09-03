@@ -12,8 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/gather_nd_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -41,7 +44,8 @@ class GatherNdNPUKernel : public framework::OpKernel<T> {
     const auto &index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(index_type_match, true,
+    PADDLE_ENFORCE_EQ(index_type_match,
+                      true,
                       platform::errors::InvalidArgument(
                           "Index holds the wrong type, it holds [%s],"
                           "but desires to be [%s] or [%s]",
@@ -93,8 +97,8 @@ class GatherNdGradNPUKernel : public framework::OpKernel<T> {
     }
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
-    platform::NPUMemsetAsync(static_cast<void *>(p), 0, dx->numel() * sizeof(T),
-                             stream);
+    platform::NPUMemsetAsync(
+        static_cast<void *>(p), 0, dx->numel() * sizeof(T), stream);
 
     const auto &runner_scatter = NpuOpRunner(
         "ScatterNdAdd", {*dx, *index, *dout}, {*dx}, {{"use_locking", false}});

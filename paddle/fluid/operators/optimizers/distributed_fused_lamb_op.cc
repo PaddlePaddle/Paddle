@@ -31,7 +31,8 @@ class DistributedFusedLambOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return expected_kernel_type;
   }
@@ -100,6 +101,10 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddOutput("FP16FusedParamOut", "The updated FP16FusedParam.")
         .AsDispensable();
+    AddOutput("FP32AccFusedGrad", "The accumulated FP32 gradients.")
+        .AsDispensable();
+    AddOutput("FP16AccFusedGrad", "The accumulated FP16 gradients.")
+        .AsDispensable();
 
     AddOutput("Moment1Out", "The updated Moment1.");
     AddOutput("Moment2Out", "The updated Moment2.");
@@ -110,7 +115,14 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
 
     AddOutput("FoundInf", "Whether there is NaN/Inf");
+    AddOutput("AccStep", "The training steps.").AsDispensable();
+    AddOutput("StopUpdate",
+              "Whether the parameter updating is stopped when the gradient "
+              "accumulated steps is less than Attr(acc_steps).")
+        .AsDispensable();
+    AddOutput("Step", "The global step which excludes the NaN/Inf step.");
 
+    AddAttr<int>("acc_steps", "The gradient accumulation steps.").SetDefault(1);
     AddAttr<float>("beta1", "The initial Beta1Pow value.");
     AddAttr<float>("beta2", "The initial Beta2Pow value.");
     AddAttr<float>("epsilon",
@@ -130,11 +142,19 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
         "NCCL communication data. If it is false, it would be less accurate "
         "and be less NCCL communication data.")
         .SetDefault(true);
+    AddAttr<bool>("use_master_acc_grad",
+                  "Whether to use master gradient when acc_steps > 1.")
+        .SetDefault(true);
     AddAttr<bool>("is_grad_scaled_by_nranks",
                   "Whether the input gradient has been scaled by nranks.")
         .SetDefault(true);
-    AddAttr<int>("ring_id", "The ring id of the NCCL communicator.")
-        .SetDefault(0);
+    AddAttr<int64_t>("nranks", "The world size.").SetDefault(1);
+    AddAttr<std::vector<int>>("ring_id",
+                              "The ring id of the NCCL communicator.")
+        .SetDefault({0});
+    AddAttr<bool>("use_hierarchical_allreduce",
+                  "Whether to use hierarchical allreduce")
+        .SetDefault(false);
     AddComment("The DistributedFusedLamb optimizer.");
   }
 };
@@ -150,4 +170,4 @@ REGISTER_OP_WITHOUT_GRADIENT(distributed_fused_lamb,
 
 REGISTER_OP_CPU_KERNEL(
     distributed_fused_lamb,
-    ops::DistributedFusedLambOpKernel<plat::CPUDeviceContext, float>);
+    ops::DistributedFusedLambOpKernel<phi::CPUContext, float>);

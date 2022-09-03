@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/stack_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -30,8 +30,10 @@ class StackNPUKernel : public framework::OpKernel<T> {
     if (axis < 0) axis += (x[0]->dims().size() + 1);
     int num = static_cast<int>(x.size());
 
-    PADDLE_ENFORCE_GT(num, 0, platform::errors::InvalidArgument(
-                                  "number of input Tensor <= 0"));
+    PADDLE_ENFORCE_GT(
+        num,
+        0,
+        platform::errors::InvalidArgument("number of input Tensor <= 0"));
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -59,8 +61,10 @@ class StackGradNPUKernel : public framework::OpKernel<T> {
     if (axis < 0) axis += dy->dims().size();
     int num = dy->dims()[axis];
 
-    PADDLE_ENFORCE_GT(num, 0, platform::errors::InvalidArgument(
-                                  "number of input Tensor <= 0"));
+    PADDLE_ENFORCE_GT(
+        num,
+        0,
+        platform::errors::InvalidArgument("number of input Tensor <= 0"));
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -82,7 +86,8 @@ class StackGradNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_NPU_KERNEL(
-    stack, paddle::operators::StackNPUKernel<int>,
+    stack,
+    paddle::operators::StackNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64
     paddle::operators::StackNPUKernel<int64_t>,
 #endif
@@ -90,7 +95,8 @@ REGISTER_OP_NPU_KERNEL(
     paddle::operators::StackNPUKernel<paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    stack_grad, paddle::operators::StackGradNPUKernel<int>,
+    stack_grad,
+    paddle::operators::StackGradNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64
     paddle::operators::StackGradNPUKernel<int64_t>,
 #endif

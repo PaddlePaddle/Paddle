@@ -16,12 +16,22 @@ limitations under the License. */
 
 namespace phi {
 
+SparseCsrTensor::SparseCsrTensor() {
+  DenseTensor crows, cols, values;
+  this->non_zero_crows_ = crows;
+  this->non_zero_cols_ = cols;
+  this->non_zero_elements_ = values;
+  this->dims_ = phi::make_ddim({1, 1});
+}
+
 inline void check_shape(const DDim& dims) {
   bool valid = dims.size() == 2 || dims.size() == 3;
 
-  PADDLE_ENFORCE(valid,
-                 phi::errors::InvalidArgument(
-                     "the SparseCsrTensor only support 2-D Tensor."));
+  PADDLE_ENFORCE(
+      valid,
+      phi::errors::InvalidArgument("the SparseCsrTensor only support 2-D or "
+                                   "3-D Tensor, but get %d-D Tensor",
+                                   dims.size()));
 }
 #define Check(non_zero_crows, non_zero_cols, non_zero_elements, dims)          \
   {                                                                            \
@@ -62,9 +72,9 @@ SparseCsrTensor::SparseCsrTensor(const SparseCsrTensor& other)
 
 SparseCsrTensor& SparseCsrTensor::operator=(const SparseCsrTensor& other) {
   this->dims_ = other.dims();
-  this->non_zero_crows_ = other.non_zero_crows();
-  this->non_zero_cols_ = other.non_zero_cols();
-  this->non_zero_elements_ = other.non_zero_elements();
+  this->non_zero_crows_ = other.crows();
+  this->non_zero_cols_ = other.cols();
+  this->non_zero_elements_ = other.values();
   return *this;
 }
 

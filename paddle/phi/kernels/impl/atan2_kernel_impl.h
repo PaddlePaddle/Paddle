@@ -14,10 +14,9 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/atan2_kernel.h"
-
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/atan2_kernel.h"
 
 namespace phi {
 template <typename T>

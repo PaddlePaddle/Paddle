@@ -14,7 +14,7 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/fluid/platform/profiler/dump/nodetree.pb.h"
-#include "paddle/fluid/platform/profiler/event_node.h"
+#include "paddle/fluid/platform/profiler/event_python.h"
 
 namespace paddle {
 namespace platform {
@@ -24,7 +24,7 @@ class DeserializationReader {
   explicit DeserializationReader(const std::string& filename);
   explicit DeserializationReader(const char* filename);
   ~DeserializationReader();
-  std::unique_ptr<NodeTrees> Parse();
+  std::unique_ptr<ProfilerResult> Parse();
 
  private:
   void OpenFile();
@@ -36,6 +36,9 @@ class DeserializationReader {
   KernelEventInfo HandleKernelEventInfoProto(const DeviceTraceEventProto&);
   MemcpyEventInfo HandleMemcpyEventInfoProto(const DeviceTraceEventProto&);
   MemsetEventInfo HandleMemsetEventInfoProto(const DeviceTraceEventProto&);
+  MemTraceEventNode* RestoreMemTraceEventNode(const MemTraceEventNodeProto&);
+  OperatorSupplementEventNode* RestoreOperatorSupplementEventNode(
+      const OperatorSupplementEventNodeProto&);
   std::string filename_;
   std::ifstream input_file_stream_;
   NodeTreesProto* node_trees_proto_;

@@ -17,9 +17,11 @@ import paddle
 import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexMatMulLayer(unittest.TestCase):
+
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [fluid.CPUPlace()]
@@ -33,11 +35,14 @@ class TestComplexMatMulLayer(unittest.TestCase):
                 y_var = dg.to_variable(y)
                 result = paddle.matmul(x_var, y_var)
                 pd_result = result.numpy()
-                self.assertTrue(
-                    np.allclose(pd_result, np_result),
-                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
-                    format(place, pd_result[~np.isclose(pd_result, np_result)],
-                           np_result[~np.isclose(pd_result, np_result)]))
+                np.testing.assert_allclose(
+                    pd_result,
+                    np_result,
+                    rtol=1e-05,
+                    err_msg=
+                    '\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n'
+                    .format(place, pd_result[~np.isclose(pd_result, np_result)],
+                            np_result[~np.isclose(pd_result, np_result)]))
 
     def compare_op_by_basic_api(self, x, y, np_result):
         for place in self._places:
@@ -46,11 +51,14 @@ class TestComplexMatMulLayer(unittest.TestCase):
                 y_var = dg.to_variable(y)
                 result = x_var.matmul(y_var)
                 pd_result = result.numpy()
-                self.assertTrue(
-                    np.allclose(pd_result, np_result),
-                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
-                    format(place, pd_result[~np.isclose(pd_result, np_result)],
-                           np_result[~np.isclose(pd_result, np_result)]))
+                np.testing.assert_allclose(
+                    pd_result,
+                    np_result,
+                    rtol=1e-05,
+                    err_msg=
+                    '\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n'
+                    .format(place, pd_result[~np.isclose(pd_result, np_result)],
+                            np_result[~np.isclose(pd_result, np_result)]))
 
     def test_complex_xy(self):
         for dtype in self._dtypes:
@@ -120,6 +128,14 @@ class TestComplexMatMulLayer(unittest.TestCase):
 
             self.compare_by_basic_api(x, y, np_result)
             self.compare_op_by_basic_api(x, y, np_result)
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_complex_xy_gemm()
+            self.test_complex_xy_gemv()
+            self.test_real_x_complex_y()
+            self.test_complex_x_real_y()
+            self.test_complex_xy()
 
 
 if __name__ == '__main__':

@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise/elementwise_min_op.h"
-
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
@@ -25,9 +23,6 @@ class OpDesc;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -112,25 +107,14 @@ class ElementwiseFMinGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(elementwise_min, ops::ElementwiseOp,
-                  ops::ElementwiseMinOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_min,
+                  ops::ElementwiseOp,
+                  ops::ElementwiseMinOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMinGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseMinGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(elementwise_min_grad, ops::ElementwiseOpGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_min,
-    ops::ElementwiseMinKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseMinKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseMinKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseMinKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_min_grad,
-    ops::ElementwiseMinGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseMinGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseMinGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseMinGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
 REGISTER_OP_VERSION(elementwise_min)
     .AddCheckpoint(
@@ -141,27 +125,11 @@ REGISTER_OP_VERSION(elementwise_min)
             "using the operator of elementwise_min.",
             1.0f));
 
-REGISTER_OPERATOR(elementwise_fmin, ops::ElementwiseOp,
-                  ops::ElementwiseFMinOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_fmin,
+                  ops::ElementwiseOp,
+                  ops::ElementwiseFMinOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwiseFMinGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseFMinGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(elementwise_fmin_grad, ops::ElementwiseOpGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_fmin,
-    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext,
-                               paddle::platform::float16>,
-    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_fmin_grad,
-    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext,
-                                   paddle::platform::float16>,
-    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext,
-                                   int64_t>);

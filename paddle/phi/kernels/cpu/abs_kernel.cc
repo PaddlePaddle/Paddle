@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/abs_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -25,9 +26,9 @@ template <typename T, typename Context>
 void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   auto numel = x.numel();
   auto* x_data = x.data<T>();
-  ctx.template Alloc<phi::funcs::Real<T>>(
-      out, size_t(x.numel() * sizeof(phi::funcs::Real<T>)));
-  auto* out_data = out->data<phi::funcs::Real<T>>();
+  ctx.template Alloc<phi::dtype::Real<T>>(
+      out, size_t(x.numel() * sizeof(phi::dtype::Real<T>)));
+  auto* out_data = out->data<phi::dtype::Real<T>>();
 
   phi::funcs::ForRange<Context> for_range(ctx, numel);
   phi::funcs::AbsFunctor<T> functor(x_data, out_data, numel);

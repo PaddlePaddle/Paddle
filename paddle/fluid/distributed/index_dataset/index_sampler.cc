@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/index_dataset/index_sampler.h"
+
 #include "paddle/fluid/framework/data_feed.h"
 
 namespace paddle {
@@ -20,7 +21,8 @@ namespace distributed {
 
 std::vector<std::vector<uint64_t>> LayerWiseSampler::sample(
     const std::vector<std::vector<uint64_t>>& user_inputs,
-    const std::vector<uint64_t>& target_ids, bool with_hierarchy) {
+    const std::vector<uint64_t>& target_ids,
+    bool with_hierarchy) {
   auto input_num = target_ids.size();
   auto user_feature_num = user_inputs[0].size();
   std::vector<std::vector<uint64_t>> outputs(

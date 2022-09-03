@@ -17,7 +17,7 @@ from __future__ import print_function
 import copy
 import six
 
-from .framework import Parameter, dtype_is_floating, in_dygraph_mode, OpProtoHolder, _global_flags
+from .framework import Parameter, dtype_is_floating, _non_static_mode, OpProtoHolder, _global_flags
 from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr
@@ -28,6 +28,7 @@ from .dygraph_utils import _append_activation_in_dygraph
 
 
 class LayerHelper(LayerHelperBase):
+
     def __init__(self, layer_type, **kwargs):
         self.kwargs = kwargs
         name = self.kwargs.get('name', None)
@@ -37,8 +38,8 @@ class LayerHelper(LayerHelperBase):
         if name is None:
             self.kwargs['name'] = unique_name.generate(layer_type)
 
-        super(LayerHelper, self).__init__(
-            self.kwargs['name'], layer_type=layer_type)
+        super(LayerHelper, self).__init__(self.kwargs['name'],
+                                          layer_type=layer_type)
 
     def append_op(self, *args, **kwargs):
         return self.main_program.current_block().append_op(*args, **kwargs)
@@ -125,15 +126,18 @@ class LayerHelper(LayerHelperBase):
         if not bias_attr:
             return input_var
 
-        b = self.create_parameter(
-            attr=bias_attr, shape=size, dtype=input_var.dtype, is_bias=True)
+        b = self.create_parameter(attr=bias_attr,
+                                  shape=size,
+                                  dtype=input_var.dtype,
+                                  is_bias=True)
         tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
-        self.append_op(
-            type='elementwise_add',
-            inputs={'X': [input_var],
-                    'Y': [b]},
-            outputs={'Out': [tmp]},
-            attrs={'axis': dim_start})
+        self.append_op(type='elementwise_add',
+                       inputs={
+                           'X': [input_var],
+                           'Y': [b]
+                       },
+                       outputs={'Out': [tmp]},
+                       attrs={'axis': dim_start})
         return tmp
 
     #TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of act
@@ -151,21 +155,21 @@ class LayerHelper(LayerHelperBase):
             use_cudnn = self.kwargs.get('use_cudnn')
             act['use_cudnn'] = use_cudnn
         use_mkldnn = self.kwargs.get(
-            'use_mkldnn', _global_flags().get("FLAGS_use_mkldnn", False))
+            'use_mkldnn',
+            _global_flags().get("FLAGS_use_mkldnn", False))
         if use_mkldnn:
             act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
-        if in_dygraph_mode():
+        if _non_static_mode():
             res = _append_activation_in_dygraph(input_var, act_type, use_cudnn,
                                                 use_mkldnn)
             return res
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
-            self.append_op(
-                type=act_type,
-                inputs={"X": [input_var]},
-                outputs={"Out": [tmp]},
-                attrs=act)
+            self.append_op(type=act_type,
+                           inputs={"X": [input_var]},
+                           outputs={"Out": [tmp]},
+                           attrs=act)
             return tmp
 
     #TODO (jiabin): should we remove this since it has never be used

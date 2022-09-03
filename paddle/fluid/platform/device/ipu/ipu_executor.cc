@@ -14,20 +14,90 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device/ipu/ipu_executor.h"
 
-using float16 = paddle::platform::float16;
+#include <popart/devicemanager.hpp>
+#include <popdist/popdist_poplar.hpp>
+
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/device/ipu/ipu_compiler.h"
+#include "paddle/fluid/platform/device/ipu/ipu_names.h"
+#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 
-Executor::~Executor() {
-  Detach();
-  session_.reset();
-  executor_resources_.reset();
+namespace {
+
+// Get paddle prefix and popart postfix of weight states
+// Format: {popart_postfix, paddle_prefix}
+std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
+    const std::string &opt_type) {
+  std::vector<std::pair<std::string, std::string>> pre_post_fix;
+  // Weight self
+  pre_post_fix.push_back(std::make_pair("", ""));
+
+  // Weight states
+  // TODO(alleng) support pair("Accl1___", "_moment1_{id!=0}")
+  if (opt_type == "adam" || opt_type == "lamb" || opt_type == "adamw") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "_moment1_0"));
+    pre_post_fix.push_back(std::make_pair("Accl2___", "_moment2_0"));
+    pre_post_fix.push_back(std::make_pair("Step___", "_beta1_pow_acc_0"));
+  } else if (opt_type == "momentum") {
+    pre_post_fix.push_back(std::make_pair("Accl___", "_velocity_0"));
+  } else if (opt_type == "adamax") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "_moment_0"));
+    pre_post_fix.push_back(std::make_pair("Accl2___", "_inf_norm__0"));
+    pre_post_fix.push_back(std::make_pair("Step___", "_beta1_pow_acc_0"));
+  } else if (opt_type == "adagrad") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "_moment_0"));
+  } else if (opt_type == "adadelta") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "__avg_squared_grad_0"));
+    pre_post_fix.push_back(
+        std::make_pair("Accl2___", "__avg_squared_update_0"));
+  } else if (opt_type == "rmsprop") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "_mean_square_0"));
+    pre_post_fix.push_back(std::make_pair("Accl2___", "_mean_grad_0"));
+    pre_post_fix.push_back(std::make_pair("Accl3___", "_momentum__0"));
+  }
+  return pre_post_fix;
 }
+
+class PdIArray final : public popart::IArray {
+ public:
+  explicit PdIArray(const Tensor *tensor) {
+    tensor_.ShareDataWith(*tensor);
+    for (int i = 0; i < tensor->dims().size(); ++i) {
+      shape_.push_back(tensor->dims().at(i));
+    }
+  }
+
+ public:
+  void *data() { return tensor_.data(); }
+  popart::DataType dataType() const {
+    return PhiDType2PopartDType(tensor_.dtype());
+  }
+  std::size_t rank() const { return tensor_.dims().size(); }
+  int64_t dim(size_t index) const { return tensor_.dims().at(index); }
+  std::size_t nelms() const {
+    return std::accumulate(shape_.begin(),
+                           shape_.end(),
+                           static_cast<int64_t>(1),
+                           std::multiplies<int64_t>());
+  }
+  const popart::Shape shape() const { return shape_; }
+
+ private:
+  Tensor tensor_;
+  std::vector<int64_t> shape_;
+};
+
+}  // namespace
+
+Executor::~Executor() { Reset(); }
 
 void Executor::Prepare(const std::string &proto) {
   VLOG(10) << "enter Executor::Prepare";
+  compile_only_ = GetBoolEnv("IPU_COMPILE_ONLY");
 
   AcquireDevice();
   executor_resources_ = std::make_unique<ExecutorResources>();
@@ -43,20 +113,38 @@ void Executor::Prepare(const std::string &proto) {
     VLOG(10) << "Creating TrainingSession from Onnx Model...";
     auto optimizer = compiler_resources_->NewOptimizer();
     session_ = popart::TrainingSession::createFromOnnxModel(
-        proto, dataFlow, compiler_resources_->loss_var, *optimizer, device_,
-        popart::InputShapeInfo(), ipu_strategy_->popart_options,
+        proto,
+        dataFlow,
+        compiler_resources_->loss_var,
+        *optimizer,
+        device_,
+        popart::InputShapeInfo(),
+        ipu_strategy_->popart_options,
         ipu_strategy_->popart_patterns);
   } else {
     VLOG(10) << "Creating InferenceSession from Onnx Model...";
     session_ = popart::InferenceSession::createFromOnnxModel(
-        proto, dataFlow, device_, popart::InputShapeInfo(),
-        ipu_strategy_->popart_options, ipu_strategy_->popart_patterns);
+        proto,
+        dataFlow,
+        device_,
+        popart::InputShapeInfo(),
+        ipu_strategy_->popart_options,
+        ipu_strategy_->popart_patterns);
   }
   VLOG(10) << "Creating session from Onnx Model...done";
 
-  VLOG(10) << "Preparing session device...";
-  session_->prepareDevice();
-  VLOG(10) << "Preparing session device...done";
+  if (compile_only_) {
+    LOG(INFO)
+        << "Save the offline cache as offline_cache.popart in current path.";
+    VLOG(10) << "Compile only...";
+    session_->compileAndExport("./offline_cache.popart");
+    VLOG(10) << "Compile only...done";
+    return;
+  } else {
+    VLOG(10) << "Preparing session device...";
+    session_->prepareDevice();
+    VLOG(10) << "Preparing session device...done";
+  }
 
   SetWeightsIO();
 
@@ -64,32 +152,32 @@ void Executor::Prepare(const std::string &proto) {
   WeightsFromPaddle();
   VLOG(10) << "Copy weights from paddle to popart...done";
 
-  VLOG(10) << "Copy weights from host to device...";
-  session_->weightsFromHost();
-  VLOG(10) << "Copy weights from host to device...done";
-
-  if (ipu_strategy_->save_init_onnx) {
-    session_->modelToHost("test_init.onnx");
+  if (ipu_strategy_->random_seed != std::numeric_limits<std::uint64_t>::max()) {
+    VLOG(10) << "Setting random seed to: " << ipu_strategy_->random_seed;
+    session_->setRandomSeed(ipu_strategy_->random_seed);
   }
-  // init run step
-  step_ = 0;
 }
 
 void Executor::Run(const std::vector<const Tensor *> &inputs,
                    const std::vector<Tensor *> &outputs,
                    const framework::ExecutionContext &ctx) {
+  if (compile_only_) {
+    LOG(INFO) << "If IPU_COMPILE_ONLY=True, skip exe.run";
+    return;
+  }
+
   VLOG(10) << "enter Executor::Run";
   // inputs
   std::map<popart::TensorId, popart::IArray &> popart_inputs;
-  std::map<popart::TensorId, PaddleIArray> input_wrappers;
+  std::map<popart::TensorId, PdIArray> input_wrappers;
   for (size_t i = 0; i < inputs.size(); i++) {
     auto tensor_id = compiler_resources_->inputs[i];
-    input_wrappers.emplace(tensor_id, PaddleIArray(inputs[i]));
+    input_wrappers.emplace(tensor_id, PdIArray(inputs[i]));
     popart_inputs.emplace(tensor_id, input_wrappers.at(tensor_id));
   }
   // anchors
   std::map<popart::TensorId, popart::IArray &> popart_anchors;
-  std::map<popart::TensorId, PaddleIArray> anchor_wrappers;
+  std::map<popart::TensorId, PdIArray> anchor_wrappers;
   for (size_t i = 0; i < outputs.size(); i++) {
     auto tensor_id = compiler_resources_->outputs[i];
     // get dims & dtype from session
@@ -111,20 +199,31 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
     auto *tensor = outputs[i];
     tensor->Resize(phi::make_ddim(output_shape));
     auto fetch_dtype = fetch_info.dataType();
-    auto paddle_type = PopartType2VarType(fetch_dtype);
+    auto paddle_type = PopartDType2VarType(fetch_dtype);
     tensor->mutable_data(ctx.GetPlace(),
                          framework::TransToPhiDataType(paddle_type));
-    anchor_wrappers.emplace(tensor_id, PaddleIArray(tensor));
+    anchor_wrappers.emplace(tensor_id, PdIArray(tensor));
     popart_anchors.emplace(tensor_id, anchor_wrappers.at(tensor_id));
   }
   VLOG(10) << "Prepared inputs/anchors";
 
   if (ipu_strategy_->is_training && compiler_resources_->with_lr_sched) {
-    VLOG(10) << "Update learning_rate";
-    auto new_lr =
-        GetSingleVarFromScope<float>(scope_, compiler_resources_->lr_var);
-    VLOG(10) << "New Lr: " << new_lr;
-    auto *optimizer = compiler_resources_->UpdateOptimizer(new_lr);
+    popart::Optimizer *optimizer;
+    if (ipu_strategy_->runtime_options.enable_eval) {
+      VLOG(10) << "Switch optimizer to eval mode";
+      optimizer = compiler_resources_->eval_optimizer.get();
+    } else {
+      VLOG(10) << "Update learning_rate";
+      float new_lr;
+      if (ipu_strategy_->is_dynamic) {
+        new_lr = ipu_strategy_->lr;
+      } else {
+        new_lr =
+            GetSingleVarFromScope<float>(scope_, compiler_resources_->lr_var);
+      }
+      VLOG(10) << "New Lr: " << new_lr;
+      optimizer = compiler_resources_->UpdateOptimizer(new_lr);
+    }
     auto *session = dynamic_cast<popart::TrainingSession *>(session_.get());
     session->updateOptimizerFromHost(optimizer);
   }
@@ -133,15 +232,13 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   VLOG(10) << "Running...";
   session_->run(stepio);
   VLOG(10) << "Running...done";
+}
 
-  step_++;
-  if (ipu_strategy_->is_training &&
-      step_ % ipu_strategy_->save_per_n_step == 0) {
-    session_->weightsToHost();
+void Executor::WeightsToHost() {
+  if (ipu_strategy_->is_training && session_) {
     WeightsToPaddle();
-    if (ipu_strategy_->save_onnx_checkpoint) {
-      session_->modelToHost("test_last" + std::to_string(step_) + ".onnx");
-    }
+  } else {
+    LOG(WARNING) << "For a non-trainning graph, cannot sync weights from IPU.";
   }
 }
 
@@ -153,22 +250,56 @@ void Executor::AcquireDevice() {
   }
 
   bool use_ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
+  bool enable_distribution = ipu_strategy_->enable_distribution;
   if (use_ipu_model) {
+    VLOG(10) << "Create IPU model device...";
     std::map<std::string, std::string> deviceOpts{
         {
-            "numIPUs", std::to_string(ipu_strategy_->num_ipus),
+            "numIPUs",
+            std::to_string(ipu_strategy_->num_ipus),
         },
+        {"tilesPerIPU", std::to_string(ipu_strategy_->tiles_per_ipu)},
         {"ipuVersion", "ipu2"},
     };
     device_ = popart::DeviceManager::createDeviceManager().createIpuModelDevice(
         deviceOpts);
+    VLOG(10) << "Create IPU model device...done";
+  } else if (compile_only_) {
+    VLOG(10) << "Create offline device...";
+    std::map<std::string, std::string> deviceOpts{
+        {
+            "numIPUs",
+            std::to_string(ipu_strategy_->num_ipus),
+        },
+        {"tilesPerIPU", std::to_string(ipu_strategy_->tiles_per_ipu)},
+        {"ipuVersion", "ipu2"},
+    };
+    device_ =
+        popart::DeviceManager::createDeviceManager().createOfflineIPUDevice(
+            deviceOpts);
+    VLOG(10) << "Create offline device...done";
+  } else if (enable_distribution) {
+    VLOG(10) << "Create distribution device...";
+    auto ipus_per_replica = ipu_strategy_->num_ipus /
+                            ipu_strategy_->popart_options.replicatedGraphCount;
+    auto device_id = popdist::getDeviceId(ipus_per_replica);
+    device_ = popart::DeviceManager::createDeviceManager().acquireDeviceById(
+        device_id);
+    PADDLE_ENFORCE_NOT_NULL(
+        device_,
+        errors::Unavailable("Can't attach IPU in distribution, ipu_num = %d.",
+                            RequestIpus(ipu_strategy_->num_ipus)));
+    VLOG(10) << "Create distribution device...done";
   } else {
+    VLOG(10) << "Create IPU device...";
     device_ =
         popart::DeviceManager::createDeviceManager().acquireAvailableDevice(
             RequestIpus(ipu_strategy_->num_ipus));
-    PADDLE_ENFORCE_NOT_NULL(device_, platform::errors::Unavailable(
-                                         "Can't attach IPU, ipu_num = %d.",
-                                         RequestIpus(ipu_strategy_->num_ipus)));
+    PADDLE_ENFORCE_NOT_NULL(
+        device_,
+        errors::Unavailable("Can't attach IPU, ipu_num = %d.",
+                            RequestIpus(ipu_strategy_->num_ipus)));
+    VLOG(10) << "Create IPU device...done";
   }
   VLOG(10) << "leave Executor::AcquireDevice";
 }
@@ -181,32 +312,39 @@ void Executor::Detach() {
   }
 }
 
+void Executor::Reset() {
+  Detach();
+  session_.reset();
+  executor_resources_.reset();
+}
+
 void Executor::SetWeightsIO() {
   auto opt_type = compiler_resources_->optimizer_type;
   VLOG(10) << "SetWeightsIO for " << opt_type;
   auto pre_post_fix = GetOptPrePostfix(opt_type);
-  for (const auto &weight_id : compiler_resources_->weights) {
+  for (const auto &weight_pd : compiler_resources_->weights) {
     for (const auto &pair : pre_post_fix) {
       // pair.first : popart prefix, pair.second : paddle postfix
-      auto popart_var_name = pair.first + weight_id;
-      auto paddle_var_name = weight_id + pair.second;
+      auto weight_pop = compiler_resources_->tensors[weight_pd];
+      auto popart_var = pair.first + weight_pop;
+      auto paddle_var = weight_pd + pair.second;
 
-      if (scope_->FindVar(paddle_var_name) == nullptr) {
+      if (scope_->FindVar(paddle_var) == nullptr) {
+        continue;
+      }
+      if (!session_->hasInfo(popart_var)) {
         continue;
       }
 
-      if (!session_->hasInfo(popart_var_name)) {
-        continue;
-      }
-
-      auto var = scope_->GetVar(paddle_var_name);
+      VLOG(10) << "Connect paddle weight: " << paddle_var
+               << " with popart weight: " << popart_var;
+      auto var = scope_->GetVar(paddle_var);
       auto data_ptr = var->GetMutable<framework::LoDTensor>()->data();
-
-      auto tensor_info = session_->getInfo(popart_var_name);
-      executor_resources_->weights_io.insert(popart_var_name,
+      auto tensor_info = session_->getInfo(popart_var);
+      executor_resources_->weights_io.insert(popart_var,
                                              {data_ptr, tensor_info});
       executor_resources_->weights_and_opt_state.emplace_back(
-          std::make_pair(popart_var_name, paddle_var_name));
+          std::make_pair(popart_var, paddle_var));
     }
   }
 }
@@ -215,13 +353,13 @@ void Executor::SetWeightsIO() {
 void Executor::ConvertWeights(bool align_to_popart) {
   for (auto weight_pair : executor_resources_->weights_and_opt_state) {
     auto paddle_var = scope_->GetVar(weight_pair.second);
-    auto paddle_var_dtype = PdDataType2PopartType(
+    auto paddle_var_dtype = PhiDType2PopartDType(
         paddle_var->GetMutable<framework::LoDTensor>()->dtype());
 
     PADDLE_ENFORCE_EQ((paddle_var_dtype == popart::DataType::FLOAT ||
                        paddle_var_dtype == popart::DataType::FLOAT16),
                       true,
-                      platform::errors::InvalidArgument(
+                      errors::InvalidArgument(
                           "Currently, we only support FLOAT16 and FLOAT with "
                           "Paddle, but received type is %s.",
                           paddle_var_dtype));
@@ -231,7 +369,7 @@ void Executor::ConvertWeights(bool align_to_popart) {
     PADDLE_ENFORCE_EQ((popart_var_dtype == popart::DataType::FLOAT ||
                        popart_var_dtype == popart::DataType::FLOAT16),
                       true,
-                      platform::errors::InvalidArgument(
+                      errors::InvalidArgument(
                           "Currently, we only support FLOAT16 and FLOAT with "
                           "popart, but received type is %s.",
                           popart_var_dtype));
@@ -249,24 +387,28 @@ void Executor::ConvertWeights(bool align_to_popart) {
       auto num_elem = info.nelms();
       if (align_to_popart) {
         std::vector<uint16_t> fp16_data;
-        std::transform(data_ptr, data_ptr + num_elem,
+        std::transform(data_ptr,
+                       data_ptr + num_elem,
                        std::back_inserter(fp16_data),
                        [&](float elem) { return popart::floatToHalf(elem); });
-        memcpy(reinterpret_cast<void *>(data_ptr), fp16_data.data(),
+        memcpy(reinterpret_cast<void *>(data_ptr),
+               fp16_data.data(),
                num_elem * sizeof(float16));
       } else {
         std::vector<float> fp32_data;
         auto fp16_data_ptr = reinterpret_cast<uint16_t *>(data_ptr);
-        std::transform(fp16_data_ptr, fp16_data_ptr + num_elem,
-                       std::back_inserter(fp32_data), [&](uint16_t elem) {
-                         return popart::halfToFloat(elem);
-                       });
-        memcpy(reinterpret_cast<void *>(data_ptr), fp32_data.data(),
+        std::transform(
+            fp16_data_ptr,
+            fp16_data_ptr + num_elem,
+            std::back_inserter(fp32_data),
+            [&](uint16_t elem) { return popart::halfToFloat(elem); });
+        memcpy(reinterpret_cast<void *>(data_ptr),
+               fp32_data.data(),
                num_elem * sizeof(float));
       }
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Convert Paddle FLOAT16 to popart FLOAT"));
+      PADDLE_THROW(
+          errors::Unimplemented("Convert Paddle FLOAT16 to popart FLOAT"));
     }
   }
 }
@@ -284,6 +426,7 @@ void Executor::ConvertWeights(bool align_to_popart) {
 void Executor::WeightsFromPaddle() {
   ConvertWeights(true);
   session_->writeWeights(executor_resources_->weights_io);
+  session_->weightsFromHost();
 }
 
 // |-----------------------------------------------------|
@@ -297,13 +440,13 @@ void Executor::WeightsFromPaddle() {
 // Paddle -> halfToFloat: cast then save to paddle
 // Popart -> Paddle: copy from paddle to popart
 void Executor::WeightsToPaddle() {
+  session_->weightsToHost();
   session_->readWeights(executor_resources_->weights_io);
   ConvertWeights(false);
 }
 
 void Executor::SaveModelToHost(const std::string &path) {
   if (session_) {
-    session_->weightsToHost();
     WeightsToPaddle();
     session_->modelToHost(path);
   } else {

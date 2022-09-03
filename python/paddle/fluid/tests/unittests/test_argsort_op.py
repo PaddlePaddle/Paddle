@@ -31,6 +31,7 @@ np.random.seed(123)
 
 
 class PyArgsort(object):
+
     def __init__(self, input_shape, axis, descending, dtype):
         self.x = np.random.random(input_shape).astype(dtype)
         self.label = np.random.random(input_shape).astype(dtype)
@@ -43,20 +44,17 @@ class PyArgsort(object):
     def forward(self):
         if self.descending:
             self.indices = np.flip(
-                np.argsort(
-                    self.x, kind='quicksort', axis=self.axis), self.axis)
+                np.argsort(self.x, kind='quicksort', axis=self.axis), self.axis)
             self.sorted_x = np.flip(
-                np.sort(
-                    self.x, kind='quicksort', axis=self.axis), self.axis)
+                np.sort(self.x, kind='quicksort', axis=self.axis), self.axis)
         else:
             self.indices = np.argsort(self.x, kind='quicksort', axis=self.axis)
             self.sorted_x = np.sort(self.x, kind='quicksort', axis=self.axis)
         self.loss = self.sorted_x * self.label
         self.loss = np.sum(self.loss)
-        out = (np.array(
-            self.indices, dtype=self.indices.dtype), np.array(
-                self.sorted_x, dtype=self.sorted_x.dtype), np.array(
-                    [self.loss], dtype=self.loss.dtype))
+        out = (np.array(self.indices, dtype=self.indices.dtype),
+               np.array(self.sorted_x, dtype=self.sorted_x.dtype),
+               np.array([self.loss], dtype=self.loss.dtype))
         return out
 
 
@@ -67,6 +65,7 @@ def create_tensor(np_data, place):
 
 
 class TestArgsortOpCPU(unittest.TestCase):
+
     def setup_program(self):
         self.main_program = Program()
         self.startup_program = Program()
@@ -86,11 +85,13 @@ class TestArgsortOpCPU(unittest.TestCase):
                                     self.descending, self.dtype)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.layers.data(
-                name="x", shape=self.input_shape, dtype=self.dtype)
+            x = fluid.layers.data(name="x",
+                                  shape=self.input_shape,
+                                  dtype=self.dtype)
             x.stop_gradient = False
-            label = fluid.layers.data(
-                name="label", shape=self.input_shape, dtype=self.dtype)
+            label = fluid.layers.data(name="label",
+                                      shape=self.input_shape,
+                                      dtype=self.dtype)
             self.sorted_x, self.index = fluid.layers.argsort(
                 input=x, axis=self.axis, descending=self.descending)
             self.sorted_x.stop_gradient = False
@@ -133,21 +134,23 @@ class TestArgsortOpCPU(unittest.TestCase):
         ana_grad = [np.array(x) for x in self.backward()]
 
         num_grad = self.get_numerical_gradient(delta=numeric_grad_delta)
-        self.assert_is_close(
-            num_grad,
-            ana_grad,
-            'x',
-            max_relative_error=max_relative_error,
-            msg_prefix="Gradient Check On %s" % str(self.place))
+        self.assert_is_close(num_grad,
+                             ana_grad,
+                             'x',
+                             max_relative_error=max_relative_error,
+                             msg_prefix="Gradient Check On %s" %
+                             str(self.place))
 
     def check_forward(self):
         pd_outputs = self.forward()
         py_outputs = self.py_argsort.forward()
         for pd_output, py_output in zip(pd_outputs, py_outputs):
             self.assertEqual(pd_output.shape, py_output.shape)
-            self.assertTrue(
-                np.allclose(
-                    pd_output, py_output, atol=0, equal_nan=False))
+            np.testing.assert_allclose(pd_output,
+                                       py_output,
+                                       rtol=1e-05,
+                                       atol=0,
+                                       equal_nan=False)
 
     def get_numerical_gradient(self, delta=1e-7):
         if self.dtype == 'float16':
@@ -204,6 +207,7 @@ class TestArgsortOpCPU(unittest.TestCase):
 
 
 class TestArgsortOpGPU(TestArgsortOpCPU):
+
     def init_place(self):
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
@@ -212,120 +216,144 @@ class TestArgsortOpGPU(TestArgsortOpCPU):
 
 
 class TestArgsortOpAxis0CPU(TestArgsortOpCPU):
+
     def init_axis(self):
         self.axis = 0
 
 
 class TestArgsortOpAxis0GPU(TestArgsortOpGPU):
+
     def init_axis(self):
         self.axis = 0
 
 
 class TestArgsortOpAxis1CPU(TestArgsortOpCPU):
+
     def init_axis(self):
         self.axis = 1
 
 
 class TestArgsortOpAxis1GPU(TestArgsortOpGPU):
+
     def init_axis(self):
         self.axis = 1
 
 
 class TestArgsortOpAxis2CPU(TestArgsortOpCPU):
+
     def init_axis(self):
         self.axis = 2
 
 
 class TestArgsortOpAxis2GPU(TestArgsortOpGPU):
+
     def init_axis(self):
         self.axis = 2
 
 
 class TestArgsortOpAxisNeg1CPU(TestArgsortOpCPU):
+
     def init_axis(self):
         self.axis = -1
 
 
 class TestArgsortOpAxisNeg1GPU(TestArgsortOpGPU):
+
     def init_axis(self):
         self.axis = -1
 
 
 class TestArgsortOpAxisNeg2CPU(TestArgsortOpCPU):
+
     def init_axis(self):
         self.axis = -2
 
 
 class TestArgsortOpAxisNeg2GPU(TestArgsortOpGPU):
+
     def init_axis(self):
         self.axis = -2
 
 
 class TestArgsortOpDescendingAxisCPU(TestArgsortOpCPU):
+
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxisGPU(TestArgsortOpGPU):
+
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxis0CPU(TestArgsortOpAxis0CPU):
+
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxis0GPU(TestArgsortOpAxis0GPU):
+
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxis1CPU(TestArgsortOpAxis1CPU):
+
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxis1GPU(TestArgsortOpAxis1GPU):
+
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxis2CPU(TestArgsortOpAxis2CPU):
+
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxis2GPU(TestArgsortOpAxis2GPU):
+
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxisNeg1CPU(TestArgsortOpAxisNeg1CPU):
+
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxisNeg1GPU(TestArgsortOpAxisNeg1GPU):
+
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxisNeg2CPU(TestArgsortOpAxisNeg2CPU):
+
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortOpDescendingAxisNeg2GPU(TestArgsortOpAxisNeg2GPU):
+
     def init_direction(self):
         self.descending = True
 
 
 class TestArgsortErrorOnCPU(unittest.TestCase):
+
     def setUp(self):
         self.place = core.CPUPlace()
 
     def test_error(self):
+
         def test_fluid_var_type():
             with fluid.program_guard(fluid.Program()):
                 x = [1]
@@ -340,6 +368,7 @@ class TestArgsortErrorOnCPU(unittest.TestCase):
 
 
 class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):
+
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
@@ -348,8 +377,11 @@ class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):
 
 
 class TestArgsort(unittest.TestCase):
+
     def init(self):
-        self.input_shape = [10000, ]
+        self.input_shape = [
+            10000,
+        ]
         self.axis = 0
 
     def setUp(self):
@@ -362,8 +394,9 @@ class TestArgsort(unittest.TestCase):
 
     def test_api(self):
         with fluid.program_guard(fluid.Program()):
-            input = fluid.data(
-                name="input", shape=self.input_shape, dtype="float64")
+            input = fluid.data(name="input",
+                               shape=self.input_shape,
+                               dtype="float64")
 
             output = paddle.argsort(input, axis=self.axis)
             output2 = paddle.argsort(input, axis=self.axis, descending=True)
@@ -380,26 +413,32 @@ class TestArgsort(unittest.TestCase):
 
 
 class TestArgsort2(TestArgsort):
+
     def init(self):
         self.input_shape = [10000, 1]
         self.axis = 0
 
 
 class TestArgsort3(TestArgsort):
+
     def init(self):
         self.input_shape = [1, 10000]
         self.axis = 1
 
 
 class TestArgsort4(TestArgsort):
+
     def init(self):
         self.input_shape = [2, 3, 4]
         self.axis = 1
 
 
 class TestArgsortImperative(unittest.TestCase):
+
     def init(self):
-        self.input_shape = [10000, ]
+        self.input_shape = [
+            10000,
+        ]
         self.axis = 0
 
     def setUp(self):
@@ -425,21 +464,48 @@ class TestArgsortImperative(unittest.TestCase):
 
 
 class TestArgsortImperative2(TestArgsortImperative):
+
     def init(self):
         self.input_shape = [10000, 1]
         self.axis = 0
 
 
 class TestArgsortImperative3(TestArgsortImperative):
+
     def init(self):
         self.input_shape = [1, 10000]
         self.axis = 1
 
 
 class TestArgsortImperative4(TestArgsortImperative):
+
     def init(self):
         self.input_shape = [2, 3, 4]
         self.axis = 1
+
+
+class TestArgsortWithInputNaN(unittest.TestCase):
+
+    def init(self):
+        self.axis = 0
+
+    def setUp(self):
+        self.init()
+        self.input_data = np.array([1.0, np.nan, 3.0, 2.0])
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+
+    def test_api(self):
+        paddle.disable_static(self.place)
+        var_x = paddle.to_tensor(self.input_data)
+        out = paddle.argsort(var_x, axis=self.axis)
+        self.assertEqual((out.numpy() == np.array([0, 3, 2, 1])).all(), True)
+
+        out = paddle.argsort(var_x, axis=self.axis, descending=True)
+        self.assertEqual((out.numpy() == np.array([1, 2, 3, 0])).all(), True)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

@@ -22,19 +22,23 @@ class TargetAssignOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(X) of TargetAssignOp should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("MatchIndices"), true,
+        ctx->HasInput("MatchIndices"),
+        true,
         platform::errors::InvalidArgument(
             "Input(MatchIndices) of TargetAssignOp should not be null"));
 
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of TargetAssignOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("OutWeight"), true,
+        ctx->HasOutput("OutWeight"),
+        true,
         platform::errors::InvalidArgument(
             "Output(OutWeight) of TargetAssignOp should not be null."));
 
@@ -42,21 +46,25 @@ class TargetAssignOp : public framework::OperatorWithKernel {
     auto mi_dims = ctx->GetInputDim("MatchIndices");
 
     PADDLE_ENFORCE_EQ(
-        in_dims.size(), 3,
+        in_dims.size(),
+        3,
         platform::errors::InvalidArgument(
             "Expected the rank of Input(X) is 3. But received %d.",
             in_dims.size()));
-    PADDLE_ENFORCE_EQ(mi_dims.size(), 2,
+    PADDLE_ENFORCE_EQ(mi_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The rank of Input(MatchIndices) must be 2."));
 
     if (ctx->HasInput("NegIndices")) {
       auto neg_dims = ctx->GetInputDim("NegIndices");
-      PADDLE_ENFORCE_EQ(neg_dims.size(), 2,
+      PADDLE_ENFORCE_EQ(neg_dims.size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "The rank of Input(NegIndices) must be 2."));
       PADDLE_ENFORCE_EQ(
-          neg_dims[1], 1,
+          neg_dims[1],
+          1,
           platform::errors::InvalidArgument(
               "The last dimension of Out(NegIndices) must be 1."));
     }
@@ -141,10 +149,16 @@ for i-th instance and each `id` of NegIndices in this instance:
 };
 
 template <typename T, typename WT>
-struct NegTargetAssignFunctor<platform::CPUDeviceContext, T, WT> {
-  void operator()(const platform::CPUDeviceContext& ctx, const int* neg_indices,
-                  const size_t* lod, const int N, const int M, const int K,
-                  const int mismatch_value, T* out, WT* out_wt) {
+struct NegTargetAssignFunctor<phi::CPUContext, T, WT> {
+  void operator()(const phi::CPUContext& ctx,
+                  const int* neg_indices,
+                  const size_t* lod,
+                  const int N,
+                  const int M,
+                  const int K,
+                  const int mismatch_value,
+                  T* out,
+                  WT* out_wt) {
     for (int i = 0; i < N; ++i) {
       for (size_t j = lod[i]; j < lod[i + 1]; ++j) {
         int id = neg_indices[j];
@@ -158,19 +172,19 @@ struct NegTargetAssignFunctor<platform::CPUDeviceContext, T, WT> {
   }
 };
 
-template struct NegTargetAssignFunctor<platform::CPUDeviceContext, int, float>;
-template struct NegTargetAssignFunctor<platform::CPUDeviceContext, float,
-                                       float>;
+template struct NegTargetAssignFunctor<phi::CPUContext, int, float>;
+template struct NegTargetAssignFunctor<phi::CPUContext, float, float>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    target_assign, ops::TargetAssignOp, ops::TargetAssignOpMaker,
+    target_assign,
+    ops::TargetAssignOp,
+    ops::TargetAssignOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    target_assign,
-    ops::TargetAssignKernel<paddle::platform::CPUDeviceContext, int, float>,
-    ops::TargetAssignKernel<paddle::platform::CPUDeviceContext, float, float>);
+REGISTER_OP_CPU_KERNEL(target_assign,
+                       ops::TargetAssignKernel<phi::CPUContext, int, float>,
+                       ops::TargetAssignKernel<phi::CPUContext, float, float>);

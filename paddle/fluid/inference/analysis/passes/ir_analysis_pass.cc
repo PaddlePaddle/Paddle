@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/ir_analysis_pass.h"
+
 #include <memory>
 #include <utility>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 
@@ -34,7 +36,8 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
   IRPassManager the_ir_manager(argument);
   graph = the_ir_manager.Apply(std::move(graph));
   PADDLE_ENFORCE_GT(
-      graph->Nodes().size(), 0,
+      graph->Nodes().size(),
+      0,
       platform::errors::PreconditionNotMet(
           "The graph nodes size should be greater than 0, but got 0"));
   argument->SetMainGraph(graph.release());

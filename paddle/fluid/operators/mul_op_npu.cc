@@ -15,7 +15,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/mul_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -37,7 +37,9 @@ class MulNPUKernel : public framework::OpKernel<T> {
       if (x->dims().size() == 2 && y->dims().size() == 2) {
         out->mutable_data<T>(ctx.GetPlace());
         const auto& runner =
-            NpuOpRunner("MatMul", {*x, *y}, {*out},
+            NpuOpRunner("MatMul",
+                        {*x, *y},
+                        {*out},
                         {{"transpose_x1", false}, {"transpose_x2", false}});
 
         runner.Run(stream);
@@ -54,7 +56,9 @@ class MulNPUKernel : public framework::OpKernel<T> {
         out->mutable_data<T>(ctx.GetPlace());
         // matmul
         const auto& runner =
-            NpuOpRunner("MatMul", {tmp_x, *y}, {*out},
+            NpuOpRunner("MatMul",
+                        {tmp_x, *y},
+                        {*out},
                         {{"transpose_x1", false}, {"transpose_x2", false}});
         runner.Run(stream);
       } else {
@@ -64,7 +68,8 @@ class MulNPUKernel : public framework::OpKernel<T> {
       // to do other
     } else if (x->dims().size() == 3 && y->dims().size() == 2) {
       // for example: x.shape=[2, 3, 4] y.shape=[4, 5], expect [2, 3, 5]
-      PADDLE_ENFORCE_EQ(x_num_col_dims, 2,
+      PADDLE_ENFORCE_EQ(x_num_col_dims,
+                        2,
                         platform::errors::InvalidArgument(
                             "now only support x_num_col_dims == 2: but got %d",
                             x_num_col_dims));
@@ -76,7 +81,9 @@ class MulNPUKernel : public framework::OpKernel<T> {
         // (Boradcast) BatchMatMul NPU OP only support FP16.
         out->mutable_data<T>(ctx.GetPlace());
         const auto& runner =
-            NpuOpRunner("BatchMatMul", {*x, *y}, {*out},
+            NpuOpRunner("BatchMatMul",
+                        {*x, *y},
+                        {*out},
                         {{"adj_x1", false}, {"adj_x2", false}});
 
         auto stream =
@@ -99,7 +106,9 @@ class MulNPUKernel : public framework::OpKernel<T> {
         tmp_out.Resize(phi::make_ddim({first_dim, y->dims()[1]}));
 
         const auto& runner_matmul =
-            NpuOpRunner("MatMul", {tmp_x, *y}, {tmp_out},
+            NpuOpRunner("MatMul",
+                        {tmp_x, *y},
+                        {tmp_out},
                         {{"transpose_x1", false}, {"transpose_x2", false}});
         runner_matmul.Run(stream);
       }
@@ -126,7 +135,9 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
         if (dx) {
           dx->mutable_data<T>(ctx.GetPlace());
           const auto& runner_dx =
-              NpuOpRunner("MatMul", {*dout, *y}, {*dx},
+              NpuOpRunner("MatMul",
+                          {*dout, *y},
+                          {*dx},
                           {{"transpose_x1", false}, {"transpose_x2", true}});
 
           runner_dx.Run(stream);
@@ -135,7 +146,9 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
         if (dy) {
           dy->mutable_data<T>(ctx.GetPlace());
           const auto& runner_dy =
-              NpuOpRunner("MatMul", {*x, *dout}, {*dy},
+              NpuOpRunner("MatMul",
+                          {*x, *dout},
+                          {*dy},
                           {{"transpose_x1", true}, {"transpose_x2", false}});
 
           runner_dy.Run(stream);
@@ -151,7 +164,9 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
           tmp_dx.Resize(phi::make_ddim({dout->dims()[0], y->dims()[0]}));
 
           const auto& runner_matmul =
-              NpuOpRunner("MatMul", {*dout, *y}, {tmp_dx},
+              NpuOpRunner("MatMul",
+                          {*dout, *y},
+                          {tmp_dx},
                           {{"transpose_x1", false}, {"transpose_x2", true}});
           runner_matmul.Run(stream);
         }
@@ -168,7 +183,9 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
           tmp_x.Resize(phi::make_ddim({first_dim, sec_dim}));
           dy->mutable_data<T>(ctx.GetPlace());
           const auto& runner_dy =
-              NpuOpRunner("MatMul", {tmp_x, *dout}, {*dy},
+              NpuOpRunner("MatMul",
+                          {tmp_x, *dout},
+                          {*dy},
                           {{"transpose_x1", true}, {"transpose_x2", false}});
 
           runner_dy.Run(stream);
@@ -176,7 +193,8 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
       }
     } else if (x->dims().size() == 3 && y->dims().size() == 2) {
       // for example: x.shape=[2, 3, 4] y.shape=[4, 5], expect [2, 3, 5]
-      PADDLE_ENFORCE_EQ(x_num_col_dims, 2,
+      PADDLE_ENFORCE_EQ(x_num_col_dims,
+                        2,
                         platform::errors::InvalidArgument(
                             "now only support x_num_col_dims == 2: but got %d",
                             x_num_col_dims));
@@ -197,7 +215,9 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
           // (Boradcast) BatchMatMul NPU OP only support FP16.
           dx->mutable_data<T>(ctx.GetPlace());
           const auto& runner =
-              NpuOpRunner("BatchMatMul", {*dout, *y}, {*dx},
+              NpuOpRunner("BatchMatMul",
+                          {*dout, *y},
+                          {*dx},
                           {{"adj_x1", false}, {"adj_x2", true}});
 
           auto stream =
@@ -211,7 +231,9 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
           tmp_dx.Resize(phi::make_ddim({dout_first_dim, y->dims()[0]}));
 
           const auto& runner_matmul =
-              NpuOpRunner("MatMul", {tmp_dout, *y}, {tmp_dx},
+              NpuOpRunner("MatMul",
+                          {tmp_dout, *y},
+                          {tmp_dx},
                           {{"transpose_x1", false}, {"transpose_x2", true}});
           runner_matmul.Run(stream);
         }
@@ -226,7 +248,9 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
         // mamtul [6,4] [6,5] =>[4,5]
         dy->mutable_data<T>(ctx.GetPlace());
         const auto& runner_dy =
-            NpuOpRunner("MatMul", {tmp_x, tmp_dout}, {*dy},
+            NpuOpRunner("MatMul",
+                        {tmp_x, tmp_dout},
+                        {*dy},
                         {{"transpose_x1", true}, {"transpose_x2", false}});
         runner_dy.Run(stream);
       }
@@ -240,10 +264,12 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    mul, ops::MulNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    mul,
+    ops::MulNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::MulNPUKernel<paddle::platform::NPUDeviceContext,
                       paddle::platform::float16>);
 REGISTER_OP_NPU_KERNEL(
-    mul_grad, ops::MulGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    mul_grad,
+    ops::MulGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::MulGradNPUKernel<paddle::platform::NPUDeviceContext,
                           paddle::platform::float16>);

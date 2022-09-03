@@ -20,15 +20,15 @@
 #include <mlir/IR/Diagnostics.h>
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/Parser.h>
-#include <unordered_map>
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "paddle/infrt/dialect/diagnostic_utils.h"
-#include "paddle/infrt/dialect/init_infrt_dialects.h"
+#include "paddle/infrt/dialect/init_dialects.h"
 
 namespace infrt {
 namespace dialect {
@@ -63,6 +63,7 @@ mlir::OwningModuleRef LoadMlirFile(const std::string& file_name,
   mlir::DialectRegistry registry;
   registerCinnDialects(registry);
   context->appendDialectRegistry(registry);
+  context->loadAllAvailableDialects();
   mlir::ScopedDiagnosticHandler scope_handler(
       context, [](mlir::Diagnostic& diag) {
         if (diag.getSeverity() != mlir::DiagnosticSeverity::Error)

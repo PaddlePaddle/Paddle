@@ -12,22 +12,27 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/uniform_random_kernel.h"
+#include "paddle/phi/kernels/selected_rows/uniform_random_kernel.h"
+
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/uniform_random_kernel.h"
 
 namespace phi {
+namespace sr {
 
 template <typename T, typename Context>
-void UniformRandomRawSRKernel(const Context& dev_ctx,
-                              const ScalarArray& shape,
-                              DataType dtype,
-                              float min,
-                              float max,
-                              int seed,
-                              int diag_num,
-                              int diag_step,
-                              float diag_val,
-                              SelectedRows* out) {
+void UniformRandomRawKernel(const Context& dev_ctx,
+                            const IntArray& shape,
+                            DataType dtype,
+                            const Scalar& min,
+                            const Scalar& max,
+                            int seed,
+                            int diag_num,
+                            int diag_step,
+                            float diag_val,
+                            SelectedRows* out) {
   phi::UniformRandomRawKernel<T>(dev_ctx,
                                  shape,
                                  dtype,
@@ -41,23 +46,24 @@ void UniformRandomRawSRKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void UniformRandomSRKernel(const Context& dev_ctx,
-                           const ScalarArray& shape,
-                           DataType dtype,
-                           float min,
-                           float max,
-                           int seed,
-                           SelectedRows* out) {
+void UniformRandomKernel(const Context& dev_ctx,
+                         const IntArray& shape,
+                         DataType dtype,
+                         const Scalar& min,
+                         const Scalar& max,
+                         int seed,
+                         SelectedRows* out) {
   phi::UniformRandomKernel<T>(
       dev_ctx, shape, dtype, min, max, seed, out->mutable_value());
 }
 
+}  // namespace sr
 }  // namespace phi
 
 PD_REGISTER_KERNEL(uniform_random_raw_sr,
                    CPU,
                    ALL_LAYOUT,
-                   phi::UniformRandomRawSRKernel,
+                   phi::sr::UniformRandomRawKernel,
                    float,
                    double,
                    phi::dtype::bfloat16) {}
@@ -65,7 +71,7 @@ PD_REGISTER_KERNEL(uniform_random_raw_sr,
 PD_REGISTER_KERNEL(uniform_random_sr,
                    CPU,
                    ALL_LAYOUT,
-                   phi::UniformRandomSRKernel,
+                   phi::sr::UniformRandomKernel,
                    float,
                    double,
                    phi::dtype::bfloat16) {}
@@ -75,14 +81,26 @@ PD_REGISTER_KERNEL(uniform_random_sr,
 PD_REGISTER_KERNEL(uniform_random_raw_sr,
                    GPU,
                    ALL_LAYOUT,
-                   phi::UniformRandomRawSRKernel,
+                   phi::sr::UniformRandomRawKernel,
                    float,
                    double) {}
 
 PD_REGISTER_KERNEL(uniform_random_sr,
                    GPU,
                    ALL_LAYOUT,
-                   phi::UniformRandomSRKernel,
+                   phi::sr::UniformRandomKernel,
                    float,
                    double) {}
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+
+PD_REGISTER_KERNEL(uniform_random_raw_sr,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::sr::UniformRandomRawKernel,
+                   float) {}
+
+PD_REGISTER_KERNEL(
+    uniform_random_sr, XPU, ALL_LAYOUT, phi::sr::UniformRandomKernel, float) {}
 #endif

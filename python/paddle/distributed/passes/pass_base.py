@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,6 +19,7 @@ from paddle.fluid.framework import program_guard, _apply_pass as _apply_cpp_pass
 
 
 class PassContext:
+
     def __init__(self):
         self._applied_passes = []
         self._attrs = {}
@@ -118,6 +119,7 @@ class PassBase(ABC):
 
 
 def register_pass(name):
+
     def impl(cls):
         PassBase._register(name, cls)
         cls.name = name
@@ -136,6 +138,7 @@ def new_pass(name, pass_attrs={}):
 
 
 class CPPPassWrapper(PassBase):
+
     def __init__(self):
         super(CPPPassWrapper, self).__init__()
 
@@ -159,8 +162,8 @@ class CPPPassWrapper(PassBase):
 
 
 def _fusion_opt_last_rule(pass_before, pass_after):
-    if pass_before._type() == PassType.FUSION_OPT and pass_after._type(
-    ) != PassType.FUSION_OPT:
+    if pass_before._type(
+    ) == PassType.FUSION_OPT and pass_after._type() != PassType.FUSION_OPT:
         return False
     else:
         return True
@@ -168,6 +171,7 @@ def _fusion_opt_last_rule(pass_before, pass_after):
 
 def _make_rule_from_white_lists_dict(before_white_lists_dict,
                                      after_white_lists_dict):
+
     def collect_pass_names(white_lists_dict, result):
         for k, v in white_lists_dict.items():
             result.add(k)
@@ -202,8 +206,8 @@ def _make_rule_from_white_lists_dict(before_white_lists_dict,
     return rule
 
 
-# The key-value pair (k, [v1, v2, ..., vn]) means the pass k can be 
-# applied before any of pass [v1, v2, ..., vn] is applied 
+# The key-value pair (k, [v1, v2, ..., vn]) means the pass k can be
+# applied before any of pass [v1, v2, ..., vn] is applied
 PassBase._BEFORE_WHITE_LISTS_DICT = {
     "fuse_gradient_merge": ["fuse_all_reduce"],
     # Add more white lists here
@@ -212,7 +216,7 @@ PassBase._BEFORE_WHITE_LISTS_DICT = {
 # The key-value pair (k, [v1, v2, ..., vn]) means the pass k can be
 # applied after any of pass [v1, v2, ..., vn] is applied
 PassBase._AFTER_WHITE_LISTS_DICT = {
-    # Add more white lists here 
+    # Add more white lists here
 }
 
 PassBase._COMMON_RULES = [
@@ -292,6 +296,7 @@ def _solve_pass_conflict(passes, context):
 
 
 class PassManager:
+
     def __init__(self, passes, context=None, auto_solve_conflict=True):
         if context is None:
             context = PassContext()

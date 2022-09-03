@@ -13,6 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 // this file is inspired by:
 // https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/fused_kernels/scaled_masked_softmax.h
+/* Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -26,6 +40,7 @@ limitations under the License. */
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/transform.h>
+
 #include <algorithm>
 #include <string>
 
@@ -81,8 +96,8 @@ struct MaxOP {
 };
 
 template <typename T>
-__device__ __forceinline__ T warp_shfl_xor(T value, int laneMask, int width,
-                                           unsigned int mask = MASK) {
+__device__ __forceinline__ T
+warp_shfl_xor(T value, int laneMask, int width, unsigned int mask = MASK) {
 #if CUDA_VERSION >= 9000
   return __shfl_xor_sync(mask, value, laneMask, width);
 #else
@@ -105,8 +120,10 @@ __device__ __forceinline__ void warp_reduce(T* sum) {
 
 // T == fp16
 template <typename T, int pow2_index>
-__global__ void SoftmaxMaskFuseGPUKernel(const T* x_data, const T* mask_data,
-                                         T* y_data, int batch_count,
+__global__ void SoftmaxMaskFuseGPUKernel(const T* x_data,
+                                         const T* mask_data,
+                                         T* y_data,
+                                         int batch_count,
                                          int key_seq_len) {
   // the forward gpu kernel
   constexpr int next_pow2 = 1 << pow2_index;
@@ -227,7 +244,8 @@ template <typename T, int pow2_index>
 __global__ void SoftmaxMaskFuseGradGPUKernel(const T* grad_input,
                                              T* grad_output,
                                              const T* softmax_rst,
-                                             int batch_count, int key_seq_len) {
+                                             int batch_count,
+                                             int key_seq_len) {
   constexpr int next_pow2 = 1 << pow2_index;
   constexpr int warp_size = (next_pow2 < WARP_SIZE) ? next_pow2 : WARP_SIZE;
   constexpr int kLocalIterations = std::max(next_pow2 / warp_size, 4);
@@ -338,19 +356,22 @@ class SoftmaxMaskFuseKernel : public framework::OpKernel<T> {
     auto query_seq_len = x_dim[2];
     auto key_seq_len = x_dim[3];
 
-    PADDLE_ENFORCE_GT(query_seq_len, 1,
+    PADDLE_ENFORCE_GT(query_seq_len,
+                      1,
                       platform::errors::InvalidArgument(
                           "Input x's second last dim must be large than 1 but "
                           "received the second last dimension of x is %d",
                           query_seq_len));
 
-    PADDLE_ENFORCE_EQ(key_seq_len >= 32 && key_seq_len < 8192, true,
+    PADDLE_ENFORCE_EQ(key_seq_len >= 32 && key_seq_len < 8192,
+                      true,
                       platform::errors::InvalidArgument(
                           "Input x's last dim must be between [32, 8192) "
                           "received the last dimension of x is %d",
                           key_seq_len));
 
-    PADDLE_ENFORCE_EQ(mask_dim[1], 1,
+    PADDLE_ENFORCE_EQ(mask_dim[1],
+                      1,
                       platform::errors::InvalidArgument(
                           "Input mask's second dim must be 1 "
                           "received the second dimension of mask is %d",
@@ -360,13 +381,20 @@ class SoftmaxMaskFuseKernel : public framework::OpKernel<T> {
     for (size_t idx = 0; idx < 4; ++idx) {
       if (idx == 1) continue;
       PADDLE_ENFORCE_EQ(
-          x_dim[idx], mask_dim[idx],
+          x_dim[idx],
+          mask_dim[idx],
           platform::errors::InvalidArgument(
               "Input x's %dth dim should be equal with input mask's %dth dim "
               "but "
               "received the %dth dimension of x and mask are not equal "
               "the %dth dim of x is %d, while the %dth dim of mask is %d.",
-              idx, idx, idx, idx, x_dim[idx], idx, mask_dim[idx]));
+              idx,
+              idx,
+              idx,
+              idx,
+              x_dim[idx],
+              idx,
+              mask_dim[idx]));
     }
 
     auto& place = *context.template device_context<Place>().eigen_device();
@@ -383,12 +411,14 @@ class SoftmaxMaskFuseKernel : public framework::OpKernel<T> {
     int warps_per_block = (threads_per_block / warp_size);
     int batches_per_block = warps_per_block * batches_per_warp;
     PADDLE_ENFORCE_EQ(
-        query_seq_len % batches_per_block, 0,
+        query_seq_len % batches_per_block,
+        0,
         platform::errors::InvalidArgument(
             "The query seq len (third dim of input X) must can divide the "
             "number of batches per block. The query seq len is %d, while "
             "the number of batches per block is %d.",
-            query_seq_len, batches_per_block));
+            query_seq_len,
+            batches_per_block));
     dim3 blocks(query_seq_len / batches_per_block, attn_heads, batches);
     dim3 threads(warp_size, warps_per_block, 1);
 
@@ -473,49 +503,76 @@ class SoftmaxMaskFuseGradKernel : public framework::OpKernel<T> {
     // launch the kernel based on the pow2_index
     switch (pow2_index) {
       case 5:  // 32
-        SoftmaxMaskFuseGradGPUKernel<T, 5><<<blocks, threads, 0, stream>>>(
-            grad_y_data, grad_x_data, softmax_rst_data, batch_count,
-            key_seq_len);
+        SoftmaxMaskFuseGradGPUKernel<T, 5>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 6:  // 64
-        SoftmaxMaskFuseGradGPUKernel<T, 6><<<blocks, threads, 0, stream>>>(
-            grad_y_data, grad_x_data, softmax_rst_data, batch_count,
-            key_seq_len);
+        SoftmaxMaskFuseGradGPUKernel<T, 6>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 7:  // 128
-        SoftmaxMaskFuseGradGPUKernel<T, 7><<<blocks, threads, 0, stream>>>(
-            grad_y_data, grad_x_data, softmax_rst_data, batch_count,
-            key_seq_len);
+        SoftmaxMaskFuseGradGPUKernel<T, 7>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 8:  // 256
-        SoftmaxMaskFuseGradGPUKernel<T, 8><<<blocks, threads, 0, stream>>>(
-            grad_y_data, grad_x_data, softmax_rst_data, batch_count,
-            key_seq_len);
+        SoftmaxMaskFuseGradGPUKernel<T, 8>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 9:  // 512
-        SoftmaxMaskFuseGradGPUKernel<T, 9><<<blocks, threads, 0, stream>>>(
-            grad_y_data, grad_x_data, softmax_rst_data, batch_count,
-            key_seq_len);
+        SoftmaxMaskFuseGradGPUKernel<T, 9>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 10:  // 1024
-        SoftmaxMaskFuseGradGPUKernel<T, 10><<<blocks, threads, 0, stream>>>(
-            grad_y_data, grad_x_data, softmax_rst_data, batch_count,
-            key_seq_len);
+        SoftmaxMaskFuseGradGPUKernel<T, 10>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 11:  // 2048
-        SoftmaxMaskFuseGradGPUKernel<T, 11><<<blocks, threads, 0, stream>>>(
-            grad_y_data, grad_x_data, softmax_rst_data, batch_count,
-            key_seq_len);
+        SoftmaxMaskFuseGradGPUKernel<T, 11>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 12:  // 4096
-        SoftmaxMaskFuseGradGPUKernel<T, 12><<<blocks, threads, 0, stream>>>(
-            grad_y_data, grad_x_data, softmax_rst_data, batch_count,
-            key_seq_len);
+        SoftmaxMaskFuseGradGPUKernel<T, 12>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       case 13:  // 8192
-        SoftmaxMaskFuseGradGPUKernel<T, 13><<<blocks, threads, 0, stream>>>(
-            grad_y_data, grad_x_data, softmax_rst_data, batch_count,
-            key_seq_len);
+        SoftmaxMaskFuseGradGPUKernel<T, 13>
+            <<<blocks, threads, 0, stream>>>(grad_y_data,
+                                             grad_x_data,
+                                             softmax_rst_data,
+                                             batch_count,
+                                             key_seq_len);
         break;
       default:
         break;
@@ -530,9 +587,9 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     fused_softmax_mask,
-    ops::SoftmaxMaskFuseKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::SoftmaxMaskFuseKernel<plat::CUDADeviceContext, float>);
+    ops::SoftmaxMaskFuseKernel<phi::GPUContext, plat::float16>,
+    ops::SoftmaxMaskFuseKernel<phi::GPUContext, float>);
 REGISTER_OP_CUDA_KERNEL(
     fused_softmax_mask_grad,
-    ops::SoftmaxMaskFuseGradKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::SoftmaxMaskFuseGradKernel<plat::CUDADeviceContext, float>);
+    ops::SoftmaxMaskFuseGradKernel<phi::GPUContext, plat::float16>,
+    ops::SoftmaxMaskFuseGradKernel<phi::GPUContext, float>);

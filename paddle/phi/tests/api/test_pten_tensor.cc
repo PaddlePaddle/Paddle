@@ -15,7 +15,7 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/api/lib/ext_compat_utils.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace paddle {
 namespace tests {
@@ -194,7 +194,7 @@ void GroupTestDtype() {
 
 void TestInitilized() {
   experimental::Tensor test_tensor(paddle::PlaceType::kCPU, {1, 1});
-  CHECK(test_tensor.is_initialized() == false);
+  CHECK(test_tensor.is_initialized() == true);
   test_tensor.mutable_data<float>(paddle::PlaceType::kCPU);
   CHECK(test_tensor.is_initialized() == true);
   float* tensor_data = test_tensor.mutable_data<float>();

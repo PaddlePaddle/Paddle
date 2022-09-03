@@ -13,36 +13,15 @@
 // limitations under the License.
 
 #pragma once
+
 #include <mlir/IR/Dialect.h>
 #include <mlir/IR/OpDefinition.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
 
 #include <string>
 
-#include "paddle/infrt/dialect/infrt/infrt_dialect.h"
-
-namespace infrt {
-namespace dt {
-class TensorMapType : public mlir::Type::TypeBase<TensorMapType,
-                                                  mlir::Type,
-                                                  mlir::TypeStorage> {
- public:
-  using Base::Base;
-  static TensorMapType get();
-  static TensorMapType get(mlir::MLIRContext *context);
-};
-
-class StringType
-    : public mlir::Type::TypeBase<StringType, mlir::Type, mlir::TypeStorage> {
- public:
-  using Base::Base;
-  static StringType get();
-  static StringType get(mlir::MLIRContext *context);
-};
-}  // namespace dt
-}  // namespace infrt
-
 #include "paddle/infrt/dialect/dense_tensor_dialect.hpp.inc"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/dense_tensor.hpp.inc"

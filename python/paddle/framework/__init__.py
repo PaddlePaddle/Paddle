@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: import framework api under this directory 
+# TODO: import framework api under this directory
 
 from . import random  # noqa: F401
 from .random import seed  # noqa: F401
@@ -46,11 +46,15 @@ from ..fluid.framework import get_flags  # noqa: F401
 from ..fluid.framework import set_flags  # noqa: F401
 from ..fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
 from ..fluid.dygraph.base import disable_dygraph as enable_static  # noqa: F401
-from ..fluid.framework import in_dygraph_mode as in_dynamic_mode  # noqa: F401
+from ..fluid.framework import _non_static_mode as in_dynamic_mode  # noqa: F401
+from ..fluid.framework import _non_static_mode  #  noqa: F401; temporary used for hackson
 from ..fluid.framework import _current_expected_place, _get_paddle_place  # noqa: F401
 from ..fluid.framework import dygraph_only  # noqa: F401
 from ..fluid.framework import convert_np_dtype_to_dtype_, _varbase_creator, OpProtoHolder  # noqa: F401
-from ..fluid.framework import _in_eager_mode  # noqa: F401
 from ..fluid.framework import _dygraph_tracer  # noqa: F401
+
+from ..fluid.layer_helper import LayerHelper  # noqa: F401
+from ..fluid.framework import in_dygraph_mode  # noqa: F401
+from ..fluid.framework import _in_legacy_dygraph  # noqa: F401
 
 __all__ = []

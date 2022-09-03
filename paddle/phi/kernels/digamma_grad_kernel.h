@@ -20,8 +20,8 @@ namespace phi {
 
 template <typename T, typename Context>
 void DigammaGradKernel(const Context& ctx,
-                       const DenseTensor& out_grad,
                        const DenseTensor& x,
+                       const DenseTensor& out_grad,
                        DenseTensor* x_grad);
 
-}  // namepsace phi
+}  // namespace phi

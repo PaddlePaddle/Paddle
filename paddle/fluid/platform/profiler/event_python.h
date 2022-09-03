@@ -15,8 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
+#include <unordered_map>
 
 #include "paddle/fluid/platform/profiler/event_node.h"
+#include "paddle/fluid/platform/profiler/extra_info.h"
 
 namespace paddle {
 namespace platform {
@@ -40,6 +43,35 @@ struct DevicePythonNode {
   uint64_t stream_id;
 };
 
+struct MemPythonNode {
+  MemPythonNode() = default;
+  ~MemPythonNode() {}
+
+  // timestamp of the record
+  uint64_t timestamp_ns;
+  // memory addr of allocation or free
+  uint64_t addr;
+  // memory manipulation type
+  TracerMemEventType type;
+  // process id of the record
+  uint64_t process_id;
+  // thread id of the record
+  uint64_t thread_id;
+  // increase bytes after this manipulation, allocation for sign +, free for
+  // sign -
+  int64_t increase_bytes;
+  // place
+  std::string place;
+  // current total allocated memory
+  uint64_t current_allocated;
+  // current total reserved memory
+  uint64_t current_reserved;
+  // peak  allocated memory
+  uint64_t peak_allocated;
+  // peak  reserved memory
+  uint64_t peak_reserved;
+};
+
 struct HostPythonNode {
   HostPythonNode() = default;
   ~HostPythonNode();
@@ -55,29 +87,47 @@ struct HostPythonNode {
   uint64_t process_id;
   // thread id of the record
   uint64_t thread_id;
+  // input shapes
+  std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;
+  std::map<std::string, std::vector<std::string>> dtypes;
+  // call stack
+  std::string callstack;
   // children node
   std::vector<HostPythonNode*> children_node_ptrs;
   // runtime node
   std::vector<HostPythonNode*> runtime_node_ptrs;
   // device node
   std::vector<DevicePythonNode*> device_node_ptrs;
+  // mem node
+  std::vector<MemPythonNode*> mem_node_ptrs;
 };
 
 class ProfilerResult {
  public:
   ProfilerResult() : tree_(nullptr) {}
-  explicit ProfilerResult(NodeTrees* tree);
+  explicit ProfilerResult(std::unique_ptr<NodeTrees> tree,
+                          const ExtraInfo& extra_info);
   ~ProfilerResult();
   std::map<uint64_t, HostPythonNode*> GetData() {
-    return thread_event_trees_map;
+    return thread_event_trees_map_;
   }
-  void Save(const std::string& file_name);
+  std::unordered_map<std::string, std::string> GetExtraInfo() {
+    return extra_info_.GetExtraInfo();
+  }
+
+  void Save(const std::string& file_name,
+            const std::string format = std::string("json"));
+
+  std::shared_ptr<NodeTrees> GetNodeTrees() { return tree_; }
 
  private:
-  std::map<uint64_t, HostPythonNode*> thread_event_trees_map;
-  NodeTrees* tree_;
-  HostPythonNode* CopyTree(HostTraceEventNode* node);
+  std::map<uint64_t, HostPythonNode*> thread_event_trees_map_;
+  std::shared_ptr<NodeTrees> tree_;
+  ExtraInfo extra_info_;
+  HostPythonNode* CopyTree(HostTraceEventNode* root);
 };
+
+std::unique_ptr<ProfilerResult> LoadProfilerResult(std::string filename);
 
 }  // namespace platform
 }  // namespace paddle

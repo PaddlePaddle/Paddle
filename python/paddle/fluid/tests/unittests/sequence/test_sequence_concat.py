@@ -17,13 +17,16 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("../")
 from op_test import OpTest
 
+import paddle
 from paddle import fluid
 
 
 class TestSequenceConcat(OpTest):
+
     def setLoD(self):
         self.lod1 = [7, 3]
         self.lod2 = [12, 8]
@@ -51,6 +54,7 @@ class TestSequenceConcat(OpTest):
 
 
 class TestSequenceConcatCase2(TestSequenceConcat):
+
     def setLoD(self):
         self.lod1 = [10, 0]
         self.lod2 = [12, 8]
@@ -58,6 +62,7 @@ class TestSequenceConcatCase2(TestSequenceConcat):
 
 
 class TestSequenceConcatCase3(TestSequenceConcat):
+
     def setLoD(self):
         self.lod1 = [10, 0]
         self.lod2 = [20, 0]
@@ -65,6 +70,7 @@ class TestSequenceConcatCase3(TestSequenceConcat):
 
 
 class TestSequenceConcatCase4(TestSequenceConcat):
+
     def setLoD(self):
         self.lod1 = [0, 10]
         self.lod2 = [0, 20]
@@ -72,6 +78,7 @@ class TestSequenceConcatCase4(TestSequenceConcat):
 
 
 class TestSequenceConcatCase5(TestSequenceConcat):
+
     def setLoD(self):
         self.lod1 = [0, 10]
         self.lod2 = [20, 0]
@@ -79,7 +86,9 @@ class TestSequenceConcatCase5(TestSequenceConcat):
 
 
 class TestSequenceConcatOpError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_input_list():
             # the input type must be list
             x_data = fluid.layers.data(name='x', shape=[4], dtype='float32')
@@ -115,4 +124,5 @@ class TestSequenceConcatOpError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

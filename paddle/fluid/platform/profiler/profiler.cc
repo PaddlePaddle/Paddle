@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/profiler.h"
+
 #include "glog/logging.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -25,8 +26,12 @@
 #endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
+#include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
+#include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
+#include "paddle/fluid/platform/profiler/mlu/mlu_tracer.h"
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
+#include "paddle/fluid/platform/profiler/utils.h"
 
 namespace paddle {
 namespace platform {
@@ -35,19 +40,51 @@ void SynchronizeAllDevice();
 
 std::atomic<bool> Profiler::alive_{false};
 
-std::unique_ptr<Profiler> Profiler::Create(const ProfilerOptions& options) {
+std::unique_ptr<Profiler> Profiler::Create(
+    const ProfilerOptions& options,
+    const std::vector<std::string>& custom_device_types) {
   if (alive_.exchange(true)) {
     return nullptr;
   }
-  return std::unique_ptr<Profiler>(new Profiler(options));
+  return std::unique_ptr<Profiler>(new Profiler(options, custom_device_types));
 }
 
-Profiler::Profiler(const ProfilerOptions& options) {
+bool Profiler::IsCuptiSupported() {
+  bool supported = false;
+#ifdef PADDLE_WITH_CUPTI
+  supported = true;
+#endif
+  return supported;
+}
+
+bool Profiler::IsCnpapiSupported() {
+  bool supported = false;
+#ifdef PADDLE_WITH_MLU
+  supported = true;
+#endif
+  return supported;
+}
+
+Profiler::Profiler(const ProfilerOptions& options,
+                   const std::vector<std::string>& custom_device_types) {
   options_ = options;
-  HostTracerOptions host_tracer_options;
-  host_tracer_options.trace_level = options.trace_level;
-  tracers_.emplace_back(new HostTracer(host_tracer_options), true);
-  tracers_.emplace_back(&CudaTracer::GetInstance(), false);
+  std::bitset<32> trace_switch(options_.trace_switch);
+  if (trace_switch.test(kProfileCPUOptionBit)) {
+    HostTracerOptions host_tracer_options;
+    host_tracer_options.trace_level = options_.trace_level;
+    tracers_.emplace_back(new HostTracer(host_tracer_options), true);
+  }
+  if (trace_switch.test(kProfileGPUOptionBit)) {
+    tracers_.emplace_back(&CudaTracer::GetInstance(), false);
+  }
+  if (trace_switch.test(kProfileMLUOptionBit)) {
+    tracers_.emplace_back(&MluTracer::GetInstance(), false);
+  }
+  if (trace_switch.test(kProfileCustomDeviceOptionBit)) {
+    for (const auto& dev_type : custom_device_types) {
+      tracers_.emplace_back(&CustomTracer::GetInstance(dev_type), false);
+    }
+  }
 }
 
 Profiler::~Profiler() { alive_.store(false); }
@@ -63,19 +100,39 @@ void Profiler::Start() {
   for (auto& tracer : tracers_) {
     tracer.Get().StartTracing();
   }
+  cpu_utilization_.RecordBeginTimeInfo();
 }
 
-std::unique_ptr<NodeTrees> Profiler::Stop() {
+std::unique_ptr<ProfilerResult> Profiler::Stop() {
   SynchronizeAllDevice();
   TraceEventCollector collector;
   for (auto& tracer : tracers_) {
     tracer.Get().StopTracing();
     tracer.Get().CollectTraceData(&collector);
   }
-  std::unique_ptr<NodeTrees> tree(new NodeTrees(collector.HostEvents(),
-                                                collector.RuntimeEvents(),
-                                                collector.DeviceEvents()));
-  return tree;
+  std::unique_ptr<NodeTrees> tree(
+      new NodeTrees(collector.HostEvents(),
+                    collector.RuntimeEvents(),
+                    collector.DeviceEvents(),
+                    collector.MemEvents(),
+                    collector.OperatorSupplementEvents()));
+  cpu_utilization_.RecordEndTimeInfo();
+  ExtraInfo extrainfo;
+  extrainfo.AddExtraInfo(std::string("System Cpu Utilization"),
+                         std::string("%f"),
+                         cpu_utilization_.GetCpuUtilization());
+  extrainfo.AddExtraInfo(std::string("Process Cpu Utilization"),
+                         std::string("%f"),
+                         cpu_utilization_.GetCpuCurProcessUtilization());
+  const std::unordered_map<uint64_t, std::string> thread_names =
+      collector.ThreadNames();
+  for (const auto& kv : thread_names) {
+    extrainfo.AddExtraInfo(string_format(std::string("%llu"), kv.first),
+                           std::string("%s"),
+                           kv.second.c_str());
+  }
+  return std::unique_ptr<ProfilerResult>(
+      new platform::ProfilerResult(std::move(tree), extrainfo));
 }
 
 }  // namespace platform

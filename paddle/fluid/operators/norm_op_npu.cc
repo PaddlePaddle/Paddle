@@ -24,7 +24,9 @@ void CheckAxis(int axis, int rank) {
   PADDLE_THROW(platform::errors::InvalidArgument(
       "axis in norm operator must between (%d) and (%d)"
       "but got (%d).",
-      -rank, rank - 1, axis));
+      -rank,
+      rank - 1,
+      axis));
 }
 
 template <typename DeviceContext, typename T>
@@ -96,10 +98,12 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    norm, ops::NormNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    norm,
+    ops::NormNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::NormNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>)
 
 REGISTER_OP_NPU_KERNEL(
-    norm_grad, ops::NormGradNPUKernel<plat::NPUDeviceContext, float>,
+    norm_grad,
+    ops::NormGradNPUKernel<plat::NPUDeviceContext, float>,
     ops::NormGradNPUKernel<plat::NPUDeviceContext, plat::float16>);

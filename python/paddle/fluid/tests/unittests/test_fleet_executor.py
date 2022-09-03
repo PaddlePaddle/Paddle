@@ -21,6 +21,7 @@ paddle.enable_static()
 
 
 class TestFleetExecutor(unittest.TestCase):
+
     def fake_fleet_opt(self):
         # TODO: Fake for coverage will be removed in the future
         import paddle.distributed.fleet as fleet
@@ -42,10 +43,12 @@ class TestFleetExecutor(unittest.TestCase):
         exe = paddle.static.Executor(place)
         empty_program = paddle.static.Program()
         with fluid.program_guard(empty_program, empty_program):
-            x = fluid.layers.data(
-                name='x', shape=x_data.shape, dtype=x_data.dtype)
-            y = fluid.layers.data(
-                name='y', shape=y_data.shape, dtype=y_data.dtype)
+            x = fluid.layers.data(name='x',
+                                  shape=x_data.shape,
+                                  dtype=x_data.dtype)
+            y = fluid.layers.data(name='y',
+                                  shape=y_data.shape,
+                                  dtype=y_data.dtype)
             z = x + y
             a = 2 * x + 3 * y
             loss = paddle.mean(a)
@@ -54,8 +57,8 @@ class TestFleetExecutor(unittest.TestCase):
             steps_per_pass = 10
             bd = [steps_per_pass * p for p in passes]
             lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-            lr_val = paddle.optimizer.lr.PiecewiseDecay(
-                boundaries=bd, values=lr)
+            lr_val = paddle.optimizer.lr.PiecewiseDecay(boundaries=bd,
+                                                        values=lr)
             opt = paddle.optimizer.AdamW(
                 learning_rate=lr_val,
                 grad_clip=fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0))
@@ -66,8 +69,10 @@ class TestFleetExecutor(unittest.TestCase):
             "section_program": empty_program
         }
         res = exe.run(empty_program,
-                      feed={'x': x_data,
-                            'y': y_data},
+                      feed={
+                          'x': x_data,
+                          'y': y_data
+                      },
                       fetch_list=[z.name, a.name])
         return res
 
@@ -79,8 +84,8 @@ class TestFleetExecutor(unittest.TestCase):
             z_data = x_data + y_data
             a_data = 2 * x_data + 3 * y_data
             res = self.run_fleet_executor(fluid.CUDAPlace(0), x_data, y_data)
-            self.assertTrue(np.allclose(res[0], z_data))
-            self.assertTrue(np.allclose(res[1], a_data))
+            np.testing.assert_allclose(res[0], z_data, rtol=1e-05)
+            np.testing.assert_allclose(res[1], a_data, rtol=1e-05)
 
 
 if __name__ == "__main__":

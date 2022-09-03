@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -46,8 +45,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   auto place = ctx.GetPlace();
   paddle::framework::TensorFromVector(std::vector<T>(3 * 1 * 7, 1), ctx, in_t);
-  paddle::framework::TensorFromVector(std::vector<int>({1, 10, 1}), ctx,
-                                      expand_times_t);
+  paddle::framework::TensorFromVector(
+      std::vector<int>({1, 10, 1}), ctx, expand_times_t);
 
   in_t->Resize(phi::make_ddim({3, 1, 7}));
   expand_times_t->Resize(phi::make_ddim({3}));
@@ -55,9 +54,11 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   out_t->mutable_data<T>(place);
 
   f::AttributeMap attrs = {{}};
-  auto op = f::OpRegistry::CreateOp(
-      "expand", {{"X", {"X"}}, {"ExpandTimes", {"ExpandTimes"}}},
-      {{"Out", {"Out"}}}, attrs);
+  auto op =
+      f::OpRegistry::CreateOp("expand",
+                              {{"X", {"X"}}, {"ExpandTimes", {"ExpandTimes"}}},
+                              {{"Out", {"Out"}}},
+                              attrs);
   op->Run(*scope, place);
   ctx.Wait();
 

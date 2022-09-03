@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/masked_select_kernel.h"
+
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
 #include <thrust/reverse.h>
@@ -19,34 +21,26 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/masked_select_kernel.h"
+#include "paddle/phi/kernels/funcs/select_impl.cu.h"
 
 namespace phi {
 
-__global__ void SetMaskArray(const bool* mask, int32_t* mask_array, int size) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (; idx < size; idx += blockDim.x * gridDim.x) {
-    if (mask[idx])
-      mask_array[idx] = 1;
-    else
-      mask_array[idx] = 0;
-  }
-}
+template <typename MT, typename InT, typename OutT>
+struct MaskedSelectFunctor {
+  HOSTDEVICE MaskedSelectFunctor() {}
 
-template <typename T>
-__global__ void SelectWithPrefixMask(const int32_t* mask_prefix_sum,
-                                     const bool* mask,
-                                     const T* input,
-                                     T* out,
-                                     int size) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (; idx < size; idx += blockDim.x * gridDim.x) {
-    if (mask[idx]) {
-      int index = mask_prefix_sum[idx];
-      out[index] = input[idx];
+  HOSTDEVICE inline void operator()(OutT* out,
+                                    const MT* mask,
+                                    const InT* value,
+                                    int num) {
+    int store_fix = 0;
+    for (int idx = 0; idx < num; idx++) {
+      if (mask[idx]) {
+        out[store_fix++] = value[idx];
+      }
     }
   }
-}
+};
 
 template <typename T, typename Context>
 void MaskedSelectKernel(const Context& dev_ctx,
@@ -68,42 +62,9 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         "value.",
                         input_dim,
                         mask_dim));
-
-  thrust::device_ptr<const bool> mask_dev_ptr =
-      thrust::device_pointer_cast(mask_data);
-  thrust::device_vector<T> mask_vec(mask_dev_ptr, mask_dev_ptr + mask_size);
-  auto out_size = thrust::count(mask_vec.begin(), mask_vec.end(), true);
-
-  DDim out_dim{out_size};
-  out->Resize(out_dim);
-  auto out_data = out->mutable_data<T>(dev_ctx.GetPlace());
-
-  DenseTensor mask_array;
-  DenseTensor mask_prefix_sum;
-  mask_array.Resize(mask_dim);
-  mask_prefix_sum.Resize(mask_dim);
-
-  int32_t* mask_array_data =
-      mask_array.mutable_data<int32_t>(dev_ctx.GetPlace());
-  int32_t* mask_prefix_sum_data =
-      mask_prefix_sum.mutable_data<int32_t>(dev_ctx.GetPlace());
-  int threads = 512;
-  int grid = (mask_size + threads - 1) / threads;
-  auto stream = dev_ctx.stream();
-  SetMaskArray<<<grid, threads, 0, stream>>>(
-      mask_data, mask_array_data, mask_size);
-
-  thrust::device_ptr<int32_t> mask_array_dev_ptr =
-      thrust::device_pointer_cast(mask_array_data);
-  thrust::device_vector<int32_t> mask_array_vec(mask_array_dev_ptr,
-                                                mask_array_dev_ptr + mask_size);
-  thrust::exclusive_scan(thrust::device,
-                         mask_array_vec.begin(),
-                         mask_array_vec.end(),
-                         mask_prefix_sum_data);
-
-  SelectWithPrefixMask<T><<<grid, threads, 0, stream>>>(
-      mask_prefix_sum_data, mask_data, input_data, out_data, mask_size);
+  using Functor = MaskedSelectFunctor<bool, T, T>;
+  phi::funcs::SelectKernel<bool, T, T, 1, Functor>(
+      dev_ctx, mask, x, out, Functor());
 }
 
 }  // namespace phi

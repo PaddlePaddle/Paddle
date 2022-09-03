@@ -36,10 +36,13 @@ _set_use_system_allocator(True)
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
 class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
+
     def __assert_close(self, tensor, np_array, msg, rtol=2e-02, atol=2):
-        self.assertTrue(
-            np.allclose(
-                np.array(tensor), np_array, rtol=rtol, atol=atol), msg)
+        np.testing.assert_allclose(np.array(tensor),
+                                   np_array,
+                                   rtol=rtol,
+                                   atol=atol,
+                                   err_msg=msg)
 
     def check_forward(self,
                       shape,
@@ -83,15 +86,13 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
             # scale and bias are fp32 and other vars are of bf16
             for name in ground_truth:
                 if name == 'x_bf16' or name == 'y_bf16':
-                    block.create_var(
-                        name=name,
-                        dtype='uint16',
-                        shape=ground_truth[name].shape)
+                    block.create_var(name=name,
+                                     dtype='uint16',
+                                     shape=ground_truth[name].shape)
                 else:
-                    block.create_var(
-                        name=name,
-                        dtype='float32',
-                        shape=ground_truth[name].shape)
+                    block.create_var(name=name,
+                                     dtype='float32',
+                                     shape=ground_truth[name].shape)
 
             inputs = {"X": block.var('x_bf16')}
             if with_scale_bias:
@@ -130,8 +131,9 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
                 self.__assert_close(variance, out[2], "variance", 1e-3)
 
     def test_check_forward_with_is_test(self):
-        self.check_forward(
-            shape=[2, 3, 4, 5], begin_norm_axis=3, with_is_test=True)
+        self.check_forward(shape=[2, 3, 4, 5],
+                           begin_norm_axis=3,
+                           with_is_test=True)
 
     # TODO (jczaja): Enable those to test when enabling training using bf16
     def test_check_forward_with_scale_and_bias(self):

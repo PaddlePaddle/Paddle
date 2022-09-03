@@ -17,6 +17,7 @@
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #endif
 

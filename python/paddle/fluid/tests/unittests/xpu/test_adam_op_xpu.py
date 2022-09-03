@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import sys
+
 sys.path.append("..")
 import unittest
 import numpy as np
@@ -28,6 +29,7 @@ from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types,
 
 
 class XPUTestAdamOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'adam'
         self.use_dynamic_create_class = False
@@ -50,9 +52,12 @@ class XPUTestAdamOp(XPUOpTestWrapper):
                 moment2_out = adam_step(self.inputs, self.attrs)
 
             self.outputs = {
-                'Moment1Out': moment1_out,
-                'Moment2Out': moment2_out,
-                'ParamOut': param_out,
+                'Moment1Out':
+                moment1_out,
+                'Moment2Out':
+                moment2_out,
+                'ParamOut':
+                param_out,
                 'Beta1PowOut':
                 np.array([self.beta1_pow]).astype("float32") * self.beta1,
                 'Beta2PowOut':
@@ -154,6 +159,57 @@ class XPUTestAdamOp(XPUOpTestWrapper):
             self.learning_rate = 0.001
             self.epsilon = 1e-8
 
+    class TestAdamOp7(TestAdamOp):
+        '''Test Adam Op with float16 accuracy
+        '''
+
+        def setUp(self):
+            self.init_dtype()
+            self.set_xpu()
+            self.op_type = "adam"
+            self.place = paddle.XPUPlace(0)
+            self.set_data()
+            self.set_attrs()
+            self.set_shape()
+            self.set_inputs()
+            self.set_steps()
+            param_out, moment1_out, \
+                moment2_out = adam_step(self.inputs, self.attrs)
+
+            self.outputs = {
+                'Moment1Out':
+                moment1_out,
+                'Moment2Out':
+                moment2_out,
+                'ParamOut':
+                param_out,
+                'Beta1PowOut':
+                np.array([self.beta1_pow]).astype("float16") * self.beta1,
+                'Beta2PowOut':
+                np.array([self.beta2_pow]).astype("float16") * self.beta2
+            }
+
+        def set_inputs(self):
+            param = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            grad = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            moment1 = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            # The second moment is positive
+            moment2 = np.random.random(self.shape).astype(self.dtype)
+
+            self.beta1_pow = self.beta1**10
+            self.beta2_pow = self.beta2**10
+
+            self.inputs = {
+                'Param': param,
+                'Grad': grad,
+                'Moment1': moment1,
+                'Moment2': moment2,
+                'LearningRate':
+                np.array([self.learning_rate]).astype("float16"),
+                'Beta1Pow': np.array([self.beta1_pow]).astype("float16"),
+                'Beta2Pow': np.array([self.beta2_pow]).astype("float16")
+            }
+
     class TestAdamOpMultipleSteps(TestAdamOp2):
         '''Test Adam Operator with supplied attributes
         '''
@@ -177,8 +233,8 @@ class XPUTestAdamOp(XPUOpTestWrapper):
                 }
 
                 # Verify output for this step
-                self.check_output_with_place(
-                    place=paddle.XPUPlace(0), atol=1e-2)
+                self.check_output_with_place(place=paddle.XPUPlace(0),
+                                             atol=1e-2)
 
                 # Output of this step becomes input for next step
                 self.inputs['Param'] = param_out
@@ -254,13 +310,13 @@ def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad,
     param_out = np.zeros(shape=[height, row_numel])
 
     def update_row(row_id, update_value):
-        moment1_out[row_id] = beta1 * moment1[row_id] + (1 - beta1
-                                                         ) * update_value
+        moment1_out[row_id] = beta1 * moment1[row_id] + (1 -
+                                                         beta1) * update_value
         moment2_out[row_id] = beta2 * moment2[row_id] + (
             1 - beta2) * np.square(update_value)
         lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
-        param_out[row_id] = param[row_id] - lr_t * (moment1_out[row_id] / (
-            np.sqrt(moment2_out[row_id]) + epsilon))
+        param_out[row_id] = param[row_id] - lr_t * (
+            moment1_out[row_id] / (np.sqrt(moment2_out[row_id]) + epsilon))
 
     if lazy_mode:
         for idx, row_id in enumerate(rows):
@@ -276,6 +332,7 @@ def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad,
 
 
 class TestSparseAdamOp(unittest.TestCase):
+
     def setup(self, scope, place, lazy_mode):
         beta1 = 0.78
         beta2 = 0.836
@@ -364,6 +421,60 @@ class TestSparseAdamOp(unittest.TestCase):
         version_str = "xpu2" if xpu_version == core.XPUVersion.XPU2 else "xpu1"
         if "xpu2" == version_str:
             self.check_with_place(paddle.XPUPlace(0), False)
+
+
+class TestSparseAdamOp1(TestSparseAdamOp):
+
+    def setup(self, scope, place, lazy_mode):
+        beta1 = 0.78
+        beta2 = 0.836
+        epsilon = 1e-4
+        beta1_pow = np.array([beta1**10]).astype("float16")
+        beta2_pow = np.array([beta2**10]).astype("float16")
+
+        height = 10
+        rows = [0, 4, 7]
+        self.rows = rows
+        row_numel = 12
+        self.row_numel = row_numel
+        self.dense_inputs = {
+            "Param": np.full((height, row_numel), 5.0).astype("float16"),
+            "Moment1": np.full((height, row_numel), 5.0).astype("float16"),
+            "Moment2": np.full((height, row_numel), 5.0).astype("float16"),
+            'Beta1Pow': beta1_pow,
+            'Beta2Pow': beta2_pow,
+            "LearningRate": np.full((1), 2.0).astype("float16")
+        }
+        self.init_output = np.full((height, row_numel), 0.0).astype("float16")
+        self.attrs = {
+            'epsilon': epsilon,
+            'beta1': beta1,
+            'beta2': beta2,
+            'min_row_size_to_use_multithread': 2
+        }
+
+        grad_selected_rows = scope.var('Grad').get_selected_rows()
+        grad_selected_rows.set_height(height)
+        grad_selected_rows.set_rows(rows)
+        np_array = np.ones((len(rows), row_numel)).astype("float16")
+        np_array[0, 0] = 2.0
+        np_array[2, 8] = 4.0
+
+        grad_tensor = grad_selected_rows.get_tensor()
+        grad_tensor.set(np_array, place)
+
+        self.sparse_inputs = ["Grad"]
+
+        param_out, mom1, mom2 = adam_step_sparse(self.dense_inputs, self.attrs,
+                                                 height, rows, row_numel,
+                                                 np_array, lazy_mode)
+        self.outputs = {
+            "ParamOut": param_out,
+            "Moment1Out": mom1,
+            "Moment2Out": mom2,
+            'Beta1PowOut': beta1_pow * beta1,
+            'Beta2PowOut': beta2_pow * beta2
+        }
 
 
 support_types = get_xpu_op_support_types('adam')

@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -57,13 +56,15 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // run
   int axis = 1;
   f::AttributeMap attrs = {
-      {"axis", axis},        {"use_cudnn", false},
-      {"use_mkldnn", false}, {"mkldnn_data_type", std::string("float32")},
+      {"axis", axis},
+      {"use_cudnn", false},
+      {"use_mkldnn", false},
+      {"mkldnn_data_type", std::string("float32")},
       {"is_test", false},
   };
 
-  auto op = f::OpRegistry::CreateOp("softmax", {{"X", {"X"}}},
-                                    {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      "softmax", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
   ctx.Wait();
@@ -131,7 +132,8 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   };
   auto op = f::OpRegistry::CreateOp("softmax_grad",
                                     {{"Out", {"Out"}}, {"Out@GRAD", {"DOut"}}},
-                                    {{"X@GRAD", {"DX"}}}, attrs);
+                                    {{"X@GRAD", {"DX"}}},
+                                    attrs);
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);

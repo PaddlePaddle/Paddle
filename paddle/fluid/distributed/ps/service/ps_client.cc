@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/service/ps_client.h"
+
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
+#include "paddle/fluid/distributed/ps/service/coordinator_client.h"
 #include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
 #include "paddle/fluid/distributed/ps/service/ps_local_client.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
@@ -24,11 +26,13 @@ namespace distributed {
 REGISTER_PSCORE_CLASS(PSClient, BrpcPsClient);
 REGISTER_PSCORE_CLASS(PSClient, PsLocalClient);
 REGISTER_PSCORE_CLASS(PSClient, GraphBrpcClient);
+REGISTER_PSCORE_CLASS(PSClient, CoordinatorClient);
 
-int32_t PSClient::configure(
+int32_t PSClient::Configure(  // called in FleetWrapper::InitWorker
     const PSParameter &config,
     const std::map<uint64_t, std::vector<paddle::distributed::Region>> &regions,
-    PSEnvironment &env, size_t client_id) {
+    PSEnvironment &env,
+    size_t client_id) {
   _env = &env;
   _config = config;
   _dense_pull_regions = regions;
@@ -42,19 +46,19 @@ int32_t PSClient::configure(
 
   const auto &work_param = _config.worker_param().downpour_worker_param();
 
-  for (size_t i = 0; i < work_param.downpour_table_param_size(); ++i) {
+  for (int i = 0; i < work_param.downpour_table_param_size(); ++i) {
     auto *accessor = CREATE_PSCORE_CLASS(
         ValueAccessor,
         work_param.downpour_table_param(i).accessor().accessor_class());
-    accessor->configure(work_param.downpour_table_param(i).accessor());
-    accessor->initialize();
+    accessor->Configure(work_param.downpour_table_param(i).accessor());
+    accessor->Initialize();
     _table_accessors[work_param.downpour_table_param(i).table_id()].reset(
         accessor);
   }
-  return initialize();
+  return Initialize();
 }
 
-PSClient *PSClientFactory::create(const PSParameter &ps_config) {
+PSClient *PSClientFactory::Create(const PSParameter &ps_config) {
   const auto &config = ps_config.server_param();
   if (!config.has_downpour_server_param()) {
     LOG(ERROR) << "miss downpour_server_param in ServerParameter";
@@ -81,7 +85,7 @@ PSClient *PSClientFactory::create(const PSParameter &ps_config) {
     return NULL;
   }
 
-  TableManager::instance().initialize();
+  TableManager::Instance().Initialize();
   VLOG(3) << "Create PSClient[" << service_param.client_class() << "] success";
   return client;
 }

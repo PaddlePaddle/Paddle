@@ -23,6 +23,7 @@ import paddle.fluid.framework as framework
 
 
 class TestStaticDeviceManage(unittest.TestCase):
+
     def _test_device(self, device_name, device_class):
         paddle.set_device(device_name)
 
@@ -55,6 +56,7 @@ class TestStaticDeviceManage(unittest.TestCase):
 
 
 class TestImperativeDeviceManage(unittest.TestCase):
+
     def test_cpu(self):
         with fluid.dygraph.guard():
             paddle.set_device('cpu')

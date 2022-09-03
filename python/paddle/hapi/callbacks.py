@@ -68,6 +68,7 @@ def config_callbacks(callbacks=None,
 
 
 class CallbackList(object):
+
     def __init__(self, callbacks=None):
         # copy
         self.callbacks = [c for c in callbacks]
@@ -441,8 +442,8 @@ class ProgBarLogger(Callback):
             'samples': 0,
         }
 
-        self.eval_progbar = ProgressBar(
-            num=self.eval_steps, verbose=self.verbose)
+        self.eval_progbar = ProgressBar(num=self.eval_steps,
+                                        verbose=self.verbose)
         if self._is_print():
             print('Eval begin...')
 
@@ -485,8 +486,8 @@ class ProgBarLogger(Callback):
             'samples': 0,
         }
 
-        self.test_progbar = ProgressBar(
-            num=self.test_steps, verbose=self.verbose)
+        self.test_progbar = ProgressBar(num=self.test_steps,
+                                        verbose=self.verbose)
         if self._is_print():
             print('Predict begin...')
 
@@ -925,8 +926,9 @@ class VisualDL(Callback):
                 else:
                     continue
 
-                self.writer.add_scalar(
-                    tag=temp_tag, step=total_step, value=temp_value)
+                self.writer.add_scalar(tag=temp_tag,
+                                       step=total_step,
+                                       value=temp_value)
 
     def on_train_batch_end(self, step, logs=None):
         logs = logs or {}
@@ -1057,8 +1059,8 @@ class ReduceLROnPlateau(Callback):
             warnings.warn('Learning rate reduction mode %s is unknown, '
                           'fallback to auto mode.' % self.mode)
             self.mode = 'auto'
-        if (self.mode == 'min' or
-            (self.mode == 'auto' and 'acc' not in self.monitor)):
+        if (self.mode == 'min'
+                or (self.mode == 'auto' and 'acc' not in self.monitor)):
             self.monitor_op = lambda a, b: np.less(a, b - self.min_delta)
             self.best = np.Inf
         else:
@@ -1085,8 +1087,8 @@ class ReduceLROnPlateau(Callback):
                     return
             except Exception as e:
                 warnings.warn(
-                    'There are something wrong when get learning_rate from optimizer: {}.'.
-                    format(e))
+                    'There are something wrong when get learning_rate from optimizer: {}.'
+                    .format(e))
                 return
 
         current = logs[self.monitor]

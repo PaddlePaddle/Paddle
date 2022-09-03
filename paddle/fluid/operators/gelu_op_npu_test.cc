@@ -24,14 +24,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
-USE_OP(gelu);
+USE_OP_ITSELF(gelu);
 USE_OP_DEVICE_KERNEL(gelu, NPU);
 
 template <typename T>
@@ -58,8 +57,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // run
   auto place = ctx.GetPlace();
 
-  auto op = f::OpRegistry::CreateOp("gelu", {{"X", {"X"}}}, {{"Out", {"Out"}}},
-                                    attrs);
+  auto op = f::OpRegistry::CreateOp(
+      "gelu", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
   op->Run(*scope, place);
 
   ctx.Wait();
@@ -124,7 +123,8 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
 
   auto op = f::OpRegistry::CreateOp("gelu_grad",
                                     {{"Out@GRAD", {"DOut"}}, {"X", {"X"}}},
-                                    {{"X@GRAD", {"DX"}}}, attrs);
+                                    {{"X@GRAD", {"DX"}}},
+                                    attrs);
   op->Run(*scope, place);
 
   ctx.Wait();

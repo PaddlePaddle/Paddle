@@ -23,6 +23,7 @@ if fluid.is_compiled_with_cuda():
 
 
 class TestBase(unittest.TestCase):
+
     def setUp(self):
         if fluid.is_compiled_with_cuda():
             self._limit = fluid.core.globals()['FLAGS_gpu_memory_limit_mb']
@@ -35,8 +36,7 @@ class TestBase(unittest.TestCase):
 
         place = fluid.CUDAPlace(0)
         t = fluid.LoDTensor()
-        t.set(np.ndarray(
-            [int(self._limit / 2), other_dim], dtype='float32'),
+        t.set(np.ndarray([int(self._limit / 2), other_dim], dtype='float32'),
               place)
         del t
 

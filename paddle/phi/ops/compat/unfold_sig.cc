@@ -18,9 +18,9 @@ namespace phi {
 
 KernelSignature UnfoldGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("unfold_grad",
-                         {"X", GradVarName("Y")},
+                         {"X", "Y@GRAD"},
                          {"kernel_sizes", "strides", "paddings", "dilations"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

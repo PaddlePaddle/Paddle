@@ -18,16 +18,18 @@ import numpy as np
 import paddle
 import scipy.stats
 
-from config import (ATOL, DEVICES, RTOL, TEST_CASE_NAME, parameterize, place,
-                    xrand)
+from config import ATOL, DEVICES, RTOL
+from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 
+np.random.seed(2022)
 paddle.enable_static()
 
 
 @place(DEVICES)
-@parameterize((TEST_CASE_NAME, 'concentration'),
-              [('test-one-dim', np.random.rand(89) + 5.0)])
+@parameterize_cls((TEST_CASE_NAME, 'concentration'),
+                  [('test-one-dim', np.random.rand(89) + 5.0)])
 class TestDirichlet(unittest.TestCase):
+
     def setUp(self):
         self.program = paddle.static.Program()
         self.executor = paddle.static.Executor()
@@ -95,10 +97,9 @@ class TestDirichlet(unittest.TestCase):
 
     def test_entropy(self):
         with paddle.static.program_guard(self.program):
-            [out] = self.executor.run(
-                self.program,
-                feed=self.feeds,
-                fetch_list=[self._paddle_diric.entropy()])
+            [out] = self.executor.run(self.program,
+                                      feed=self.feeds,
+                                      fetch_list=[self._paddle_diric.entropy()])
             np.testing.assert_allclose(
                 out,
                 scipy.stats.dirichlet.entropy(self.concentration),

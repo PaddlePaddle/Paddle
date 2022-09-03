@@ -15,6 +15,7 @@
 #pragma once
 
 #include <unsupported/Eigen/SpecialFunctions>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
@@ -38,8 +39,8 @@ struct DigammaGradFunctor {
 
 template <typename T, typename Context>
 void DigammaGradKernel(const Context& ctx,
-                       const DenseTensor& out_grad,
                        const DenseTensor& x,
+                       const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
   x_grad->mutable_data<T>(ctx.GetPlace());
 

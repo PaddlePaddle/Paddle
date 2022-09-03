@@ -20,14 +20,13 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/framework/generator.h"
+#include "paddle/phi/kernels/funcs/truncated_normal.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void TruncatedGaussianRandomKernel(const Context& dev_ctx,
-                                   const ScalarArray& shape,
+                                   const std::vector<int>& shape,
                                    float mean,
                                    float std,
                                    int seed,
@@ -42,7 +41,13 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
   TruncatedNormal<T> truncated_normal(mean, std);
   int64_t size = tensor->numel();
 
-  auto engine = paddle::framework::GetCPURandomEngine(seed);
+  std::shared_ptr<std::mt19937_64> engine;
+  if (seed) {
+    engine = std::make_shared<std::mt19937_64>();
+    engine->seed(seed);
+  } else {
+    engine = dev_ctx.GetGenerator()->GetCPUEngine();
+  }
   for (int64_t i = 0; i < size; ++i) {
     data[i] = truncated_normal(dist(*engine));
   }

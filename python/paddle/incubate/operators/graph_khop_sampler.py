@@ -14,10 +14,10 @@
 
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 
 def graph_khop_sampler(row,
@@ -37,10 +37,6 @@ def graph_khop_sampler(row,
     for sampling. And the `input_nodes` means the nodes we need to sample neighbors,
     and `sample_sizes` means the number of neighbors and number of layers we want
     to sample. 
-
-    **Note**: 
-        Currently the API will reindex the output edges after finishing sampling. We
-    will add a choice or a new API for whether to reindex the edges in the near future.
 
     Args:
         row (Tensor): One of the components of the CSC format of the input graph, and 
@@ -89,20 +85,20 @@ def graph_khop_sampler(row,
 
     """
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         if return_eids:
             if sorted_eids is None:
                 raise ValueError(f"`sorted_eid` should not be None "
                                  f"if return_eids is True.")
             edge_src, edge_dst, sample_index, reindex_nodes, edge_eids = \
-                _C_ops.graph_khop_sampler(row, sorted_eids,
+                _legacy_C_ops.graph_khop_sampler(row, sorted_eids,
                                               colptr, input_nodes,
                                               "sample_sizes", sample_sizes,
                                               "return_eids", True)
             return edge_src, edge_dst, sample_index, reindex_nodes, edge_eids
         else:
             edge_src, edge_dst, sample_index, reindex_nodes, _ = \
-                _C_ops.graph_khop_sampler(row, None,
+                _legacy_C_ops.graph_khop_sampler(row, None,
                                               colptr, input_nodes,
                                               "sample_sizes", sample_sizes,
                                               "return_eids", False)
@@ -129,23 +125,24 @@ def graph_khop_sampler(row,
     sample_index = helper.create_variable_for_type_inference(dtype=row.dtype)
     reindex_nodes = helper.create_variable_for_type_inference(dtype=row.dtype)
     edge_eids = helper.create_variable_for_type_inference(dtype=row.dtype)
-    helper.append_op(
-        type="graph_khop_sampler",
-        inputs={
-            "Row": row,
-            "Eids": sorted_eids,
-            "Col_Ptr": colptr,
-            "X": input_nodes
-        },
-        outputs={
-            "Out_Src": edge_src,
-            "Out_Dst": edge_dst,
-            "Sample_Index": sample_index,
-            "Reindex_X": reindex_nodes,
-            "Out_Eids": edge_eids
-        },
-        attrs={"sample_sizes": sample_sizes,
-               "return_eids": return_eids})
+    helper.append_op(type="graph_khop_sampler",
+                     inputs={
+                         "Row": row,
+                         "Eids": sorted_eids,
+                         "Col_Ptr": colptr,
+                         "X": input_nodes
+                     },
+                     outputs={
+                         "Out_Src": edge_src,
+                         "Out_Dst": edge_dst,
+                         "Sample_Index": sample_index,
+                         "Reindex_X": reindex_nodes,
+                         "Out_Eids": edge_eids
+                     },
+                     attrs={
+                         "sample_sizes": sample_sizes,
+                         "return_eids": return_eids
+                     })
     if return_eids:
         return edge_src, edge_dst, sample_index, reindex_nodes, edge_eids
     else:

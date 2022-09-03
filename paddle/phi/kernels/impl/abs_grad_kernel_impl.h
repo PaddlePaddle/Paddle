@@ -47,7 +47,7 @@ void AbsGradKernel(const Context& ctx,
                    const DenseTensor& dout,
                    DenseTensor* dx) {
   auto numel = dout.numel();
-  auto* dout_data = dout.data<phi::funcs::Real<T>>();
+  auto* dout_data = dout.data<phi::dtype::Real<T>>();
   auto* x_data = x.data<T>();
 
   ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));

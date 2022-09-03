@@ -12,10 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/math/sequence_pooling.h"
+
 #include <string>
 
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/sequence_pooling.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -25,46 +26,60 @@ namespace math {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T, bool is_test>
 class MaxSeqPoolFunctor {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::LoDTensor& input, T pad_value,
-                  framework::LoDTensor* output, framework::Tensor* index) {
+  void operator()(const phi::CPUContext& context,
+                  const framework::LoDTensor& input,
+                  T pad_value,
+                  framework::LoDTensor* output,
+                  framework::Tensor* index) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     auto idx_dims = index->dims();
-    PADDLE_ENFORCE_GT(in_dims.size(), 1,
+    PADDLE_ENFORCE_GT(in_dims.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "The rank of input shall be greater than 1, but got "
                           "the rank is %ld. Please check the input value",
                           in_dims.size()));
-    PADDLE_ENFORCE_GT(out_dims.size(), 1,
+    PADDLE_ENFORCE_GT(out_dims.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "The rank of output shall be greater than 1, but got "
                           "the rank is %ld. Please check the input value",
                           out_dims.size()));
     for (int64_t i = 1; i < in_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(
-          in_dims[i], out_dims[i],
+          in_dims[i],
+          out_dims[i],
           platform::errors::InvalidArgument(
               "The dimension of input and output shall be same. Expected %ld "
               "== %ld, but got %ld != %ld. Please check the input value.",
-              in_dims[i], out_dims[i], in_dims[i], out_dims[i]));
+              in_dims[i],
+              out_dims[i],
+              in_dims[i],
+              out_dims[i]));
     }
     PADDLE_ENFORCE_EQ(
-        idx_dims, out_dims,
+        idx_dims,
+        out_dims,
         platform::errors::InvalidArgument(
             "The dimension of index and output shall be same. Expected %ld == "
             "%ld, but got %ld != %ld. Please check the input value.",
-            idx_dims, out_dims, idx_dims, out_dims));
+            idx_dims,
+            out_dims,
+            idx_dims,
+            out_dims));
 
     auto lod_level = input.lod().size();
     auto starts = input.lod()[lod_level - 1];
@@ -102,28 +117,36 @@ class MaxSeqPoolFunctor {
 template <typename T>
 class MaxSeqPoolFunctor<T, true> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::LoDTensor& input, T pad_value,
-                  framework::LoDTensor* output, framework::Tensor* index) {
+  void operator()(const phi::CPUContext& context,
+                  const framework::LoDTensor& input,
+                  T pad_value,
+                  framework::LoDTensor* output,
+                  framework::Tensor* index) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
-    PADDLE_ENFORCE_GT(in_dims.size(), 1,
+    PADDLE_ENFORCE_GT(in_dims.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "The rank of input shall be greater than 1, but got "
                           "%ld <= 1. Please check the input value.",
                           in_dims.size()));
-    PADDLE_ENFORCE_GT(out_dims.size(), 1,
+    PADDLE_ENFORCE_GT(out_dims.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "The rank of output shall be greater than 1, but got "
                           "%ld <= 1. Please check the input value.",
                           out_dims.size()));
     for (int64_t i = 1; i < in_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(
-          in_dims[i], out_dims[i],
+          in_dims[i],
+          out_dims[i],
           platform::errors::InvalidArgument(
               "The dimension of input and output shall be same. Expected %ld "
               "== %ld, but got %ld != %ld. Please check the input value.",
-              in_dims[i], out_dims[i], in_dims[i], out_dims[i]));
+              in_dims[i],
+              out_dims[i],
+              in_dims[i],
+              out_dims[i]));
     }
 
     auto lod_level = input.lod().size();
@@ -140,8 +163,8 @@ class MaxSeqPoolFunctor<T, true> {
         }
         continue;
       }
-      std::memcpy(&out_data[i * dim], &in_data[starts[i] * dim],
-                  dim * sizeof(T));
+      std::memcpy(
+          &out_data[i * dim], &in_data[starts[i] * dim], dim * sizeof(T));
       for (size_t j = starts[i] + 1; j < starts[i + 1]; ++j) {
         for (int64_t k = 0; k < dim; ++k) {
           if (in_data[j * dim + k] > out_data[i * dim + k]) {
@@ -155,43 +178,53 @@ class MaxSeqPoolFunctor<T, true> {
 template <typename T>
 class MaxSeqPoolGradFunctor {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const framework::LoDTensor& out_grad,
                   const framework::Tensor& index,
                   framework::LoDTensor* in_grad) {
     auto og_dims = out_grad.dims();
     auto ig_dims = in_grad->dims();
     auto idx_dims = index.dims();
-    PADDLE_ENFORCE_GT(og_dims.size(), 1,
+    PADDLE_ENFORCE_GT(og_dims.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "The rank of output@Grad shall be greater than 1, "
                           "but got %ld <= 1. Please check the input value.",
                           og_dims.size()));
-    PADDLE_ENFORCE_GT(ig_dims.size(), 1,
+    PADDLE_ENFORCE_GT(ig_dims.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "The rank of input@Grad shall be greater than 1, but "
                           "got %ld <= 1. Please check the input value.",
                           ig_dims.size()));
     for (int64_t i = 1; i < og_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(og_dims[i], ig_dims[i],
+      PADDLE_ENFORCE_EQ(og_dims[i],
+                        ig_dims[i],
                         platform::errors::InvalidArgument(
                             "The dimension of input@Grad and output@Grad shall "
                             "be same. Expected %ld == %ld, but got %ld != %ld. "
                             "Please check the input value.",
-                            og_dims[i], ig_dims[i], og_dims[i], ig_dims[i]));
+                            og_dims[i],
+                            ig_dims[i],
+                            og_dims[i],
+                            ig_dims[i]));
     }
     PADDLE_ENFORCE_EQ(
-        idx_dims, og_dims,
+        idx_dims,
+        og_dims,
         platform::errors::InvalidArgument(
             "The dimension of index and output@Grad shall be same. Expected "
             "%ld == %ld, but got %ld != %ld. Please check the input value.",
-            idx_dims, og_dims, idx_dims, og_dims));
+            idx_dims,
+            og_dims,
+            idx_dims,
+            og_dims));
 
     const T* og_data = out_grad.data<T>();
     const int* max_index = index.data<int>();
     T* ig_data = in_grad->data<T>();
 
-    phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
+    phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
     set_zero(context, in_grad, static_cast<T>(0.0));
     int64_t num_seq = og_dims[0];
     int64_t dim = out_grad.numel() / num_seq;
@@ -208,8 +241,9 @@ class MaxSeqPoolGradFunctor {
 template <typename T>
 class LastSeqPoolFunctor {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::LoDTensor& input, T pad_value,
+  void operator()(const phi::CPUContext& context,
+                  const framework::LoDTensor& input,
+                  T pad_value,
                   framework::LoDTensor* output) {
     // Create pointers to input and output data
     auto* in_data = input.data<T>();
@@ -241,8 +275,9 @@ class LastSeqPoolFunctor {
 template <typename T>
 class FirstSeqPoolFunctor {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::LoDTensor& input, T pad_value,
+  void operator()(const phi::CPUContext& context,
+                  const framework::LoDTensor& input,
+                  T pad_value,
                   framework::LoDTensor* output) {
     // Create pointers to input and output data
     auto* in_data = input.data<T>();
@@ -274,22 +309,26 @@ class FirstSeqPoolFunctor {
 template <typename T>
 class SumSeqPoolGradFunctor {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const framework::LoDTensor& out_grad,
                   framework::LoDTensor* in_grad) {
     auto lod_level = in_grad->lod().size();
     auto lod = in_grad->lod()[lod_level - 1];
     int64_t out_w = out_grad.numel() / out_grad.dims()[0];
     int64_t in_w = in_grad->numel() / in_grad->dims()[0];
-    PADDLE_ENFORCE_EQ(in_w, out_w,
+    PADDLE_ENFORCE_EQ(in_w,
+                      out_w,
                       platform::errors::InvalidArgument(
                           "The feature size of input@Grad and output@Grad "
                           "shall be same. Expected %ld == %ld, but got %ld != "
                           "%ld. Please check the input value.",
-                          in_w, out_w, in_w, out_w));
+                          in_w,
+                          out_w,
+                          in_w,
+                          out_w));
     const T* out_g_data = out_grad.data<T>();
     T* in_g_data = in_grad->mutable_data<T>(context.GetPlace());
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
       if (h == 0) continue;
@@ -304,13 +343,15 @@ class SumSeqPoolGradFunctor {
 };
 
 template <typename T>
-class SequencePoolFunctor<platform::CPUDeviceContext, T> {
+class SequencePoolFunctor<phi::CPUContext, T> {
  public:
   /* max pool has index output */
-  void operator()(const platform::CPUDeviceContext& context,
-                  const std::string pooltype, T pad_value,
+  void operator()(const phi::CPUContext& context,
+                  const std::string pooltype,
+                  T pad_value,
                   const framework::LoDTensor& input,
-                  framework::LoDTensor* output, bool is_test,
+                  framework::LoDTensor* output,
+                  bool is_test,
                   framework::Tensor* index = nullptr) {
     if (pooltype == "MAX") {
       if (is_test) {
@@ -337,7 +378,8 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
     if (pooltype == "SUM") {
       auto place = context.GetPlace();
       PADDLE_ENFORCE_EQ(
-          platform::is_cpu_place(place), true,
+          platform::is_cpu_place(place),
+          true,
           platform::errors::InvalidArgument(
               "Sequence_pool should run on CPU Device when pooltype is SUM"));
       const T* src = input.data<T>();
@@ -393,9 +435,9 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
 };
 
 template <typename T>
-class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
+class SequencePoolGradFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const std::string pooltype,
                   const framework::LoDTensor& out_grad,
                   framework::LoDTensor* in_grad,
@@ -409,7 +451,7 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
 
     if (pooltype == "LAST" || pooltype == "FIRST") {
       // set X@Grad be zero at first when pooltype is LAST/FIRST
-      phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
+      phi::funcs::SetConstant<phi::CPUContext, T> functor;
       functor(context, in_grad, 0);
     }
 
@@ -453,10 +495,10 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template class SequencePoolFunctor<platform::CPUDeviceContext, float>;
-template class SequencePoolFunctor<platform::CPUDeviceContext, double>;
-template class SequencePoolGradFunctor<platform::CPUDeviceContext, float>;
-template class SequencePoolGradFunctor<platform::CPUDeviceContext, double>;
+template class SequencePoolFunctor<phi::CPUContext, float>;
+template class SequencePoolFunctor<phi::CPUContext, double>;
+template class SequencePoolGradFunctor<phi::CPUContext, float>;
+template class SequencePoolGradFunctor<phi::CPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

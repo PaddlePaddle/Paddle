@@ -24,14 +24,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
-USE_OP(transpose2);
+USE_OP_ITSELF(transpose2);
 USE_OP_DEVICE_KERNEL(transpose2, NPU);
 
 template <typename T>
@@ -47,8 +46,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   int dim0 = 2;
   int dim1 = 3;
-  paddle::framework::TensorFromVector(std::vector<T>({0, 1, 2, 3, 4, 5}), ctx,
-                                      x_t);
+  paddle::framework::TensorFromVector(
+      std::vector<T>({0, 1, 2, 3, 4, 5}), ctx, x_t);
   ctx.Wait();
   x_t->Resize({dim0, dim1});
   out_t->Resize({dim0, dim1});
@@ -59,7 +58,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   xshape_t->mutable_data<T>(place);
   f::AttributeMap attrs = {{"axis", std::vector<int>({1, 0})},
                            {"data_format", std::string("AnyLayout")}};
-  auto op = f::OpRegistry::CreateOp("transpose2", {{"X", {"X"}}},
+  auto op = f::OpRegistry::CreateOp("transpose2",
+                                    {{"X", {"X"}}},
                                     {{"Out", {"Out"}}, {"XShape", {"XShape"}}},
                                     attrs);
   ctx.Wait();
@@ -93,13 +93,14 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   int dim1 = 3;
   auto place = ctx.GetPlace();
 
-  paddle::framework::TensorFromVector(std::vector<T>({0, 1, 2, 3, 4, 5}), ctx,
-                                      out_grad_t);
+  paddle::framework::TensorFromVector(
+      std::vector<T>({0, 1, 2, 3, 4, 5}), ctx, out_grad_t);
   ctx.Wait();
 
   x_grad_t->Resize({dim0, dim1});
   xshape_t->Resize(
-      {0, dim0,
+      {0,
+       dim0,
        dim1});  // NOTE(zhiqiu): 0 is needed, see its infershape function
   out_grad_t->Resize({dim0, dim1});
 
@@ -107,8 +108,10 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
                            {"data_format", std::string("AnyLayout")}};
 
   auto op = f::OpRegistry::CreateOp(
-      "transpose2_grad", {{"Out@GRAD", {"Out@GRAD"}}, {"XShape", {"XShape"}}},
-      {{"X@GRAD", {"X@GRAD"}}}, attrs);
+      "transpose2_grad",
+      {{"Out@GRAD", {"Out@GRAD"}}, {"XShape", {"XShape"}}},
+      {{"X@GRAD", {"X@GRAD"}}},
+      attrs);
 
   op->Run(*scope, place);
   ctx.Wait();

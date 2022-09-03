@@ -32,30 +32,10 @@ const std::string GenerateOpName() {
 
 const std::string CreateOpIdentifyId(Node *node) {
   // format:
-  //   if has custom op_namescope:
-  //      {op_namescope}/op_type/_gen_*
-  //   else:
-  //     {op_type}/{out_var0}/{out_var1}/.../_gen_*
+  //   op_type/_gen_*
   // this name will be used as op name when exporting onnx model from popart
   auto op_type = node->Name();
-  std::string op_namescope;
-  if (node->Op()->HasAttr("op_namescope")) {
-    op_namescope =
-        BOOST_GET_CONST(std::string, node->Op()->GetAttr("op_namescope"));
-  } else {
-    op_namescope = "/";
-  }
-
-  if (op_namescope != "/") {
-    return {op_namescope + op_type + "/" + GenerateOpName()};
-  } else {
-    std::string op_out = "";
-    for (auto *out_node : node->outputs) {
-      op_out += "/";
-      op_out += out_node->Name();
-    }
-    return {op_type + op_out + "/" + GenerateOpName()};
-  }
+  return {op_type + "/" + GenerateOpName()};
 }
 
 Node *MakeVarNode(Graph *graph, Node *node) {
@@ -66,16 +46,29 @@ Node *MakeVarNode(Graph *graph, Node *node) {
   return var;
 }
 
-Node *MakeOpNode(Graph *graph, Node *node, const std::string &type,
+Node *MakeOpNode(Graph *graph,
+                 Node *node,
+                 const std::string &type,
                  const std::vector<Node *> &inputs,
                  const std::vector<Node *> &outputs) {
   auto op_desc = std::make_unique<framework::OpDesc>();
   op_desc->SetType(type);
   auto op = graph->CreateOpNode(op_desc.get());
 
+  // inputs
+  std::vector<std::string> input_names;
   for (auto *in : inputs) {
-    ConnectNodes(in, op);
+    if (in != nullptr) {
+      ConnectNodes(in, op);
+      input_names.push_back(in->Name());
+    } else {
+      input_names.push_back(std::string(""));
+    }
   }
+  op->Op()->SetInput("__inputs__", input_names);
+
+  // outputs
+  std::vector<std::string> output_names;
   if (outputs.empty()) {
     auto var = MakeVarNode(graph, node);
     ConnectNodes(op, var);
@@ -84,14 +77,6 @@ Node *MakeOpNode(Graph *graph, Node *node, const std::string &type,
       ConnectNodes(op, out);
     }
   }
-
-  // i/o
-  std::vector<std::string> input_names;
-  for (auto node : op->inputs) {
-    input_names.push_back(node->Name());
-  }
-  op->Op()->SetInput("__inputs__", input_names);
-  std::vector<std::string> output_names;
   for (auto node : op->outputs) {
     output_names.push_back(node->Name());
   }
@@ -101,7 +86,9 @@ Node *MakeOpNode(Graph *graph, Node *node, const std::string &type,
   return op;
 }
 
-Node *CreateBaseOp(Graph *graph, Node *node, const std::string &type,
+Node *CreateBaseOp(Graph *graph,
+                   Node *node,
+                   const std::string &type,
                    const std::vector<Node *> &inputs,
                    const std::vector<Node *> &outputs,
                    const AttributeMap &attrs) {
@@ -122,6 +109,12 @@ Node *CreateBaseOp(Graph *graph, Node *node, const std::string &type,
   if (node->Op()->HasAttr(sMatmulSerializeMode)) {
     CopyOpAttr(sMatmulSerializeMode, node->Op(), new_node->Op());
   }
+  if (node->Op()->HasAttr(sAvailMemAttribute)) {
+    CopyOpAttr(sAvailMemAttribute, node->Op(), new_node->Op());
+  }
+  if (node->Op()->HasAttr(sOpNamescope)) {
+    CopyOpAttr(sOpNamescope, node->Op(), new_node->Op());
+  }
   {
     new_node->Op()->SetAttr(sOpIdentifyIdAttr, CreateOpIdentifyId(node));
     new_node->Op()->Flush();
@@ -130,23 +123,50 @@ Node *CreateBaseOp(Graph *graph, Node *node, const std::string &type,
   return new_node;
 }
 
-Node *CreateConst(Graph *graph, Node *node, const std::vector<Node *> &inputs,
+Node *CreateConst(Graph *graph,
+                  Node *node,
+                  const std::vector<Node *> &inputs,
                   const std::vector<Node *> &outputs,
                   const AttributeMap &attrs) {
   return CreateBaseOp(graph, node, "popart_constant", inputs, outputs, attrs);
 }
 
-Node *CreateCast(Graph *graph, Node *node, const std::vector<Node *> &inputs,
-                 const std::vector<Node *> &outputs, const int otype) {
-  auto to = VarType2PopStr(otype);
-  return CreateBaseOp(graph, node, "popart_cast", inputs, outputs,
-                      {{"to", to}});
+Node *CreateCast(Graph *graph,
+                 Node *node,
+                 const std::vector<Node *> &inputs,
+                 const std::vector<Node *> &outputs,
+                 const VarType::Type otype) {
+  auto to = VarType2PopartStr(otype);
+  return CreateBaseOp(
+      graph, node, "popart_cast", inputs, outputs, {{"to", to}});
 }
 
-Node *CreateGemm(Graph *graph, Node *node, const std::vector<Node *> &inputs,
-                 const std::vector<Node *> &outputs, int64_t transA,
-                 int64_t transB, float alpha, float beta) {
-  return CreateBaseOp(graph, node, "popart_gemm", inputs, outputs,
+Node *CreateIdentityLossOp(Graph *graph,
+                           Node *node,
+                           const std::vector<Node *> &inputs,
+                           const std::vector<Node *> &outputs,
+                           int reduction) {
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_identity_loss",
+                      inputs,
+                      outputs,
+                      {{"reduction", reduction}});
+}
+
+Node *CreateGemm(Graph *graph,
+                 Node *node,
+                 const std::vector<Node *> &inputs,
+                 const std::vector<Node *> &outputs,
+                 int64_t transA,
+                 int64_t transB,
+                 float alpha,
+                 float beta) {
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_gemm",
+                      inputs,
+                      outputs,
                       {
                           {"alpha", alpha},
                           {"beta", beta},
@@ -155,7 +175,9 @@ Node *CreateGemm(Graph *graph, Node *node, const std::vector<Node *> &inputs,
                       });
 }
 
-Node *CreateReshape(Graph *graph, Node *node, const std::vector<Node *> &inputs,
+Node *CreateReshape(Graph *graph,
+                    Node *node,
+                    const std::vector<Node *> &inputs,
                     const std::vector<Node *> &outputs,
                     const std::vector<int64_t> &oshape) {
   auto attr = AttributeMap{
@@ -164,51 +186,136 @@ Node *CreateReshape(Graph *graph, Node *node, const std::vector<Node *> &inputs,
       {"dtype", ONNXDataType::INT64}};
   auto new_node_const =
       CreateBaseOp(graph, node, "popart_constant", {}, {}, attr);
-  auto new_node_reshape =
-      CreateBaseOp(graph, node, "popart_reshape",
-                   {inputs[0], new_node_const->outputs[0]}, outputs);
+  auto new_node_reshape = CreateBaseOp(graph,
+                                       node,
+                                       "popart_reshape",
+                                       {inputs[0], new_node_const->outputs[0]},
+                                       outputs);
   return new_node_reshape;
 }
 
-Node *CreateConv(Graph *graph, Node *node, const std::vector<Node *> &inputs,
+Node *CreateConv(Graph *graph,
+                 Node *node,
+                 const std::vector<Node *> &inputs,
                  const std::vector<Node *> &outputs,
-                 const std::vector<int64_t> &dilations, int64_t group,
+                 const std::vector<int64_t> &dilations,
+                 int64_t group,
                  const std::vector<int64_t> &kernel_shape,
                  const std::vector<int64_t> &pads,
                  const std::vector<int64_t> &strides) {
   auto attrs = AttributeMap{
-      {"dilations", dilations},       {"group", group},
-      {"kernel_shape", kernel_shape}, {"pads", pads},
+      {"dilations", dilations},
+      {"group", group},
+      {"kernel_shape", kernel_shape},
+      {"pads", pads},
       {"strides", strides},
   };
   return CreateBaseOp(graph, node, "popart_conv", inputs, outputs, attrs);
 }
 
-Node *CreateSoftmaxOpset11(Graph *graph, Node *node,
+Node *CreateSoftmaxOpset11(Graph *graph,
+                           Node *node,
                            const std::vector<Node *> &inputs,
-                           const std::vector<Node *> &outputs, int64_t axis) {
-  PADDLE_ENFORCE_EQ(inputs.size(), 1, platform::errors::InvalidArgument(
-                                          "Softmax op only support one input"));
+                           const std::vector<Node *> &outputs,
+                           int64_t axis) {
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      1,
+      platform::errors::InvalidArgument("Softmax op only support one input"));
   auto x_shape = inputs[0]->Var()->GetShape();
   int x_rank = x_shape.size();
   if (axis < 0) {
     axis = axis + x_rank;
   }
   if (axis == x_rank - 1) {
-    return CreateBaseOp(graph, node, "popart_softmax", inputs, outputs,
+    return CreateBaseOp(graph,
+                        node,
+                        "popart_softmax",
+                        inputs,
+                        outputs,
                         {{"axis", int64_t{-1}}});
   } else {
     auto perm = std::vector<int64_t>(x_rank);
     std::iota(perm.begin(), perm.end(), 0);
     perm[x_rank - 1] = axis;
     perm[axis] = x_rank - 1;
-    auto new_transpose_pre = CreateBaseOp(graph, node, "popart_transpose",
-                                          inputs, {}, {{"perm", perm}});
-    auto new_softmax =
-        CreateBaseOp(graph, node, "popart_softmax", new_transpose_pre->outputs,
-                     {}, {{"axis", int64_t{-1}}});
-    return CreateBaseOp(graph, node, "popart_transpose", new_softmax->outputs,
-                        outputs, {{"perm", perm}});
+    auto new_transpose_pre = CreateBaseOp(
+        graph, node, "popart_transpose", inputs, {}, {{"perm", perm}});
+    auto new_softmax = CreateBaseOp(graph,
+                                    node,
+                                    "popart_softmax",
+                                    new_transpose_pre->outputs,
+                                    {},
+                                    {{"axis", int64_t{-1}}});
+    return CreateBaseOp(graph,
+                        node,
+                        "popart_transpose",
+                        new_softmax->outputs,
+                        outputs,
+                        {{"perm", perm}});
+  }
+}
+
+Node *CreateSlice(Graph *graph,
+                  Node *node,
+                  const std::vector<Node *> &inputs,
+                  const std::vector<Node *> &outputs,
+                  const std::vector<int> &starts,
+                  const std::vector<int> &ends,
+                  const std::vector<int> &axes,
+                  const std::vector<int> &strides) {
+  auto *starts_node =
+      CreateConst(
+          graph, node, starts, {int64_t(starts.size())}, ONNXDataType::INT32)
+          ->outputs[0];
+  auto *ends_node =
+      CreateConst(
+          graph, node, ends, {int64_t(ends.size())}, ONNXDataType::INT32)
+          ->outputs[0];
+  auto *axes_node =
+      CreateConst(
+          graph, node, axes, {int64_t(axes.size())}, ONNXDataType::INT32)
+          ->outputs[0];
+  auto *strides_node =
+      CreateConst(
+          graph, node, strides, {int64_t(strides.size())}, ONNXDataType::INT32)
+          ->outputs[0];
+  return CreateBaseOp(
+      graph,
+      node,
+      "popart_slice",
+      {inputs[0], starts_node, ends_node, axes_node, strides_node},
+      outputs);
+}
+
+Node *CreateSplit(Graph *graph,
+                  Node *node,
+                  const std::vector<Node *> &inputs,
+                  const std::vector<Node *> &outputs,
+                  const std::vector<int64_t> &split,
+                  const int64_t axis) {
+  if (!outputs.empty()) {
+    return CreateBaseOp(graph,
+                        node,
+                        "popart_split",
+                        inputs,
+                        outputs,
+                        {{"num_outputs", int64_t(split.size())},
+                         {"axis", int64_t(axis)},
+                         {"split", split}});
+  } else {
+    std::vector<Node *> splits_output_nodes;
+    for (int j = 0; j < split.size(); j++) {
+      splits_output_nodes.push_back(MakeVarNode(graph, node));
+    }
+    return CreateBaseOp(graph,
+                        node,
+                        "popart_split",
+                        inputs,
+                        {splits_output_nodes},
+                        {{"num_outputs", int64_t(split.size())},
+                         {"axis", int64_t(axis)},
+                         {"split", split}});
   }
 }
 

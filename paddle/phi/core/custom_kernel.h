@@ -29,6 +29,12 @@ class CustomKernelMap {
     return g_custom_kernel_info_map;
   }
 
+  void RegisterCustomKernel(const std::string& kernel_name,
+                            const KernelKey& kernel_key,
+                            const Kernel& kernel);
+
+  void RegisterCustomKernels();
+
   KernelNameMap& Kernels() { return kernels_; }
 
   const KernelNameMap& GetMap() const { return kernels_; }
@@ -39,11 +45,5 @@ class CustomKernelMap {
 
   KernelNameMap kernels_;
 };
-
-/**
- * Note:
- * Used to register custom kernels to KernelFactory.
- */
-void RegisterCustomKernels(const CustomKernelMap& custom_kernel_map);
 
 }  // namespace phi

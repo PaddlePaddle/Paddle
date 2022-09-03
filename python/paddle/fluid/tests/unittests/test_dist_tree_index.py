@@ -12,32 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
 from paddle.dataset.common import download, DATA_HOME
 from paddle.distributed.fleet.dataset import TreeIndex
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle
+
 paddle.enable_static()
 
 
 def create_feeds():
-    user_input = fluid.layers.data(
-        name="item_id", shape=[1], dtype="int64", lod_level=1)
+    user_input = fluid.layers.data(name="item_id",
+                                   shape=[1],
+                                   dtype="int64",
+                                   lod_level=1)
 
-    item = fluid.layers.data(
-        name="unit_id", shape=[1], dtype="int64", lod_level=1)
+    item = fluid.layers.data(name="unit_id",
+                             shape=[1],
+                             dtype="int64",
+                             lod_level=1)
 
-    label = fluid.layers.data(
-        name="label", shape=[1], dtype="int64", lod_level=1)
-    labels = fluid.layers.data(
-        name="labels", shape=[1], dtype="int64", lod_level=1)
+    label = fluid.layers.data(name="label",
+                              shape=[1],
+                              dtype="int64",
+                              lod_level=1)
+    labels = fluid.layers.data(name="labels",
+                               shape=[1],
+                               dtype="int64",
+                               lod_level=1)
 
     feed_list = [user_input, item, label, labels]
     return feed_list
 
 
 class TestTreeIndex(unittest.TestCase):
+
     def test_tree_index(self):
         path = download(
             "https://paddlerec.bj.bcebos.com/tree-based/data/mini_tree.pb",
@@ -102,6 +114,13 @@ class TestTreeIndex(unittest.TestCase):
 
 
 class TestIndexSampler(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_layerwise_sampler(self):
         path = download(
             "https://paddlerec.bj.bcebos.com/tree-based/data/mini_tree.pb",
@@ -109,7 +128,8 @@ class TestIndexSampler(unittest.TestCase):
 
         tdm_layer_counts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         #tree = TreeIndex("demo", path)
-        file_name = "test_in_memory_dataset_tdm_sample_run.txt"
+        file_name = os.path.join(self.temp_dir.name,
+                                 "test_in_memory_dataset_tdm_sample_run.txt")
         with open(file_name, "w") as f:
             #data = "29 d 29 d 29 29 29 29 29 29 29 29 29 29 29 29\n"
             data = "1 1 1 15 15 15\n"
@@ -123,11 +143,10 @@ class TestIndexSampler(unittest.TestCase):
             slots_vars.append(var)
 
         dataset = paddle.distributed.InMemoryDataset()
-        dataset.init(
-            batch_size=1,
-            pipe_command="cat",
-            download_cmd="cat",
-            use_var=slots_vars)
+        dataset.init(batch_size=1,
+                     pipe_command="cat",
+                     download_cmd="cat",
+                     use_var=slots_vars)
         dataset.set_filelist([file_name])
         #dataset.update_settings(pipe_command="cat")
         #dataset._init_distributed_settings(
@@ -137,14 +156,13 @@ class TestIndexSampler(unittest.TestCase):
         #    candidate_size=10000)
 
         dataset.load_into_memory()
-        dataset.tdm_sample(
-            'demo',
-            tree_path=path,
-            tdm_layer_counts=tdm_layer_counts,
-            start_sample_layer=1,
-            with_hierachy=False,
-            seed=0,
-            id_slot=2)
+        dataset.tdm_sample('demo',
+                           tree_path=path,
+                           tdm_layer_counts=tdm_layer_counts,
+                           start_sample_layer=1,
+                           with_hierachy=False,
+                           seed=0,
+                           id_slot=2)
         self.assertTrue(dataset.get_shuffle_data_size() == 8)
 
 

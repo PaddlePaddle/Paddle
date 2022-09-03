@@ -16,7 +16,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/elementwise/elementwise_min_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
@@ -54,8 +53,8 @@ class ElementwiseMinNPUKernel : public framework::OpKernel<T> {
       transformed_x.ShareDataWith(*x);
       transformed_y.ShareDataWith(*y);
     } else {
-      NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &transformed_x,
-                                   &transformed_y);
+      NpuElementWiseOpBroadcast<T>(
+          dev_ctx, x, y, axis, &transformed_x, &transformed_y);
     }
     const auto& runner =
         NpuOpRunner("Minimum", {transformed_x, transformed_y}, {*out}, {});
@@ -128,9 +127,10 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
         }
       }
 
-      const auto& runner =
-          NpuOpRunner("MinimumGrad", {*dout, *x, *y}, {tmp_x, tmp_y},
-                      {{"grad_x", true}, {"grad_y", true}});
+      const auto& runner = NpuOpRunner("MinimumGrad",
+                                       {*dout, *x, *y},
+                                       {tmp_x, tmp_y},
+                                       {{"grad_x", true}, {"grad_y", true}});
       runner.Run(stream);
 
     } else if (dx) {
@@ -161,9 +161,10 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
         }
       }
 
-      const auto& runner =
-          NpuOpRunner("MinimumGrad", {*dout, *x, *y}, {tmp_x, zero_tensor},
-                      {{"grad_x", true}, {"grad_y", true}});
+      const auto& runner = NpuOpRunner("MinimumGrad",
+                                       {*dout, *x, *y},
+                                       {tmp_x, zero_tensor},
+                                       {{"grad_x", true}, {"grad_y", true}});
       runner.Run(stream);
 
     } else if (dy) {
@@ -195,9 +196,10 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
         }
       }
 
-      const auto& runner =
-          NpuOpRunner("MinimumGrad", {*dout, *x, *y}, {zero_tensor, tmp_y},
-                      {{"grad_x", true}, {"grad_y", true}});
+      const auto& runner = NpuOpRunner("MinimumGrad",
+                                       {*dout, *x, *y},
+                                       {zero_tensor, tmp_y},
+                                       {{"grad_x", true}, {"grad_y", true}});
       runner.Run(stream);
 
     } else {

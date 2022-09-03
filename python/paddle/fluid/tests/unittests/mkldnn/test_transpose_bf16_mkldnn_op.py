@@ -24,6 +24,7 @@ from paddle import enable_static
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
 class TestTransposeOp(OpTest):
+
     def setUp(self):
         self.op_type = "transpose2"
         self.use_mkldnn = True
@@ -57,6 +58,7 @@ class TestTransposeOp(OpTest):
 
 
 class TestBF16Case(TestTransposeOp):
+
     def init_test_case(self):
         self.shape = (2, 4, 6, 8)
 

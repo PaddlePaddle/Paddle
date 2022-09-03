@@ -35,7 +35,7 @@ namespace p = paddle::platform;
 
 using Tensor = paddle::framework::Tensor;
 
-USE_OP(reduce_any);
+USE_OP_ITSELF(reduce_any);
 USE_OP_DEVICE_KERNEL(reduce_any, NPU);
 
 template <typename T>
@@ -56,8 +56,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // run
   std::vector<int> axes;
   f::AttributeMap attrs = {{"axes", axes}, {"keep_dims", true}};
-  auto op = f::OpRegistry::CreateOp("reduce_any", {{"X", {"X"}}},
-                                    {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      "reduce_any", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
 

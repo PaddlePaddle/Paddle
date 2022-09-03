@@ -16,7 +16,7 @@ from __future__ import print_function
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 from paddle.fluid import core
 import contextlib
-from paddle.fluid.framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, dygraph_only, set_flags, get_flags
+from paddle.fluid.framework import Variable, _non_static_mode, OpProtoHolder, Parameter, _dygraph_tracer, dygraph_only, set_flags, get_flags
 import warnings
 import copy
 import functools
@@ -56,6 +56,12 @@ BLACK_LIST = {
     'cross_entropy2',
     # default fp32 can avoid return inf when the sum value large than 65504
     'reduce_sum',
+    # FP16 performance of grad op is worse than that of FP32. Use FP32 by default.
+    'linear_interp_v2',
+    'nearest_interp_v2',
+    'bilinear_interp_v2',
+    'bicubic_interp_v2',
+    'trilinear_interp_v2',
 }
 
 AMP_RELATED_FLAGS = [
@@ -72,7 +78,16 @@ AMP_RELATED_FLAGS_SETTING = {
 
 PURE_FP16_WHITE_LIST = {' '}
 PURE_FP16_BLACK_LIST = {
-    'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
+    'lookup_table',
+    'lookup_table_v2',
+    'scatter',
+    'scatter_grad',
+    # FP16 performance of grad op is worse than that of FP32. Use FP32 by default.
+    'linear_interp_v2',
+    'nearest_interp_v2',
+    'bilinear_interp_v2',
+    'bicubic_interp_v2',
+    'trilinear_interp_v2',
 }
 
 BF16_WHITE_LIST = {'conv2d', 'matmul_v2'}
@@ -171,9 +186,15 @@ def pure_fp16_initialize(models):
             if (layer._dtype == 'float16') or isinstance(
                     layer, (paddle.nn.BatchNorm, paddle.nn.BatchNorm1D,
                             paddle.nn.BatchNorm2D, paddle.nn.BatchNorm3D,
-                            paddle.nn.LayerNorm)):
+                            paddle.nn.LayerNorm, paddle.nn.SyncBatchNorm)):
                 continue
-            layer._to_impl(dtype='float16', include_sublayers=False)
+            if isinstance(layer, (paddle.incubate.nn.FusedFeedForward,
+                                  paddle.incubate.nn.FusedMultiHeadAttention)):
+                layer._amp_decorate(dtype='float16')
+                continue
+            layer._to_impl(dtype='float16',
+                           include_sublayers=False,
+                           floating_only=True)
     return models
 
 
@@ -181,8 +202,8 @@ def check_models(models):
     for model in models:
         if not isinstance(model, paddle.nn.Layer):
             raise RuntimeError(
-                "Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {}.".
-                format(type(model)))
+                "Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {}."
+                .format(type(model)))
         if isinstance(model, paddle.DataParallel):
             raise RuntimeError(
                 "For distributed AMP training, you should first use paddle.amp.decorate() to decotate origin model, and then call paddle.DataParallel get distributed model."
@@ -191,11 +212,12 @@ def check_models(models):
 
 def check_optimizers(optimizers):
     for optimizer in optimizers:
-        if not isinstance(optimizer, (paddle.optimizer.Optimizer,
-                                      paddle.fluid.optimizer.Optimizer)):
+        if not isinstance(
+                optimizer,
+            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
             raise RuntimeError(
-                "Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer, but receive {}.".
-                format(type(optimizer)))
+                "Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer, but receive {}."
+                .format(type(optimizer)))
 
 
 @signature_safe_contextmanager
@@ -271,17 +293,32 @@ def amp_guard(enable=True,
             "current_tracer is None, maybe it is not in imperative mode.")
 
     # check device_type:
-    # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16.
+    # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, mlu for float16, npu for float16.
     # Maybe we will support cpu for bfloat16.
-    if enable and not (tracer._expected_place.is_gpu_place() or
-                       tracer._expected_place.is_xpu_place()):
+    if enable and not (tracer._expected_place.is_gpu_place()
+                       or tracer._expected_place.is_xpu_place()
+                       or tracer._expected_place.is_mlu_place()
+                       or tracer._expected_place.is_npu_place()
+                       or tracer._expected_place.is_custom_place()):
         warnings.warn(
-            'amp_guard can only be enabled on CUDAPlace and XPUPlace, current place is %s, so it makes no effect.'
+            'amp_guard can only be enabled on CUDAPlace, XPUPlace, MLUPlace, NPUPlace, and CustomPlace, current place is %s, so it makes no effect.'
             % tracer._expected_place)
+        enable = False
+    # For npu:
+    if tracer._expected_place.is_npu_place() and (dtype == 'bfloat16'):
+        warnings.warn('NPUPlace only support float16 amp.')
         enable = False
     # For xpu:
     if tracer._expected_place.is_xpu_place() and (dtype == 'bfloat16'):
         warnings.warn('XPUPlace only support float16 amp.')
+        enable = False
+    # For mlu:
+    if tracer._expected_place.is_mlu_place() and (dtype == 'bfloat16'):
+        warnings.warn('MLUPlace only support float16 amp.')
+        enable = False
+    # For custom device:
+    if tracer._expected_place.is_custom_place() and (dtype == 'bfloat16'):
+        warnings.warn('CustomPlace only support float16 amp.')
         enable = False
     # For gpu float16: Compute Capability should >= 7.
     # For gpu bfloat16: Compute Capability should >= 8 & CUDA Version should >= 11.
@@ -369,6 +406,7 @@ def amp_guard(enable=True,
 
 
 class StateDictHook(object):
+
     def __init__(self, save_dtype):
         self._save_dtype = save_dtype
 
@@ -376,9 +414,10 @@ class StateDictHook(object):
         for key in state_dict:
             param = state_dict[key]
             with paddle.fluid.dygraph.guard():
-                param_applied = paddle.cast(param, self._save_dtype)
-                param_applied.name = param.name
-                state_dict[key] = param_applied
+                if paddle.is_floating_point(param):
+                    param_applied = paddle.cast(param, self._save_dtype)
+                    param_applied.name = param.name
+                    state_dict[key] = param_applied
 
 
 @dygraph_only
@@ -411,9 +450,9 @@ def amp_decorate(models,
         import paddle
 
         model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-        optimzier = paddle.optimizer.SGD(parameters=model.parameters())
+        optimizer = paddle.optimizer.SGD(parameters=model.parameters())
 
-        model, optimizer = paddle.fluid.dygraph.amp_decorate(models=model, optimizers=optimzier, level='O2')
+        model, optimizer = paddle.fluid.dygraph.amp_decorate(models=model, optimizers=optimizer, level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
@@ -426,7 +465,7 @@ def amp_decorate(models,
         model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
 
-        models, optimizers = paddle.fluid.dygraph.amp_decorate(models=[model, model2], optimizers=[optimzier, optimizer2], level='O2')
+        models, optimizers = paddle.fluid.dygraph.amp_decorate(models=[model, model2], optimizers=[optimizer, optimizer2], level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
@@ -477,8 +516,9 @@ def amp_decorate(models,
     if optimizers is not None:
         # check optimizers
         optimizers_is_list = False
-        if isinstance(optimizers, (paddle.optimizer.Optimizer,
-                                   paddle.fluid.optimizer.Optimizer)):
+        if isinstance(
+                optimizers,
+            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
             optimizers_is_list = False
             optimizers = [optimizers]
             check_optimizers(optimizers)
@@ -489,7 +529,7 @@ def amp_decorate(models,
             raise TypeError(
                 "optimizers must be either a single optimizer or a list of optimizers."
             )
-        # supprot master_weight    
+        # supprot master_weight
         for idx_opt in range(len(optimizers)):
             if hasattr(optimizers[idx_opt], '_multi_precision'):
                 if master_weight is False:

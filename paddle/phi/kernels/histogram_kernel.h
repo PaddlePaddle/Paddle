@@ -18,11 +18,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void HistogramSelectKernel(const Context& dev_ctx,
-                           const DenseTensor& input,
-                           int64_t bins,
-                           int min,
-                           int max,
-                           DenseTensor* out);
+void HistogramKernel(const Context& dev_ctx,
+                     const DenseTensor& input,
+                     int64_t bins,
+                     int min,
+                     int max,
+                     DenseTensor* output);
 
 }  // namespace phi

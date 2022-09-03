@@ -24,7 +24,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-FetchAsyncOpHandle::FetchAsyncOpHandle(ir::Node *node, FetchResultType *data,
+FetchAsyncOpHandle::FetchAsyncOpHandle(ir::Node *node,
+                                       FetchResultType *data,
                                        size_t offset,
                                        std::vector<Scope *> *local_scopes,
                                        std::vector<Scope *> *local_exec_scopes,
@@ -46,12 +47,15 @@ void FetchAsyncOpHandle::RecordWaitEventOnCtx(
 
 static void CheckTensorAttrs(const LoDTensor *tensor,
                              const proto::VarType::Type &type,
-                             const DataLayout &layout, const DDim &dims,
-                             const LoD &lod, const size_t offset) {
+                             const DataLayout &layout,
+                             const DDim &dims,
+                             const LoD &lod,
+                             const size_t offset) {
   if (tensor->numel() && tensor->IsInitialized()) {
     // step1: check type
     PADDLE_ENFORCE_EQ(
-        type, framework::TransToProtoVarType(tensor->dtype()),
+        type,
+        framework::TransToProtoVarType(tensor->dtype()),
         platform::errors::InvalidArgument(
             "The data type of fetched Tensors or the items of fetched "
             "LoDTensorArray are different from each other on different "
@@ -59,11 +63,14 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
             "(th) fetched variable. Please set the "
             "parameter `return_merged = False` when you "
             "call the `Executor.run()` method.",
-            DataTypeToString(type), tensor->dtype(), offset));
+            DataTypeToString(type),
+            tensor->dtype(),
+            offset));
 
     // step2: check layout
     PADDLE_ENFORCE_EQ(
-        layout, tensor->layout(),
+        layout,
+        tensor->layout(),
         platform::errors::InvalidArgument(
             "The layout of fetched Tensors or the items of fetched "
             "LoDTensorArray are different from each other on different "
@@ -71,13 +78,15 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
             "(th) fetched variable. Please set the "
             "parameter `return_merged = False` when you "
             "call the `Executor.run()` method.",
-            DataLayoutToString(layout), DataLayoutToString(tensor->layout()),
+            DataLayoutToString(layout),
+            DataLayoutToString(tensor->layout()),
             offset));
   }
 
   // step3: check dims
   auto tensor_dims = tensor->dims();
-  PADDLE_ENFORCE_EQ(dims.size(), tensor_dims.size(),
+  PADDLE_ENFORCE_EQ(dims.size(),
+                    tensor_dims.size(),
                     platform::errors::InvalidArgument(
                         "The dimension sizes of fetched Tensors or "
                         "the items of fetched LoDTensorArray are "
@@ -86,9 +95,12 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
                         "(th) fetched variable. Please set the "
                         "parameter `return_merged = False` when you "
                         "call the `Executor.run()` method.",
-                        dims, tensor_dims, offset));
+                        dims,
+                        tensor_dims,
+                        offset));
   for (int j = 1; j < dims.size(); j++) {
-    PADDLE_ENFORCE_EQ(dims[j], tensor_dims[j],
+    PADDLE_ENFORCE_EQ(dims[j],
+                      tensor_dims[j],
                       platform::errors::InvalidArgument(
                           "The dimensions of fetched Tensors or "
                           "the items of fetched LoDTensorArray are "
@@ -97,12 +109,15 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
                           "%zu (th) fetched variable. Please set the "
                           "parameter `return_merged = False` when "
                           "you call the `Executor.run()` method.",
-                          dims, tensor_dims, offset));
+                          dims,
+                          tensor_dims,
+                          offset));
   }
 
   // step4: check lod
   PADDLE_ENFORCE_EQ(
-      lod.size(), tensor->lod().size(),
+      lod.size(),
+      tensor->lod().size(),
       platform::errors::InvalidArgument(
           "The LoD information of fetched Tensors or the items of fetched "
           "LoDTensorArray are different from each other on different "
@@ -110,7 +125,9 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
           "(th) fetched variable. Please set the "
           "parameter `return_merged = False` when you "
           "call the `Executor.run()` method.",
-          lod, tensor->lod(), offset));
+          lod,
+          tensor->lod(),
+          offset));
 }
 
 static void TransData(const framework::Tensor *src_item,
@@ -161,8 +178,8 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
 
   // check src type,layout,dim,lod consistence
   for (size_t i = 1; i < src_lodtensors.size(); ++i) {
-    CheckTensorAttrs(src_lodtensors[i], new_type, new_layout, check_dim,
-                     new_lod, offset_);
+    CheckTensorAttrs(
+        src_lodtensors[i], new_type, new_layout, check_dim, new_lod, offset_);
   }
 
   // set dst tensor
@@ -191,8 +208,8 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
 }
 
 void FetchAsyncOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name(),
-                                     platform::TracerEventType::Operator, 1);
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Operator, 1);
   WaitInputVarGenerated(true);
 
   // get src vars
@@ -211,7 +228,7 @@ void FetchAsyncOpHandle::RunImpl() {
   }
 
   if (return_merged_) {
-    auto &val = BOOST_GET(FetchList, *data_);
+    auto &val = PADDLE_GET(FetchList, *data_);
     if (src_vars[0]->IsType<LoDTensor>()) {
       // to lodtensor type
       std::vector<const LoDTensor *> src_lodtensors;
@@ -246,7 +263,7 @@ void FetchAsyncOpHandle::RunImpl() {
       val.at(offset_) = std::move(dst_lodtensor_array);
     }
   } else {
-    auto &val = BOOST_GET(FetchUnmergedList, *data_);
+    auto &val = PADDLE_GET(FetchUnmergedList, *data_);
     auto &dst_tensors = val.at(offset_);
     dst_tensors.reserve(src_vars.size());
 

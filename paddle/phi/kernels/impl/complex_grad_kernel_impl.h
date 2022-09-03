@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
@@ -24,7 +25,7 @@ void RealGradKernel(const Context& dev_ctx,
                     const DenseTensor& dout,
                     DenseTensor* dx) {
   auto numel = dout.numel();
-  auto* dout_data = dout.data<phi::funcs::Real<T>>();
+  auto* dout_data = dout.data<phi::dtype::Real<T>>();
   auto* dx_data =
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
 
@@ -38,13 +39,60 @@ void ImagGradKernel(const Context& dev_ctx,
                     const DenseTensor& dout,
                     DenseTensor* dx) {
   auto numel = dout.numel();
-  auto* dout_data = dout.data<phi::funcs::Real<T>>();
+  auto* dout_data = dout.data<phi::dtype::Real<T>>();
   auto* dx_data =
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
 
   phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::funcs::ImagToComplexFunctor<T> functor(dout_data, dx_data, numel);
   for_range(functor);
+}
+
+template <typename T>
+struct ComplexGradForRealFunctor {
+  inline HOSTDEVICE T operator()(const T x,
+                                 const T y,
+                                 const phi::dtype::complex<T> out,
+                                 const phi::dtype::complex<T> dout) {
+    return dout.real;
+  }
+};
+
+template <typename T>
+struct ComplexGradForImagFunctor {
+  inline HOSTDEVICE T operator()(const T x,
+                                 const T y,
+                                 const phi::dtype::complex<T> out,
+                                 const phi::dtype::complex<T> dout) {
+    return dout.imag;
+  }
+};
+
+template <typename T, typename Context>
+void ComplexGradKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       const DenseTensor& dout,
+                       DenseTensor* dx,
+                       DenseTensor* dy) {
+  using C = phi::dtype::complex<T>;
+
+  // skip out in a hacky way
+  auto out = dout;
+  phi::funcs::ElemwiseGradCompute<Context,
+                                  T,
+                                  ComplexGradForRealFunctor<T>,
+                                  ComplexGradForImagFunctor<T>,
+                                  C>(dev_ctx,
+                                     x,
+                                     y,
+                                     out,
+                                     dout,
+                                     /*axis*/ -1,
+                                     dx,
+                                     dy,
+                                     ComplexGradForRealFunctor<T>(),
+                                     ComplexGradForImagFunctor<T>());
 }
 
 }  // namespace phi

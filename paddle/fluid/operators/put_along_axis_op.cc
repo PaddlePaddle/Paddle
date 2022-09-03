@@ -12,12 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/put_along_axis_op.h"
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace operators {
@@ -25,18 +29,6 @@ namespace operators {
 class PutAlongAxisOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "PutAlongAxis");
-    OP_INOUT_CHECK(ctx->HasInput("Index"), "Input", "Index", "PutAlongAxis");
-    OP_INOUT_CHECK(ctx->HasInput("Value"), "Input", "Value", "PutAlongAxis");
-    OP_INOUT_CHECK(ctx->HasOutput("Result"), "Output", "Result",
-                   "PutAlongAxis");
-
-    auto index_dim = ctx->GetInputDim("Index");
-
-    ctx->SetOutputDim("Result", index_dim);
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -46,10 +38,11 @@ class PutAlongAxisOp : public framework::OperatorWithKernel {
         ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -86,10 +79,11 @@ class PutAlongAxisGradOp : public framework::OperatorWithKernel {
                                    ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -117,22 +111,15 @@ DECLARE_INPLACE_OP_INFERER(PutAlongAxisInplaceInferer, {"Input", "Result"});
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(put_along_axis, ops::PutAlongAxisOp, ops::PutAlongAxisOpMaker,
+DECLARE_INFER_SHAPE_FUNCTOR(put_along_axis,
+                            PutAlongAxisInferShapeFunctor,
+                            PD_INFER_META(phi::PutAlongAxisInferMeta));
+REGISTER_OPERATOR(put_along_axis,
+                  ops::PutAlongAxisOp,
+                  ops::PutAlongAxisOpMaker,
                   ops::PutAlongAxisGradOpMaker<paddle::framework::OpDesc>,
                   ops::PutAlongAxisGradOpMaker<paddle::imperative::OpBase>,
-                  paddle::operators::PutAlongAxisInplaceInferer);
+                  paddle::operators::PutAlongAxisInplaceInferer,
+                  PutAlongAxisInferShapeFunctor);
 
 REGISTER_OPERATOR(put_along_axis_grad, ops::PutAlongAxisGradOp);
-
-REGISTER_OP_CPU_KERNEL(put_along_axis, ops::PutAlongAxisOpKernel<float>,
-                       ops::PutAlongAxisOpKernel<double>,
-                       ops::PutAlongAxisOpKernel<int>,
-                       ops::PutAlongAxisOpKernel<uint8_t>,
-                       ops::PutAlongAxisOpKernel<int64_t>);
-
-REGISTER_OP_CPU_KERNEL(put_along_axis_grad,
-                       ops::PutAlongAxisGradOpKernel<float>,
-                       ops::PutAlongAxisGradOpKernel<double>,
-                       ops::PutAlongAxisGradOpKernel<int>,
-                       ops::PutAlongAxisGradOpKernel<uint8_t>,
-                       ops::PutAlongAxisGradOpKernel<int64_t>);

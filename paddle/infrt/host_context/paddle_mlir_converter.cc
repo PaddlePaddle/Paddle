@@ -41,7 +41,9 @@ bool parse_inputs(int argc,
       *params_file_name = argv[2];
       return true;
     }
-    default: { return false; }
+    default: {
+      return false;
+    }
   }
 }
 

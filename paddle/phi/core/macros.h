@@ -26,19 +26,19 @@ namespace phi {
   classname& operator=(classname&&) = delete
 #endif
 
-#define PT_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg) \
-  _PT_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)
+#define PD_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg) \
+  _PD_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)
 
-#define _PT_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                    \
+#define _PD_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                    \
   struct __test_global_namespace_##uniq_name##__ {};                          \
   static_assert(std::is_same<::__test_global_namespace_##uniq_name##__,       \
                              __test_global_namespace_##uniq_name##__>::value, \
                 msg)
 
 #ifdef __COUNTER__
-#define PT_ID __COUNTER__
+#define PD_ID __COUNTER__
 #else
-#define PT_ID __LINE__
+#define PD_ID __LINE__
 #endif
 
 #if defined(_WIN32)
@@ -48,9 +48,15 @@ namespace phi {
 #define UNUSED __attribute__((unused))
 #endif
 
-#define PT_CONCATENATE(arg1, arg2) PT_CONCATENATE1(arg1, arg2)
-#define PT_CONCATENATE1(arg1, arg2) PT_CONCATENATE2(arg1, arg2)
-#define PT_CONCATENATE2(arg1, arg2) arg1##arg2
-#define PT_EXPAND(x) x
+#define PD_CONCATENATE(arg1, arg2) PD_CONCATENATE1(arg1, arg2)
+#define PD_CONCATENATE1(arg1, arg2) PD_CONCATENATE2(arg1, arg2)
+#define PD_CONCATENATE2(arg1, arg2) arg1##arg2
+#define PD_EXPAND(x) x
+
+#if defined(__NVCC__) || defined(__HIPCC__)
+#define PADDLE_RESTRICT __restrict__
+#else
+#define PADDLE_RESTRICT
+#endif
 
 }  // namespace phi

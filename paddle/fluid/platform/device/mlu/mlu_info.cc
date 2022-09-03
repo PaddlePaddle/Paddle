@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
+
 #include <mutex>
 #include <vector>
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/mlu/enforce.h"
@@ -30,7 +32,8 @@ DECLARE_uint64(gpu_memory_limit_mb);
 constexpr static float fraction_reserve_mlu_memory = 0.05f;
 
 PADDLE_DEFINE_EXPORTED_string(
-    selected_mlus, "",
+    selected_mlus,
+    "",
     "A list of device ids separated by comma, like: 0,1,2,3. "
     "This option is useful when doing multi process training and "
     "each process have only one device (MLU). If you want to use "
@@ -93,11 +96,13 @@ std::vector<int> GetMLUSelectedDevices() {
 }
 
 void CheckDeviceId(int id) {
-  PADDLE_ENFORCE_LT(id, GetMLUDeviceCount(),
+  PADDLE_ENFORCE_LT(id,
+                    GetMLUDeviceCount(),
                     platform::errors::InvalidArgument(
                         "Device id must be less than MLU count, "
                         "but received id is: %d. MLU count is: %d.",
-                        id, GetMLUDeviceCount()));
+                        id,
+                        GetMLUDeviceCount()));
 }
 
 int GetMLUDriverVersion(int id) {
@@ -111,6 +116,13 @@ int GetMLURuntimeVersion(int id) {
   CheckDeviceId(id);
   int x, y, z;
   PADDLE_ENFORCE_MLU_SUCCESS(cnrtGetLibVersion(&x, &y, &z));
+  return x * 10000 + y * 100 + z;
+}
+
+int GetMLUCnnlVersion(int id) {
+  CheckDeviceId(id);
+  int x, y, z;
+  cnnlGetLibVersion(&x, &y, &z);
   return x * 10000 + y * 100 + z;
 }
 
@@ -151,7 +163,10 @@ int GetMLUComputeCapability(int id) {
 
 void MLUMemoryUsage(size_t *available, size_t *total) {
   size_t actual_available, actual_total;
-  RecordedMLUMemGetInfo(available, total, &actual_available, &actual_total,
+  RecordedMLUMemGetInfo(available,
+                        total,
+                        &actual_available,
+                        &actual_total,
                         platform::GetMLUCurrentDeviceId());
 }
 
@@ -180,17 +195,20 @@ size_t MLUMaxAllocSize() {
 static size_t MLUAllocSize(bool realloc) {
   size_t available_to_alloc = MLUAvailableMemToAlloc();
   PADDLE_ENFORCE_GT(
-      available_to_alloc, 0,
+      available_to_alloc,
+      0,
       platform::errors::ResourceExhausted("Not enough available MLU memory."));
   // If FLAGS_initial_gpu_memory_in_mb is 0, then initial memory will be
   // allocated by fraction
   size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
                            : FLAGS_initial_gpu_memory_in_mb;
   size_t alloc_bytes =
-      (flag_mb > 0ul ? flag_mb << 20 : available_to_alloc *
-                                           FLAGS_fraction_of_gpu_memory_to_use);
+      (flag_mb > 0ul
+           ? flag_mb << 20
+           : available_to_alloc * FLAGS_fraction_of_gpu_memory_to_use);
   PADDLE_ENFORCE_GE(
-      available_to_alloc, alloc_bytes,
+      available_to_alloc,
+      alloc_bytes,
       platform::errors::ResourceExhausted("Not enough available MLU memory."));
   VLOG(10) << "Alloc size is " << (alloc_bytes >> 20)
            << " MiB, is it Re-alloc: " << realloc;
@@ -212,10 +230,12 @@ size_t MLUMaxChunkSize() {
   return max_chunk_size;
 }
 
-void MLUMemcpyD2HAsync(void *dst, const void *src, size_t num,
+void MLUMemcpyD2HAsync(void *dst,
+                       const void *src,
+                       size_t num,
                        mluStream stream) {
-  PADDLE_ENFORCE_MLU_SUCCESS(cnrtMemcpyAsync(dst, const_cast<void *>(src), num,
-                                             stream, cnrtMemcpyDevToHost));
+  PADDLE_ENFORCE_MLU_SUCCESS(cnrtMemcpyAsync(
+      dst, const_cast<void *>(src), num, stream, cnrtMemcpyDevToHost));
 }
 
 void MLUMemcpyD2HSync(void *dst, const void *src, size_t num) {
@@ -223,34 +243,42 @@ void MLUMemcpyD2HSync(void *dst, const void *src, size_t num) {
       cnrtMemcpy(dst, const_cast<void *>(src), num, cnrtMemcpyDevToHost));
 }
 
-void MLUMemcpyH2DAsync(void *dst, const void *src, size_t num,
+void MLUMemcpyH2DAsync(void *dst,
+                       const void *src,
+                       size_t num,
                        mluStream stream) {
-  PADDLE_ENFORCE_MLU_SUCCESS(cnrtMemcpyAsync(dst, const_cast<void *>(src), num,
-                                             stream, cnrtMemcpyHostToDev));
+  PADDLE_ENFORCE_MLU_SUCCESS(cnrtMemcpyAsync(
+      dst, const_cast<void *>(src), num, stream, cnrtMemcpyHostToDev));
 }
 void MLUMemcpyH2DSync(void *dst, const void *src, size_t num) {
   PADDLE_ENFORCE_MLU_SUCCESS(
       cnrtMemcpy(dst, const_cast<void *>(src), num, cnrtMemcpyHostToDev));
 }
 
-void MLUMemcpyD2DAsync(void *dst, const void *src, size_t num,
+void MLUMemcpyD2DAsync(void *dst,
+                       const void *src,
+                       size_t num,
                        mluStream stream) {
-  PADDLE_ENFORCE_MLU_SUCCESS(cnrtMemcpyAsync(dst, const_cast<void *>(src), num,
-                                             stream, cnrtMemcpyDevToDev));
+  PADDLE_ENFORCE_MLU_SUCCESS(cnrtMemcpyAsync(
+      dst, const_cast<void *>(src), num, stream, cnrtMemcpyDevToDev));
 }
 void MLUMemcpyD2DSync(void *dst, const void *src, size_t num) {
   PADDLE_ENFORCE_MLU_SUCCESS(
       cnrtMemcpy(dst, const_cast<void *>(src), num, cnrtMemcpyDevToDev));
 }
 
-void MLUMemcpyPeerAsync(void *dst, int dst_device, const void *src,
-                        int src_device, size_t num, mluStream stream) {
+void MLUMemcpyPeerAsync(void *dst,
+                        int dst_device,
+                        const void *src,
+                        int src_device,
+                        size_t num,
+                        mluStream stream) {
   PADDLE_ENFORCE_MLU_SUCCESS(cnrtMemcpyPeerAsync(
       dst, dst_device, const_cast<void *>(src), src_device, num, stream));
 }
 
-void MLUMemcpyPeerSync(void *dst, int dst_device, const void *src,
-                       int src_device, size_t num) {
+void MLUMemcpyPeerSync(
+    void *dst, int dst_device, const void *src, int src_device, size_t num) {
   PADDLE_ENFORCE_MLU_SUCCESS(cnrtMemcpyPeer(
       dst, dst_device, const_cast<void *>(src), src_device, num));
 }
@@ -299,13 +327,16 @@ class RecordedMLUMallocHelper {
     });
 
     PADDLE_ENFORCE_GE(
-        dev_id, 0,
+        dev_id,
+        0,
         platform::errors::OutOfRange(
             "Device id must be not less than 0, but got %d.", dev_id));
     PADDLE_ENFORCE_LT(
-        dev_id, instances_.size(),
+        dev_id,
+        instances_.size(),
         platform::errors::OutOfRange("Device id %d exceeds mlu card number %d.",
-                                     dev_id, instances_.size()));
+                                     dev_id,
+                                     instances_.size()));
     return instances_[dev_id].get();
   }
 
@@ -349,7 +380,9 @@ class RecordedMLUMallocHelper {
     STAT_INT_SUB("STAT_mlu" + std::to_string(dev_id_) + "_mem_size", size);
   }
 
-  bool GetMemInfo(size_t *avail, size_t *total, size_t *actual_avail,
+  bool GetMemInfo(size_t *avail,
+                  size_t *total,
+                  size_t *actual_avail,
                   size_t *actual_total) {
     {
       MLUDeviceGuard guard(dev_id_);
@@ -401,8 +434,11 @@ void RecordedMLUFree(void *p, size_t size, int dev_id) {
   return RecordedMLUMallocHelper::Instance(dev_id)->Free(p, size);
 }
 
-bool RecordedMLUMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
-                           size_t *actual_total, int dev_id) {
+bool RecordedMLUMemGetInfo(size_t *avail,
+                           size_t *total,
+                           size_t *actual_avail,
+                           size_t *actual_total,
+                           int dev_id) {
   return RecordedMLUMallocHelper::Instance(dev_id)->GetMemInfo(
       avail, total, actual_avail, actual_total);
 }

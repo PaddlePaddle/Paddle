@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/expand_as_op.h"
+
 #include <memory>
 #include <vector>
 
@@ -25,26 +26,31 @@ class ExpandAsOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ExpandAs");
-    OP_INOUT_CHECK(ctx->HasInput("target_tensor"), "Input", "target_tensor",
-                   "ExpandAs");
+    OP_INOUT_CHECK(
+        ctx->HasInput("target_tensor"), "Input", "target_tensor", "ExpandAs");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ExpandAs");
     auto x_dims = ctx->GetInputDim("X");
     auto target_tensor_dims = ctx->GetInputDim("target_tensor");
     PADDLE_ENFORCE_EQ(
-        static_cast<size_t>(x_dims.size()), target_tensor_dims.size(),
+        static_cast<size_t>(x_dims.size()),
+        target_tensor_dims.size(),
         platform::errors::InvalidArgument(
             "The rank of Input(target_tensor) must be equal "
             "to the rank of Input(X). But received Input(X): input "
             "rank %u, input shape [%s]; received Input(target_tensor): "
             "input rank %u, input shape [%s].",
-            x_dims.size(), x_dims, target_tensor_dims.size(),
+            x_dims.size(),
+            x_dims,
+            target_tensor_dims.size(),
             target_tensor_dims));
     PADDLE_ENFORCE_LE(
-        x_dims.size(), 6,
+        x_dims.size(),
+        6,
         platform::errors::InvalidArgument(
             "The rank of Input(X) must not be greater than 6. But "
             "received: input rank %u, input shape [%s].",
-            x_dims.size(), x_dims));
+            x_dims.size(),
+            x_dims));
     std::vector<int64_t> out_shape(x_dims.size());
     ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
   }
@@ -90,8 +96,10 @@ class ExpandAsGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ExpandAs");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "ExpandAs");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "ExpandAs");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
@@ -130,34 +138,35 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ExpandAsGradNoNeedBufVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(expand_as, ops::ExpandAsOp, ops::ExpandAsOpMaker,
+REGISTER_OPERATOR(expand_as,
+                  ops::ExpandAsOp,
+                  ops::ExpandAsOpMaker,
                   ops::ExpandAsGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandAsGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(expand_as_grad, ops::ExpandAsGradOp,
+REGISTER_OPERATOR(expand_as_grad,
+                  ops::ExpandAsGradOp,
                   ops::ExpandAsGradNoNeedBufVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    expand_as, ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, bool>);
-REGISTER_OP_CPU_KERNEL(
-    expand_as_grad,
-    ops::ExpandAsGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandAsGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ExpandAsGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandAsGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(expand_as,
+                       ops::ExpandAsKernel<phi::CPUContext, float>,
+                       ops::ExpandAsKernel<phi::CPUContext, double>,
+                       ops::ExpandAsKernel<phi::CPUContext, int>,
+                       ops::ExpandAsKernel<phi::CPUContext, int64_t>,
+                       ops::ExpandAsKernel<phi::CPUContext, bool>);
+REGISTER_OP_CPU_KERNEL(expand_as_grad,
+                       ops::ExpandAsGradKernel<phi::CPUContext, int>,
+                       ops::ExpandAsGradKernel<phi::CPUContext, int64_t>,
+                       ops::ExpandAsGradKernel<phi::CPUContext, float>,
+                       ops::ExpandAsGradKernel<phi::CPUContext, double>);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL(
-    expand_as, ops::ExpandAsKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandAsKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ExpandAsKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandAsKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ExpandAsKernel<paddle::platform::CUDADeviceContext, bool>);
-REGISTER_OP_CUDA_KERNEL(
-    expand_as_grad,
-    ops::ExpandAsGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandAsGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ExpandAsGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandAsGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(expand_as,
+                        ops::ExpandAsKernel<phi::GPUContext, float>,
+                        ops::ExpandAsKernel<phi::GPUContext, double>,
+                        ops::ExpandAsKernel<phi::GPUContext, int>,
+                        ops::ExpandAsKernel<phi::GPUContext, int64_t>,
+                        ops::ExpandAsKernel<phi::GPUContext, bool>);
+REGISTER_OP_CUDA_KERNEL(expand_as_grad,
+                        ops::ExpandAsGradKernel<phi::GPUContext, int>,
+                        ops::ExpandAsGradKernel<phi::GPUContext, int64_t>,
+                        ops::ExpandAsGradKernel<phi::GPUContext, float>,
+                        ops::ExpandAsGradKernel<phi::GPUContext, double>);
 #endif

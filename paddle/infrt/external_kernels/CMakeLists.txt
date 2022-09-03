@@ -8,6 +8,8 @@ set(external_kernels_lib "${CMAKE_CURRENT_BINARY_DIR}/libexternal_kernels.so")
 message(STATUS "basic_mlir: ${basic_mlir}")
 message(STATUS "external_kernels_lib: ${external_kernels_lib}")
 add_test(
-    NAME run_and_check_external_kernels
-    COMMAND sh -c "${CMAKE_BINARY_DIR}/infrt/host_context/infrtexec -i ${basic_mlir} --shared_libs=${external_kernels_lib} | ${LLVM_PATH}/bin/FileCheck ${basic_mlir}"
-)
+  NAME run_and_check_external_kernels
+  COMMAND
+    sh -c "${CMAKE_BINARY_DIR}/infrt/host_context/infrtexec -i ${basic_mlir} \
+       --shared_libs=${external_kernels_lib} | \
+                     ${LLVM_PATH}/bin/FileCheck ${basic_mlir}")

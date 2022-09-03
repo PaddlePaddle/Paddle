@@ -27,6 +27,7 @@ def ref_std(x, axis=None, unbiased=True, keepdim=False):
 
 
 class TestStdAPI(unittest.TestCase):
+
     def setUp(self):
         self.dtype = 'float64'
         self.shape = [1, 3, 4, 10]
@@ -62,53 +63,61 @@ class TestStdAPI(unittest.TestCase):
         out_dygraph = self.dygraph()
         out_static = self.static()
         for out in [out_dygraph, out_static]:
-            self.assertTrue(np.allclose(out_ref, out))
+            np.testing.assert_allclose(out_ref, out, rtol=1e-05)
             self.assertTrue(np.equal(out_ref.shape, out.shape).all())
 
 
 class TestStdAPI_dtype(TestStdAPI):
+
     def set_attrs(self):
         self.dtype = 'float32'
 
 
 class TestStdAPI_axis_int(TestStdAPI):
+
     def set_attrs(self):
         self.axis = 2
 
 
 class TestStdAPI_axis_list(TestStdAPI):
+
     def set_attrs(self):
         self.axis = [1, 2]
 
 
 class TestStdAPI_axis_tuple(TestStdAPI):
+
     def set_attrs(self):
         self.axis = (1, 3)
 
 
 class TestStdAPI_keepdim(TestStdAPI):
+
     def set_attrs(self):
         self.keepdim = False
 
 
 class TestStdAPI_unbiased(TestStdAPI):
+
     def set_attrs(self):
         self.unbiased = False
 
 
 class TestStdAPI_alias(unittest.TestCase):
+
     def test_alias(self):
         paddle.disable_static()
         x = paddle.to_tensor(np.array([10, 12], 'float32'))
         out1 = paddle.std(x).numpy()
         out2 = paddle.tensor.std(x).numpy()
         out3 = paddle.tensor.stat.std(x).numpy()
-        self.assertTrue(np.allclose(out1, out2))
-        self.assertTrue(np.allclose(out1, out3))
+        np.testing.assert_allclose(out1, out2, rtol=1e-05)
+        np.testing.assert_allclose(out1, out3, rtol=1e-05)
         paddle.enable_static()
 
 
 class TestStdError(unittest.TestCase):
+
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', [2, 3, 4], 'int32')

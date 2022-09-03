@@ -15,10 +15,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/scale_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/phi/common/float16.h"
 
 namespace phi {
 
@@ -70,8 +69,11 @@ PD_REGISTER_KERNEL(scale,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

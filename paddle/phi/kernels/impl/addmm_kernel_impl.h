@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/kernels/addmm_kernel.h"
-
 #include <type_traits>
+
+#include "paddle/phi/kernels/addmm_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -43,6 +43,12 @@ void AddmmKernel(const Context& dev_ctx,
   auto input_dims = input.dims();
   auto x_dims = x.dims();
   auto y_dims = y.dims();
+
+  DenseTensor input_2d(input);
+  if (input.dims().size() == 1) {
+    input_dims = {1, input.dims()[0]};
+    input_2d.Resize(input_dims);
+  }
 
   // broadcast mode check
   if (x_dims[0] != input_dims[0]) {
@@ -97,7 +103,8 @@ void AddmmKernel(const Context& dev_ctx,
   bcast_dims[1] = y_dims[1] / input_dims[1];
   VLOG(3) << "bcast_dims=[" << bcast_dims[0] << "," << bcast_dims[1] << "]";
   // broadcast using eigen
-  auto eigen_input = PhiEigenTensor<T, 2>::From(input);
+  const DenseTensor& const_ref_input = input_2d;
+  auto eigen_input = PhiEigenTensor<T, 2>::From(const_ref_input);
   auto eigen_out = PhiEigenTensor<T, 2>::From(*out);
   auto& place = *dev_ctx.eigen_device();
   funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, 2>::Eval(

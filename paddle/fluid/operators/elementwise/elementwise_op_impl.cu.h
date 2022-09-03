@@ -19,7 +19,7 @@ limitations under the License. */
 
 // only can include the headers in paddle/top/api dirs
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 
 namespace paddle {
 namespace operators {
@@ -28,8 +28,10 @@ using ElementwiseType = phi::ElementwiseType;
 
 template <typename OutT, typename Functor, int NumOuts = 1>
 void LaunchSameDimsElementwiseCudaKernel(
-    const KPDevice &ctx, const std::vector<const framework::Tensor *> &ins,
-    std::vector<framework::Tensor *> *outs, Functor func) {
+    const KPDevice &ctx,
+    const std::vector<const framework::Tensor *> &ins,
+    std::vector<framework::Tensor *> *outs,
+    Functor func) {
   std::vector<const phi::DenseTensor *> pt_inputs;
   std::vector<phi::DenseTensor *> pt_outputs;
   // TODO(YuanRisheng) *_tmp for cache DenseTensor, because the temporary
@@ -53,8 +55,8 @@ void LaunchSameDimsElementwiseCudaKernel(
   for (int i = 0; i < pt_outputs_tmp.size(); i++) {
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
-  phi::funcs::ElementwiseKernel<OutT, Functor, NumOuts>(ctx, pt_inputs,
-                                                        &pt_outputs, func);
+  phi::funcs::ElementwiseKernel<OutT, Functor, NumOuts>(
+      ctx, pt_inputs, &pt_outputs, func);
 }
 
 }  // namespace operators

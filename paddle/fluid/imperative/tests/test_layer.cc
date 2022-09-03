@@ -46,11 +46,12 @@ class TestRuntimeInferVarTypeContext
     : public RuntimeInferVarTypeContext<VarType> {
  public:
   TestRuntimeInferVarTypeContext(
-      const NameVarMap<VarType>& inputs, const NameVarMap<VarType>& outputs,
+      const NameVarMap<VarType>& inputs,
+      const NameVarMap<VarType>& outputs,
       const framework::AttributeMap& attrs_map,
       const framework::AttributeMap& default_attrs_map)
-      : RuntimeInferVarTypeContext<VarType>(inputs, outputs, attrs_map,
-                                            default_attrs_map) {}
+      : RuntimeInferVarTypeContext<VarType>(
+            inputs, outputs, attrs_map, default_attrs_map) {}
 
   bool HasVar(const std::string& name) const {
     return RuntimeInferVarTypeContext<VarType>::HasVar(name);
@@ -150,14 +151,14 @@ TEST(test_layer, test_runtime_context) {
 
   ASSERT_EQ(framework::proto::VarType::LOD_TENSOR, ctx->GetOutputType("Out"));
 
-  ctx->SetOutputType("Out", framework::proto::VarType::SELECTED_ROWS,
-                     framework::ALL_ELEMENTS);
+  ctx->SetOutputType(
+      "Out", framework::proto::VarType::SELECTED_ROWS, framework::ALL_ELEMENTS);
   ctx->SetOutputType("Out", framework::proto::VarType::LOD_TENSOR_ARRAY);
   ASSERT_EQ(framework::proto::VarType::LOD_TENSOR_ARRAY, vout->Type());
   ASSERT_EQ(framework::proto::VarType::SELECTED_ROWS, vout_b->Type());
 
-  ctx->SetOutputDataType("Out", framework::proto::VarType::FP64,
-                         framework::ALL_ELEMENTS);
+  ctx->SetOutputDataType(
+      "Out", framework::proto::VarType::FP64, framework::ALL_ELEMENTS);
   ctx->SetOutputDataType("Out", framework::proto::VarType::INT8);
 
   // Remove DataType check, because it doesn't make sense of set dtype in
@@ -252,9 +253,12 @@ TEST(test_layer, test_debug_string) {
 }
 
 static std::shared_ptr<imperative::GradOpNode> CreateGradNode(
-    size_t id, const std::string& type, const imperative::NameVarBaseMap& ins,
+    size_t id,
+    const std::string& type,
+    const imperative::NameVarBaseMap& ins,
     const imperative::NameVarBaseMap& outs,
-    const framework::AttributeMap& attrs, const platform::Place& place) {
+    const framework::AttributeMap& attrs,
+    const platform::Place& place) {
   auto node = std::make_shared<imperative::GradOpNode>();
   auto* op = &(node->emplace_back());
   op->SetId(id);
@@ -369,7 +373,7 @@ TEST(test_layer, test_dygraph_execution_context) {
   ASSERT_EQ(dy_exe_context.InputName("X"), "vin");
   ASSERT_EQ(dy_exe_context.HasAttr("axis"), true);
   auto attr_map = dy_exe_context.Attrs();
-  ASSERT_EQ(BOOST_GET(int, attr_map["axis"]), 1);
+  ASSERT_EQ(PADDLE_GET(int, attr_map["axis"]), 1);
   ASSERT_EQ(dy_exe_context.OutputSize("Out"), 1u);
   ASSERT_EQ(dy_exe_context.HasOutput("Out"), true);
 }
@@ -416,4 +420,4 @@ TEST(test_layer, test_eager) {
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP(mul);
+USE_OP_ITSELF(mul);

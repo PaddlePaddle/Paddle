@@ -83,7 +83,8 @@ class WhereGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    where, ops::WhereNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    where,
+    ops::WhereNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::WhereNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::WhereNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::WhereNPUKernel<paddle::platform::NPUDeviceContext, int64_t>);

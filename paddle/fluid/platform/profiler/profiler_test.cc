@@ -14,6 +14,7 @@
 
 #include <set>
 #include <string>
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #ifdef PADDLE_WITH_CUDA
@@ -22,27 +23,33 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 
 TEST(ProfilerTest, TestHostTracer) {
-  using paddle::platform::ProfilerOptions;
   using paddle::platform::Profiler;
+  using paddle::platform::ProfilerOptions;
+  using paddle::platform::ProfilerResult;
   using paddle::platform::RecordInstantEvent;
   using paddle::platform::TracerEventType;
   ProfilerOptions options;
   options.trace_level = 2;
+  options.trace_switch = 3;
   auto profiler = Profiler::Create(options);
   EXPECT_TRUE(profiler);
   profiler->Prepare();
   profiler->Start();
   {
-    RecordInstantEvent("TestTraceLevel_record1", TracerEventType::UserDefined,
-                       2);
-    RecordInstantEvent("TestTraceLevel_record2", TracerEventType::UserDefined,
-                       3);
+    RecordInstantEvent(
+        "TestTraceLevel_record1", TracerEventType::UserDefined, 2);
+    RecordInstantEvent(
+        "TestTraceLevel_record2", TracerEventType::UserDefined, 3);
   }
-  auto nodetree = profiler->Stop();
+  auto profiler_result = profiler->Stop();
+  auto nodetree = profiler_result->GetNodeTrees();
   std::set<std::string> host_events;
   for (const auto pair : nodetree->Traverse(true)) {
     for (const auto evt : pair.second) {
@@ -54,10 +61,12 @@ TEST(ProfilerTest, TestHostTracer) {
 }
 
 TEST(ProfilerTest, TestCudaTracer) {
-  using paddle::platform::ProfilerOptions;
   using paddle::platform::Profiler;
+  using paddle::platform::ProfilerOptions;
+  using paddle::platform::ProfilerResult;
   ProfilerOptions options;
   options.trace_level = 0;
+  options.trace_switch = 3;
   auto profiler = Profiler::Create(options);
   EXPECT_TRUE(profiler);
   profiler->Prepare();
@@ -72,7 +81,8 @@ TEST(ProfilerTest, TestCudaTracer) {
   hipStreamCreate(&stream);
   hipStreamSynchronize(stream);
 #endif
-  auto nodetree = profiler->Stop();
+  auto profiler_result = profiler->Stop();
+  auto nodetree = profiler_result->GetNodeTrees();
   std::vector<std::string> runtime_events;
   for (const auto pair : nodetree->Traverse(true)) {
     for (const auto host_node : pair.second) {
@@ -84,4 +94,50 @@ TEST(ProfilerTest, TestCudaTracer) {
 #ifdef PADDLE_WITH_CUPTI
   EXPECT_GT(runtime_events.size(), 0u);
 #endif
+}
+
+TEST(ProfilerTest, TestHostTracerForMem) {
+  using paddle::platform::CPUPlace;
+  using paddle::platform::EnableHostEventRecorder;
+  using paddle::platform::MemTraceEventNode;
+  using paddle::platform::Profiler;
+  using paddle::platform::ProfilerOptions;
+  using paddle::platform::ProfilerResult;
+  using paddle::platform::RecordEvent;
+  using paddle::platform::RecordInstantEvent;
+  using paddle::platform::RecordMemEvent;
+  using paddle::platform::TracerEventType;
+  using paddle::platform::TracerMemEventType;
+  ProfilerOptions options;
+  options.trace_level = 1;
+  options.trace_switch = 3;
+  auto profiler = Profiler::Create(options);
+  EXPECT_TRUE(profiler);
+  EnableHostEventRecorder();
+  profiler->Prepare();
+  profiler->Start();
+  {
+    RecordEvent event1(
+        "TestTracerForMem_phase1", TracerEventType::UserDefined, 1);
+    RecordMemEvent(reinterpret_cast<void*>(0),
+                   CPUPlace(),
+                   1024,
+                   TracerMemEventType::Allocate);
+    RecordMemEvent(
+        reinterpret_cast<void*>(0), CPUPlace(), 1024, TracerMemEventType::Free);
+  }
+  {
+    RecordEvent event2(
+        "TestTracerForMem_phase2", TracerEventType::UserDefined, 1);
+    RecordMemEvent(reinterpret_cast<void*>(1024),
+                   CPUPlace(),
+                   1024,
+                   TracerMemEventType::Allocate);
+    RecordMemEvent(reinterpret_cast<void*>(1024),
+                   CPUPlace(),
+                   1024,
+                   TracerMemEventType::Free);
+  }
+  auto profiler_result = profiler->Stop();
+  auto nodetree = profiler_result->GetNodeTrees();
 }

@@ -29,7 +29,7 @@ template <typename T, typename Context>
 DenseTensor Dot(const Context& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& y) {
-  auto dense_out = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   DotInferMeta(x, y, &meta_out);
   DotKernel<T, Context>(dev_ctx, x, y, &dense_out);

@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/where_kernel.h"
 
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
@@ -38,8 +40,7 @@ void WhereKernel(const Context& ctx,
   ctx.template Alloc<T>(out);
 
   CondFunctor<T> func;
-  funcs::BroadcastKernel<ElementwiseType::kTernary, T, T>(
-      ctx, ins, &outs, -1, func);
+  funcs::ElementwiseKernel<T, CondFunctor<T>, 1>(ctx, ins, &outs, func);
 }
 
 }  // namespace phi

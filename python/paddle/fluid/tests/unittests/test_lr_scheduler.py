@@ -28,6 +28,7 @@ import paddle.fluid.core as core
 
 def reduce_lr_on_plateau(decay_rate, threshold, cooldown, patience, m, n, loss,
                          var_list):
+
     def is_better(current, best, m, n):
         if m == 'min' and n == 'rel':
             return current < best - best * threshold
@@ -57,6 +58,7 @@ def reduce_lr_on_plateau(decay_rate, threshold, cooldown, patience, m, n, loss,
 
 
 class TestReduceOnPlateauDecay(object):
+
     def test_ReduceLR(self):
         # the decay rate must be less than 1.0
         with self.assertRaises(ValueError):
@@ -66,8 +68,8 @@ class TestReduceOnPlateauDecay(object):
             paddle.optimizer.lr.ReduceOnPlateau(learning_rate=1.0, mode="test")
         # the threshold_mode must be "rel" or "abs"
         with self.assertRaises(ValueError):
-            paddle.optimizer.lr.ReduceOnPlateau(
-                learning_rate=1.0, threshold_mode="test")
+            paddle.optimizer.lr.ReduceOnPlateau(learning_rate=1.0,
+                                                threshold_mode="test")
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.ReduceOnPlateau(learning_rate="test")
         with self.assertRaises(TypeError):
@@ -110,8 +112,10 @@ class TestReduceOnPlateauDecay(object):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = fluid.layers.create_global_var(
-                [1], 1, 'float32', persistable=True)
+            x = fluid.layers.create_global_var([1],
+                                               1,
+                                               'float32',
+                                               persistable=True)
             paddle.increment(x)
             loss = paddle.sin(x)
             scheduler = paddle.optimizer.lr.ReduceOnPlateau(**kwargs)
@@ -159,8 +163,8 @@ class TestReduceOnPlateauDecay(object):
 
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle.optimizer.lr.ReduceOnPlateau(**kwargs)
-        adam = paddle.optimizer.Adam(
-            learning_rate=scheduler, parameters=linear.parameters())
+        adam = paddle.optimizer.Adam(learning_rate=scheduler,
+                                     parameters=linear.parameters())
 
         for epoch in range(20):
             for batch_id in range(1):
@@ -181,8 +185,8 @@ class TestReduceOnPlateauDecay(object):
             self.assertEqual(current_lr, expected_lr)
         state_dict = adam.state_dict()
         scheduler1 = paddle.optimizer.lr.ReduceOnPlateau(**kwargs)
-        adam1 = paddle.optimizer.Adam(
-            learning_rate=scheduler1, parameters=linear.parameters())
+        adam1 = paddle.optimizer.Adam(learning_rate=scheduler1,
+                                      parameters=linear.parameters())
         adam1.set_state_dict(state_dict)
         self.assertEqual(scheduler.cooldown_counter,
                          scheduler1.cooldown_counter)
@@ -254,8 +258,8 @@ def polynomial_lr(epoch_num,
         if self.last_epoch == 0:
             return self.base_lr
         elif (self.last_epoch - 1 - self.T_max) % (2 * self.T_max) == 0:
-            return self.last_lr + (self.base_lr - self.eta_min) * (1 - math.cos(
-                math.pi / self.T_max)) / 2
+            return self.last_lr + (self.base_lr - self.eta_min) * (
+                1 - math.cos(math.pi / self.T_max)) / 2
 
         return (1 + math.cos(math.pi * self.last_epoch / self.T_max)) / (
             1 + math.cos(math.pi * (self.last_epoch - 1) / self.T_max)) * (
@@ -275,13 +279,13 @@ def cosine_annealing_lr(epoch_num,
         cosine_annealing_lr_current = learning_rate
     elif (epoch_num - 1 - T_max) % (2 * T_max) == 0:
         cosine_annealing_lr_current = cosine_annealing_lr_current + (
-            learning_rate - eta_min) * (1 - math.cos(math.pi / float(T_max))
-                                        ) / 2
+            learning_rate - eta_min) * (1 -
+                                        math.cos(math.pi / float(T_max))) / 2
     else:
-        cosine_annealing_lr_current = (1 + math.cos(
-            math.pi * epoch_num / float(T_max))) / (1 + math.cos(math.pi * (
-                epoch_num - 1) / float(T_max))) * (cosine_annealing_lr_current -
-                                                   eta_min) + eta_min
+        cosine_annealing_lr_current = (
+            1 + math.cos(math.pi * epoch_num / float(T_max))) / (
+                1 + math.cos(math.pi * (epoch_num - 1) / float(T_max))) * (
+                    cosine_annealing_lr_current - eta_min) + eta_min
     return cosine_annealing_lr_current
 
 
@@ -321,7 +325,119 @@ def step_lr(epoch_num, learning_rate, step_size, gamma=0.1, verbose=False):
     return learning_rate * math.pow(gamma, epoch_num // step_size)
 
 
+def one_cycle_lr(epoch_num,
+                 max_learning_rate,
+                 total_steps,
+                 divide_factor=25,
+                 end_learning_rate=0.0001,
+                 phase_pct=0.3,
+                 anneal_strategy='cos',
+                 three_phase=False,
+                 verbose=False):
+    initial_lr = max_learning_rate / divide_factor
+    if three_phase:
+        _end_steps = [
+            float(phase_pct * total_steps) - 1,
+            float(2 * phase_pct * total_steps) - 2, total_steps - 1
+        ]
+        _schedule_phases = [
+            {
+                'start_lr': initial_lr,
+                'end_lr': max_learning_rate,
+            },
+            {
+                'start_lr': max_learning_rate,
+                'end_lr': initial_lr,
+            },
+            {
+                'start_lr': initial_lr,
+                'end_lr': end_learning_rate,
+            },
+        ]
+    else:
+        _end_steps = [float(phase_pct * total_steps) - 1, total_steps - 1]
+        _schedule_phases = [
+            {
+                'start_lr': initial_lr,
+                'end_lr': max_learning_rate,
+            },
+            {
+                'start_lr': max_learning_rate,
+                'end_lr': end_learning_rate,
+            },
+        ]
+
+    if anneal_strategy == 'cos':
+
+        def anneal_func(start, end, pct):
+            cos_out = math.cos(math.pi * pct) + 1
+            return end + (start - end) / 2.0 * cos_out
+    else:
+
+        def anneal_func(start, end, pct):
+            return (end - start) * pct + start
+
+    start_step = 0
+    for i, phase in enumerate(_schedule_phases):
+        end_step = _end_steps[i]
+        if epoch_num <= end_step or i == len(_schedule_phases) - 1:
+            pct = (epoch_num - start_step) / (end_step - start_step)
+            computed_lr = anneal_func(phase['start_lr'], phase['end_lr'], pct)
+            break
+        start_step = end_step
+
+    return computed_lr
+
+
+def cyclic_lr(epoch_num,
+              base_learning_rate,
+              max_learning_rate,
+              step_size_up,
+              step_size_down,
+              mode,
+              exp_gamma=0.1,
+              scale_fn=None,
+              scale_mode='cycle',
+              verbose=False):
+    total_steps = step_size_up + step_size_down
+    step_ratio = step_size_up / total_steps
+
+    def triangular(x):
+        return 1.
+
+    def triangular2(x):
+        return 1 / (2.**(x - 1))
+
+    def exp_range(x):
+        return exp_gamma**x
+
+    if scale_fn is None:
+        if mode == 'triangular':
+            scale_fn = triangular
+            scale_mode = 'cycle'
+        elif mode == 'triangular2':
+            scale_fn = triangular2
+            scale_mode = 'cycle'
+        elif mode == 'exp_range':
+            scale_fn = exp_range
+            scale_mode = 'iterations'
+
+    cycle = math.floor(1 + epoch_num / total_steps)
+    iterations = epoch_num
+    x = 1. + epoch_num / total_steps - cycle
+
+    if x <= step_ratio:
+        scale_factor = x / step_ratio
+    else:
+        scale_factor = (x - 1) / (step_ratio - 1)
+
+    base_height = (max_learning_rate - base_learning_rate) * scale_factor
+
+    return base_learning_rate + base_height * scale_fn(eval(scale_mode))
+
+
 class TestLRScheduler(unittest.TestCase):
+
     def _test_static(self, python_func, paddle_api, kwarg, place):
         scheduler = paddle_api(**kwarg)
         adam = paddle.optimizer.Adam(learning_rate=scheduler)
@@ -362,17 +478,15 @@ class TestLRScheduler(unittest.TestCase):
 
         if isinstance(place, paddle.CPUPlace):
             compiled_train_prog = paddle.static.CompiledProgram(
-                main_prog).with_data_parallel(
-                    loss_name=loss.name, places=fluid.cpu_places(4))
+                main_prog).with_data_parallel(loss_name=loss.name,
+                                              places=fluid.cpu_places(4))
             for epoch in range(5):
                 python_result = python_func(num, **kwarg)
                 for batch_id in range(2):
-                    _ = exe.run(compiled_train_prog,
-                                feed={
-                                    'x':
-                                    np.random.randn(12, 4, 5).astype('float32')
-                                },
-                                fetch_list=lr_var.name)
+                    _ = exe.run(
+                        compiled_train_prog,
+                        feed={'x': np.random.randn(12, 4, 5).astype('float32')},
+                        fetch_list=lr_var.name)
                 scopes = compiled_train_prog._executor.local_scopes()
                 out = np.array(scopes[0].var(lr_var.name).get_tensor())
                 self.assertEqual(out, np.array(python_result))
@@ -393,12 +507,10 @@ class TestLRScheduler(unittest.TestCase):
             for epoch in range(5):
                 python_result = python_func(num, **kwarg)
                 for batch_id in range(2):
-                    _ = exe.run(compiled_test_prog,
-                                feed={
-                                    'x':
-                                    np.random.randn(12, 4, 5).astype('float32')
-                                },
-                                fetch_list=lr_var.name)
+                    _ = exe.run(
+                        compiled_test_prog,
+                        feed={'x': np.random.randn(12, 4, 5).astype('float32')},
+                        fetch_list=lr_var.name)
                 scopes = compiled_test_prog._executor.local_scopes()
                 out = np.array(scopes[0].var(lr_var.name).get_tensor())
                 self.assertEqual(out, np.array(python_result))
@@ -419,8 +531,8 @@ class TestLRScheduler(unittest.TestCase):
             kwarg['learning_rate'] = paddle.optimizer.lr.PiecewiseDecay(
                 [3, 6], [0.5, 0.2, 0.1])
         scheduler = paddle_api(**kwarg)
-        adam = paddle.optimizer.Adam(
-            learning_rate=scheduler, parameters=linear.parameters())
+        adam = paddle.optimizer.Adam(learning_rate=scheduler,
+                                     parameters=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
@@ -438,8 +550,8 @@ class TestLRScheduler(unittest.TestCase):
                 self.assertAlmostEqual(current_lr, expected_lr)
                 state_dict = adam.state_dict()
                 scheduler1 = paddle.optimizer.lr.LinearWarmup(**kwarg)
-                adam1 = paddle.optimizer.Adam(
-                    learning_rate=scheduler1, parameters=linear.parameters())
+                adam1 = paddle.optimizer.Adam(learning_rate=scheduler1,
+                                              parameters=linear.parameters())
                 adam1.set_state_dict(state_dict)
                 self.assertEqual(scheduler.last_epoch, scheduler1.last_epoch)
                 self.assertEqual(scheduler.last_lr, scheduler1.last_lr)
@@ -456,78 +568,267 @@ class TestLRScheduler(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             paddle.optimizer.lr.LRScheduler().step()
         with self.assertRaises(TypeError):
-            paddle.optimizer.lr.MultiStepDecay(
-                learning_rate="test", milestones=[1, 2, 3])
+            paddle.optimizer.lr.MultiStepDecay(learning_rate="test",
+                                               milestones=[1, 2, 3])
         with self.assertRaises(TypeError):
-            paddle.optimizer.lr.MultiStepDecay(
-                learning_rate=0.5, milestones='test')
+            paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5,
+                                               milestones='test')
         with self.assertRaises(ValueError):
-            paddle.optimizer.lr.MultiStepDecay(
-                learning_rate=0.5, milestones=[3, 2, 1])
+            paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5,
+                                               milestones=[3, 2, 1])
         with self.assertRaises(ValueError):
-            paddle.optimizer.lr.MultiStepDecay(
-                learning_rate=0.5, milestones=[1, 2, 3], gamma=2)
+            paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5,
+                                               milestones=[1, 2, 3],
+                                               gamma=2)
+        # check type of max_learning_rate
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.OneCycleLR(max_learning_rate='test',
+                                           total_steps=20)
+        # check value of max_learning_rate
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(max_learning_rate=-1.5,
+                                           total_steps=20)
+        # check type of end_learning_rate
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.OneCycleLR(max_learning_rate=0.1,
+                                           total_steps=20,
+                                           end_learning_rate='test')
+        # check value of end_learning_rate
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(max_learning_rate=0.1,
+                                           total_steps=20,
+                                           end_learning_rate=-1)
+        # check type of total_steps
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.OneCycleLR(max_learning_rate=0.1,
+                                           total_steps='test')
+        # check value of total_steps
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(max_learning_rate=0.1,
+                                           total_steps=-10)
+        # check value of anneal_strategy
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(max_learning_rate=0.1,
+                                           total_steps=20,
+                                           anneal_strategy='test')
+        # check value of phase_pct when three_phase is True
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(max_learning_rate=0.1,
+                                           total_steps=20,
+                                           phase_pct=0.6,
+                                           three_phase=True)
+        # check type of max_learning_rate
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate='test',
+                                         step_size_up=10)
+        # check value of max_learning_rate
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate=-1,
+                                         step_size_up=10)
+        # check type of step_size_up
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate=1.0,
+                                         step_size_up='test')
+        # check value of step_size_up
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate=1.0,
+                                         step_size_up=-1)
+        # check type of step_size_down
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate=1.0,
+                                         step_size_up=500,
+                                         step_size_down='test')
+        # check type of step_size_down
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate=1.0,
+                                         step_size_up=500,
+                                         step_size_down=-1)
+        # check value of mode
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate=1.0,
+                                         step_size_up=500,
+                                         step_size_down=500,
+                                         mode='test')
+        # check type value of scale_mode
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                                         max_learning_rate=1.0,
+                                         step_size_up=500,
+                                         step_size_down=-1,
+                                         scale_mode='test')
 
-        func_api_kwargs = [(noam_lr, paddle.optimizer.lr.NoamDecay, {
-            "d_model": 0.01,
-            "warmup_steps": 100,
-            "verbose": False
-        }), (piecewise_lr, paddle.optimizer.lr.PiecewiseDecay, {
-            "boundaries": [3, 6, 9, 15, 20],
-            "values": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
-            "verbose": False
-        }), (natural_exp_lr, paddle.optimizer.lr.NaturalExpDecay, {
-            "learning_rate": 0.5,
-            "gamma": 0.1,
-            "verbose": True
-        }), (inverse_time_lr, paddle.optimizer.lr.InverseTimeDecay, {
-            "learning_rate": 0.5,
-            "gamma": 0.1,
-            "verbose": False
-        }), (polynomial_lr, paddle.optimizer.lr.PolynomialDecay, {
-            "learning_rate": 0.5,
-            "decay_steps": 20,
-            "end_lr": 0,
-            "power": 1.0,
-            "cycle": False
-        }), (polynomial_lr, paddle.optimizer.lr.PolynomialDecay, {
-            "learning_rate": 0.5,
-            "decay_steps": 20,
-            "end_lr": 0,
-            "power": 1.0,
-            "cycle": True,
-            "verbose": False
-        }), (linear_warmup_lr, paddle.optimizer.lr.LinearWarmup, {
-            'learning_rate': 0.5,
-            'warmup_steps': 10,
-            'start_lr': 0,
-            'end_lr': 0.5
-        }), (exponential_lr, paddle.optimizer.lr.ExponentialDecay, {
-            "learning_rate": 0.5,
-            "gamma": 0.9,
-            "verbose": False
-        }), (multi_step_lr, paddle.optimizer.lr.MultiStepDecay, {
-            "learning_rate": 0.5,
-            "milestones": [3, 6, 9, 15, 20],
-            "gamma": 0.8
-        }), (step_lr, paddle.optimizer.lr.StepDecay, {
-            "learning_rate": 0.5,
-            "step_size": 2,
-            "gamma": 0.8,
-            "verbose": False
-        }), (lambda_lr, paddle.optimizer.lr.LambdaDecay, {
-            "learning_rate": 0.5,
-            "lr_lambda": lambda x: 0.95**x,
-            "verbose": True
-        }), (multiplicative_lr, paddle.optimizer.lr.MultiplicativeDecay, {
-            "learning_rate": 0.5,
-            "lr_lambda": lambda x: 0.95,
-            "verbose": True
-        }), (cosine_annealing_lr, paddle.optimizer.lr.CosineAnnealingDecay, {
-            "learning_rate": 0.5,
-            "T_max": 10,
-            "verbose": False
-        })]
+        func_api_kwargs = [
+            (noam_lr, paddle.optimizer.lr.NoamDecay, {
+                "d_model": 0.01,
+                "warmup_steps": 100,
+                "verbose": False
+            }),
+            (piecewise_lr, paddle.optimizer.lr.PiecewiseDecay, {
+                "boundaries": [3, 6, 9, 15, 20],
+                "values": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
+                "verbose": False
+            }),
+            (natural_exp_lr, paddle.optimizer.lr.NaturalExpDecay, {
+                "learning_rate": 0.5,
+                "gamma": 0.1,
+                "verbose": True
+            }),
+            (inverse_time_lr, paddle.optimizer.lr.InverseTimeDecay, {
+                "learning_rate": 0.5,
+                "gamma": 0.1,
+                "verbose": False
+            }),
+            (polynomial_lr, paddle.optimizer.lr.PolynomialDecay, {
+                "learning_rate": 0.5,
+                "decay_steps": 20,
+                "end_lr": 0,
+                "power": 1.0,
+                "cycle": False
+            }),
+            (polynomial_lr, paddle.optimizer.lr.PolynomialDecay, {
+                "learning_rate": 0.5,
+                "decay_steps": 20,
+                "end_lr": 0,
+                "power": 1.0,
+                "cycle": True,
+                "verbose": False
+            }),
+            (linear_warmup_lr, paddle.optimizer.lr.LinearWarmup, {
+                'learning_rate': 0.5,
+                'warmup_steps': 10,
+                'start_lr': 0,
+                'end_lr': 0.5
+            }),
+            (exponential_lr, paddle.optimizer.lr.ExponentialDecay, {
+                "learning_rate": 0.5,
+                "gamma": 0.9,
+                "verbose": False
+            }),
+            (multi_step_lr, paddle.optimizer.lr.MultiStepDecay, {
+                "learning_rate": 0.5,
+                "milestones": [3, 6, 9, 15, 20],
+                "gamma": 0.8
+            }),
+            (step_lr, paddle.optimizer.lr.StepDecay, {
+                "learning_rate": 0.5,
+                "step_size": 2,
+                "gamma": 0.8,
+                "verbose": False
+            }),
+            (lambda_lr, paddle.optimizer.lr.LambdaDecay, {
+                "learning_rate": 0.5,
+                "lr_lambda": lambda x: 0.95**x,
+                "verbose": True
+            }),
+            (multiplicative_lr, paddle.optimizer.lr.MultiplicativeDecay, {
+                "learning_rate": 0.5,
+                "lr_lambda": lambda x: 0.95,
+                "verbose": True
+            }),
+            (cosine_annealing_lr, paddle.optimizer.lr.CosineAnnealingDecay, {
+                "learning_rate": 0.5,
+                "T_max": 10,
+                "verbose": False
+            }),
+            (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
+                "max_learning_rate": 0.1,
+                "total_steps": 20,
+                "divide_factor": 5,
+                "end_learning_rate": 0.0001,
+                "anneal_strategy": 'cos',
+                "phase_pct": 0.3,
+                "three_phase": False,
+            }),
+            (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
+                "max_learning_rate": 0.5,
+                "total_steps": 20,
+                "divide_factor": 10,
+                "end_learning_rate": 0.001,
+                "anneal_strategy": 'linear',
+                "phase_pct": 0.4,
+                "three_phase": False,
+            }),
+            (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
+                "max_learning_rate": 1.0,
+                "total_steps": 20,
+                "divide_factor": 9,
+                "end_learning_rate": 0.0001,
+                "anneal_strategy": 'cos',
+                "phase_pct": 0.3,
+                "three_phase": True,
+            }),
+            (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
+                "max_learning_rate": 0.3,
+                "total_steps": 20,
+                "divide_factor": 25,
+                "end_learning_rate": 0.0005,
+                "anneal_strategy": 'linear',
+                "phase_pct": 0.2,
+                "three_phase": True,
+            }),
+            (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+                "base_learning_rate": 0.5,
+                "max_learning_rate": 1.0,
+                "step_size_up": 15,
+                "step_size_down": 5,
+                "mode": 'triangular',
+                "exp_gamma": 1.,
+                "scale_fn": None,
+                "scale_mode": 'cycle',
+                "verbose": False
+            }),
+            (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+                "base_learning_rate": 0.5,
+                "max_learning_rate": 1.0,
+                "step_size_up": 15,
+                "step_size_down": 5,
+                "mode": 'triangular2',
+                "exp_gamma": 1.,
+                "scale_fn": None,
+                "scale_mode": 'cycle',
+                "verbose": False
+            }),
+            (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+                "base_learning_rate": 0.5,
+                "max_learning_rate": 1.0,
+                "step_size_up": 15,
+                "step_size_down": 5,
+                "mode": 'exp_range',
+                "exp_gamma": 0.8,
+                "scale_fn": None,
+                "scale_mode": 'cycle',
+                "verbose": False
+            }),
+            (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+                "base_learning_rate": 0.5,
+                "max_learning_rate": 1.0,
+                "step_size_up": 15,
+                "step_size_down": 5,
+                "mode": 'exp_range',
+                "exp_gamma": 1.,
+                "scale_fn": lambda x: 0.95**x,
+                "scale_mode": 'cycle',
+                "verbose": False
+            }),
+            (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+                "base_learning_rate": 0.5,
+                "max_learning_rate": 1.0,
+                "step_size_up": 15,
+                "step_size_down": 5,
+                "mode": 'exp_range',
+                "exp_gamma": 1.,
+                "scale_fn": lambda x: 0.95,
+                "scale_mode": 'iterations',
+                "verbose": False
+            })
+        ]
 
         for python_func, paddle_api, kwarg in func_api_kwargs:
             places = [paddle.CPUPlace()]
@@ -542,8 +843,8 @@ class TestLRScheduler(unittest.TestCase):
                 paddle.enable_static()
 
     def test_linear_warmp(self):
-        natural_lr = paddle.optimizer.lr.NaturalExpDecay(
-            learning_rate=0.5, gamma=0.1)
+        natural_lr = paddle.optimizer.lr.NaturalExpDecay(learning_rate=0.5,
+                                                         gamma=0.1)
         natural_lr_warmup = paddle.optimizer.lr.LinearWarmup(
             learning_rate=natural_lr, warmup_steps=10, start_lr=0.0, end_lr=0.1)
         for idx in range(30):
@@ -555,4 +856,5 @@ class TestLRScheduler(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

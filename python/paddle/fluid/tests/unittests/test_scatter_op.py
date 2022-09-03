@@ -25,8 +25,10 @@ from paddle.fluid.dygraph.base import switch_to_static_graph
 
 
 class TestScatterOp(OpTest):
+
     def setUp(self):
         self.op_type = "scatter"
+        self.python_api = paddle.scatter
         ref_np = np.ones((3, 50)).astype("float32")
         index_np = np.array([1, 2]).astype("int32")
         updates_np = np.random.random((2, 50)).astype("float32")
@@ -36,15 +38,17 @@ class TestScatterOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out")
+        self.check_grad(["X", "Updates"], "Out", check_eager=False)
 
 
 class TestScatterOp0(OpTest):
+
     def setUp(self):
         self.op_type = "scatter"
+        self.python_api = paddle.scatter
         ref_np = np.ones((3, 3)).astype("float32")
         index_np = np.array([1, 2]).astype("int32")
         updates_np = np.random.random((2, 3)).astype("float32")
@@ -55,15 +59,17 @@ class TestScatterOp0(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out")
+        self.check_grad(["X", "Updates"], "Out", check_eager=False)
 
 
 class TestScatterOp1(OpTest):
+
     def setUp(self):
         self.op_type = "scatter"
+        self.python_api = paddle.scatter
         ref_np = np.ones((3, 3)).astype("float32")
         zeros_np = np.zeros([2, 3]).astype('float32')
         index_np = np.array([1, 1]).astype("int32")
@@ -77,17 +83,19 @@ class TestScatterOp1(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out")
+        self.check_grad(["X", "Updates"], "Out", check_eager=False)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestScatterOp2(OpTest):
+
     def setUp(self):
         self.op_type = "scatter"
+        self.python_api = paddle.scatter
         ref_np = np.ones((3, 3)).astype("float32")
         index_np = np.array([1, 2]).astype("int32")
         updates_np = np.random.random((2, 3)).astype("float32")
@@ -99,19 +107,23 @@ class TestScatterOp2(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3)
+            self.check_output_with_place(place, atol=1e-3, check_eager=False)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, ['X', 'Updates'], 'Out')
+            self.check_grad_with_place(place, ['X', 'Updates'],
+                                       'Out',
+                                       check_eager=False)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestScatterOp3(OpTest):
+
     def setUp(self):
         self.op_type = "scatter"
+        self.python_api = paddle.scatter
         ref_np = np.ones((3, 3)).astype("float32")
         zeros_np = np.zeros([2, 3]).astype('float32')
         index_np = np.array([1, 1]).astype("int32")
@@ -127,17 +139,21 @@ class TestScatterOp3(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3)
+            self.check_output_with_place(place, atol=1e-3, check_eager=False)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, ['X', 'Updates'], 'Out')
+            self.check_grad_with_place(place, ['X', 'Updates'],
+                                       'Out',
+                                       check_eager=False)
 
 
 class TestScatterOp4(OpTest):
+
     def setUp(self):
         self.op_type = "scatter"
+        self.python_api = paddle.scatter
         ref_np = np.ones((3, 3)).astype("float32")
         index_np = np.array([1, 2]).astype("int64")
         updates_np = np.random.random((2, 3)).astype("float32")
@@ -147,17 +163,19 @@ class TestScatterOp4(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out')
+        self.check_grad(['X', 'Updates'], 'Out', check_eager=False)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestScatterOp5(OpTest):
+
     def setUp(self):
         self.op_type = "scatter"
+        self.python_api = paddle.scatter
         ref_np = np.ones((3, 3)).astype("float32")
         index_np = np.array([1, 2]).astype("int64")
         updates_np = np.random.random((2, 3)).astype("float32")
@@ -169,15 +187,18 @@ class TestScatterOp5(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3)
+            self.check_output_with_place(place, atol=1e-3, check_eager=False)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, ['X', 'Updates'], 'Out')
+            self.check_grad_with_place(place, ['X', 'Updates'],
+                                       'Out',
+                                       check_eager=False)
 
 
 class TestScatterAPI(unittest.TestCase):
+
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -196,8 +217,8 @@ class TestScatterAPI(unittest.TestCase):
 
             input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
             index_data = np.array([2, 1, 0, 1]).astype(np.int64)
-            updates_data = np.array(
-                [[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3],
+                                     [4, 4]]).astype(np.float64)
 
             exe = fluid.Executor(place)
             fetches = exe.run(fluid.default_main_program(),
@@ -219,8 +240,8 @@ class TestScatterAPI(unittest.TestCase):
             with fluid.dygraph.guard(place):
                 x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
                 index_data = np.array([2, 1, 0, 1]).astype(np.int64)
-                updates_data = np.array(
-                    [[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float64)
+                updates_data = np.array([[1, 1], [2, 2], [3, 3],
+                                         [4, 4]]).astype(np.float64)
 
                 x = fluid.dygraph.to_variable(x_data)
                 index = fluid.dygraph.to_variable(index_data)
@@ -240,9 +261,9 @@ class TestScatterAPI(unittest.TestCase):
 
         def test_dygraph():
             with fluid.dygraph.guard():
-                gpu_out = paddle.scatter(
-                    paddle.to_tensor(x),
-                    paddle.to_tensor(index), paddle.to_tensor(updates))
+                gpu_out = paddle.scatter(paddle.to_tensor(x),
+                                         paddle.to_tensor(index),
+                                         paddle.to_tensor(updates))
                 return gpu_out.numpy()
 
         @switch_to_static_graph
@@ -250,10 +271,12 @@ class TestScatterAPI(unittest.TestCase):
             with paddle.static.program_guard(paddle.static.Program(),
                                              paddle.static.Program()):
                 x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
-                index_t = paddle.static.data(
-                    name="index", dtype=index.dtype, shape=index.shape)
-                updates_t = paddle.static.data(
-                    name="updates", dtype=updates.dtype, shape=updates.shape)
+                index_t = paddle.static.data(name="index",
+                                             dtype=index.dtype,
+                                             shape=index.shape)
+                updates_t = paddle.static.data(name="updates",
+                                               dtype=updates.dtype,
+                                               shape=updates.shape)
                 out_t = paddle.scatter(x_t, index_t, updates_t)
                 feed = {
                     x_t.name: x,
@@ -266,14 +289,16 @@ class TestScatterAPI(unittest.TestCase):
                 gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
                 return gpu_value
 
-        self.assertTrue(np.array_equal(test_dygraph(), test_static_graph()))
+        np.testing.assert_array_equal(test_dygraph(), test_static_graph())
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestScatterOpFp16(OpTest):
+
     def setUp(self):
         self.__class__.op_type = "scatter"
+        self.python_api = paddle.scatter
         # compute grad in the following code handly.
         self.__class__.no_need_check_grad = True
         self.x_type = 'float16'
@@ -290,8 +315,8 @@ class TestScatterOpFp16(OpTest):
         self.ref_dx[self.index_np] = zero_np
 
     def compute_ref_grad_updates(self):
-        ref_grad_updates = paddle.gather(
-            paddle.to_tensor(self.dout_np), paddle.to_tensor(self.index_np))
+        ref_grad_updates = paddle.gather(paddle.to_tensor(self.dout_np),
+                                         paddle.to_tensor(self.index_np))
         return ref_grad_updates
 
     def test_scatter_fp16(self):
@@ -300,19 +325,21 @@ class TestScatterOpFp16(OpTest):
         index_tensor = paddle.to_tensor(self.index_np)
         updates_tensor = paddle.to_tensor(self.updates_np, stop_gradient=False)
         out_tensor = paddle.scatter(x_tensor, index_tensor, updates_tensor)
-        paddle.autograd.backward(
-            [out_tensor], [paddle.to_tensor(self.dout_np)], retain_graph=True)
+        paddle.autograd.backward([out_tensor], [paddle.to_tensor(self.dout_np)],
+                                 retain_graph=True)
         ref_grad_updates = self.compute_ref_grad_updates()
-        np.testing.assert_allclose(
-            ref_grad_updates.numpy(),
-            updates_tensor.grad.numpy(),
-            rtol=1e-5,
-            atol=1e-5)
-        np.testing.assert_allclose(
-            self.ref_dx, x_tensor.grad.numpy(), rtol=1e-5, atol=1e-5)
+        np.testing.assert_allclose(ref_grad_updates.numpy(),
+                                   updates_tensor.grad.numpy(),
+                                   rtol=1e-5,
+                                   atol=1e-5)
+        np.testing.assert_allclose(self.ref_dx,
+                                   x_tensor.grad.numpy(),
+                                   rtol=1e-5,
+                                   atol=1e-5)
 
 
 class TestScatterInplaceAPI(TestScatterAPI):
+
     def executed_api(self):
         self.scatter = paddle.scatter_
 

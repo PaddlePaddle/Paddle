@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -62,8 +61,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   axis.push_back(1);
   f::AttributeMap attrs = {{"axes", axis}};
 
-  auto op = f::OpRegistry::CreateOp("unsqueeze", {{"X", {"X"}}},
-                                    {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      "unsqueeze", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
   ctx.Wait();

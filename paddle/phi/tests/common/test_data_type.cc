@@ -13,11 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <iostream>
 #include <sstream>
 
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/type_traits.h"
 
 namespace phi {
 namespace tests {
@@ -63,12 +65,30 @@ TEST(DataType, OStream) {
   oss << phi::DataType::COMPLEX128;
   EXPECT_EQ(oss.str(), "complex128");
   oss.str("");
+  oss << phi::DataType::PSTRING;
+  EXPECT_EQ(oss.str(), "pstring");
+  oss.str("");
   try {
     oss << phi::DataType::NUM_DATA_TYPES;
   } catch (const std::exception& exception) {
     std::string ex_msg = exception.what();
     EXPECT_TRUE(ex_msg.find("Invalid enum data type") != std::string::npos);
   }
+}
+
+TEST(TypeTraits, Complex) {
+  EXPECT_EQ(phi::dtype::ToReal(phi::DataType::COMPLEX64),
+            phi::DataType::FLOAT32);
+  EXPECT_EQ(phi::dtype::ToReal(phi::DataType::COMPLEX128),
+            phi::DataType::FLOAT64);
+  EXPECT_EQ(phi::dtype::ToReal(phi::DataType::FLOAT32), phi::DataType::FLOAT32);
+
+  EXPECT_EQ(phi::dtype::ToComplex(phi::DataType::FLOAT32),
+            phi::DataType::COMPLEX64);
+  EXPECT_EQ(phi::dtype::ToComplex(phi::DataType::FLOAT64),
+            phi::DataType::COMPLEX128);
+  EXPECT_EQ(phi::dtype::ToComplex(phi::DataType::COMPLEX64),
+            phi::DataType::COMPLEX64);
 }
 
 }  // namespace tests

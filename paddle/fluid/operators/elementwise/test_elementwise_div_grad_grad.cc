@@ -18,6 +18,7 @@
 #include <random>
 #include <string>
 #include <vector>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -27,8 +28,14 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-USE_OP(elementwise_div);
+USE_OP_ITSELF(elementwise_div);
+
+PD_DECLARE_KERNEL(divide_double_grad, CPU, ALL_LAYOUT);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(divide_double_grad, GPU, ALL_LAYOUT);
+#endif
 
 namespace paddle {
 namespace operators {
@@ -39,7 +46,9 @@ class TestElementwiseDivGradGradWithoutDout
  public:
   TestElementwiseDivGradGradWithoutDout(const platform::Place &place,
                                         const framework::DDim &dims)
-      : TestElementwiseOpGradGrad<T>("elementwise_div_grad_grad", place, dims,
+      : TestElementwiseOpGradGrad<T>("elementwise_div_grad_grad",
+                                     place,
+                                     dims,
                                      {"Y", "Out", "DDX", "DDY", "DX"},
                                      {"Y@GRAD", "DDOut"}) {}
 
@@ -66,11 +75,12 @@ class TestElementwiseDivGradGradWithoutDout
 
   std::unique_ptr<framework::OperatorBase> CreateTestOp() override {
     auto op = framework::OpRegistry::CreateOp(
-        this->op_type_, {{"Y", {"Y"}},
-                         {"Out", {"Out"}},
-                         {"DDX", {"DDX"}},
-                         {"DDY", {"DDY"}},
-                         {"DX", {"DX"}}},
+        this->op_type_,
+        {{"Y", {"Y"}},
+         {"Out", {"Out"}},
+         {"DDX", {"DDX"}},
+         {"DDY", {"DDY"}},
+         {"DX", {"DX"}}},
         {{"Y@GRAD", {"Y@GRAD"}}, {"DDOut", {"DDOut"}}},
         {{"use_mkldnn", false}, {"axis", 0}});
     return op;

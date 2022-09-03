@@ -17,6 +17,9 @@
 
 namespace infrt {
 namespace trt {
+
+std::unique_ptr<mlir::Pass> CreateTrtGraphFusePass();
+
 /*
  * trtGraphFusePass.
  *
@@ -24,37 +27,37 @@ namespace trt {
  *
  * source func:
  *
- * func @main() -> tensor<?xf32> {
- *  %a = "pd.feed"()...
- *  %c = "pd.graph"(%a) {
+ * func @main(%a : tensor<?xf32>) -> tensor<?xf32> {
+ *  %c = "infrt.graph"(%a) {
  *     %m = "pd.conv2d"(%a)...
- *     "pd.return" %m
+ *     infrt.return %m...
  *  } ...
- *  %d = "pd.graph"(%c) {
+ *  %d = "infrt.graph"(%c) {
  *      %m = "pd.conv3d"(%c)...
- *      "pd.return" %m
+ *      infrt.return %m...
  *  } ...
- *  %f = "pd.graph"(%a) {
+ *  %f = "infrt.graph"(%a) {
  *      %m = "pd.conv2d"(%a)...
- *      "pd.return" %m
+ *      infrt.return %m...
  *  } ...
- *  "pd.fetch" %d, %f
+ *  infrt.return %d, %f :...
+ * }
  *
  * destination func:
- * func @main() -> tensor<?xf32> {
- *  %a = "pd.feed"()...
- *  %d, %f = "pd.graph"(%a) {
+ * func @main(%a : tensor<?xf32>) -> tensor<?xf32> {
+ *  %d, %f = "infrt.graph"(%a) {
  *     %m = "pd.conv2d"(%a)...
  *     %n = "pd.conv3d"(%m)...
  *     %s = "pd.conv2d"(%a)...
- *     "pd.return" %n, %s
+ *     infrt.return %n, %s:...
  *  } ...
- *  "pd.fetch" %d, %f
+ *  infrt.return %d, %f:...
  * }
  */
 class TRTGraphFusePass
     : public mlir::PassWrapper<TRTGraphFusePass, mlir::FunctionPass> {
  public:
+  void getDependentDialects(mlir::DialectRegistry &registry) const override {}
   ::llvm::StringRef getName() const override { return "trtGraphFusePass"; }
   void runOnFunction() override;
 };

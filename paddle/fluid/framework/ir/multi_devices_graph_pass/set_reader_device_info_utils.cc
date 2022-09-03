@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/set_reader_device_info_utils.h"
+
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
@@ -24,7 +25,8 @@ static std::unordered_set<std::string> ReaderOpSet() {
   return {"create_py_reader"};
 }
 
-void InitReaderQueueDeviceCount(Graph *graph, const Scope &scope,
+void InitReaderQueueDeviceCount(Graph *graph,
+                                const Scope &scope,
                                 size_t dev_cnt) {
   using QueueHolder =
       operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder;

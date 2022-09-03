@@ -27,6 +27,7 @@ paddle.enable_static()
 
 # Correct: General.
 class TestUnsqueezeOp(OpTest):
+
     def setUp(self):
         self.init_test_case()
         self.op_type = "unsqueeze"
@@ -50,6 +51,7 @@ class TestUnsqueezeOp(OpTest):
 
 
 class TestUnsqueezeBF16Op(OpTest):
+
     def setUp(self):
         self.init_test_case()
         self.op_type = "unsqueeze"
@@ -77,6 +79,7 @@ class TestUnsqueezeBF16Op(OpTest):
 
 # Correct: Single input index.
 class TestUnsqueezeOp1(TestUnsqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (-1, )
@@ -85,6 +88,7 @@ class TestUnsqueezeOp1(TestUnsqueezeOp):
 
 # Correct: Mixed input axis.
 class TestUnsqueezeOp2(TestUnsqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (0, -1)
@@ -93,6 +97,7 @@ class TestUnsqueezeOp2(TestUnsqueezeOp):
 
 # Correct: There is duplicated axis.
 class TestUnsqueezeOp3(TestUnsqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (0, 3, 3)
@@ -101,6 +106,7 @@ class TestUnsqueezeOp3(TestUnsqueezeOp):
 
 # Correct: Reversed axes.
 class TestUnsqueezeOp4(TestUnsqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)
@@ -108,6 +114,7 @@ class TestUnsqueezeOp4(TestUnsqueezeOp):
 
 
 class API_TestUnsqueeze(unittest.TestCase):
+
     def test_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),
@@ -120,24 +127,27 @@ class API_TestUnsqueeze(unittest.TestCase):
             input = np.squeeze(input1, axis=1)
             result, = exe.run(feed={"data1": input},
                               fetch_list=[result_squeeze])
-            self.assertTrue(np.allclose(input1, result))
+            np.testing.assert_allclose(input1, result, rtol=1e-05)
 
 
 class TestUnsqueezeOpError(unittest.TestCase):
+
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
             # The type of axis in split_op should be int or Variable.
             def test_axes_type():
-                x6 = paddle.static.data(
-                    shape=[-1, 10], dtype='float16', name='x3')
+                x6 = paddle.static.data(shape=[-1, 10],
+                                        dtype='float16',
+                                        name='x3')
                 paddle.unsqueeze(x6, axis=3.2)
 
             self.assertRaises(TypeError, test_axes_type)
 
 
 class API_TestUnsqueeze2(unittest.TestCase):
+
     def test_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),
@@ -150,13 +160,16 @@ class API_TestUnsqueeze2(unittest.TestCase):
             input1 = np.random.random([5, 1, 10]).astype('float64')
             input2 = np.array([1]).astype('int32')
             input = np.squeeze(input1, axis=1)
-            result1, = exe.run(feed={"data1": input,
-                                     "data2": input2},
+            result1, = exe.run(feed={
+                "data1": input,
+                "data2": input2
+            },
                                fetch_list=[result_squeeze])
-            self.assertTrue(np.allclose(input1, result1))
+            np.testing.assert_allclose(input1, result1, rtol=1e-05)
 
 
 class API_TestUnsqueeze3(unittest.TestCase):
+
     def test_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),
@@ -169,14 +182,17 @@ class API_TestUnsqueeze3(unittest.TestCase):
             input1 = np.random.random([5, 1, 10, 1]).astype('float64')
             input2 = np.array([1]).astype('int32')
             input = np.squeeze(input1)
-            result1, = exe.run(feed={"data1": input,
-                                     "data2": input2},
+            result1, = exe.run(feed={
+                "data1": input,
+                "data2": input2
+            },
                                fetch_list=[result_squeeze])
-            self.assertTrue(np.array_equal(input1, result1))
+            np.testing.assert_array_equal(input1, result1)
             self.assertEqual(input1.shape, result1.shape)
 
 
 class API_TestDyUnsqueeze(unittest.TestCase):
+
     def test_out(self):
         paddle.disable_static()
         input_1 = np.random.random([5, 1, 10]).astype("int32")
@@ -184,11 +200,12 @@ class API_TestDyUnsqueeze(unittest.TestCase):
         input = paddle.to_tensor(input_1)
         output = paddle.unsqueeze(input, axis=[1])
         out_np = output.numpy()
-        self.assertTrue(np.array_equal(input1, out_np))
+        np.testing.assert_array_equal(input1, out_np)
         self.assertEqual(input1.shape, out_np.shape)
 
 
 class API_TestDyUnsqueeze2(unittest.TestCase):
+
     def test_out(self):
         paddle.disable_static()
         input1 = np.random.random([5, 10]).astype("int32")
@@ -196,11 +213,12 @@ class API_TestDyUnsqueeze2(unittest.TestCase):
         input = paddle.to_tensor(input1)
         output = paddle.unsqueeze(input, axis=1)
         out_np = output.numpy()
-        self.assertTrue(np.array_equal(out1, out_np))
+        np.testing.assert_array_equal(out1, out_np)
         self.assertEqual(out1.shape, out_np.shape)
 
 
 class API_TestDyUnsqueezeAxisTensor(unittest.TestCase):
+
     def test_out(self):
         paddle.disable_static()
         input1 = np.random.random([5, 10]).astype("int32")
@@ -209,11 +227,12 @@ class API_TestDyUnsqueezeAxisTensor(unittest.TestCase):
         input = paddle.to_tensor(input1)
         output = paddle.unsqueeze(input, axis=paddle.to_tensor([1, 2]))
         out_np = output.numpy()
-        self.assertTrue(np.array_equal(out1, out_np))
+        np.testing.assert_array_equal(out1, out_np)
         self.assertEqual(out1.shape, out_np.shape)
 
 
 class API_TestDyUnsqueezeAxisTensorList(unittest.TestCase):
+
     def test_out(self):
         paddle.disable_static()
         input1 = np.random.random([5, 10]).astype("int32")
@@ -223,13 +242,15 @@ class API_TestDyUnsqueezeAxisTensorList(unittest.TestCase):
         input = paddle.to_tensor(input1)
         output = paddle.unsqueeze(
             paddle.to_tensor(input1),
-            axis=[paddle.to_tensor([1]), paddle.to_tensor([2])])
+            axis=[paddle.to_tensor([1]),
+                  paddle.to_tensor([2])])
         out_np = output.numpy()
-        self.assertTrue(np.array_equal(out1, out_np))
+        np.testing.assert_array_equal(out1, out_np)
         self.assertEqual(out1.shape, out_np.shape)
 
 
 class API_TestDygraphUnSqueeze(unittest.TestCase):
+
     def setUp(self):
         self.executed_api()
 
@@ -243,7 +264,7 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
         output = self.unsqueeze(input, axis=[1])
         out_np = output.numpy()
         expected_out = np.expand_dims(input_1, axis=1)
-        self.assertTrue(np.allclose(expected_out, out_np))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
     def test_out_int8(self):
         paddle.disable_static()
@@ -252,7 +273,7 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
         output = self.unsqueeze(input, axis=[1])
         out_np = output.numpy()
         expected_out = np.expand_dims(input_1, axis=1)
-        self.assertTrue(np.allclose(expected_out, out_np))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
     def test_out_uint8(self):
         paddle.disable_static()
@@ -261,7 +282,7 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
         output = self.unsqueeze(input, axis=1)
         out_np = output.numpy()
         expected_out = np.expand_dims(input_1, axis=1)
-        self.assertTrue(np.allclose(expected_out, out_np))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
     def test_axis_not_list(self):
         paddle.disable_static()
@@ -270,7 +291,7 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
         output = self.unsqueeze(input, axis=1)
         out_np = output.numpy()
         expected_out = np.expand_dims(input_1, axis=1)
-        self.assertTrue(np.allclose(expected_out, out_np))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
     def test_dimension_not_1(self):
         paddle.disable_static()
@@ -278,11 +299,12 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
         input = paddle.to_tensor(input_1)
         output = self.unsqueeze(input, axis=(1, 2))
         out_np = output.numpy()
-        expected_out = np.expand_dims(input_1, axis=1)
-        self.assertTrue(np.allclose(expected_out, out_np))
+        expected_out = np.expand_dims(input_1, axis=(1, 2))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
 
 class API_TestDygraphUnSqueezeInplace(API_TestDygraphUnSqueeze):
+
     def executed_api(self):
         self.unsqueeze = paddle.unsqueeze_
 

@@ -25,6 +25,7 @@
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #endif
+#include "paddle/fluid/platform/stream_callback_manager.h"
 
 namespace paddle {
 namespace framework {
@@ -230,14 +231,14 @@ class CustomStreamGarbageCollector : public GarbageCollector {
 
   void Wait() const override;
 
-  platform::stream::Stream *stream() const;
+  phi::stream::Stream *stream() const;
 
  protected:
   void ClearCallback(const std::function<void()> &callback) override;
 
  private:
-  std::unique_ptr<platform::stream::Stream> stream_;
-  std::unique_ptr<platform::CallbackManager> callback_manager_;
+  std::unique_ptr<phi::stream::Stream> stream_;
+  std::unique_ptr<phi::CallbackManager> callback_manager_;
 };
 #endif
 

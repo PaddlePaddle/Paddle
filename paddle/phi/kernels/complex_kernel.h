@@ -24,6 +24,18 @@ namespace phi {
 template <typename T, typename Context>
 void ConjKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
 
+template <typename T, typename Context>
+void RealKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
+
+template <typename T, typename Context>
+void ImagKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
+
+template <typename T, typename Context>
+void ComplexKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out);
+
 // If T is complex
 template <
     typename T,
@@ -32,7 +44,7 @@ template <
                          std::is_same<T, phi::dtype::complex<double>>::value,
                      bool> = true>
 DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
-  auto dense_out = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(x, &meta_out);
   ConjKernel<T>(dev_ctx, x, &dense_out);
@@ -50,14 +62,56 @@ DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
   return x;
 }
 
-template <typename T, typename DeviceContext>
-void RealKernel(const DeviceContext& dev_ctx,
-                const DenseTensor& x,
-                DenseTensor* out);
+// If T is complex
+template <
+    typename T,
+    typename Context,
+    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
+                         std::is_same<T, phi::dtype::complex<double>>::value,
+                     bool> = true>
+DenseTensor Real(const Context& dev_ctx, const DenseTensor& x) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  RealAndImagInferMeta(x, &meta_out);
+  RealKernel<T>(dev_ctx, x, &dense_out);
+  return dense_out;
+}
 
-template <typename T, typename DeviceContext>
-void ImagKernel(const DeviceContext& dev_ctx,
-                const DenseTensor& x,
-                DenseTensor* out);
+// If T is not complex
+template <
+    typename T,
+    typename Context,
+    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
+                         !std::is_same<T, phi::dtype::complex<double>>::value,
+                     bool> = true>
+DenseTensor Real(const Context& dev_ctx, const DenseTensor& x) {
+  return x;
+}
+
+// If T is complex
+template <
+    typename T,
+    typename Context,
+    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
+                         std::is_same<T, phi::dtype::complex<double>>::value,
+                     bool> = true>
+DenseTensor Imag(const Context& dev_ctx, const DenseTensor& x) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  RealAndImagInferMeta(x, &meta_out);
+  ImagKernel<T>(dev_ctx, x, &dense_out);
+  return dense_out;
+}
+
+// If T is not complex
+template <
+    typename T,
+    typename Context,
+    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
+                         !std::is_same<T, phi::dtype::complex<double>>::value,
+                     bool> = true>
+DenseTensor Imag(const Context& dev_ctx, const DenseTensor& x) {
+  return x;
+}
 
 }  // namespace phi

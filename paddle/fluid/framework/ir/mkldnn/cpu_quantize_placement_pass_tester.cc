@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_placement_pass.h"
-
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_placement_pass.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
+           const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
            const std::string& mkldnn_data_type = "float32") {
@@ -59,9 +61,18 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 ProgramDesc BuildProgramDesc() {
   ProgramDesc prog;
 
-  for (auto& v :
-       std::vector<std::string>({"a", "b", "c", "weights", "bias", "f", "g",
-                                 "h", "weights2", "bias2", "k", "l"})) {
+  for (auto& v : std::vector<std::string>({"a",
+                                           "b",
+                                           "c",
+                                           "weights",
+                                           "bias",
+                                           "f",
+                                           "g",
+                                           "h",
+                                           "weights2",
+                                           "bias2",
+                                           "k",
+                                           "l"})) {
     auto* var = prog.MutableBlock(0)->Var(v);
     var->SetType(proto::VarType::SELECTED_ROWS);
     if (v == "weights" || v == "bias") {

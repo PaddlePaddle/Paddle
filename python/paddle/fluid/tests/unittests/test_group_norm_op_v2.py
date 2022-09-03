@@ -22,6 +22,7 @@ from op_test import OpTest, _set_use_system_allocator
 from paddle.fluid.framework import grad_var_name
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 import paddle
 
 
@@ -41,6 +42,7 @@ def group_norm_naive_for_general_dimension(x, scale, bias, epsilon, groups):
 
 
 class TestDygraphGroupNormv2(unittest.TestCase):
+
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
@@ -63,18 +65,18 @@ class TestDygraphGroupNormv2(unittest.TestCase):
 
             def test_weight_bias_false():
                 with fluid.dygraph.guard(p):
-                    gn = paddle.nn.GroupNorm(
-                        num_channels=2,
-                        num_groups=2,
-                        weight_attr=False,
-                        bias_attr=False)
+                    gn = paddle.nn.GroupNorm(num_channels=2,
+                                             num_groups=2,
+                                             weight_attr=False,
+                                             bias_attr=False)
 
             def test_nn_exception():
                 with fluid.dygraph.guard(p):
 
                     def attr_data_format():
-                        out = paddle.nn.GroupNorm(
-                            num_groups=2, num_channels=2, data_format="NHWC")
+                        out = paddle.nn.GroupNorm(num_groups=2,
+                                                  num_channels=2,
+                                                  data_format="NHWC")
 
                     self.assertRaises(ValueError, attr_data_format)
 
@@ -121,14 +123,19 @@ class TestDygraphGroupNormv2(unittest.TestCase):
                 x = np.random.randn(*shape).astype("float32")
                 y1 = compute_v1(x)
                 y2 = compute_v2(x)
-                self.assertTrue(np.allclose(y1, y2, atol=1e-5))
+                np.testing.assert_allclose(y1, y2, rtol=1e-05, atol=1e-05)
+
+    def test_eager_api(self):
+        with _test_eager_guard():
+            self.test_dygraph()
 
 
 class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
+
     def test_numerical_accuracy(self):
         paddle.disable_static()
-        shapes = [(2, 6), (2, 6, 4), (2, 6, 4, 4), (2, 6, 6, 6, 2), (2, 6, 6, 6,
-                                                                     2, 3)]
+        shapes = [(2, 6), (2, 6, 4), (2, 6, 4, 4), (2, 6, 6, 6, 2),
+                  (2, 6, 6, 6, 2, 3)]
         np.random.seed(10)
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
@@ -152,9 +159,15 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
                 self.assertTrue(np.allclose(result1, expect_res1, atol=1e-5))
                 self.assertTrue(np.allclose(result2, expect_res2, atol=1e-5))
 
+    def test_eager_api(self):
+        with _test_eager_guard():
+            self.test_numerical_accuracy()
+
 
 class TestGroupNormDimException(unittest.TestCase):
+
     def test_exception(self):
+
         def test_empty_input_static_API():
             x = paddle.to_tensor([], dtype='float32')
             paddle.static.nn.group_norm(x, 3)

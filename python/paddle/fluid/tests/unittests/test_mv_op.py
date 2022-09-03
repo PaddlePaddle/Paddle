@@ -25,17 +25,19 @@ from op_test import OpTest
 
 
 class TestMVOp(OpTest):
+
     def setUp(self):
         self.op_type = "mv"
+        self.python_api = paddle.mv
         self.init_config()
         self.inputs = {'X': self.x, 'Vec': self.vec}
         self.outputs = {'Out': np.dot(self.x, self.vec)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Vec'], 'Out')
+        self.check_grad(['X', 'Vec'], 'Out', check_eager=True)
 
     def init_config(self):
         self.x = np.random.random((2, 100)).astype("float64")
@@ -43,6 +45,7 @@ class TestMVOp(OpTest):
 
 
 class TestMVAPI(unittest.TestCase):
+
     def test_dygraph_api_out(self):
         paddle.disable_static()
 
@@ -53,7 +56,7 @@ class TestMVAPI(unittest.TestCase):
         z = paddle.mv(self.x, self.vec)
         np_z = z.numpy()
         z_expected = np.array(np.dot(self.x_data, self.vec_data))
-        self.assertTrue(np.allclose(np_z, z_expected))
+        np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
         paddle.enable_static()
 
@@ -70,10 +73,12 @@ class TestMVAPI(unittest.TestCase):
                 self.input_vec = np.random.rand(100).astype("float64")
 
                 with program_guard(train_program, startup_program):
-                    data_x = paddle.static.data(
-                        "x", shape=[5, 100], dtype="float64")
-                    data_vec = paddle.static.data(
-                        "vec", shape=[100], dtype="float64")
+                    data_x = paddle.static.data("x",
+                                                shape=[5, 100],
+                                                dtype="float64")
+                    data_vec = paddle.static.data("vec",
+                                                  shape=[100],
+                                                  dtype="float64")
 
                     data_x.stop_gradient = x_stop_gradient
                     data_vec.stop_gradient = vec_stop_gradient
@@ -82,16 +87,19 @@ class TestMVAPI(unittest.TestCase):
 
                     self.place = paddle.CPUPlace()
                     exe = paddle.static.Executor(self.place)
-                    res, = exe.run(
-                        feed={"x": self.input_x,
-                              "vec": self.input_vec},
-                        fetch_list=[result_vec])
+                    res, = exe.run(feed={
+                        "x": self.input_x,
+                        "vec": self.input_vec
+                    },
+                                   fetch_list=[result_vec])
                     z_expected = np.array(np.dot(self.input_x, self.input_vec))
-                    self.assertTrue(np.allclose(res, z_expected))
+                    np.testing.assert_allclose(res, z_expected, rtol=1e-05)
 
 
 class TestMVError(unittest.TestCase):
+
     def test_input(self):
+
         def test_shape():
             paddle.enable_static()
 
@@ -99,12 +107,14 @@ class TestMVError(unittest.TestCase):
             self.input_vec = np.random.rand(100).astype("float64")
 
             data_x = paddle.static.data("x", shape=[5, 100], dtype="float64")
-            data_vec = paddle.static.data(
-                "vec", shape=[100, 2], dtype="float64")
+            data_vec = paddle.static.data("vec",
+                                          shape=[100, 2],
+                                          dtype="float64")
             result_vec = paddle.mv(data_x, data_vec)
 
         self.assertRaises(ValueError, test_shape)
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

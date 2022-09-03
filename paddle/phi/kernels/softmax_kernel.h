@@ -20,19 +20,9 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void SoftmaxRawKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      int axis,
-                      DenseTensor* out);
-
-template <typename T, typename Context>
 void SoftmaxKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    int axis,
-                   DataType dtype,
-                   DenseTensor* out) {
-  auto cast_x = phi::Cast<T, Context>(dev_ctx, x, dtype);
-  phi::SoftmaxRawKernel<T, Context>(dev_ctx, axis, out);
-}
+                   DenseTensor* out);
 
 }  // namespace phi

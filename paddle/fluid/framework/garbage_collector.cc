@@ -78,14 +78,12 @@ DefaultStreamGarbageCollector::DefaultStreamGarbageCollector(
     : GarbageCollector(place, max_memory_size) {}
 
 void DefaultStreamGarbageCollector::Wait() const {
-  static_cast<platform::CUDADeviceContext *>(this->dev_ctx_)
-      ->WaitStreamCallback();
+  static_cast<phi::GPUContext *>(this->dev_ctx_)->WaitStreamCallback();
 }
 
 void DefaultStreamGarbageCollector::ClearCallback(
     const std::function<void()> &callback) {
-  static_cast<platform::CUDADeviceContext *>(this->dev_ctx_)
-      ->AddStreamCallback(callback);
+  static_cast<phi::GPUContext *>(this->dev_ctx_)->AddStreamCallback(callback);
 }
 
 StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
@@ -231,19 +229,19 @@ void CustomDeviceUnsafeFastGarbageCollector::ClearCallback(
 CustomStreamGarbageCollector::CustomStreamGarbageCollector(
     const platform::CustomPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {
-  platform::DeviceGuard guard(place);
-  stream_.reset(new platform::stream::Stream);
+  phi::DeviceGuard guard(place);
+  stream_.reset(new phi::stream::Stream);
   stream_->Init(place);
-  callback_manager_.reset(new platform::CallbackManager(stream_.get()));
+  callback_manager_.reset(new phi::CallbackManager(stream_.get()));
 }
 
 CustomStreamGarbageCollector::~CustomStreamGarbageCollector() {
-  platform::DeviceGuard guard(this->dev_ctx_->GetPlace());
+  phi::DeviceGuard guard(this->dev_ctx_->GetPlace());
   stream_->Synchronize();
   stream_->Destroy();
 }
 
-platform::stream::Stream *CustomStreamGarbageCollector::stream() const {
+phi::stream::Stream *CustomStreamGarbageCollector::stream() const {
   return stream_.get();
 }
 

@@ -14,20 +14,60 @@ limitations under the License. */
 
 #pragma once
 
+#include <tuple>
+#include <vector>
+
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace experimental {
 
-// TODO(chenweihang): Replace backend by place when place is ready
-Tensor copy_to_impl(const Tensor& x, Backend backend, bool blocking);
+// NOTE: Separate forward and backward(grad) api impl
+// NOTE: The api_impl in this file are arranged in alphabetic order.
+
+////////////////// Forward api impls //////////////////////
+
+std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
+    const Tensor& x,
+    const Tensor& scale,
+    const Tensor& bias,
+    const Tensor& mean,
+    const Tensor& variance,
+    float momentum,
+    float epsilon,
+    const std::string& data_layout,
+    bool is_test,
+    bool use_global_stats,
+    bool trainable_statistics,
+    bool fuse_with_relu);
+
+Tensor copy_to_impl(const Tensor& x, Place place, bool blocking);
+
+Tensor embedding_impl(const Tensor& x,
+                      const Tensor& weight,
+                      int64_t padding_idx,
+                      bool sparse);
 
 std::vector<Tensor> split_impl(const Tensor& x,
-                               const ScalarArray& num_or_sections,
+                               const IntArray& num_or_sections,
                                const Scalar& axis);
+
+////////////////// Backward(grad) api impls //////////////////////
+
+void imag_grad_impl(const Tensor& out_grad, Tensor* x_grad);
+
+void embedding_grad_impl(const Tensor& x,
+                         const Tensor& weight,
+                         const Tensor& out_grad,
+                         int64_t padding_idx,
+                         bool sparse,
+                         Tensor* weight_grad);
+
+void real_grad_impl(const Tensor& out_grad, Tensor* x_grad);
 
 }  // namespace experimental
 }  // namespace paddle

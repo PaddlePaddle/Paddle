@@ -29,8 +29,11 @@ import six
 import paddle
 from paddle.fluid.framework import _test_eager_guard
 
+import tempfile
+
 
 class SimpleLSTMRNN(fluid.Layer):
+
     def __init__(self,
                  hidden_size,
                  num_steps,
@@ -75,23 +78,29 @@ class SimpleLSTMRNN(fluid.Layer):
         self.hidden_array = []
 
         for i in range(self._num_layers):
-            pre_hidden = fluid.layers.slice(
-                init_hidden, axes=[0], starts=[i], ends=[i + 1])
-            pre_cell = fluid.layers.slice(
-                init_cell, axes=[0], starts=[i], ends=[i + 1])
-            pre_hidden = fluid.layers.reshape(
-                pre_hidden, shape=[-1, self._hidden_size])
-            pre_cell = fluid.layers.reshape(
-                pre_cell, shape=[-1, self._hidden_size])
+            pre_hidden = fluid.layers.slice(init_hidden,
+                                            axes=[0],
+                                            starts=[i],
+                                            ends=[i + 1])
+            pre_cell = fluid.layers.slice(init_cell,
+                                          axes=[0],
+                                          starts=[i],
+                                          ends=[i + 1])
+            pre_hidden = fluid.layers.reshape(pre_hidden,
+                                              shape=[-1, self._hidden_size])
+            pre_cell = fluid.layers.reshape(pre_cell,
+                                            shape=[-1, self._hidden_size])
             self.hidden_array.append(pre_hidden)
             self.cell_array.append(pre_cell)
 
         res = []
         for index in range(self._num_steps):
-            self._input = fluid.layers.slice(
-                input_embedding, axes=[1], starts=[index], ends=[index + 1])
-            self._input = fluid.layers.reshape(
-                self._input, shape=[-1, self._hidden_size])
+            self._input = fluid.layers.slice(input_embedding,
+                                             axes=[1],
+                                             starts=[index],
+                                             ends=[index + 1])
+            self._input = fluid.layers.reshape(self._input,
+                                               shape=[-1, self._hidden_size])
             for k in range(self._num_layers):
                 pre_hidden = self.hidden_array[k]
                 pre_cell = self.cell_array[k]
@@ -102,8 +111,9 @@ class SimpleLSTMRNN(fluid.Layer):
                 gate_input = fluid.layers.matmul(x=nn, y=weight_1)
 
                 gate_input = fluid.layers.elementwise_add(gate_input, bias)
-                i, j, f, o = fluid.layers.split(
-                    gate_input, num_or_sections=4, dim=-1)
+                i, j, f, o = fluid.layers.split(gate_input,
+                                                num_or_sections=4,
+                                                dim=-1)
                 c = pre_cell * fluid.layers.sigmoid(f) + fluid.layers.sigmoid(
                     i) * fluid.layers.tanh(j)
                 m = fluid.layers.tanh(c) * fluid.layers.sigmoid(o)
@@ -117,8 +127,8 @@ class SimpleLSTMRNN(fluid.Layer):
                         dropout_prob=self._dropout,
                         dropout_implementation='upscale_in_train')
             res.append(
-                fluid.layers.reshape(
-                    self._input, shape=[1, -1, self._hidden_size]))
+                fluid.layers.reshape(self._input,
+                                     shape=[1, -1, self._hidden_size]))
         real_res = fluid.layers.concat(res, 0)
         real_res = fluid.layers.transpose(x=real_res, perm=[1, 0, 2])
         last_hidden = fluid.layers.concat(self.hidden_array, 1)
@@ -133,6 +143,7 @@ class SimpleLSTMRNN(fluid.Layer):
 
 
 class PtbModel(fluid.Layer):
+
     def __init__(self,
                  hidden_size,
                  vocab_size,
@@ -147,12 +158,11 @@ class PtbModel(fluid.Layer):
         self.num_layers = num_layers
         self.num_steps = num_steps
         self.dropout = dropout
-        self.simple_lstm_rnn = SimpleLSTMRNN(
-            hidden_size,
-            num_steps,
-            num_layers=num_layers,
-            init_scale=init_scale,
-            dropout=dropout)
+        self.simple_lstm_rnn = SimpleLSTMRNN(hidden_size,
+                                             num_steps,
+                                             num_layers=num_layers,
+                                             init_scale=init_scale,
+                                             dropout=dropout)
         self.embedding = Embedding(
             size=[vocab_size, hidden_size],
             dtype='float32',
@@ -190,17 +200,18 @@ class PtbModel(fluid.Layer):
                 x_emb,
                 dropout_prob=self.drop_out,
                 dropout_implementation='upscale_in_train')
-        rnn_out, last_hidden, last_cell = self.simple_lstm_rnn(x_emb, init_h,
-                                                               init_c)
+        rnn_out, last_hidden, last_cell = self.simple_lstm_rnn(
+            x_emb, init_h, init_c)
         rnn_out = fluid.layers.reshape(
             rnn_out, shape=[-1, self.num_steps, self.hidden_size])
 
         projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
         projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
-        projection = fluid.layers.reshape(
-            projection, shape=[-1, self.vocab_size])
-        loss = fluid.layers.softmax_with_cross_entropy(
-            logits=projection, label=label, soft_label=False)
+        projection = fluid.layers.reshape(projection,
+                                          shape=[-1, self.vocab_size])
+        loss = fluid.layers.softmax_with_cross_entropy(logits=projection,
+                                                       label=label,
+                                                       soft_label=False)
         loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
         loss = fluid.layers.reduce_mean(loss, dim=[0])
         loss = fluid.layers.reduce_sum(loss)
@@ -209,6 +220,13 @@ class PtbModel(fluid.Layer):
 
 
 class TestDygraphPtbRnn(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def func_setUp(self):
         seed = 90
         hidden_size = 10
@@ -223,12 +241,11 @@ class TestDygraphPtbRnn(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
-            ptb_model = PtbModel(
-                hidden_size=hidden_size,
-                vocab_size=vocab_size,
-                num_layers=num_layers,
-                num_steps=num_steps,
-                init_scale=init_scale)
+            ptb_model = PtbModel(hidden_size=hidden_size,
+                                 vocab_size=vocab_size,
+                                 num_layers=num_layers,
+                                 num_steps=num_steps,
+                                 init_scale=init_scale)
 
             bd = []
             lr_arr = [1.0]
@@ -238,12 +255,12 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_lr = 1.0
                 lr_arr.append(new_lr)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
-            scheduler = paddle.optimizer.lr.PiecewiseDecay(
-                boundaries=bd, values=lr_arr)
-            adam = Adam(
-                learning_rate=scheduler, parameters=ptb_model.parameters())
+            place = fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0)
+            scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=bd,
+                                                           values=lr_arr)
+            adam = Adam(learning_rate=scheduler,
+                        parameters=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -256,14 +273,14 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
-                init_cell_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros((num_layers, batch_size, hidden_size),
+                                          dtype='float32')
                 x = to_variable(x_data)
                 y = to_variable(y_data)
                 init_hidden = to_variable(init_hidden_data)
                 init_cell = to_variable(init_cell_data)
-                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
-                                                            init_cell)
+                dy_loss, last_hidden, last_cell = ptb_model(
+                    x, y, init_hidden, init_cell)
                 if i == 0:
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()
@@ -286,7 +303,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 else:
                     self.base_opti[k] = v
 
-            paddle.save(self.opti_dict, "./test_dy_v2.pdopt")
+            paddle.save(self.opti_dict,
+                        os.path.join(self.temp_dir.name, "test_dy_v2.pdopt"))
 
             self.state_dict = ptb_model.state_dict()
 
@@ -295,10 +313,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 np_t = v.numpy()
                 self.model_base[k] = np_t
 
-            paddle.save(self.state_dict, "./test_dy_v2.pdparams")
+            paddle.save(self.state_dict,
+                        os.path.join(self.temp_dir.name, "test_dy_v2.pdparams"))
 
     def func_testLoadAndSetVarBase(self):
-        self.setUp()
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -312,12 +330,11 @@ class TestDygraphPtbRnn(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
-            ptb_model = PtbModel(
-                hidden_size=hidden_size,
-                vocab_size=vocab_size,
-                num_layers=num_layers,
-                num_steps=num_steps,
-                init_scale=init_scale)
+            ptb_model = PtbModel(hidden_size=hidden_size,
+                                 vocab_size=vocab_size,
+                                 num_layers=num_layers,
+                                 num_steps=num_steps,
+                                 init_scale=init_scale)
 
             bd = []
             lr_arr = [1.0]
@@ -327,12 +344,12 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_lr = 1.0
                 lr_arr.append(new_lr)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
-            scheduler = paddle.optimizer.lr.PiecewiseDecay(
-                boundaries=bd, values=lr_arr)
-            adam = Adam(
-                learning_rate=scheduler, parameters=ptb_model.parameters())
+            place = fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0)
+            scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=bd,
+                                                           values=lr_arr)
+            adam = Adam(learning_rate=scheduler,
+                        parameters=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -345,14 +362,14 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
-                init_cell_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros((num_layers, batch_size, hidden_size),
+                                          dtype='float32')
                 x = to_variable(x_data)
                 y = to_variable(y_data)
                 init_hidden = to_variable(init_hidden_data)
                 init_cell = to_variable(init_cell_data)
-                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
-                                                            init_cell)
+                dy_loss, last_hidden, last_cell = ptb_model(
+                    x, y, init_hidden, init_cell)
                 if i == 0:
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()
@@ -375,15 +392,17 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                     self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
 
-            para_state_dict = paddle.load("./test_dy_v2.pdparams")
-            opti_state_dict = paddle.load("./test_dy_v2.pdopt")
+            para_state_dict = paddle.load(
+                os.path.join(self.temp_dir.name, "test_dy_v2.pdparams"))
+            opti_state_dict = paddle.load(
+                os.path.join(self.temp_dir.name, "test_dy_v2.pdopt"))
             adam.set_state_dict(opti_state_dict)
 
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
                 if isinstance(v, (core.VarBase, core.eager.Tensor)):
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name]))
+                    np.testing.assert_array_equal(v.numpy(),
+                                                  self.base_opti[v.name])
                 else:
                     self.assertEqual(v, self.base_opti[k])
 
@@ -404,7 +423,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 base_t = self.model_base[k]
 
-                self.assertTrue(np.array_equal(new_t, base_t))
+                np.testing.assert_array_equal(new_t, base_t)
 
     def func_testSetVariable(self):
         seed = 90
@@ -420,12 +439,11 @@ class TestDygraphPtbRnn(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
-            ptb_model = PtbModel(
-                hidden_size=hidden_size,
-                vocab_size=vocab_size,
-                num_layers=num_layers,
-                num_steps=num_steps,
-                init_scale=init_scale)
+            ptb_model = PtbModel(hidden_size=hidden_size,
+                                 vocab_size=vocab_size,
+                                 num_layers=num_layers,
+                                 num_steps=num_steps,
+                                 init_scale=init_scale)
 
             bd = []
             lr_arr = [1.0]
@@ -435,12 +453,12 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_lr = 1.0
                 lr_arr.append(new_lr)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
-            scheduler = paddle.optimizer.lr.PiecewiseDecay(
-                boundaries=bd, values=lr_arr)
-            adam = Adam(
-                learning_rate=scheduler, parameters=ptb_model.parameters())
+            place = fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0)
+            scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=bd,
+                                                           values=lr_arr)
+            adam = Adam(learning_rate=scheduler,
+                        parameters=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -453,14 +471,14 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
-                init_cell_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros((num_layers, batch_size, hidden_size),
+                                          dtype='float32')
                 x = to_variable(x_data)
                 y = to_variable(y_data)
                 init_hidden = to_variable(init_hidden_data)
                 init_cell = to_variable(init_cell_data)
-                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
-                                                            init_cell)
+                dy_loss, last_hidden, last_cell = ptb_model(
+                    x, y, init_hidden, init_cell)
                 if i == 0:
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()
@@ -490,8 +508,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
                 if isinstance(v, (core.VarBase, core.eager.Tensor)):
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name]))
+                    np.testing.assert_array_equal(v.numpy(),
+                                                  self.base_opti[v.name])
                 else:
                     self.assertEqual(v, self.base_opti[k])
 
@@ -512,7 +530,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 base_t = self.model_base[k]
 
-                self.assertTrue(np.array_equal(new_t, base_t))
+                np.testing.assert_array_equal(new_t, base_t)
 
     def func_testSetNumpy(self):
         seed = 90
@@ -528,12 +546,11 @@ class TestDygraphPtbRnn(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
-            ptb_model = PtbModel(
-                hidden_size=hidden_size,
-                vocab_size=vocab_size,
-                num_layers=num_layers,
-                num_steps=num_steps,
-                init_scale=init_scale)
+            ptb_model = PtbModel(hidden_size=hidden_size,
+                                 vocab_size=vocab_size,
+                                 num_layers=num_layers,
+                                 num_steps=num_steps,
+                                 init_scale=init_scale)
 
             bd = []
             lr_arr = [1.0]
@@ -543,12 +560,12 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_lr = 1.0
                 lr_arr.append(new_lr)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
-            scheduler = paddle.optimizer.lr.PiecewiseDecay(
-                boundaries=bd, values=lr_arr)
-            adam = Adam(
-                learning_rate=scheduler, parameters=ptb_model.parameters())
+            place = fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0)
+            scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=bd,
+                                                           values=lr_arr)
+            adam = Adam(learning_rate=scheduler,
+                        parameters=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -561,14 +578,14 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
-                init_cell_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros((num_layers, batch_size, hidden_size),
+                                          dtype='float32')
                 x = to_variable(x_data)
                 y = to_variable(y_data)
                 init_hidden = to_variable(init_hidden_data)
                 init_cell = to_variable(init_cell_data)
-                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
-                                                            init_cell)
+                dy_loss, last_hidden, last_cell = ptb_model(
+                    x, y, init_hidden, init_cell)
                 if i == 0:
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()
@@ -602,8 +619,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
                 if isinstance(v, (core.VarBase, core.eager.Tensor)):
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name]))
+                    np.testing.assert_array_equal(v.numpy(),
+                                                  self.base_opti[v.name])
                 else:
                     self.assertEqual(v, self.base_opti[k])
 
@@ -626,7 +643,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 base_t = self.model_base[k]
 
-                self.assertTrue(np.array_equal(new_t, base_t))
+                np.testing.assert_array_equal(new_t, base_t)
 
     def func_testSetVariableBeforeTrain(self):
         seed = 90
@@ -642,20 +659,18 @@ class TestDygraphPtbRnn(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
-            ptb_model = PtbModel(
-                hidden_size=hidden_size,
-                vocab_size=vocab_size,
-                num_layers=num_layers,
-                num_steps=num_steps,
-                init_scale=init_scale)
+            ptb_model = PtbModel(hidden_size=hidden_size,
+                                 vocab_size=vocab_size,
+                                 num_layers=num_layers,
+                                 num_steps=num_steps,
+                                 init_scale=init_scale)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
-            adam = Adam(
-                learning_rate=0.0,
-                beta1=0.8,
-                beta2=0.6,
-                parameters=ptb_model.parameters())
+            place = fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0)
+            adam = Adam(learning_rate=0.0,
+                        beta1=0.8,
+                        beta2=0.6,
+                        parameters=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -671,14 +686,14 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
-                init_cell_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros((num_layers, batch_size, hidden_size),
+                                          dtype='float32')
                 x = to_variable(x_data)
                 y = to_variable(y_data)
                 init_hidden = to_variable(init_hidden_data)
                 init_cell = to_variable(init_cell_data)
-                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
-                                                            init_cell)
+                dy_loss, last_hidden, last_cell = ptb_model(
+                    x, y, init_hidden, init_cell)
 
                 dy_loss.backward()
                 adam.minimize(dy_loss)
@@ -687,17 +702,15 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
                 if k == "global_step":
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name] + 1))
+                    np.testing.assert_array_equal(v.numpy(),
+                                                  self.base_opti[v.name] + 1)
 
                 if k.find("beta1_pow_acc_0") > 0:
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name] *
-                                       adam._beta1))
+                    np.testing.assert_array_equal(
+                        v.numpy(), self.base_opti[v.name] * adam._beta1)
                 if k.find("beta2_pow_acc_0") > 0:
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name] *
-                                       adam._beta2))
+                    np.testing.assert_array_equal(
+                        v.numpy(), self.base_opti[v.name] * adam._beta2)
 
             state_dict = ptb_model.state_dict()
 
@@ -705,7 +718,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_t = v.numpy()
 
                 base_t = self.model_base[k]
-                self.assertTrue(np.array_equal(new_t, base_t))
+                np.testing.assert_array_equal(new_t, base_t)
 
     def func_testLoadAndSetVarBaseBeforeTrain(self):
         seed = 90
@@ -721,12 +734,11 @@ class TestDygraphPtbRnn(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
-            ptb_model = PtbModel(
-                hidden_size=hidden_size,
-                vocab_size=vocab_size,
-                num_layers=num_layers,
-                num_steps=num_steps,
-                init_scale=init_scale)
+            ptb_model = PtbModel(hidden_size=hidden_size,
+                                 vocab_size=vocab_size,
+                                 num_layers=num_layers,
+                                 num_steps=num_steps,
+                                 init_scale=init_scale)
 
             bd = []
             lr_arr = [0.0]
@@ -737,20 +749,20 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_lr = 0.0
                 lr_arr.append(new_lr)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
-            adam = Adam(
-                learning_rate=0.0,
-                beta1=0.8,
-                beta2=0.6,
-                parameters=ptb_model.parameters())
+            place = fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0)
+            adam = Adam(learning_rate=0.0,
+                        beta1=0.8,
+                        beta2=0.6,
+                        parameters=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
             last_hidden = None
             last_cell = None
 
-            state_dict, opti_dict = fluid.load_dygraph("./test_dy_v2")
+            state_dict, opti_dict = fluid.load_dygraph(
+                os.path.join(self.temp_dir.name, "test_dy_v2"))
             adam.set_state_dict(opti_dict)
             ptb_model.set_dict(state_dict)
 
@@ -760,14 +772,14 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
-                init_cell_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros((num_layers, batch_size, hidden_size),
+                                          dtype='float32')
                 x = to_variable(x_data)
                 y = to_variable(y_data)
                 init_hidden = to_variable(init_hidden_data)
                 init_cell = to_variable(init_cell_data)
-                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
-                                                            init_cell)
+                dy_loss, last_hidden, last_cell = ptb_model(
+                    x, y, init_hidden, init_cell)
 
                 dy_loss.backward()
                 adam.minimize(dy_loss)
@@ -776,17 +788,15 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
                 if k == "global_step":
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name] + 1))
+                    np.testing.assert_array_equal(v.numpy(),
+                                                  self.base_opti[v.name] + 1)
 
                 if k.find("beta1_pow_acc_0") > 0:
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name] *
-                                       adam._beta1))
+                    np.testing.assert_array_equal(
+                        v.numpy(), self.base_opti[v.name] * adam._beta1)
                 if k.find("beta2_pow_acc_0") > 0:
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name] *
-                                       adam._beta2))
+                    np.testing.assert_array_equal(
+                        v.numpy(), self.base_opti[v.name] * adam._beta2)
 
             # check parameter
 
@@ -796,7 +806,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_t = v.numpy()
 
                 base_t = self.model_base[k]
-                self.assertTrue(np.array_equal(new_t, base_t))
+                np.testing.assert_array_equal(new_t, base_t)
 
     def func_testSetNumpyBeforeTrain(self):
         seed = 90
@@ -812,12 +822,11 @@ class TestDygraphPtbRnn(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
-            ptb_model = PtbModel(
-                hidden_size=hidden_size,
-                vocab_size=vocab_size,
-                num_layers=num_layers,
-                num_steps=num_steps,
-                init_scale=init_scale)
+            ptb_model = PtbModel(hidden_size=hidden_size,
+                                 vocab_size=vocab_size,
+                                 num_layers=num_layers,
+                                 num_steps=num_steps,
+                                 init_scale=init_scale)
 
             bd = []
             lr_arr = [0.0]
@@ -828,15 +837,14 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_lr = 0.0
                 lr_arr.append(new_lr)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
-            scheduler = paddle.optimizer.lr.PiecewiseDecay(
-                boundaries=bd, values=lr_arr)
-            adam = Adam(
-                learning_rate=scheduler,
-                beta1=0.8,
-                beta2=0.6,
-                parameters=ptb_model.parameters())
+            place = fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0)
+            scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=bd,
+                                                           values=lr_arr)
+            adam = Adam(learning_rate=scheduler,
+                        beta1=0.8,
+                        beta2=0.6,
+                        parameters=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -863,14 +871,14 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
-                init_cell_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros((num_layers, batch_size, hidden_size),
+                                          dtype='float32')
                 x = to_variable(x_data)
                 y = to_variable(y_data)
                 init_hidden = to_variable(init_hidden_data)
                 init_cell = to_variable(init_cell_data)
-                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
-                                                            init_cell)
+                dy_loss, last_hidden, last_cell = ptb_model(
+                    x, y, init_hidden, init_cell)
 
                 dy_loss.backward()
                 scheduler.step()
@@ -880,18 +888,15 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
                 if k == "LR_Scheduler":
-                    self.assertTrue(
-                        np.array_equal(v['last_epoch'], self.base_opti[k][
-                            'last_epoch'] + 1))
+                    np.testing.assert_array_equal(
+                        v['last_epoch'], self.base_opti[k]['last_epoch'] + 1)
 
                 if k.find("beta1_pow_acc_0") > 0:
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name] *
-                                       adam._beta1))
+                    np.testing.assert_array_equal(
+                        v.numpy(), self.base_opti[v.name] * adam._beta1)
                 if k.find("beta2_pow_acc_0") > 0:
-                    self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name] *
-                                       adam._beta2))
+                    np.testing.assert_array_equal(
+                        v.numpy(), self.base_opti[v.name] * adam._beta2)
 
             # check parameter
 
@@ -901,25 +906,29 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_t = v.numpy()
 
                 base_t = self.model_base[k]
-                self.assertTrue(np.array_equal(new_t, base_t))
+                np.testing.assert_array_equal(new_t, base_t)
 
     def func_testOnlyLoadParams(self):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy.pdparams'))
+            paddle.save(
+                state_dict,
+                os.path.join(self.temp_dir.name, 'saved_dy', 'emb_dy.pdparams'))
 
             para_state_dict = paddle.load(
-                os.path.join('saved_dy', 'emb_dy.pdparams'))
+                os.path.join(self.temp_dir.name, 'saved_dy', 'emb_dy.pdparams'))
 
     def func_test_no_state_in_input_dict(self):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy.pdparams'))
+            paddle.save(
+                state_dict,
+                os.path.join(self.temp_dir.name, 'saved_dy', 'emb_dy.pdparams'))
 
             para_state_dict = paddle.load(
-                os.path.join('saved_dy', 'emb_dy.pdparams'))
+                os.path.join(self.temp_dir.name, 'saved_dy', 'emb_dy.pdparams'))
             para_state_dict.pop('weight')
 
             emb.set_state_dict(para_state_dict)
@@ -928,10 +937,14 @@ class TestDygraphPtbRnn(unittest.TestCase):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy.pdparams'))
+            paddle.save(
+                state_dict,
+                os.path.join(self.temp_dir.name, 'saved_dy', 'emb_dy.pdparams'))
 
-            para_state_dict = paddle.load(
-                os.path.join('saved_dy', 'emb_dy.pdparams'), return_numpy=True)
+            para_state_dict = paddle.load(os.path.join(self.temp_dir.name,
+                                                       'saved_dy',
+                                                       'emb_dy.pdparams'),
+                                          return_numpy=True)
             para_state_dict['weight'] = np.expand_dims(
                 para_state_dict['weight'], axis=-1)
 

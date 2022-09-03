@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/fluid/pybind/metrics_py.h"
 
 namespace py = pybind11;
@@ -39,15 +39,20 @@ void BindMetrics(py::module* m) {
   py::class_<framework::Metric, std::shared_ptr<framework::Metric>>(*m,
                                                                     "Metric")
       .def(py::init([]() { return framework::Metric::SetInstance(); }))
-      .def("init_metric", &framework::Metric::InitMetric,
+      .def("init_metric",
+           &framework::Metric::InitMetric,
            py::call_guard<py::gil_scoped_release>())
-      .def("flip_phase", &framework::Metric::FlipPhase,
+      .def("flip_phase",
+           &framework::Metric::FlipPhase,
            py::call_guard<py::gil_scoped_release>())
-      .def("get_metric_msg", &framework::Metric::GetMetricMsg,
+      .def("get_metric_msg",
+           &framework::Metric::GetMetricMsg,
            py::call_guard<py::gil_scoped_release>())
-      .def("get_wuauc_metric_msg", &framework::Metric::GetWuAucMetricMsg,
+      .def("get_wuauc_metric_msg",
+           &framework::Metric::GetWuAucMetricMsg,
            py::call_guard<py::gil_scoped_release>())
-      .def("get_metric_name_list", &framework::Metric::GetMetricNameList,
+      .def("get_metric_name_list",
+           &framework::Metric::GetMetricNameList,
            py::call_guard<py::gil_scoped_release>());
 }  // end Metrics
 }  // end namespace pybind

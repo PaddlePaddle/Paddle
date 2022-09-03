@@ -171,8 +171,9 @@ def build_process_graph(distributed_program):
             src_info, src_rank)
         graph.add_node(src_rank, resource_requirements=resource_requirements)
         for tgt_rank, comm_requirements in comm_requirements_to_ranks.items():
-            graph.add_edge(
-                src_rank, tgt_rank, comm_requirements=comm_requirements)
+            graph.add_edge(src_rank,
+                           tgt_rank,
+                           comm_requirements=comm_requirements)
     return graph
 
 
@@ -192,8 +193,9 @@ def build_cluster_graph(cluster):
             else:
                 graph.nodes[device.global_id]["occupied"] = False
         for link in machine.links.values():
-            graph.add_edge(
-                link.source.global_id, link.target.global_id, link=link)
+            graph.add_edge(link.source.global_id,
+                           link.target.global_id,
+                           link=link)
     return graph
 
 
@@ -233,8 +235,8 @@ def mapping(distributed_program, cluster):
             device_type = cur_rank_node["resource_requirements"]["device_type"]
             cur_device_node = None
             for device_node in cluster_graph.nodes.values():
-                if (device_node["device"].type == device_type) and (
-                        not device_node["occupied"]):
+                if (device_node["device"].type
+                        == device_type) and (not device_node["occupied"]):
                     device_node["occupied"] = True
                     cur_rank_node["visited"] = True
                     cur_rank_node["device"] = device_node["device"]
@@ -257,8 +259,8 @@ def mapping(distributed_program, cluster):
             nbr_device_edges.sort(key=sort_by_comm_bandwidth)
 
             for nbr_rank_edge in nbr_rank_edges:
-                src_rank_node = process_graph.nodes[nbr_rank_edge.src_id][
-                    "visited"]
+                src_rank_node = process_graph.nodes[
+                    nbr_rank_edge.src_id]["visited"]
                 if src_rank_node:
                     continue
                 device_type = src_rank_node["resource_requirements"][

@@ -17,11 +17,14 @@ import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
+import paddle
 
 
 class TestElementwisePowOp(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
         self.inputs = {
             'X': np.random.uniform(1, 2, [20, 5]).astype("float64"),
             'Y': np.random.uniform(1, 2, [20, 5]).astype("float64")
@@ -29,15 +32,23 @@ class TestElementwisePowOp(OpTest):
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output()
+        if hasattr(self, 'attrs'):
+            self.check_output(check_eager=False)
+        else:
+            self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        if hasattr(self, 'attrs'):
+            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+        else:
+            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 class TestElementwisePowOp_big_shape_1(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
         self.inputs = {
             'X': np.random.uniform(1, 2, [10, 10]).astype("float64"),
             'Y': np.random.uniform(0.1, 1, [10, 10]).astype("float64")
@@ -46,8 +57,10 @@ class TestElementwisePowOp_big_shape_1(TestElementwisePowOp):
 
 
 class TestElementwisePowOp_big_shape_2(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
         self.inputs = {
             'X': np.random.uniform(1, 2, [10, 10]).astype("float64"),
             'Y': np.random.uniform(0.2, 2, [10, 10]).astype("float64")
@@ -58,8 +71,10 @@ class TestElementwisePowOp_big_shape_2(TestElementwisePowOp):
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwisePowOp_scalar(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [3, 3, 4]).astype(np.float64),
             'Y': np.random.uniform(0.1, 1, [1]).astype(np.float64)
@@ -68,8 +83,10 @@ class TestElementwisePowOp_scalar(TestElementwisePowOp):
 
 
 class TestElementwisePowOp_tensor(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [100]).astype("float64"),
             'Y': np.random.uniform(1, 3, [100]).astype("float64")
@@ -78,8 +95,10 @@ class TestElementwisePowOp_tensor(TestElementwisePowOp):
 
 
 class TestElementwisePowOp_broadcast_0(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 1, 100]).astype("float64"),
             'Y': np.random.uniform(0.1, 1, [100]).astype("float64")
@@ -88,8 +107,10 @@ class TestElementwisePowOp_broadcast_0(TestElementwisePowOp):
 
 
 class TestElementwisePowOp_broadcast_1(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 100, 1]).astype("float64"),
             'Y': np.random.uniform(0.1, 1, [100]).astype("float64")
@@ -101,36 +122,42 @@ class TestElementwisePowOp_broadcast_1(TestElementwisePowOp):
 
 
 class TestElementwisePowOp_broadcast_2(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [100, 3, 1]).astype("float64"),
             'Y': np.random.uniform(0.1, 1, [100]).astype("float64")
         }
         self.attrs = {'axis': 0}
         self.outputs = {
-            'Out':
-            np.power(self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1))
+            'Out': np.power(self.inputs['X'],
+                            self.inputs['Y'].reshape(100, 1, 1))
         }
 
 
 class TestElementwisePowOp_broadcast_3(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 20, 5, 1]).astype("float64"),
             'Y': np.random.uniform(0.1, 1, [20, 5]).astype("float64")
         }
         self.attrs = {'axis': 1}
         self.outputs = {
-            'Out': np.power(self.inputs['X'], self.inputs['Y'].reshape(1, 20, 5,
-                                                                       1))
+            'Out': np.power(self.inputs['X'],
+                            self.inputs['Y'].reshape(1, 20, 5, 1))
         }
 
 
 class TestElementwisePowOp_broadcast_4(TestElementwisePowOp):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 10, 3, 5]).astype("float64"),
             'Y': np.random.uniform(0.1, 1, [2, 10, 1, 5]).astype("float64")
@@ -139,16 +166,22 @@ class TestElementwisePowOp_broadcast_4(TestElementwisePowOp):
 
 
 class TestElementwisePowOpInt(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
         self.inputs = {'X': np.asarray([1, 3, 6]), 'Y': np.asarray([1, 1, 1])}
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output()
+        if hasattr(self, 'attrs'):
+            self.check_output(check_eager=False)
+        else:
+            self.check_output(check_eager=True)
 
 
 class TestElementwisePowGradOpInt(unittest.TestCase):
+
     def setUp(self):
         self.x = np.asarray([1, 3, 6])
         self.y = np.asarray([1, 1, 1])
@@ -164,6 +197,7 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
         print(self.grad_res, self.grad_x, self.grad_y)
 
     def test_grad(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         places = [fluid.CPUPlace()]
         if fluid.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -176,9 +210,10 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
                 y.stop_gradient = False
                 res = x**y
                 res.backward()
-                self.assertTrue(np.array_equal(res.gradient(), self.grad_res))
-                self.assertTrue(np.array_equal(x.gradient(), self.grad_x))
-                self.assertTrue(np.array_equal(y.gradient(), self.grad_y))
+                np.testing.assert_array_equal(res.gradient(), self.grad_res)
+                np.testing.assert_array_equal(x.gradient(), self.grad_x)
+                np.testing.assert_array_equal(y.gradient(), self.grad_y)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 if __name__ == '__main__':

@@ -13,10 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
+
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -92,19 +97,19 @@ class __reduce_meanMaker__ : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_mean"; }
 };
 
-REGISTER_OPERATOR(reduce_mean, ops::ReduceOp, __reduce_meanMaker__,
+DECLARE_INFER_SHAPE_FUNCTOR(
+    reduce_mean,
+    ReduceMeanInferShapeFunctor,
+    PD_INFER_META(phi::ReduceIntArrayAxisInferMetaBase));
+
+REGISTER_OPERATOR(reduce_mean,
+                  ops::ReduceOp,
+                  __reduce_meanMaker__,
                   ops::ReduceMeanOpGradMaker<paddle::framework::OpDesc>,
-                  ops::ReduceMeanOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp,
+                  ops::ReduceMeanOpGradMaker<paddle::imperative::OpBase>,
+                  ReduceMeanInferShapeFunctor);
+REGISTER_OPERATOR(reduce_mean_grad,
+                  ops::ReduceGradOp,
                   ops::ReduceMeanDoubleGradDescMaker,
                   ops::ReduceMeanDoubleGradOpBaseMaker,
                   ops::ReduceMeanGradNoNeedBufferVarInferer);
-
-template <typename T>
-using CPUReduceMeanGradKernel =
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, T,
-                          ops::MeanGradFunctor, true>;
-
-REGISTER_OP_CPU_KERNEL(reduce_mean_grad, CPUReduceMeanGradKernel<bool>,
-                       CPUReduceMeanGradKernel<float>,
-                       CPUReduceMeanGradKernel<double>);

@@ -44,6 +44,10 @@ namespace phi {
   _PhiForEachDataTypeHelper_(                                       \
       callback, ::phi::dtype::complex<double>, DataType::COMPLEX128);
 
+#define _PhiForEachDataTypeTiny_(callback)                    \
+  _PhiForEachDataTypeHelper_(callback, int, DataType::INT32); \
+  _PhiForEachDataTypeHelper_(callback, int64_t, DataType::INT64);
+
 template <typename Visitor>
 inline void VisitDataType(phi::DataType type, Visitor visitor) {
 #define PhiVisitDataTypeCallback(cpp_type, data_type) \
@@ -58,5 +62,53 @@ inline void VisitDataType(phi::DataType type, Visitor visitor) {
 #undef PhiVisitDataTypeCallback
   PADDLE_THROW(phi::errors::Unimplemented(
       "Not supported phi::DataType(%d) as data type.", static_cast<int>(type)));
+}
+
+template <typename Visitor>
+inline void VisitDataTypeTiny(phi::DataType type, Visitor visitor) {
+#define PhiVisitDataTypeCallbackTiny(cpp_type, data_type) \
+  do {                                                    \
+    if (type == data_type) {                              \
+      visitor.template apply<cpp_type>();                 \
+      return;                                             \
+    }                                                     \
+  } while (0)
+
+  _PhiForEachDataTypeTiny_(PhiVisitDataTypeCallbackTiny);
+#undef PhiVisitDataTypeCallbackTiny
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Not supported phi::DataType(%d) as data type.", static_cast<int>(type)));
+}
+
+inline bool IsComplexType(const DataType& type) {
+  return (type == DataType::COMPLEX64 || type == DataType::COMPLEX128);
+}
+
+inline DataType ToComplexType(const DataType& type) {
+  switch (type) {
+    case DataType::FLOAT32:
+      return DataType::COMPLEX64;
+    case DataType::FLOAT64:
+      return DataType::COMPLEX128;
+    default:
+      PADDLE_THROW(errors::Unimplemented(
+          "Can not transform data type (%s) to complex type, now only support "
+          "float32 and float64 real value.",
+          type));
+  }
+}
+
+inline DataType ToRealType(const DataType& type) {
+  switch (type) {
+    case DataType::COMPLEX64:
+      return DataType::FLOAT32;
+    case DataType::COMPLEX128:
+      return DataType::FLOAT64;
+    default:
+      PADDLE_THROW(errors::Unimplemented(
+          "Can not transform data type (%s) to real type, now only support "
+          "complex64 and complex128 value.",
+          type));
+  }
 }
 }  // namespace phi

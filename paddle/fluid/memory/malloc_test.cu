@@ -12,6 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <thread>  // NOLINT
+#include <vector>
+
+#include "gtest/gtest.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/stream.h"
+
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -21,14 +30,6 @@
 #include <hip/hip_runtime.h>
 #endif
 
-#include <thread>  // NOLINT
-#include <vector>
-
-#include "gtest/gtest.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/device_context.h"
-
 namespace paddle {
 namespace memory {
 
@@ -36,7 +37,7 @@ const int NUM_STREAMS = 8;
 const int N = 2;
 const float DELTA = 1e-1;
 
-using CudaDevCtxVec = std::vector<std::unique_ptr<platform::CUDADeviceContext>>;
+using CudaDevCtxVec = std::vector<std::unique_ptr<phi::GPUContext>>;
 
 __global__ void kernel(float *x, int n) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -49,21 +50,27 @@ void CheckKernelOutput(float *x, int n) {
   auto host_x = std::unique_ptr<float[]>(new float[n]);
   for (int i = 0; i < n; ++i) {
 #ifdef PADDLE_WITH_HIP
-    EXPECT_TRUE(hipSuccess == hipMemcpy(host_x.get(), x, n * sizeof(float),
-                                        hipMemcpyDeviceToHost));
+    EXPECT_TRUE(
+        hipSuccess ==
+        hipMemcpy(host_x.get(), x, n * sizeof(float), hipMemcpyDeviceToHost));
 #else
-    EXPECT_TRUE(cudaSuccess == cudaMemcpy(host_x.get(), x, n * sizeof(float),
-                                          cudaMemcpyDeviceToHost));
+    EXPECT_TRUE(
+        cudaSuccess ==
+        cudaMemcpy(host_x.get(), x, n * sizeof(float), cudaMemcpyDeviceToHost));
 #endif
     EXPECT_GE(host_x[i] + DELTA, 3.14159f * i);
     EXPECT_LE(host_x[i] - DELTA, 3.14159f * i);
   }
 }
 
-void MultiStreamCompute(float **data, float **second_data,
-                        const platform::CUDADeviceContext &ctx) {
+void MultiStreamCompute(float **data,
+                        float **second_data,
+                        const phi::GPUContext &ctx) {
   // multi-streams
-  AllocationPtr allocation_ptr = Alloc(ctx, N * sizeof(float));
+  AllocationPtr allocation_ptr =
+      Alloc(ctx.GetPlace(),
+            N * sizeof(float),
+            phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
   EXPECT_GE(allocation_ptr->size(), N * sizeof(float));
   *data = reinterpret_cast<float *>(allocation_ptr->ptr());
 #ifdef PADDLE_WITH_HIP
@@ -73,18 +80,21 @@ void MultiStreamCompute(float **data, float **second_data,
 #endif
 
   // allocate and compute on same stream again
-  allocation_ptr = Alloc(ctx, N * sizeof(float));
+  allocation_ptr =
+      Alloc(ctx.GetPlace(),
+            N * sizeof(float),
+            phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
   EXPECT_GE(allocation_ptr->size(), N * sizeof(float));
   *second_data = reinterpret_cast<float *>(allocation_ptr->ptr());
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL((kernel), dim3(1), dim3(64), 0, ctx.stream(), *second_data,
-                     N);
+  hipLaunchKernelGGL(
+      (kernel), dim3(1), dim3(64), 0, ctx.stream(), *second_data, N);
 #else
   kernel<<<1, 64, 0, ctx.stream()>>>(*second_data, N);
 #endif
 }
 
-TEST(Malloc, CUDADeviceContextMultiStream) {
+TEST(Malloc, GPUContextMultiStream) {
   auto place = platform::CUDAPlace(0);
   platform::SetDeviceId(0);
 
@@ -106,8 +116,7 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
   main_stream_alloc_ptr.reset();
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
-    auto ctx = std::unique_ptr<platform::CUDADeviceContext>(
-        new platform::CUDADeviceContext(place));
+    auto ctx = std::unique_ptr<phi::GPUContext>(new phi::GPUContext(place));
     ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                           .GetAllocator(place, ctx->stream())
                           .get());
@@ -118,6 +127,10 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
     ctx->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(place)
+            .get());
+    ctx->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
             .get());
     ctx->PartialInitWithAllocator();
     dev_ctx.emplace_back(std::move(ctx));
@@ -135,7 +148,7 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
   }
 }
 
-TEST(Malloc, CUDADeviceContextMultiThreadMultiStream) {
+TEST(Malloc, GPUContextMultiThreadMultiStream) {
   auto place = platform::CUDAPlace(0);
   platform::SetDeviceId(0);
 
@@ -158,8 +171,7 @@ TEST(Malloc, CUDADeviceContextMultiThreadMultiStream) {
   main_stream_alloc_ptr.reset();
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
-    auto ctx = std::unique_ptr<platform::CUDADeviceContext>(
-        new platform::CUDADeviceContext(place));
+    auto ctx = std::unique_ptr<phi::GPUContext>(new phi::GPUContext(place));
     ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                           .GetAllocator(place, ctx->stream())
                           .get());
@@ -171,10 +183,14 @@ TEST(Malloc, CUDADeviceContextMultiThreadMultiStream) {
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(place)
             .get());
+    ctx->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .get());
     ctx->PartialInitWithAllocator();
     dev_ctx.emplace_back(std::move(ctx));
-    threads.push_back(std::thread(MultiStreamCompute, &data[i], &second_data[i],
-                                  std::cref(*dev_ctx[i])));
+    threads.push_back(std::thread(
+        MultiStreamCompute, &data[i], &second_data[i], std::cref(*dev_ctx[i])));
   }
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
@@ -196,5 +212,12 @@ TEST(Malloc, AllocZero) {
   AllocationPtr allocation_ptr = Alloc(place, 0);
   EXPECT_GE(allocation_ptr->size(), 0);
 }
+
+TEST(Malloc, AllocWithStream) {
+  size_t size = 1024;
+  AllocationPtr allocation = Alloc(platform::CUDAPlace(), size, phi::Stream(0));
+  EXPECT_EQ(allocation->size(), 1024);
+}
+
 }  // namespace memory
 }  // namespace paddle

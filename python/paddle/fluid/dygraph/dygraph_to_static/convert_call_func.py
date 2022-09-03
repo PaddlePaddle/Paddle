@@ -28,6 +28,7 @@ import six
 
 from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len, convert_zip
+from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_range, convert_enumerate
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
@@ -64,23 +65,20 @@ class ConversionOptions(object):
         self.not_convert = not_convert
 
 
-def is_builtin(func):
-    if isinstance(func, types.BuiltinFunctionType):
+def is_builtin(func, name=None):
+    """ predict whether a function is a builtin function with name={name}.
+        if name == None, then any builtin function will return True
+    """
+
+    def name_judge():
+        return name is None or func.__name__ == name
+
+    if isinstance(func, types.BuiltinFunctionType) and name_judge():
         return True
-    elif func in six.moves.builtins.__dict__.values():
+    elif func in six.moves.builtins.__dict__.values() and name_judge():
         return True
     else:
         return False
-
-
-def is_builtin_len(func):
-    if isinstance(func, types.BuiltinFunctionType) and func.__name__ == 'len':
-        return True
-    return False
-
-
-def is_builtin_zip(func):
-    return is_builtin(func) and func.__name__ == 'zip'
 
 
 def is_unsupported(func):
@@ -96,8 +94,8 @@ def is_unsupported(func):
             if func_in_dict:
                 translator_logger.log(
                     2,
-                    "Whitelist: {} is part of built-in module and does not have to be transformed.".
-                    format(func))
+                    "Whitelist: {} is part of built-in module and does not have to be transformed."
+                    .format(func))
                 return True
 
     # NOTE: should be placed before `is_paddle_func`
@@ -107,8 +105,8 @@ def is_unsupported(func):
     if is_paddle_func(func):
         translator_logger.log(
             2,
-            "Whitelist: {} is part of Paddle module and does not have to be transformed.".
-            format(func))
+            "Whitelist: {} is part of Paddle module and does not have to be transformed."
+            .format(func))
         return True
 
 
@@ -161,21 +159,27 @@ def convert_call(func):
     if options is not None and options.not_convert:
         translator_logger.log(
             2,
-            "{} is not converted when it is decorated by 'paddle.jit.not_to_static'.".
-            format(func))
+            "{} is not converted when it is decorated by 'paddle.jit.not_to_static'."
+            .format(func))
         return func
 
-    if is_builtin_len(func):
+    if is_builtin(func, "len"):
         return convert_len
 
-    if is_builtin_zip(func):
+    if is_builtin(func, "zip"):
         return convert_zip
+
+    if is_builtin(func, "range"):
+        return convert_range
+
+    if is_builtin(func, "enumerate"):
+        return convert_enumerate
 
     if is_builtin(func) or is_unsupported(func):
         return func
 
     if inspect.isgeneratorfunction(func):
-        # NOTE(xiongkun03): inspect.isfunction() will return True even though func is a generator function. 
+        # NOTE(xiongkun03): inspect.isfunction() will return True even though func is a generator function.
         # If we don't deal generatorfunction here, we will regard it as normal function and get errors in some
         # occasion.
         number_of_stars = 30
@@ -243,6 +247,7 @@ def convert_call(func):
         if hasattr(func, 'forward') and isinstance(func, Layer):
             try:
                 _, forward_func = unwrap_decorators(func.forward)
+                func._original_funcs['forward'] = forward_func.__func__
                 forward_func = convert_to_static(forward_func)
                 # Bound mothod will be convert into plain function after `convert_to_static`.
                 # So descriptor mechanism is used to bound `self` instance on function to

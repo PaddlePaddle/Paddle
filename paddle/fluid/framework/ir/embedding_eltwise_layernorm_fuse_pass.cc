@@ -31,7 +31,8 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-static PDNode* create_emb_vars(PDPattern* pattern, const std::string& name,
+static PDNode* create_emb_vars(PDPattern* pattern,
+                               const std::string& name,
                                const std::string& arg,
                                bool is_persist = false) {
   std::unordered_set<std::string> embedding_ops{"lookup_table",
@@ -41,7 +42,8 @@ static PDNode* create_emb_vars(PDPattern* pattern, const std::string& name,
   if (is_persist) return node->assert_is_persistable_var();
   return node;
 }
-static PDNode* create_emb_out_vars(PDPattern* pattern, const std::string& name,
+static PDNode* create_emb_out_vars(PDPattern* pattern,
+                                   const std::string& name,
                                    const std::string& arg) {
   std::unordered_set<std::string> embedding_ops{"lookup_table",
                                                 "lookup_table_v2"};
@@ -161,10 +163,10 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
     GET_IR_NODE_FROM_SUBGRAPH(lookup_table2_w, lookup_table2_w, start_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(lookup_table1, lookup_table1, start_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(lookup_table2, lookup_table2, start_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(lookup_table1_out, lookup_table1_out,
-                              start_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(lookup_table2_out, lookup_table2_out,
-                              start_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        lookup_table1_out, lookup_table1_out, start_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        lookup_table2_out, lookup_table2_out, start_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add, eltwise_add, start_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add_out, eltwise_add_out, start_pattern);
     if (!IsCompat(subgraph, graph)) {
@@ -178,8 +180,12 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
     start_pattern_out_node.push_back(eltwise_add_out);
 
     std::unordered_set<Node*> rm_nodes;
-    rm_nodes.insert({lookup_table1, lookup_table2, lookup_table1_out,
-                     lookup_table2_out, eltwise_add, eltwise_add_out});
+    rm_nodes.insert({lookup_table1,
+                     lookup_table2,
+                     lookup_table1_out,
+                     lookup_table2_out,
+                     eltwise_add,
+                     eltwise_add_out});
     start_pattern_remove_nodes.push_back(rm_nodes);
   };
   gpd(graph, handler);
@@ -199,8 +205,8 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
     GET_IR_NODE_FROM_SUBGRAPH(lookup_table1_x, lookup_table1_x, second_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(lookup_table1_w, lookup_table1_w, second_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(lookup_table1, lookup_table1, second_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(lookup_table1_out, lookup_table1_out,
-                              second_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        lookup_table1_out, lookup_table1_out, second_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add_in, eltwise_add_in, second_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add, eltwise_add, second_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add_out, eltwise_add_out, second_pattern);
@@ -234,19 +240,19 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
   auto handler3 = [&](const GraphPatternDetector::subgraph_t& subgraph,
                       Graph* g) {
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add, eltwise_add, skip_layernorm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltwise_add_out, eltwise_add_out,
-                              skip_layernorm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltwise_add_out, eltwise_add_out, skip_layernorm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, skip_layernorm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_out, layer_norm_out,
-                              skip_layernorm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_bias, layer_norm_bias,
-                              skip_layernorm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_scale, layer_norm_scale,
-                              skip_layernorm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean,
-                              skip_layernorm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
-                              skip_layernorm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_out, layer_norm_out, skip_layernorm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_bias, layer_norm_bias, skip_layernorm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_scale, layer_norm_scale, skip_layernorm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_mean, layer_norm_mean, skip_layernorm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_variance, layer_norm_variance, skip_layernorm_pattern);
     if (!IsCompat(subgraph, graph)) {
       LOG(WARNING) << "Pass(SkipLayerNorm) in op compat failed.";
       return;
@@ -308,6 +314,13 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
     for (size_t iter = 0; iter < js.size(); ++iter) {
       ids.push_back(inner_pattern_ins[js[iter]].first->Name());
       embs.push_back(inner_pattern_ins[js[iter]].second->Name());
+    }
+
+    // todo: support any inputs with lookup_table_v2
+    if (ids.size() < 3) {
+      VLOG(3) << "embedding_eltwise_layernorm_fuse_pass only support >=3 "
+                 "inputs with lookup_table_v2";
+      return fusion_count;
     }
 
     OpDesc new_op_desc;

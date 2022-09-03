@@ -18,6 +18,18 @@
 
 namespace phi {
 
+/**
+ * @brief Returns the cross product of vectors in dimension dim of
+ *        input and other. Input and other must have the same size,
+ *        and the size of their dim dimension should be 3.
+ *        If dim is not given, it defaults to the first dimension
+ *        found with the size 3.
+ * @param  ctx     device context
+ * @param  x       the input tensor
+ * @param  y       the second input tensor
+ * @param  axis    the dimension to take the cross-product in
+ * @param  out     the output tensor
+ */
 template <typename T, typename Context>
 void CrossKernel(const Context& dev_ctx,
                  const DenseTensor& x,

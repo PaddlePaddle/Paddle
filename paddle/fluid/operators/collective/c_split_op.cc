@@ -27,29 +27,38 @@ class CSplitOp : public framework::OperatorWithKernel {
     int nranks = ctx->Attrs().Get<int>("nranks");
     int rank = ctx->Attrs().Get<int>("rank");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
-    PADDLE_ENFORCE_GE(nranks, 2, platform::errors::InvalidArgument(
-                                     "The number of ranks (%d) for c_split "
-                                     "must be greater than 1.",
-                                     nranks));
+    PADDLE_ENFORCE_GE(nranks,
+                      2,
+                      platform::errors::InvalidArgument(
+                          "The number of ranks (%d) for c_split "
+                          "must be greater than 1.",
+                          nranks));
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for c_split must be non-negative.", ring_id));
     PADDLE_ENFORCE_GE(
-        rank, 0, platform::errors::InvalidArgument(
-                     "The rank (%d) for c_split must be non-negative.", rank));
-    PADDLE_ENFORCE_LT(rank, nranks,
+        rank,
+        0,
+        platform::errors::InvalidArgument(
+            "The rank (%d) for c_split must be non-negative.", rank));
+    PADDLE_ENFORCE_LT(rank,
+                      nranks,
                       platform::errors::InvalidArgument(
                           "The value of rank (%d) for c_split must "
                           "be less than that of nranks.",
-                          rank, nranks));
+                          rank,
+                          nranks));
 
     framework::DDim dim = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(
-        dim[dim.size() - 1] % nranks, 0,
+        dim[dim.size() - 1] % nranks,
+        0,
         platform::errors::InvalidArgument("The last dimension (%d) of the X "
                                           "should be divisible by nranks (%d)",
-                                          dim[dim.size() - 1], nranks));
+                                          dim[dim.size() - 1],
+                                          nranks));
 
     dim[dim.size() - 1] = dim[dim.size() - 1] / nranks;
     if (dim[0] < 0) dim[0] = -1;
@@ -106,12 +115,14 @@ Split the tensor evenly according to its rank.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(c_split, ops::CSplitOp,
+REGISTER_OPERATOR(c_split,
+                  ops::CSplitOp,
                   ops::CSplitOpGradMaker<paddle::framework::OpDesc>,
                   ops::CSplitOpGradMaker<paddle::imperative::OpBase>,
                   ops::CSplitOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_split, ops::CSplitOpCPUKernel<float>,
+REGISTER_OP_CPU_KERNEL(c_split,
+                       ops::CSplitOpCPUKernel<float>,
                        ops::CSplitOpCPUKernel<double>,
                        ops::CSplitOpCPUKernel<int>,
                        ops::CSplitOpCPUKernel<int64_t>,

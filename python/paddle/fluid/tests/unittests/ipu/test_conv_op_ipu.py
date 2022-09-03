@@ -16,35 +16,32 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
-import paddle.optimizer
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
-paddle.enable_static()
 
-
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
         self.set_feed()
-        self.set_attrs()
+        self.set_op_attrs()
+
+    def set_atol(self):
+        self.atol = 1e-6
+        self.rtol = 1e-6
+        self.atol_fp16 = 1e-3
+        self.rtol_fp16 = 1e-3
 
     def set_feed(self):
-        self.feed_shape = []
-        self.feed_shape.append([1, 3, 10, 10])
+        data = np.random.uniform(size=[1, 3, 10, 10])
+        self.feed_fp32 = {'in_0': data.astype(np.float32)}
+        self.feed_fp16 = {'in_0': data.astype(np.float16)}
+        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
+        self.feed_list = list(self.feed_fp32.keys())
 
-        self.feed = {}
-        self.feed["in_0"] = np.random.uniform(
-            size=self.feed_shape[0]).astype(np.float32)
-
-        self.feed_list = list(self.feed.keys())
-
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {}
         self.attrs['num_filters'] = 3
         self.attrs['filter_size'] = 3
@@ -54,105 +51,119 @@ class TestBase(IPUOpTest):
         self.attrs['groups'] = 1
         self.attrs['data_format'] = 'NCHW'
 
-    def _test_base(self, run_ipu=True):
-        scope = fluid.core.Scope()
-        main_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        SEED = self.SEED
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        x = paddle.fluid.layers.conv2d(x, **self.attrs)
+        self.fetch_list = [x.name]
 
-        with fluid.scope_guard(scope):
-            with paddle.static.program_guard(main_prog, startup_prog):
-                image = paddle.static.data(
-                    name=self.feed_list[0],
-                    shape=self.feed_shape[0],
-                    dtype='float32')
-                out = paddle.fluid.layers.conv2d(image, **self.attrs)
+    def run_model(self, exec_mode):
+        self.run_op_test(exec_mode)
 
-                fetch_list = [out.name]
-
-            if run_ipu:
-                place = paddle.IPUPlace()
-            else:
-                place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            exe.run(startup_prog)
-
-            if run_ipu:
-                feed_list = self.feed_list
-                ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(is_training=self.is_training)
-                program = compiler.IPUCompiledProgram(
-                    main_prog,
-                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
-            else:
-                program = main_prog
-
-            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
-            return result[0]
-
-    def test_base(self):
-        res0 = self._test_base(True)
-        res1 = self._test_base(False)
-
-        self.assertTrue(
-            np.allclose(
-                res0.flatten(), res1.flatten(), atol=self.atol))
+    def test(self):
+        for m in IPUOpTest.ExecutionMode:
+            if not self.skip_mode(m):
+                self.build_model()
+                self.run_model(m)
+        self.check()
 
 
 class TestCase1(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
+
+    def set_op_attrs(self):
+        super().set_op_attrs()
         self.attrs['num_filters'] = 1
 
 
 class TestCase2(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
+
+    def set_op_attrs(self):
+        super().set_op_attrs()
         self.attrs['filter_size'] = [3, 3]
 
 
 class TestCase2_1(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
+
+    def set_op_attrs(self):
+        super().set_op_attrs()
         self.attrs['filter_size'] = [3, 2]
 
 
 class TestCase3(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
+
+    def set_op_attrs(self):
+        super().set_op_attrs()
         self.attrs['stride'] = [2, 3]
 
 
 class TestCase4(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
+
+    def set_op_attrs(self):
+        super().set_op_attrs()
         self.attrs['dilation'] = [2, 2]
 
 
 class TestCase5(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
+    # Depthwise conv2d
+    def set_op_attrs(self):
+        super().set_op_attrs()
         self.attrs['groups'] = 3
 
 
 class TestCase6(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
+
+    def set_op_attrs(self):
+        super().set_op_attrs()
         self.attrs['padding'] = 2
 
 
 class TestCase7(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
+
+    def set_op_attrs(self):
+        super().set_op_attrs()
         self.attrs['padding'] = [2, 3]
 
 
 class TestCase8(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
+
+    def set_op_attrs(self):
+        super().set_op_attrs()
         self.attrs['padding'] = [1, 2, 2, 3]
+
+
+# depthwise_conv2d Op
+class TestCase9(TestBase):
+
+    def set_feed(self):
+        data = np.random.uniform(size=[1, 3, 10, 10])
+        weight = np.random.uniform(size=[3, 1, 3, 3])
+        self.feed_fp32 = {
+            'in_0': data.astype(np.float32),
+            'in_1': weight.astype(np.float32)
+        }
+        self.feed_fp16 = {
+            'in_0': data.astype(np.float16),
+            'in_1': weight.astype(np.float16)
+        }
+        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
+        self.feed_list = list(self.feed_fp32.keys())
+
+    def set_op_attrs(self):
+        self.attrs = {}
+        self.attrs['groups'] = 3
+
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        weight = paddle.static.data(name=self.feed_list[1],
+                                    shape=self.feed_shape[1],
+                                    dtype='float32')
+        x = paddle.nn.functional.conv2d(x, weight, **self.attrs)
+        self.fetch_list = [x.name]
 
 
 if __name__ == "__main__":

@@ -18,26 +18,25 @@ limitations under the License. */
 #include <popart/names.hpp>
 #include <popart/tensorinfo.hpp>
 
-#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device/ipu/ipu_compiler.h"
-#include "paddle/fluid/platform/device/ipu/ipu_device.h"
-#include "paddle/fluid/platform/device/ipu/ipu_executor.h"
 #include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
-#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/timer.h"
+
+namespace paddle {
+namespace framework {
+class ExecutionContext;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 
-// IpuBackend is the center of paddle-ipu, its function include:
-//   1. Compile paddle model to popart model
-//   2. Run popart model, inference or training
-//   3. Request and release device
-//   4. Other helper function
+class IpuStrategy;
+class Compiler;
+class Executor;
+
 class IpuBackend {
  public:
   static IpuBackend *GetInstance();
@@ -46,51 +45,48 @@ class IpuBackend {
   IpuBackend();
   ~IpuBackend();
 
-  // what compile does include(call compiler_):
-  //   1. map paddle-op -> poart op
-  //   2. construct popart onnx compute graph
-  void Compile(Graph *graph, const std::vector<std::string> &feed_list,
+  // What compile method does:
+  // Convert paddle ops to popart ops;
+  // Construct a popart graph, which is a onnx compute graph;
+  // Load the graph and weights to ipu.
+  void Compile(framework::ir::Graph *graph,
+               const std::vector<std::string> &feed_list,
                const std::vector<std::string> &fetch_list);
 
-  // what run does include:
-  //   1. construct forward onnx graph
-  //   2. graph-level optimization
-  //   3. autodiff
-  void Run(const std::vector<const Tensor *> &inputs,
-           const std::vector<Tensor *> &outputs,
+  // Run the compiled graph on ipu
+  void Run(const std::vector<const framework::Tensor *> &inputs,
+           const std::vector<framework::Tensor *> &outputs,
            const framework::ExecutionContext &ctx);
 
-  // detach IPU manually
+  // Sync weights from IPU while training
+  void WeightsToHost();
+
+  // Detach IPU manually
   void Detach();
 
-  // reset manually
-  // call it before destruct works
+  // Reset manually
+  // Call it before destruct works
   void Reset();
 
-  void SetScope(const Scope &scope);
-  const Scope *GetScope() { return scope_; }
+  void SetScope(const framework::Scope &scope);
+  const framework::Scope *GetScope() { return scope_; }
   void SetIpuStrategy(const IpuStrategy &strategy);
   const IpuStrategy *GetIpuStrategy() { return ipu_strategy_; }
 
-  // save compiled model to onnx
+  // Save compiled model to onnx
   void SaveModelProto(const std::string &path);
 
  private:
-  void Prepare();
-
- private:
-  std::unique_ptr<Compiler> compiler_;
-  std::unique_ptr<Executor> executor_;
-  bool is_compiled_ = false;
-  bool is_prepared_ = false;
-
-  // not own
-  const Scope *scope_ = nullptr;
+  // Not own
+  const framework::Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
 
- private:
-  // time record for IpuBackend::Run
-  std::unique_ptr<platform::Timer> timer_;
+  // Own
+  std::unique_ptr<Compiler> compiler_;
+  std::unique_ptr<Executor> executor_;
+  std::unique_ptr<Timer> timer_;
+
+  bool is_compiled_ = false;
 
   DISABLE_COPY_AND_ASSIGN(IpuBackend);
 };

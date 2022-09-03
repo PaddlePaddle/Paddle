@@ -17,6 +17,7 @@ limitations under the License. */
 #include <iostream>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -75,7 +76,9 @@ class TopkKernel : public framework::OpKernel<T> {
       }
 
       std::partial_sort(
-          vec.begin(), vec.begin() + k, vec.end(),
+          vec.begin(),
+          vec.begin() + k,
+          vec.end(),
           [](const std::pair<T, size_t>& l, const std::pair<T, size_t>& r) {
             return l.first > r.first;
           });

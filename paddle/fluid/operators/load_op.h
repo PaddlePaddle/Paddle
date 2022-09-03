@@ -35,7 +35,8 @@ class LoadOpKernel : public framework::OpKernel<T> {
     // it to save an output stream.
     auto filename = ctx.Attr<std::string>("file_path");
     std::ifstream fin(filename, std::ios::binary);
-    PADDLE_ENFORCE_EQ(static_cast<bool>(fin), true,
+    PADDLE_ENFORCE_EQ(static_cast<bool>(fin),
+                      true,
                       platform::errors::Unavailable(
                           "Load operator fail to open file %s, please check "
                           "whether the model file is complete or damaged.",
@@ -61,7 +62,8 @@ class LoadOpKernel : public framework::OpKernel<T> {
     }
   }
 
-  void LoadLodTensor(std::istream &fin, const platform::Place &place,
+  void LoadLodTensor(std::istream &fin,
+                     const platform::Place &place,
                      framework::Variable *var,
                      const framework::ExecutionContext &ctx) const {
     // get device context from pool
@@ -72,12 +74,13 @@ class LoadOpKernel : public framework::OpKernel<T> {
     auto seek = ctx.Attr<int64_t>("seek");
 
     if (seek != -1) {
-      PADDLE_ENFORCE_GE(seek, 0,
+      PADDLE_ENFORCE_GE(seek,
+                        0,
                         platform::errors::InvalidArgument(
                             "seek witn tensor must great than or equal to 0"));
       auto shape = ctx.Attr<std::vector<int64_t>>("shape");
-      paddle::framework::DeserializeFromStream(fin, tensor, dev_ctx, seek,
-                                               shape);
+      paddle::framework::DeserializeFromStream(
+          fin, tensor, dev_ctx, seek, shape);
     } else {
       paddle::framework::DeserializeFromStream(fin, tensor, dev_ctx);
     }
@@ -93,8 +96,8 @@ class LoadOpKernel : public framework::OpKernel<T> {
       framework::LoDTensor fp16_tensor;
       // copy LoD info to the new tensor
       fp16_tensor.set_lod(tensor->lod());
-      framework::TransDataType(in_kernel_type, out_kernel_type, *tensor,
-                               &fp16_tensor);
+      framework::TransDataType(
+          in_kernel_type, out_kernel_type, *tensor, &fp16_tensor);
 
       // reset output tensor
       var->Clear();
@@ -104,7 +107,8 @@ class LoadOpKernel : public framework::OpKernel<T> {
     }
   }
 
-  void LoadSelectedRows(std::istream &fin, const platform::Place &place,
+  void LoadSelectedRows(std::istream &fin,
+                        const platform::Place &place,
                         framework::Variable *var) const {
     auto *selectedRows = var->GetMutable<phi::SelectedRows>();
     // get device context from pool

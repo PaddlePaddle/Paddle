@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/cross_entropy_op.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -46,12 +47,14 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
               "except the last dimension. But received: the shape of Input(X) "
               "is "
               "[%s], the shape of Input(Label) is [%s].",
-              x_dims, label_dims));
+              x_dims,
+              label_dims));
     }
 
     if (IsSoftLabel(ctx)) {
       PADDLE_ENFORCE_EQ(
-          rank, label_dims.size(),
+          rank,
+          label_dims.size(),
           platform::errors::InvalidArgument(
               "If Attr(soft_label) == true, Input(X) and Input(Label) "
               "shall have the same dimensions. But received: the dimensions of "
@@ -60,11 +63,15 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
               "is "
               "[%d], the shape of"
               "Input(Label) is [%s]",
-              rank, x_dims, label_dims.size(), label_dims));
+              rank,
+              x_dims,
+              label_dims.size(),
+              label_dims));
 
       if (check) {
         PADDLE_ENFORCE_EQ(
-            x_dims[rank - 1], label_dims[rank - 1],
+            x_dims[rank - 1],
+            label_dims[rank - 1],
             platform::errors::InvalidArgument(
                 "If Attr(soft_label) == true, the last dimension of "
                 "Input(X) and Input(Label) should be equal. But received: the"
@@ -73,21 +80,27 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
                 "the last dimension of Input(Label) is [%d], the shape of "
                 "Input(Label)"
                 "is [%s], the last dimension is [%d].",
-                x_dims[rank - 1], x_dims, label_dims[rank - 1], label_dims,
+                x_dims[rank - 1],
+                x_dims,
+                label_dims[rank - 1],
+                label_dims,
                 rank - 1));
       }
     } else {
       if (rank == label_dims.size()) {
         PADDLE_ENFORCE_EQ(
-            label_dims[rank - 1], 1UL,
+            label_dims[rank - 1],
+            1UL,
             platform::errors::InvalidArgument(
                 "the last dimension of Input(Label) should be 1."
                 "But received: the last dimension of Input(Label) is [%d],"
                 "the last dimension is [%d]",
-                label_dims[rank - 1], rank - 1));
+                label_dims[rank - 1],
+                rank - 1));
       } else {
         PADDLE_ENFORCE_EQ(
-            rank, label_dims.size() + 1,
+            rank,
+            label_dims.size() + 1,
             platform::errors::InvalidArgument(
                 "ShapeError: The rank of Input(X) should be equal to "
                 "Input(Label) plus 1."
@@ -95,7 +108,10 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
                 "the shape of Input(X) is [%s],"
                 "the dimension of Input(Label) is [%d], the shape of "
                 "Input(Label) is [%s]",
-                rank, x_dims, label_dims.size(), label_dims));
+                rank,
+                x_dims,
+                label_dims.size(),
+                label_dims));
       }
     }
 
@@ -127,23 +143,29 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const {
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label",
+    OP_INOUT_CHECK(
+        ctx->HasInput("Label"), "Input", "Label", "CrossEntropyGradientOpBase");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")),
+                   "Input",
+                   framework::GradVarName("Y"),
                    "CrossEntropyGradientOpBase");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
-                   framework::GradVarName("Y"), "CrossEntropyGradientOpBase");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   framework::GradVarName("X"), "CrossEntropyGradientOpBase");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   framework::GradVarName("X"),
+                   "CrossEntropyGradientOpBase");
 
     auto x_dims = GetXDim(ctx);
     auto label_dims = ctx->GetInputDim("Label");
     auto dy_dims = ctx->GetInputDim(framework::GradVarName("Y"));
     int rank = x_dims.size();
     PADDLE_ENFORCE_EQ(
-        dy_dims.size(), label_dims.size(),
+        dy_dims.size(),
+        label_dims.size(),
         platform::errors::InvalidArgument(
             "Input(Y@Grad) and Input(Y) should have the same rank."
             "But received: Y@Grad's rank is [%d], Y's rank is [%d]",
-            dy_dims.size(), label_dims.size()));
+            dy_dims.size(),
+            label_dims.size()));
 
     bool contain_unknown_dim =
         phi::contain_unknown_dim(x_dims) || phi::contain_unknown_dim(dy_dims);
@@ -159,7 +181,8 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
               "shape except the last dimension. but received: "
               "the shape of Input(X) is [%s], "
               "the shape of Input(Y@Grad) is [%s].",
-              x_dims, dy_dims));
+              x_dims,
+              dy_dims));
     }
 
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -294,10 +317,10 @@ class CrossEntropyOp2 : public CrossEntropyOpBase {
   void InferShape(framework::InferShapeContext* ctx) const override {
     CrossEntropyOpBase::InferShape(ctx);
 
-    OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape",
-                   "CrossEntropyOp2");
-    OP_INOUT_CHECK(ctx->HasOutput("MatchX"), "Output", "MatchX",
-                   "CrossEntropyOp2");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("XShape"), "Output", "XShape", "CrossEntropyOp2");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("MatchX"), "Output", "MatchX", "CrossEntropyOp2");
     auto x_dims = ctx->GetInputDim("X");
     auto x_dims_vec = phi::vectorize(x_dims);
     x_dims_vec.push_back(0);
@@ -317,8 +340,8 @@ class CrossEntropyGradientOp2 : public CrossEntropyGradientOpBase {
  public:
   using CrossEntropyGradientOpBase::CrossEntropyGradientOpBase;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("MatchX"), "Input", "MatchX",
-                   "CrossEntropyGradientOp2");
+    OP_INOUT_CHECK(
+        ctx->HasInput("MatchX"), "Input", "MatchX", "CrossEntropyGradientOp2");
     CrossEntropyGradientOpBase::InferShape(ctx);
   }
 
@@ -398,21 +421,26 @@ class CrossEntropyGradOpMaker2 : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPUCtx = paddle::platform::CPUDeviceContext;
+using CPUCtx = phi::CPUContext;
 
-REGISTER_OPERATOR(cross_entropy, ops::CrossEntropyOpBase,
-                  ops::CrossEntropyOpMaker, ops::CrossEntropyOpInferVarType,
+REGISTER_OPERATOR(cross_entropy,
+                  ops::CrossEntropyOpBase,
+                  ops::CrossEntropyOpMaker,
+                  ops::CrossEntropyOpInferVarType,
                   ops::CrossEntropyGradOpMaker<paddle::framework::OpDesc>,
                   ops::CrossEntropyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cross_entropy_grad, ops::CrossEntropyGradientOp);
-REGISTER_OP_CPU_KERNEL(cross_entropy, ops::CrossEntropyOpKernel<CPUCtx, float>,
+REGISTER_OP_CPU_KERNEL(cross_entropy,
+                       ops::CrossEntropyOpKernel<CPUCtx, float>,
                        ops::CrossEntropyOpKernel<CPUCtx, double>);
 REGISTER_OP_CPU_KERNEL(cross_entropy_grad,
                        ops::CrossEntropyGradientOpKernel<CPUCtx, float>,
                        ops::CrossEntropyGradientOpKernel<CPUCtx, double>);
 
-REGISTER_OPERATOR(cross_entropy2, ops::CrossEntropyOp2,
-                  ops::CrossEntropyOpMaker2, ops::CrossEntropyOpInferVarType,
+REGISTER_OPERATOR(cross_entropy2,
+                  ops::CrossEntropyOp2,
+                  ops::CrossEntropyOpMaker2,
+                  ops::CrossEntropyOpInferVarType,
                   ops::CrossEntropyGradOpMaker2<paddle::framework::OpDesc>,
                   ops::CrossEntropyGradOpMaker2<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cross_entropy_grad2, ops::CrossEntropyGradientOp2);

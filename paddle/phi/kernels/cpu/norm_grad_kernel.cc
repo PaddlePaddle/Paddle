@@ -13,22 +13,20 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/norm_grad_kernel.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-
-#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 namespace phi {
 
 template <typename T, typename Context>
 void NormGradKernel(const Context& ctx,
-                    const DenseTensor& out_grad,
                     const DenseTensor& x,
                     const DenseTensor& norm,
+                    const DenseTensor& out_grad,
                     int axis,
                     float epsilon,
                     bool is_test,

@@ -20,6 +20,7 @@ import os
 
 
 class SimpleFCLayer(fluid.dygraph.Layer):
+
     def __init__(self, feature_size, batch_size, fc_size):
         super(SimpleFCLayer, self).__init__()
         self._linear = fluid.dygraph.Linear(feature_size, fc_size)
@@ -32,7 +33,10 @@ class SimpleFCLayer(fluid.dygraph.Layer):
 
 
 class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
+
     def test_main(self):
+        if fluid.framework.in_dygraph_mode():
+            return
         traced_layer = None
         with fluid.dygraph.guard():
             feature_size = 3
@@ -49,8 +53,8 @@ class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
 
             for _ in six.moves.range(10):
                 in_x = fluid.dygraph.to_variable(
-                    np.random.random((batch_size, feature_size)).astype(
-                        'float32'))
+                    np.random.random(
+                        (batch_size, feature_size)).astype('float32'))
                 if traced_layer is None:
                     dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
                         layer, [in_x])
@@ -58,7 +62,7 @@ class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
                     dygraph_out = layer(in_x)
                 dygraph_out_numpy = dygraph_out.numpy()
                 static_out = traced_layer([in_x])[0]
-                self.assertTrue(np.array_equal(dygraph_out_numpy, static_out))
+                np.testing.assert_array_equal(dygraph_out_numpy, static_out)
 
                 loss = fluid.layers.reduce_mean(dygraph_out)
                 loss.backward()

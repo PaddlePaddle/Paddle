@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
@@ -31,7 +30,7 @@ void FullValue(const Context& dev_ctx, DenseTensor* tensor, VType val) {
 
 template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
-                const ScalarArray& shape,
+                const IntArray& shape,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
@@ -45,7 +44,7 @@ void FullLikeKernel(const Context& dev_ctx,
                     const Scalar& val,
                     DataType dtype,
                     DenseTensor* out) {
-  auto value = val.to<float>();
+  auto value = val.to<double>();
   using CommonType = typename std::common_type<
       float,
       typename std::conditional<std::is_same<T, phi::dtype::float16>::value,
@@ -54,12 +53,22 @@ void FullLikeKernel(const Context& dev_ctx,
 
   auto common_type_value = static_cast<CommonType>(value);
 
-  PADDLE_ENFORCE_EQ(
-      (common_type_value >=
+  // Check whether the filled value is valid
+  bool is_out_range = true;
+  if (std::isinf(value) || std::isnan(value)) {
+    is_out_range = false;
+  }
+
+  if ((common_type_value >=
        static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
-          (common_type_value <=
-           static_cast<CommonType>(std::numeric_limits<T>::max())),
-      true,
+      (common_type_value <=
+       static_cast<CommonType>(std::numeric_limits<T>::max()))) {
+    is_out_range = false;
+  }
+
+  PADDLE_ENFORCE_EQ(
+      is_out_range,
+      false,
       phi::errors::InvalidArgument(
           "The filled value is out of range for target type, "
           "current kernel type is %s, the range should between %f "

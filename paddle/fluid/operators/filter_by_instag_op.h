@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/mixed_vector.h"
@@ -61,7 +62,20 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     // expected auto = const int64_t
     auto* x2_data = x2->data<int64_t>();
     // e.g get [0, 1, 2, 3, ...]
-    size_t x2_lods_size = x2->dims()[0];
+    // size_t x2_lods_size = x2->dims()[0];
+    // size_t instag_num_per_ins = x2->dims()[1];
+
+    Vector<size_t> x2_lods(1, 0);
+    if (x2->lod().size() != 0) {  // lod_level = 1
+      x2_lods = x2->lod()[0];
+    } else {  // lod_level = 0
+      const size_t x2_lods_size = x2->dims()[0];
+      const size_t instag_num_per_ins = x2->dims()[1];
+      for (size_t i = 0; i < x2_lods_size; i++) {
+        x2_lods.push_back(x2_lods.back() + instag_num_per_ins);
+      }
+    }
+
     Vector<size_t> x1_lods(1, 0);
     if (!is_x1_lod) {
       for (int i = 0; i < x1->dims()[0]; i++) {
@@ -79,8 +93,8 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     }
     std::unordered_map<int64_t, int64_t> mmap_aux;
     Vector<size_t> out_lods(1, 0);
-    for (size_t i = 0; i < x2_lods_size; i++) {
-      for (size_t j = i; j < i + 1; j++) {
+    for (size_t i = 0; i < x2_lods.size() - 1; i++) {
+      for (size_t j = x2_lods[i]; j < x2_lods[i + 1]; j++) {
         if (filter_tag.find(x2_data[j]) != filter_tag.end()) {
           size_t batch_len = x1_lods[i + 1] - x1_lods[i];
           mmap_aux[out_lods.back()] = x1_lods[i];
@@ -139,8 +153,10 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < out_lods.size() - 1; i++) {
         size_t pos = out_lods[i];
         for (int k = map_data[i * 3 + 1];
-             k < map_data[i * 3 + 1] + map_data[i * 3 + 2]; k++) {
-          memcpy(out_data + pos * x1_embed_size, x1_data + k * x1_embed_size,
+             k < map_data[i * 3 + 1] + map_data[i * 3 + 2];
+             k++) {
+          memcpy(out_data + pos * x1_embed_size,
+                 x1_data + k * x1_embed_size,
                  x1_embed_size * sizeof(T));
           ++pos;
         }
@@ -165,8 +181,10 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
           out_data[oi] = (int32_t)out_val_if_empty;
         } else if (std::is_same<T, int64_t>::value) {
           out_data[oi] = (int64_t)out_val_if_empty;
-        } else {
+        } else if (std::is_same<T, double>::value) {
           out_data[oi] = static_cast<double>(out_val_if_empty);
+        } else {
+          out_data[oi] = static_cast<float>(out_val_if_empty);
         }
       }
       loss_weight_data[0] = 0;

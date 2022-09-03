@@ -35,6 +35,12 @@
 // phi
 #include "paddle/phi/kernels/declarations.h"
 
+static std::string LegalizeVarName(const std::string& var_name) {
+  std::string ret = var_name;
+  std::replace(ret.begin(), ret.end(), '@', '_');  // replace all '-' to '_'
+  return ret;
+}
+
 // NOTE(pangyoki): Inplace OP with duplicable input.
 // The set includes inplace ops that have duplicable input.
 // The first Varbase in input needs to be specified for the inplace strategy
@@ -81,13 +87,13 @@ const char* OUT_VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
 const char* OUT_VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
 
 const char* CAST_VAR_TEMPLATE = R"(
-    auto %s = GetVarBaseFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetVarBaseFromArgs(op_type, "%s", args, %d, %s);)";
 
 const char* CAST_VAR_LIST_TEMPLATE = R"(
-    auto %s = GetVarBaseListFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetVarBaseListFromArgs(op_type, "%s", args, %d, %s);)";
 
 const char* CAST_SIZE_T_TEMPLATE = R"(
-    auto %s = GetUnsignedLongFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetUnsignedLongFromArgs(op_type, "%s", args, %d, %s);)";
 
 const char* ARG_TEMPLATE = R"(const %s& %s)";
 
@@ -126,16 +132,17 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
   PyThreadState *tstate = nullptr;
   try
   {
+    std::string op_type = "%s";
     platform::RecordEvent op_type_record_event("%s pybind_imperative_func");
     %s
     framework::AttributeMap attrs;
-    ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args) , attrs);
+    ConstructAttrMapFromPyArgs(op_type, args, %d, PyTuple_GET_SIZE(args) , attrs);
     tstate = PyEval_SaveThread();
     %s
     imperative::NameVarBaseMap outs = %s;
     imperative::NameVarBaseMap ins = %s;
     %s
-    imperative::GetCurrentTracer()->TraceOp("%s", ins, outs, attrs, {%s});
+    imperative::GetCurrentTracer()->TraceOp(op_type, ins, outs, attrs, {%s});
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     %s
@@ -180,7 +187,8 @@ static inline std::string TempName(const std::string& name) {
 }
 
 std::string GenerateOpFunctionsBody(
-    const paddle::framework::proto::OpProto* op_proto, std::string func_name,
+    const paddle::framework::proto::OpProto* op_proto,
+    std::string func_name,
     bool use_inplace_strategy = false,
     std::map<std::string, std::string> inplace_map = {}) {
   auto& op_type = op_proto->type();
@@ -200,28 +208,35 @@ std::string GenerateOpFunctionsBody(
       continue;
     }
     const auto in_type = input.duplicable() ? IN_VAR_LIST_TYPE : IN_VAR_TYPE;
-    auto input_arg =
-        paddle::string::Sprintf(ARG_TEMPLATE, in_type, TempName(in_name));
+    auto input_arg = paddle::string::Sprintf(
+        ARG_TEMPLATE, in_type, LegalizeVarName(TempName(in_name)));
     input_args += input_arg;
     input_args += ",";
     input_args_num++;
     const auto in_cast_type =
         input.duplicable() ? CAST_VAR_LIST_TEMPLATE : CAST_VAR_TEMPLATE;
     auto dispensable = input.dispensable() ? "true" : "false";
-    ins_cast_str += paddle::string::Sprintf(in_cast_type, in_name, op_type,
-                                            in_name, arg_idx++, dispensable);
+    ins_cast_str += paddle::string::Sprintf(in_cast_type,
+                                            LegalizeVarName(in_name),
+                                            in_name,
+                                            arg_idx++,
+                                            dispensable);
 
     if (input.dispensable()) {
       const auto in_template = input.duplicable()
                                    ? INPUT_INITIALIZER_TEMPLATE_WITH_NULL_LIST
                                    : INPUT_INITIALIZER_TEMPLATE_WITH_NULL;
       ins_initializer_with_null +=
-          paddle::string::Sprintf(in_template, in_name, in_name, in_name);
+          paddle::string::Sprintf(in_template,
+                                  LegalizeVarName(in_name),
+                                  in_name,
+                                  LegalizeVarName(in_name));
     } else {
       const auto in_template = input.duplicable()
                                    ? INPUT_LIST_INITIALIZER_TEMPLATE
                                    : INPUT_INITIALIZER_TEMPLATE;
-      ins_initializer += paddle::string::Sprintf(in_template, in_name, in_name);
+      ins_initializer += paddle::string::Sprintf(
+          in_template, in_name, LegalizeVarName(in_name));
       ins_initializer += ",";
     }
   }
@@ -258,7 +273,7 @@ std::string GenerateOpFunctionsBody(
         input_args += ",";
       }
       input_args += out_type;
-      input_args += out_name;
+      input_args += LegalizeVarName(out_name);
       input_args_num++;
 
       if (output.dispensable()) {
@@ -271,21 +286,26 @@ std::string GenerateOpFunctionsBody(
         const auto out_template = output.duplicable()
                                       ? INPUT_LIST_INITIALIZER_TEMPLATE
                                       : INPUT_INITIALIZER_TEMPLATE;
-        outs_initializer +=
-            paddle::string::Sprintf(out_template, out_name, out_name);
+        outs_initializer += paddle::string::Sprintf(
+            out_template, out_name, LegalizeVarName(out_name));
         outs_initializer += ",";
       }
 
       const auto in_cast_type =
           output.duplicable() ? CAST_VAR_LIST_TEMPLATE : CAST_VAR_TEMPLATE;
       auto dispensable = output.dispensable() ? "true" : "false";
-      ins_cast_str += paddle::string::Sprintf(in_cast_type, out_name, op_type,
-                                              out_name, arg_idx++, dispensable);
+      ins_cast_str += paddle::string::Sprintf(in_cast_type,
+                                              LegalizeVarName(out_name),
+                                              out_name,
+                                              arg_idx++,
+                                              dispensable);
     } else if (use_inplace_strategy && inplace_map.count(out_name)) {
       PADDLE_ENFORCE_NE(
-          inplace_map[out_name], "",
+          inplace_map[out_name],
+          "",
           paddle::platform::errors::InvalidArgument(
-              "Inplace op %s has no input corresponding to output %s.", op_type,
+              "Inplace op %s has no input corresponding to output %s.",
+              op_type,
               out_name));
 
       // TODO(pangyoki): Inplace op don't have duplicable output in temporary,
@@ -305,12 +325,16 @@ std::string GenerateOpFunctionsBody(
 
       // Leaf Var that doesn't stop gradient can't use inplace strategy.
       // Increase inplace_version.
-      inplace_strategy_str += paddle::string::Sprintf(
-          INPLACE_STRATEGY_TEMPLATE, inplace_input_name, inplace_input_name,
-          INPLACE_LEAF_ERROR_MESSAGE, inplace_input_name, inplace_input_name,
-          inplace_input_name);
-      outs_initializer +=
-          paddle::string::Sprintf(out_template, out_name, inplace_input_name);
+      inplace_strategy_str +=
+          paddle::string::Sprintf(INPLACE_STRATEGY_TEMPLATE,
+                                  LegalizeVarName(inplace_input_name),
+                                  LegalizeVarName(inplace_input_name),
+                                  INPLACE_LEAF_ERROR_MESSAGE,
+                                  LegalizeVarName(inplace_input_name),
+                                  LegalizeVarName(inplace_input_name),
+                                  LegalizeVarName(inplace_input_name));
+      outs_initializer += paddle::string::Sprintf(
+          out_template, out_name, LegalizeVarName(inplace_input_name));
       outs_initializer += ",";
     } else {
       // There are few Operators that have duplicable output, like `Out` in
@@ -320,7 +344,8 @@ std::string GenerateOpFunctionsBody(
         if (input_args != "") {
           input_args += ",";
         }
-        auto out_num_str = paddle::string::Sprintf(ARG_OUT_NUM, out_name);
+        auto out_num_str =
+            paddle::string::Sprintf(ARG_OUT_NUM, LegalizeVarName(out_name));
         input_args += ARG_OUT_NUM_TYPE;
         input_args += out_num_str;
         input_args_num++;
@@ -328,9 +353,11 @@ std::string GenerateOpFunctionsBody(
             OUT_DUPLICABLE_INITIALIZER_TEMPLATE, out_name, out_num_str);
 
         auto dispensable = output.dispensable() ? "true" : "false";
-        ins_cast_str +=
-            paddle::string::Sprintf(CAST_SIZE_T_TEMPLATE, out_num_str, op_type,
-                                    out_num_str, arg_idx++, dispensable);
+        ins_cast_str += paddle::string::Sprintf(CAST_SIZE_T_TEMPLATE,
+                                                out_num_str,
+                                                out_num_str,
+                                                arg_idx++,
+                                                dispensable);
       } else {
         outs_initializer +=
             paddle::string::Sprintf(OUT_INITIALIZER_TEMPLATE, out_name);
@@ -353,12 +380,15 @@ std::string GenerateOpFunctionsBody(
   if (!use_inplace_strategy && FindViewOpMap(op_type)) {
     std::string viwe_input_name = view_op_map[op_type].first;
     std::string viwe_output_name = view_op_map[op_type].second;
-    view_strategy_str += paddle::string::Sprintf(
-        HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT, viwe_input_name, viwe_output_name,
-        viwe_input_name, viwe_output_name);
+    view_strategy_str +=
+        paddle::string::Sprintf(HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT,
+                                viwe_input_name,
+                                viwe_output_name,
+                                viwe_input_name,
+                                viwe_output_name);
   }
   if (outs_num == 0) {
-    return_str = "Py_INCREF(Py_None);\n    return Py_None;";
+    return_str = "RETURN_PY_NONE";
   } else if (outs_num == 1) {
     return_str = "return MakeReturnPyObject(" + return_str + ");";
   } else {
@@ -375,22 +405,34 @@ std::string GenerateOpFunctionsBody(
 
   // generate op funtcion body
   auto op_function_str = paddle::string::Sprintf(
-      OP_FUNCTION_TEMPLATE, func_name, op_type, ins_cast_str, op_type,
-      input_args_num, inplace_strategy_str, outs_initializer, ins_initializer,
+      OP_FUNCTION_TEMPLATE,
+      func_name,
+      op_type,
+      op_type,
+      ins_cast_str,
+      input_args_num,
+      inplace_strategy_str,
+      outs_initializer,
+      ins_initializer,
       ins_initializer_with_null + outs_initializer_with_null +
           view_strategy_str,
-      op_type, inplace_mapping_str, return_str);
+      inplace_mapping_str,
+      return_str);
 
   return op_function_str;
 }
 
-static std::tuple<std::vector<std::string>, std::vector<std::string>>
-GenerateOpFunctions() {
+static std::vector<
+    std::tuple<std::vector<std::string>, std::vector<std::string>>>
+GenerateOpFunctions(int split_count) {
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
-
+  std::vector<std::tuple<std::vector<std::string>, std::vector<std::string>>>
+      result;
   std::vector<std::string> op_function_list, bind_function_list;
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
 
+  paddle::flat_hash_map<std::string, paddle::framework::OpInfo>
+      op_info_map_need_gen;
   for (auto& pair : op_info_map) {
     auto& op_info = pair.second;
     auto op_proto = op_info.proto_;
@@ -405,6 +447,22 @@ GenerateOpFunctions() {
         !phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type)) {
       continue;
     }
+
+    op_info_map_need_gen.emplace(pair);
+  }
+
+  int cc_file_api_size = op_info_map_need_gen.size() / split_count;
+  if (op_info_map_need_gen.size() % split_count != 0) {
+    cc_file_api_size++;
+  }
+  int api_index = 0;
+  int file_index = 0;
+
+  for (auto& pair : op_info_map_need_gen) {
+    auto& op_info = pair.second;
+    auto op_proto = op_info.proto_;
+
+    auto& op_type = op_proto->type();
 
     // NOTE(pangyoki): Inplace Strategy.
     // In this case, output will reuse input varbase.
@@ -443,19 +501,32 @@ GenerateOpFunctions() {
 
       // generate pybind item
       auto inplace_bind_function_str =
-          paddle::string::Sprintf(PYBIND_ITEM_TEMPLATE, inplace_op_type,
-                                  inplace_func_name, inplace_op_type);
+          paddle::string::Sprintf(PYBIND_ITEM_TEMPLATE,
+                                  inplace_op_type,
+                                  inplace_func_name,
+                                  inplace_op_type);
 
       op_function_list.emplace_back(std::move(inplace_op_function_str));
       bind_function_list.emplace_back(std::move(inplace_bind_function_str));
     }
+
+    api_index++;
+    if (api_index / cc_file_api_size > file_index) {
+      file_index++;
+      result.push_back(std::make_tuple(op_function_list, bind_function_list));
+      op_function_list.clear();
+      bind_function_list.clear();
+    }
   }
-  return std::make_tuple(op_function_list, bind_function_list);
+
+  result.push_back(std::make_tuple(op_function_list, bind_function_list));
+
+  return result;
 }
 
 int main(int argc, char* argv[]) {
-  if (argc != 2) {
-    std::cerr << "argc must be 2" << std::endl;
+  if (argc != 3) {
+    std::cerr << "argc must be 3" << std::endl;
     return -1;
   }
 
@@ -466,44 +537,57 @@ int main(int argc, char* argv[]) {
 
   std::vector<std::string> headers{"\"paddle/fluid/imperative/tracer.h\"",
                                    "\"paddle/fluid/platform/profiler.h\"",
+                                   "\"pybind11/numpy.h\"",
+                                   "\"pybind11/pybind11.h\"",
                                    "\"pybind11/detail/common.h\"",
+                                   "\"paddle/fluid/pybind/eager_utils.h\"",
+                                   "\"paddle/fluid/pybind/op_function.h\"",
                                    "<Python.h>"};
 
-  std::ofstream out(argv[1], std::ios::out);
+  std::string path = argv[1];
+  int split_count = atoi(argv[2]);
 
-  out << "#pragma once\n\n";
+  auto op_funcs = GenerateOpFunctions(split_count);
 
-  for (auto& header : headers) {
-    out << "#include  " + header + "\n";
+  for (size_t i = 0; i < op_funcs.size(); i++) {
+    std::ofstream out(path + "op_function" + std::to_string(i + 1) + ".cc.tmp",
+                      std::ios::out);
+
+    out << "#if defined(_MSC_VER)\n"
+        << "#include <BaseTsd.h>\n"
+        << "typedef SSIZE_T ssize_t;\n"
+        << "#endif\n";
+
+    for (auto& header : headers) {
+      out << "#include  " + header + "\n";
+    }
+
+    out << "\n\n";
+
+    out << "namespace paddle {\n"
+        << "namespace pybind {\n\n";
+    out << "extern std::atomic<int> VarBaseUniqueNameID;\n";
+    out << paddle::string::join_strings(std::get<0>(op_funcs[i]), '\n');
+    out << "\n\n";
+
+    out << "static PyMethodDef ExtestMethods[] = {\n"
+        << paddle::string::join_strings(std::get<1>(op_funcs[i]), '\n')
+        << "\n  {nullptr,nullptr,0,nullptr}"
+        << "};\n\n";
+
+    out << "void BindOpFunctions" << i + 1 << "(pybind11::module *module) {\n"
+        << "  auto m = module->def_submodule(\"ops\");\n"
+        << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
+        << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
+           "core.ops failed!\"));\n"
+        << "  }\n\n"
+        << "  InitOpsAttrTypeMap();"
+        << "}\n\n"
+        << "} // namespace pybind\n"
+        << "} // namespace paddle\n";
+
+    out.close();
   }
-
-  out << "\n\n";
-
-  auto op_funcs = GenerateOpFunctions();
-
-  out << "namespace paddle {\n"
-      << "namespace pybind {\n\n";
-  out << "std::atomic<int> VarBaseUniqueNameID{0};\n";
-  out << paddle::string::join_strings(std::get<0>(op_funcs), '\n');
-  out << "\n\n";
-
-  out << "static PyMethodDef ExtestMethods[] = {\n"
-      << paddle::string::join_strings(std::get<1>(op_funcs), '\n')
-      << "\n  {nullptr,nullptr,0,nullptr}"
-      << "};\n\n";
-
-  out << "inline void BindOpFunctions(pybind11::module *module) {\n"
-      << "  auto m = module->def_submodule(\"ops\");\n"
-      << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
-      << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
-         "core.ops failed!\"));\n"
-      << "  }\n\n"
-      << "  InitOpsAttrTypeMap();"
-      << "}\n\n"
-      << "} // namespace pybind\n"
-      << "} // namespace paddle\n";
-
-  out.close();
 
 #ifdef PADDLE_WITH_ASCEND_CL
   ge::GEFinalize();

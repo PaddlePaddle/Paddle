@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/log_loss_op.h"
 #include <cmath>
+
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -22,8 +23,11 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-void LogLossAdds(const platform::Place& place, const aclrtStream& stream,
-                 const Tensor* x, float scale, Tensor* y) {
+void LogLossAdds(const platform::Place& place,
+                 const aclrtStream& stream,
+                 const Tensor* x,
+                 float scale,
+                 Tensor* y) {
   //  Calculate y = x + scale
   y->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Adds", {*x}, {*y}, {{"value", scale}});
@@ -31,8 +35,11 @@ void LogLossAdds(const platform::Place& place, const aclrtStream& stream,
 }
 
 template <typename T>
-void LogLossMuls(const platform::Place& place, const aclrtStream& stream,
-                 const Tensor* x, float scale, Tensor* y) {
+void LogLossMuls(const platform::Place& place,
+                 const aclrtStream& stream,
+                 const Tensor* x,
+                 float scale,
+                 Tensor* y) {
   //  Calculate y = x + scale
   y->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Muls", {*x}, {*y}, {{"value", scale}});
@@ -40,22 +47,32 @@ void LogLossMuls(const platform::Place& place, const aclrtStream& stream,
 }
 
 template <typename T>
-void LogLossBCE(const platform::Place& place, const aclrtStream& stream,
-                const Tensor* x, const Tensor* y, Tensor* z) {
+void LogLossBCE(const platform::Place& place,
+                const aclrtStream& stream,
+                const Tensor* x,
+                const Tensor* y,
+                Tensor* z) {
   z->mutable_data<T>(x->dims(), place);
   const auto& runner =
-      NpuOpRunner("BinaryCrossEntropy", {*x, *y}, {*z},
+      NpuOpRunner("BinaryCrossEntropy",
+                  {*x, *y},
+                  {*z},
                   {{"reduction", static_cast<std::string>("none")}});
   runner.Run(stream);
 }
 
 template <typename T>
-void LogLossBCEGrad(const platform::Place& place, const aclrtStream& stream,
-                    const Tensor* x, const Tensor* y, const Tensor* dout,
+void LogLossBCEGrad(const platform::Place& place,
+                    const aclrtStream& stream,
+                    const Tensor* x,
+                    const Tensor* y,
+                    const Tensor* dout,
                     Tensor* dx) {
   dx->mutable_data<T>(x->dims(), place);
   const auto& runner =
-      NpuOpRunner("BinaryCrossEntropyGrad", {*x, *y, *dout}, {*dx},
+      NpuOpRunner("BinaryCrossEntropyGrad",
+                  {*x, *y, *dout},
+                  {*dx},
                   {{"reduction", static_cast<std::string>("none")}});
   runner.Run(stream);
 }

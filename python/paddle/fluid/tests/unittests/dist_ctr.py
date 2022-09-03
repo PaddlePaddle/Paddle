@@ -30,28 +30,26 @@ fluid.default_main_program().random_seed = 1
 
 
 class TestDistCTR2x2(TestDistRunnerBase):
+
     def get_model(self, batch_size=2):
 
         dnn_input_dim, lr_input_dim = dist_ctr_reader.load_data_meta()
         """ network definition """
-        dnn_data = fluid.layers.data(
-            name="dnn_data",
-            shape=[-1, 1],
-            dtype="int64",
-            lod_level=1,
-            append_batch_size=False)
-        lr_data = fluid.layers.data(
-            name="lr_data",
-            shape=[-1, 1],
-            dtype="int64",
-            lod_level=1,
-            append_batch_size=False)
-        label = fluid.layers.data(
-            name="click",
-            shape=[-1, 1],
-            dtype="int64",
-            lod_level=0,
-            append_batch_size=False)
+        dnn_data = fluid.layers.data(name="dnn_data",
+                                     shape=[-1, 1],
+                                     dtype="int64",
+                                     lod_level=1,
+                                     append_batch_size=False)
+        lr_data = fluid.layers.data(name="lr_data",
+                                    shape=[-1, 1],
+                                    dtype="int64",
+                                    lod_level=1,
+                                    append_batch_size=False)
+        label = fluid.layers.data(name="click",
+                                  shape=[-1, 1],
+                                  dtype="int64",
+                                  lod_level=0,
+                                  append_batch_size=False)
 
         # build dnn model
         dnn_layer_dims = [128, 64, 32, 1]
@@ -63,8 +61,8 @@ class TestDistCTR2x2(TestDistRunnerBase):
                 name="deep_embedding",
                 initializer=fluid.initializer.Constant(value=0.01)),
             is_sparse=IS_SPARSE)
-        dnn_pool = fluid.layers.sequence_pool(
-            input=dnn_embedding, pool_type="sum")
+        dnn_pool = fluid.layers.sequence_pool(input=dnn_embedding,
+                                              pool_type="sum")
         dnn_out = dnn_pool
         for i, dim in enumerate(dnn_layer_dims[1:]):
             fc = fluid.layers.fc(
@@ -94,7 +92,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
         auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
                                                               label=label)
         cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
 
         inference_program = paddle.fluid.default_main_program().clone()
 
@@ -106,11 +104,10 @@ class TestDistCTR2x2(TestDistRunnerBase):
         use_lr_decay = bool(os.getenv('LR_DECAY', 0))
         lr = 0.0001
         if use_lr_decay:
-            lr = fluid.layers.exponential_decay(
-                learning_rate=0.0001,
-                decay_steps=10000,
-                decay_rate=0.999,
-                staircase=True)
+            lr = fluid.layers.exponential_decay(learning_rate=0.0001,
+                                                decay_steps=10000,
+                                                decay_rate=0.999,
+                                                staircase=True)
 
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=lr,
                                             regularization=regularization)

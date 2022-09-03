@@ -16,32 +16,30 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
-import paddle.optimizer
 import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
-                                                          np_dtype_to_fluid_str)
-
-paddle.enable_static()
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
-        self.set_attrs()
+        self.set_data_feed()
+        self.set_feed_attr()
+        self.set_op_attrs()
+
+    def set_data_feed(self):
+        data = np.array([[[1], [3]], [[2], [4]], [[4], [127]]])
+        self.feed_fp32 = {"x": data.astype(np.int64)}
+        self.feed_fp16 = {"x": data.astype(np.int32)}
 
     def set_feed_attr(self):
-        self.feed_shape = [x.shape for x in self.feed.values()]
-        self.feed_list = list(self.feed.keys())
-        self.feed_dtype = [
-            np_dtype_to_fluid_str(x.dtype) for x in self.feed.values()
-        ]
+        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
+        self.feed_list = list(self.feed_fp32.keys())
+        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {
             "size": [128, 16],
             "is_sparse": False,
@@ -50,84 +48,41 @@ class TestBase(IPUOpTest):
             "dtype": 'float32'
         }
 
-    def _test_base(self, run_ipu=True):
-        scope = fluid.core.Scope()
-        main_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        SEED = self.SEED
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
-
-        if run_ipu:
-            self.feed = {
-                "x": np.array(
-                    [[[1], [3]], [[2], [4]], [[4], [127]]]).astype(np.int32)
-            }
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='int64')
+        out = paddle.fluid.layers.embedding(x, **self.attrs)
+        if self.is_training:
+            loss = paddle.mean(out)
+            adam = paddle.optimizer.Adam(learning_rate=1e-2)
+            adam.minimize(loss)
+            self.fetch_list = [loss.name]
         else:
-            self.feed = {
-                "x": np.array(
-                    [[[1], [3]], [[2], [4]], [[4], [127]]]).astype(np.int64)
-            }
+            self.fetch_list = [out.name]
 
-        self.set_feed_attr()
+    def run_model(self, exec_mode):
+        if self.is_ipu_mode(exec_mode):
+            self.feed_fp32['x'] = self.feed_fp32['x'].astype(np.int32)
+        self.run_op_test(exec_mode)
 
-        with fluid.scope_guard(scope):
-            with paddle.static.program_guard(main_prog, startup_prog):
-                x = paddle.static.data(
-                    name=self.feed_list[0],
-                    shape=self.feed_shape[0],
-                    dtype=self.feed_dtype[0])
-                out = paddle.fluid.layers.embedding(x, **self.attrs)
-
-                if self.is_training:
-                    loss = paddle.mean(out)
-                    adam = paddle.optimizer.Adam(learning_rate=1e-2)
-                    adam.minimize(loss)
-                    fetch_list = [loss.name]
-                else:
-                    fetch_list = [out.name]
-
-            if run_ipu:
-                place = paddle.IPUPlace()
-            else:
-                place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            exe.run(startup_prog)
-
-            if run_ipu:
-                feed_list = self.feed_list
-                ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(is_training=self.is_training)
-                program = compiler.IPUCompiledProgram(
-                    main_prog,
-                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
-            else:
-                program = main_prog
-
-            if self.is_training:
-                result = []
-                for _ in range(self.epoch):
-                    loss_res = exe.run(program,
-                                       feed=self.feed,
-                                       fetch_list=fetch_list)
-                    result.append(loss_res[0])
-                return np.array(result)
-            else:
-                result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
-                return result[0]
-
-    def test_base(self):
-        res0 = self._test_base(False)
-        res1 = self._test_base(True)
-
-        self.assertTrue(
-            np.allclose(
-                res0.flatten(), res1.flatten(), atol=self.atol))
-
-        self.assertTrue(res0.shape == res1.shape)
+    def test(self):
+        for m in IPUOpTest.ExecutionMode:
+            if not self.skip_mode(m):
+                self.build_model()
+                self.run_model(m)
+        self.check()
 
 
 class TestTrainCase1(TestBase):
+
+    def set_atol(self):
+        self.atol = 1e-7
+        self.rtol = 1e-6
+        self.atol_fp16 = 1e-3
+        self.rtol_fp16 = 1e-3
+
     def set_training(self):
         self.is_training = True
         self.epoch = 10

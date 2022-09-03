@@ -25,18 +25,31 @@ namespace distributed {
 
 class Store {
  public:
-  Store() = delete;
-  explicit Store(const std::chrono::seconds& timeout) : _timeout(timeout) {}
+  Store() : _timeout(900) {}
+  explicit Store(const int timeout) : _timeout(timeout) {}
   virtual ~Store() = default;
 
-  virtual int64_t add(const std::string& key, int64_t value) = 0;
-  virtual std::vector<uint8_t> get(const std::string& key) = 0;
-  virtual void wait(const std::string& key) = 0;
+  virtual int64_t add(const std::string& key, int64_t value) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Implement the add method in the subclass."));
+  }
+  virtual std::vector<uint8_t> get(const std::string& key) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Implement the add method in the subclass."));
+  }
+  virtual void wait(const std::string& key) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Implement the add method in the subclass."));
+  }
+  virtual void set(const std::string& key, const std::vector<uint8_t>& value) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Implement the add method in the subclass."));
+  }
 
-  virtual const std::chrono::seconds& timeout() const { return _timeout; }
+  virtual int timeout() { return _timeout; }
 
- private:
-  std::chrono::seconds _timeout;
+ protected:
+  int _timeout;
 };
 
 }  // namespace distributed

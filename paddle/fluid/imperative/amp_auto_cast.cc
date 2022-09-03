@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/amp_auto_cast.h"
+
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -34,20 +36,26 @@ class VarBase;
 // The input `dtype` is a type of paddle::framework::proto::VarType::Type,
 // which can be paddle::framework::proto::VarType::FP16,
 // paddle::framework::proto::VarType::FP32 and so on.
-std::tuple<std::unordered_set<std::string>, std::unordered_set<std::string>,
+std::tuple<std::unordered_set<std::string>,
+           std::unordered_set<std::string>,
            std::unordered_set<std::string>>
 OpSupportedInfos(const std::string& place,
                  framework::proto::VarType::Type dtype) {
   std::string query_place;
-  std::transform(place.begin(), place.end(), std::back_inserter(query_place),
+  std::transform(place.begin(),
+                 place.end(),
+                 std::back_inserter(query_place),
                  [](unsigned char c) { return std::toupper(c); });
   using fn_type = std::add_pointer<bool(const platform::Place&)>::type;
   std::unordered_map<std::string, fn_type> is_target_place{
-      {"GPU", &platform::is_gpu_place}, {"CPU", &platform::is_cpu_place},
-      {"XPU", &platform::is_xpu_place}, {"NPU", &platform::is_npu_place},
+      {"GPU", &platform::is_gpu_place},
+      {"CPU", &platform::is_cpu_place},
+      {"XPU", &platform::is_xpu_place},
+      {"NPU", &platform::is_npu_place},
       {"MLU", &platform::is_mlu_place},
   };
-  PADDLE_ENFORCE_NE(is_target_place.count(query_place), 0,
+  PADDLE_ENFORCE_NE(is_target_place.count(query_place),
+                    0,
                     platform::errors::InvalidArgument(
                         "The argument `place` should be 'GPU', 'CPU', 'XPU', "
                         "'NPU', 'MLU', but got '%s'.",
@@ -95,8 +103,8 @@ OpSupportedInfos(const std::string& place,
   VLOG(4) << "-- The size of supported_ops: " << supported_ops.size() << " --";
   VLOG(4) << "-- The size of unsupported_ops: " << unsupported_ops.size()
           << " --";
-  return std::make_tuple(std::move(all_ops), std::move(supported_ops),
-                         std::move(unsupported_ops));
+  return std::make_tuple(
+      std::move(all_ops), std::move(supported_ops), std::move(unsupported_ops));
 }
 
 AutoCastGuard::AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel level)
@@ -124,7 +132,7 @@ AmpOperators::AmpOperators()
       OpSupportedInfos("GPU", paddle::framework::proto::VarType::BF16));
   unsupported_bf16_ops_->insert(unsupported_ops_gpu_bf16.begin(),
                                 unsupported_ops_gpu_bf16.end());
-// NOTE: GPU/NPU/XPU is compiled seperatly.
+// NOTE: GPU/NPU/XPU/MLU is compiled seperatly.
 #elif defined(PADDLE_WITH_ASCEND_CL)
   auto unsupported_ops_npu_fp16 = std::get<2>(
       OpSupportedInfos("NPU", paddle::framework::proto::VarType::FP16));
@@ -143,6 +151,15 @@ AmpOperators::AmpOperators()
       OpSupportedInfos("XPU", paddle::framework::proto::VarType::BF16));
   unsupported_bf16_ops_->insert(unsupported_ops_xpu_bf16.begin(),
                                 unsupported_ops_xpu_bf16.end());
+#elif defined(PADDLE_WITH_MLU)
+  auto unsupported_ops_mlu_fp16 = std::get<2>(
+      OpSupportedInfos("MLU", paddle::framework::proto::VarType::FP16));
+  unsupported_fp16_ops_->insert(unsupported_ops_mlu_fp16.begin(),
+                                unsupported_ops_mlu_fp16.end());
+  auto unsupported_ops_mlu_bf16 = std::get<2>(
+      OpSupportedInfos("MLU", paddle::framework::proto::VarType::BF16));
+  unsupported_bf16_ops_->insert(unsupported_ops_mlu_bf16.begin(),
+                                unsupported_ops_mlu_bf16.end());
 #endif
   VLOG(4) << allow_ops_->size() << " " << block_ops_->size() << " "
           << unsupported_fp16_ops_->size() << " "
@@ -179,22 +196,26 @@ AmpOperators::GetMutableUnsupportedBf16Ops() {
 std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
   os << "allow ops: ";
   auto allow_ops = ops.GetMutableAllowOps();
-  std::copy((*allow_ops).begin(), (*allow_ops).end(),
+  std::copy((*allow_ops).begin(),
+            (*allow_ops).end(),
             std::ostream_iterator<std::string>(os, " "));
   os << "\n";
   os << "block ops: ";
   auto block_ops = ops.GetMutableBlockOps();
-  std::copy((*block_ops).begin(), (*block_ops).end(),
+  std::copy((*block_ops).begin(),
+            (*block_ops).end(),
             std::ostream_iterator<std::string>(os, " "));
   os << "\n";
   os << "unsupported fp16 ops: ";
   auto unsupported_fp16_ops = ops.GetMutableUnsupportedFp16Ops();
-  std::copy((*unsupported_fp16_ops).begin(), (*unsupported_fp16_ops).end(),
+  std::copy((*unsupported_fp16_ops).begin(),
+            (*unsupported_fp16_ops).end(),
             std::ostream_iterator<std::string>(os, " "));
   os << "\n";
   os << "unsupported bf16 ops: ";
   auto unsupported_bf16_ops = ops.GetMutableUnsupportedBf16Ops();
-  std::copy((*unsupported_bf16_ops).begin(), (*unsupported_bf16_ops).end(),
+  std::copy((*unsupported_bf16_ops).begin(),
+            (*unsupported_bf16_ops).end(),
             std::ostream_iterator<std::string>(os, " "));
   return os;
 }
@@ -209,7 +230,11 @@ inline bool NeedCast(const std::shared_ptr<VarType>& var) {
   auto data_type = GetDataType<VarType>(var);
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
-      paddle::platform::is_xpu_place(place)) {
+      paddle::platform::is_xpu_place(place) ||
+      paddle::platform::is_mlu_place(place) ||
+      paddle::platform::is_custom_place(place) ||
+      paddle::platform::is_npu_place(place) ||
+      paddle::platform::is_npu_pinned_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
     if (data_type == paddle::framework::proto::VarType::FP32 ||
         data_type == paddle::framework::proto::VarType::FP16 ||
@@ -273,7 +298,8 @@ static inline std::shared_ptr<VarType> CastToBF16(
 
 template <typename VarType>
 static inline framework::proto::VarType::Type GetPromoteType(
-    const std::string& op_type, const NameVarMap<VarType>& ins,
+    const std::string& op_type,
+    const NameVarMap<VarType>& ins,
     const framework::proto::VarType::Type amp_dtype) {
   auto dst_type = amp_dtype;
   for (const auto& pair : ins) {
@@ -289,9 +315,8 @@ static inline framework::proto::VarType::Type GetPromoteType(
   // dtype of input(X)
   if (op_type == "moving_average_abs_max_scale") {
     for (const auto& pair : ins) {
-      if (pair.first == "X" &&
-          GetDataType<VarType>(pair.second.front()) ==
-              framework::proto::VarType::FP16) {
+      if (pair.first == "X" && GetDataType<VarType>(pair.second.front()) ==
+                                   framework::proto::VarType::FP16) {
         dst_type = framework::proto::VarType::FP16;
       }
     }

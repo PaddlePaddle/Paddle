@@ -35,7 +35,7 @@ struct FullFuctor {
 
 template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
-                const ScalarArray& shape,
+                const IntArray& shape,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
@@ -60,21 +60,33 @@ void FullLikeKernel(const Context& dev_ctx,
                     const Scalar& val,
                     DataType dtype,
                     DenseTensor* out) {
-  auto value = val.to<float>();
+  auto value = val.to<double>();
   using CommonType = typename std::common_type<
       float,
-      typename std::conditional<std::is_same<T, phi::dtype::float16>::value,
-                                float,
-                                T>::type>::type;
+      typename std::conditional<
+          std::is_same<T, phi::dtype::float16>::value ||
+              std::is_same<T, phi::dtype::bfloat16>::value,
+          float,
+          T>::type>::type;
 
   auto common_type_value = static_cast<CommonType>(value);
 
-  PADDLE_ENFORCE_EQ(
-      (common_type_value >=
+  // Check whether the filled value is valid
+  bool is_out_range = true;
+  if (std::isinf(value) || std::isnan(value)) {
+    is_out_range = false;
+  }
+
+  if ((common_type_value >=
        static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
-          (common_type_value <=
-           static_cast<CommonType>(std::numeric_limits<T>::max())),
-      true,
+      (common_type_value <=
+       static_cast<CommonType>(std::numeric_limits<T>::max()))) {
+    is_out_range = false;
+  }
+
+  PADDLE_ENFORCE_EQ(
+      is_out_range,
+      false,
       phi::errors::InvalidArgument(
           "The filled value is out of range for target type, "
           "current kernel type is %s, the range should between %f "
@@ -110,6 +122,7 @@ PD_REGISTER_KERNEL(full,
                    int64_t,
                    bool,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -119,10 +132,12 @@ PD_REGISTER_KERNEL(full_like,
                    phi::FullLikeKernel,
                    float,
                    double,
+                   uint8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }

@@ -122,8 +122,9 @@ def multiclass_nms(boxes, scores, background, score_threshold, nms_threshold,
                 else:
                     score_index.append((scores[idx][c], c, idx))
 
-        sorted_score_index = sorted(
-            score_index, key=lambda tup: tup[0], reverse=True)
+        sorted_score_index = sorted(score_index,
+                                    key=lambda tup: tup[0],
+                                    reverse=True)
         sorted_score_index = sorted_score_index[:keep_top_k]
         selected_indices = {}
 
@@ -153,16 +154,15 @@ def batched_multiclass_nms(boxes,
 
     lod = []
     for n in range(batch_size):
-        nmsed_outs, nmsed_num = multiclass_nms(
-            boxes[n],
-            scores[n],
-            background,
-            score_threshold,
-            nms_threshold,
-            nms_top_k,
-            keep_top_k,
-            normalized,
-            shared=True)
+        nmsed_outs, nmsed_num = multiclass_nms(boxes[n],
+                                               scores[n],
+                                               background,
+                                               score_threshold,
+                                               nms_threshold,
+                                               nms_top_k,
+                                               keep_top_k,
+                                               normalized,
+                                               shared=True)
         lod.append(nmsed_num)
 
         if nmsed_num == 0:
@@ -175,13 +175,15 @@ def batched_multiclass_nms(boxes,
                     c, scores[n][c][idx], xmin, ymin, xmax, ymax,
                     idx + n * num_boxes
                 ])
-        sorted_det_out = sorted(
-            tmp_det_out, key=lambda tup: tup[0], reverse=False)
+        sorted_det_out = sorted(tmp_det_out,
+                                key=lambda tup: tup[0],
+                                reverse=False)
         det_outs.extend(sorted_det_out)
     return det_outs, lod
 
 
 class TestLocalAwareNMSOp(OpTest):
+
     def set_argument(self):
         self.score_threshold = 0.01
 
@@ -216,9 +218,10 @@ class TestLocalAwareNMSOp(OpTest):
 
         boxes_copy = copy.deepcopy(boxes)
         scores_copy = copy.deepcopy(scores)
-        det_outs, lod = batched_multiclass_nms(
-            boxes_copy, scores_copy, background, score_threshold, nms_threshold,
-            nms_top_k, keep_top_k)
+        det_outs, lod = batched_multiclass_nms(boxes_copy, scores_copy,
+                                               background, score_threshold,
+                                               nms_threshold, nms_top_k,
+                                               keep_top_k)
 
         lod = [1] if not det_outs else lod
         det_outs = [[-1, 0]] if not det_outs else det_outs
@@ -243,11 +246,13 @@ class TestLocalAwareNMSOp(OpTest):
 
 
 class TestLocalAwareNMSOpNoBoxes(TestLocalAwareNMSOp):
+
     def set_argument(self):
         self.score_threshold = 2.0
 
 
 class TestLocalAwareNMSOp4Points(OpTest):
+
     def set_argument(self):
         self.score_threshold = 0.01
 
@@ -267,24 +272,29 @@ class TestLocalAwareNMSOp4Points(OpTest):
         boxes = np.array([[[
             0.42078365, 0.58117018, 2.92776169, 3.28557757, 4.24344318,
             0.92196165, 2.72370856, -1.66141214
-        ], [
-            0.13856006, 1.86871034, 2.81287224, 3.61381734, 4.5505249,
-            0.51766346, 2.75630304, -1.91459389
-        ]], [[
-            1.57533883, 1.3217477, 3.07904942, 3.89512545, 4.78680923,
-            1.96914586, 3.539482, -1.59739244
-        ], [
-            0.55084125, 1.71596215, 2.52476074, 3.18940435, 5.09035159,
-            0.91959482, 3.71442385, -0.57299128
-        ]]])
+        ],
+                           [
+                               0.13856006, 1.86871034, 2.81287224, 3.61381734,
+                               4.5505249, 0.51766346, 2.75630304, -1.91459389
+                           ]],
+                          [[
+                              1.57533883, 1.3217477, 3.07904942, 3.89512545,
+                              4.78680923, 1.96914586, 3.539482, -1.59739244
+                          ],
+                           [
+                               0.55084125, 1.71596215, 2.52476074, 3.18940435,
+                               5.09035159, 0.91959482, 3.71442385, -0.57299128
+                           ]]])
 
         det_outs = np.array([[
             0., 1.5008917, 0.28206837, 1.2140071, 2.8712926, 3.4469104,
             4.3943763, 0.7232457, 2.7397292, -1.7858533
-        ], [
-            0., 1.1446586, 1.1640508, 1.4800063, 2.856528, 3.6118112, 4.908667,
-            1.5478, 3.609713, -1.1861432
-        ]])
+        ],
+                             [
+                                 0., 1.1446586, 1.1640508, 1.4800063, 2.856528,
+                                 3.6118112, 4.908667, 1.5478, 3.609713,
+                                 -1.1861432
+                             ]])
         lod = [1, 1]
         nmsed_outs = det_outs.astype('float32')
 
@@ -308,28 +318,31 @@ class TestLocalAwareNMSOp4Points(OpTest):
 
 
 class TestLocalityAwareNMSAPI(unittest.TestCase):
+
     def test_api(self):
         boxes = fluid.data(name='bboxes', shape=[None, 81, 8], dtype='float32')
         scores = fluid.data(name='scores', shape=[None, 1, 81], dtype='float32')
-        fluid.layers.locality_aware_nms(
-            bboxes=boxes,
-            scores=scores,
-            score_threshold=0.5,
-            nms_top_k=400,
-            nms_threshold=0.3,
-            keep_top_k=200,
-            normalized=False)
+        fluid.layers.locality_aware_nms(bboxes=boxes,
+                                        scores=scores,
+                                        score_threshold=0.5,
+                                        nms_top_k=400,
+                                        nms_threshold=0.3,
+                                        keep_top_k=200,
+                                        normalized=False)
 
 
 class TestLocalityAwareNMSError(unittest.TestCase):
+
     def test_error(self):
         boxes = fluid.data(name='bboxes', shape=[None, 81, 8], dtype='float32')
         scores = fluid.data(name='scores', shape=[None, 1, 81], dtype='float32')
 
-        boxes_int = fluid.data(
-            name='bboxes_int', shape=[None, 81, 8], dtype='int32')
-        scores_int = fluid.data(
-            name='scores_int', shape=[None, 1, 81], dtype='int32')
+        boxes_int = fluid.data(name='bboxes_int',
+                               shape=[None, 81, 8],
+                               dtype='int32')
+        scores_int = fluid.data(name='scores_int',
+                                shape=[None, 1, 81],
+                                dtype='int32')
         boxes_tmp = [1, 2]
         scores_tmp = [1, 2]
 
@@ -361,7 +374,7 @@ class TestLocalityAwareNMSError(unittest.TestCase):
                           scores, 0.5, 400, keep_top_k)
 
         nms_threshold = int(0)
-        # type of nms_threshold must be int 
+        # type of nms_threshold must be int
         self.assertRaises(TypeError, fluid.layers.locality_aware_nms, boxes,
                           scores, 0.5, 400, 200, nms_threshold)
 
@@ -371,7 +384,7 @@ class TestLocalityAwareNMSError(unittest.TestCase):
                           scores, 0.5, 400, 200, 0.5, nms_eta)
 
         bg_label = 1.5
-        # type of background_label must be int 
+        # type of background_label must be int
         self.assertRaises(TypeError, fluid.layers.locality_aware_nms, boxes,
                           scores, 0.5, 400, 200, 0.5, 1.0, bg_label)
 

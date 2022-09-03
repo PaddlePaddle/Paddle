@@ -24,12 +24,13 @@ import os
 # NCCL 2.7 decides to use shared memory while NCCL 2.6 didn't, hence causing the error.
 # include/shm.h:28 NCCL WARN Call to posix_fallocate failed: No space left on device
 #
-# Set environment variables NCCL_SHM_DISABLE=1 to disables the Shared Memory (SHM) transports 
+# Set environment variables NCCL_SHM_DISABLE=1 to disables the Shared Memory (SHM) transports
 # and force to use P2P which is the default transports way of NCCL2.6.
 os.environ['NCCL_SHM_DISABLE'] = str(1)
 
 
 class TestPEProfiler(TestProfiler):
+
     def test_cpu_profiler(self):
         exe = fluid.Executor(fluid.CPUPlace())
         self.net_profiler(exe, 'CPU', "Default", use_parallel_executor=True)

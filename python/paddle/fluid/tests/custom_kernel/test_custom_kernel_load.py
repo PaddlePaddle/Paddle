@@ -20,6 +20,7 @@ import numpy as np
 
 
 class TestCustomKernelLoad(unittest.TestCase):
+
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -32,8 +33,9 @@ class TestCustomKernelLoad(unittest.TestCase):
         # get paddle lib path and place so
         paddle_lib_path = ''
         site_dirs = site.getsitepackages() if hasattr(
-            site, 'getsitepackages'
-        ) else [x for x in sys.path if 'site-packages' in x]
+            site, 'getsitepackages') else [
+                x for x in sys.path if 'site-packages' in x
+            ]
         for site_dir in site_dirs:
             lib_dir = os.path.sep.join([site_dir, 'paddle', 'libs'])
             if os.path.exists(lib_dir):
@@ -63,10 +65,11 @@ class TestCustomKernelLoad(unittest.TestCase):
         y = paddle.to_tensor(y_data)
         out = paddle.dot(x, y)
 
-        self.assertTrue(
-            np.array_equal(out.numpy(), result),
-            "custom kernel dot out: {},\n numpy dot out: {}".format(out.numpy(),
-                                                                    result))
+        np.testing.assert_array_equal(
+            out.numpy(),
+            result,
+            err_msg='custom kernel dot out: {},\n numpy dot out: {}'.format(
+                out.numpy(), result))
 
     def tearDown(self):
         cmd = 'rm -rf {}'.format(self.default_path)

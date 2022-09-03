@@ -15,6 +15,7 @@ limitations under the License. */
 #ifndef _WIN32
 #include <cuda.h>
 #include <nvToolsExt.h>
+
 #include <mutex>  // NOLINT
 
 #include "paddle/phi/backends/dynload/nvtx.h"

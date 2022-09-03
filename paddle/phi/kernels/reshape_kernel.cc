@@ -13,10 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/reshape_kernel.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/unary.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
@@ -24,7 +25,7 @@ namespace phi {
 template <typename Context>
 void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
-                   const ScalarArray& shape,
+                   const IntArray& shape,
                    DenseTensor* out) {
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
@@ -44,9 +45,9 @@ void ReshapeKernel(const Context& dev_ctx,
 template <typename Context>
 void ReshapeWithXShape(const Context& dev_ctx,
                        const DenseTensor& x,
-                       const ScalarArray& shape,
-                       DenseTensor* xshape,
-                       DenseTensor* out) {
+                       const IntArray& shape,
+                       DenseTensor* out,
+                       DenseTensor* xshape) {
   ReshapeKernel(dev_ctx, x, shape, out);
 }
 

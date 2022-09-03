@@ -15,9 +15,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/matmul_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
 
 PD_REGISTER_KERNEL(matmul,
@@ -30,3 +29,11 @@ PD_REGISTER_KERNEL(matmul,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(matmul_with_flatten,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MatmulWithFlattenKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}

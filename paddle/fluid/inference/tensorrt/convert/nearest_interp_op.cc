@@ -28,7 +28,8 @@ namespace tensorrt {
 class NearestInterpolateOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid nearest_interp op";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -40,17 +41,17 @@ class NearestInterpolateOpConverter : public OpConverter {
 
     auto data_layout = !op_desc.HasAttr("data_layout")
                            ? framework::DataLayout::kNCHW
-                           : framework::StringToDataLayout(BOOST_GET_CONST(
+                           : framework::StringToDataLayout(PADDLE_GET_CONST(
                                  std::string, op_desc.GetAttr("data_layout")));
     auto interp_method =
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("interp_method"));
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("interp_method"));
     bool align_corners =
-        BOOST_GET_CONST(bool, op_desc.GetAttr("align_corners"));
+        PADDLE_GET_CONST(bool, op_desc.GetAttr("align_corners"));
 
     auto input_names = op_desc.Input("X");
-    auto scale = BOOST_GET_CONST(float, op_desc.GetAttr("scale"));
-    auto out_h = BOOST_GET_CONST(int, op_desc.GetAttr("out_h"));
-    auto out_w = BOOST_GET_CONST(int, op_desc.GetAttr("out_w"));
+    auto scale = PADDLE_GET_CONST(float, op_desc.GetAttr("scale"));
+    auto out_h = PADDLE_GET_CONST(int, op_desc.GetAttr("out_h"));
+    auto out_w = PADDLE_GET_CONST(int, op_desc.GetAttr("out_w"));
 
     auto layer = TRT_ENGINE_ADD_LAYER(engine_, Resize, *input);
     layer->setAlignCorners(align_corners);

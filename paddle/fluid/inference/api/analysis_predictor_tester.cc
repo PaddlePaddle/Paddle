@@ -13,9 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/analysis_predictor.h"
+#include "paddle/fluid/inference/api/resource_manager.h"
+#if defined(PADDLE_WITH_CUDA)
+#include <cuda_runtime.h>
+#endif
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <thread>  // NOLINT
+
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -99,6 +105,7 @@ TEST(AnalysisPredictor, analysis_on) {
   ASSERT_TRUE(predictor->sub_scope_);
   ASSERT_EQ(predictor->scope_->parent(), nullptr);
   ASSERT_EQ(predictor->sub_scope_->parent(), predictor->scope_.get());
+  ASSERT_EQ(predictor->GetInputTypes().size(), 4UL);
   // 2. Dummy Input Data
   int64_t data[4] = {1, 2, 3, 4};
   PaddleTensor tensor;
@@ -178,18 +185,11 @@ TEST(AnalysisPredictor, CollectShapeRangeInfo) {
   w1->Reshape({4, 1});
   w2->Reshape({4, 1});
   w3->Reshape({4, 1});
-
-  auto* w0_data = w0->mutable_data<int64_t>(PaddlePlace::kCPU);
-  auto* w1_data = w1->mutable_data<int64_t>(PaddlePlace::kCPU);
-  auto* w2_data = w2->mutable_data<int64_t>(PaddlePlace::kCPU);
-  auto* w3_data = w3->mutable_data<int64_t>(PaddlePlace::kCPU);
-
-  for (int i = 0; i < 4; i++) {
-    w0_data[i] = i;
-    w1_data[i] = i;
-    w2_data[i] = i;
-    w3_data[i] = i;
-  }
+  std::vector<int64_t> input_data{0, 1, 2, 3};
+  w0->copy_from_cpu(input_data.data());
+  w1->copy_from_cpu(input_data.data());
+  w2->copy_from_cpu(input_data.data());
+  w3->copy_from_cpu(input_data.data());
 
   predictor->ZeroCopyRun();
 
@@ -354,6 +354,24 @@ TEST(AnalysisPredictor, set_xpu_device_id) {
 }
 #endif
 
+TEST(AnalysisPredictor, enable_onnxruntime) {
+  AnalysisConfig config;
+  config.EnableONNXRuntime();
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  ASSERT_TRUE(config.use_onnxruntime());
+#else
+  ASSERT_TRUE(!config.use_onnxruntime());
+#endif
+  config.EnableORTOptimization();
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  ASSERT_TRUE(config.ort_optimization_enabled());
+#else
+  ASSERT_TRUE(!config.ort_optimization_enabled());
+#endif
+  config.DisableONNXRuntime();
+  ASSERT_TRUE(!config.use_onnxruntime());
+}
+
 }  // namespace paddle
 
 namespace paddle_infer {
@@ -372,6 +390,7 @@ TEST(Predictor, Run) {
   config.SetModel(FLAGS_dirname);
 
   auto predictor = CreatePredictor(config);
+  ASSERT_EQ(predictor->GetInputTypes().size(), 4UL);
 
   auto w0 = predictor->GetInputHandle("firstw");
   auto w1 = predictor->GetInputHandle("secondw");
@@ -404,5 +423,192 @@ TEST(Predictor, Run) {
   LOG(INFO) << "output size: " << size / sizeof(float);
   predictor->TryShrinkMemory();
 }
+
+TEST(Predictor, EnableONNXRuntime) {
+  Config config;
+  config.SetModel(FLAGS_dirname);
+  config.EnableONNXRuntime();
+  config.EnableORTOptimization();
+  auto predictor = CreatePredictor(config);
+}
+
+TEST(Tensor, CpuShareExternalData) {
+  Config config;
+  config.SetModel(FLAGS_dirname);
+
+  auto predictor = CreatePredictor(config);
+
+  auto w0 = predictor->GetInputHandle("firstw");
+  auto w1 = predictor->GetInputHandle("secondw");
+  auto w2 = predictor->GetInputHandle("thirdw");
+  auto w3 = predictor->GetInputHandle("forthw");
+
+  std::vector<std::vector<int64_t>> input_data(4, {0, 1, 2, 3});
+  w0->ShareExternalData<int64_t>(input_data[0].data(), {4, 1}, PlaceType::kCPU);
+  w1->ShareExternalData<int64_t>(input_data[1].data(), {4, 1}, PlaceType::kCPU);
+  w2->ShareExternalData<int64_t>(input_data[2].data(), {4, 1}, PlaceType::kCPU);
+  w3->ShareExternalData<int64_t>(input_data[3].data(), {4, 1}, PlaceType::kCPU);
+
+  auto out = predictor->GetOutputHandle("fc_1.tmp_2");
+  auto out_shape = out->shape();
+  std::vector<float> out_data;
+  out_data.resize(std::accumulate(
+      out_shape.begin(), out_shape.end(), 1, std::multiplies<int>()));
+  out->ShareExternalData<float>(out_data.data(), out_shape, PlaceType::kCPU);
+
+  predictor->Run();
+
+  PlaceType place;
+  int size = 0;
+  out->data<float>(&place, &size);
+  LOG(INFO) << "output size: " << size / sizeof(float);
+  predictor->TryShrinkMemory();
+}
+
+#if defined(PADDLE_WITH_CUDA)
+TEST(Tensor, GpuShareExternalData) {
+  Config config;
+  config.SetModel(FLAGS_dirname);
+  config.EnableUseGpu(100, 0);
+
+  auto predictor = CreatePredictor(config);
+
+  auto w0 = predictor->GetInputHandle("firstw");
+  auto w1 = predictor->GetInputHandle("secondw");
+  auto w2 = predictor->GetInputHandle("thirdw");
+  auto w3 = predictor->GetInputHandle("forthw");
+
+  std::vector<std::vector<int64_t>> input_data(4, {0, 1, 2, 3});
+  std::vector<int64_t*> input_gpu(4, nullptr);
+
+  for (size_t i = 0; i < 4; ++i) {
+    cudaMalloc(reinterpret_cast<void**>(&input_gpu[i]), 4 * sizeof(int64_t));
+    cudaMemcpy(input_gpu[i],
+               input_data[i].data(),
+               4 * sizeof(int64_t),
+               cudaMemcpyHostToDevice);
+  }
+
+  w0->ShareExternalData<int64_t>(input_gpu[0], {4, 1}, PlaceType::kGPU);
+  w1->ShareExternalData<int64_t>(input_gpu[1], {4, 1}, PlaceType::kGPU);
+  w2->ShareExternalData<int64_t>(input_gpu[2], {4, 1}, PlaceType::kGPU);
+  w3->ShareExternalData<int64_t>(input_gpu[3], {4, 1}, PlaceType::kGPU);
+
+  auto out = predictor->GetOutputHandle("fc_1.tmp_2");
+  auto out_shape = out->shape();
+  float* out_data = nullptr;
+  auto out_size =
+      std::accumulate(
+          out_shape.begin(), out_shape.end(), 1, std::multiplies<int>()) *
+      sizeof(float);
+  cudaMalloc(reinterpret_cast<void**>(out_data), out_size * sizeof(float));
+  out->ShareExternalData<float>(out_data, out_shape, PlaceType::kGPU);
+
+  predictor->Run();
+
+  PlaceType place;
+  int size = 0;
+  out->data<float>(&place, &size);
+  LOG(INFO) << "output size: " << size / sizeof(float);
+  predictor->TryShrinkMemory();
+}
+
+TEST(Predictor, Streams) {
+  // internal stream.
+  {
+    Config config;
+    config.SetModel(FLAGS_dirname);
+    config.EnableUseGpu(100, 0);
+    auto predictor = CreatePredictor(config);
+    gpuStream_t stream =
+        reinterpret_cast<gpuStream_t>(predictor->GetExecStream());
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 0);
+  }
+
+  // internal stream, create 2 predictor.
+  {
+    Config config1;
+    config1.SetModel(FLAGS_dirname);
+    config1.EnableUseGpu(100, 0);
+    auto predictor1 = CreatePredictor(config1);
+    gpuStream_t stream1 =
+        reinterpret_cast<gpuStream_t>(predictor1->GetExecStream());
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream1), 0);
+
+    Config config2;
+    config2.SetModel(FLAGS_dirname);
+    config2.EnableUseGpu(100, 0);
+    auto predictor2 = CreatePredictor(config2);
+    gpuStream_t stream2 =
+        reinterpret_cast<gpuStream_t>(predictor2->GetExecStream());
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream2), 0);
+    CHECK_EQ(stream1, stream2);
+  }
+
+  // internal stream, clone
+  {
+    Config config;
+    config.SetModel(FLAGS_dirname);
+    config.EnableUseGpu(100, 0);
+    auto predictor = CreatePredictor(config);
+    gpuStream_t stream =
+        reinterpret_cast<gpuStream_t>(predictor->GetExecStream());
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 0);
+
+    auto predictor2 = predictor->Clone();
+    gpuStream_t stream2 =
+        reinterpret_cast<gpuStream_t>(predictor2->GetExecStream());
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream2), 0);
+    CHECK_EQ(stream, stream2);
+  }
+
+  // external stream
+  {
+    cudaStream_t external_stream;
+    cudaStreamCreate(&external_stream);
+    Config config;
+    config.SetModel(FLAGS_dirname);
+    config.EnableUseGpu(100, 0);
+    config.SetExecStream(external_stream);
+    CHECK_EQ(config.external_stream_enabled(), true);
+
+    auto predictor = CreatePredictor(config);
+    gpuStream_t stream =
+        reinterpret_cast<gpuStream_t>(predictor->GetExecStream());
+    CHECK_EQ(external_stream, stream);
+    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetGPUResource(stream));
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 1);
+  }
+
+  // 2 predictor on 2 stream
+  {
+    cudaStream_t external_stream;
+    cudaStreamCreate(&external_stream);
+    Config config;
+    config.SetModel(FLAGS_dirname);
+    config.EnableUseGpu(100, 0);
+    config.SetExecStream(external_stream);
+    auto predictor = CreatePredictor(config);
+    gpuStream_t stream =
+        reinterpret_cast<gpuStream_t>(predictor->GetExecStream());
+    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetGPUResource(stream));
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 1);
+
+    cudaStream_t external_stream2;
+    cudaStreamCreate(&external_stream2);
+    Config config2;
+    config2.SetModel(FLAGS_dirname);
+    config2.EnableUseGpu(100, 0);
+    config2.SetExecStream(external_stream2);
+    auto predictor2 = CreatePredictor(config2);
+    gpuStream_t stream2 =
+        reinterpret_cast<gpuStream_t>(predictor2->GetExecStream());
+    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetGPUResource(stream2));
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream2), 1);
+
+    CHECK_NE(stream, stream2);
+  }
+}
+#endif
 
 }  // namespace paddle_infer

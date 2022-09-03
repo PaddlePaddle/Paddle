@@ -18,15 +18,19 @@ import numpy as np
 import paddle
 import scipy.stats
 
-from config import (ATOL, DEVICES, RTOL, TEST_CASE_NAME, parameterize, place,
-                    xrand)
+import config
+from config import ATOL, DEVICES, RTOL
+from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
+
+np.random.seed(2022)
 
 
 @place(DEVICES)
-@parameterize((TEST_CASE_NAME, 'alpha', 'beta'),
-              [('test-scale', 1.0, 2.0), ('test-tensor', xrand(), xrand()),
-               ('test-broadcast', xrand((2, 1)), xrand((2, 5)))])
+@parameterize_cls((TEST_CASE_NAME, 'alpha', 'beta'),
+                  [('test-scale', 1.0, 2.0), ('test-tensor', xrand(), xrand()),
+                   ('test-broadcast', xrand((2, 1)), xrand((2, 5)))])
 class TestBeta(unittest.TestCase):
+
     def setUp(self):
         # scale no need convert to tensor for scale input unittest
         alpha, beta = self.alpha, self.beta
@@ -96,5 +100,9 @@ class TestBeta(unittest.TestCase):
         ]
         for case in cases:
             self.assertTrue(
-                self._paddle_beta.sample(case.get('input')).shape ==
-                case.get('expect'))
+                self._paddle_beta.sample(case.get('input')).shape == case.get(
+                    'expect'))
+
+
+if __name__ == '__main__':
+    unittest.main()

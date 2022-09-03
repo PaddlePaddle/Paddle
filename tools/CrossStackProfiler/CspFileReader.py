@@ -45,8 +45,8 @@ dcgmMetricParameterMap = {
     "04_memUtility": [("FB_USED_RATIO", "FB_USED_RATIO"), ("DRAMA", "DRAMA")],
     "05_txUtility": [("NVLTX", "NVLTX"), ("NVLRX", "NVLRX"), ("PCITX", "PCITX"),
                      ("PCIRX", "PCIRX")],
-    "06_calUtility":
-    [("FP32A", "FP32A"), ("FP16A", "FP16A"), ("TENSO", "TENSO")]
+    "06_calUtility": [("FP32A", "FP32A"), ("FP16A", "FP16A"),
+                      ("TENSO", "TENSO")]
 }
 DCGMINFO_TRACE_NUM = len(dcgmMetricParameterMap.keys())
 NETINFO_TRACE_NUM = 2
@@ -66,6 +66,7 @@ FILEORGANIZEFORM = [
 
 
 class FileReader(object):
+
     def __init__(self, logger, args):
         self._logger = logger
         self._args = args
@@ -174,8 +175,8 @@ class FileReader(object):
                     file)
 
         if not self._fileList:
-            if (self._getId(self._fileList[-1]) - self._getId(self._fileList[0])
-                ) != len(self._fileList) - 1:
+            if (self._getId(self._fileList[-1]) -
+                    self._getId(self._fileList[0])) != len(self._fileList) - 1:
                 raise Exception("The file id should be countious!")
         # sort
         def _sortBySuffix(elem):
@@ -194,8 +195,9 @@ class FileReader(object):
 
     def _getId(self, fileName, organizeForm, sed="."):
         if self._organizeForm != organizeForm:
-            raise TypeError("Can not get rank id when organizer form is not %s!"
-                            % organizeForm)
+            raise TypeError(
+                "Can not get rank id when organizer form is not %s!" %
+                organizeForm)
 
         if not os.path.isfile(fileName):
             raise IOError("[%s] is not a valid file!" % (fileName))
@@ -204,12 +206,12 @@ class FileReader(object):
             prefix_str = fileName.split(sed)[-1]
             try:
                 return int(prefix_str)
-            except ValueError, Argument:
-                print(Argument)
+            except ValueError as e:
+                print(e)
                 raise TypeError("invalid fileName [%s]" % fileName)
 
-        except IndexError, Argument:
-            print(Argument)
+        except IndexError as e:
+            print(e)
             raise TypeError(
                 "invalid fileName [%s], the prefix should be a number!" %
                 fileName)
@@ -294,12 +296,20 @@ class FileReader(object):
                        gpuId,
                        pretty=False,
                        tmpPath="./tmp"):
-        return self.dumpDict(
-            data, "opinfo", groupId, gpuId, pretty=False, tmpPath="./tmp")
+        return self.dumpDict(data,
+                             "opinfo",
+                             groupId,
+                             gpuId,
+                             pretty=False,
+                             tmpPath="./tmp")
 
     def dumpDCGMDict(self, data, groupId, gpuId, pretty=False, tmpPath="./tmp"):
-        return self.dumpDict(
-            data, "dcgm", groupId, gpuId, pretty=False, tmpPath="./tmp")
+        return self.dumpDict(data,
+                             "dcgm",
+                             groupId,
+                             gpuId,
+                             pretty=False,
+                             tmpPath="./tmp")
 
     def dumpDict(self,
                  data,
@@ -353,8 +363,8 @@ def getLogger():
 def test_FileReader(args):
     try:
         testReader = FileReader(None, args)
-    except Exception, Argument:
-        print(Argument)
+    except Exception as e:
+        print(e)
     else:
         testReader.printArgs()
 
