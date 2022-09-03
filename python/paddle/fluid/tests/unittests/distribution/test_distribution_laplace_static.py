@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-import paddle
 import scipy.stats
 
+import paddle
 import config
 import parameterize
 
@@ -43,7 +43,7 @@ class TestLaplace(unittest.TestCase):
             scale = paddle.static.data('scale', self.scale.shape,
                                        self.scale.dtype)
             self._dist = paddle.distribution.Laplace(loc=loc, scale=scale)
-            self.sample_shape = (100000, )
+            self.sample_shape = (30000, )
             mean = self._dist.mean
             var = self._dist.variance
             stddev = self._dist.stddev

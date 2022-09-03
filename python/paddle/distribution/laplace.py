@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numbers
-import numpy as np
-from paddle.distribution import distribution
-from paddle.fluid import framework as framework
-
 try:
     from collections.abc import Iterable
 except:
     from collections import Iterable
+
+import numbers
+
+import numpy as np
+import paddle
+from paddle.distribution import distribution
+from paddle.fluid import framework as framework
 
 
 class Laplace(distribution.Distribution):
@@ -29,8 +30,8 @@ class Laplace(distribution.Distribution):
     Creates a Laplace distribution parameterized by :attr:`loc` and :attr:`scale`.
 
     Args:
-        loc (scalar|Tensor): mean of the distribution
-        scale (scalar|Tensor): scale of the distribution
+        loc (scalar|Tensor): The mean of the distribution.
+        scale (scalar|Tensor): The scale of the distribution.
     
     Examples:
         .. code-block:: python
@@ -70,25 +71,25 @@ class Laplace(distribution.Distribution):
 
     @property
     def mean(self):
-        """Mean of distribution
+        """Mean of distribution.
         Returns:
-            Tensor: mean value.
+            Tensor: The mean value.
         """
         return self.loc
 
     @property
     def stddev(self):
-        """standard deviation
+        """Standard deviation.
         Returns:
-            Tensor: std value.
+            Tensor: The std value.
         """
         return (2**0.5) * self.scale
 
     @property
     def variance(self):
-        """Variance of distribution
+        """Variance of distribution.
         Returns:
-            Tensor: variance value.
+            Tensor: The variance value.
         """
         return self.stddev.pow(2)
 
@@ -97,10 +98,10 @@ class Laplace(distribution.Distribution):
         `cdf` and `icdf`. 
 
         Args:
-          value (Tensor|Scalar): The input value, can be a scalar or a tensor.
+          value (Tensor|Scalar): The input value, which can be a scalar or a tensor.
         
         Returns:
-          loc, scale, value: broadcasted loc, scale and value, with the same dimension and data type.
+          loc, scale, value: The broadcasted loc, scale and value, with the same dimension and data type.
         """
         if isinstance(value, numbers.Real):
             value = paddle.full(shape=(), fill_value=value)
@@ -122,7 +123,7 @@ class Laplace(distribution.Distribution):
           value (Tensor|Scalar): The input value, can be a scalar or a tensor.
 
         Returns:
-          Tensor: log probability. The data type is same with value.
+          Tensor: The log probability, whose data type is same with value.
 
         Examples:
             .. code-block:: python
@@ -144,7 +145,7 @@ class Laplace(distribution.Distribution):
         """Entropy of Laplace distribution.
 
         Returns:
-            Entropy of distribution.
+            The entropy of distribution.
 
         Examples:
             .. code-block:: python
@@ -158,12 +159,12 @@ class Laplace(distribution.Distribution):
         return 1 + paddle.log(2 * self.scale)
 
     def cdf(self, value):
-        """Cumulative distribution function
+        """Cumulative distribution function.
         Args:
-            value (Tensor): value to be evaluated.
+            value (Tensor): The value to be evaluated.
 
         Returns:
-            Tensor: cumulative probability of value.
+            Tensor: The cumulative probability of value.
         
         Examples:
             .. code-block:: python
@@ -182,12 +183,12 @@ class Laplace(distribution.Distribution):
         return 0.5 - iterm
 
     def icdf(self, value):
-        """Inverse Cumulative distribution function
+        """Inverse Cumulative distribution function.
         Args:
-            value (Tensor): value to be evaluated.
+            value (Tensor): The value to be evaluated.
 
         Returns:
-            Tensor: cumulative probability of value.
+            Tensor: The cumulative probability of value.
 
         Examples:
             .. code-block:: python
@@ -208,10 +209,10 @@ class Laplace(distribution.Distribution):
         """Generate samples of the specified shape.
 
         Args:
-          shape (tuple): 1D `int32`. Shape of the generated samples.
+            shape(tuple[int]): The shape of generated samples.
 
         Returns:
-          Tensor: A tensor with prepended dimensions shape.The data type is float32.
+            Tensor: A sample tensor that fits the Laplace distribution.
 
         Examples:
             .. code-block:: python
@@ -223,18 +224,20 @@ class Laplace(distribution.Distribution):
                             # [3.68546247])
         """
         if not isinstance(shape, Iterable):
-            raise TypeError('sample shape must be Iterable object.')
+            raise TypeError(
+                f'Expected shape should be tuple[int], but got {type(shape)}')
 
         with paddle.no_grad():
             return self.rsample(shape)
 
     def rsample(self, shape):
-        """reparameterized sample
+        """Reparameterized sample.
+
         Args:
-          shape (tuple): 1D `int32`. Shape of the generated samples.
+            shape(tuple[int]): The shape of generated samples.
 
         Returns:
-          Tensor: A tensor with prepended dimensions shape.The data type is float32.
+            Tensor: A sample tensor that fits the Laplace distribution.
 
         Examples:
             .. code-block:: python
@@ -246,11 +249,12 @@ class Laplace(distribution.Distribution):
                             # [[0.04337667]])
         """
 
-        eps = self.get_eps()
+        eps = self._get_eps()
         shape = self._extend_shape(shape) or (1, )
         uniform = paddle.uniform(shape=shape,
                                  min=float(np.nextafter(-1, 1)) + eps / 2,
-                                 max=1. - eps / 2)
+                                 max=1. - eps / 2,
+                                 dtype=self.loc.dtype)
 
         if len(self.scale.shape) == 0 and len(self.loc.shape) == 0:
             loc, scale, uniform = paddle.broadcast_tensors(
@@ -260,16 +264,16 @@ class Laplace(distribution.Distribution):
 
         return (loc - scale * uniform.sign() * paddle.log1p(-uniform.abs()))
 
-    def get_eps(self):
+    def _get_eps(self):
         """
-        Get eps of certain data type.
+        Get the eps of certain data type.
 
         Note: 
             Since paddle.finfo is temporarily unavailable, we 
             use hard-coding style to get eps value.
 
         Returns:
-            Float: eps value by different data types.
+            Float: An eps value by different data types.
         """
         eps = 1.19209e-07
         if (self.loc.dtype == paddle.float64
@@ -279,13 +283,13 @@ class Laplace(distribution.Distribution):
         return eps
 
     def kl_divergence(self, other):
-        """The KL-divergence between two laplace distributions.
+        """Calculate the KL divergence KL(self || other) with two Laplace instances.
 
         Args:
-            other (Laplace): instance of Laplace.
+            other (Laplace): An instance of Laplace.
 
         Returns:
-            Tensor: kl-divergence between two laplace distributions.
+            Tensor: The kl-divergence between two laplace distributions.
 
         Examples:
             .. code-block:: python
