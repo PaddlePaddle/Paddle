@@ -60,7 +60,7 @@ SparseCsrTensor::SparseCsrTensor(const DenseTensor& non_zero_crows,
   if (non_zero_crows.initialized()) {
     Check(non_zero_crows_, non_zero_cols_, non_zero_elements_, dims_);
   } else {
-    // create a empty tensor
+    // create an empty tensor
     check_shape(dims);
   }
 }
@@ -81,28 +81,28 @@ SparseCsrTensor& SparseCsrTensor::operator=(const SparseCsrTensor& other) {
 
 void* SparseCsrTensor::AllocateFrom(Allocator* allocator,
                                     DataType dtype,
-                                    size_t requested_size) {
+                                    size_t requested_size = 0) {
   return non_zero_elements_.AllocateFrom(allocator, dtype, requested_size);
 }
 
-void SparseCsrTensor::Resize(const DDim& dense_dims,
-                             const int64_t non_zero_num) {
+void SparseCsrTensor::Resize(const DDim& original_dims,
+                             const int64_t num_non_zero) {
   PADDLE_ENFORCE(this->initialized(),
                  phi::errors::InvalidArgument(
-                     "the SparseCsrTensor must be initialized when call Resize "
-                     "function."));
-  check_shape(dense_dims);
+                     "the SparseCsrTensor must have been initialized when calling Resize "
+                     "method."));
+  check_shape(original_dims);
 
-  int64_t crows_size = dense_dims[0] + 1;
-  if (dense_dims.size() == 3) {
+  int64_t crows_size = original_dims[0] + 1;
+  if (original_dims.size() == 3) {
     // batch_size = dims[0]
-    crows_size = dense_dims[0] * (dense_dims[1] + 1);
+    crows_size = original_dims[0] * (original_dims[1] + 1);
   }
 
   DDim crows_dims = phi::make_ddim({crows_size});
   this->non_zero_crows_.Resize(crows_dims);
 
-  DDim col_dims = phi::make_ddim({non_zero_num});
+  DDim col_dims = phi::make_ddim({num_non_zero});
   this->non_zero_cols_.Resize(col_dims);
   this->non_zero_elements_.Resize(col_dims);
 }
