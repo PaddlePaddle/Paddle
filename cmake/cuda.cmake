@@ -203,17 +203,22 @@ function(select_nvcc_arch_flags out_variable)
   set(nvcc_flags "")
   set(nvcc_archs_readable "")
 
+  set(lto_compute_flags "sm")
+  if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_GREATER_EQUAL 11.2)
+    set(lto_compute_flags "lto")
+  endif()
+
   # Tell NVCC to add binaries for the specified GPUs
   foreach(arch ${cuda_arch_bin})
     if(arch MATCHES "([0-9]+)\\(([0-9]+)\\)")
       # User explicitly specified PTX for the concrete BIN
       string(APPEND nvcc_flags
-             " -gencode arch=compute_${CMAKE_MATCH_2},code=sm_${CMAKE_MATCH_1}")
-      string(APPEND nvcc_archs_readable " sm_${CMAKE_MATCH_1}")
+             " -gencode arch=compute_${CMAKE_MATCH_2},code=${lto_compute_flags}_${CMAKE_MATCH_1}")
+      string(APPEND nvcc_archs_readable " ${lto_compute_flags}_${CMAKE_MATCH_1}")
     else()
       # User didn't explicitly specify PTX for the concrete BIN, we assume PTX=BIN
-      string(APPEND nvcc_flags " -gencode arch=compute_${arch},code=sm_${arch}")
-      string(APPEND nvcc_archs_readable " sm_${arch}")
+      string(APPEND nvcc_flags " -gencode arch=compute_${arch},code=${lto_compute_flags}_${arch}")
+      string(APPEND nvcc_archs_readable " ${lto_compute_flags}_${arch}")
     endif()
   endforeach()
 
