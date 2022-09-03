@@ -107,10 +107,10 @@ void SparseCsrTensor::Resize(const DDim& original_dims,
   this->non_zero_elements_.Resize(col_dims);
 }
 
-void SparseCsrTensor::SetMember(const DenseTensor& non_zero_crows,
-                                const DenseTensor& non_zero_cols,
-                                const DenseTensor& non_zero_elements,
-                                const DDim& dims) {
+void SparseCsrTensor::SetMembers(const DenseTensor& non_zero_crows,
+                                 const DenseTensor& non_zero_cols,
+                                 const DenseTensor& non_zero_elements,
+                                 const DDim& dims) {
   Check(non_zero_crows, non_zero_cols, non_zero_elements, dims);
   this->non_zero_crows_ = non_zero_crows;
   this->non_zero_cols_ = non_zero_cols;
