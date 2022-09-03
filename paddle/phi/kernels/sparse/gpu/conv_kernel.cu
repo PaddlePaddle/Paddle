@@ -43,9 +43,68 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                         DenseTensor* rulebook,
                         DenseTensor* counter);
 
+template <typename T>
+void AlignFeatures(const GPUContext& dev_ctx,
+                   const SparseCooTensor& x,
+                   SparseCooTensor& aligned_x) {
+  // x.layout is NDHWC
+  int channel_idx = 4;
+  auto align_bytes = 4; 
+  if (x.dims()[channel_idx] % align_bytes != 0) {
+    int64_t padding_num = align_bytes - x.dims()[channel_idx] % align_bytes;
+    phi::DenseTensor features = x.non_zero_elements();
+    phi::DenseTensor paddings =
+        phi::Empty<T>(dev_ctx, {x.nnz(), padding_num});
+    phi::DenseTensor aligned_features =
+        phi::Empty<T>(dev_ctx, {x.nnz(), x.dims()[channel_idx] + padding_num});
+    ConcatKernel<T, GPUContext>(
+        dev_ctx,
+        std::vector<const DenseTensor*>{&features, &paddings},
+        -1,
+        &aligned_features);
+    DDim aligned_dims(x.dims());
+    aligned_dims[channel_idx] += padding_num;
+    aligned_x =
+        SparseCooTensor(x.non_zero_indices(), aligned_features, aligned_dims);
+  } else {
+    aligned_x = x;
+  }
+}
+
+template <typename T>
+void AlignKernel(const GPUContext& dev_ctx,
+                 const DenseTensor& kernel,
+                 DenseTensor& aligned_kernel) {
+  // kernel.layout is x,y,z,c_in,c_out
+  int channel_in_idx = 3;
+  int channel_out_idx = 4;
+  auto align_bytes = 4;
+  if (kernel.dims()[channel_in_idx] % align_bytes != 0) {
+    int64_t in_padding_num = align_bytes - kernel.dims()[channel_in_idx] % align_bytes;
+    // kernel padding
+    DDim in_padding_dims = kernel.dims();
+    in_padding_dims[channel_in_idx] = in_padding_num;
+    phi::DenseTensor in_paddings = phi::Empty<T>(dev_ctx,
+                                                    {
+                                                        in_padding_dims[0],
+                                                        in_padding_dims[1],
+                                                        in_padding_dims[2],
+                                                        in_padding_dims[3],
+                                                        in_padding_dims[4],
+                                                    });
+    ConcatKernel<T, GPUContext>(
+        dev_ctx,
+        std::vector<const DenseTensor*>{&kernel, &in_paddings},
+        channel_in_idx,
+        &aligned_kernel);
+  } else{
+    aligned_kernel = kernel;
+  }
+}
+
 // make channel 128bits aligned
 template <typename T, typename IntT>
-void Conv3dCooAlignedGPUKernel(const GPUContext& dev_ctx,
+void Conv3dCooAlignGPUKernel(const GPUContext& dev_ctx,
                       const SparseCooTensor& x,
                       const DenseTensor& kernel,
                       const std::vector<int>& paddings,
@@ -59,51 +118,21 @@ void Conv3dCooAlignedGPUKernel(const GPUContext& dev_ctx,
                       DenseTensor* counter) {
   SparseCooTensor aligned_x;
   DenseTensor aligned_kernel;
-  if (x.dims()[4] % 4 != 0) {
-    int64_t channel_padding_num = 4 - x.dims()[4] % 4;
-    phi::DenseTensor features = x.non_zero_elements();
-    phi::DenseTensor channel_padding =
-        phi::Empty<T>(dev_ctx, {x.nnz(), channel_padding_num});
-    phi::DenseTensor aligned_features =
-        phi::Empty<T>(dev_ctx, {x.nnz(), x.dims()[4] + channel_padding_num});
-    std::vector<const DenseTensor*> input;
-    input.push_back(&features);
-    input.push_back(&channel_padding);
-    ConcatKernel<T, GPUContext>(dev_ctx, input, -1, &aligned_features);
-    DDim aligned_dims(x.dims());
-    aligned_dims[4] += channel_padding_num;
-    aligned_x =
-        SparseCooTensor(x.non_zero_indices(), aligned_features, aligned_dims);
-    
-    // kernel padding
-    DDim aligned_kernel_dims = kernel.dims();
-    aligned_kernel_dims[3] = channel_padding_num;
-    phi::DenseTensor kernel_padding = phi::Empty<T>(dev_ctx,
-                                                    {
-                                                        aligned_kernel_dims[0],
-                                                        aligned_kernel_dims[1],
-                                                        aligned_kernel_dims[2],
-                                                        aligned_kernel_dims[3],
-                                                        aligned_kernel_dims[4],
-                                                    });
-    std::vector<const DenseTensor*> weight;
-    weight.push_back(&kernel);
-    weight.push_back(&kernel_padding);
-    ConcatKernel<T, GPUContext>(dev_ctx, weight, -2, &aligned_kernel);
+  AlignFeatures<T>(dev_ctx, x, aligned_x);
+  AlignKernel<T>(dev_ctx, kernel, aligned_kernel);
 
-    Conv3dCooGPUKernel<T, IntT>(dev_ctx,
-                                aligned_x,
-                                aligned_kernel,
-                                paddings,
-                                dilations,
-                                strides,
-                                groups,
-                                subm,
-                                key,
-                                out,
-                                rulebook,
-                                counter);
-  }
+  Conv3dCooGPUKernel<T, IntT>(dev_ctx,
+                              aligned_x,
+                              aligned_kernel,
+                              paddings,
+                              dilations,
+                              strides,
+                              groups,
+                              subm,
+                              key,
+                              out,
+                              rulebook,
+                              counter);
 }
 
 template <typename T, typename IntT>
@@ -125,7 +154,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
 
   // padding to make leading dimension of x, kernel and out 128 bits aligned
   if (x.dims()[4] % 4 != 0) {
-    Conv3dCooAlignedGPUKernel<T, IntT>(dev_ctx,
+    Conv3dCooAlignGPUKernel<T, IntT>(dev_ctx,
                                        x,
                                        kernel,
                                        paddings,
