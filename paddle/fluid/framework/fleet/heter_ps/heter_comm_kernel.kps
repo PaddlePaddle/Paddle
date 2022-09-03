@@ -544,7 +544,7 @@ __global__ void merge_grad_kernel(uint32_t first_fidseq_elem,
                 return;
             }
 
-            __simd__ FeaturePushValuePadded merged_grad[1];
+            __simd__ FeaturePushValue merged_grad[1];
 
             if (merge_len == 0 || (start_idx == 0 && first_fidseq_elem == 0)) {
                 merged_grad[0].slot = -1;
@@ -568,7 +568,7 @@ __global__ void merge_grad_kernel(uint32_t first_fidseq_elem,
             mfence_lm();
             float32x16_t v_merged = vload_lm_float32x16_mz(merged_grad);
 
-            __simd__ FeaturePushValuePadded temp_grad[1];
+            __simd__ FeaturePushValue temp_grad[1];
             for (int j = start_idx + 1; j < end_idx; j++) {
                 GM2LM(fidseq_grad_idxs + j, &fidseq_grad_idx, sizeof(int));
                 GM2LM(fidseq_grad_ptr + fidseq_grad_idx, temp_grad, sizeof(FeaturePushValue));

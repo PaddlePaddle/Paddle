@@ -55,7 +55,8 @@ struct FeatureValue {
   }
 };
 
-// If FeaturePushValue struct change, the FeaturePushValuePadded must change.
+// If FeaturePushValue struct change, the size of it can't over 64 bytes.
+// Otherwise the merge_grad_kernel in XPUPS will cause fault.
 struct FeaturePushValue {
   float show;
   float clk;
@@ -86,15 +87,6 @@ struct FeaturePushValue {
   // }
 };
 
-// In order to use SIMD add, make sure the FeaturePushValuePadded to be aline with 16 float.
-struct FeaturePushValuePadded {
-  float show;
-  float clk;
-  int slot;
-  float lr_g;
-  float mf_g[MF_DIM];
-  float pad[4];
-};
 
 }  // end namespace framework
 }  // end namespace paddle
