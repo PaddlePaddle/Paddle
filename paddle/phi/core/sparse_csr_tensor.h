@@ -43,9 +43,9 @@ class SparseCsrTensor : public TensorBase,
   SparseCsrTensor(const SparseCsrTensor& other);
 
   /// \brief create the sparse csr tensor.
-  /// \param non_zero_crows The compresessed row index of non zero elements in
+  /// \param non_zero_crows The compresessed row indices of non zero elements in
   /// original dense tensor.
-  /// \param non_zero_cols The column index of non zero elements in original
+  /// \param non_zero_cols The column indices of non zero elements in original
   /// dense tensor.
   /// \param non_zero_elements The non zero elements of original dense tensor.
   /// \param dims The dims of original dense tensor.
@@ -70,28 +70,28 @@ class SparseCsrTensor : public TensorBase,
   /// \return The name of the class.
   static const char* name() { return "SparseCsrTensor"; }
 
-  /// \brief Returns the compressed row index of non zero elemetns in original
+  /// \brief Returns the compressed row indices of non zero elemetns in original
   /// dense tensor.
-  /// \return The compressed row index of non zero elemetns in original dense
+  /// \return The compressed row indices of non zero elemetns in original dense
   /// tensor.
   const DenseTensor& crows() const { return non_zero_crows_; }
 
-  /// Note: This function will removed soon. It is recommended to use crows()
+  /// Note: This function will be removed soon. It is recommended to use crows()
   const DenseTensor& non_zero_crows() const { return non_zero_crows_; }
 
-  /// \brief Returns the column index of non zero elemetns in original dense
+  /// \brief Returns the column indices of non zero elemetns in original dense
   /// tensor.
-  /// \return The column index of non zero elemetns in original dense tensor.
+  /// \return The column indices of non zero elemetns in original dense tensor.
   const DenseTensor& cols() const { return non_zero_cols_; }
 
-  /// Note: This function will removed soon. It is recommended to use cols()
+  /// Note: This function will be removed soon. It is recommended to use cols()
   const DenseTensor& non_zero_cols() const { return non_zero_cols_; }
 
   /// \brief Returns the non zero elemetns in original dense tensor.
   /// \return The non zero elemetns in original dense tensor.
   const DenseTensor& values() const { return non_zero_elements_; }
 
-  /// Note: This function will removed soon. It is recommended to use indices()
+  /// Note: This function will be removed soon. It is recommended to use values()
   const DenseTensor& non_zero_elements() const { return non_zero_elements_; }
 
   /// \brief Returns the total number of non zero elements in original dense
@@ -179,7 +179,7 @@ class SparseCsrTensor : public TensorBase,
   DenseTensor non_zero_cols_;
   // save the non zero elements
   DenseTensor non_zero_elements_;
-  // save the number of non zero elements in each batch
+  // save the shape of the original dense tensor
   DDim dims_;
   /* --------------------------- */
   /*   example: 2-D Tensor */
@@ -197,20 +197,20 @@ class SparseCsrTensor : public TensorBase,
 
   /* --------------------------- */
   /*   example: 3-D Tensor */
-  /*   the non zero elements of different batch will be concat together */
+  /*   the non zero elements of different batches will be concatenated together */
   /* --------------------------- */
   /*
      x = [[[0, 1, 0, 0],
-          [2, 0, 0, 3],
-          [0, 0, 4, 0],
-          [0, 5, 0, 6]],
-         [[0, 1, 0, 0],
-          [2, 0, 0, 3],
-          [0, 0, 4, 0],
-          [0, 5, 0, 0]]]
+           [2, 0, 0, 3],
+           [0, 0, 4, 0],
+           [0, 5, 0, 6]],
+          [[0, 1, 0, 0],
+           [2, 0, 0, 3],
+           [0, 0, 4, 0],
+           [0, 5, 0, 0]]]
      dims_ = (2, 4, 4)
      non_zero_elements_ = [1, 2, 3, 4, 5 ,6, 1, 2, 3, 4, 5]
-     non_zero_crows_ = [0, 1, 3, 4, 6, 0, 1, 2, 4, 5]
+     non_zero_crows_ = [0, 1, 3, 4, 6, 0, 1, 3, 4, 5]
      non_zero_cols_ = [1, 0, 3, 2, 1, 3, 1, 0, 3, 2, 1]
    */
 };
