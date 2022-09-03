@@ -476,7 +476,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
 
-    // Get the total over all profiles
+    // int num_inputs = 0;
+    // num_inputs += runtime_input_names_.size();
+    // const int num_bindings = num_inputs + Outputs("Ys").size();
+    // std::vector<void *> buffers(num_bindings);
+    // This method returns the total over all profiles.
     const int num_bindings = engine->GetNbBindings();
     std::vector<void *> buffers(num_bindings, nullptr);
 
