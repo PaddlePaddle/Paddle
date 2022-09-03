@@ -809,10 +809,8 @@ class TRTEngineManager {
     }
   }
 
-  void updateContextMemorySize(size_t mem_size, TensorRTEngine* trt_engine) {
-    if (trt_engine) {
-      releaseContextMemory(trt_engine->predictor_id_per_thread);
-    }
+  void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
+    releaseContextMemory(predictor_id);
     std::unique_lock<std::mutex> lock(mutex_);
     max_ctx_mem_size_ = std::max(max_ctx_mem_size_, mem_size);
   }

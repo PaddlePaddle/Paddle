@@ -2013,7 +2013,7 @@ AnalysisPredictor::~AnalysisPredictor() {
   device_contexts_.clear();
 
 #ifdef PADDLE_WITH_TENSORRT
-  if (config_.tensorrt_engine_enabled()) {
+  if (config_.trt_engine_memory_sharing()) {
     inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
         .releaseContextMemory(predictor_id_);
   }

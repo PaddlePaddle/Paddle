@@ -387,7 +387,8 @@ void TensorRTEngine::FreezeNetwork() {
   // for engine context memory sharing
   if (context_memory_sharing_) {
     inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-        .updateContextMemorySize(infer_engine_->getDeviceMemorySize(), nullptr);
+        .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
+                                 predictor_id_per_thread);
   }
 
   GetEngineInfo();
