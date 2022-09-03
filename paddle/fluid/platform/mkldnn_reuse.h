@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/kernels/funcs/onednn/mkldnn_reuse.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace platform {
@@ -572,7 +572,7 @@ class BroadcastDataMKLDNNHandler
 };
 
 static void AppendActivation(const framework::ExecutionContext& ctx,
-                             dnnl::post_ops& post_ops,
+                             dnnl::post_ops& post_ops,  // NOLINT
                              float activation_scale = 1.0f) {
   const auto invalid_attribute =
       ctx.HasAttr("fuse_activation")

@@ -634,6 +634,8 @@ def assign(input, output=None):
         if _non_static_mode():
             if in_dygraph_mode() and output is None:
                 output = _C_ops.assign(input)
+            elif in_dygraph_mode() and output is not None:
+                _C_ops.assign_out_(input, output)
             else:
                 if output is None:
                     if _in_legacy_dygraph():
@@ -1791,11 +1793,17 @@ def eye(num_rows,
 
     """
 
+    def _check_attr(attr, message):
+        if isinstance(attr, ((Variable, core.VarBase, core.eager.Tensor))):
+            assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
+        elif not isinstance(attr, int) or attr < 0:
+            raise TypeError("{} should be a non-negative int.".format(message))
+
+    _check_attr(num_rows, "num_rows")
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if num_columns is not None:
-        if not isinstance(num_columns, int) or num_columns < 0:
-            raise TypeError("num_columns should be a non-negative int")
+        _check_attr(num_columns, "num_columns")
     else:
         num_columns = num_rows
 
@@ -1809,8 +1817,6 @@ def eye(num_rows,
         helper = LayerHelper("eye", **locals())
         check_dtype(dtype, 'dtype',
                     ['float16', 'float32', 'float64', 'int32', 'int64'], 'eye')
-        if not isinstance(num_rows, int) or num_rows < 0:
-            raise TypeError("num_rows should be a non-negative int")
         out = helper.create_variable_for_type_inference(dtype=dtype)
         helper.append_op(type='eye',
                          inputs={},

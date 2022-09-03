@@ -50,11 +50,13 @@ class EyeOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Output data type")
         .SetDefault(framework::proto::VarType::FP32);
     AddAttr<int64_t>("num_rows",
-                     "(int64_t) the number of rows in output tensor");
+                     "(int64_t) the number of rows in output tensor")
+        .SupportTensor();
     AddAttr<int64_t>("num_columns",
                      "(int64_t) the number of columns in output tensor."
                      "Default -1 means that num_columns=num_rows")
-        .SetDefault(-1);
+        .SetDefault(-1)
+        .SupportTensor();
     AddOutput("Out",
               "(Tensor) Construct an identity tensor with "
               "specified shape [num_rows, num_columns]");
