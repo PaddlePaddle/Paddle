@@ -12,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-try:
-    from collections.abc import Iterable
-except:
-    from collections import Iterable
-
 import numbers
 
 import numpy as np
@@ -223,7 +218,7 @@ class Laplace(distribution.Distribution):
                             # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                             # [3.68546247])
         """
-        if not isinstance(shape, Iterable):
+        if not isinstance(shape, tuple):
             raise TypeError(
                 f'Expected shape should be tuple[int], but got {type(shape)}')
 
