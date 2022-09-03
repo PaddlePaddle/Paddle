@@ -1654,7 +1654,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
     }
 
-    if (op_type == "swish" || op_type == "silu") {
+    if (op_type == "swish") {
       auto* block = desc.Block();
       if (block == nullptr) {
         VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
@@ -1666,8 +1666,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.size() == 1) {
-        VLOG(3) << op_type
-                << " op does not support input's dim is 1 in tensorrt.";
+        VLOG(3) << "swish op does not support input's dim is 1 in tensorrt.";
         return false;
       }
     }
