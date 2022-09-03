@@ -300,10 +300,10 @@ __device__ void VectorizedBroadcastKernelImpl(
     const phi::Array<BroadcastType, Arity> &broadcast_types,
     uint32_t numel,
     const phi::Array<kps::details::BroadcastConfig, Arity> &configs,
-    const int num,
-    const int block_offset,
-    const int read_lens,
-    const Functor func) {
+    int num,
+    int block_offset,
+    int read_lens,
+    Functor func) {
   __simd__ InT args[Arity][VecSize];
   __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
 
@@ -342,13 +342,13 @@ template <typename InT,
 __global__ void VectorizedBroadcastKernel(
     const phi::Array<const _ptr_ InT *__restrict__, Arity> ins,
     phi::Array<_ptr_ OutT *, NumOuts> outs,
-    const phi::Array<BroadcastType, Arity> broadcast_types,
-    const uint32_t numel,
-    const phi::Array<kps::details::BroadcastConfig, Arity> configs,
-    const int main_offset,
-    const int tail_tid,
-    const int read_lens,
-    const Functor func) {
+    phi::Array<BroadcastType, Arity> broadcast_types,
+    uint32_t numel,
+    phi::Array<kps::details::BroadcastConfig, Arity> configs,
+    int main_offset,
+    int tail_tid,
+    int read_lens,
+    Functor func) {
   int block_offset = BLOCK_ID_X * BLOCK_NUM_X * read_lens;
   int stride = BLOCK_NUM_X * GRID_NUM_X * read_lens;
 
