@@ -125,47 +125,47 @@ class SparseCsrTensor : public TensorBase,
   bool valid() const noexcept override { return non_zero_elements_.valid(); }
 
   /// \brief Test whether the non_zero_elements_ storage is allocated.
-  /// return Whether the non_zero_elements_ storage is allocated.
+  /// \return Whether the non_zero_elements_ storage is allocated.
   bool initialized() const override { return non_zero_elements_.initialized(); }
 
   /// \brief resize sparse csr tensor.
-  /// \param dense_dims The dims of original dense tensor.
-  /// \param non_zero_num The total number of non zero element
-  void Resize(const DDim& dense_dims, const int64_t non_zero_num);
+  /// \param original_dims The dims of original dense tensor.
+  /// \param num_non_zero The total number of non zero elements
+  void Resize(const DDim& original_dims, const int64_t num_non_zero);
 
-  /// \brief set the member of sparse csr tensor.
-  /// \param non_zero_crows The compresessed row index of non zero elements in
+  /// \brief set the members of sparse csr tensor.
+  /// \param non_zero_crows The compresessed row indices of non zero elements in
   /// original dense tensor.
-  /// \param non_zero_cols The column index of non zero elements in original
+  /// \param non_zero_cols The column indices of non zero elements in original
   /// dense tensor.
   /// \param non_zero_elements The non zero elements of original dense tensor.
   /// \param dims The dims of original dense tensor.
-  void SetMember(const DenseTensor& non_zero_crows,
-                 const DenseTensor& non_zero_cols,
-                 const DenseTensor& non_zero_elements,
-                 const DDim& dims);
+  void SetMembers(const DenseTensor& non_zero_crows,
+                  const DenseTensor& non_zero_cols,
+                  const DenseTensor& non_zero_elements,
+                  const DDim& dims);
 
   /// \brief Get a mutable pointer of non_zero_crows.
-  /// return a mutable pointer of non_zero_crows.
+  /// \return A mutable pointer of non_zero_crows.
   DenseTensor* mutable_crows() { return &non_zero_crows_; }
 
-  /// Note: This function will removed soon. It is recommended to use
+  /// Note: This function will be removed soon. It is recommended to use
   /// mutable_crows()
   DenseTensor* mutable_non_zero_crows() { return &non_zero_crows_; }
 
   /// \brief Get a mutable pointer of non_zero_cols.
-  /// return a mutable pointer of non_zero_cols.
+  /// \return A mutable pointer of non_zero_cols.
   DenseTensor* mutable_cols() { return &non_zero_cols_; }
 
-  /// Note: This function will removed soon. It is recommended to use
+  /// Note: This function will be removed soon. It is recommended to use
   /// mutable_cols()
   DenseTensor* mutable_non_zero_cols() { return &non_zero_cols_; }
 
   /// \brief Get a mutable pointer of non_zero_elements.
-  /// return a mutable pointer of non_zero_elements.
+  /// \return A mutable pointer of non_zero_elements.
   DenseTensor* mutable_values() { return &non_zero_elements_; }
 
-  /// Note: This function will removed soon. It is recommended to use
+  /// Note: This function will be removed soon. It is recommended to use
   /// mutable_values()
   DenseTensor* mutable_non_zero_elements() { return &non_zero_elements_; }
 

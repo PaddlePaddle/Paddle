@@ -29,10 +29,11 @@ inline void check_shape(const DDim& dims) {
 
   PADDLE_ENFORCE(
       valid,
-      phi::errors::InvalidArgument("the SparseCsrTensor only support 2-D or "
-                                   "3-D Tensor, but get %d-D Tensor",
+      phi::errors::InvalidArgument("the SparseCsrTensor only supports 2-D or "
+                                   "3-D Tensor, but gets %d-D Tensor",
                                    dims.size()));
 }
+
 #define Check(non_zero_crows, non_zero_cols, non_zero_elements, dims)          \
   {                                                                            \
     check_shape(dims);                                                         \

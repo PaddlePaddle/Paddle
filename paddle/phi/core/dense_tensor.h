@@ -117,7 +117,7 @@ class DenseTensor : public TensorBase,
   bool valid() const noexcept override { return meta_.valid(); }
 
   /// \brief Test whether the allocation is allocated.
-  /// return Whether the allocation is allocated.
+  /// \return Whether the allocation is allocated.
   bool initialized() const override { return holder_ && holder_->ptr(); }
 
   /// \brief Allocate memory with requested size from allocator.
