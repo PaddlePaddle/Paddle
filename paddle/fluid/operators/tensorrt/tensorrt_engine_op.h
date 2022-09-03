@@ -384,9 +384,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
             anc = &scope;
           }
           PrepareTRTEngine(*anc, trt_engine);
-          inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-              .updateContextMemorySize(
-                  trt_engine->engine()->getDeviceMemorySize(), trt_engine);
           // update shape_range_info_pbtxt
           if (!shape_range_info_path_.empty()) {
             inference::UpdateShapeRangeInfo(shape_range_info_path_,
@@ -479,11 +476,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
 
-    int num_inputs = 0;
-
-    num_inputs += runtime_input_names_.size();
-    //  const int num_bindings = num_inputs + Outputs("Ys").size();
-    //  std::vector<void *> buffers(num_bindings);
+    // int num_inputs = 0;
+    // num_inputs += runtime_input_names_.size();
+    // const int num_bindings = num_inputs + Outputs("Ys").size();
+    // std::vector<void *> buffers(num_bindings);
     // This method returns the total over all profiles.
     const int num_bindings = engine->GetNbBindings();
     std::vector<void *> buffers(num_bindings, nullptr);
@@ -695,9 +691,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
                       max_input_shape_,
                       opt_input_shape_);
       PrepareTRTEngine(scope, trt_engine_);
-      inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-          .updateContextMemorySize(trt_engine_->engine()->getDeviceMemorySize(),
-                                   trt_engine_);
     }
     return trt_engine_;
   }

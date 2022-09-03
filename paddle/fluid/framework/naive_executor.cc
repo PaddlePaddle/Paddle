@@ -178,9 +178,6 @@ void NaiveExecutor::ResetTrtOps(int num) {
           anc = scope_;
         }
         trtop->PrepareTRTEngine(*anc, trt_engine);
-        inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-            .updateContextMemorySize(
-                trt_engine->engine()->getDeviceMemorySize(), trt_engine);
       }
     }
   }

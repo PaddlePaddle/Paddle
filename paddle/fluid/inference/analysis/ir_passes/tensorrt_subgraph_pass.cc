@@ -158,24 +158,14 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   // those parameter already exist in trt, and should not have another copy in
   // fluid.
   std::vector<std::string> repetitive_params;
-  size_t max_mem_size = 0;
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !framework::ir::Agent(node).subgraph()->empty()) {
-      auto *trt_engine =
-          CreateTensorRTOp(node, graph, graph_param_names, &repetitive_params);
-      if (trt_engine) {
-        size_t mem_size = trt_engine->engine()->getDeviceMemorySize();
-        max_mem_size = std::max(max_mem_size, mem_size);
-      }
+      CreateTensorRTOp(node, graph, graph_param_names, &repetitive_params);
       std::unordered_set<const Node *> nodes2remove(
           framework::ir::Agent(node).subgraph()->begin(),
           framework::ir::Agent(node).subgraph()->end());
       framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
     }
-  }
-  if (max_mem_size > 0) {
-    inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-        .updateContextMemorySize(max_mem_size, nullptr);
   }
 
   std::unordered_set<const Node *> nodes2remove;
@@ -218,7 +208,7 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
   return engine_key;
 }
 
-tensorrt::TensorRTEngine *TensorRtSubgraphPass::CreateTensorRTOp(
+void TensorRtSubgraphPass::CreateTensorRTOp(
     framework::ir::Node *node,
     framework::ir::Graph *graph,
     const std::vector<std::string> &graph_params,
@@ -464,7 +454,7 @@ tensorrt::TensorRTEngine *TensorRtSubgraphPass::CreateTensorRTOp(
       (enable_int8 && calibration_data.size() == 0 && use_calib_mode);
   if (calibration_mode) {
     // calibraion mode means generate int8 calibration table data process.
-    return nullptr;
+    return;
   }
 
   std::copy(params_not_shared.begin(),
@@ -540,7 +530,7 @@ tensorrt::TensorRTEngine *TensorRtSubgraphPass::CreateTensorRTOp(
       LOG(INFO) << "Load TRT Optimized Info from "
                 << GetTrtEngineSerializedPath(
                        Get<std::string>("model_opt_cache_dir"), engine_key);
-      return trt_engine;
+      return;
     }
   }
 
@@ -575,7 +565,7 @@ tensorrt::TensorRTEngine *TensorRtSubgraphPass::CreateTensorRTOp(
               << GetTrtEngineSerializedPath(
                      Get<std::string>("model_opt_cache_dir"), engine_key);
   }
-  return trt_engine;
+  return;
 }
 
 }  // namespace analysis
