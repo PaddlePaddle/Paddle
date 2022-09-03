@@ -100,7 +100,7 @@ set(ops_extra_info_gen_file
 set(api_compat_yaml_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/api_compat.yaml)
 set(ops_extra_info_file
-    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.h)
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.cc)
 
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
@@ -337,7 +337,8 @@ add_custom_command(
     ${api_yaml_file} ${legacy_api_yaml_file} --wrapped_infermeta_header_path
     ${wrapped_infermeta_header_file} --wrapped_infermeta_source_path
     ${wrapped_infermeta_source_file}
-  DEPENDS ${api_yaml_file} ${wrapped_infermeta_gen_file} ${api_gen_base}
+  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${wrapped_infermeta_gen_file}
+          ${api_gen_base}
   VERBATIM)
 
 cc_library(

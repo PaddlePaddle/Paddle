@@ -37,8 +37,9 @@ def _alltoall(in_tensor_list, group=None, use_calc_stream=True):
         return out
     else:
         ring_id = 0 if group is None else group.id
-        return paddle._C_ops.alltoall(in_tensor_list, 'use_calc_stream',
-                                      use_calc_stream, 'ring_id', ring_id)
+        return paddle._legacy_C_ops.alltoall(in_tensor_list, 'use_calc_stream',
+                                             use_calc_stream, 'ring_id',
+                                             ring_id)
 
 
 def count_by_gate(gate, num_expert, world_size, require_pos=True, group=None):

@@ -206,6 +206,7 @@ class DeviceManager {
                         size_t num,
                         ccl::CCLDataType data_type,
                         ccl::CCLReduceOp reduce_op,
+                        size_t root_id,
                         const ccl::CCLComm& ccl_comm,
                         const stream::Stream& stream);
   static void CCLAllGather(const std::string& device_type,
@@ -239,6 +240,32 @@ class DeviceManager {
                       size_t src_rank,
                       const ccl::CCLComm& ccl_comm,
                       const stream::Stream& stream);
+
+  // profiler
+  static void ProfilerInitialize(
+      const std::string& dev_type,
+      paddle::platform::TraceEventCollector* collector,
+      void** context);
+  static void ProfilerFinalize(const std::string& dev_type,
+                               paddle::platform::TraceEventCollector* collector,
+                               void* context);
+  static void ProfilerPrepareTracing(
+      const std::string& dev_type,
+      paddle::platform::TraceEventCollector* collector,
+      void* context);
+  static void ProfilerStartTracing(
+      const std::string& dev_type,
+      paddle::platform::TraceEventCollector* collector,
+      void* context);
+  static void ProfilerStopTracing(
+      const std::string& dev_type,
+      paddle::platform::TraceEventCollector* collector,
+      void* context);
+  static void ProfilerCollectTraceData(
+      const std::string& dev_type,
+      paddle::platform::TraceEventCollector* collector,
+      uint64_t start_ns,
+      void* context);
 
   static void Clear();
 

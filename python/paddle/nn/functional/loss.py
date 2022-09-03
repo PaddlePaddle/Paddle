@@ -26,7 +26,7 @@ from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import _varbase_creator
 from ...static import Variable
 from paddle.utils import deprecated
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
 from paddle.framework import core, _non_static_mode
 from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode, _current_expected_place
@@ -139,7 +139,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           cost = F.log_loss(input=prob, label=label)
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_log_loss(input, label, epsilon)
+        return _C_ops.log_loss(input, label, epsilon)
 
     helper = LayerHelper('log_loss', **locals())
     check_variable_and_dtype(input, 'input', ['float32'], 'log_loss')
@@ -184,27 +184,19 @@ def fluid_softmax_with_cross_entropy(logits,
     1) Hard label (one-hot label, so every sample has exactly one class)
 
     .. math::
-
-        loss_j =  -\\text{logits}_{label_j} +
-        \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{logits}_i)\\right), j = 1,..., K
+        \\loss_j=-\text{logits}_{label_j} +\log\left(\sum_{i=0}^{K}\exp(\text{logits}_i)\right), j = 1,..., K
 
     2) Soft label (each sample can have a distribution over all classes)
 
     .. math::
-
-        loss_j =  -\\sum_{i=0}^{K}\\text{label}_i
-        \\left(\\text{logits}_i - \\log\\left(\\sum_{i=0}^{K}
-        \\exp(\\text{logits}_i)\\right)\\right), j = 1,...,K
+        \\loss_j= -\sum_{i=0}^{K}\text{label}_i\left(\text{logits}_i - \log\left(\sum_{i=0}^{K}\exp(\text{logits}_i)\right)\right), j = 1,...,K
 
     3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated first by:
 
     .. math::
-
-        max_j &= \\max_{i=0}^{K}{\\text{logits}_i}
-
-        log\\_max\\_sum_j &= \\log\\sum_{i=0}^{K}\\exp(logits_i - max_j)
-
-        softmax_j &= \\exp(logits_j - max_j - {log\\_max\\_sum}_j)
+        \\max_j&=\max_{i=0}^{K}{\text{logits}_i} \\
+                log\_max\_sum_j &= \log\sum_{i=0}^{K}\exp(logits_i - max_j)\\
+                softmax_j &= \exp(logits_j - max_j - {log\_max\_sum}_j)
 
     and then cross entropy loss is calculated by softmax and label.
 
@@ -260,17 +252,17 @@ def fluid_softmax_with_cross_entropy(logits,
     """
     if _non_static_mode():
         if core.is_compiled_with_npu():
-            softmax, backprop, loss = _C_ops.softmax_with_cross_entropy(
+            softmax, backprop, loss = _legacy_C_ops.softmax_with_cross_entropy(
                 logits, label, 'soft_label', soft_label, 'ignore_index',
                 ignore_index, 'numeric_stable_mode', numeric_stable_mode,
                 'axis', axis)
         else:
             if in_dygraph_mode():
-                softmax, loss = _C_ops.final_state_cross_entropy_with_softmax(
+                softmax, loss = _C_ops.cross_entropy_with_softmax(
                     logits, label, soft_label, True, numeric_stable_mode,
                     ignore_index, axis)
             if _in_legacy_dygraph():
-                softmax, loss = _C_ops.softmax_with_cross_entropy(
+                softmax, loss = _legacy_C_ops.softmax_with_cross_entropy(
                     logits, label, 'soft_label', soft_label, 'ignore_index',
                     ignore_index, 'numeric_stable_mode', numeric_stable_mode,
                     'axis', axis)
@@ -396,10 +388,8 @@ def square_error_cost(input, label):
         label (Tensor): Label tensor, the data type should be float32.
 
     Returns:
-        The tensor storing the element-wise squared error \
-                  difference between input and label.
-
-    Return type: Tensor.
+        Tensor, The tensor storing the element-wise squared error
+        difference between input and label.
 
     Examples:
 
@@ -413,9 +403,13 @@ def square_error_cost(input, label):
             # [0.01, 0.01]
 
     """
-    if _non_static_mode():
-        minus_out = _C_ops.elementwise_sub(input, label)
+    if in_dygraph_mode():
+        minus_out = _C_ops.subtract(input, label)
         square_out = _C_ops.square(minus_out)
+        return square_out
+    elif _in_legacy_dygraph():
+        minus_out = _legacy_C_ops.elementwise_sub(input, label)
+        square_out = _legacy_C_ops.square(minus_out)
         return square_out
 
     check_variable_and_dtype(input, "input", ['float32', 'float64'],
@@ -533,8 +527,8 @@ def edit_distance(input,
         label = erased_label
 
     if in_dygraph_mode():
-        return _C_ops.final_state_edit_distance(input, label, input_length,
-                                                label_length, normalized)
+        return _C_ops.edit_distance(input, label, input_length, label_length,
+                                    normalized)
 
     this_inputs = {"Hyps": [input], "Refs": [label]}
     if input_length is not None and label_length is not None:
@@ -631,27 +625,27 @@ def binary_cross_entropy(input,
             reduction)
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_bce_loss(input, label)
+        out = _C_ops.bce_loss(input, label)
         if weight is not None:
-            out = _C_ops.final_state_multiply(out, weight, 'axis', -1)
+            out = _C_ops.multiply(out, weight, 'axis', -1)
 
         if reduction == 'sum':
-            return _C_ops.reduce_sum(out, 'dim', [0], 'keep_dim', False,
-                                     "reduce_all", True)
+            return _C_ops.sum(out, [], None, False)
+
         elif reduction == 'mean':
-            return _C_ops.final_state_mean_all(out)
+            return _C_ops.mean_all(out)
         else:
             return out
     else:
         if _in_legacy_dygraph():
-            out = _C_ops.bce_loss(input, label)
+            out = _legacy_C_ops.bce_loss(input, label)
             if weight is not None:
-                out = _C_ops.elementwise_mul(out, weight, 'axis', -1)
+                out = _legacy_C_ops.elementwise_mul(out, weight, 'axis', -1)
             if reduction == 'sum':
-                return _C_ops.reduce_sum(out, 'dim', [0], 'keep_dim', False,
-                                         "reduce_all", True)
+                return _legacy_C_ops.reduce_sum(out, 'dim', [0], 'keep_dim',
+                                                False, "reduce_all", True)
             elif reduction == 'mean':
-                return _C_ops.mean(out)
+                return _legacy_C_ops.mean(out)
             else:
                 return out
         else:
@@ -775,32 +769,42 @@ def binary_cross_entropy_with_logits(logit,
             "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
             % reduction)
 
-    if _non_static_mode():
-        if in_dygraph_mode():
-            one = _C_ops.final_state_full([1], float(1.0),
-                                          core.VarDesc.VarType.FP32,
-                                          _current_expected_place())
-            out = _C_ops.final_state_sigmoid_cross_entropy_with_logits(
-                logit, label, False, -100)
-        else:
-            one = _varbase_creator(dtype=logit.dtype)
-            _C_ops.fill_constant(one, 'value', float(1.0), 'force_cpu', False,
-                                 'dtype', one.dtype, 'str_value', '1.0',
-                                 'shape', [1])
-            out = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
+    if in_dygraph_mode():
+        one = _C_ops.full([1], float(1.0), core.VarDesc.VarType.FP32,
+                          _current_expected_place())
+        out = _C_ops.sigmoid_cross_entropy_with_logits(logit, label, False,
+                                                       -100)
         if pos_weight is not None:
-            log_weight = _C_ops.elementwise_add(
-                _C_ops.elementwise_mul(label,
-                                       _C_ops.elementwise_sub(pos_weight, one)),
-                one)
-            out = _C_ops.elementwise_mul(out, log_weight)
+            log_weight = _C_ops.add(
+                _C_ops.multiply(label, _C_ops.subtract(pos_weight, one)), one)
+            out = _C_ops.multiply(out, log_weight)
         if weight is not None:
-            out = _C_ops.elementwise_mul(out, weight)
+            out = _C_ops.multiply(out, weight)
 
         if reduction == "sum":
-            return _C_ops.reduce_sum(out, 'reduce_all', True)
+            return _C_ops.sum(out, [], None, False)
         elif reduction == "mean":
-            return _C_ops.mean(out)
+            return _C_ops.mean_all(out)
+        else:
+            return out
+    elif _in_legacy_dygraph():
+        one = _varbase_creator(dtype=logit.dtype)
+        _legacy_C_ops.fill_constant(one, 'value', float(1.0), 'force_cpu',
+                                    False, 'dtype', one.dtype, 'str_value',
+                                    '1.0', 'shape', [1])
+        out = _legacy_C_ops.sigmoid_cross_entropy_with_logits(logit, label)
+        if pos_weight is not None:
+            log_weight = _legacy_C_ops.elementwise_add(
+                _legacy_C_ops.elementwise_mul(
+                    label, _legacy_C_ops.elementwise_sub(pos_weight, one)), one)
+            out = _legacy_C_ops.elementwise_mul(out, log_weight)
+        if weight is not None:
+            out = _legacy_C_ops.elementwise_mul(out, weight)
+
+        if reduction == "sum":
+            return _legacy_C_ops.reduce_sum(out, 'reduce_all', True)
+        elif reduction == "mean":
+            return _legacy_C_ops.mean(out)
         else:
             return out
 
@@ -925,16 +929,15 @@ def hsigmoid_loss(input,
             #  [1.92374969]]
     """
     if in_dygraph_mode():
-        out, _, _ = _C_ops.final_state_hierarchical_sigmoid(
-            input, weight, label, path_table, path_code, bias, num_classes,
-            is_sparse, 0, [], [], [], is_sparse)
-        return out
-    if _non_static_mode():
         out, _, _ = _C_ops.hierarchical_sigmoid(input, weight, label,
                                                 path_table, path_code, bias,
-                                                'num_classes', num_classes,
-                                                'is_sparse', is_sparse,
-                                                'remote_prefetch', is_sparse)
+                                                num_classes, is_sparse, 0, [],
+                                                [], [], is_sparse)
+        return out
+    elif _in_legacy_dygraph():
+        out, _, _ = _legacy_C_ops.hierarchical_sigmoid(
+            input, weight, label, path_table, path_code, bias, 'num_classes',
+            num_classes, 'is_sparse', is_sparse, 'remote_prefetch', is_sparse)
         return out
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
@@ -981,7 +984,7 @@ def hsigmoid_loss(input,
 
 def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
     r"""
-    This operator calculates smooth_l1_loss. Creates a criterion that uses a squared
+    Calculate smooth_l1_loss. Creates a criterion that uses a squared
     term if the absolute element-wise error falls below 1 and an L1 term otherwise.
     In some cases it can prevent exploding gradients and it is more robust and less
     sensitivity to outliers. Also known as the Huber loss:
@@ -1020,9 +1023,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        The tensor variable storing the smooth_l1_loss of input and label.
-
-    Return type: Tensor.
+        Tensor, The tensor variable storing the smooth_l1_loss of input and label.
 
     Examples:
         .. code-block:: python
@@ -1043,7 +1044,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
                              'smooth_l1_loss')
 
     if in_dygraph_mode():
-        out, residual = _C_ops.final_state_huber_loss(input, label, delta)
+        out, residual = _C_ops.huber_loss(input, label, delta)
     else:
         helper = LayerHelper('huber_loss', **locals())
         residual = helper.create_variable_for_type_inference(
@@ -1081,7 +1082,7 @@ def margin_ranking_loss(input,
                         name=None):
     r"""
 
-    This op the calcluate the margin rank loss between the input, other and label, use the math function as follows.
+    Calcluate the margin rank loss between the input, other and label, use the math function as follows.
 
     .. math::
         margin\_rank\_loss = max(0, -label * (input - other) + margin)
@@ -1106,7 +1107,8 @@ def margin_ranking_loss(input,
         reduction (str, optional): Indicate the reduction to apply to the loss, the candicates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Returns: Tensor, if :attr:`reduction` is ``'mean'`` or ``'sum'``, the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
+    Returns: 
+        Tensor, if :attr:`reduction` is ``'mean'`` or ``'sum'``, the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
 
     Examples:
 
@@ -1125,28 +1127,28 @@ def margin_ranking_loss(input,
             "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
             "received %s, which is not allowed." % reduction)
     if in_dygraph_mode():
-        out = _C_ops.final_state_subtract(other, input)
-        out = _C_ops.final_state_multiply(out, label)
+        out = _C_ops.subtract(other, input)
+        out = _C_ops.multiply(out, label)
         if margin != 0.0:
             margin = fluid.dygraph.base.to_variable([margin], dtype=out.dtype)
-            out = _C_ops.elementwise_add(out, margin)
+            out = _C_ops.add(out, margin)
         out = _C_ops.relu(out)
         if reduction == 'sum':
-            return _C_ops.reduce_sum(out, 'reduce_all', True)
+            return _C_ops.sum(out, [], None, False)
         elif reduction == 'mean':
-            return _C_ops.final_state_mean_all(out)
+            return _C_ops.mean_all(out)
         return out
     elif _in_legacy_dygraph():
-        out = _C_ops.elementwise_sub(other, input)
-        out = _C_ops.elementwise_mul(out, label)
+        out = _legacy_C_ops.elementwise_sub(other, input)
+        out = _legacy_C_ops.elementwise_mul(out, label)
         if margin != 0.0:
             margin = fluid.dygraph.base.to_variable([margin], dtype=out.dtype)
-            out = _C_ops.elementwise_add(out, margin)
-        out = _C_ops.relu(out)
+            out = _legacy_C_ops.elementwise_add(out, margin)
+        out = _legacy_C_ops.relu(out)
         if reduction == 'sum':
-            return _C_ops.reduce_sum(out, 'reduce_all', True)
+            return _legacy_C_ops.reduce_sum(out, 'reduce_all', True)
         elif reduction == 'mean':
-            return _C_ops.mean(out)
+            return _legacy_C_ops.mean(out)
         return out
 
     helper = LayerHelper("margin_ranking_loss", **locals())
@@ -1252,29 +1254,25 @@ def l1_loss(input, label, reduction='mean', name=None):
             "received %s, which is not allowed." % reduction)
 
     if in_dygraph_mode():
-        unreduced = _elementwise_op_in_dygraph(input,
-                                               label,
-                                               axis=-1,
-                                               act='abs',
-                                               op_name='elementwise_sub')
+        unreduced = _C_ops.abs(_C_ops.subtract(input, label))
+
         if reduction == 'mean':
-            return _C_ops.final_state_mean_all(unreduced)
+            return _C_ops.mean_all(unreduced)
         elif reduction == 'sum':
-            return _C_ops.reduce_sum(unreduced, 'dim', [0], 'keep_dim', False,
-                                     'reduce_all', True)
+            return _C_ops.sum(unreduced, [], None, False)
         else:
             return unreduced
-    elif in_dynamic_mode():
+    elif _in_legacy_dygraph():
         unreduced = _elementwise_op_in_dygraph(input,
                                                label,
                                                axis=-1,
                                                act='abs',
                                                op_name='elementwise_sub')
         if reduction == 'mean':
-            return _C_ops.mean(unreduced)
+            return _legacy_C_ops.mean(unreduced)
         elif reduction == 'sum':
-            return _C_ops.reduce_sum(unreduced, 'dim', [0], 'keep_dim', False,
-                                     'reduce_all', True)
+            return _legacy_C_ops.reduce_sum(unreduced, 'dim', [0], 'keep_dim',
+                                            False, 'reduce_all', True)
         else:
             return unreduced
 
@@ -1318,8 +1316,8 @@ def nll_loss(input,
              to each class. If given, it has to be a 1D Tensor whose size is `[C, ]`. Otherwise,
              it treated as if having all ones. the data type is
              float32, float64, Default is ``'None'``.
-         ignore_index (int64, optional): Specifies a target value that is ignored
-             and does not contribute to the input gradient.
+         ignore_index (int, optional): Specifies a target value that is ignored
+             and does not contribute to the input gradient. Default is -100.
          reduction (str, optional): Indicate how to average the loss,
              the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
              If `reduction` is ``'mean'``, the reduced mean loss is returned;
@@ -1363,25 +1361,26 @@ def nll_loss(input,
     c = input_shape[1]
     if in_dygraph_mode():
         if input_dims != 2 and input_dims != 4:
-            input, _ = _C_ops.reshape2(input, None, 'shape', [n, c, 1, -1])
-            label, _ = _C_ops.reshape2(label, None, 'shape', [n, 1, -1])
+            input = _C_ops.reshape(input, [n, c, 1, -1])
+            label = _C_ops.reshape(label, [n, 1, -1])
             out_shape = [n] + input_shape[2:]
-        out, total_weight = _C_ops.final_state_nll_loss(input, label, weight,
-                                                        ignore_index, reduction)
+        out, total_weight = _C_ops.nll_loss(input, label, weight, ignore_index,
+                                            reduction)
         if input_dims != 2 and input_dims != 4 and reduction == 'none':
-            out, _ = _C_ops.reshape2(out, None, 'shape', out_shape)
+            out = _C_ops.reshape(out, out_shape)
         return out
-    if _in_legacy_dygraph():
+    elif _in_legacy_dygraph():
         if input_dims != 2 and input_dims != 4:
-            input, _ = _C_ops.reshape2(input, None, 'shape', [n, c, 1, -1])
-            label, _ = _C_ops.reshape2(label, None, 'shape', [n, 1, -1])
+            input, _ = _legacy_C_ops.reshape2(input, None, 'shape',
+                                              [n, c, 1, -1])
+            label, _ = _legacy_C_ops.reshape2(label, None, 'shape', [n, 1, -1])
             out_shape = [n] + input_shape[2:]
 
-        out, total_weight = _C_ops.nll_loss(input, label, weight,
-                                            'ignore_index', ignore_index,
-                                            'reduction', reduction)
+        out, total_weight = _legacy_C_ops.nll_loss(input, label, weight,
+                                                   'ignore_index', ignore_index,
+                                                   'reduction', reduction)
         if input_dims != 2 and input_dims != 4 and reduction == 'none':
-            out, _ = _C_ops.reshape2(out, None, 'shape', out_shape)
+            out, _ = _legacy_C_ops.reshape2(out, None, 'shape', out_shape)
         return out
 
     helper = LayerHelper('nll_loss', **locals())
@@ -1498,11 +1497,19 @@ def kl_div(input, label, reduction='mean', name=None):
                 label.dtype) == 'float32':
         label = paddle.cast(label, 'float64')
 
-    if _non_static_mode():
-        if _in_legacy_dygraph():
-            out = _C_ops.kldiv_loss(input, label, 'reduction', 'none')
-        else:
-            out = _C_ops.final_state_kldiv_loss(input, label, 'none')
+    if in_dygraph_mode():
+        out = _C_ops.kldiv_loss(input, label, 'none')
+        if reduction == 'mean':
+            out = paddle.mean(out)
+        elif reduction == 'sum':
+            out = paddle.sum(out)
+        elif reduction == 'batchmean':
+            if len(input.shape) > 0:
+                batch_size = input.shape[0]
+                out = paddle.sum(out) / batch_size
+        return out
+    elif _in_legacy_dygraph():
+        out = _legacy_C_ops.kldiv_loss(input, label, 'reduction', 'none')
         if reduction == 'mean':
             out = paddle.mean(out)
         elif reduction == 'sum':
@@ -1540,7 +1547,7 @@ def kl_div(input, label, reduction='mean', name=None):
 
 def mse_loss(input, label, reduction='mean', name=None):
     r"""
-    This op accepts input predications and label and returns the mean square error.
+    Accept input predications and label and returns the mean square error.
 
     If :attr:`reduction` is set to ``'none'``, loss is calculated as:
 
@@ -1570,9 +1577,7 @@ def mse_loss(input, label, reduction='mean', name=None):
 
 
     Returns:
-        Tensor: The tensor tensor storing the mean square error difference of input and label.
-
-    Return type: Tensor.
+        Tensor, The tensor tensor storing the mean square error difference of input and label.
 
     Examples:
 
@@ -1931,8 +1936,21 @@ def margin_cross_entropy(logits,
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
 
-    if in_dynamic_mode():
-        softmax, loss = _C_ops.margin_cross_entropy(
+    if in_dygraph_mode():
+        softmax, loss = _C_ops.margin_cross_entropy(logits, label,
+                                                    return_softmax, ring_id,
+                                                    rank, nranks, margin1,
+                                                    margin2, margin3, scale)
+        if reduction == 'mean':
+            loss = paddle.mean(loss)
+        elif reduction == 'sum':
+            loss = paddle.sum(loss)
+        if not return_softmax:
+            return loss
+        else:
+            return loss, softmax
+    elif _in_legacy_dygraph():
+        softmax, loss = _legacy_C_ops.margin_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks,
             'margin1', margin1, 'margin2', margin2, 'margin3', margin3, 'scale',
             scale, 'return_softmax', return_softmax)
@@ -2001,6 +2019,91 @@ def softmax_with_cross_entropy(logits,
                                numeric_stable_mode=True,
                                return_softmax=False,
                                axis=-1):
+    r"""
+    This operator implements the cross entropy loss function with softmax. This function 
+    combines the calculation of the softmax operation and the cross entropy loss function 
+    to provide a more numerically stable gradient.
+
+    Because this operator performs a softmax on logits internally, it expects
+    unscaled logits. This operator should not be used with the output of
+    softmax operator since that would produce incorrect results.
+
+    When the attribute :attr:`soft_label` is set :attr:`False`, this operators 
+    expects mutually exclusive hard labels, each sample in a batch is in exactly 
+    one class with a probability of 1.0. Each sample in the batch will have a 
+    single label.
+
+    The equation is as follows:
+
+    1) Hard label (one-hot label, so every sample has exactly one class)
+
+    .. math::
+        \\loss_j=-\text{logits}_{label_j} +\log\left(\sum_{i=0}^{K}\exp(\text{logits}_i)\right), j = 1,..., K
+
+    2) Soft label (each sample can have a distribution over all classes)
+
+    .. math::
+        \\loss_j= -\sum_{i=0}^{K}\text{label}_i\left(\text{logits}_i - \log\left(\sum_{i=0}^{K}\exp(\text{logits}_i)\right)\right), j = 1,...,K
+
+    3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated first by:
+
+    .. math::
+        \\max_j&=\max_{i=0}^{K}{\text{logits}_i} \\
+                log\_max\_sum_j &= \log\sum_{i=0}^{K}\exp(logits_i - max_j)\\
+                softmax_j &= \exp(logits_j - max_j - {log\_max\_sum}_j)
+
+    and then cross entropy loss is calculated by softmax and label.
+
+    Args:
+        logits (Tensor): A multi-dimension ``Tensor`` , and the data type is float32 or float64. The input tensor of unscaled log probabilities.
+        label (Tensor): The ground truth  ``Tensor`` , data type is the same
+            as the ``logits`` . If :attr:`soft_label` is set to :attr:`True`, 
+            Label is a ``Tensor``  in the same shape with :attr:`logits`. 
+            If :attr:`soft_label` is set to :attr:`True`, Label is a ``Tensor`` 
+            in the same shape with :attr:`logits` expect shape in dimension :attr:`axis` as 1.
+        soft_label (bool, optional): A flag to indicate whether to interpretant the given
+            labels as soft labels. Default False.
+        ignore_index (int, optional): Specifies a target value that is ignored and does
+                                      not contribute to the input gradient. Only valid
+                                      if :attr:`soft_label` is set to :attr:`False`. 
+                                      Default: kIgnoreIndex(-100).
+        numeric_stable_mode (bool, optional): A flag to indicate whether to use a more
+                                              numerically stable algorithm. Only valid
+                                              when :attr:`soft_label` is :attr:`False` 
+                                              and GPU is used. When :attr:`soft_label` 
+                                              is :attr:`True` or CPU is used, the 
+                                              algorithm is always numerically stable.
+                                              Note that the speed may be slower when use
+                                              stable algorithm. Default: True.
+        return_softmax (bool, optional): A flag indicating whether to return the softmax
+                                         along with the cross entropy loss. Default: False.
+        axis (int, optional): The index of dimension to perform softmax calculations. It 
+                              should be in range :math:`[-1, rank - 1]`, while :math:`rank`
+                              is the rank of input :attr:`logits`. Default: -1.
+
+    Returns:
+        ``Tensor`` or Tuple of two ``Tensor`` : Return the cross entropy loss if \
+                                                    `return_softmax` is False, otherwise the tuple \
+                                                    (loss, softmax), softmax is in the same shape \
+                                                    with input logits and cross entropy loss is in \
+                                                    the same shape with input logits except shape \
+                                                    in dimension :attr:`axis` as 1.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            data = np.random.rand(128).astype("float32")
+            label = np.random.rand(1).astype("int64")
+            data = paddle.to_tensor(data)
+            label = paddle.to_tensor(label)
+            linear = paddle.nn.Linear(128, 100)
+            x = linear(data)
+            out = paddle.nn.functional.softmax_with_cross_entropy(logits=x, label=label)
+            print(out)
+    """
     return fluid_softmax_with_cross_entropy(logits, label, soft_label,
                                             ignore_index, numeric_stable_mode,
                                             return_softmax, axis)
@@ -2279,7 +2382,7 @@ def cross_entropy(input,
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         if soft_label == False:
             valid_label = paddle.cast(label != ignore_index,
                                       dtype=label.dtype) * label
@@ -2292,20 +2395,20 @@ def cross_entropy(input,
                 raise ValueError("Target {} is out of upper bound.".format(
                     label_max.item()))
         if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
-            _, _, out = _C_ops.softmax_with_cross_entropy(
-                input, label, 'soft_label', soft_label, 'ignore_index',
-                ignore_index, 'numeric_stable_mode', True, 'axis', axis,
-                'use_softmax', use_softmax)
-        else:
-            if in_dygraph_mode():
-                _, out = _C_ops.final_state_cross_entropy_with_softmax(
-                    input, label, soft_label, use_softmax, True, ignore_index,
-                    axis)
-            if _in_legacy_dygraph():
-                _, out = _C_ops.softmax_with_cross_entropy(
+            if soft_label == False:
+                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                    input, valid_label, 'soft_label', soft_label,
+                    'ignore_index', ignore_index, 'numeric_stable_mode', True,
+                    'axis', axis, 'use_softmax', use_softmax)
+            else:
+                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input, label, 'soft_label', soft_label, 'ignore_index',
                     ignore_index, 'numeric_stable_mode', True, 'axis', axis,
                     'use_softmax', use_softmax)
+        else:
+            _, out = _C_ops.cross_entropy_with_softmax(input, label, soft_label,
+                                                       use_softmax, True,
+                                                       ignore_index, axis)
 
         if weight is not None:
 
@@ -2324,8 +2427,7 @@ def cross_entropy(input,
                 weight_gather_reshape = reshape(weight_gather, shape=out_shape)
                 out = paddle.cast(out, weight_gather_reshape.dtype)
 
-                out = _C_ops.elementwise_mul(out, weight_gather_reshape)
-
+                out = _C_ops.multiply(out, weight_gather_reshape)
             else:
                 if input.shape[axis] != weight.shape[-1]:
                     raise ValueError(
@@ -2349,19 +2451,19 @@ def cross_entropy(input,
                         weight, valid_label.transpose(temp_perm))
                 else:
                     weight_gather = _C_ops.gather_nd(weight, valid_label)
-                weight_gather = _C_ops.elementwise_mul(weight_gather,
-                                                       ignore_weight_mask)
+                weight_gather = _C_ops.multiply(weight_gather,
+                                                ignore_weight_mask)
                 input_shape = list(label.shape)
                 weight_gather_reshape = reshape(weight_gather,
                                                 shape=input_shape)
                 out = paddle.cast(out, weight_gather_reshape.dtype)
-                out = _C_ops.elementwise_mul(out, weight_gather_reshape)
+                out = _C_ops.multiply(out, weight_gather_reshape)
 
         if reduction == "sum":
             #   because of fluid_softmax_with_cross_entropy op's inner logic,
             #   in the out tensor of this op, the loss of sample with class_index==ignore_index is 0
             #   so, reduce_sum all directly is ok
-            return _C_ops.reduce_sum(out, 'reduce_all', True)
+            return _C_ops.sum(out, [], None, False)
         elif reduction == "mean":
             # 1. if weight==none,
             #     numerator: reduce_sum all loss directly is ok causeof fluid_softmax_with_cross_entropy's inner logic
@@ -2370,40 +2472,157 @@ def cross_entropy(input,
             #     numerator: loss's weighted sum
             #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
             if ignore_index >= 0:
-                out_sum = _C_ops.reduce_sum(out, 'reduce_all', True)
+                out_sum = _C_ops.sum(out, [], None, False)
                 # for each label[i],set 1 or 0, according to ignore_index
                 # mask[i]=0, if label[i]==ignore_index
                 # mask[i]=1, otherwise
                 mask = (label != ignore_index)
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
-                    count = _C_ops.reduce_sum(mask, 'reduce_all', True)
+                    count = _C_ops.sum(mask, [], None, False)
                     ret = out_sum / (count + (count == 0.0))
                 else:
                     mask = paddle.cast(mask, weight_gather_reshape.dtype)
-                    weight_ignored = _C_ops.elementwise_mul(
-                        mask, weight_gather_reshape)
-                    weight_sum = _C_ops.reduce_sum(weight_ignored, 'reduce_all',
-                                                   True)
+                    weight_ignored = _C_ops.multiply(mask,
+                                                     weight_gather_reshape)
+                    weight_sum = _C_ops.sum(weight_ignored, [], None, False)
                     ret = out_sum / (weight_sum + (weight_sum == 0.0))
                 return ret
             elif weight is not None:
-                out_sum = _C_ops.reduce_sum(out, 'reduce_all', True)
-                total_weight = _C_ops.reduce_sum(weight_gather_reshape,
-                                                 'reduce_all', True)
+                out_sum = _C_ops.sum(out, [], None, False)
+                total_weight = _C_ops.sum(weight_gather_reshape, [], None,
+                                          False)
                 return out_sum / (total_weight + (total_weight == 0.0))
             else:
-                if in_dygraph_mode():
-                    return _C_ops.final_state_mean_all(out)
-                else:
-                    return _C_ops.mean(out)
+                return _C_ops.mean_all(out)
 
         else:
             if input_dims - 1 == label_dims:
                 out = paddle.squeeze(out, axis=axis)
             return out
 
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+    elif _in_legacy_dygraph():
+        if soft_label == False:
+            valid_label = paddle.cast(label != ignore_index,
+                                      dtype=label.dtype) * label
+            label_min = paddle.min(valid_label)
+            label_max = paddle.max(valid_label)
+            if label_min < 0:
+                raise ValueError("Target {} is out of lower bound.".format(
+                    label_min.item()))
+            if label_max >= input.shape[axis]:
+                raise ValueError("Target {} is out of upper bound.".format(
+                    label_max.item()))
+        if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+            if soft_label == False:
+                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                    input, valid_label, 'soft_label', soft_label,
+                    'ignore_index', ignore_index, 'numeric_stable_mode', True,
+                    'axis', axis, 'use_softmax', use_softmax)
+            else:
+                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                    input, label, 'soft_label', soft_label, 'ignore_index',
+                    ignore_index, 'numeric_stable_mode', True, 'axis', axis,
+                    'use_softmax', use_softmax)
+        else:
+            _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                input, label, 'soft_label', soft_label, 'ignore_index',
+                ignore_index, 'numeric_stable_mode', True, 'axis', axis,
+                'use_softmax', use_softmax)
+
+        if weight is not None:
+
+            # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
+            if soft_label == True:
+                # chajchaj:
+                # weight's shape is C, where C is class num.
+                # for 1d case: label's shape is [N,C], weight_gather's shape is N.
+                # for 2d case: label's shape is [N,H,W,C], weight_gather's shape is [N,H,W].
+                weight_gather = paddle.matmul(x=paddle.cast(
+                    label, weight.dtype),
+                                              y=weight,
+                                              transpose_x=False,
+                                              transpose_y=True)
+                out_shape = list(out.shape)
+                weight_gather_reshape = reshape(weight_gather, shape=out_shape)
+                out = paddle.cast(out, weight_gather_reshape.dtype)
+
+                out = _legacy_C_ops.elementwise_mul(out, weight_gather_reshape)
+
+            else:
+                if input.shape[axis] != weight.shape[-1]:
+                    raise ValueError(
+                        "input's class_dimension({}) must equal to "
+                        "weight's class_dimension({}) "
+                        "when weight is provided" \
+                            .format(input.shape[axis], weight.shape[-1]))
+
+                ignore_weight_mask = paddle.cast((label != ignore_index),
+                                                 out.dtype)
+                if ignore_weight_mask.ndim > 1 and ignore_weight_mask.shape[
+                        axis] == 1:
+                    # TODO: Temporarily use squeeze instead of squeeze_
+                    ignore_weight_mask = paddle.squeeze(ignore_weight_mask,
+                                                        axis)
+                if axis != -1 and axis != valid_label.ndim - 1:
+                    temp_perm = list(range(axis % valid_label.ndim)) \
+                                + list(range((axis % valid_label.ndim + 1), valid_label.ndim)) \
+                                + [axis % valid_label.ndim]
+                    weight_gather = _legacy_C_ops.gather_nd(
+                        weight, valid_label.transpose(temp_perm))
+                else:
+                    weight_gather = _legacy_C_ops.gather_nd(weight, valid_label)
+                weight_gather = _legacy_C_ops.elementwise_mul(
+                    weight_gather, ignore_weight_mask)
+                input_shape = list(label.shape)
+                weight_gather_reshape = reshape(weight_gather,
+                                                shape=input_shape)
+                out = paddle.cast(out, weight_gather_reshape.dtype)
+                out = _legacy_C_ops.elementwise_mul(out, weight_gather_reshape)
+
+        if reduction == "sum":
+            #   because of fluid_softmax_with_cross_entropy op's inner logic,
+            #   in the out tensor of this op, the loss of sample with class_index==ignore_index is 0
+            #   so, reduce_sum all directly is ok
+            return _legacy_C_ops.reduce_sum(out, 'reduce_all', True)
+        elif reduction == "mean":
+            # 1. if weight==none,
+            #     numerator: reduce_sum all loss directly is ok causeof fluid_softmax_with_cross_entropy's inner logic
+            #     denominator: count sample num with class_index!=ignore_index
+            # 2. else
+            #     numerator: loss's weighted sum
+            #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
+            if ignore_index >= 0:
+                out_sum = _legacy_C_ops.reduce_sum(out, 'reduce_all', True)
+                # for each label[i],set 1 or 0, according to ignore_index
+                # mask[i]=0, if label[i]==ignore_index
+                # mask[i]=1, otherwise
+                mask = (label != ignore_index)
+                if weight is None:
+                    mask = paddle.cast(mask, dtype=out_sum.dtype)
+                    count = _legacy_C_ops.reduce_sum(mask, 'reduce_all', True)
+                    ret = out_sum / (count + (count == 0.0))
+                else:
+                    mask = paddle.cast(mask, weight_gather_reshape.dtype)
+                    weight_ignored = _legacy_C_ops.elementwise_mul(
+                        mask, weight_gather_reshape)
+                    weight_sum = _legacy_C_ops.reduce_sum(
+                        weight_ignored, 'reduce_all', True)
+                    ret = out_sum / (weight_sum + (weight_sum == 0.0))
+                return ret
+            elif weight is not None:
+                out_sum = _legacy_C_ops.reduce_sum(out, 'reduce_all', True)
+                total_weight = _legacy_C_ops.reduce_sum(weight_gather_reshape,
+                                                        'reduce_all', True)
+                return out_sum / (total_weight + (total_weight == 0.0))
+            else:
+                return _legacy_C_ops.mean(out)
+        else:
+            if input_dims - 1 == label_dims:
+                out = paddle.squeeze(out, axis=axis)
+            return out
+
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
                              'softmax_cross_entropy')
     check_variable_and_dtype(
         label, 'label',
@@ -2603,43 +2822,76 @@ def sigmoid_focal_loss(logit,
                 "Expected one dimension of normalizer in sigmoid_focal_loss but got {}."
                 .format(normalizer_dims))
 
-    if _non_static_mode():
-        one = _varbase_creator(dtype=logit.dtype)
-        _C_ops.fill_constant(one, 'value', float(1.0), 'force_cpu', False,
-                             'dtype', one.dtype, 'str_value', '1.0', 'shape',
-                             logit.shape)
-        if in_dygraph_mode():
-            loss = _C_ops.final_state_sigmoid_cross_entropy_with_logits(
-                logit, label, False, -100)
-        else:
-            loss = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
+    if in_dygraph_mode():
+        place = _current_expected_place()
+        one = _C_ops.full(logit.shape, float(1.0), logit.dtype, place)
+
+        loss = _C_ops.sigmoid_cross_entropy_with_logits(logit, label, False,
+                                                        -100)
+
         pred = _C_ops.sigmoid(logit)
-        p_t = _C_ops.elementwise_add(
-            _C_ops.elementwise_mul(pred, label),
-            _C_ops.elementwise_mul(_C_ops.elementwise_sub(one, pred),
-                                   _C_ops.elementwise_sub(one, label)))
+
+        p_t = _C_ops.add(
+            _C_ops.multiply(pred, label),
+            _C_ops.multiply(_C_ops.subtract(one, pred),
+                            _C_ops.subtract(one, label)))
 
         alpha = fluid.dygraph.base.to_variable([alpha], dtype=loss.dtype)
-        alpha_t = _C_ops.elementwise_add(
-            _C_ops.elementwise_mul(alpha, label),
-            _C_ops.elementwise_mul(_C_ops.elementwise_sub(one, alpha),
-                                   _C_ops.elementwise_sub(one, label)))
-        loss = _C_ops.elementwise_mul(alpha_t, loss)
+        alpha_t = _C_ops.add(
+            _C_ops.multiply(alpha, label),
+            _C_ops.multiply(_C_ops.subtract(one, alpha),
+                            _C_ops.subtract(one, label)))
+        loss = _C_ops.multiply(alpha_t, loss)
 
         gamma = fluid.dygraph.base.to_variable([gamma], dtype=loss.dtype)
-        gamma_t = _C_ops.elementwise_pow(_C_ops.elementwise_sub(one, p_t),
-                                         gamma)
-        loss = _C_ops.elementwise_mul(gamma_t, loss)
+        gamma_t = _C_ops.pow(_C_ops.subtract(one, p_t), gamma)
+        loss = _C_ops.multiply(gamma_t, loss)
 
         if normalizer is not None:
-            loss = _C_ops.elementwise_div(loss, normalizer)
+            loss = _C_ops.divide(loss, normalizer)
 
         if reduction == "sum":
-            return _C_ops.reduce_sum(loss, 'reduce_all', True)
+            return _C_ops.sum(loss, [], None, False)
         elif reduction == "mean":
-            if in_dygraph_mode():
-                return _C_ops.final_state_mean_all(loss)
-            return _C_ops.mean(loss)
+            return _C_ops.mean_all(loss)
+
+        return loss
+
+    elif _in_legacy_dygraph():
+        one = _varbase_creator(dtype=logit.dtype)
+        _legacy_C_ops.fill_constant(one, 'value', float(1.0), 'force_cpu',
+                                    False, 'dtype', one.dtype, 'str_value',
+                                    '1.0', 'shape', logit.shape)
+        loss = _legacy_C_ops.sigmoid_cross_entropy_with_logits(logit, label)
+
+        pred = _legacy_C_ops.sigmoid(logit)
+
+        p_t = _legacy_C_ops.elementwise_add(
+            _legacy_C_ops.elementwise_mul(pred, label),
+            _legacy_C_ops.elementwise_mul(
+                _legacy_C_ops.elementwise_sub(one, pred),
+                _legacy_C_ops.elementwise_sub(one, label)))
+
+        alpha = fluid.dygraph.base.to_variable([alpha], dtype=loss.dtype)
+        alpha_t = _legacy_C_ops.elementwise_add(
+            _legacy_C_ops.elementwise_mul(alpha, label),
+            _legacy_C_ops.elementwise_mul(
+                _legacy_C_ops.elementwise_sub(one, alpha),
+                _legacy_C_ops.elementwise_sub(one, label)))
+        loss = _legacy_C_ops.elementwise_mul(alpha_t, loss)
+
+        gamma = fluid.dygraph.base.to_variable([gamma], dtype=loss.dtype)
+        gamma_t = _legacy_C_ops.elementwise_pow(
+            _legacy_C_ops.elementwise_sub(one, p_t), gamma)
+        loss = _legacy_C_ops.elementwise_mul(gamma_t, loss)
+
+        if normalizer is not None:
+            loss = _legacy_C_ops.elementwise_div(loss, normalizer)
+
+        if reduction == "sum":
+            return _legacy_C_ops.reduce_sum(loss, 'reduce_all', True)
+        elif reduction == "mean":
+            return _legacy_C_ops.mean(loss)
 
         return loss
 

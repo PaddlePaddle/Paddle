@@ -163,9 +163,12 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                 "The output shapes are not equal, the baseline shape is " +
                 str(basline_arr.shape) + ', but got ' + str(arr.shape))
             diff = abs(basline_arr - arr)
-            self.assertTrue(
-                np.allclose(basline_arr, arr, atol=atol, rtol=rtol),
-                "Output has diff, Maximum absolute error: {}".format(
+            np.testing.assert_allclose(
+                basline_arr,
+                arr,
+                rtol=rtol,
+                atol=atol,
+                err_msg='Output has diff, Maximum absolute error: {}'.format(
                     np.amax(diff)))
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):

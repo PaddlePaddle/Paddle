@@ -130,13 +130,13 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
             y = logsoftmax(x)
             exe = paddle.static.Executor(self.place)
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
-        self.assertTrue(np.allclose(out[0], ref_out))
+        np.testing.assert_allclose(out[0], ref_out, rtol=1e-05)
 
         # test dygrapg api
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         y = logsoftmax(x)
-        self.assertTrue(np.allclose(y.numpy(), ref_out))
+        np.testing.assert_allclose(y.numpy(), ref_out, rtol=1e-05)
         paddle.enable_static()
 
     def test_check_api(self):
@@ -163,12 +163,12 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
             y = F.log_softmax(x, axis, dtype)
             exe = paddle.static.Executor(self.place)
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
-        self.assertTrue(np.allclose(out[0], ref_out))
+        np.testing.assert_allclose(out[0], ref_out, rtol=1e-05)
 
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         y = F.log_softmax(x, axis, dtype)
-        self.assertTrue(np.allclose(y.numpy(), ref_out), True)
+        np.testing.assert_allclose(y.numpy(), ref_out, rtol=1e-05)
         paddle.enable_static()
 
     def test_check_api(self):

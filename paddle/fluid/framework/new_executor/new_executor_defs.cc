@@ -117,7 +117,7 @@ bool InterpretercoreInferShapeContext::HasOutputs(const std::string& name,
 }
 
 AttrReader InterpretercoreInferShapeContext::Attrs() const {
-  return AttrReader(op_.Attrs());
+  return AttrReader(op_.Attrs(), op_.RuntimeAttrs());
 }
 
 std::vector<std::string> InterpretercoreInferShapeContext::Inputs(
@@ -577,6 +577,8 @@ Scope* VariableScope::GetMutableScope() const { return scope_; }
 
 Scope* VariableScope::GetMutableLocalScope() const { return local_scope_; }
 
+void VariableScope::SetScope(Scope* scope) { scope_ = scope; }
+
 void VariableScope::SetLocalScope(Scope* local_scope) {
   VLOG(4) << "Set local scope: " << local_scope;
   local_scope_ = local_scope;
@@ -626,7 +628,11 @@ void VariableScope::AddVar(const std::string& name,
     auto id = VarSize();
     name2id_[name] = id;
     vec_meta_info_.emplace_back(0, var_desc);
-    var_list_.push_back(local_scope_->FindVar(name));
+    if (local_scope_ != nullptr) {
+      var_list_.push_back(local_scope_->FindVar(name));
+    } else {
+      var_list_.push_back(scope_->FindVar(name));
+    }
     PADDLE_ENFORCE_EQ(
         var_list_.size(),
         name2id_.size(),
@@ -782,6 +788,8 @@ const std::vector<std::pair<Variable*, Variable*>>& Instruction::InplaceInfo()
 void Instruction::AddInplace(Variable* in, Variable* out) {
   vec_inplace_in_to_out_.emplace_back(in, out);
 }
+
+void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
 const std::vector<EventInter>& Instruction::InputEvents() const {
   return intput_events_;

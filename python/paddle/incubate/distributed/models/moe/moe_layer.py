@@ -80,9 +80,9 @@ def _all_gather(tensor, group=None, use_calc_stream=True):
         ring_id = 0 if group is None else group.id
         nranks = paddle.distributed.collective._get_global_group(
         ).nranks if group is None else group.nranks
-        return paddle._C_ops.c_allgather(tensor, 'use_calc_stream',
-                                         use_calc_stream, 'ring_id', ring_id,
-                                         'nranks', nranks)
+        return paddle._legacy_C_ops.c_allgather(tensor, 'use_calc_stream',
+                                                use_calc_stream, 'ring_id',
+                                                ring_id, 'nranks', nranks)
 
 
 class MoEScatter(PyLayer):
@@ -255,7 +255,8 @@ class MoELayer(nn.Layer):
 
         moe_group: moe group for experts communication
         mp_group: mp group for mp commutication
-        kwargs: other parameters
+        recompute_interval(int, optional): whether to use recompute, default 0, means to disable recompute.
+        recompute_ctx(dict, optional): the context for recompute, if recompute_interval > 1, recompute_ctx must be given.
     Examples:
         .. code-block:: python
         from paddle.nn import layer, LayerList
@@ -310,10 +311,11 @@ class MoELayer(nn.Layer):
                  gate=None,
                  moe_group=None,
                  mp_group=None,
-                 **kwargs):
+                 recompute_interval=0,
+                 recompute_ctx=None):
         super(MoELayer, self).__init__()
 
-        recompute_interval = kwargs.get("recompute_interval", 0)
+        self.recompute_ctx = recompute_ctx
 
         if gate is None:
             gate = dict()

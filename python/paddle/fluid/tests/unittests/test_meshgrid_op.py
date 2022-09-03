@@ -231,7 +231,7 @@ class TestMeshgridOp8(unittest.TestCase):
 
 class TestMeshgridEager(unittest.TestCase):
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         input_1 = np.random.randint(0, 100, [
             100,
         ]).astype('int32')
