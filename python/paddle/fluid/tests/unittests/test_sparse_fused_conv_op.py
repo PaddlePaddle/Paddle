@@ -44,6 +44,10 @@ def generate_data(config):
         idx.append(random.randrange(0, config['y']))
         idx.append(random.randrange(0, config['z']))
         indices.append(idx)
+    #indices=[[0,1,2,3],[0,1,2,4]]
+    #values=[[8,9,10,11],[12,13,14,15]]
+    #indices=[[0,1,2,3],[0,1,2,4]]
+    #values=[[8],[12]]
     return values, indices
 
 
@@ -53,11 +57,11 @@ class TestSparseConv(unittest.TestCase):
         with _test_eager_guard():
             config = {
                 'batch_size': 8,
-                'x': 100,
-                'y': 100,
-                'z': 100,
+                'x': 41,
+                'y': 250,
+                'z': 250,
                 'kernel_size': (3, 3, 3),
-                'in_channels': 4,
+                'in_channels': 3,
                 'out_channels': 16,
                 'paddings': (0, 0, 0),
                 'strides': (1, 1, 1),
@@ -102,10 +106,16 @@ class TestSparseConv(unittest.TestCase):
             paddle.device.cuda.synchronize()
             t3 = time.time()
 
-            p_dense = p_out.to_dense()
-            s_dense = s_out.dense()
+            p_out = paddle.incubate.sparse.coalesce(p_out)
 
-            assert np.allclose(s_dense.cpu().detach().numpy().transpose(0,2,3,4,1).flatten(), p_dense.numpy().flatten(), atol=1e-3, rtol=1e-3)
+            assert np.array_equal(
+                s_out.indices.cpu().detach().numpy().transpose(1, 0), p_out.indices().numpy())
 
+            assert np.allclose(s_out.features.cpu().detach().numpy().flatten(),
+                               p_out.values().numpy().flatten(), atol=1e-3, rtol=1e-3)
             print("spconv time:", t1-t0)
             print("paddle time:", t3-t2)
+
+
+
+

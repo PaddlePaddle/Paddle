@@ -311,6 +311,7 @@ void TestConv3d(const std::vector<IntT>& indices,
                               features_grad,
                               kernel_grad,
                               subm);
+  #if 0
   // test double
   TestConv3dBase<double, IntT>(indices,
                                cast<float, double>(features),
@@ -329,6 +330,7 @@ void TestConv3d(const std::vector<IntT>& indices,
                                cast<float, double>(features_grad),
                                cast<float, double>(kernel_grad),
                                subm);
+    #endif
 }
 
 TEST(DEV_API, sparse_conv3d) {

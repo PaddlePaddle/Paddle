@@ -526,6 +526,9 @@ include(coveralls) # set code coverage
 include(configure) # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
+include_directories("cutlass/")
+include_directories("cutlass/include/")
+include_directories("cutlass/tools/util/include/")
 
 if(WITH_NV_JETSON)
   set(WITH_ARM
