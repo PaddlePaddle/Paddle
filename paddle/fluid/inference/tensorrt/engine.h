@@ -832,19 +832,9 @@ class TRTEngineManager {
   }
 
   void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
-    bool size_updated{false};
-
-    {
-      std::unique_lock<std::mutex> lock(mutex_);
-      if (max_ctx_mem_size_ < mem_size) {
-        max_ctx_mem_size_ = mem_size;
-        size_updated = true;
-      }
-    }
-
-    if (size_updated) {
-      releaseContextMemory(predictor_id);
-    }
+    releaseContextMemory(predictor_id);
+    std::unique_lock<std::mutex> lock(mutex_);
+    max_ctx_mem_size_ = std::max(max_ctx_mem_size_, mem_size);
   }
 
   void* getContextMemory(PredictorID predictor_id,
@@ -853,15 +843,9 @@ class TRTEngineManager {
     std::unique_lock<std::mutex> lock(mutex_);
     static auto alignment = getAlignmentSize(place);
     if (context_memorys_.count(predictor_id) == 0) {
-<<<<<<< HEAD
-      void* context_memory{nullptr};
-      cudaMalloc(&context_memory, max_ctx_mem_size_);
-      if (context_memory == nullptr) {
-=======
       void* context_memory_{nullptr};
       cudaMalloc(&context_memory_, max_ctx_mem_size_);
       if (context_memory_ == nullptr) {
->>>>>>> 13aa054b18... -
         PADDLE_ENFORCE_EQ(
             max_ctx_mem_size_,
             0,
@@ -883,12 +867,9 @@ class TRTEngineManager {
   }
 
  private:
-<<<<<<< HEAD
-=======
   mutable std::mutex mutex_;
   size_t max_ctx_mem_size_{0};
   std::unordered_map<PredictorID, void*> context_memorys_;
->>>>>>> 13aa054b18... -
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
 };
 

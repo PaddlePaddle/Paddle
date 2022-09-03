@@ -311,6 +311,12 @@ void TensorRTEngine::FreezeNetwork() {
     infer_context_.clear();
     cur_profile_num_ = 0;
   }
+  // for engine context memory sharing
+  if (context_memory_sharing_) {
+    inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+        .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
+                                 predictor_id_per_thread);
+  }
 
   GetEngineInfo();
 }
