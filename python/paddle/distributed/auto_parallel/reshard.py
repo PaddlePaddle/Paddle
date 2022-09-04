@@ -30,7 +30,7 @@ from .cost import build_comm_desc, CommContext
 from .cost import AllgatherOpCost, SendOpCost
 from .cost import SliceOpCost, SplitOpCost, ConcatOpCost
 from .cluster import Cluster
-from .utils import print_program_with_dist_attr, _is_gradient_clip_op
+from .utils import print_program_with_dist_attr, is_gradient_clip_op
 
 # NOTE: If op in _g_special_ops or _g_gradient_clip_ops, it will not be resharded.
 _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
@@ -1088,7 +1088,7 @@ class Resharder:
         global _g_special_ops, _g_gradient_clip_ops
         if op.type in _g_special_ops:
             return True
-        if _is_gradient_clip_op(op) and op.type in _g_gradient_clip_ops:
+        if is_gradient_clip_op(op) and op.type in _g_gradient_clip_ops:
             return True
         return False
 

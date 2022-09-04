@@ -52,7 +52,6 @@ void Copy(const Context& dev_ctx,
           << dst_place;
 
   dst->Resize(src.dims());
-  dst->mutable_data(dst_place);
 
   void* dst_ptr = nullptr;
   if (paddle::platform::is_cpu_place(dst_place)) {

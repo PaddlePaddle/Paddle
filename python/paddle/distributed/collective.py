@@ -775,8 +775,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
 
     Reduce a tensor over all ranks so that all get the result.
-    As shown below, 4 GPUs each start 4 processes and the data on each GPU is represnted
-    by the GPU number. The reduce operator is sum. Through all_reduce operator, 
+    As shown below, one process is started with a GPU and the data of this process is represented
+    by its group rank. The reduce operator is sum. Through all_reduce operator, 
     each GPU will have the sum of the data from all GPUs.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/allreduce.png
@@ -786,8 +786,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 
     Args:
         tensor (Tensor): The input Tensor. It also works as the output Tensor. Its data type
-            should be float16, float32, float64, int32 or int64.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
             Default to True.
@@ -799,21 +799,16 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         .. code-block:: python
 
             # required: distributed
-            import numpy as np
             import paddle
-            from paddle.distributed import ReduceOp
             from paddle.distributed import init_parallel_env
 
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
-                np_data = np.array([[4, 5, 6], [4, 5, 6]])
+                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             else:
-                np_data = np.array([[1, 2, 3], [1, 2, 3]])
-            data = paddle.to_tensor(np_data)
+                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             paddle.distributed.all_reduce(data)
-            out = data.numpy()
-            # [[5, 7, 9], [5, 7, 9]]
     """
     if group is not None and not group.is_member():
         return
@@ -849,9 +844,10 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'all_reduce')
+    check_variable_and_dtype(tensor, 'tensor', [
+        'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
+        'bool'
+    ], 'all_reduce')
     if op == ReduceOp.SUM:
         op_type = 'c_allreduce_sum'
     elif op == ReduceOp.MAX:
@@ -888,7 +884,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         tensor (Tensor): The output Tensor for the destination and the input Tensor otherwise. Its data type
             should be float16, float32, float64, int32 or int64.
         dst (int): The destination rank id.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
             Default to True.
@@ -984,7 +980,7 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     """
 
     Gather tensors from all participators and all get the result. As shown
-    below, 4 GPUs each start 4 processes and the data on each GPU is represnted
+    below, 4 GPUs each starts 4 processes and the data on each GPU is represented
     by the GPU number. Through the all_gather operator, each GPU will have data
     from all GPUs.
 
@@ -1406,9 +1402,9 @@ def _mp_allreduce(tensor,
     """
     if group is not None and not group.is_member():
         return
-    ring_id = 0 if group is None else group.id
 
     if in_dygraph_mode():
+        group = _get_default_group() if group is None else group
         assert op == ReduceOp.SUM, "Unknown parameter: {}.".format(op)
 
         from paddle.autograd import PyLayer
@@ -1416,14 +1412,19 @@ def _mp_allreduce(tensor,
         class mp_allreduce_eager(PyLayer):
 
             @staticmethod
-            def forward(ctx, tensor, use_calc_stream, ring_id,
+            def forward(ctx, tensor, group, use_calc_stream,
                         use_model_parallel):
-                ctx.ring_id = ring_id
-                return _legacy_C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
-                                                      use_calc_stream,
-                                                      'ring_id', ring_id,
-                                                      "use_model_parallel",
-                                                      use_model_parallel)
+                ctx.ring_id = group.id
+
+                if use_calc_stream:
+                    op_type = _get_reduce_op(op, "_mp_allreduce")
+                    group.process_group.allreduce_on_calc_stream(
+                        tensor, op_type)
+                    return tensor
+                else:
+                    return _legacy_C_ops.c_allreduce_sum_(
+                        tensor, 'use_calc_stream', use_calc_stream, 'ring_id',
+                        ring_id, "use_model_parallel", use_model_parallel)
 
             @staticmethod
             def backward(ctx, dy):
@@ -1431,10 +1432,11 @@ def _mp_allreduce(tensor,
                                                 'ring_id', ctx.ring_id,
                                                 'use_model_parallel', True)
 
-        return mp_allreduce_eager.apply(tensor, use_calc_stream, ring_id,
+        return mp_allreduce_eager.apply(tensor, group, use_calc_stream,
                                         use_model_parallel)
 
-    elif _in_legacy_dygraph():
+    ring_id = 0 if group is None else group.id
+    if _in_legacy_dygraph():
         if op == ReduceOp.SUM:
             return _legacy_C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
                                                   use_calc_stream, 'ring_id',
@@ -2581,7 +2583,7 @@ def reduce_scatter(tensor,
     Args:
         tensor (Tensor): Output tensor.
         tensor_list (list[Tensor]): List of tensors to reduce and scatter.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (Group, optional): The group instance return by new_group or None for global 
             default group. Default: None.
         use_calc_stream (bool, optional): Whether this op should be an async op.
@@ -2654,7 +2656,7 @@ def _reduce_scatter_base(output,
     Args:
         output (Tensor): Output tensor.
         input (Tensor): Input tensor that is of size output tensor size times world size
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (ProcessGroup, optional): The process group to work on. If None,
             the default process group will be used.
         use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream (False).

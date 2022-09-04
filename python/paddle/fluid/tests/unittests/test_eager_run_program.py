@@ -18,6 +18,8 @@ from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard, Variable, _in_legacy_dygraph
 from paddle.fluid import core
 from paddle.fluid.layers.utils import _hash_with_id
+from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.executor import _is_enable_standalone_executor, _is_dy2st_enable_standalone_executor
 import paddle.compat as cpt
 
 import unittest
@@ -67,6 +69,18 @@ def _create_out(var):
     return var_base
 
 
+@switch_to_static_graph
+def _add_build_strategy_for(input_program, start_op_index, end_op_index):
+    compiled_program = paddle.static.CompiledProgram(
+        core.Graph(input_program.desc, start_op_index, end_op_index),
+        build_strategy=paddle.static.BuildStrategy())
+    compiled_program._compile(core.Scope(),
+                              paddle.framework._current_expected_place())
+    ir_graph = paddle.fluid.framework.IrGraph(compiled_program._graph)
+    builded_program = ir_graph.to_program()
+    return builded_program
+
+
 class TestRunProgram(unittest.TestCase):
 
     def test_eager(self):
@@ -81,6 +95,13 @@ class TestRunProgram(unittest.TestCase):
 
         main_program = paddle.static.default_main_program()
         program = _append_backward_desc(main_program, [out])
+        forward_program = _add_build_strategy_for(
+            program, 0,
+            main_program.desc.block(0).op_size())
+        backward_program = _add_build_strategy_for(
+            program,
+            main_program.desc.block(0).op_size() + 2,
+            program.desc.block(0).op_size())
 
         paddle.disable_static('cpu')
         # step 2: call run_program in eager mode
@@ -98,9 +119,21 @@ class TestRunProgram(unittest.TestCase):
             out_t = _create_out(out)
 
             scope = core.Scope()
-            attrs = ('global_block', program.desc.block(0), 'start_op_index', 0,
-                     'end_op_index', main_program.desc.block(0).op_size(),
-                     'is_test', False, 'program_id', _hash_with_id(program))
+            attrs = [
+                'global_block',
+                program.desc.block(0), 'start_op_index', 0, 'end_op_index',
+                main_program.desc.block(0).op_size(), 'is_test', False,
+                'program_id',
+                _hash_with_id(program)
+            ]
+
+            use_interpretorcore = _is_enable_standalone_executor(
+            ) and _is_dy2st_enable_standalone_executor()
+            attrs.extend(('use_interpretorcore', use_interpretorcore))
+            if use_interpretorcore:
+                attrs.extend(
+                    ('forward_global_block', forward_program.desc.block(0),
+                     'backward_global_block', backward_program.desc.block(0)))
 
             _legacy_C_ops.run_program([x_t, y_t], [fake_var], [out_t], [scope],
                                       [fake_var], None, *attrs)
