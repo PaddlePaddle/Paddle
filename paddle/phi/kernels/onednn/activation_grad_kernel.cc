@@ -242,7 +242,6 @@ void GeluGradKernel(const Context& dev_ctx,
     functor(dev_ctx, x, out_grad, 0, 0, x_grad);
   }
 }
->>>>>>> develop
 
 template <typename T, typename Context>
 void HardSwishGradKernel(const Context& dev_ctx,
