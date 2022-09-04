@@ -508,9 +508,8 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
     const auto& w_dims = weight_tensor->dims();
     float* quantized_weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());
-    //  Determine whether this weight tensor has been rewrited avoiding re-write
-    //  it again when this
-    // weight tensor is shared among ops.
+    //  Determine whether this weight tensor has been re-writed, avoiding
+    //  re-write it again when this weight tensor is shared among many ops.
     if (!quantized_op_weight_node_set.count(quantized_op_weight_node)) {
       quantized_op_weight_node_set.insert(quantized_op_weight_node);
       // If quantized op is fc, weight scale size = 1;
