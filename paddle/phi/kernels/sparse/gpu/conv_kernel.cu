@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
 #include "paddle/phi/kernels/concat_kernel.h"
+#include "paddle/phi/kernels/funcs/slice.h"
 
 #include "glog/logging.h"
 
@@ -46,12 +47,10 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
 template <typename T>
 void AlignFeatures(const GPUContext& dev_ctx,
                    const SparseCooTensor& x,
-                   SparseCooTensor& aligned_x) {
-  // x.layout is NDHWC
-  int channel_idx = 4;
-  auto align_bytes = 4; 
-  if (x.dims()[channel_idx] % align_bytes != 0) {
-    int64_t padding_num = align_bytes - x.dims()[channel_idx] % align_bytes;
+                   SparseCooTensor& aligned_x,
+                   int channel_idx,
+                   int padding_num) {
+  if (padding_num > 0) {
     phi::DenseTensor features = x.non_zero_elements();
     phi::DenseTensor paddings =
         phi::Empty<T>(dev_ctx, {x.nnz(), padding_num});
@@ -74,31 +73,29 @@ void AlignFeatures(const GPUContext& dev_ctx,
 template <typename T>
 void AlignKernel(const GPUContext& dev_ctx,
                  const DenseTensor& kernel,
-                 DenseTensor& aligned_kernel) {
-  // kernel.layout is x,y,z,c_in,c_out
-  int channel_in_idx = 3;
-  int channel_out_idx = 4;
-  auto align_bytes = 4;
-  if (kernel.dims()[channel_in_idx] % align_bytes != 0) {
-    int64_t in_padding_num = align_bytes - kernel.dims()[channel_in_idx] % align_bytes;
-    // kernel padding
-    DDim in_padding_dims = kernel.dims();
-    in_padding_dims[channel_in_idx] = in_padding_num;
-    phi::DenseTensor in_paddings = phi::Empty<T>(dev_ctx,
-                                                    {
-                                                        in_padding_dims[0],
-                                                        in_padding_dims[1],
-                                                        in_padding_dims[2],
-                                                        in_padding_dims[3],
-                                                        in_padding_dims[4],
-                                                    });
+                 DenseTensor& aligned_kernel,
+                 int channel_idx,
+                 int padding_num) {
+  if (padding_num <= 0) {
+    aligned_kernel = kernel;
+    return;
+  }
+  if (padding_num > 0) {
+    DDim padding_dims = kernel.dims();
+    padding_dims[channel_idx] = padding_num;
+    DenseTensor paddings = phi::Empty<T>(dev_ctx,
+                                                 {
+                                                     padding_dims[0],
+                                                     padding_dims[1],
+                                                     padding_dims[2],
+                                                     padding_dims[3],
+                                                     padding_dims[4],
+                                                 });
     ConcatKernel<T, GPUContext>(
         dev_ctx,
-        std::vector<const DenseTensor*>{&kernel, &in_paddings},
-        channel_in_idx,
+        std::vector<const DenseTensor*>{&kernel, &paddings},
+        channel_idx,
         &aligned_kernel);
-  } else{
-    aligned_kernel = kernel;
   }
 }
 
@@ -117,13 +114,43 @@ void Conv3dCooAlignGPUKernel(const GPUContext& dev_ctx,
                       DenseTensor* rulebook,
                       DenseTensor* counter) {
   SparseCooTensor aligned_x;
-  DenseTensor aligned_kernel;
-  AlignFeatures<T>(dev_ctx, x, aligned_x);
-  AlignKernel<T>(dev_ctx, kernel, aligned_kernel);
+  DenseTensor aligned_in_kernel;
+  DenseTensor aligned_out_kernel;
+
+  // kernel.layout is x,y,z,c_in,c_out
+  // x.layout is NDHWC
+  int channel_idx = 4;
+  int kernel_channel_in_idx = 3;
+  int kernel_channel_out_idx = 4;
+  auto align_bytes = 4;
+  int channel_out_dim = kernel.dims()[kernel_channel_out_idx];
+  int64_t in_padding_num = 0;
+  int64_t out_padding_num = 0;
+
+  if (kernel.dims()[kernel_channel_in_idx] % align_bytes != 0) {
+    in_padding_num =
+        align_bytes - kernel.dims()[kernel_channel_in_idx] % align_bytes;
+  }
+
+  if (kernel.dims()[kernel_channel_out_idx] % align_bytes != 0) {
+    out_padding_num =
+        align_bytes - kernel.dims()[kernel_channel_out_idx] % align_bytes;
+  }
+  AlignFeatures<T>(dev_ctx, x, aligned_x,channel_idx,in_padding_num);
+  AlignKernel<T>(dev_ctx,
+                 kernel,
+                 aligned_in_kernel,
+                 kernel_channel_in_idx,
+                 in_padding_num);
+  AlignKernel<T>(dev_ctx,
+                 aligned_in_kernel,
+                 aligned_out_kernel,
+                 kernel_channel_out_idx,
+                 out_padding_num);
 
   Conv3dCooGPUKernel<T, IntT>(dev_ctx,
                               aligned_x,
-                              aligned_kernel,
+                              aligned_out_kernel,
                               paddings,
                               dilations,
                               strides,
@@ -133,6 +160,14 @@ void Conv3dCooAlignGPUKernel(const GPUContext& dev_ctx,
                               out,
                               rulebook,
                               counter);
+  DenseTensor out_aligned_features = phi::funcs::Slice<T, GPUContext>(dev_ctx,
+                                                           out->non_zero_elements(),
+                                                           std::vector<int>{channel_idx},
+                                                           std::vector<int>{0},
+                                                           std::vector<int>{channel_out_dim});
+  DDim out_aligned_dims = out->dims();
+  out_aligned_dims[channel_idx] = channel_out_dim;
+  out->SetMember(out->non_zero_indices(),out_aligned_features,out_aligned_dims,out->coalesced());
 }
 
 template <typename T, typename IntT>
@@ -153,7 +188,12 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   // if x.layout != NDHWC then transpose(x), transpose(weight)
 
   // padding to make leading dimension of x, kernel and out 128 bits aligned
-  if (x.dims()[4] % 4 != 0) {
+
+  int kernel_channel_in_idx = 3;
+  int kernel_channel_out_idx = 4;
+  auto align_bytes = 4;
+  if (kernel.dims()[kernel_channel_in_idx] % align_bytes != 0 ||
+      kernel.dims()[kernel_channel_out_idx] % align_bytes != 0) {
     Conv3dCooAlignGPUKernel<T, IntT>(dev_ctx,
                                        x,
                                        kernel,
