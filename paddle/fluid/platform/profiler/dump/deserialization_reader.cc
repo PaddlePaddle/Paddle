@@ -51,6 +51,7 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
                            std::string("%s"),
                            extra_info_map.value().c_str());
   }
+
   // restore NodeTrees
   std::map<uint64_t, HostTraceEventNode*> thread_event_trees_map;
   for (int node_tree_index = 0;
@@ -127,13 +128,51 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
   }
   // restore NodeTrees object
   std::unique_ptr<NodeTrees> tree(new NodeTrees(thread_event_trees_map));
-  return std::unique_ptr<ProfilerResult>(
-      new ProfilerResult(std::move(tree), extrainfo));
+  // restore gpuDeviceProp
+  std::map<uint32_t, gpuDeviceProp> device_property_map;
+  for (auto indx = 0; indx < node_trees_proto_->device_property_size();
+       indx++) {
+    const DevicePropertyProto& device_property_proto =
+        node_trees_proto_->device_property(indx);
+    device_property_map[device_property_proto.id()] =
+        RestoreDeviceProperty(device_property_proto);
+  }
+  ProfilerResult* profiler_result_ptr =
+      new ProfilerResult(std::move(tree), extrainfo, device_property_map);
+  // restore version and span indx
+  profiler_result_ptr->SetVersion(node_trees_proto_->version());
+  profiler_result_ptr->SetSpanIndx(node_trees_proto_->span_indx());
+  return std::unique_ptr<ProfilerResult>(profiler_result_ptr);
 }
 
 DeserializationReader::~DeserializationReader() {
   delete node_trees_proto_;
   input_file_stream_.close();
+}
+
+gpuDeviceProp DeserializationReader::RestoreDeviceProperty(
+    const DevicePropertyProto& device_property_proto) {
+  gpuDeviceProp device_property;
+  device_property.name = device_property_proto.name();
+  device_property.totalGlobalMem = device_property_proto.total_global_memory();
+  device_property.major = device_property_proto.compute_major();
+  device_property.minor = device_property_proto.compute_minor();
+  device_property.maxThreadsPerBlock =
+      device_property_proto.max_threads_per_block();
+  device_property.maxThreadsPerMultiProcessor =
+      device_property_proto.max_threads_per_multiprocessor();
+  device_property.regsPerBlock = device_property_proto.regs_per_block();
+  device_property.regsPerMultiprocessor =
+      device_property_proto.regs_per_multiprocessor();
+  device_property.warpSize = device_property_proto.warp_size();
+  device_property.sharedMemPerBlock =
+      device_property_proto.shared_memory_per_block();
+  device_property.sharedMemPerMultiprocessor =
+      device_property_proto.shared_memory_per_multiprocessor();
+  device_property.multiProcessorCount = device_property_proto.sm_count();
+  device_property.sharedMemPerBlockOptin =
+      device_property_proto.shared_memory_per_block_optin();
+  return device_property;
 }
 
 DeviceTraceEventNode* DeserializationReader::RestoreDeviceTraceEventNode(
@@ -275,6 +314,10 @@ KernelEventInfo DeserializationReader::HandleKernelEventInfoProto(
   kernel_info.queued = kernel_info_proto.queued();
   kernel_info.submitted = kernel_info_proto.submitted();
   kernel_info.completed = kernel_info_proto.completed();
+  // version 1.0.2
+  kernel_info.blocks_per_sm = kernel_info_proto.blocks_per_sm();
+  kernel_info.warps_per_sm = kernel_info_proto.warps_per_sm();
+  kernel_info.occupancy = kernel_info_proto.occupancy();
   return kernel_info;
 }
 

@@ -2066,7 +2066,28 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readwrite("context_id",
                      &paddle::platform::DevicePythonNode::context_id)
       .def_readwrite("stream_id",
-                     &paddle::platform::DevicePythonNode::stream_id);
+                     &paddle::platform::DevicePythonNode::stream_id)
+      .def_readwrite("correlation_id",
+                     &paddle::platform::DevicePythonNode::correlation_id)
+      .def_readwrite("block_x", &paddle::platform::DevicePythonNode::block_x)
+      .def_readwrite("block_y", &paddle::platform::DevicePythonNode::block_y)
+      .def_readwrite("block_z", &paddle::platform::DevicePythonNode::block_z)
+      .def_readwrite("grid_x", &paddle::platform::DevicePythonNode::grid_x)
+      .def_readwrite("grid_y", &paddle::platform::DevicePythonNode::grid_y)
+      .def_readwrite("grid_z", &paddle::platform::DevicePythonNode::grid_z)
+      .def_readwrite("shared_memory",
+                     &paddle::platform::DevicePythonNode::shared_memory)
+      .def_readwrite("registers_per_thread",
+                     &paddle::platform::DevicePythonNode::registers_per_thread)
+      .def_readwrite("blocks_per_sm",
+                     &paddle::platform::DevicePythonNode::blocks_per_sm)
+      .def_readwrite("warps_per_sm",
+                     &paddle::platform::DevicePythonNode::warps_per_sm)
+      .def_readwrite("occupancy",
+                     &paddle::platform::DevicePythonNode::occupancy)
+      .def_readwrite("num_bytes",
+                     &paddle::platform::DevicePythonNode::num_bytes)
+      .def_readwrite("value", &paddle::platform::DevicePythonNode::value);
 
   py::class_<paddle::platform::HostPythonNode>(m, "HostPythonNode")
       .def(py::init<>())
@@ -2077,6 +2098,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readwrite("process_id",
                      &paddle::platform::HostPythonNode::process_id)
       .def_readwrite("thread_id", &paddle::platform::HostPythonNode::thread_id)
+      .def_readwrite("correlation_id",
+                     &paddle::platform::HostPythonNode::correlation_id)
       .def_readwrite("input_shapes",
                      &paddle::platform::HostPythonNode::input_shapes)
       .def_readwrite("dtypes", &paddle::platform::HostPythonNode::dtypes)
