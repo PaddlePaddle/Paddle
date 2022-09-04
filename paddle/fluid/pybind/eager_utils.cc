@@ -129,7 +129,7 @@ bool PyObject_CheckStr(PyObject* obj) { return PyUnicode_Check(obj); }
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
   if (obj == Py_None) {
     return false;  // To be compatible with QA integration testing. Some
-                   // test case pass in None.
+                   // test cases pass in None.
   } else if (obj == Py_True) {
     return true;
   } else if (obj == Py_False) {
