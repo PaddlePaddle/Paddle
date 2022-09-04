@@ -229,48 +229,6 @@ void GeluGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void GeluGradKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& out_grad,
-                    bool approximate,
-                    DenseTensor* x_grad) {
-  if (approximate) {
-    GeluTanhOneDNNGradFunctor<T> functor;
-    functor(dev_ctx, x, out_grad, 0, 0, x_grad);
-  } else {
-    GeluErfOneDNNGradFunctor<T> functor;
-    functor(dev_ctx, x, out_grad, 0, 0, x_grad);
-  }
-}
-
-template <typename T, typename Context>
-void HardSwishGradKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& dout,
-                         float threshold,
-                         float scale,
-                         float offset,
-                         DenseTensor* dx) {
-  HardSwishOneDNNGradFunctor<T> functor;
-  functor(dev_ctx, x, dout, threshold, 0, dx);
-}
-
-template <typename T, typename Context>
-void GeluGradKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& out_grad,
-                    bool approximate,
-                    DenseTensor* x_grad) {
-  if (approximate) {
-    GeluTanhOneDNNGradFunctor<T> functor;
-    functor(dev_ctx, x, out_grad, 0, 0, x_grad);
-  } else {
-    GeluErfOneDNNGradFunctor<T> functor;
-    functor(dev_ctx, x, out_grad, 0, 0, x_grad);
-  }
-}
-
-template <typename T, typename Context>
 void HardSwishGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& dout,
