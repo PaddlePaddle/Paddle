@@ -62,4 +62,7 @@ class TestFuseResNetUnit(unittest.TestCase):
         feed = {"x": np.random.randn(1, 64, 64, 8).astype("float16")}
         before_out = exe.run(program, feed=feed, fetch_list=[out.name])
         after_out = exe.run(after_program, feed=feed, fetch_list=[out.name])
-        self.assertTrue(np.allclose(before_out[0], after_out[0], atol=5e-3))
+        np.testing.assert_allclose(before_out[0],
+                                   after_out[0],
+                                   rtol=1e-05,
+                                   atol=0.005)

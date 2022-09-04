@@ -385,7 +385,7 @@ class TestTransform(TestTransformBase):
             st_outs = (st_outs, )
 
         for x, y in zip(dy_outs, st_outs):
-            self.assertTrue(np.allclose(x.numpy(), y.numpy()))
+            np.testing.assert_allclose(x.numpy(), y.numpy(), rtol=1e-05)
 
 
 class TestTransformForOriginalList(TestTransform):

@@ -23,6 +23,7 @@
 #include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/imperative/op_base.h"
+#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/platform/denormal.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -239,6 +240,11 @@ void Tracer::TraceOpImpl(const std::string& type,
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {
     attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
+  }
+  const auto& extra_attr_checkers =
+      operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(type);
+  for (const auto& checker : extra_attr_checkers) {
+    checker(&attrs, true);
   }
 
   static paddle::framework::AttributeMap empty_attrs_map = {};

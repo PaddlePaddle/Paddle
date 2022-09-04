@@ -722,6 +722,33 @@ static PyObject* tensor_method_get_underline_selected_rows(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method__get_tensor_from_selected_rows(
+    TensorObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE(self->tensor.is_selected_rows(),
+                 paddle::platform::errors::Fatal(
+                     "this method is only effective for SelectedRows."));
+
+  auto* selected_rows =
+      static_cast<phi::SelectedRows*>(self->tensor.impl().get());
+
+  PADDLE_ENFORCE(
+      selected_rows->initialized(),
+      paddle::platform::errors::Fatal("SelectedRows must be initialized."));
+
+  auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
+      selected_rows->mutable_value());
+  VLOG(1) << "dense_tensor: " << dense_tensor->IsInitialized();
+
+  auto t = paddle::experimental::Tensor(
+      egr::Controller::Instance().GenerateUniqueName());
+  t.set_impl(std::make_shared<phi::DenseTensor>(*dense_tensor));
+
+  return ToPyObject(t);
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                                                   PyObject* args,
                                                   PyObject* kwargs) {
@@ -779,14 +806,14 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                                            decrease_axis.end());
 
     if (op_type == "slice") {
-      out = slice_final_state_dygraph_function(self->tensor,
-                                               slice_axes_tmp,
-                                               slice_starts,
-                                               slice_ends,
-                                               infer_flags_tmp,
-                                               decrease_axis_tmp);
+      out = slice_dygraph_function(self->tensor,
+                                   slice_axes_tmp,
+                                   slice_starts,
+                                   slice_ends,
+                                   infer_flags_tmp,
+                                   decrease_axis_tmp);
     } else if (op_type == "strided_slice") {
-      out = strided_slice_final_state_dygraph_function(
+      out = strided_slice_dygraph_function(
           self->tensor, slice_axes, slice_starts, slice_ends, slice_strides);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -825,7 +852,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
       }
 
       paddle::experimental::Tensor new_out;
-      new_out = unsqueeze_final_state_dygraph_function(out, none_axes);
+      new_out = unsqueeze_dygraph_function(out, none_axes);
       return ToPyObject(new_out);
     }
   }
@@ -841,8 +868,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     paddle::framework::TensorFromVector(
         list_select_idxs, *dev_ctx, idx_tensor.get());
     framework::AttributeMap attrs = {{"dim", 0}};
-    out = index_select_final_state_dygraph_function(
-        self->tensor, select_index, 0);
+    out = index_select_dygraph_function(self->tensor, select_index, 0);
   }
 
   return ToPyObject(out);
@@ -1859,6 +1885,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"get_selected_rows",
      (PyCFunction)(void (*)(void))tensor_method_get_underline_selected_rows,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"_get_tensor_from_selected_rows",
+     (PyCFunction)(void (*)(void))tensor_method__get_tensor_from_selected_rows,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_getitem_index_not_tensor",

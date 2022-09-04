@@ -57,8 +57,8 @@ class TestBucketizeAPI(unittest.TestCase):
             out_ref1 = np.searchsorted(self.sorted_sequence,
                                        self.x,
                                        side='right')
-            self.assertTrue(np.allclose(out_ref, res[0]))
-            self.assertTrue(np.allclose(out_ref1, res[1]))
+            np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
+            np.testing.assert_allclose(out_ref1, res[1], rtol=1e-05)
 
         for place in self.place:
             run(place)
@@ -75,8 +75,8 @@ class TestBucketizeAPI(unittest.TestCase):
             out_ref2 = np.searchsorted(self.sorted_sequence,
                                        self.x,
                                        side='right')
-            self.assertEqual(np.allclose(out_ref1, out1.numpy()), True)
-            self.assertEqual(np.allclose(out_ref2, out2.numpy()), True)
+            np.testing.assert_allclose(out_ref1, out1.numpy(), rtol=1e-05)
+            np.testing.assert_allclose(out_ref2, out2.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:

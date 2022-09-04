@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import core, dygraph_only
 from paddle.fluid.framework import _current_expected_place, _get_paddle_place
 from paddle.tensor import to_tensor, max
@@ -166,8 +166,7 @@ def sparse_coo_tensor(indices,
                 "the number of dimensions(len(shape) must be sparse_dim({}) + dense_dim({}), but get {}"
                 .format(sparse_dim, dense_dim, len(shape)))
 
-    return _C_ops.final_state_sparse_create_sparse_coo_tensor(
-        values, indices, shape)
+    return _C_ops.sparse_create_sparse_coo_tensor(values, indices, shape)
 
 
 #TODO: need to support shape is None
