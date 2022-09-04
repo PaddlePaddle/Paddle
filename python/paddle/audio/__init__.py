@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import compliance
 from . import features
 from . import functional
 from . import utils
 
-__all__ = ["compliance", "functional", "features", "utils"]
+__all__ = ["functional", "features", "utils"]
