@@ -158,6 +158,13 @@ class Node {
     return block_id_;
   }
 
+  // When a node represents a weight tensor, we may re-write it for example in
+  // quant_conv2d_dequant_fuse_pass, so we add an interface to indicate whether
+  // this weight tensor has been rewrited avoiding re-write it again when this
+  // weight tensor is shared among ops.
+  void SetProcessed() { is_processed_ = true; }
+  bool GetProcessed() const { return is_processed_; }
+
   const std::string ToString() const {
     if (IsOp()) {
       std::string op_str(Name());
@@ -257,6 +264,7 @@ class Node {
   int graph_id_{-1};
 
  private:
+  bool is_processed_ = false;
   // ID can only set by a Graph.
   void SetId(int id) { id_ = id; }
   void SetGraphId(int graph_id) { graph_id_ = graph_id; }
