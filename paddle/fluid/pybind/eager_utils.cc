@@ -92,7 +92,7 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
 }
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj) {
-  if ((PyLong_Check(*obj) && !PyBool_Check(*obj))) {
+  if (PyLong_Check(*obj) && !PyBool_Check(*obj)) {
     return true;
   }
 
@@ -321,13 +321,13 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
     Py_ssize_t len = PyTuple_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
-      item = PyTuple_GetItem(obj, i);
+      item = PyTuple_GET_ITEM(obj, i);
       if (PyObject_CheckLongOrConvertToLong(&item)) {
         result.emplace_back(static_cast<int>(PyLong_AsLong(item)));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument (position %d) must be "
-            "list of bool, but got %s at pos %d",
+            "list of int, but got %s at pos %d",
             arg_pos + 1,
             reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
             i));
