@@ -18,41 +18,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
-
-template <typename OutT, typename T, int kStart, int kEnd,
-          bool kIsEnd, bool kIsMatched>
-struct IsMultiNumOuts {};
-
-template <typename OutT, typename T, int kStart, int kEnd>
-struct IsMultiNumOuts<OutT, T, kStart, kEnd, true, false> {
-  static constexpr int NumOuts = -1;
-};
-
-template <typename OutT, typename T, int kStart, int kEnd, bool kIsEnd>
-struct IsMultiNumOuts<OutT, T, kStart, kEnd, kIsEnd, true> {
-  static constexpr int NumOuts = kStart;
-};
-
-template <typename OutT, typename T, int kStart, int kEnd>
-struct IsMultiNumOuts<OutT, T, kStart, kEnd, false, false> {
-  static constexpr int NumOuts = IsMultiNumOuts<
-      OutT,
-      T,
-      kStart + 1,
-      kEnd,
-      kStart + 1 == kEnd,
-      std::is_same<T, phi::Array<OutT, kStart + 1>>::value>::NumOuts;
-};
-
-template <typename OutT, typename T>
-struct GetMultiOutsValue {
-  static constexpr int Get() {
-    return IsMultiNumOuts<OutT, T, 0, kMaxNumOuts, false, false>::NumOuts;
-  }
- private:
-  static constexpr int kMaxNumOuts = 4;
-};
-
 template <int Arity, typename... Args>
 struct IsPointerArgs {
   static_assert(Arity == sizeof...(Args), "Arity and Args not match!");
@@ -90,7 +55,6 @@ struct FunctionTraits<ReturnType(Args...)> {
   static const size_t arity = sizeof...(Args);
   static const bool has_pointer_args = IsPointerArgs<arity, Args...>::value;
   using ArgsTuple = std::tuple<Args...>;
-  using ReturnT = ReturnType;
 };
 
 }  // namespace platform

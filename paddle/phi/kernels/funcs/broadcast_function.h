@@ -223,13 +223,13 @@ struct DimensionsTransform {
   }
 };
 
-template <typename InT, typename OutT, int NumOuts = 1>
+template <typename InT, typename OutT>
 int GetVecsize(const std::vector<const DenseTensor *> &ins,
                std::vector<DenseTensor *> *outs) {
   int in_vec_size = 4;
   int out_vec_size = 4;
-  if (NumOuts > 1) {
-    for (int i = 0; i < NumOuts; ++i) {
+  if (outs->size() > 1) {
+    for (auto i = 1; i < outs->size(); ++i) {
       PADDLE_ENFORCE_EQ(
           (*outs)[i]->dims(),
           (*outs)[0]->dims(),
@@ -532,7 +532,7 @@ void BroadcastKernelForDifferentVecSize(
   bool is_optimize = configs[0].cmp_type != type;
   int vec_size = is_optimize ? VecSizeL : VecSizeM;
 #else
-  for (int i = 0; i < kArity; i++) {
+  for (int i = 0; i < kArity; ++i) {
     // get the broadcast config,
     // if data shape is[m, n], then you should set data_dim = {n, m}
     // eg: out's shape [3, 45, 1]. then out_dims = {1, 45, 3}
@@ -541,7 +541,7 @@ void BroadcastKernelForDifferentVecSize(
           merge_dims.out_dims, merge_dims.in_dims[i], merge_dims.dim_size);
     }
   }
-  int vec_size = GetVecsize<InT, OutT, NumOuts>(ins, outs);
+  int vec_size = GetVecsize<InT, OutT>(ins, outs);
 #endif
 
   switch (vec_size) {
