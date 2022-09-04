@@ -279,11 +279,11 @@ __device__ __forceinline__ void LoadData(
   if (broadcast_type == BroadcastType::kCommon) {
     kps::ReadDataBc<T, VecSize, 1, IsBoundary>(
         dst, src, block_offset, config, numel, read_lens);
-  } else if (broadcast_type == BroadcastType::kOneToMany) {
-    kps::ReadOneToMany<T, VecSize>(dst, src);
-  } else {
+  } else if (broadcast_type == BroadcastType::kNoBroadcast) {
     kps::ReadData<T, VecSize, 1, IsBoundary>(
         dst, src + block_offset, num, read_lens);
+  } else {
+    kps::ReadOneToMany<T, VecSize>(dst, src);
   }
 }
 
@@ -340,7 +340,7 @@ template <typename InT,
           int NumOuts,
           int VecSize>
 __global__ void VectorizedBroadcastKernel(
-    const phi::Array<const _ptr_ InT *__restrict__, Arity> ins,
+    phi::Array<const _ptr_ InT *__restrict__, Arity> ins,
     phi::Array<_ptr_ OutT *, NumOuts> outs,
     phi::Array<BroadcastType, Arity> broadcast_types,
     uint32_t numel,
