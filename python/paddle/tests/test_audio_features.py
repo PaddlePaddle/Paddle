@@ -424,7 +424,7 @@ class TestFeatures(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(feature_librosa,
                                              feature_layer,
-                                             decimal=4)
+                                             decimal=3)
 
 
 if __name__ == '__main__':
