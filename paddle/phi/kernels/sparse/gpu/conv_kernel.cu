@@ -99,11 +99,15 @@ void AlignKernel(const GPUContext& dev_ctx,
   }
 }
 
+#if 0
 // make channel 128bits aligned
 template <typename T, typename IntT>
 void Conv3dCooAlignGPUKernel(const GPUContext& dev_ctx,
                       const SparseCooTensor& x,
                       const DenseTensor& kernel,
+                      SparseCooTensor& aligned_x,
+                      SparseCooTensor& aligned_out,
+                      DenseTensor
                       const std::vector<int>& paddings,
                       const std::vector<int>& dilations,
                       const std::vector<int>& strides,
@@ -169,6 +173,7 @@ void Conv3dCooAlignGPUKernel(const GPUContext& dev_ctx,
   out_aligned_dims[channel_idx] = channel_out_dim;
   out->SetMember(out->non_zero_indices(),out_aligned_features,out_aligned_dims,out->coalesced());
 }
+#endif
 
 template <typename T, typename IntT>
 void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
@@ -187,140 +192,168 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   // Currently, only support x.layout is NDHWC, groups = 1
   // if x.layout != NDHWC then transpose(x), transpose(weight)
 
+  const auto& x_dims = x.dims();
+  const auto& kernel_dims = kernel.dims();
+  int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
+  DDim out_dims = {1, 1, 1, 1, 1};
+  std::vector<int> kernel_sizes(kernel_dims.size());
+  for (int i = 0; i < kernel_dims.size(); i++) {
+    kernel_sizes[i] = kernel_dims[i];
+  }
+
+  std::vector<int> subm_paddings(paddings), subm_strides(strides);
+  if (subm) {
+    // the out shape of subm_conv is same as input shape
+    // reset the padding=kernel_size/2 and strides=1
+    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
+        kernel.dims(), &subm_paddings, &subm_strides);
+  }
+
+  phi::funcs::sparse::GetOutShape(
+      x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
+  const int in_channels = kernel_dims[3];
+  const int out_channels = kernel_dims[4];
+  DenseTensor h_counter, h_offsets;
+  h_counter.Resize({kernel_size});
+  h_offsets.Resize({kernel_size + 1});
+  int* h_counter_ptr = dev_ctx.template HostAlloc<int>(&h_counter);
+  int* h_offsets_ptr = dev_ctx.template HostAlloc<int>(&h_offsets);
+
+  // Second algorithm:
+  // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
+  // 1. product rulebook
+  DenseTensor counter_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
+  DenseTensor offsets_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
+  DenseTensor out_index = phi::Empty<int>(dev_ctx, {1});
+  DenseTensor unique_value = phi::Empty<int>(dev_ctx, {1});
+
+  VLOG(6) << "call SubmConv3D or Conv3D " << subm << " and the key is " << key;
+  int rulebook_len = 0;
+  const IntT* rulebook_ptr = nullptr;
+  bool need_product_rulebook = true;
+  if (subm && !key.empty()) {
+    rulebook_ptr = phi::funcs::sparse::PrepareSubm<T, IntT, GPUContext>(
+        dev_ctx,
+        x,
+        key,
+        out_dims,
+        out,
+        h_counter.data<int>(),
+        h_offsets.data<int>(),
+        &rulebook_len,
+        &need_product_rulebook);
+  }
+
+  if (need_product_rulebook) {
+    DenseTensor tmp_rulebook;
+    rulebook_len = ProductRuleBook<T, GPUContext, IntT>(dev_ctx,
+                                                        x,
+                                                        kernel_sizes,
+                                                        subm_paddings,
+                                                        dilations,
+                                                        subm_strides,
+                                                        out_dims,
+                                                        subm,
+                                                        &tmp_rulebook,
+                                                        &counter_per_kernel,
+                                                        &offsets_per_kernel,
+                                                        &out_index,
+                                                        &unique_value,
+                                                        out,
+                                                        h_counter_ptr,
+                                                        h_offsets_ptr);
+    rulebook_ptr = tmp_rulebook.data<IntT>();
+
+    phi::funcs::sparse::SaveToTable(
+        dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
+  }
+
   // padding to make leading dimension of x, kernel and out 128 bits aligned
+  // kernel.layout is x,y,z,c_in,c_out
+  // x.layout is NDHWC
 
   int kernel_channel_in_idx = 3;
   int kernel_channel_out_idx = 4;
+  int channel_idx = 4;
   auto align_bytes = 4;
-  if (kernel.dims()[kernel_channel_in_idx] % align_bytes != 0 ||
-      kernel.dims()[kernel_channel_out_idx] % align_bytes != 0) {
-    Conv3dCooAlignGPUKernel<T, IntT>(dev_ctx,
-                                       x,
-                                       kernel,
-                                       paddings,
-                                       dilations,
-                                       strides,
-                                       groups,
-                                       subm,
-                                       key,
-                                       out,
-                                       rulebook,
-                                       counter);
-  } else {
-    const auto& x_dims = x.dims();
-    const auto& kernel_dims = kernel.dims();
-    int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
-    DDim out_dims = {1, 1, 1, 1, 1};
-    std::vector<int> kernel_sizes(kernel_dims.size());
-    for (int i = 0; i < kernel_dims.size(); i++) {
-      kernel_sizes[i] = kernel_dims[i];
-    }
+  int channel_out_dim = kernel.dims()[kernel_channel_out_idx];
+  int64_t in_padding_num = 0;
+  int64_t out_padding_num = 0;
 
-    std::vector<int> subm_paddings(paddings), subm_strides(strides);
-    if (subm) {
-      // the out shape of subm_conv is same as input shape
-      // reset the padding=kernel_size/2 and strides=1
-      phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
-          kernel.dims(), &subm_paddings, &subm_strides);
-    }
-
-    phi::funcs::sparse::GetOutShape(x_dims,
-                                    kernel_sizes,
-                                    subm_paddings,
-                                    dilations,
-                                    subm_strides,
-                                    &out_dims);
-    const int in_channels = kernel_dims[3];
-    const int out_channels = kernel_dims[4];
-    DenseTensor h_counter, h_offsets;
-    h_counter.Resize({kernel_size});
-    h_offsets.Resize({kernel_size + 1});
-    int* h_counter_ptr = dev_ctx.template HostAlloc<int>(&h_counter);
-    int* h_offsets_ptr = dev_ctx.template HostAlloc<int>(&h_offsets);
-
-    // Second algorithm:
-    // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
-    // 1. product rulebook
-    DenseTensor counter_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
-    DenseTensor offsets_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
-    DenseTensor out_index = phi::Empty<int>(dev_ctx, {1});
-    DenseTensor unique_value = phi::Empty<int>(dev_ctx, {1});
-
-    VLOG(6) << "call SubmConv3D or Conv3D " << subm << " and the key is "
-            << key;
-    int rulebook_len = 0;
-    const IntT* rulebook_ptr = nullptr;
-    bool need_product_rulebook = true;
-    if (subm && !key.empty()) {
-      rulebook_ptr = phi::funcs::sparse::PrepareSubm<T, IntT, GPUContext>(
-          dev_ctx,
-          x,
-          key,
-          out_dims,
-          out,
-          h_counter.data<int>(),
-          h_offsets.data<int>(),
-          &rulebook_len,
-          &need_product_rulebook);
-    }
-
-    if (need_product_rulebook) {
-      DenseTensor tmp_rulebook;
-      rulebook_len = ProductRuleBook<T, GPUContext, IntT>(dev_ctx,
-                                                          x,
-                                                          kernel_sizes,
-                                                          subm_paddings,
-                                                          dilations,
-                                                          subm_strides,
-                                                          out_dims,
-                                                          subm,
-                                                          &tmp_rulebook,
-                                                          &counter_per_kernel,
-                                                          &offsets_per_kernel,
-                                                          &out_index,
-                                                          &unique_value,
-                                                          out,
-                                                          h_counter_ptr,
-                                                          h_offsets_ptr);
-      rulebook_ptr = tmp_rulebook.data<IntT>();
-
-      phi::funcs::sparse::SaveToTable(
-          dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
-    }
-
-    auto* out_values = out->mutable_non_zero_elements();
-    T* out_values_ptr = out_values->data<T>();
-    phi::funcs::SetConstant<GPUContext, T> set_zero;
-    set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
-
-    const T* kernel_ptr = kernel.data<T>();
-    for (int i = 0; i < kernel_size; i++) {
-      if (h_counter_ptr[i] <= 0) {
-        continue;
-      }
-
-      const int M = h_counter_ptr[i];
-      const int K = in_channels;
-      const int N = out_channels;
-      const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
-      const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
-      const IntT* scatter_indices =
-          rulebook_ptr + rulebook_len + h_offsets_ptr[i];
-
-      gather_gemm_scatter<T, T, T, T, T>(x.non_zero_elements().data<T>(),
-                                         tmp_kernel_ptr,
-                                         out_values_ptr,
-                                         out_values_ptr,
-                                         M,
-                                         N,
-                                         K,
-                                         gather_indices,
-                                         scatter_indices,
-                                         h_counter_ptr[i],
-                                         static_cast<T>(1),
-                                         static_cast<T>(1));
-    }
+  if (kernel.dims()[kernel_channel_in_idx] % align_bytes != 0) {
+    in_padding_num =
+        align_bytes - kernel.dims()[kernel_channel_in_idx] % align_bytes;
   }
+
+  if (kernel.dims()[kernel_channel_out_idx] % align_bytes != 0) {
+    out_padding_num =
+        align_bytes - kernel.dims()[kernel_channel_out_idx] % align_bytes;
+  }
+  SparseCooTensor aligned_x;
+  DenseTensor aligned_features =
+      phi::Empty<T>(dev_ctx, {out->nnz(), channel_out_dim + out_padding_num});
+  DenseTensor aligned_in_kernel;
+  DenseTensor aligned_out_kernel;
+  AlignFeatures<T>(dev_ctx, x, aligned_x, channel_idx, in_padding_num);
+  printf("1\n");
+  AlignKernel<T>(dev_ctx,
+                 kernel,
+                 aligned_in_kernel,
+                 kernel_channel_in_idx,
+                 in_padding_num);
+  AlignKernel<T>(dev_ctx,
+                 aligned_in_kernel,
+                 aligned_out_kernel,
+                 kernel_channel_out_idx,
+                 out_padding_num);
+  printf("1\n");
+
+  //auto* aligned_out_values = aligned_out.mutable_non_zero_elements();
+  T* aligned_out_values_ptr = aligned_features.data<T>();
+  //phi::funcs::SetConstant<GPUContext, T> set_zero;
+  //set_zero(dev_ctx, out->mutable_values(), static_cast<T>(0.0f));
+
+  const T* aligned_kernel_ptr = aligned_out_kernel.data<T>();
+  for (int i = 0; i < kernel_size; i++) {
+    if (h_counter_ptr[i] <= 0) {
+      continue;
+    }
+  printf("1\n");
+
+    const int M = h_counter_ptr[i];
+    const int K = in_channels + in_padding_num;
+    const int N = out_channels + out_padding_num;
+    const T* tmp_kernel_ptr = aligned_kernel_ptr + i * K * N;
+    const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
+    const IntT* scatter_indices =
+        rulebook_ptr + rulebook_len + h_offsets_ptr[i];
+
+    printf("1\n");
+    gather_gemm_scatter<T, T, T, T, T>(aligned_x.non_zero_elements().data<T>(),
+                                       tmp_kernel_ptr,
+                                       aligned_out_values_ptr,
+                                       aligned_out_values_ptr,
+                                       M,
+                                       N,
+                                       K,
+                                       gather_indices,
+                                       scatter_indices,
+                                       h_counter_ptr[i],
+                                       static_cast<T>(1),
+                                       static_cast<T>(1));
+  }
+  printf("2\n");
+  DenseTensor out_features =
+      phi::funcs::Slice<T, GPUContext>(dev_ctx,
+                                       aligned_features,
+                                       std::vector<int>{1},
+                                       std::vector<int>{0},
+                                       std::vector<int>{channel_out_dim});
+  printf("3\n");
+  out->SetMember(out->non_zero_indices(),
+                 out_features,
+                 out->dims(),
+                 out->coalesced());
 }
 
 /**
