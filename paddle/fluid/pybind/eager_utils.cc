@@ -305,7 +305,7 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
-      item = PyList_GetItem(obj, i);
+      item = PyList_GET_ITEM(obj, i);
       if (PyObject_CheckLongOrConvertToLong(&item)) {
         result.emplace_back(static_cast<int>(PyLong_AsLong(item)));
       } else {
