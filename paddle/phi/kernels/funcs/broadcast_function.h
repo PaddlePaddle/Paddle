@@ -530,6 +530,7 @@ void BroadcastKernelForDifferentVecSize(
   // mergedim and get vec_size
   const auto merge_dims = DimensionsTransform(ins, (*outs)[0]->dims(), axis);
   phi::Array<kps::details::BroadcastConfig, kArity> configs;
+  auto numel = (*outs)[0]->numel();
 
 // get vec_size
 #ifdef PADDLE_WITH_XPU_KP
@@ -542,19 +543,24 @@ void BroadcastKernelForDifferentVecSize(
                                              merge_dims.in_dims[0],
                                              merge_dims.in_dims[1],
                                              merge_dims.dim_size);
-  configs[1] = kps::details::BroadcastConfig(merge_dims.out_dims,
-                                             merge_dims.in_dims[1],
-                                             merge_dims.in_dims[0],
-                                             merge_dims.dim_size);
-  auto type = kps::details::OptType::CanNotOptimize;
-  bool is_optimize = configs[0].cmp_type != type;
+  bool is_optimize =
+      configs[0].cmp_type != kps::details::OptType::CanNotOptimize;
   int vec_size = is_optimize ? VecSizeL : VecSizeM;
+
+  if (ins[1]->numel() != 1 && ins[1]->numel() != numel) {
+    configs[1] = kps::details::BroadcastConfig(merge_dims.out_dims,
+                                               merge_dims.in_dims[1],
+                                               merge_dims.in_dims[0],
+                                               merge_dims.dim_size);
+  }
 #else
-  for (int i = 0; i < kArity; i++) {
+  for (int i = 0; i < kArity; ++i) {
     // get the broadcast config,
     // if data shape is[m, n], then you should set data_dim = {n, m}
     // eg: out's shape [3, 45, 1]. then out_dims = {1, 45, 3}
-    if (ins[i]->numel()) {
+    // and only condition below, the input tensor shall get pre-broadcast.
+    auto in_numel = ins[i]->numel();
+    if (in_numel != 1 && in_numel != numel) {
       configs[i] = kps::details::BroadcastConfig(
           merge_dims.out_dims, merge_dims.in_dims[i], merge_dims.dim_size);
     }

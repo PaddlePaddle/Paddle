@@ -798,7 +798,7 @@ __device__ __forceinline__ void ReadOneToMany(T* dst,
                                               const T* __restrict__ src) {
   T src_data = src[0];
 #pragma unroll
-  for (uint32_t nx = 0; nx < NX; ++nx) {
+  for (int nx = 0; nx < NX; ++nx) {
     dst[nx] = src_data;
   }
 }
