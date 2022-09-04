@@ -549,8 +549,7 @@ void ChromeTracingLogger::StartLog() {
   output_file_stream_ << string_format(std::string(
       R"JSON(
   { 
-    "displayTimeUnit": "ms",
-  )JSON"));
+    "displayTimeUnit": "ms",)JSON"));
 }
 
 void ChromeTracingLogger::LogMetaInfo(const std::string& version,
@@ -558,9 +557,8 @@ void ChromeTracingLogger::LogMetaInfo(const std::string& version,
   output_file_stream_ << string_format(std::string(
                                            R"JSON(
     "schemaVersion": "%s",
-    "span_indx": "%d",
-  )JSON"),
-                                       version,
+    "span_indx": "%d",)JSON"),
+                                       version.c_str(),
                                        span_indx);
 }
 
@@ -568,14 +566,45 @@ void ChromeTracingLogger::LogDeviceProperty(
     const std::map<uint32_t, gpuDeviceProp>& device_property_map) {
   // add device property information
   output_file_stream_ << std::string(R"JSON(
-      "deviceProperties": [
+    "deviceProperties": [
     )JSON");
   auto device_nums = device_property_map.size();
-  if (device_nums > 0) {
-    for (auto it = device_property_map.begin();
-         it != < device_property_map.end() - 1;
-         it++) {
-      const gpuDeviceProp& device_property = it->second;
+  if (device_nums == 0) {
+    output_file_stream_ << std::string(R"JSON(
+      ],
+    )JSON");
+  }
+  for (auto it = device_property_map.begin(); it != device_property_map.end();
+       it++) {
+    const gpuDeviceProp& device_property = it->second;
+    if (device_nums > 1) {
+      output_file_stream_ << string_format(
+          std::string(
+              R"JSON(
+    {
+      "id": %u, "name": "%s", "totalGlobalMem": %llu,
+      "computeMajor": %d, "computeMinor": %d,
+      "maxThreadsPerBlock": %d, "maxThreadsPerMultiprocessor": %d,
+      "regsPerBlock": %d, "regsPerMultiprocessor": %d, "warpSize": %d,
+      "sharedMemPerBlock": %d, "sharedMemPerMultiprocessor": %d,
+      "smCount": %d, "sharedMemPerBlockOptin": %d
+    },
+  )JSON"),
+          it->first,
+          device_property.name,
+          device_property.totalGlobalMem,
+          device_property.major,
+          device_property.minor,
+          device_property.maxThreadsPerBlock,
+          device_property.maxThreadsPerMultiProcessor,
+          device_property.regsPerBlock,
+          device_property.regsPerMultiprocessor,
+          device_property.warpSize,
+          device_property.sharedMemPerBlock,
+          device_property.sharedMemPerMultiprocessor,
+          device_property.multiProcessorCount,
+          device_property.sharedMemPerBlockOptin);
+    } else {
       output_file_stream_ << string_format(
           std::string(
               R"JSON(
@@ -586,7 +615,7 @@ void ChromeTracingLogger::LogDeviceProperty(
         "regsPerBlock": %d, "regsPerMultiprocessor": %d, "warpSize": %d,
         "sharedMemPerBlock": %d, "sharedMemPerMultiprocessor": %d,
         "smCount": %d, "sharedMemPerBlockOptin": %d
-      },
+      }],
     )JSON"),
           it->first,
           device_property.name,
@@ -603,34 +632,7 @@ void ChromeTracingLogger::LogDeviceProperty(
           device_property.multiProcessorCount,
           device_property.sharedMemPerBlockOptin);
     }
-    it = device_property_map.end();
-    const gpuDeviceProp& device_property = it->second;
-    output_file_stream_ << string_format(
-        std::string(
-            R"JSON(
-      {
-        "id": %u, "name": "%s", "totalGlobalMem": %llu,
-        "computeMajor": %d, "computeMinor": %d,
-        "maxThreadsPerBlock": %d, "maxThreadsPerMultiprocessor": %d,
-        "regsPerBlock": %d, "regsPerMultiprocessor": %d, "warpSize": %d,
-        "sharedMemPerBlock": %d, "sharedMemPerMultiprocessor": %d,
-        "smCount": %d, "sharedMemPerBlockOptin": %d
-      }],
-    )JSON"),
-        it->first,
-        device_property.name,
-        device_property.totalGlobalMem,
-        device_property.major,
-        device_property.minor,
-        device_property.maxThreadsPerBlock,
-        device_property.maxThreadsPerMultiProcessor,
-        device_property.regsPerBlock,
-        device_property.regsPerMultiprocessor,
-        device_property.warpSize,
-        device_property.sharedMemPerBlock,
-        device_property.sharedMemPerMultiprocessor,
-        device_property.multiProcessorCount,
-        device_property.sharedMemPerBlockOptin);
+    device_nums -= 1;
   }
 }
 

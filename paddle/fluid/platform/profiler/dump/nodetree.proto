@@ -100,7 +100,7 @@ message KernelEventInfoProto {
   // warps per sm
   required float warps_per_sm = 16;
   // theoretical achieved occupancy
-  required float occupancy;
+  required float occupancy = 17;
 }
 
 message MemcpyEventInfoProto {
@@ -277,7 +277,7 @@ message ExtraInfoMap {
 }
 
 message DevicePropertyProto {
-  required uint8 id = 1;
+  required uint32 id = 1;
   required string name = 2;
   required uint64 total_global_memory = 3;
   required uint32 compute_major = 4;

@@ -136,8 +136,8 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::map<uint32_t, gpuDeviceProp> device_property_map;
-  std::vector<uint32_t> device_ids = GetSelectedDevices();
-  for (auto index = 0u; index < device_ids.size() - 1; index++) {
+  std::vector<int32_t> device_ids = GetSelectedDevices();
+  for (auto index = 0u; index < device_ids.size(); index++) {
     const gpuDeviceProp& device_property =
         GetDeviceProperties(device_ids[index]);
     device_property_map[device_ids[index]] = device_property;

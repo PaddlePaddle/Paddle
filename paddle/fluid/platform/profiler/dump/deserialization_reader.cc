@@ -153,7 +153,9 @@ DeserializationReader::~DeserializationReader() {
 gpuDeviceProp DeserializationReader::RestoreDeviceProperty(
     const DevicePropertyProto& device_property_proto) {
   gpuDeviceProp device_property;
-  device_property.name = device_property_proto.name();
+  strncpy(device_property.name,
+          device_property_proto.name().c_str(),
+          device_property_proto.name().length() + 1);
   device_property.totalGlobalMem = device_property_proto.total_global_memory();
   device_property.major = device_property_proto.compute_major();
   device_property.minor = device_property_proto.compute_minor();
