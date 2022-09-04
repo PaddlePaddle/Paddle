@@ -29,7 +29,7 @@ void ScaleKernel(const Context& dev_ctx,
   float alpha = scale.to<float>();
   float beta = bias_after_scale ? bias : bias * alpha;
 
-  funcs::ActivationMKLDNNHandler<T> handler(dnnl::algorithm::eltwise_linear,
+  funcs::ActivationOneDNNHandler<T> handler(dnnl::algorithm::eltwise_linear,
                                             alpha,
                                             beta,
                                             dev_ctx.GetEngine(),
