@@ -50,7 +50,7 @@ static constexpr bool CanInplaceAct() {
       AddOutput("Out",                                              \
                 "Output of " #OP_NAME                               \
                 " operator, a Tensor with shape same as input.");   \
-      \ AddComment(OP_COMMENT);                                     \
+      AddComment(OP_COMMENT);                                       \
     }                                                               \
   }
 
