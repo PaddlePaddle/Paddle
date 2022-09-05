@@ -597,9 +597,11 @@ static PyObject* eager_api_register_saved_tensors_hooks(PyObject* self,
                                                         PyObject* args,
                                                         PyObject* kwargs) {
   EAGER_TRY
-  auto pack_hook = PyTuple_GET_ITEM(args, 0);
-  auto unpack_hook = PyTuple_GET_ITEM(args, 1);
-  egr::SavedTensorsHooks::GetInstance().set_hooks(pack_hook, unpack_hook);
+  if (egr::Controller::Instance().HasGrad()) {
+    auto pack_hook = PyTuple_GET_ITEM(args, 0);
+    auto unpack_hook = PyTuple_GET_ITEM(args, 1);
+    egr::SavedTensorsHooks::GetInstance().set_hooks(pack_hook, unpack_hook);
+  }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
