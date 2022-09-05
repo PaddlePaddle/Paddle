@@ -49,12 +49,12 @@ __global__ void quantize_kernel(
 }
 
 template <typename T>
-void quantize_kernelLauncher(const T* input,
-                             int8_t* output,
-                             const float scale,
-                             const int m,
-                             const int n,
-                             cudaStream_t stream) {
+void quantize_kernel_launcher(const T* input,
+                              int8_t* output,
+                              const float scale,
+                              const int m,
+                              const int n,
+                              cudaStream_t stream) {
   // TODO(minghaoBD): optimize the kennel launch times when m==1 or n==1
   dim3 grid((n + 31) / 32, (m + 31) / 32);
   dim3 block(32, 32);
@@ -70,26 +70,26 @@ __global__ void dequantize_kernel(T* output,
                                   const int m,  // hidden
                                   const int n,  // batch size
                                   const float* quant_out_scale_data,
-                                  const int layer_offset) {
+                                  const int quant_out_scale_offset) {
   int m_id = blockIdx.x * blockDim.x + threadIdx.x;  // hidden
   int n_id = blockIdx.y * blockDim.y + threadIdx.y;  // batch size
 
   bool check = ((m_id < m) && (n_id < n));
   if (check) {
-    float out_scale = quant_out_scale_data[layer_offset + m_id];
+    float out_scale = quant_out_scale_data[quant_out_scale_offset + m_id];
     output[n_id * m + m_id] =
         static_cast<T>(static_cast<float>(input[n_id * m + m_id]) * out_scale);
   }
 }
 
 template <typename T>
-void dequantize_kernelLauncher(const int32_t* input,
-                               T* output,
-                               const int batch_size,    // m
-                               const int hidden_units,  // n
-                               cudaStream_t stream,
-                               const float* quant_out_scale_data,
-                               const int layer_offset) {
+void dequantize_kernel_launcher(const int32_t* input,
+                                T* output,
+                                const int batch_size,    // m
+                                const int hidden_units,  // n
+                                cudaStream_t stream,
+                                const float* quant_out_scale_data,
+                                const int quant_out_scale_offset) {
   dim3 grid((hidden_units + 31) / 32, (batch_size + 31) / 32);
   dim3 block(32, 32);
 
@@ -98,7 +98,7 @@ void dequantize_kernelLauncher(const int32_t* input,
                                                 hidden_units,
                                                 batch_size,
                                                 quant_out_scale_data,
-                                                layer_offset);
+                                                quant_out_scale_offset);
 }
 
 // template <typename T>
@@ -139,29 +139,27 @@ class AttnMatmulINT8 {
   }
   ~AttnMatmulINT8() {}
 
-  void ComputeForward(
-      const framework::Tensor*
-          weight,  // [int8] which has been transformed in pass
-      const framework::Tensor* input,  // [fp16/32]
-      framework::Tensor* input_tmp,    // [int8]  workspace
-      const framework::Tensor* bias,   // [fp16/32]
-      framework::Tensor*
-          output,  // [fp16/32] has been dequantized/detranspose/detranbsform
-      framework::Tensor* output_tmp,  // [int32]  workspace
-      framework::Tensor* bias_out,
-      const float quant_in_scale_data,  // [fp32] in_scale
-      const framework::Tensor* quant_out_scale,
-      const int layer_offset,
-      std::string name) {
+  // This function is used to execute GEMM, with input and output's types are
+  // both T.
+  void ComputeForward(const framework::Tensor* weight,
+                      const framework::Tensor* input,
+                      framework::Tensor* input_tmp,
+                      const framework::Tensor* bias,
+                      framework::Tensor* output,
+                      framework::Tensor* output_tmp,
+                      framework::Tensor* bias_out,
+                      const float quant_in_scale_data,
+                      const framework::Tensor* quant_out_scale,
+                      const int quant_out_scale_offset,
+                      std::string name) {
     int m = m_, k = k_, n = n_;
-    // quant transpose A
-    quantize_kernelLauncher<T>(input->data<T>(),
-                               input_tmp->data<int8_t>(),
-                               quant_in_scale_data,
-                               m_,
-                               k_,
-                               dev_ctx_.stream());
-    // elementwise mul
+
+    quantize_kernel_launcher<T>(input->data<T>(),
+                                input_tmp->data<int8_t>(),
+                                quant_in_scale_data,
+                                m_,
+                                k_,
+                                dev_ctx_.stream());
 
     // PrintMatrix(input->data<T>(), m_ * k_, name + " input [float]");
     // PrintMatrix(input_tmp->data<int8_t>(), m_ * k_, name + " input [int]");
@@ -178,15 +176,15 @@ class AttnMatmulINT8 {
                       dev_ctx_.stream());
     // PrintMatrix(output_tmp->data<int32_t>(), m_ * n_, name + " output
     // [int]"); dequant C
-    VLOG(1) << "[DEBUG] col32_to_row_major_dequantize_kernelLauncher";
+    VLOG(1) << "[DEBUG] col32_to_row_major_dequantize_kernel_launcher";
     // dequant kernel
-    dequantize_kernelLauncher<T>(output_tmp->data<int32_t>(),
-                                 output->data<T>(),
-                                 m_,
-                                 n_,
-                                 dev_ctx_.stream(),
-                                 quant_out_scale->data<float>(),
-                                 layer_offset);
+    dequantize_kernel_launcher<T>(output_tmp->data<int32_t>(),
+                                  output->data<T>(),
+                                  m_,
+                                  n_,
+                                  dev_ctx_.stream(),
+                                  quant_out_scale->data<float>(),
+                                  quant_out_scale_offset);
 
     // PrintMatrix(output->data<T>(),  m_ * n_, name + " output [float]");
     if (compute_bias_) {
@@ -201,14 +199,14 @@ class AttnMatmulINT8 {
     }
   }
 
-  void ComputeForwardWoQDQ(
-      const framework::Tensor*
-          weight,                // [int8] which has been transformed in pass
-      framework::Tensor* input,  // [int8]  workspace
-      const framework::Tensor* bias,  // [fp16/32]
-      framework::Tensor* output,      // [int32]  workspace
-      framework::Tensor* bias_out,
-      std::string name) {
+  // This function is used to execute GEMM, with input and output's types are
+  // both INT8.
+  void ComputeForwardINT8ToINT8(const framework::Tensor* weight,
+                                framework::Tensor* input,
+                                const framework::Tensor* bias,
+                                framework::Tensor* output,
+                                framework::Tensor* bias_out,
+                                std::string name) {
     int m = m_, k = k_, n = n_;
 
     // PrintMatrix(input->data<int8_t>(), m_ * k_, name + " input [int]");
@@ -224,18 +222,17 @@ class AttnMatmulINT8 {
     // PrintMatrix(output->data<int32_t>(), m_ * n_, name + " output [int]");
   }
 
-  void ComputeForwardWoQ(
-      const framework::Tensor*
-          weight,                // [int8] which has been transformed in pass
-      framework::Tensor* input,  // [int8]
-      const framework::Tensor* bias,  // [fp16/32]
-      framework::Tensor*
-          output,  // [fp16/32] has been dequantized/detranspose/detranbsform
-      framework::Tensor* output_tmp,  // [int32]  workspace
-      framework::Tensor* bias_out,
-      const framework::Tensor* quant_out_scale,
-      const int layer_offset,
-      std::string name) {
+  // This function is used to execute GEMM, with input and output's types are
+  // INT8 and T.
+  void ComputeForwardINT8ToT(const framework::Tensor* weight,
+                             framework::Tensor* input,
+                             const framework::Tensor* bias,
+                             framework::Tensor* output,
+                             framework::Tensor* output_tmp,
+                             framework::Tensor* bias_out,
+                             const framework::Tensor* quant_out_scale,
+                             const int quant_out_scale_offset,
+                             std::string name) {
     int m = m_, k = k_, n = n_;
     // PrintMatrix(input->data<int8_t>(), m_ * k_, name + " input [int]");
 
@@ -253,14 +250,14 @@ class AttnMatmulINT8 {
     // [int]");
 
     // dequant C
-    VLOG(1) << "[DEBUG] dequantize_kernelLauncher";
-    dequantize_kernelLauncher<T>(output_tmp->data<int32_t>(),
-                                 output->data<T>(),
-                                 m_,
-                                 n_,
-                                 dev_ctx_.stream(),
-                                 quant_out_scale->data<float>(),
-                                 layer_offset);
+    VLOG(1) << "[DEBUG] dequantize_kernel_launcher";
+    dequantize_kernel_launcher<T>(output_tmp->data<int32_t>(),
+                                  output->data<T>(),
+                                  m_,
+                                  n_,
+                                  dev_ctx_.stream(),
+                                  quant_out_scale->data<float>(),
+                                  quant_out_scale_offset);
     // PrintMatrix(output->data<T>(),  m_ * n_, name + " output [float]");
 
     if (compute_bias_) {
@@ -275,24 +272,24 @@ class AttnMatmulINT8 {
     }
   }
 
-  void ComputeForwardWoDQ(
-      const framework::Tensor*
-          weight,  // [int8] which has been transformed in pass
-      const float quant_in_scale_data,  // [fp32] in_scale
-      const framework::Tensor* input,   // [fp16/32]
-      framework::Tensor* input_tmp,     // [int8]  workspace
-      const framework::Tensor* bias,    // [fp16/32]
-      framework::Tensor* output,        // [int32]
-      framework::Tensor* bias_out,
-      std::string name) {
+  // This function is used to execute GEMM, with input and output's types are T
+  // and INT8.
+  void ComputeForwardTToINT8(const framework::Tensor* weight,
+                             const float quant_in_scale_data,
+                             const framework::Tensor* input,
+                             framework::Tensor* input_tmp,
+                             const framework::Tensor* bias,
+                             framework::Tensor* output,
+                             framework::Tensor* bias_out,
+                             std::string name) {
     int m = m_, k = k_, n = n_;
-    VLOG(1) << "[DEBUG] quantize_kernelLauncher";
-    quantize_kernelLauncher<T>(input->data<T>(),
-                               input_tmp->data<int8_t>(),
-                               quant_in_scale_data,
-                               m_,
-                               k_,
-                               dev_ctx_.stream());
+    VLOG(1) << "[DEBUG] quantize_kernel_launcher";
+    quantize_kernel_launcher<T>(input->data<T>(),
+                                input_tmp->data<int8_t>(),
+                                quant_in_scale_data,
+                                m_,
+                                k_,
+                                dev_ctx_.stream());
 
     // PrintMatrix(input->data<T>(), m_ * k_, name + " input [float]");
     // PrintMatrix(input_tmp->data<int8_t>(), m_ * k_, name + " input [int]");

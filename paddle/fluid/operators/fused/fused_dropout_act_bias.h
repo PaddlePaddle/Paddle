@@ -128,7 +128,7 @@ __global__ void FusedDropoutActBiasQDQ(Functor act,
                                        int8_t *dst,
                                        MaskType *mask,
                                        const float *quant_out_scale_data,
-                                       const int quant_layer_offset,
+                                       const int quant_out_scale_offset,
                                        const float quant_in_scale_data) {
   int col_id = blockDim.x * blockIdx.x + threadIdx.x;
   int row_id = blockIdx.y;
@@ -163,7 +163,7 @@ __global__ void FusedDropoutActBiasQDQ(Functor act,
                                                     nullptr,
                                                     act,
                                                     quant_out_scale_data,
-                                                    quant_layer_offset,
+                                                    quant_out_scale_offset,
                                                     quant_in_scale_data);
     }
   }
@@ -247,7 +247,7 @@ void LaunchDropoutActBiasQDQ(Functor act_functor,
                              MaskType *mask_data,
                              const phi::GPUContext &ctx,
                              const float *quant_out_scale_data,
-                             const int quant_layer_offset,
+                             const int quant_out_scale_offset,
                              const float quant_in_scale_data) {
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
@@ -275,7 +275,7 @@ void LaunchDropoutActBiasQDQ(Functor act_functor,
             dst,
             mask_data,
             quant_out_scale_data,
-            quant_layer_offset,
+            quant_out_scale_offset,
             quant_in_scale_data);
   } else {
     FusedDropoutActBiasQDQ<T, MaskType, 1, Functor>
@@ -293,7 +293,7 @@ void LaunchDropoutActBiasQDQ(Functor act_functor,
             dst,
             mask_data,
             quant_out_scale_data,
-            quant_layer_offset,
+            quant_out_scale_offset,
             quant_in_scale_data);
   }
 }
