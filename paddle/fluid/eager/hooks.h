@@ -73,6 +73,7 @@ class UnPackHookBase {
  public:
   virtual ~UnPackHookBase() = default;
   virtual paddle::experimental::Tensor operator()(void* packed_value) = 0;
+  virtual void* operator()(void* packed_value) = 0;
 };
 
 }  // namespace egr

@@ -95,6 +95,29 @@ class UnPackHook : public UnPackHookBase {
     return reinterpret_cast<paddle::pybind::TensorObject*>(ret)->tensor;
   }
 
+  void* operator()(void* packed_value) override {
+    auto args = PyTuple_New(1);
+    Py_INCREF(reinterpret_cast<PyObject*>(packed_value));
+    PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value));
+    bool grad_tmp = egr::Controller::Instance().HasGrad();
+    egr::Controller::Instance().SetHasGrad(false);
+    PyObject* ret = nullptr;
+    {
+      ::pybind11::gil_scoped_acquire gil;
+      ret = PyObject_Call(hook_, args, nullptr);
+    }
+    Py_XDECREF(args);
+    egr::Controller::Instance().SetHasGrad(grad_tmp);
+
+    PADDLE_ENFORCE_EQ(paddle::pybind::IsEagerTensor(ret),
+                      true,
+                      paddle::platform::errors::InvalidArgument(
+                          "paddle.autograd.SavedTensorsHooks only one pair "
+                          "of hooks is allowed at a time."));
+
+    return reinterpret_cast<void*>(ret);
+  }
+
  private:
   PyObject* hook_;
 };
