@@ -19,8 +19,142 @@
 
 #include "paddle/phi/kernels/funcs/algorithm.h"
 
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/memory/memcpy.h"
+#endif
+
 namespace phi {
 namespace funcs {
+using float16 = dtype::float16;
+
+#ifdef PADDLE_WITH_XPU
+
+template <typename Context, typename T1, typename T2>
+static int ConvertDataByType(
+    const T1* x, T2** y, int len, bool allocateFlag, const Context& dev_ctx) {
+  if (nullptr == x || nullptr == y || len <= 0)
+    return xpu::Error_t::INVALID_PARAM;
+  int r = 0;
+  if (allocateFlag) {
+    r = xpu_malloc(reinterpret_cast<void**>(y), sizeof(T2) * len);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
+  }
+
+  T1* cpu_data = reinterpret_cast<T1*>(malloc(sizeof(T1) * len));
+
+  paddle::memory::Copy(
+      CPUPlace(), cpu_data, dev_ctx.GetPlace(), x, len * sizeof(T1));
+
+  T2* cpu_real_data = reinterpret_cast<T2*>(malloc(sizeof(T2) * len));
+  for (int i = 0; i < len; i++) cpu_real_data[i] = static_cast<T2>(cpu_data[i]);
+
+  paddle::memory::Copy(
+      dev_ctx.GetPlace(), *y, CPUPlace(), cpu_real_data, len * sizeof(T2));
+
+  free(cpu_data);
+  free(cpu_real_data);
+
+  return xpu::Error_t::SUCCESS;
+}
+
+template <typename Context, typename T>
+static void GetDataPointer(const phi::DenseTensor& tensorData,
+                           T** result,
+                           const Context& dev_ctx) {
+  if (tensorData.dtype() == DataType::FLOAT16) {
+    const float16* real_data = tensorData.template data<float16>();
+    int len = tensorData.numel();
+
+    int r = ConvertDataByType<Context, float16, T>(
+        real_data, result, len, true, dev_ctx);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
+  }
+}
+
+template <typename Context, typename T>
+static void GetOutDataPointer(DenseTensor* tensorData,
+                              DenseTensor* out,
+                              T** result,
+                              const Context& dev_ctx) {
+  if (tensorData->dtype() == DataType::FLOAT16) {
+    *result = dev_ctx.template Alloc<T>(out);
+  } else {
+    *result = dev_ctx.template Alloc<T>(tensorData);
+  }
+}
+
+template <typename Context, typename T>
+static void CopyOutData(const DenseTensor& srcTensor,
+                        phi::DenseTensor* dstTensor,
+                        const Context& dev_ctx) {
+  if (dstTensor->dtype() == DataType::FLOAT16) {
+    const T* xpu_out_data = srcTensor.template data<T>();
+    float16* out_data = dev_ctx.template Alloc<float16>(dstTensor);
+    int len = srcTensor.numel();
+
+    int r = ConvertDataByType<Context, T, float16>(
+        xpu_out_data, &out_data, len, false, dev_ctx);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
+  }
+}
+
+template <typename T>
+static void FreeData(const phi::DenseTensor& tensorData, T* dataPtr) {
+  if (tensorData.dtype() == DataType::FLOAT16) xpu_free(dataPtr);
+}
+
+template <typename Context, typename T>
+static void SetBetaData(const phi::DenseTensor& beta_pow,
+                        phi::DenseTensor* beta_pow_out,
+                        const T& beta,
+                        const Context& dev_ctx) {
+  if (beta_pow.dtype() == DataType::FLOAT16) {
+    const float16* beta_pow_p = beta_pow.template data<float16>();
+    dev_ctx.template HostAlloc<float16>(beta_pow_out)[0] =
+        static_cast<float16>(beta) * beta_pow_p[0];
+  } else {
+    const T* beta_pow_p = beta_pow.template data<T>();
+    dev_ctx.template HostAlloc<T>(beta_pow_out)[0] = beta * beta_pow_p[0];
+  }
+}
+
+template <typename Context, typename T>
+static void Scale(phi::DenseTensor* beta_pow_out,
+                  const phi::DenseTensor& beta_pow,
+                  T* beta_pow_ptr,
+                  const T& beta,
+                  const Context& dev_ctx) {
+  float16* beta_pow_out_p2 = dev_ctx.template Alloc<float16>(beta_pow_out);
+
+  DenseTensor xpu_beta_pow_out;
+  const phi::DenseTensorMeta meta_beta_pow_out(DataType::FLOAT32,
+                                               beta_pow_out->dims());
+  xpu_beta_pow_out.set_meta(meta_beta_pow_out);
+
+  T* beta_pow_out_ptr = dev_ctx.template Alloc<T>(&xpu_beta_pow_out);
+
+  int r = xpu::scale(dev_ctx.x_context(),
+                     beta_pow_ptr,
+                     beta_pow_out_ptr,
+                     beta_pow.numel(),
+                     false,
+                     beta,
+                     0.0f);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
+
+  const float* xpu_beta_pow_out_data =
+      dev_ctx.template Alloc<T>(&xpu_beta_pow_out);
+  int len = xpu_beta_pow_out.numel();
+
+  r = ConvertDataByType<Context, T, float16>(
+      xpu_beta_pow_out_data, &beta_pow_out_p2, len, false, dev_ctx);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
+}
+#endif
 
 struct GPUAdam;
 struct CPUAdam;

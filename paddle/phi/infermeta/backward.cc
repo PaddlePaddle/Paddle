@@ -761,23 +761,6 @@ void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
   x_grad->set_dtype(out_grad.dtype());
 }
 
-void PoolGradInferMeta(const MetaTensor& x,
-                       const MetaTensor& out,
-                       const MetaTensor& dout,
-                       const std::vector<int>& kernel_size,
-                       const std::vector<int>& strides,
-                       const std::vector<int>& paddings,
-                       bool ceil_mode,
-                       bool exclusive,
-                       const std::string& data_format,
-                       const std::string& pooling_type,
-                       bool global_pooling,
-                       bool adaptive,
-                       const std::string& padding_algorithm,
-                       MetaTensor* dx) {
-  dx->share_meta(x);
-}
-
 void PsroiPoolGradInferMeta(const MetaTensor& x,
                             const MetaTensor& rois,
                             const MetaTensor& rois_num,
@@ -978,6 +961,28 @@ void Yolov3LossGradInferMeta(const MetaTensor& x,
   if (x_grad) {
     x_grad->set_dims(x.dims());
     x_grad->set_dtype(x.dtype());
+  }
+}
+
+void IndexAddGradInferMeta(const MetaTensor& index,
+                           const MetaTensor& add_value,
+                           const MetaTensor& out_grad,
+                           int axis,
+                           MetaTensor* x_grad,
+                           MetaTensor* add_value_grad) {
+  auto do_dims = out_grad.dims();
+  auto add_value_dims = add_value.dims();
+  if (x_grad) {
+    x_grad->set_dims(do_dims);
+    x_grad->set_dtype(out_grad.dtype());
+    x_grad->set_layout(out_grad.layout());
+    x_grad->share_lod(out_grad);
+  }
+  if (add_value_grad) {
+    add_value_grad->set_dims(add_value_dims);
+    add_value_grad->set_dtype(add_value.dtype());
+    add_value_grad->set_layout(add_value.layout());
+    add_value_grad->share_lod(add_value);
   }
 }
 

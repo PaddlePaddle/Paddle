@@ -2418,6 +2418,9 @@ class PRelu(layers.Layer):
                                             default_initializer=Constant(1.0))
 
     def forward(self, input):
+        if in_dygraph_mode():
+            return _C_ops.prelu(input, self.weight, "NCHW", self._mode)
+
         check_variable_and_dtype(input, 'input', ['float32'], 'PRelu')
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(type="prelu",
@@ -3163,6 +3166,10 @@ class SpectralNorm(layers.Layer):
         self.weight_v.stop_gradient = True
 
     def forward(self, weight):
+        if in_dygraph_mode():
+            return _C_ops.spectral_norm(weight, self.weight_u, self.weight_v,
+                                        self._dim, self._power_iters, self._eps)
+
         check_variable_and_dtype(weight, "weight", ['float32', 'float64'],
                                  'SpectralNorm')
         inputs = {'Weight': weight, 'U': self.weight_u, 'V': self.weight_v}

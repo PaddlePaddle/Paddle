@@ -84,6 +84,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace())})},
+      {"c_embedding", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"c_identity",
        XPUKernelSet({pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace()),
@@ -306,6 +307,9 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"label_smooth",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"lamb",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
       {"lars_momentum",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -650,8 +654,7 @@ XPUOpMap& get_kl2_ops() {
       {"resnet_basic_block_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"resnet_basic_block",
-       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
-  };
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})}};
 
   return s_xpu2_kernels;
 }

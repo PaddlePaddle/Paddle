@@ -42,21 +42,17 @@ void MaxPoolCooGradCPUKernel(const CPUContext& dev_ctx,
 
   phi::funcs::sparse::PrefixSum(counter_ptr, &offsets[0], kernel_size);
 
-  const T* in_features_ptr = x.non_zero_elements().data<T>();
-  const T* out_features_ptr = out.non_zero_elements().data<T>();
-  const T* out_grad_ptr = out_grad.non_zero_elements().data<T>();
+  const T* in_features_ptr = x.values().data<T>();
+  const T* out_features_ptr = out.values().data<T>();
+  const T* out_grad_ptr = out_grad.values().data<T>();
   // TODO(zhangkaihuo): call phi::sparse::EmptyLike
-  DenseTensor x_grad_indices =
-      phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
-  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  DenseTensor x_grad_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
+  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.values());
   x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), true);
   T* x_grad_ptr = x_grad_values.data<T>();
   memset(x_grad_ptr, 0, sizeof(T) * x_grad_values.numel());
-  phi::Copy<CPUContext>(dev_ctx,
-                        x.non_zero_indices(),
-                        dev_ctx.GetPlace(),
-                        false,
-                        &x_grad_indices);
+  phi::Copy<CPUContext>(
+      dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &x_grad_indices);
 
   phi::funcs::MaxPoolGrad<T> grad_functor;
   for (int i = 0; i < kernel_size; i++) {
@@ -84,7 +80,7 @@ void MaxPoolCooGradKernel(const Context& dev_ctx,
                           const std::vector<int>& kernel_sizes,
                           SparseCooTensor* x_grad) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "MaxPoolCooGradCPUKernel", ([&] {
+      x.indices().dtype(), "MaxPoolCooGradCPUKernel", ([&] {
         MaxPoolCooGradCPUKernel<T, data_t>(
             dev_ctx, x, rulebook, counter, out, out_grad, kernel_sizes, x_grad);
       }));

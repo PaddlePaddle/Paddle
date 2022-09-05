@@ -37,6 +37,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   ${dist_ENVS})
   set_tests_properties(test_high_order_grad
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_grad_clip MODULES test_grad_clip ENVS ${dist_ENVS})
+  set_tests_properties(test_grad_clip PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
+                                                 TIMEOUT 50)
 
   py_test_modules(test_while_op_completion MODULES test_while_op_completion
                   ENVS ${dist_ENVS})
@@ -52,6 +55,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   ${dist_ENVS})
   py_test_modules(test_dist_reshape MODULES test_dist_reshape ENVS ${dist_ENVS})
   py_test_modules(test_dist_pnorm MODULES test_dist_pnorm ENVS ${dist_ENVS})
+  py_test_modules(test_dist_embedding MODULES test_dist_embedding ENVS
+                  ${dist_ENVS})
   py_test_modules(test_dist_slice MODULES test_dist_slice ENVS ${dist_ENVS})
   py_test_modules(test_cluster MODULES test_cluster ENVS ${dist_ENVS})
   py_test_modules(test_comm_cost MODULES test_comm_cost ENVS ${dist_ENVS})
@@ -66,4 +71,5 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_dist_attr_v2 MODULES test_dist_attr_v2)
   py_test_modules(test_lr_grad_clip MODULES test_lr_grad_clip)
   py_test_modules(test_quantization MODULES test_quantization)
+  py_test_modules(test_dist_matmul MODULES test_dist_matmul)
 endif()

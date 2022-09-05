@@ -25,12 +25,14 @@ using DataLayout = framework::DataLayout;
 
 inline static void CheckArgument(const framework::ExecutionContext& ctx) {
   const std::string interp_method = ctx.Attr<std::string>("interp_method");
+#if (CANN_VERSION_CODE < 512000)
   bool align_corners = ctx.Attr<bool>("align_corners");
   PADDLE_ENFORCE_EQ(
       align_corners,
       false,
       platform::errors::InvalidArgument(
           "NPU Interpolate Kernel has diff when align_corners is true."));
+#endif
   PADDLE_ENFORCE_EQ(
       interp_method,
       "nearest",

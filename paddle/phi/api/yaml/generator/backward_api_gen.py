@@ -151,7 +151,7 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
 
             else:
                 output_create = output_create + f"""
-{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, {self.outputs['names'][0]});"""
+{code_indent}  auto kernel_out = {set_out_func}({self.outputs['names'][0]});"""
 
         elif len(out_dtype_list) > 1:
             output_create = ""
@@ -167,7 +167,7 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
 {code_indent}  *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
 
                     output_create = output_create + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, {self.outputs['names'][i]});"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['names'][i]});"""
 
                 else:
                     if inplace_flag and self.inplace_map is not None and self.outputs[
