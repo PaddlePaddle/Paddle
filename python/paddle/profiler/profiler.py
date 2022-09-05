@@ -317,7 +317,7 @@ class Profiler:
             If not provided (None), the default scheduler will keep tracing until the profiler exits. If it is a tuple, it has two values start_batch and end_batch,
             which means profiling range [start_batch, end_batch).
         on_trace_ready (Callable, optional): Callable object, serves as callback function, and takes the Profiler object as parameter, which provides a way for users to do post-processing.
-            This callable object will be called when ``scheduler`` returns ``ProfilerState.RECORD_AND_RETURN``. The default value is :ref:`export_chrome_tracing <api_paddle_profiler_export_chrome_tracing>` (./profiler_log/).
+            This callable object will be called when ``scheduler`` returns ``ProfilerState.RECORD_AND_RETURN``. The default value is :ref:`export_chrome_tracing <api_paddle_profiler_export_chrome_tracing>`.
         timer_only (bool, optional): If it is True, the cost of Dataloader and every step of the model will be count without profiling. Otherwise, the model will
             be timed and profiled. Default: False.
         record_shapes (bool, optional): If it is True, collect op's input shape information. Default: False.
@@ -339,7 +339,7 @@ class Profiler:
                         #train()
                         p.step()
 
-        2. profiling range [2,4], [7, 9], [11,13]
+        2. profiling range [2,4], [7, 9], [11,13].
 
             .. code-block:: python
                 :name: code-example2
@@ -354,7 +354,7 @@ class Profiler:
                         #train()
                         p.step()
 
-        3. Use profiler without context manager, and use default parameters
+        3. Use profiler without context manager, and use default parameters.
 
             .. code-block:: python
                 :name: code-example3
@@ -369,7 +369,7 @@ class Profiler:
                 p.stop()
                 p.summary()
 
-        4. Use profiler to get throughput and cost of the model
+        4. Use profiler to get throughput and cost of the model.
 
             .. code-block:: python
                 :name: code-example-timer1
@@ -399,8 +399,7 @@ class Profiler:
                 
                 dataset = RandomDataset(20 * 4)
                 simple_net = SimpleNet()
-                opt = paddle.optimizer.SGD(learning_rate=1e-3,
-                                           parameters=simple_net.parameters())
+                opt = paddle.optimizer.SGD(learning_rate=1e-3, parameters=simple_net.parameters())
                 BATCH_SIZE = 4
                 loader = paddle.io.DataLoader(
                     dataset,
@@ -531,7 +530,7 @@ class Profiler:
                 prof.stop()
 
         '''
-        # Timing only without profiling
+        # Timing only without profiling.
         benchmark().begin()
         if not self.timer_only or self.emit_nvtx:
             utils._is_profiler_used = True
@@ -584,7 +583,7 @@ class Profiler:
         if self.profile_memory:
             disable_memory_recorder()
         # self.current_state -> CLOSED
-        # In this situation, RECORD state is regarded as RECORD_AND_RETURN
+        # In this situation, RECORD state is regarded as RECORD_AND_RETURN.
         if self.record_event:
             self.record_event.end()
             self.record_event = None
@@ -607,7 +606,7 @@ class Profiler:
 
         Args:
             num_samples (int|None, optional): Specifies the batch size of every step of the model
-                that is used to compute throughput when timer_only is True. Default: None.
+                that is used to compute throughput when `timer_only` is True. Default: None.
 
         Examples:
             .. code-block:: python
@@ -645,7 +644,7 @@ class Profiler:
         r"""
         Get statistics for current step. If the function is called at certain iteration
         intervals, the result is the average of all steps between the previous call and
-        this call. Statistics are as follows：
+        this call. Statistics are as follows:
 
         1. reader_cost: the cost of loading data measured in seconds.
 
@@ -751,7 +750,7 @@ class Profiler:
 
         Args:
             path(str): file path of the output.
-            format(str, optional): output format, can be chosen from ['json', 'pb], 'json' for chrome tracing and 'pb' for protobuf, default value is "json".
+            format(str, optional): output format, can be chosen from ['json', 'pb'], 'json' for chrome tracing and 'pb' for protobuf, default value is 'json'.
 
 
         Examples:
