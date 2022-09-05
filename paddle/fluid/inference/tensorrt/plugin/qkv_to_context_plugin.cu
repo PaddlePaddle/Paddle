@@ -30,6 +30,8 @@
 // todo ,wangbojun for testing
 #ifdef TRT_FT_WINDOWS_ATTENTION
 #include "3rdparty/trt_fused_multihead_attention/qkvToContext.h"
+#include "paddle/fluid/operators/transpose_op.cu.h"
+#include "paddle/phi/core/allocator.h"
 namespace fastertransformer {
 
 /*******************  invokeTransformMask  ***********************/
@@ -513,16 +515,17 @@ __global__ void transpose_qkv_for_ftmha(const T *src, // (Batch, real_seq_len, 3
   int seq_id = blockIdx.x;
   int head_id = threadIdx.y;
   // (batch * seq_len * head_num * 3(qkv) * size_per_head)
-  const int dst_offset = batch_id * seq_len * 3 * head_num * size_per_head +
-                         seq_id * head_num * 3 * size_per_head+
-                         head_id * 3 * size_per_head +
-                         qkv_id * size_per_head;
+  const int dst_index = batch_id * seq_len * 3 * head_num * size_per_head +
+                         seq_id * 3 * head_num * size_per_head +
+                         head_id * head_num * size_per_head +
+                         threadIdx.x * size_per_head +
+                         qkv_id ;
   const int src_offset = batch_id * seq_len * 3 * head_num * size_per_head +
                          seq_id * 3 * head_num * size_per_head +
                          qkv_id * head_num * size_per_head +
                          head_id * size_per_head;
   if(seq_id<seq_len){
-    dst[threadIdx.x + dst_offset] = src[threadIdx.x + src_offset];
+    dst[dst_index] = src[threadIdx.x + src_offset];
   };
 }
 
@@ -534,15 +537,19 @@ __global__ void transpose_qkv_for_ftmha_shared(const T *src, // (Batch, real_seq
                                         const int head_num,
                                         const int size_per_head){
   // const dim3 grid_t_ftmha_shared(seq_len, batch, head_num_in_grid);
-  // const dim3 block_t_ftmha_shared(head_size_, 3, head_num_in_block);
+  // const dim3 block_t_ftmha_shared(head_size_, head_num_in_block, 3);
   
   const int seq_id                   = blockIdx.x;
   const int batch_id                 = blockIdx.y;
   const int head_num_in_grid_id      = blockIdx.z;
-  const int size_head_num_in_block   = blockDim.z;
+  
   const int size_per_head_id         = threadIdx.x;
-  const int qkv_id                   = threadIdx.y;
-  const int head_num_in_block_id     = threadIdx.z;
+
+  const int head_num_in_block_id     = threadIdx.y;
+  const int size_head_num_in_block   = blockDim.y;
+  
+  const int qkv_id                   = threadIdx.z;
+  
   const int head_id                  = head_num_in_grid_id * size_head_num_in_block + head_num_in_block_id;
 
   // to (batch * seq_len * head_num * 3(qkv) * size_per_head)
@@ -554,29 +561,29 @@ __global__ void transpose_qkv_for_ftmha_shared(const T *src, // (Batch, real_seq
                          seq_id * 3 * head_num * size_per_head +
                          qkv_id * head_num * size_per_head +
                          head_id * size_per_head;
-  __shared__ T smem_matrix[1024];   
-  // if( blockIdx.x==0 && blockIdx.y==0 && threadIdx.x==0 && threadIdx.y==0 ){
-  //   printf("@@@ in trans kernel shared matrix, head_id_grid:%d, head_id_block:%d [%d][%d][%d][%d][%d] -> [%d] [%d] [%d] \r\n",
-  //                 head_num_in_grid_id,head_num_in_block_id, 
-  //                 batch_id, seq_id, qkv_id, head_id, size_per_head_id, 
-  //                 qkv_id,head_num_in_block_id,size_per_head_id);
-  // }
+  __shared__ T smem_matrix[1025];   
+  if( blockIdx.x==0 && blockIdx.y==0 && threadIdx.x==0 && threadIdx.y==0 ){
+    printf("@@@ in trans kernel shared matrix, head_id_grid:%d, head_id_block:%d [%d][%d][%d][%d][%d] -> [%d] [%d] [%d] \r\n",
+                  head_num_in_grid_id,head_num_in_block_id, 
+                  batch_id, seq_id, qkv_id, head_id, size_per_head_id, 
+                  qkv_id,head_num_in_block_id,size_per_head_id);
+  }
   if(head_id<head_num){
     smem_matrix[qkv_id * size_head_num_in_block * size_per_head + 
                 head_num_in_block_id * size_per_head + 
                 size_per_head_id                                  ] = src[size_per_head_id + src_offset];
   }
   __syncthreads();
-  // if( blockIdx.x==0 && blockIdx.y==0 && threadIdx.x==0 && threadIdx.y==0 ){
-  // printf("@@@ in trans kernel do trans, head_id_grid:%d, head_id_block:%d [%d][%d][%d][%d][%d] <- [%d] [%d] [%d] \r\n",
-  //                 head_num_in_grid_id,head_num_in_block_id, 
-  //                 batch_id, seq_id, head_id, qkv_id, size_per_head_id, 
-  //                 qkv_id,head_num_in_block_id,size_per_head_id);
-  // }
+  if( blockIdx.x==0 && blockIdx.y==0 && threadIdx.x==0 && threadIdx.y==0 ){
+  printf("@@@ in trans kernel do trans, head_id_grid:%d, head_id_block:%d [%d][%d][%d][%d][%d] <- [%d] [%d] [%d] \r\n",
+                  head_num_in_grid_id,head_num_in_block_id, 
+                  batch_id, seq_id, qkv_id, head_id, size_per_head_id, 
+                  head_num_in_block_id, qkv_id, size_per_head_id);
+  }
   if(head_id<head_num){
-    dst[size_per_head_id + dst_offset] = smem_matrix[qkv_id * size_head_num_in_block * size_per_head + 
-                                                     head_num_in_block_id * size_per_head + 
-                                                     size_per_head_id                                  ];
+    dst[size_per_head_id + src_offset] = smem_matrix[head_num_in_block_id * 3 * size_per_head + 
+                                                     qkv_id * size_per_head + 
+                                                     size_per_head_id                          ];
   }
 }
 int QkvToContextPluginDynamic::enqueue(
@@ -777,14 +784,27 @@ int QkvToContextPluginDynamic::enqueue(
         tptr, output, batch, seq_len, head_number_, head_size_);
 #else //if define TRT_FT_WINDOWS_ATTENTION
     VLOG(1)<<"@@@ use faster transformer trt fused multihead matmul kernel";
+    const int sm = 86; // TODO test for A10, sm is 86
     // printf("@@@ use faster transformer trt fused multihead matmul kernel\r\n");
-    auto *multihead_temp_data =
-        multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
-            platform::CUDAPlace(device_id));
+    auto *device_ctx = static_cast<phi::GPUContext *>(
+    platform::DeviceContextPool::Instance().Get(
+        platform::CUDAPlace(device_id)));
 
-    half *qkptr = reinterpret_cast<half *>(multihead_temp_data);
-    half *tptr = qkptr + scratch_size;
-    const int sm = 86; // TODO for A10, sm is 86
+    const phi::GPUContext &dev_ctx = *device_ctx;
+    framework::Tensor input_transpose_tensor;
+    input_transpose_tensor.Resize(phi::make_ddim({batch,seq_len,head_number_,3,head_size_}));
+    auto * input_transpose_data = reinterpret_cast<float16 *>(
+                                    input_transpose_tensor.mutable_data<float16>(
+                                      platform::CUDAPlace(device_id)));
+
+    const float16 *input0_data = static_cast<const float16 *>(inputs[0]); //qkv
+    std::shared_ptr<phi::Allocation> input_0_allo_ptr=std::make_shared<phi::Allocation>(
+      const_cast<float16 *>(input0_data),
+      (size_t) input_num * sizeof(float16), platform::CUDAPlace(device_id));
+    phi::DenseTensorMeta input_0_meta(::phi::DataType::FLOAT16,::phi::make_ddim({batch,seq_len,3,head_number_,head_size_}));
+    framework::Tensor input_tensor(input_0_allo_ptr, input_0_meta);
+
+
     if (ft_dispatcher_fp16_.get() && head_number_ == ft_dispatcher_fp16_num_head_) {}
     else {
       // printf("@@@ ft_dispatcher_fp16_.reset head_number_:%d, head_size_:%d \r\n",head_number_, head_size_);
@@ -800,9 +820,15 @@ int QkvToContextPluginDynamic::enqueue(
                                                               platform::CUDAPlace(device_id)));
     int window_num = input_desc[0].dims.d[0];
     framework::Tensor temp_qk_bias_mask_tensor;
-
-    // BxSx3xNxH 
-    const half *input0_data = static_cast<const half *>(inputs[0]); //qkv
+    //    0,1,2,3,4
+    //    BxSx3xNxH, transpose to fit ftmha
+    // -> 0,1,3,2,4
+    //    BxSxNx3xH
+    std::vector<int32_t> transPerm = {0,1,3,2,4};
+    paddle::operators::TransposeGPUKernelDriver<paddle::platform::float16>(dev_ctx,
+      input_tensor,
+      transPerm,
+      &input_transpose_tensor);
 
     // const dim3 grid_t_ftmha(seq_len, batch, 3);
     // const dim3 block_t_ftmha(head_size_, head_number_, 1);
@@ -816,23 +842,25 @@ int QkvToContextPluginDynamic::enqueue(
     // );
 
     // shared transpose
-    int head_num_in_block=std::min(head_number_, static_cast<int>(std::floor(1024.0/head_size_/3)));
-    int head_num_in_grid = static_cast<int>(std::ceil((float)head_number_/(float)head_num_in_block));
-    head_num_in_block=std::ceil((float)head_number_/head_num_in_grid);
-    const dim3 grid_t_ftmha_shared(seq_len, batch, head_num_in_grid);
-    const dim3 block_t_ftmha_shared(head_size_, 3, head_num_in_block);
+    // int head_num_in_block=std::min(head_number_, static_cast<int>(std::floor(1024.0/head_size_/3)));
+    // int head_num_in_grid = static_cast<int>(std::ceil((float)head_number_/(float)head_num_in_block));
+    // head_num_in_block=std::ceil((float)head_number_/head_num_in_grid);
+    // const dim3 grid_t_ftmha_shared(seq_len, batch, head_num_in_grid);
+    // const dim3 block_t_ftmha_shared(head_size_, head_num_in_block, 3);
     // printf("@@@@ shared head number: %d, in grid: %d, in block: %d 1024/headnum/3 : %d \r\n", head_number_ ,head_num_in_grid,head_num_in_block,static_cast<int>(std::floor(1024.0/head_size_/3)));
     // printf("@@@ grid_t_ftmha_shared %d, %d, %d \r\n", seq_len, batch,head_num_in_grid);
-    // printf("@@@ block_t_ftmha_shared %d, %d, %d \r\n",head_size_,3,head_num_in_block);
-    transpose_qkv_for_ftmha_shared<half><<<grid_t_ftmha_shared, block_t_ftmha_shared, 0 , stream>>>(
-      input0_data,
-      tptr,
-      batch,
-      seq_len,
-      head_number_,
-      head_size_
-    );
+    // printf("@@@ block_t_ftmha_shared %d, %d, %d \r\n",head_size_,head_num_in_block,3);
+
+    // transpose_qkv_for_ftmha_shared<half><<<grid_t_ftmha_shared, block_t_ftmha_shared, 0 , stream>>>(
+    //   input0_data,
+    //   tptr,
+    //   batch,
+    //   seq_len,
+    //   head_number_,
+    //   head_size_
+    // );
     // cudaDeviceSynchronize();
+
     // if(window_num==64){
     //   cudaDeviceSynchronize();
     //   print_float<half><<<1,1>>>(input0_data,0,2*seq_len*3*head_number_*head_size_,3*head_number_*head_size_,1);
@@ -906,7 +934,7 @@ int QkvToContextPluginDynamic::enqueue(
 
 
     ft_dispatcher_fp16_->run(
-      tptr, 
+      input_transpose_data, 
       temp_qk_bias_mask_data,
       temp_qk_bias_data,
       seq_len,
