@@ -168,6 +168,54 @@ __global__ void neighbor_sample_kernel(GpuPsCommGraph graph,
   }
 }
 
+__global__ void neighbor_sample_kernel2(GpuPsCommGraph graph,
+                                        GpuPsNodeInfo* node_info_list,
+                                        int* actual_size,
+                                        uint64_t* res,
+                                        int sample_len,
+                                        int n,
+                                        int default_value) {
+  curandState rng;
+  curand_init(blockIdx.x, threadIdx.x, 0, &rng);
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n) {
+    if (node_info_list[i].neighbor_size == 0) {
+      actual_size[i] = default_value;
+    } else {
+      int neighbor_len = (int)node_info_list[i].neighbor_size;
+      uint32_t data_offset = node_info_list[i].neighbor_offset;
+      int offset = i * sample_len;
+      uint64_t* data = graph.neighbor_list;
+      uint64_t tmp;
+      int split, begin;
+      if (neighbor_len <= sample_len) {
+        actual_size[i] = neighbor_len;
+        for (int j = 0; j < neighbor_len; j++) {
+          res[offset + j] = data[data_offset + j];
+        }
+      } else {
+        actual_size[i] = sample_len;
+        if (neighbor_len < 2 * sample_len) {
+          split = sample_len;
+          begin = 0;
+        } else {
+          split = neighbor_len - sample_len;
+          begin = neighbor_len - sample_len;
+        }
+        for (int idx = split; idx <= neighbor_len - 1; idx++) {
+          const int num = curand(&rng) % (idx + 1);
+          tmp = data[data_offset + num];
+          data[data_offset + num] = data[data_offset + idx];
+          data[data_offset + idx] = tmp;
+        }
+        for (int idx = 0; idx < sample_len; idx++) {
+          res[offset + idx] = data[data_offset + begin + idx];
+        }
+      }
+    }
+  }
+}
+
 int GpuPsGraphTable::init_cpu_table(
     const paddle::distributed::GraphParameter& graph) {
   cpu_graph_table_.reset(new paddle::distributed::GraphTable);
@@ -764,7 +812,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
     auto& node = path_[gpu_id][i].nodes_.back();
 
     CUDA_CHECK(cudaMemsetAsync(
-        node.val_storage, 0, shard_len * sizeof(int64_t), node.in_stream));
+        node.val_storage, 0, shard_len * sizeof(uint64_t), node.in_stream));
     CUDA_CHECK(cudaStreamSynchronize(node.in_stream));
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
     // If not found, val is -1.
@@ -781,14 +829,9 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
     int* actual_size_array = (int*)(node_info_list + shard_len);
     uint64_t* sample_array =
         (uint64_t*)(actual_size_array + shard_len + shard_len % 2);
-    constexpr int WARP_SIZE = 32;
-    constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
-    constexpr int TILE_SIZE = BLOCK_WARPS * 16;
-    const dim3 block(WARP_SIZE, BLOCK_WARPS);
-    const dim3 grid((shard_len + TILE_SIZE - 1) / TILE_SIZE);
-
-    neighbor_sample_kernel<WARP_SIZE, BLOCK_WARPS, TILE_SIZE>
-        <<<grid, block, 0, resource_->remote_stream(i, gpu_id)>>>(
+    int grid_size_ = (shard_len - 1) / block_size_ + 1;
+    neighbor_sample_kernel2<<<
+        grid_size_, block_size_, 0, resource_->remote_stream(i, gpu_id)>>>(
             graph,
             node_info_list,
             actual_size_array,
@@ -912,36 +955,30 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
       delete[] merge_buffers;
       delete[] cpu_keys;
     }
+    CUDA_CHECK(cudaStreamSynchronize(stream));
   }
 
-  {
-    CUDA_CHECK(cudaStreamSynchronize(stream));
-    platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
-    platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
-
+  if (compress) {
     int total_sample_size = thrust::reduce(
         thrust::device_pointer_cast(actual_sample_size),
         thrust::device_pointer_cast(actual_sample_size) + len);
     result.set_total_sample_size(total_sample_size);
+    result.actual_val_mem =
+        memory::AllocShared(place, total_sample_size * sizeof(uint64_t));
+    result.actual_val = (uint64_t*)(result.actual_val_mem)->ptr();
 
-    if (compress) {
-      result.actual_val_mem =
-          memory::AllocShared(place, total_sample_size * sizeof(uint64_t));
-      result.actual_val = (uint64_t*)(result.actual_val_mem)->ptr();
-
-      thrust::device_vector<int> cumsum_actual_sample_size(len);
-      thrust::exclusive_scan(thrust::device_pointer_cast(actual_sample_size),
-                             thrust::device_pointer_cast(actual_sample_size) + len,
-                             cumsum_actual_sample_size.begin(),
-                             0);
-      fill_actual_vals<<<grid_size, block_size_, 0, stream>>>(
-          val,
-          result.actual_val,
-          actual_sample_size,
-          thrust::raw_pointer_cast(cumsum_actual_sample_size.data()),
-          sample_size,
-          len);
-    }
+    thrust::device_vector<int> cumsum_actual_sample_size(len);
+    thrust::exclusive_scan(thrust::device_pointer_cast(actual_sample_size),
+                           thrust::device_pointer_cast(actual_sample_size) + len,
+                           cumsum_actual_sample_size.begin(),
+                           0);
+    fill_actual_vals<<<grid_size, block_size_, 0, stream>>>(
+        val,
+        result.actual_val,
+        actual_sample_size,
+        thrust::raw_pointer_cast(cumsum_actual_sample_size.data()),
+        sample_size,
+        len);
   }
 
   for (int i = 0; i < total_gpu; ++i) {

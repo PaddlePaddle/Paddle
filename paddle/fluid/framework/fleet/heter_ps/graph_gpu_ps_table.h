@@ -139,7 +139,6 @@ class GpuPsGraphTable
                                                 int len,
                                                 bool cpu_query_switch,
                                                 bool compress);
-
   int get_feature_of_nodes(
       int gpu_id, uint64_t *d_walk, uint64_t *d_offset, int size, int slot_num);
 
