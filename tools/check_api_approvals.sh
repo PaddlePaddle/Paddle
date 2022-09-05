@@ -75,6 +75,12 @@ if [ "$op_type_spec_diff" != "" ]; then
     check_approval 1 9301846 7913861
 fi
 
+op_kernel_dtype_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_kernel_same_dtypes.py ${PADDLE_ROOT}/paddle/fluid/OP_KERNEL_DTYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_KERNEL_DTYPE_PR.spec`
+if [ "$op_kernel_dtype_spec_diff" != "" ]; then
+    echo_line="You have added or modified Op Kernel, resulting in inconsistent data types supported by the forward and backward kernels of the same op, such modifications are not allowed in principle. If it is a mismatch, please request one RD (lanxianghit (Recommend) or chenwhql) review and approve. Including the following kernels:\n${op_kernel_dtype_spec_diff}\n"
+    check_approval 1 47554610 22561442
+fi
+
 op_desc_diff=`python ${PADDLE_ROOT}/tools/check_op_desc.py ${PADDLE_ROOT}/paddle/fluid/OP_DESC_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_DESC_PR.spec`
 inference_approve=`echo "$op_desc_diff" | grep "need inference to review" -`
 slim_approve=`echo "$op_desc_diff" | grep "need slim to review" -`

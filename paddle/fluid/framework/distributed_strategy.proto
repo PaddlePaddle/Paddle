@@ -184,6 +184,14 @@ message TensorParallelConfig {
   optional int32 tensor_init_seed = 2 [ default = -1 ];
 }
 
+message QatConfig {
+  optional bool channel_wise_abs_max = 1 [default = true];
+  optional int32 weight_bits = 2 [default = 8];
+  optional int32 activation_bits = 3 [default = 8];
+  repeated string not_quant_pattern = 4;
+  optional string algo = 5;
+}
+
 enum TableType {
   PS_SPARSE_TABLE = 0;
   PS_DENSE_TABLE = 1;
@@ -327,6 +335,7 @@ message DistributedStrategy {
   optional bool heter_ccl_mode = 38 [ default = false ];
   optional bool is_fl_ps_mode = 39 [ default = false ];
   optional bool with_coordinator = 40 [ default = false ];
+  optional bool qat = 41 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
@@ -344,6 +353,7 @@ message DistributedStrategy {
   optional TrainerDescConfig trainer_desc_configs = 114;
   repeated TableParameter downpour_table_param = 115;
   optional FsClientParameter fs_client_param = 116;
+  optional QatConfig qat_configs = 117;
 
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;

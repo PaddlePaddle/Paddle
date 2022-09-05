@@ -25,7 +25,7 @@ else()
 endif()
 
 set(XPU_XCCL_BASE_URL
-    "https://klx-sdk-release-public.su.bcebos.com/xccl/release/1.0.4")
+    "https://klx-sdk-release-public.su.bcebos.com/xccl/release/1.0.0")
 
 if(WITH_AARCH64)
   set(XPU_XRE_DIR_NAME "xre-kylin_aarch64")

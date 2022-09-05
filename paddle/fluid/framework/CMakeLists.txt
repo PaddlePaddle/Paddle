@@ -78,52 +78,31 @@ cc_test(
   data_type_test
   SRCS data_type_test.cc
   DEPS data_type place tensor)
-if(WITH_GPU)
-  if(WIN32)
-    windows_symbolic(tensor_util SRCS tensor_util.cu)
-    nv_library(
-      tensor
-      SRCS .tensor_util.cu
-      DEPS place memory data_type device_context dense_tensor)
-    add_dependencies(tensor tensor_util)
-  else()
-    nv_library(
-      tensor
-      SRCS tensor_util.cu
-      DEPS place memory data_type device_context dense_tensor)
-  endif()
-elseif(WITH_ROCM)
-  hip_library(
-    tensor
-    SRCS tensor_util.cu
-    DEPS place memory data_type device_context dense_tensor)
-else()
-  cc_library(
-    tensor
-    SRCS tensor_util.cc
-    DEPS place memory data_type device_context dense_tensor)
-endif()
-# target_link(tensor profiler)
+
+cc_library(
+  tensor
+  SRCS tensor_util.cc
+  DEPS place memory data_type device_context dense_tensor)
 
 cc_test(
   tensor_test
   SRCS tensor_test.cc
-  DEPS tensor)
+  DEPS tensor isfinite_op)
 if(WITH_GPU)
   nv_test(
     tensor_util_test
     SRCS tensor_util_test.cc tensor_util_test.cu
-    DEPS tensor dlpack_tensor)
+    DEPS tensor dlpack_tensor isfinite_op)
 elseif(WITH_ROCM)
   hip_test(
     tensor_util_test
     SRCS tensor_util_test.cc tensor_util_test.cu
-    DEPS tensor dlpack_tensor)
+    DEPS tensor dlpack_tensor isfinite_op)
 else()
   cc_test(
     tensor_util_test
     SRCS tensor_util_test.cc
-    DEPS tensor dlpack_tensor)
+    DEPS tensor dlpack_tensor isfinite_op)
 endif()
 
 cc_test(
@@ -204,7 +183,7 @@ cc_test(
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS lod_tensor selected_rows_utils framework_proto scope)
+  DEPS selected_rows_utils framework_proto scope)
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
@@ -369,7 +348,7 @@ cc_test(
 cc_library(
   op_proto_maker
   SRCS op_proto_maker.cc
-  DEPS framework_proto attribute glog)
+  DEPS framework_proto attribute ops_extra_info glog)
 cc_test(
   op_proto_maker_test
   SRCS op_proto_maker_test.cc
@@ -504,6 +483,7 @@ cc_library(
   proto_desc
   SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc
   DEPS attribute
+       ops_extra_info
        shape_inference
        op_info
        operator
@@ -519,7 +499,7 @@ endif()
 cc_library(
   op_registry
   SRCS op_registry.cc
-  DEPS op_proto_maker op_info operator glog proto_desc)
+  DEPS op_proto_maker op_info operator ops_extra_info glog proto_desc)
 
 cc_library(
   op_call_stack
@@ -1025,7 +1005,7 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor)
+  DEPS parallel_executor standalone_executor)
 if(WITH_PSCORE)
   get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
   if(WITH_HETERPS)

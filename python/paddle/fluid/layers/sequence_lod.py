@@ -20,7 +20,7 @@ from ..framework import core, Variable, _non_static_mode, in_dygraph_mode, _in_l
 from ..layer_helper import LayerHelper
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..core import VarDesc
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'sequence_conv',

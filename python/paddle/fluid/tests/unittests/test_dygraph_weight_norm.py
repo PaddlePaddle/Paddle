@@ -49,7 +49,7 @@ class TestDygraphWeightNorm(unittest.TestCase):
         ndims = len(shape)
         shape_numel = reduce(lambda x, y: x * y, shape)
         if dim == -1:
-            return np.linalg.norm(w, axis=None, keepdims=True)
+            return np.linalg.norm(w, axis=None, keepdims=True).flatten()
         elif dim == 0:
             tile_shape = list(w.shape)
             tile_shape[0] = 1
@@ -132,7 +132,10 @@ class TestDygraphWeightNorm(unittest.TestCase):
         expect_output = self.weight_normalize(before_weight, self.dim)
 
         for expect, actual in zip(expect_output, self.actual_outputs):
-            self.assertTrue(np.allclose(np.array(actual), expect, atol=0.001))
+            np.testing.assert_allclose(np.array(actual),
+                                       expect,
+                                       rtol=1e-05,
+                                       atol=0.001)
 
 
 class TestDygraphWeightNormCase1(TestDygraphWeightNorm):

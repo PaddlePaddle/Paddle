@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/analysis/passes/ir_params_sync_among_devices_pass.h"
 
+#include <string>
 #include <unordered_set>
 
 #include "paddle/fluid/framework/data_layout.h"
@@ -113,6 +114,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
     reserve_cpu_weights = true;
   }
 
+  std::unordered_set<std::string> visited;
   for (auto *node : paddle::framework::ir::TopologySortOperations(graph)) {
     if (!node->IsOp()) continue;
     if (node->Op()->Type() == "feed" || node->Op()->Type() == "fetch") continue;
@@ -126,6 +128,8 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
         }
         continue;
       }
+      if (visited.count(var_name)) continue;
+      visited.insert(var_name);
       auto *var = scope->FindLocalVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(var,
                               platform::errors::PreconditionNotMet(

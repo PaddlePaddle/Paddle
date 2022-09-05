@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -44,6 +45,12 @@ void ParseSafeEagerDeletionSkipVars(
     int64_t forward_op_nums,
     const std::vector<std::string>& output_var_names,
     std::vector<std::string>* skip_eager_delete_vars);
+
+void AppendSkipDeletionVars(const std::vector<std::string>& append_vars,
+                            std::set<std::string>* all_vars);
+
+std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
+    const ProgramDesc& backward_program);
 
 }  // namespace details
 
@@ -146,6 +153,74 @@ PEAndGraphPair CreateFixOrderExecutorInfo(const ProgramDesc& program_desc,
                                           int64_t start_op_index,
                                           int64_t end_op_index,
                                           framework::Scope* scope);
+
+class InterpreterCoreInfo {
+ public:
+  struct CacheValue {
+    std::shared_ptr<InterpreterCore> core_{nullptr};
+    std::set<std::string> skip_eager_delete_vars_;
+  };
+
+  bool IsAvailable(bool is_grad) {
+    const auto& core = is_grad ? backward_info_.core_ : forward_info_.core_;
+    return core != nullptr;
+  }
+
+  CacheValue& GetMutable(bool is_grad) {
+    return is_grad ? backward_info_ : forward_info_;
+  }
+
+ private:
+  CacheValue forward_info_;
+  CacheValue backward_info_;
+};
+
+class InterpreterCoreInfoCache {
+ public:
+  static InterpreterCoreInfoCache& Instance();
+
+  bool Has(int64_t program_id, bool is_grad) {
+    return info_map_.find(program_id) != info_map_.end() &&
+           info_map_[program_id].IsAvailable(is_grad);
+  }
+
+  InterpreterCoreInfo::CacheValue& GetMutable(int64_t program_id,
+                                              bool is_grad) {
+    return info_map_[program_id].GetMutable(is_grad);
+  }
+
+  void UpdateSkipEagerDeleteVars(int64_t program_id,
+                                 bool is_grad,
+                                 const std::set<std::string>& skip_vars) {
+    auto& cached_value = GetMutable(program_id, is_grad);
+    cached_value.skip_eager_delete_vars_ = std::move(skip_vars);
+  }
+
+  std::set<std::string>& GetSkipEagerDeleteVars(int64_t program_id,
+                                                bool is_grad) {
+    auto& cached_value = GetMutable(program_id, is_grad);
+    return cached_value.skip_eager_delete_vars_;
+  }
+
+  size_t Size() const { return info_map_.size(); }
+
+  void Finalize() {
+    // NOTE(Aurelius84): DO NOT perform finalize in destructor
+    // to avoid problems caused by destructor order of static
+    // object.
+    info_map_.clear();
+  }
+
+ private:
+  std::unordered_map<int64_t, InterpreterCoreInfo> info_map_;
+};
+
+std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
+    const ProgramDesc& program_desc,
+    const platform::Place& place,
+    bool is_grad,
+    int64_t program_id,
+    framework::Scope* scope);
 
 }  // namespace framework
 }  // namespace paddle
