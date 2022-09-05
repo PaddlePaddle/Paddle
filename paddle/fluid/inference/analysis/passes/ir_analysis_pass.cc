@@ -65,27 +65,28 @@ void IrAnalysisPass::ReadCalibrationInfo(
     Argument* argument,
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales) {
   if (!argument->Has("calibration_file_path")) {
-    LOG(INFO) << "argument has no calibration_file_path";
-    return;
-  }
-  std::ifstream calibration_file(argument->calibration_file_path());
-  std::string one_line;
-  while (getline(calibration_file, one_line)) {
-    if (one_line.find(" ") != one_line.npos) {
-      auto pos = one_line.find(" ");
-      std::string pre_str = one_line.substr(0, pos);
-      std::string pos_str = one_line.substr(pos);
-      if (pre_str.size() && pos_str.size()) {
-        std::string tensor_name = pre_str;
-        float scale = std::stod(pos_str);
-        scale = 1.0 / scale;
-        if (std::isinf(scale) || std::isnan(scale)) {
-          continue;
+    std::ifstream calibration_file(argument->calibration_file_path());
+    std::string one_line;
+    while (getline(calibration_file, one_line)) {
+      if (one_line.find(" ") != one_line.npos) {
+        auto pos = one_line.find(" ");
+        std::string pre_str = one_line.substr(0, pos);
+        std::string pos_str = one_line.substr(pos);
+        if (pre_str.size() && pos_str.size()) {
+          std::string tensor_name = pre_str;
+          float scale = std::stod(pos_str);
+          scale = 1.0 / scale;
+          if (std::isinf(scale) || std::isnan(scale)) {
+            continue;
+          }
+          std::vector<float> scales = {scale};
+          (*var_quant_scales)[tensor_name] = scales;
         }
-        std::vector<float> scales = {scale};
-        (*var_quant_scales)[tensor_name] = scales;
       }
     }
+  } else {
+    LOG(INFO) << "argument has no calibration_file_path";
+    return;
   }
 }
 
