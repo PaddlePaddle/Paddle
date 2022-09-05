@@ -33,7 +33,9 @@ namespace tensorrt {
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {
 #if IS_TRT_VERSION_GE(7130)
+    // use TensorRT plugin
     teller_set.insert("group_norm");
+    teller_set.insert("multiclass_nms3");
 #endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
@@ -275,7 +277,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "c_allreduce_prod",
       "roll",
       "cast",
-      "multiclass_nms3",
       "transformer_input_convert",
       "recover_padding",
       "remove_padding",
@@ -340,9 +341,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     if (!with_dynamic_shape) {
       std::string X_name;
       auto inputs = desc.Inputs();
-      if (inputs.count("X") && !desc.Input("X").empty()) {
+      if (inputs.count("X")) {
         X_name = desc.Input("X")[0];
-      } else if (inputs.count("Input") && !desc.Input("Input").empty()) {
+      } else if (inputs.count("Input")) {
         X_name = desc.Input("Input")[0];
       }
       auto* block = desc.Block();
@@ -819,7 +820,6 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "multiclass_nms" || op_type == "multiclass_nms3") {
-      if (with_dynamic_shape) return false;
       auto* block = desc.Block();
       if (block == nullptr) {
         VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
