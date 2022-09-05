@@ -295,7 +295,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
       }
       if (input_dims.d[1] <= 384 && !bias_qk_attr &&
           engine_->precision() != AnalysisConfig::Precision::kFloat32) {
-        /*
+          /*
            * input_dims.d[0]: batch(-1)
            * input_dims.d[1]: length:256
            * input_dims.d[2]: hidden_size:768
@@ -754,7 +754,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
         }
         plugin::DynamicPluginTensorRT* plugin =
             new plugin::QkvToContextPluginDynamic(
-                hidden_in, head_number, head_size, scale, with_fp16,has_BiasQK_mask);
+                hidden_in, head_number, head_size, scale, with_fp16, has_BiasQK_mask);
         if(!has_BiasQK_mask){
           layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
         } else {

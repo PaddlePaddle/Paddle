@@ -36,17 +36,10 @@ if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND TRT_FILES spmm_plugin.cu)
 endif()
 
-add_library(trt_fused_multi_head_attention STATIC IMPORTED)
-set_target_properties(
-  trt_fused_multi_head_attention
-  PROPERTIES
-  IMPORTED_LOCATION  /home/workplace/swin/paddle_swin_tfplugin/FasterTransformer/build/lib/libtrt_fused_multi_head_attention.a
-)
-
 nv_library(
   tensorrt_plugin
   SRCS ${TRT_FILES}
-  DEPS enforce tensorrt_engine prelu tensor bert_encoder_functor trt_fused_multi_head_attention)
+  DEPS enforce tensorrt_engine prelu tensor bert_encoder_functor fastertransformer_trt_fused_mha)
 
 nv_test(
   test_split_plugin

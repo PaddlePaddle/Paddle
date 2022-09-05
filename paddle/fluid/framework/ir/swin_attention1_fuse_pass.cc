@@ -22,6 +22,12 @@
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES                      \
+  GET_IR_NODE(transpose_i00_op)        \
+  GET_IR_NODE(transpose_i00_out)       \
+  GET_IR_NODE(reshape_i10_op)          \
+  GET_IR_NODE(reshape_i10_out)         \
+  GET_IR_NODE(reshape_i20_op)          \
+  GET_IR_NODE(reshape_i20_out)         \
   GET_IR_NODE(matmul_00_op);           \
   GET_IR_NODE(matmul_00_in_y);         \
   GET_IR_NODE(matmul_00_out);          \
@@ -69,7 +75,7 @@ void SwinAttention1FusePass::ApplyImpl(ir::Graph* graph) const {
   // std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
   PDNode* x = gpd.mutable_pattern()
                   ->NewNode("x")
-                  ->assert_is_op_input("matmul_v2", "X")
+                  ->assert_is_op_input("transpose2", "X")
                   ->AsInput();
   patterns::SwinAttention1Fuse pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x);
@@ -82,7 +88,11 @@ void SwinAttention1FusePass::ApplyImpl(ir::Graph* graph) const {
     // configure new op node
     OpDesc desc(matmul_00_op->Op()->Block());
     desc.SetType("multihead_matmul");
-    desc.SetInput("Input", {subgraph.at(x)->Name()});
+    desc.SetInput("Input", {reshape_i20_out->Name()});
+    //get window num here for swin's window attention
+    std::vector<int64_t> window_num_tranpose_out_shape=transpose_i00_out->Var()->GetShape();
+    int64_t window_num = window_num_tranpose_out_shape[1]*window_num_tranpose_out_shape[2];
+    printf("@@@@ window num :%ld \r\n", window_num);
     auto* weight_qkv_tensor =
         scope->FindVar(matmul_00_in_y->Name())->GetMutable<LoDTensor>();
     auto weight_qkv_dims = phi::make_ddim(
@@ -109,6 +119,7 @@ void SwinAttention1FusePass::ApplyImpl(ir::Graph* graph) const {
     desc.SetInput("W", {matmul_00_in_y->Name()});
     desc.SetInput("Bias", {elementwise_10_in_y->Name()});
     desc.SetInput("BiasQK", {elementwise_70_in_y->Name()});
+    desc.SetAttr("window_num",window_num);
     Node* biaskQK_mask_node = nullptr; 
     if(has_biasQK_mask){
         desc.SetInput("BiasQK_mask",{biasQK_mask_name});
@@ -133,10 +144,10 @@ void SwinAttention1FusePass::ApplyImpl(ir::Graph* graph) const {
         subgraph.count(x),
         0,
         platform::errors::NotFound(
-            "Detector did not find input x of matmul/mutmul_v2."));
+            "Detector did not find input x of tranpose2 for swin attention."));
 
     // link inputs and oupts to the new fused op node
-    IR_NODE_LINK_TO(subgraph.at(x),
+    IR_NODE_LINK_TO(reshape_i20_out,
                     swin_attention1_node);  // input x of matmul/matmul_v2
     IR_NODE_LINK_TO(matmul_00_in_y, swin_attention1_node);       // weight
     IR_NODE_LINK_TO(elementwise_10_in_y, swin_attention1_node);  // Bias

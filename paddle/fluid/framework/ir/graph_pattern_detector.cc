@@ -2360,6 +2360,27 @@ PDNode *patterns::SwinAttentionBiasQkFold::operator()(PDNode *elw_add_in){
 PDNode *patterns::SwinAttention1Fuse::operator()(PDNode *atten1_in){
   atten1_in->AsInput();
   // std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
+  auto transpose_i00_op=pattern->NewNode(transpose_i00_op_repr())
+                               ->assert_is_op("transpose2");
+  auto transpose_i00_out=pattern->NewNode(transpose_i00_out_repr())
+                                ->assert_is_op_output("transpose2","Out")
+                                ->assert_is_op_input("reshape2","X")
+                                ->AsIntermediate();
+  
+  auto reshape_i10_op=pattern->NewNode(reshape_i10_op_repr())
+                             ->assert_is_op("reshape2");
+  auto reshape_i10_out=pattern->NewNode(reshape_i10_out_repr())
+                              ->assert_is_op_output("reshape2","Out")
+                              ->assert_is_op_input("reshape2","X")
+                              ->AsIntermediate();
+  
+  auto reshape_i20_op=pattern->NewNode(reshape_i20_op_repr())
+                             ->assert_is_op("reshape2");
+  auto reshape_i20_out=pattern->NewNode(reshape_i20_out_repr())
+                                 ->assert_is_op_output("reshape2","Out")
+                                 ->assert_is_op_input("matmul_v2","X")
+                                 ->AsIntermediate();
+
   auto matmul_00_op=pattern->NewNode(matmul_00_op_repr())
                            ->assert_is_op("matmul_v2");
   auto matmul_00_in_y=pattern->NewNode(matmul_00_in_y_repr())
@@ -2477,8 +2498,16 @@ PDNode *patterns::SwinAttention1Fuse::operator()(PDNode *atten1_in){
                              ->assert_is_op_output("reshape2","Out")
                              ->assert_is_op_input("matmul_v2","X")
                              ->AsOutput();
+  transpose_i00_op->LinksFrom({atten1_in});
+  transpose_i00_out->LinksFrom({transpose_i00_op});
 
-  matmul_00_op->LinksFrom({atten1_in,matmul_00_in_y});
+  reshape_i10_op->LinksFrom({transpose_i00_out});
+  reshape_i10_out->LinksFrom({reshape_i10_op});
+
+  reshape_i20_op->LinksFrom({reshape_i10_out});
+  reshape_i20_out->LinksFrom({reshape_i20_op});
+
+  matmul_00_op->LinksFrom({reshape_i20_out,matmul_00_in_y});
   matmul_00_out->LinksFrom({matmul_00_op});
 
   elementwise_10_op->LinksFrom({matmul_00_out,elementwise_10_in_y});
@@ -2509,7 +2538,6 @@ PDNode *patterns::SwinAttention1Fuse::operator()(PDNode *atten1_in){
   matmul_60_out->LinksFrom({matmul_60_op});
 
   elementwise_70_op->LinksFrom({matmul_60_out,elementwise_70_in_y});
-  // elementwise_70_op->LinksFrom({matmul_60_out,elementwise_70_in_y,elementwise_70_in_mask});
   
   elementwise_70_out->LinksFrom({elementwise_70_op});
 

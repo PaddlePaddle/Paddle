@@ -32,6 +32,7 @@
 #include "3rdparty/trt_fused_multihead_attention/qkvToContext.h"
 #include "paddle/fluid/operators/transpose_op.cu.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 namespace fastertransformer {
 
 /*******************  invokeTransformMask  ***********************/
@@ -784,7 +785,12 @@ int QkvToContextPluginDynamic::enqueue(
         tptr, output, batch, seq_len, head_number_, head_size_);
 #else //if define TRT_FT_WINDOWS_ATTENTION
     VLOG(1)<<"@@@ use faster transformer trt fused multihead matmul kernel";
-    const int sm = 86; // TODO test for A10, sm is 86
+    const auto device_prop = platform::GetDeviceProperties(device_id);
+    const int sm = device_prop.major * 10 + device_prop.minor; 
+    if(!((sm == 75 || sm == 80 || sm == 86) && head_size_ == 32)){
+      PADDLE_THROW(platform::errors::Fatal(
+        "faster transformer trt fused multihead matmul kernel only support sm = 75/80/86 and head_size = 32"));
+    }
     // printf("@@@ use faster transformer trt fused multihead matmul kernel\r\n");
     auto *device_ctx = static_cast<phi::GPUContext *>(
     platform::DeviceContextPool::Instance().Get(

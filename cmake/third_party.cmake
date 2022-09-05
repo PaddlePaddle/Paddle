@@ -492,4 +492,9 @@ if(WITH_CUSPARSELT)
   list(APPEND third_party_deps extern_cusparselt)
 endif()
 
+if(WITH_TENSORRT)
+  include(external/fastertransformer)
+  list(APPEND third_party_deps extern_fastertransformer)
+endif()
+
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

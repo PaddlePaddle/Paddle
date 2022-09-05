@@ -1406,6 +1406,14 @@ struct SwinAttention1Fuse : public PatternBase{
   SwinAttention1Fuse(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "swin_attention1_fuse") {}
   PDNode* operator()(PDNode* atten1_in);
+  
+  PATTERN_DECL_NODE(transpose_i00_op);
+  PATTERN_DECL_NODE(transpose_i00_out);
+  PATTERN_DECL_NODE(reshape_i10_op);
+  PATTERN_DECL_NODE(reshape_i10_out);
+  PATTERN_DECL_NODE(reshape_i20_op);
+  PATTERN_DECL_NODE(reshape_i20_out);
+
   PATTERN_DECL_NODE(matmul_00_op);
   PATTERN_DECL_NODE(matmul_00_in_y);
   PATTERN_DECL_NODE(matmul_00_out);
@@ -1440,7 +1448,6 @@ struct SwinAttention1Fuse : public PatternBase{
 
   PATTERN_DECL_NODE(elementwise_70_op);
   PATTERN_DECL_NODE(elementwise_70_in_y);
-  // PATTERN_DECL_NODE(elementwise_70_in_mask);
   PATTERN_DECL_NODE(elementwise_70_out);
 
   PATTERN_DECL_NODE(softmax_80_op);
