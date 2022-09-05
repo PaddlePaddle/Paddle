@@ -28,13 +28,5 @@ void SaveKernel(const Context& dev_ctx,
                 bool overwrite,
                 bool save_as_fp16);
 
-template <typename T, typename Context>
-void SaveCombineKernel(const Context& dev_ctx,
-                       const SelectedRows& x,
-                       const std::string& file_path,
-                       bool overwrite,
-                       bool save_as_fp16,
-                       bool save_to_memory);
-
 }  // namespace sr
 }  // namespace phi
