@@ -504,7 +504,7 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
       framework::CeilOrFloor<int, true>(input_dims[2], select_tile_size_j),
   };
 
-  int total_tiles_count =
+  int64_t total_tiles_count =
       input_dims_aligned[0] * input_dims_aligned[1] * input_dims_aligned[2];
 
   // Suppose T can be replaced by system builtin types
@@ -572,7 +572,7 @@ void SendSwapDim1And2InTranspose(const phi::GPUContext& d,
         framework::CeilOrFloor<int, true>(input_dims[2], kTileSize),
     };
 
-    int total_tiles_count =
+    int64_t total_tiles_count =
         input_dims_aligned[0] * input_dims_aligned[1] * input_dims_aligned[2];
 
     TilingSwapDim1And2<T, kNumThreads, kTileSize, kTileSize>
@@ -586,7 +586,7 @@ void SendSwapDim1And2InTranspose(const phi::GPUContext& d,
     SwapDim1And2InNarrow<T>(d, input, input_dims, output, kMinTileSize);
   } else {
     // If input shape is small, such as 8X8, just do simple copy
-    int total_elements = input_dims[0] * input_dims[1] * input_dims[2];
+    int64_t total_elements = input_dims[0] * input_dims[1] * input_dims[2];
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(d, total_elements);
     TransposeSimpleKernel<T, 0, 2, 1>
         <<<config.block_per_grid.x, config.thread_per_block.x, 0, d.stream()>>>(
@@ -652,7 +652,7 @@ inline void CombineTransposeDim3(const framework::DDim& shape,
     return;
   }
   std::vector<int> new_dim_pos(shape.size(), -1);
-  std::vector<int> combined_dims(shape.size(), 0);
+  std::vector<int64_t> combined_dims(shape.size(), 0);
   int cur_head = perm[0];
   new_dim_pos[cur_head] = 0;
   combined_dims[0] = shape[cur_head];
