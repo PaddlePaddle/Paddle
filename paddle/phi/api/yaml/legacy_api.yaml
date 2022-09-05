@@ -1978,10 +1978,10 @@
   backward : pixel_shuffle_grad
 
 - api : pool2d
-  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(out)
   infer_meta :
-    func : PoolInferMeta
+    func : Pool2DInferMeta
   kernel :
     func : pool2d
     use_gpudnn : true
@@ -1989,10 +1989,10 @@
 
 # Used in adaptive_avg_pool2d API
 - api : pool2d_gpudnn_unused
-  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(out)
   infer_meta :
-    func : PoolInferMeta
+    func : Pool2DInferMeta
   kernel :
     func : pool2d
     use_gpudnn : false
@@ -2496,7 +2496,7 @@
   infer_meta :
     func : SpectralNormInferMeta
   kernel :
-    func : spectralnorm
+    func : spectral_norm
     data_type : weight
   backward : spectral_norm_grad
 

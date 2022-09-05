@@ -76,7 +76,7 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
   PADDLE_ENFORCE_EQ(dst_tensor.defined(),
                     true,
                     paddle::platform::errors::InvalidArgument(
-                        "dst_tensor shall be defined."));
+                        "dst_tensor `%s` shall be defined.", name));
 
   if (dst_tensor.is_dense_tensor()) {
     auto &src_tensor = src_var.Get<phi::DenseTensor>();
