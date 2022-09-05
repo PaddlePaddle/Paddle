@@ -756,48 +756,42 @@ __global__ void sum_fidseq_add_grad_kernel(
     int thread_id = ncores * cluster_id() + cid;
     int nthreads = ncores * cluster_num();
 
-    const int buf_size = 64;
-    __local__ GradType local_fidseq_grad[buf_size];
-    __local__ GradType local_fidseq_grad_out[buf_size];
+    __simd__ GradType local_fidseq_grad[1];
+    __simd__ GradType local_fidseq_grad_out[1];
 
-    int len_per_loop =
-        min(buf_size, roundup_div(all_device_fidseq_grad_len, nthreads));
-    int fidseq_grad_len_per_bucket = all_device_fidseq_grad_len / bucket_num;
-
-    for (uint32_t i = thread_id * len_per_loop; i < all_device_fidseq_grad_len;
-            i += nthreads * len_per_loop) {
-        int read_len = min(len_per_loop, all_device_fidseq_grad_len - i);
-
+    for (uint32_t i = thread_id; i < all_device_fidseq_grad_len; i += nthreads) {
         GM2LM(out_fidseq_grad_compress_ptr + i, local_fidseq_grad_out,
-            read_len * sizeof(GradType));
+            sizeof(GradType));
 
-        for (int k = 0; k < read_len; k++) {
-            local_fidseq_grad_out[k].slot = -1;
-            local_fidseq_grad_out[k].show = 0;
-            local_fidseq_grad_out[k].clk = 0;
-            local_fidseq_grad_out[k].lr_g = 0;
-            for (int j = 0; j < MF_DIM; ++j) {
-                local_fidseq_grad_out[k].mf_g[j] = 0;
-            }
-
-            for (int bucket_idx = 0; bucket_idx < bucket_num; bucket_idx++) {
-                GM2LM(all_device_fidseq_grad_ptr + i + bucket_idx * all_device_fidseq_grad_len, local_fidseq_grad,
-                    read_len * sizeof(GradType));
-                if (local_fidseq_grad[k].slot != -1) {
-                    local_fidseq_grad_out[k].slot = local_fidseq_grad[k].slot;
-                    local_fidseq_grad_out[k].show += local_fidseq_grad[k].show;
-                    local_fidseq_grad_out[k].clk += local_fidseq_grad[k].clk;
-                    local_fidseq_grad_out[k].lr_g += local_fidseq_grad[k].lr_g;
-                    for (int l = 0; l < MF_DIM; l++) {
-                        local_fidseq_grad_out[k].mf_g[l] += local_fidseq_grad[k].mf_g[l];
-                    }
-                }
-            }
+        local_fidseq_grad_out[0].slot = -1;
+        local_fidseq_grad_out[0].show = 0;
+        local_fidseq_grad_out[0].clk = 0;
+        local_fidseq_grad_out[0].lr_g = 0;
+        for (int j = 0; j < MF_DIM; ++j) {
+            local_fidseq_grad_out[0].mf_g[j] = 0;
         }
 
         mfence_lm();
-        LM2GM(local_fidseq_grad_out, out_fidseq_grad_compress_ptr + i,
-            read_len * sizeof(GradType));
+        float32x16_t v_grad_out = vload_lm_float32x16_mz(local_fidseq_grad_out);
+        int slot_backup = local_fidseq_grad_out[0].slot;
+
+        for (int bucket_idx = 0; bucket_idx < bucket_num; bucket_idx++) {
+            GM2LM(all_device_fidseq_grad_ptr + i + bucket_idx * all_device_fidseq_grad_len, local_fidseq_grad,
+                sizeof(GradType));
+            if (local_fidseq_grad[0].slot != -1) {
+                slot_backup = local_fidseq_grad[0].slot;
+                float32x16_t v_temp = vload_lm_float32x16_mz(local_fidseq_grad);
+                v_grad_out = vvadd_float32x16(v_grad_out, v_temp);
+                mfence_lm();
+            }
+        }
+
+        vstore_lm_float32x16_mz(local_fidseq_grad_out, v_grad_out);
+        mfence_lm();
+        local_fidseq_grad_out[0].slot = slot_backup;
+
+        mfence_lm();
+        LM2GM(local_fidseq_grad_out, out_fidseq_grad_compress_ptr + i, sizeof(GradType));
     }
 }
 

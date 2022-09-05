@@ -56,7 +56,7 @@ struct FeatureValue {
 };
 
 // If FeaturePushValue struct change, the size of it can't over 64 bytes.
-// Otherwise the merge_grad_kernel in XPUPS will cause fault.
+// Otherwise the merge_grad_kernel, sum_fidseq_add_grad_kernel in XPUPS will cause fault.
 struct FeaturePushValue {
   float show;
   float clk;
