@@ -125,7 +125,7 @@ struct DimensionsTransform {
 
   // To judge whether shape of any input tensors is sequential
   // 1-value-dimensions, and metric the length of it.
-  int GetSequentialOneDimLength(int *swap_index) {
+  bool FindSequentialOneDim(int *swap_index) {
     int index = 0;
     int max_one_length = 0;
     for (int j = 0; j < N; ++j) {
@@ -144,16 +144,16 @@ struct DimensionsTransform {
           }
         }
       }
-      max_one_length =
-          seq_one_length > max_one_length ? seq_one_length : max_one_length;
       index = seq_one_length > max_one_length ? j : index;
+      max_one_length = std::max(seq_one_length, max_one_length);
     }
 
-    if (max_one_length > 1) {
+    bool has_seq_one = max_one_length > 1;
+    if (has_seq_one) {
       std::swap(in_dims[0], in_dims[index]);
       *swap_index = index;
     }
-    return max_one_length;
+    return has_seq_one;
   }
 
  public:
@@ -214,8 +214,8 @@ struct DimensionsTransform {
       }
     };
     int swap_idx = 0;
-    int max_one_length = GetSequentialOneDimLength(&swap_idx);
-    if (max_one_length > 1) {
+    bool has_seq_one = FindSequentialOneDim(&swap_idx);
+    if (has_seq_one) {
       merge_ptr = merge_sequential_one_dims;
       MergeDimensions<MergeFunctor>(merge_ptr, N);
       std::swap(in_dims[swap_idx], in_dims[0]);
@@ -295,7 +295,7 @@ __device__ void VectorizedBroadcastKernelImpl(
   __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
 
 #pragma unroll
-  for (int i = 0; i < Arity; i++) {
+  for (int i = 0; i < Arity; ++i) {
     kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f), read_lens);
     LoadData<InT, VecSize, IsBoundary>(args[i],
                                        ins[i],
@@ -433,7 +433,7 @@ void LaunchBroadcastKernel(
     outs_data[i] = (_ptr_ OutT *)(ctx.Alloc<OutT>((*outs)[i]));
   }
 
-  for (int i = 0; i < Arity; i++) {
+  for (int i = 0; i < Arity; ++i) {
     use_broadcast[i] = (ins[i]->numel() != numel);
     ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
   }
