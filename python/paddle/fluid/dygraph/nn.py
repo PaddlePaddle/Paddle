@@ -886,6 +886,13 @@ class Pool2D(layers.Layer):
 
     def forward(self, input):
         if _non_static_mode():
+            if not self._use_mkldnn and in_dygraph_mode():
+                return _C_ops.pool2d(input, self._pool_size, self._pool_stride,
+                                     self._pool_padding, self._ceil_mode,
+                                     self._exclusive, self._data_format,
+                                     self._pool_type, self._global_pooling,
+                                     False, "EXPLICIT", self._use_cudnn)
+
             attrs = ('pooling_type', self._pool_type, 'ksize', self._pool_size,
                      'global_pooling', self._global_pooling, 'strides',
                      self._pool_stride, 'paddings', self._pool_padding,
@@ -2418,6 +2425,9 @@ class PRelu(layers.Layer):
                                             default_initializer=Constant(1.0))
 
     def forward(self, input):
+        if in_dygraph_mode():
+            return _C_ops.prelu(input, self.weight, "NCHW", self._mode)
+
         check_variable_and_dtype(input, 'input', ['float32'], 'PRelu')
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(type="prelu",
@@ -3163,6 +3173,10 @@ class SpectralNorm(layers.Layer):
         self.weight_v.stop_gradient = True
 
     def forward(self, weight):
+        if in_dygraph_mode():
+            return _C_ops.spectral_norm(weight, self.weight_u, self.weight_v,
+                                        self._dim, self._power_iters, self._eps)
+
         check_variable_and_dtype(weight, "weight", ['float32', 'float64'],
                                  'SpectralNorm')
         inputs = {'Weight': weight, 'U': self.weight_u, 'V': self.weight_v}

@@ -1257,6 +1257,17 @@
     func : increment
   inplace : (x -> out)
 
+- api : index_add
+  args : (Tensor x, Tensor index,  Tensor add_value, int axis)
+  output : Tensor(out)
+  infer_meta :
+    func : IndexAddInferMeta
+  kernel :
+    func : index_add
+    data_type : x
+  inplace : (x -> out)
+  backward : index_add_grad
+
 - api : index_sample
   args : (Tensor x, Tensor index)
   output : Tensor
@@ -1967,34 +1978,27 @@
   backward : pixel_shuffle_grad
 
 - api : pool2d
-  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, bool use_gpudnn)
   output : Tensor(out)
   infer_meta :
-    func : PoolInferMeta
+    func : Pool2DInferMeta
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   kernel :
     func : pool2d
-    use_gpudnn : true
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+    use_gpudnn : use_gpudnn
   backward : pool2d_grad
 
-# Used in adaptive_avg_pool2d API
-- api : pool2d_gpudnn_unused
-  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
-  output : Tensor(out)
-  infer_meta :
-    func : PoolInferMeta
-  kernel :
-    func : pool2d
-    use_gpudnn : false
-  backward : pool2d_grad_gpudnn_unused
-
 - api : pool3d
-  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, bool use_gpudnn)
   output : Tensor(out)
   infer_meta :
     func : PoolInferMeta
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   kernel :
     func : pool3d
-    use_gpudnn : true
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+    use_gpudnn : use_gpudnn
   backward : pool3d_grad
 
 - api : pow
@@ -2485,15 +2489,27 @@
   infer_meta :
     func : SpectralNormInferMeta
   kernel :
-    func : spectralnorm
+    func : spectral_norm
     data_type : weight
   backward : spectral_norm_grad
 
 - api : split
-  args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)
-  output : Tensor[]
-  invoke : split_impl(x, num_or_sections, axis)
+  args : (Tensor x, IntArray sections, Scalar(int) axis)
+  output : Tensor[]{sections.size()}
+  infer_meta :
+    func : SplitInferMeta
+  kernel :
+    func : split
   backward : split_grad
+
+- api : split_with_num
+  args : (Tensor x, int num, Scalar(int) axis)
+  output : Tensor[]{num}
+  infer_meta :
+    func : SplitWithNumInferMeta
+  kernel :
+    func : split_with_num
+  backward : split_with_num_grad
 
 - api : sqrt
   args : (Tensor x)
@@ -2949,7 +2965,7 @@
   backward: uniform_random_inplace_grad
 
 - api: unpool
-  args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, int[] output_size, str data_format)
+  args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, IntArray output_size, str data_format)
   output: Tensor(out)
   infer_meta:
     func: UnpoolInferMeta

@@ -56,18 +56,29 @@ def restruct_io(api):
 
 # replace name of op and params for OpMaker
 def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
+
+    def get_api_and_op_name(api_item):
+        names = api_item.split('(')
+        if len(names) == 1:
+            return names[0].strip(), names[0].strip()
+        else:
+            return names[0].strip(), names[1].split(')')[0].strip()
+
     for api_args in api_op_map:
-        if api_args['api'] not in forward_api_dict:
+        api_name, op_name = get_api_and_op_name(api_args['api'])
+        if api_name not in forward_api_dict:
             continue
-        forward_api_item = forward_api_dict[api_args['api']]
+        forward_api_item = forward_api_dict[api_name]
         has_backward = True if forward_api_item['backward'] else False
         if has_backward:
             backward_api_item = backward_api_dict[forward_api_item['backward']]
-        if 'op_name' in api_args:
-            forward_api_item['op_name'] = api_args['op_name']
-        if 'grad_op_name' in api_args and has_backward:
-            forward_api_item['backward'] = api_args['grad_op_name']
-            backward_api_item['op_name'] = api_args['grad_op_name']
+        if api_name != op_name:
+            forward_api_item['op_name'] = op_name
+        if 'backward' in api_args and has_backward:
+            bw_api_name, bw_op_name = get_api_and_op_name(
+                api_args['backward'].split(',')[0])
+            forward_api_item['backward'] = bw_op_name
+            backward_api_item['op_name'] = bw_op_name
 
         key_set = ['inputs', 'attrs', 'outputs']
         args_map = {}

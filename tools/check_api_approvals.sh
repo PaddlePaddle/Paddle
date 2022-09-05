@@ -85,8 +85,8 @@ op_desc_diff=`python ${PADDLE_ROOT}/tools/check_op_desc.py ${PADDLE_ROOT}/paddle
 inference_approve=`echo "$op_desc_diff" | grep "need inference to review" -`
 slim_approve=`echo "$op_desc_diff" | grep "need slim to review" -`
 if [ "$op_desc_diff" != "" ]; then
-    echo_line="You must have one RD (inference[ Superjomn(Recommend), Shixiaowei02, cyj1986 ] or slim[ wanghaoshuang(Recommend), qingqing01 ]) approval for the changes of Inputs/Output/Attrs of OPs. The changes of OPs will cause that the new version inference fails to load model trained by the old version. Please modify your code. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${op_desc_diff}\n"
-    check_approval 1 39645414 328693 39303645 7534971 7845005
+    echo_line="You must have one RD (inference[ qingqing01(Recommend), jiweibo, cyj1986 ] or slim[ wanghaoshuang(Recommend), qingqing01 ] or train[ chenwhql(Recommend), phlrain ]) approval for the changes of Inputs/Output/Attrs of OPs. The changes of OPs will cause that the new version inference fails to load model trained by the old version. Please modify your code. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${op_desc_diff}\n"
+    check_approval 1 39645414 7534971 7845005 22561442 43953930 26377421
 fi
 
 if [ "$slim_approve" != "" ]; then
