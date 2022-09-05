@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/sparse/binary.h"
 #include "paddle/phi/infermeta/sparse/unary.h"
 
 namespace paddle {
@@ -67,6 +68,76 @@ DECLARE_INFER_SHAPE_FUNCTOR(values_coo,
                             ValuesCooInferShapeFunctor,
                             PD_INFER_META(phi::sparse::UnchangedInferMeta));
 
+class CooToDenseOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of values_coo op.");
+    AddOutput("Out", "(Tensor), output 0 of values_coo op.");
+    AddComment(R"DOC(
+TODO: Documentation of values_coo op.
+)DOC");
+  }
+};
+
+class CooToDenseOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(coo_to_dense,
+                            CooToDenseInferShapeFunctor,
+                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+
+class ReluCooOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of relu_coo op.");
+    AddOutput("Out", "(Tensor), output 0 of relu_coo op.");
+    AddComment(R"DOC(
+TODO: Documentation of relu_coo op.
+)DOC");
+  }
+};
+
+class ReluCooOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(relu_coo,
+                            ReluCooInferShapeFunctor,
+                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+
+class Conv3dCooOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of conv3d_coo op.");
+    AddInput("Kernel", "(Tensor), input 1 of conv3d_coo op.");
+    AddOutput("Out", "(Tensor), output 0 of conv3d_coo op.");
+    AddAttr<std::vector<int>>("paddings",
+                              "(vector<int>), attribute 0 for conv3d_coo op.");
+    AddAttr<std::vector<int>>("dilations",
+                              "(vector<int>), attribute 1 for conv3d_coo op.");
+    AddAttr<std::vector<int>>("strides",
+                              "(vector<int>), attribute 2 for conv3d_coo op.");
+    AddAttr<int>("groups", "(int), attribute 3 for conv3d_coo op.");
+    AddAttr<bool>("subm", "(bool), attribute 4 for conv3d_coo op.");
+    AddAttr<std::string>("key", "(string), attribute 5 for conv3d_coo op.");
+    AddComment(R"DOC(
+TODO: Documentation of conv3d_coo op.
+)DOC");
+  }
+};
+
+class Conv3dCooOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(conv3d_coo,
+                            Conv3dCooInferShapeFunctor,
+                            PD_INFER_META(phi::sparse::Conv3dInferMeta));
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -85,3 +156,24 @@ REGISTER_OPERATOR(values_coo,
                   // ops::TraceGradOpMaker<paddle::framework::OpDesc>,
                   // ops::TraceGradOpMaker<paddle::imperative::OpBase>,
                   ops::ValuesCooInferShapeFunctor);
+
+REGISTER_OPERATOR(coo_to_dense,
+                  ops::CooToDenseOp,
+                  ops::CooToDenseOpMaker,
+                  // ops::TraceGradOpMaker<paddle::framework::OpDesc>,
+                  // ops::TraceGradOpMaker<paddle::imperative::OpBase>,
+                  ops::CooToDenseInferShapeFunctor);
+
+REGISTER_OPERATOR(relu_coo,
+                  ops::ReluCooOp,
+                  ops::ReluCooOpMaker,
+                  // ops::TraceGradOpMaker<paddle::framework::OpDesc>,
+                  // ops::TraceGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ReluCooInferShapeFunctor);
+
+REGISTER_OPERATOR(conv3d_coo,
+                  ops::Conv3dCooOp,
+                  ops::Conv3dCooOpMaker,
+                  // ops::TraceGradOpMaker<paddle::framework::OpDesc>,
+                  // ops::TraceGradOpMaker<paddle::imperative::OpBase>,
+                  ops::Conv3dCooInferShapeFunctor);

@@ -381,6 +381,15 @@ def monkey_patch_variable():
                         attrs={})
         return out
 
+    def to_dense(var):
+        block = current_block(var)
+        out = create_new_tmp_var(block, var.dtype)
+        block.append_op(type="coo_to_dense",
+                        inputs={"X": [var]},
+                        outputs={"Out": [out]},
+                        attrs={})
+        return out
+
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 
         __impl__.__doc__ = """
@@ -446,6 +455,7 @@ def monkey_patch_variable():
         ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
         ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
         ('values', values),
+        ('to_dense', to_dense),
     ]
 
     global _already_patch_variable

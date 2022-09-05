@@ -481,6 +481,7 @@ class TestStatic(unittest.TestCase):
                                     dtype='float32')
         shape = [2, 4]
         out = sparse.sparse_coo_tensor(indices, values, shape)
+        out = out.to_dense()
 
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
 
@@ -492,8 +493,7 @@ class TestStatic(unittest.TestCase):
             'values': values_data
         },
                         fetch_list=[out],
-                        return_numpy=False)
-        print(out)
+                        return_numpy=True)
         paddle.disable_static()
 
 

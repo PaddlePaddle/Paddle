@@ -20,7 +20,9 @@ namespace phi {
 namespace sparse {
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->share_meta(x);
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
 }  // namespace sparse

@@ -26,6 +26,14 @@ KernelSignature ValuesCooOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("values_coo", {"X"}, {}, {"Out"});
 }
 
+KernelSignature CooToDenseOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("coo_to_dense", {"X"}, {}, {"Out"});
+}
+
+KernelSignature ReluCooOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("relu_coo", {"X"}, {}, {"Out"});
+}
+
 KernelSignature Conv3dCooOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "conv3d_coo",
@@ -40,5 +48,9 @@ PD_REGISTER_ARG_MAPPING_FN(sparse_coo_tensor,
                            phi::SparseCooTensorOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(values_coo, phi::ValuesCooOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(coo_to_dense, phi::CooToDenseOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(relu_coo, phi::ReluCooOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(conv3d_coo, phi::Conv3dCooOpArgumentMapping);
