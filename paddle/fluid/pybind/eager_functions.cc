@@ -537,7 +537,7 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self,
   autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
   if (!autograd_meta->GetMutableGradNode()) {
     VLOG(3) << "Tensor(" << name
-            << ") have not GradNode, add GradNodeAccumulation for it.";
+            << ") doesn't have GradNode, add GradNodeAccumulation to it.";
     autograd_meta->SetGradNode(
         std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
   }
