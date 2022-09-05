@@ -15,11 +15,11 @@
 #include "paddle/phi/kernels/activation_grad_kernel.h"
 
 #include "paddle/phi/backends/onednn/onednn_context.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
-#include "paddle/phi/kernels/funcs/onednn/onednn_reuse.h"
 
 namespace phi {
 

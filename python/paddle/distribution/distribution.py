@@ -30,7 +30,7 @@ from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid.data_feeder import (check_dtype, check_type,
                                       check_variable_and_dtype, convert_dtype)
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
                                  elementwise_mul, elementwise_sub, nn, ops,
                                  tensor)
@@ -221,8 +221,11 @@ class Distribution(object):
                 warnings.warn(
                     "dtype of input 'value' needs to be the same as parameters of distribution class. dtype of 'value' will be converted."
                 )
-                return _legacy_C_ops.cast(value, 'in_dtype', value.dtype,
-                                          'out_dtype', param.dtype)
+                if in_dygraph_mode():
+                    return _C_ops.cast(value, param.dtype)
+                if _in_legacy_dygraph():
+                    return _legacy_C_ops.cast(value, 'in_dtype', value.dtype,
+                                              'out_dtype', param.dtype)
             return value
 
         check_variable_and_dtype(value, 'value', ['float32', 'float64'],

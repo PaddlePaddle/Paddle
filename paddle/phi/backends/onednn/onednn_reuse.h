@@ -22,12 +22,12 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
-#include "paddle/phi/kernels/funcs/onednn/onednn_helper.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 
 namespace phi {

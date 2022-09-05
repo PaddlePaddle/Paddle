@@ -1018,6 +1018,13 @@ void OpDesc::CheckAttrs() {
   }
   VLOG(10) << "begin to check attribute of " << Type();
   checker->Check(&attrs_);
+  const auto &extra_attr_checkers =
+      operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(Type());
+  if (!extra_attr_checkers.empty()) {
+    for (const auto &extra_checker : extra_attr_checkers) {
+      extra_checker(&runtime_attrs_, false);
+    }
+  }
 }
 
 void OpDesc::InferShape(const BlockDesc &block) {
