@@ -1068,7 +1068,6 @@ set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
 set_tests_properties(test_elementwise_sub_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_row_conv_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_az PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_distributed_fused_lamb_op_with_clip PROPERTIES TIMEOUT
