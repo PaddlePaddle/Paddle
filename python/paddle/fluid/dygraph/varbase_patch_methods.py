@@ -923,12 +923,7 @@ def monkey_patch_varbase():
                     print(sparse_x.values())
                     #[1, 2, 3, 4, 5]
         """
-
-        if self.is_sparse_coo() or self.is_sparse_csr():
-            return _C_ops.sparse_values(self)
-        else:
-            raise ValueError(
-                "only SparseCooTensor and SparseCsrTensor have method values")
+        return _C_ops.sparse_values(self)
 
     @framework.dygraph_only
     def to_dense(self):
@@ -956,7 +951,7 @@ def monkey_patch_varbase():
                     # [4., 5., 0., 0.]]
         """
 
-        return _C_ops.to_dense(self)
+        return _C_ops.sparse_to_dense(self)
 
     @framework.dygraph_only
     def to_sparse_coo(self, sparse_dim):
@@ -982,7 +977,7 @@ def monkey_patch_varbase():
                     #values=[1., 2., 3., 4.]
         """
 
-        return _C_ops.to_sparse_coo(self, sparse_dim)
+        return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
     if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return

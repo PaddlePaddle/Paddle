@@ -281,11 +281,11 @@
     func : coo_to_dense { sparse_coo -> dense }
 
 - backward_api : values_grad
-  forward : coo_values(Tensor x) -> Tensor(out)
+  forward : values_coo(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   kernel :
-    func : coo_values_grad{sparse_coo, dense-> sparse_coo}
+    func : values_coo_grad{sparse_coo, dense-> sparse_coo}
 
 - backward_api: fused_attention_grad
   forward : fused_attention_csr(Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask) -> Tensor(out), Tensor(softmax)
