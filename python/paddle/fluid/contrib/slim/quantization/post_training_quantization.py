@@ -18,7 +18,6 @@ import math
 import shutil
 import logging
 import numpy as np
-import paddle.fluid as fluid
 
 try:
     from tqdm import tqdm
@@ -27,6 +26,7 @@ except:
 from inspect import isgeneratorfunction
 from .... import io
 from .... import core
+from .... import reader
 from .... import framework
 from .... import unique_name
 from ....executor import global_scope, Executor
@@ -295,7 +295,7 @@ class PostTrainingQuantization(object):
             batch_generator, data_loader]), "The sample_generator, batch_generator " \
             "and data_loader cannot be None in the same time."
         if data_loader is not None:
-            assert isinstance(data_loader, (io.DataLoader, type(isgeneratorfunction), fluid.reader.GeneratorLoader)), \
+            assert isinstance(data_loader, (io.DataLoader, type(isgeneratorfunction), reader.GeneratorLoader)), \
                 "data_loader only accepts `paddle.io.DataLoader` or Generator instance."
         assert batch_size > 0, "The batch_size should be greater than 0."
         assert algo in self._support_algo_type, \
