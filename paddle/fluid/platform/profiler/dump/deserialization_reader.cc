@@ -140,9 +140,10 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
   }
   ProfilerResult* profiler_result_ptr =
       new ProfilerResult(std::move(tree), extrainfo, device_property_map);
-#endif
+#else
   ProfilerResult* profiler_result_ptr =
       new ProfilerResult(std::move(tree), extrainfo);
+#endif
   // restore version and span indx
   profiler_result_ptr->SetVersion(node_trees_proto_->version());
   profiler_result_ptr->SetSpanIndx(node_trees_proto_->span_indx());
