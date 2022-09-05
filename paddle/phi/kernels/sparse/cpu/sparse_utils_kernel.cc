@@ -384,7 +384,7 @@ PD_REGISTER_KERNEL(coo_to_dense,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(sparse_csr_to_dense,
+PD_REGISTER_KERNEL(csr_to_dense,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::CsrToDenseKernel,
