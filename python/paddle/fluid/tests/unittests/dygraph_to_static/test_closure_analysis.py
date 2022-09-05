@@ -39,6 +39,19 @@ class JudgeVisitor(gast.NodeVisitor):
         self.generic_visit(node)
 
 
+class JudgePushPopVisitor(gast.NodeVisitor):
+
+    def __init__(self, push_pop_vars):
+        self.pp_var = push_pop_vars
+
+    def visit_FunctionDef(self, node):
+        scope = node.pd_scope
+        expected = self.pp_var.get(node.name, set())
+        assert scope.push_pop_vars == expected, "Not Equals in function:{} . expect {} , but get {}".format(
+            node.name, expected, scope.push_pop_vars)
+        self.generic_visit(node)
+
+
 def test_normal_0(x):
 
     def func():
@@ -88,9 +101,67 @@ def test_nonlocal(x, *args, **kargs):
     return x
 
 
+def test_push_pop_1(x, *args, **kargs):
+    """ push_pop_vars in main_function is : `l`, `k`
+    """
+    l = []
+    k = []
+    for i in range(10):
+        l.append(i)
+        k.pop(i)
+    return l
+
+
+def test_push_pop_2(x, *args, **kargs):
+    """ push_pop_vars in main_function is : `k`
+    """
+    l = []
+    k = []
+
+    def func():
+        l.append(0)
+
+    for i in range(10):
+        k.append(i)
+    return l, k
+
+
+def test_push_pop_3(x, *args, **kargs):
+    """ push_pop_vars in main_function is : `k`
+        NOTE: One may expect `k` and `l` because l
+              is nonlocal. Name bind analysis is 
+              not implemented yet.
+    """
+    l = []
+    k = []
+
+    def func():
+        nonlocal l
+        l.append(0)
+
+    for i in range(10):
+        k.append(i)
+    return l, k
+
+
+def test_push_pop_4(x, *args, **kargs):
+    """ push_pop_vars in main_function is : `k`
+    """
+    l = []
+    k = []
+    for i in range(10):
+        for j in range(10):
+            if True:
+                l.append(j)
+            else:
+                k.pop()
+    return l, k
+
+
 class TestClosureAnalysis(unittest.TestCase):
 
     def setUp(self):
+        self.judge_type = "var and w_vars"
         self.init_dygraph_func()
 
     def init_dygraph_func(self):
@@ -132,12 +203,20 @@ class TestClosureAnalysis(unittest.TestCase):
         ]
 
     def test_main(self):
-        for mod, ans, func in zip(self.modified_var, self.answer,
-                                  self.all_dygraph_funcs):
-            test_func = inspect.getsource(func)
-            gast_root = gast.parse(test_func)
-            name_visitor = FunctionNameLivenessAnalysis(gast_root)
-            JudgeVisitor(ans, mod).visit(gast_root)
+        if self.judge_type == 'push_pop_vars':
+            for push_pop_vars, func in zip(self.push_pop_vars,
+                                           self.all_dygraph_funcs):
+                test_func = inspect.getsource(func)
+                gast_root = gast.parse(test_func)
+                name_visitor = FunctionNameLivenessAnalysis(gast_root)
+                JudgePushPopVisitor(push_pop_vars).visit(gast_root)
+        else:
+            for mod, ans, func in zip(self.modified_var, self.answer,
+                                      self.all_dygraph_funcs):
+                test_func = inspect.getsource(func)
+                gast_root = gast.parse(test_func)
+                name_visitor = FunctionNameLivenessAnalysis(gast_root)
+                JudgeVisitor(ans, mod).visit(gast_root)
 
 
 def TestClosureAnalysis_Attribute_func():
@@ -155,6 +234,26 @@ class TestClosureAnalysis_Attribute(TestClosureAnalysis):
         self.modified_var = [{
             "TestClosureAnalysis_Attribute_func":
             set({'i', 'self.current.function'})
+        }]
+
+
+class TestClosureAnalysis_PushPop(TestClosureAnalysis):
+
+    def init_dygraph_func(self):
+        self.judge_type = "push_pop_vars"
+        self.all_dygraph_funcs = [
+            test_push_pop_1, test_push_pop_2, test_push_pop_3, test_push_pop_4
+        ]
+        self.push_pop_vars = [{
+            "test_push_pop_1": set({'l', 'k'}),
+        }, {
+            "test_push_pop_2": set({'k'}),
+            "func": set("l"),
+        }, {
+            "test_push_pop_3": set({'k'}),
+            "func": set("l"),
+        }, {
+            "test_push_pop_4": set({'k', 'l'}),
         }]
 
 

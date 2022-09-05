@@ -139,7 +139,13 @@ endif()
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
-  DEPS ddim mixed_vector place tensor framework_proto version)
+  DEPS ddim
+       mixed_vector
+       place
+       tensor
+       framework_proto
+       version
+       serialization)
 
 cc_test(
   lod_tensor_test
@@ -188,6 +194,13 @@ cc_library(
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
+
+# every source file that includes "dnnl.h" must depends on mkldnn
+# or, the first one should depends on mkldnn
+if(WITH_MKLDNN)
+  add_dependencies(var_type_traits mkldnn)
+endif()
+
 cc_test(
   var_type_traits_test
   SRCS var_type_traits_test.cc
@@ -1071,7 +1084,7 @@ cc_test(
 cc_library(
   selected_rows_utils
   SRCS selected_rows_utils.cc
-  DEPS selected_rows)
+  DEPS selected_rows serialization)
 cc_test(
   selected_rows_utils_test
   SRCS selected_rows_utils_test.cc
@@ -1201,6 +1214,13 @@ else()
     SRCS convert_utils.cc
     DEPS data_type place)
 endif()
+
+# every source file that includes "dnnl.h" must depends on mkldnn
+# or, the first one should depends on mkldnn
+if(WITH_MKLDNN)
+  add_dependencies(fluid_convert_utils mkldnn)
+endif()
+
 cc_test(
   convert_utils_test
   SRCS convert_utils_test.cc

@@ -738,7 +738,7 @@ class BatchNorm1D(_BatchNormBase):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as weight_attr. If it is set to Fasle, the weight is not learnable.
-            If the Initializer of the weight_attr is not set, the parameter is initialized with Xavier. Default: None.
+            If the Initializer of the weight_attr is not set, the parameter is initialized with ones. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
@@ -841,7 +841,7 @@ class BatchNorm2D(_BatchNormBase):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as weight_attr. If it is set to Fasle, the weight is not learnable.
-            If the Initializer of the weight_attr is not set, the parameter is initialized with Xavier. Default: None.
+            If the Initializer of the weight_attr is not set, the parameter is initialized with ones. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
@@ -929,7 +929,7 @@ class BatchNorm3D(_BatchNormBase):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as weight_attr. If it is set to Fasle, the weight is not learnable.
-            If the Initializer of the weight_attr is not set, the parameter is initialized with Xavier. Default: None.
+            If the Initializer of the weight_attr is not set, the parameter is initialized with ones. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
@@ -1047,7 +1047,7 @@ class SyncBatchNorm(_BatchNormBase):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of this layer. If it is set to None or one attribute of ParamAttr, this layerr
              will create ParamAttr as param_attr. If the Initializer of the param_attr
-             is not set, the parameter is initialized with Xavier. If it is set to False, 
+             is not set, the parameter is initialized with ones. If it is set to False, 
              this layer will not have trainable scale parameter. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of this layer.
              If it is set to None or one attribute of ParamAttr, this layer

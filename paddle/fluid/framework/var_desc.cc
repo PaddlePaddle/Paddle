@@ -342,15 +342,25 @@ std::vector<std::string> VarDesc::AttrNames() const {
 void VarDesc::RemoveAttr(const std::string &name) { attrs_.erase(name); }
 
 void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
+  // NOTICE(sandyhouse): pybind11 will take the empty list in python as
+  // the std::vector<int> type in C++; so we have to change the attr's type
+  // here if we meet this issue
   proto::AttrType attr_type = static_cast<proto::AttrType>(v.index() - 1);
-  bool valid = attr_type == proto::AttrType::LONG ||
-               attr_type == proto::AttrType::STRING;
-  PADDLE_ENFORCE_EQ(
-      valid,
-      true,
-      platform::errors::InvalidArgument("The value for attr (%s) must be "
-                                        "one of list or int or string.",
-                                        name));
+  if (attr_type == proto::AttrType::INTS &&
+      PADDLE_GET_CONST(std::vector<int>, v).size() == 0u) {
+    // Find current attr via attr name and set the correct attribute value
+    this->attrs_[name] = std::vector<int>();
+    return;
+  }
+  bool valid = attr_type == proto::AttrType::INT ||
+               attr_type == proto::AttrType::STRING ||
+               attr_type == proto::AttrType::INTS;
+  PADDLE_ENFORCE_EQ(valid,
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The value for attr (%s) must be "
+                        "one of int, string, list of int for now.",
+                        name));
 
   this->attrs_[name] = v;
   need_updated_ = true;
@@ -372,9 +382,11 @@ struct SetVarAttrDescVisitor {
   template <typename T>
   void operator()(T &&v) {
     using U = std::decay_t<decltype(v)>;
-    if (std::is_same<U, int64_t>::value) {
+    if (std::is_same<U, int>::value) {
       set_attr_value(v);
     } else if (std::is_same<U, std::string>::value) {
+      set_attr_value(v);
+    } else if (std::is_same<U, std::vector<int>>::value) {
       set_attr_value(v);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
@@ -386,9 +398,13 @@ struct SetVarAttrDescVisitor {
   template <typename U>
   void set_attr_value(U v);
 
-  void set_attr_value(int64_t v) { attr_->set_l(v); }
+  void set_attr_value(int v) { attr_->set_i(v); }
 
   void set_attr_value(const std::string &v) { attr_->set_s(v); }
+
+  void set_attr_value(const std::vector<int> &v) {
+    VectorToRepeated(v, attr_->mutable_ints());
+  }
 };
 
 // Only need to flush the attrs for auto parallel for now

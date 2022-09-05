@@ -19,6 +19,9 @@ from paddle.fluid.framework import Program, default_main_program, program_guard,
 import paddle
 import paddle.fluid.layers as layers
 import paddle.fluid as fluid
+import numpy as np
+
+paddle.enable_static()
 
 main_program = default_main_program()
 
@@ -230,15 +233,14 @@ class TestProgramProto(unittest.TestCase):
         b = program.desc.serialize_to_string()
         self.assertFalse(a == b)
 
-    # it seems the attrs of framework::VarDesc is not write to proto,
-    # except for persistable/need_check_feed/is_parameter/stop_gradient
     def test_update_var_attr(self):
         program = build_program()
         a = program.desc.serialize_to_string()
+        # Only int, string or list of int can be accepted by _set_attr
         program.current_block().var("x").desc._set_attr("a", 1)
-        self.assertFalse(program.desc.need_update())
+        self.assertTrue(program.desc.need_update())
         b = program.desc.serialize_to_string()
-        self.assertTrue(a == b)  # not affected
+        self.assertFalse(a == b)  # not affected
 
 
 class TestProgramHash(unittest.TestCase):
