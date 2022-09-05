@@ -87,6 +87,12 @@ class Parallelizer:
             self._logger.info(
                 "within parallel optimizer time: {}, mode {}".format(
                     time.time() - time0, self._mode))
+
+            # config = {}
+            # config["dist_context"] = self._dist_context
+            # allreduce_pass = new_pass("auto_parallel_allreduce_sum", config)
+            # allreduce_pass.apply([dist_main_prog], [dist_startup_prog], self._pass_context)
+
             # Do reshard process
             time0 = time.time()
             set_grad_var_shape(dist_main_prog, self._dist_context)
@@ -235,8 +241,7 @@ class Parallelizer:
             auto_parallel_sharding_pass.apply([main_program], [startup_program],
                                               self._pass_context)
 
-        # GradClip is train-only optimization
-
+        # GradClip is the train-only optimization
         if self._mode == "train":
             config = copy.deepcopy(self._strategy.sharding_configs)
             config["dist_context"] = self._dist_context
@@ -247,7 +252,7 @@ class Parallelizer:
             auto_parallel_clip_pass.apply([main_program], [startup_program],
                                           self._pass_context)
 
-        # gradient_merge is then train-only optimization
+        # gradient_merge is the train-only optimization
         if self._mode == "train" and self._strategy.gradient_merge:
             config = copy.deepcopy(self._strategy.gradient_merge_configs)
             config["dist_context"] = self._dist_context

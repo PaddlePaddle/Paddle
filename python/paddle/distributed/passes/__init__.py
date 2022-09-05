@@ -22,6 +22,7 @@ from .auto_parallel_recompute import *
 from .auto_parallel_quantization import *
 from .auto_parallel_data_parallel_optimization import *
 from .auto_parallel_grad_clip import *
+from .auto_parallel_allreduce_sum import *
 from .cpp_pass import *
 import os
 from .ps_trainer_pass import *

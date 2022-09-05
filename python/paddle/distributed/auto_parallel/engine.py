@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import time
+import random
+import numpy as np
 import copy
 import logging
 from collections import defaultdict
@@ -110,7 +112,8 @@ class Engine:
                 loss=None,
                 gradient_scale=True,
                 metrics=None,
-                all_ranks=False):
+                all_ranks=False,
+                seed=None):
         if optimizer and not isinstance(
                 optimizer,
             (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
@@ -136,6 +139,7 @@ class Engine:
         self._metrics = to_list(metrics)
         self._gradient_scale = gradient_scale
         self._planned_mode = None
+        self._seed = seed
         self._prepare_single_mode("train")
 
     def _prepare_single_mode(self, mode):
@@ -150,6 +154,12 @@ class Engine:
 
         # Do the parallel process
         self._parallel(mode, self._all_ranks)
+
+        if self._seed:
+            print("!!!!!!!!!", self.dp_ranks[0])
+            random.seed(self._seed + self.dp_ranks[0])
+            np.random.seed(self._seed + self.dp_ranks[0])
+            paddle.seed(self._seed + self.dp_ranks[0])
 
         # Init comm and startup program
         self._initialize(mode)
@@ -233,8 +243,8 @@ class Engine:
         assert "dataset" in self._user_tuning_config, "Optimization Tuning should provide with dataset."
         batch_size = self._user_tuning_config["batch_size"]
         dataset = self._user_tuning_config["dataset"]
-        dataset.dp_world_size = self._input_split_size
-        dataset.dp_rank = self._input_split_rank
+        dataset.dp_world_size = self.dp_world_sizes
+        dataset.dp_rank = self.dp_ranks
 
         from .tuner.optimization_tuner import OptimizationTuner
         self._optimization_tuner = OptimizationTuner(self._user_tuning_config,
@@ -272,8 +282,13 @@ class Engine:
             if var.name in block.vars:
                 feed_list.append(block.vars[var.name])
 
-        self._input_split_size, self._input_split_rank = self._get_input_split_info(
-            feed_list[0], self._dist_contexts[mode])
+        self.dp_world_sizes = []
+        self.dp_ranks = []
+        for feed_var in feed_list:
+            dp_world_size, dp_rank = self._get_input_split_info(
+                feed_var, self._dist_contexts[mode])
+            self.dp_world_sizes.append(dp_world_size)
+            self.dp_ranks.append(dp_rank)
 
     def _parallel(self, mode, all_ranks):
         # Parallelize program based on the planner's results
@@ -567,6 +582,10 @@ class Engine:
         for var in inputs_var + labels_var:
             if var.name in dist_main_block.vars:
                 feed_list.append(dist_main_block.vars[var.name])
+            else:
+                copy_var = dist_main_block._clone_variable(var, var.persistable)
+                copy_var.desc.set_original_id(var.desc.original_id())
+                feed_list.append(copy_var)
 
         # remove the first three ops if multi run fit/evaluate/predict
         op_size = len(dist_main_block.ops)
@@ -586,8 +605,8 @@ class Engine:
                 epochs,
                 steps_per_epoch,
                 collate_fn,
-                data_parallel_world_size=self._input_split_size,
-                data_parallel_rank=self._input_split_rank)
+                data_parallel_world_size=self.dp_world_sizes,
+                data_parallel_rank=self.dp_ranks)
 
         # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)
@@ -668,7 +687,7 @@ class Engine:
                                           batch_size_axis, rank_id)
             return len(group_ranks), group_ranks.index(rank_id)
 
-        return None, None
+        return 1, 0
 
     def _set_recompute_ckpts(self):
         # NOTE hack to enable recompute in engine api for GPT-3

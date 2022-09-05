@@ -31,7 +31,7 @@ from ..utils import set_dist_op_desc_original_id
 from ..dist_attribute import OperatorDistributedAttribute
 from paddle.fluid import core, unique_name
 from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.framework import Program, Parameter, Variable, program_guard
+from paddle.fluid.framework import Program, Parameter, Variable, program_guard, Operator
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process_group import new_process_group
@@ -433,6 +433,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                 set_comm_op_dist_attr_for_program(c_allreduce_sum_op,
                                                   dist_attr.process_mesh,
                                                   X_grad_dist_attr, ctx)
+        intermediate_var_0.op = Operator(main_block, matmul_op_desc)
     else:
         # replicate
         matmul_op_desc = copy_op_with_new_input_output(ctx, main_block,
