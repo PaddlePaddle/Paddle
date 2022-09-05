@@ -907,6 +907,11 @@ def cond(x, p=None, name=None):
             if in_dygraph_mode():
                 max_out = _C_ops.max(s, axis, keepdim, reduce_all)
                 min_out = _C_ops.reduce_min(s, axis, keepdim, reduce_all)
+                if porder == 2:
+                    return _C_ops.divide(max_out, min_out)
+                if porder == -2:
+                    return _C_ops.divide(min_out, max_out)
+
             else:
                 max_out = _legacy_C_ops.reduce_max(s, 'dim', axis, 'keepdim',
                                                    keepdim, 'reduce_all',
@@ -914,16 +919,12 @@ def cond(x, p=None, name=None):
                 min_out = _legacy_C_ops.reduce_min(s, 'dim', axis, 'keepdim',
                                                    keepdim, 'reduce_all',
                                                    reduce_all)
-            if porder == 2:
-                if in_dygraph_mode():
-                    return _C_ops.divide(max_out, min_out)
-                return _legacy_C_ops.elementwise_div(max_out, min_out, 'aixs',
-                                                     axis, 'use_mkldnn', False)
-            if porder == -2:
-                if in_dygraph_mode():
-                    return _C_ops.divide(min_out, max_out)
-                return _legacy_C_ops.elementwise_div(min_out, max_out, 'aixs',
-                                                     axis, 'use_mkldnn', False)
+                if porder == 2:
+                    return _legacy_C_ops.elementwise_div(
+                        max_out, min_out, 'aixs', axis, 'use_mkldnn', False)
+                if porder == -2:
+                    return _legacy_C_ops.elementwise_div(
+                        min_out, max_out, 'aixs', axis, 'use_mkldnn', False)
 
         block = LayerHelper('norm', **locals())
         out = block.create_variable_for_type_inference(
