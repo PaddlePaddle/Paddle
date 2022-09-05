@@ -14,19 +14,21 @@ limitations under the License. */
 
 namespace phi {
 template <typename T, typename Context>
-void Pool2dKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const std::vector<int>& kernel_size,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  bool ceil_mode,
-                  bool exclusive,
-                  const std::string& data_format,
-                  const std::string& pooling_type,
-                  bool global_pooling,
-                  bool adaptive,
-                  const std::string& padding_algorithm,
-                  DenseTensor* out) {
+void Pool2dGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& out,
+                      const DenseTensor& dout,
+                      const std::vector<int>& kernel_size,
+                      const std::vector<int>& strides,
+                      const std::vector<int>& paddings,
+                      bool ceil_mode,
+                      bool exclusive,
+                      const std::string& data_format,
+                      const std::string& pooling_type,
+                      bool global_pooling,
+                      bool adaptive,
+                      const std::string& padding_algorithm,
+                      DenseTensor* dx) {
   funcs::PoolingOneDNNHandler<T> handler(pooling_type,
                                          kernel_size,
                                          strides,
@@ -39,37 +41,37 @@ void Pool2dKernel(const Context& dev_ctx,
                                          dev_ctx.GetEngine(),
                                          dev_ctx.GetPlace(),
                                          &x,
-                                         out);
+                                         &dout,
+                                         dx);
 
-  auto src_memory = handler.AcquireSrcMemory(&x);
-  auto dst_memory = handler.AcquireDstMemory(out);
+  auto diff_dst_memory = handler.AcquireDiffDstMemory(&dout);
+  auto diff_src_memory = handler.AcquireDiffSrcMemory(dx);
 
-  auto pool_p = handler.AcquireForwardPrimitive();
+  auto pool_bwd_p = handler.AcquireBackwardPrimitive();
 
   auto& astream = OneDNNContext::tls().get_stream();
   if (pooling_type == "max") {
-    // Training
+    // Max - pooling needs Workspace
     auto workspace_memory = handler.AcquireWorkspaceMemory(dev_ctx, "Out");
-    pool_p->execute(astream,
-                    {{DNNL_ARG_SRC, *src_memory},
-                     {DNNL_ARG_DST, *dst_memory},
-                     {DNNL_ARG_WORKSPACE, *workspace_memory}});
+    pool_bwd_p->execute(astream,
+                        {{DNNL_ARG_DIFF_SRC, *diff_src_memory},
+                         {DNNL_ARG_DIFF_DST, *diff_dst_memory},
+                         {DNNL_ARG_WORKSPACE, *workspace_memory}});
   } else {
-    // Inference
-    pool_p->execute(astream,
-                    {{DNNL_ARG_SRC, *src_memory}, {DNNL_ARG_DST, *dst_memory}});
+    // Average Pooling
+    pool_bwd_p->execute(astream,
+                        {{DNNL_ARG_DIFF_SRC, *diff_src_memory},
+                         {DNNL_ARG_DIFF_DST, *diff_dst_memory}});
   }
   astream.wait();
 
-  out->set_mem_desc(dst_memory->get_desc());
+  dx->set_mem_desc(diff_src_memory->get_desc());
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(pool2d,
+PD_REGISTER_KERNEL(pool2d_grad,
                    OneDNN,
                    ALL_LAYOUT,
-                   phi::Pool2dKernel,
+                   phi::Pool2dGradKernel,
                    float,
-                   int8_t,
-                   uint8_t,
                    phi::dtype::bfloat16) {}
