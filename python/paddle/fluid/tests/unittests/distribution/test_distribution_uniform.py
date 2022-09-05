@@ -20,6 +20,7 @@ import paddle
 from paddle import fluid
 from paddle.distribution import *
 from paddle.fluid import layers
+from paddle.fluid.framework import _test_eager_guard
 
 from test_distribution import DistributionNumpy
 
@@ -114,17 +115,6 @@ class UniformTest(unittest.TestCase):
                                    atol=tolerance)
         np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
 
-    def test_uniform_distribution_dygraph(self, sample_shape=7, tolerance=1e-6):
-        paddle.disable_static(self.place)
-        uniform = Uniform(self.dynamic_low, self.dynamic_high)
-        sample = uniform.sample([sample_shape]).numpy()
-        entropy = uniform.entropy().numpy()
-        log_prob = uniform.log_prob(self.dynamic_values).numpy()
-        probs = uniform.probs(self.dynamic_values).numpy()
-        fetch_list = [sample, entropy, log_prob, probs]
-
-        self.compare_with_numpy(fetch_list)
-
     def test_uniform_distribution_static(self, sample_shape=7, tolerance=1e-6):
         paddle.enable_static()
         with fluid.program_guard(self.test_program):
@@ -147,6 +137,24 @@ class UniformTest(unittest.TestCase):
                                        fetch_list=fetch_list)
 
         self.compare_with_numpy(fetch_list)
+
+    def func_uniform_distribution_dygraph(self, sample_shape=7, tolerance=1e-6):
+        paddle.disable_static()
+        uniform = Uniform(self.dynamic_low, self.dynamic_high)
+        sample = uniform.sample([sample_shape]).numpy()
+        entropy = uniform.entropy().numpy()
+        log_prob = uniform.log_prob(self.dynamic_values).numpy()
+        probs = uniform.probs(self.dynamic_values).numpy()
+        fetch_list = [sample, entropy, log_prob, probs]
+
+        self.compare_with_numpy(fetch_list)
+
+    def test_uniform_distribution_dygraph(self):
+        with _test_eager_guard():
+            self.setUp()
+            self.func_uniform_distribution_dygraph()
+        self.setUp()
+        self.func_uniform_distribution_dygraph()
 
 
 class UniformTest2(UniformTest):
