@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -204,6 +205,43 @@ void CastCsrKernel(const Context& dev_ctx,
     meta.set_dtype(value_dtype);
     phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
+}
+
+template <typename T, typename Context>
+void ReshapeCooKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      const std::vector<int>& shape,
+                      SparseCooTensor* out) {
+  out->set_dims(x.dims());
+
+  const DenseTensor& x_indices = x.indices();
+  const DenseTensor& x_values = x.non_zero_elements();
+  DenseTensor* out_indices = out->mutable_indices();
+  DenseTensor* out_values = out->mutable_non_zero_elements();
+  *out_indices = x_indices;
+  phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, out_values);
+  out->Resize(phi::make_ddim(shape), x.sparse_dim(), x_values.dims()[0]);
+}
+
+template <typename T, typename Context>
+void ReshapeCsrKernel(const Context& dev_ctx,
+                      const SparseCsrTensor& x,
+                      const std::vector<int>& shape,
+                      SparseCsrTensor* out) {
+  out->set_dims(x.dims());
+
+  const DenseTensor& x_crows = x.crows();
+  const DenseTensor& x_cols = x.cols();
+  const DenseTensor& x_values = x.non_zero_elements();
+  DenseTensor* out_crows = out->mutable_crows();
+  DenseTensor* out_cols = out->mutable_cols();
+  DenseTensor* out_values = out->mutable_non_zero_elements();
+
+  *out_crows = x_crows;
+  *out_cols = x_cols;
+
+  phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, out_values);
+  out->Resize(phi::make_ddim(shape), x_values.dims()[0]);
 }
 
 }  // namespace sparse

@@ -140,5 +140,31 @@ void CastCsrGradKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void ReshapeCooGradKernel(const Context& dev_ctx,
+                          const SparseCooTensor& x,
+                          const SparseCooTensor& dout,
+                          SparseCooTensor* dx) {
+  EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
+  phi::Copy(dev_ctx,
+            dout.non_zero_elements(),
+            dev_ctx.GetPlace(),
+            false,
+            dx->mutable_non_zero_elements());
+}
+
+template <typename T, typename Context>
+void ReshapeCsrGradKernel(const Context& dev_ctx,
+                          const SparseCsrTensor& x,
+                          const SparseCsrTensor& dout,
+                          SparseCsrTensor* dx) {
+  EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
+  phi::Copy(dev_ctx,
+            dout.non_zero_elements(),
+            dev_ctx.GetPlace(),
+            false,
+            dx->mutable_non_zero_elements());
+}
+
 }  // namespace sparse
 }  // namespace phi

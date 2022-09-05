@@ -34,6 +34,7 @@ from .unary import coalesce
 from .unary import deg2rad
 from .unary import rad2deg
 from .unary import expm1
+from .unary import reshape
 
 from .binary import mv
 from .binary import matmul
@@ -74,6 +75,7 @@ __all__ = [
     'addmm',
     'add',
     'subtract',
+    'reshape',
     'multiply',
     'divide',
     'coalesce',

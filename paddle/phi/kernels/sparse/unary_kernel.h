@@ -100,6 +100,18 @@ void CastCsrKernel(const Context& dev_ctx,
                    SparseCsrTensor* out);
 
 template <typename T, typename Context>
+void ReshapeCooKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      const std::vector<int>& shape,
+                      SparseCooTensor* out);
+
+template <typename T, typename Context>
+void ReshapeCsrKernel(const Context& dev_ctx,
+                      const SparseCsrTensor& x,
+                      const std::vector<int>& shape,
+                      SparseCsrTensor* out);
+
+template <typename T, typename Context>
 SparseCooTensor ReluCoo(const Context& dev_ctx, const SparseCooTensor& x) {
   SparseCooTensor coo;
   ReluCooKernel<T, Context>(dev_ctx, x, &coo);

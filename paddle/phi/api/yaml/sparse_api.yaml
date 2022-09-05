@@ -82,7 +82,7 @@
 
 - api : conv3d
   args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key)
-  output : Tensor(out), Tensor(rulebook), Tensor(counter) 
+  output : Tensor(out), Tensor(rulebook), Tensor(counter)
   kernel :
     func : conv3d_coo{sparse_coo, dense -> sparse_coo, dense, dense}
     layout : x
@@ -189,6 +189,15 @@
            relu6_csr{sparse_csr -> sparse_csr}
     layout : x
   backward : relu6_grad
+
+- api : reshape
+  args : (Tensor x, int[] shape)
+  output : Tensor(out)
+  kernel :
+    func : reshape_coo{sparse_coo -> sparse_coo},
+           reshape_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : reshape_grad
 
 - api : scale
   args : (Tensor x, float scale, float bias, bool bias_after_scale)

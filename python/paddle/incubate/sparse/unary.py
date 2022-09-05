@@ -120,6 +120,37 @@ def asin(x, name=None):
 
 
 @dygraph_only
+def reshape(x, shape, name=None):
+    """
+    Changes the shape of ``x`` without changing its data, requiring x to be a SparseCooTensor or SparseCsrTensor.
+
+    .. math::
+
+        out = reshape(x)
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        shape (list[int]): new shape.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A reshaped Sparse Tensor with the same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([-2., 0., 1., 2.])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.reshape(sparse_x, [2, 2])
+
+    """
+    return _C_ops.sparse_reshape(x, shape)
+
+
+@dygraph_only
 def atan(x, name=None):
     """
     Calculate elementwise atan of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
