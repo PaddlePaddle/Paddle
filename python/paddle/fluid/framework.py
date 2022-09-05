@@ -86,6 +86,8 @@ _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
 _enable_standalone_executor_ = (os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR',
                                                None))
+_dy2st_enable_standalone_executor_ = (os.environ.get(
+    'FLAGS_DY2ST_USE_STANDALONE_EXECUTOR', 0))
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to
@@ -115,7 +117,7 @@ def _update_monkey_methods(is_eager):
     Update monkey methods of VarBase or eager.Tensor while
     switching eager mode and legacy mode.
     """
-    from paddle import _C_ops
+    from paddle import _C_ops, _legacy_C_ops
     from .dygraph.varbase_patch_methods import monkey_patch_varbase
     from .dygraph import monkey_patch_math_varbase
 
@@ -125,7 +127,7 @@ def _update_monkey_methods(is_eager):
     assert isinstance(is_eager, bool)
     # switch into eager mode
     if is_eager:
-        _C_ops.switch_to_eager_ops()
+        _legacy_C_ops.switch_to_eager_ops()
         if not _already_patch_eager_tensor:
             monkey_patch_varbase()
             monkey_patch_math_varbase()
@@ -133,7 +135,7 @@ def _update_monkey_methods(is_eager):
             _already_patch_eager_tensor = True
     # switch back into legacy mode
     else:
-        _C_ops.switch_to_core_ops()
+        _legacy_C_ops.switch_to_core_ops()
         if not _already_patch_varbase:
             monkey_patch_varbase()
             monkey_patch_math_varbase()
@@ -792,7 +794,8 @@ def is_compiled_with_rocm():
     """
     Whether this whl package can be used to run the model on AMD or Hygon GPU(ROCm).
 
-    Returns (bool): `True` if ROCm is currently available, otherwise `False`.
+    Returns:
+        (bool): `True` if ROCm is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -1260,6 +1263,17 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
                             list(shape) if shape else [], name,
                             type if type else core.VarDesc.VarType.LOD_TENSOR,
                             True if persistable else False)
+
+
+def _all_is_type(vals, expected_type):
+    """
+    Return True if type of each element is expected_type.
+
+    NOTE: BuiltIn all() will always return True if vals is empty.
+    """
+    assert isinstance(vals, (list, tuple))
+    if not vals: return False
+    return all(isinstance(v, expected_type) for v in vals)
 
 
 class VariableMetaClass(type):
@@ -2520,31 +2534,18 @@ class Variable(object):
         return self.desc.attr(name)
 
     @property
-    def process_mesh(self):
+    def dist_attr(self):
         """
-        Get the process mesh belonging to this Variable.
+        Get distributed attribute of this Variable.
         """
-        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
-        from paddle.distributed.auto_parallel.interface import ProcessMesh
-        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
-        mesh_id = self.desc.attr(mesh_attr_name)
-        return _g_process_mesh_map[mesh_id]
+        return self.desc.dist_attr
 
-    @property
-    def shard_mask(self):
+    @dist_attr.setter
+    def dist_attr(self, dist_attr):
         """
-        Get shard_mask belonging to this Variable.
+        Set distributed attribute of this Variable.
         """
-        mask_attr_name = 'mask' + core.kAutoParallelSuffix()
-        return self.desc.attr(mask_attr_name)
-
-    @property
-    def offload_device(self):
-        """
-        Get the offload device of this Variable.
-        """
-        offload_attr_name = 'offload_device' + core.kAutoParallelSuffix()
-        return self.desc.attr(offload_attr_name)
+        self.desc.dist_attr = dist_attr
 
 
 def get_all_op_protos():
@@ -2677,6 +2678,16 @@ class Operator(object):
                  inputs=None,
                  outputs=None,
                  attrs=None):
+        # read attr type index from op proto to avoid unexpected type
+        # conversions, e.g. narrowing conversion like double to float
+        try:
+            proto = OpProtoHolder.instance().get_op_proto(type)
+            self._attr_types = {}
+            for attr in proto.attrs:
+                self._attr_types[attr.name] = attr.type
+        except ValueError:
+            pass
+
         if _non_static_mode():
             if type is None:
                 raise ValueError(
@@ -2830,6 +2841,7 @@ class Operator(object):
                                 arg.op = self
                     self.desc.set_output(out_proto.name, out_arg_names)
 
+            extra_attrs_map = core.get_op_extra_attrs(type)
             if op_attrs is not None:
                 if not isinstance(op_attrs, dict):
                     raise TypeError("'attrs' should be a dict.")
@@ -2840,6 +2852,13 @@ class Operator(object):
                         continue
                     attr_val = op_attrs[attr_name]
                     self._update_desc_attr(attr_name, attr_val)
+                for attr_name in extra_attrs_map.keys():
+                    if (attr_name
+                            not in op_attrs) or (op_attrs[attr_name] is None):
+                        self._update_desc_attr(attr_name,
+                                               extra_attrs_map[attr_name])
+                    else:
+                        self._update_desc_attr(attr_name, op_attrs[attr_name])
 
             # proto.attrs doesn't include ipu_index
             if core.is_compiled_with_ipu():
@@ -2934,7 +2953,28 @@ class Operator(object):
             if skip_op_callstack and name == "op_callstack":
                 continue
 
-            attr_type = self.desc.attr_type(name)
+            attr_type = self.desc.attr_type(name, True)
+            if attr_type == core.AttrType.VAR:
+                attr_var_name = self.desc.attr(name, True).name()
+                a = "{name} = Var['{value}']".format(name=name,
+                                                     type=attr_type,
+                                                     value=attr_var_name)
+                attrs_str += a
+                if i != len(attr_names) - 1:
+                    attrs_str += ", "
+                continue
+
+            if attr_type == core.AttrType.VARS:
+                attr_var_names = [
+                    "'%s'" % var.name() for var in self.desc.attr(name, True)
+                ]
+                a = "{name} = Vars[{value}]".format(
+                    name=name, type=attr_type, value=','.join(attr_var_names))
+                attrs_str += a
+                if i != len(attr_names) - 1:
+                    attrs_str += ", "
+                continue
+
             if attr_type == core.AttrType.BLOCK:
                 a = "{name} = block[{value}]".format(
                     name=name, type=attr_type, value=self._block_attr_id(name))
@@ -3099,7 +3139,7 @@ class Operator(object):
         Returns:
             core.AttrType: the attribute type.
         """
-        return self.desc.attr_type(name)
+        return self.desc.attr_type(name, True)
 
     def _set_attr(self, name, val):
         """
@@ -3128,20 +3168,58 @@ class Operator(object):
         Raises:
             ValueError: If the type of value doesn't match with desc.attr_type(name).
         """
-        if isinstance(val, Block):
+        if isinstance(val, Variable):
+            self.desc.set_var_attr(name, val.desc)
+        elif isinstance(val, list) and _all_is_type(val, Variable):
+            self.desc.set_vars_attr(name, [v.desc for v in val])
+        elif isinstance(val, Block):
             self.desc.set_block_attr(name, val.desc)
-        elif isinstance(val, list) and val and all(
-                isinstance(v, Block) for v in val):
+        elif isinstance(val, list) and val and _all_is_type(val, Block):
             self.desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
             self.desc.set_serialized_attr(name, val.serialize_to_string())
         else:
-            self.desc._set_attr(name, val)
+            self._update_desc_plain_attr(name, val)
+
+    def _update_desc_plain_attr(self, name, val):
+        desc = self.desc
+        if not hasattr(self, "_attr_types") or (name not in self._attr_types):
+            desc._set_attr(name, val)
+            return
+
+        type_index = self._attr_types[name]
+        if type_index == core.AttrType.BOOL:
+            desc._set_bool_attr(name, val)
+        elif type_index == core.AttrType.INT:
+            desc._set_int32_attr(name, val)
+        elif type_index == core.AttrType.LONG:
+            desc._set_int64_attr(name, val)
+        elif type_index == core.AttrType.FLOAT:
+            desc._set_float32_attr(name, val)
+        # elif type_index == core.AttrType.FLOAT64:
+        #     desc._set_float64_attr(name, val)
+        elif type_index == core.AttrType.STRING:
+            desc._set_str_attr(name, val)
+        elif type_index == core.AttrType.BOOLS:
+            desc._set_bools_attr(name, val)
+        elif type_index == core.AttrType.INTS:
+            desc._set_int32s_attr(name, val)
+        elif type_index == core.AttrType.LONGS:
+            desc._set_int64s_attr(name, val)
+        elif type_index == core.AttrType.FLOATS:
+            desc._set_float32s_attr(name, val)
+        elif type_index == core.AttrType.FLOAT64S:
+            desc._set_float64s_attr(name, val)
+        elif type_index == core.AttrType.STRINGS:
+            desc._set_strs_attr(name, val)
+        else:
+            # defaults to old methods
+            desc._set_attr(name, val)
 
     @property
     def attr_names(self):
-        return self.desc.attr_names()
+        return self.desc.attr_names(True)
 
     def attr(self, name):
         """
@@ -3213,6 +3291,41 @@ class Operator(object):
 
         return self.desc._blocks_attr_ids(name)
 
+    def _var_attr(self, name):
+        """
+        Get the Variable attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            Variable: the Variable attribute.
+        """
+        attr_type = self.desc.attr_type(name, True)
+        assert attr_type == core.AttrType.VAR, "Required type attr({}) is Variable, but received {}".format(
+            name, attr_type)
+        attr_var_name = self.desc.attr(name, True).name()
+        return self.block._var_recursive(attr_var_name)
+
+    def _vars_attr(self, name):
+        """
+        Get the Variables attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            Variables: the Variables attribute.
+        """
+        attr_type = self.desc.attr_type(name, True)
+        assert attr_type == core.AttrType.VARS, "Required type attr({}) is list[Variable], but received {}".format(
+            name, attr_type)
+        attr_vars = [
+            self.block._var_recursive(var.name())
+            for var in self.desc.attr(name, True)
+        ]
+        return attr_vars
+
     def all_attrs(self):
         """
         Get the attribute dict.
@@ -3223,16 +3336,17 @@ class Operator(object):
         attr_names = self.attr_names
         attr_map = {}
         for n in attr_names:
-            attr_type = self.desc.attr_type(n)
+            attr_type = self.desc.attr_type(n, True)
             if attr_type == core.AttrType.BLOCK:
                 attr_map[n] = self._block_attr(n)
-                continue
-
-            if attr_type == core.AttrType.BLOCKS:
+            elif attr_type == core.AttrType.BLOCKS:
                 attr_map[n] = self._blocks_attr(n)
-                continue
-
-            attr_map[n] = self.attr(n)
+            elif attr_type == core.AttrType.VAR:
+                attr_map[n] = self._var_attr(n)
+            elif attr_type == core.AttrType.VARS:
+                attr_map[n] = self._vars_attr(n)
+            else:
+                attr_map[n] = self.attr(n)
 
         return attr_map
 
@@ -3263,29 +3377,18 @@ class Operator(object):
         return False
 
     @property
-    def process_mesh(self):
+    def dist_attr(self):
         """
-        Get the process mesh belonging to this Operator.
+        Get distributed attribute of this Variable.
         """
-        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
-        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
-        mesh_id = self.attr(mesh_attr_name)
-        return _g_process_mesh_map[mesh_id]
+        return self.desc.dist_attr
 
-    def dims_mapping(self, name):
+    @dist_attr.setter
+    def dist_attr(self, dist_attr):
         """
-        Get the dims_mapping for the op's var named `name`.
+        Set distributed attribute of this Variable.
         """
-        dims_mapping_attr_name = name + core.kAutoParallelSuffix()
-        return self.attr(dims_mapping_attr_name)
-
-    @property
-    def pipeline_stage(self):
-        """
-        Get pipeline stage of the Operator.
-        """
-        pipeline_stage_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix()
-        return self.desc.attr(pipeline_stage_attr_name)
+        self.desc.dist_attr = dist_attr
 
 
 class Block(object):
@@ -4392,10 +4495,13 @@ class IrOpNode(IrNode):
         assert self.node.op() is not None, \
             "The node operator description can not be None."
         desc = self.node.op()
-        if isinstance(val, Block):
+        if isinstance(val, Variable):
+            desc.set_var_attr(name, val.desc)
+        elif isinstance(val, list) and _all_is_type(val, Variable):
+            desc.set_vars_attr(name, [v.desc for v in val])
+        elif isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
-        elif isinstance(val, list) and val and \
-                all(isinstance(v, Block) for v in val):
+        elif isinstance(val, list) and val and _all_is_type(val, Block):
             desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
@@ -4850,10 +4956,13 @@ class IrGraph(object):
         """
         Update the value of desc's attribute by attribute's name.
         """
-        if isinstance(val, Block):
+        if isinstance(val, Variable):
+            desc.set_var_attr(name, val.desc)
+        elif isinstance(val, list) and _all_is_type(val, Variable):
+            desc.set_vars_attr(name, [v.desc for v in val])
+        elif isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
-        elif isinstance(val, list) and val and all(
-                isinstance(v, Block) for v in val):
+        elif isinstance(val, list) and val and _all_is_type(val, Block):
             desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
                 isinstance(val, core.ProgramDesc):
@@ -4978,6 +5087,8 @@ class Program(object):
         all_new_vars = []
         block_num = new_desc.num_blocks()
         for idx in range(block_num):
+            if (idx > (len(self.blocks) - 1)):
+                self._create_block()
             new_block_desc = new_desc.block(idx)
             all_new_vars.append([])
             block_new_vars = all_new_vars[-1]
@@ -5755,6 +5866,12 @@ class Program(object):
         ]
         res._sync_with_cpp()
 
+        # Note: The op_role and op_role_var cann't be deleted currently,
+        # and we will try to remove them in the future.
+        common_clipped_attrs_list = [
+            'op_namescope', 'op_callstack', 'op_device', 'with_quant_attr'
+        ]
+
         for i in six.moves.range(res.desc.num_blocks()):
             block = res.desc.block(i)
             for var in block.all_vars():
@@ -5766,6 +5883,9 @@ class Program(object):
                 op = block.op(op_idx)
                 if op.type() not in OpProtoHolder.instance().op_proto_map:
                     continue
+
+                extra_attrs_map = core.get_op_extra_attrs(op.type())
+
                 proto = OpProtoHolder.instance().get_op_proto(op.type())
                 remove_input_list = []
                 for name in op.input_names():
@@ -5813,6 +5933,10 @@ class Program(object):
                             continue
                         if name.endswith("_threshold"):
                             continue
+                    if len(extra_attrs_map) > 0:
+                        if name in extra_attrs_map or name in common_clipped_attrs_list:
+                            op.remove_attr(name)
+                        continue
                     find = False
                     for attr_proto in proto.attrs:
                         if attr_proto.name != name:
@@ -6732,7 +6856,19 @@ class EagerParamBase(_core_eager_eagertensor):
         self.need_clip = kwargs.get('need_clip', True)
 
         self.is_distributed = kwargs.get('is_distributed', False)
-        # self.block = default_main_program().global_block()
+        # hook functions for lazy initialization
+        self._init_func = None
+        self._init_op_creator = None
+
+    def set_init_func(self, obj):
+        self._init_func = obj
+
+    @dygraph_only
+    def initialize(self):
+        assert self._init_func is not None, "Required self._init_func is not None, but received None."
+        self._init_func()
+        # clear function handle to release resource
+        self._init_func = None
 
     @property
     def trainable(self):
@@ -6746,6 +6882,13 @@ class EagerParamBase(_core_eager_eagertensor):
             raise ValueError(
                 "The type of trainable MUST be bool, but the type is ",
                 type(trainable))
+
+    def _create_init_op(self, block):
+        """
+        Call init_op_creator function to create initializer operation in block.
+        """
+        assert self._init_op_creator is not None, "Required self._init_op_creator is not None, but received None."
+        self._init_op_creator(block)
 
     def __str__(self):
         """
@@ -7078,9 +7221,9 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'npu', '', None]:
+    if device not in ['cpu', 'gpu', 'npu', 'xpu', '', None]:
         raise ValueError(
-            "The Attr(device) should be 'cpu' 'npu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu' 'npu' 'xpu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
     if index:
         device = ":".join([device, index])
