@@ -52,7 +52,8 @@ def is_compiled_with_npu():
     """
     Whether paddle was built with WITH_ASCEND_CL=ON to support Ascend NPU.
 
-    Returns (bool): `True` if NPU is supported, otherwise `False`.
+    Returns:
+        (bool): `True` if NPU is supported, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -230,7 +231,10 @@ def _convert_to_place(device):
         device_id = int(selected_mlus[0])
         place = core.MLUPlace(device_id)
     elif device in core.get_all_custom_device_type():
-        place = core.CustomPlace(device, 0)
+        selected_devices = os.getenv("FLAGS_selected_{}s".format(device),
+                                     "0").split(",")
+        device_id = int(selected_devices[0])
+        place = core.CustomPlace(device, device_id)
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
