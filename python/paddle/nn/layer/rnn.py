@@ -34,6 +34,7 @@ from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
 from paddle.fluid.data_feeder import convert_dtype
 from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.framework import core
 from paddle.static import default_startup_program
 from paddle.static import program_guard

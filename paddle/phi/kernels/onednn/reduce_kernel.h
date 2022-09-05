@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/phi/kernels/funcs/onednn/onednn_reuse.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace phi {
 
@@ -23,11 +23,11 @@ inline std::vector<int64_t> CalculateReducedDims(
     const std::vector<int64_t>& reduce_dims,  // NOLINT
     bool reduce_all,
     bool keep_dim) {
-  if (keep_dim) return phi::vectorize(output->dims());
+  if (keep_dim) return vectorize(output->dims());
 
   if (reduce_all) return std::vector<int64_t>(input->dims().size(), 1);
 
-  std::vector<int64_t> output_dims(phi::vectorize(input->dims()));
+  std::vector<int64_t> output_dims(vectorize(input->dims()));
   for (size_t i = 0; i < reduce_dims.size(); ++i) {
     // handle negative dims, f.e. "-1" means rightmost dimension
     int index = (reduce_dims[i] >= 0) ? reduce_dims[i]
@@ -47,7 +47,7 @@ void ReduceKernel(const Context& dev_ctx,
                   DenseTensor* out,
                   dnnl::algorithm reduction_type) {
   const auto& onednn_engine = dev_ctx.GetEngine();
-  auto x_tz = phi::vectorize(x.dims());
+  auto x_tz = vectorize(x.dims());
   auto out_tz =
       CalculateReducedDims(&x, out, dims.GetData(), reduce_all, keep_dim);
 
@@ -58,14 +58,13 @@ void ReduceKernel(const Context& dev_ctx,
   // In that case reorder must be executed to maintain compatibility with
   // PaddlePaddle reduce op
   if (x_tz == out_tz) {
-    dnnl::memory::data_type x_type = paddle::framework::ToMKLDNNDataType(
-        paddle::framework::TransToProtoVarType(x.dtype()));
+    dnnl::memory::data_type x_type = funcs::ToOneDNNDataType((x.dtype()));
 
-    funcs::ReorderMKLDNNHandler reorder_handler(
+    funcs::ReorderOneDNNHandler reorder_handler(
         x_tz, x.dtype(), x_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        x.mem_desc(), phi::funcs::to_void_cast(x.data<T>()));
+        x.mem_desc(), funcs::to_void_cast(x.data<T>()));
 
     // reuse mem desc since it is a simple copy
     auto reorder_dst_memory_p =
@@ -78,9 +77,9 @@ void ReduceKernel(const Context& dev_ctx,
     astream.wait();
 
     out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(
-        phi::vectorize<int64_t>(out->dims())));
+        vectorize<int64_t>(out->dims())));
   } else {
-    funcs::ReductionMKLDNNHandler<T> handler(reduction_type,
+    funcs::ReductionOneDNNHandler<T> handler(reduction_type,
                                              0.0f,
                                              0.0f,
                                              onednn_engine,
@@ -101,7 +100,7 @@ void ReduceKernel(const Context& dev_ctx,
     astream.wait();
 
     out->set_mem_desc(
-        dst_memory_p->get_desc().reshape(phi::vectorize<int64_t>(out->dims())));
+        dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
   }
 }
 
@@ -120,9 +119,9 @@ void ReduceGradKernel(const Context& dev_ctx,
   const auto& onednn_engine = dev_ctx.GetEngine();
   auto out_grad_tz = CalculateReducedDims(
       x_grad, &out_grad, dims.GetData(), reduce_all, keep_dim);
-  auto x_grad_tz = phi::vectorize(x_grad->dims());
+  auto x_grad_tz = vectorize(x_grad->dims());
 
-  funcs::BroadcastDataMKLDNNHandler<T> handler(binary_type,
+  funcs::BroadcastDataOneDNNHandler<T> handler(binary_type,
                                                onednn_engine,
                                                dev_ctx.GetPlace(),
                                                &out_grad,
