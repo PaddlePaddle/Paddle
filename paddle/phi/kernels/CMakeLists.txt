@@ -97,6 +97,10 @@ file(
   "strings/*.cu"
   "strings/gpu/*.cu")
 
+if(WITH_NV_JETSON)
+  list(REMOVE_ITEM kernel_cu "gpu/decode_jpeg_kernel.cu")
+endif()
+
 if(WITH_MKLDNN)
   file(
     GLOB
