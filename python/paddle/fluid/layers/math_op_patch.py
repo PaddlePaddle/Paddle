@@ -79,6 +79,10 @@ def monkey_patch_variable():
         tmp_name = unique_tmp_name()
         return block.create_var(name=tmp_name, dtype=dtype)
 
+    def create_new_tmp_sparse_var(block, dtype, type):
+        tmp_name = unique_tmp_name()
+        return block.create_var(name=tmp_name, dtype=dtype, type=type)
+
     def create_tensor(block, value, dtype, shape):
         value = float(value)
         var = create_new_tmp_var(block, dtype)
@@ -368,6 +372,15 @@ def monkey_patch_variable():
                                           attrs={'axis': axis})
             return out
 
+    def values(var):
+        block = current_block(var)
+        out = create_new_tmp_var(block, var.dtype)
+        block.append_op(type="values_coo",
+                        inputs={"X": [var]},
+                        outputs={"Out": [out]},
+                        attrs={})
+        return out
+
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 
         __impl__.__doc__ = """
@@ -431,7 +444,8 @@ def monkey_patch_variable():
         ('__lt__', _binary_creator_('__lt__', 'less_than', False, None)),
         ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
         ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
-        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None))
+        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
+        ('values', values),
     ]
 
     global _already_patch_variable

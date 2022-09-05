@@ -47,6 +47,26 @@ DECLARE_INFER_SHAPE_FUNCTOR(sparse_coo_tensor,
                             SparseCooTensorInferShapeFunctor,
                             PD_INFER_META(phi::sparse::UnchangedInferMeta));
 
+class ValuesCooOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of values_coo op.");
+    AddOutput("Out", "(Tensor), output 0 of values_coo op.");
+    AddComment(R"DOC(
+TODO: Documentation of values_coo op.
+)DOC");
+  }
+};
+
+class ValuesCooOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(values_coo,
+                            ValuesCooInferShapeFunctor,
+                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -58,3 +78,10 @@ REGISTER_OPERATOR(sparse_coo_tensor,
                   // ops::TraceGradOpMaker<paddle::framework::OpDesc>,
                   // ops::TraceGradOpMaker<paddle::imperative::OpBase>,
                   ops::SparseCooTensorInferShapeFunctor);
+
+REGISTER_OPERATOR(values_coo,
+                  ops::ValuesCooOp,
+                  ops::ValuesCooOpMaker,
+                  // ops::TraceGradOpMaker<paddle::framework::OpDesc>,
+                  // ops::TraceGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ValuesCooInferShapeFunctor);

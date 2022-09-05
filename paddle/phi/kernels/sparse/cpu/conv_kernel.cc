@@ -186,7 +186,7 @@ void Conv3dCooKernel(const Context& dev_ctx,
   }
 
   MetaTensor meta_out(out);
-  phi::sparse::Conv3DInferMeta(
+  phi::sparse::Conv3dInferMeta(
       x, kernel_sizes, subm_paddings, dilations, subm_strides, subm, &meta_out);
   PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "Conv3dCooCPUKernel", ([&] {
                                  Conv3dCooCPUKernel<T, data_t>(dev_ctx,

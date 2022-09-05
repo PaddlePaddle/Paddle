@@ -43,7 +43,7 @@ inline void GetOutShape(const DDim& x_dims,
   }
 }
 
-void Conv3DInferMeta(const MetaTensor& x,
+void Conv3dInferMeta(const MetaTensor& x,
                      const std::vector<int>& kernel_sizes,
                      const std::vector<int>& paddings,
                      const std::vector<int>& dilations,

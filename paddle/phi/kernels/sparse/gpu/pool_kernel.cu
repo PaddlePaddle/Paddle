@@ -140,7 +140,7 @@ void MaxPoolCooKernel(const Context& dev_ctx,
   const auto& x_dims = x.dims();
   const std::vector<int>& real_kernel_sizes =
       phi::funcs::sparse::PoolResetKernel(kernel_sizes, x_dims[4], x_dims[4]);
-  phi::sparse::Conv3DInferMeta(
+  phi::sparse::Conv3dInferMeta(
       x, real_kernel_sizes, paddings, dilations, strides, false, &meta_out);
 
   PD_VISIT_BASE_INTEGRAL_TYPES(

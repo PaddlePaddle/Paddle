@@ -19,6 +19,7 @@ from paddle.fluid.layers.utils import convert_to_list
 from paddle.fluid.layers.nn import elementwise_add
 from ...creation import sparse_coo_tensor
 from paddle.nn.functional.conv import _update_padding_nd
+from paddle.fluid.layer_helper import LayerHelper
 
 
 def _conv3d(x,
@@ -61,20 +62,53 @@ def _conv3d(x,
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, dims)
     stride = convert_to_list(stride, dims, 'stride')
     dilation = convert_to_list(dilation, dims, 'dilation')
-    op_type = "conv3d"
 
-    pre_bias = _C_ops.sparse_conv3d(x, weight, padding, dilation, stride,
-                                    groups, subm,
-                                    key if key is not None else "")
-    if bias is not None:
-        values = pre_bias.values()
-        add_bias = elementwise_add(values, bias, axis=1)
-        return sparse_coo_tensor(pre_bias.indices(),
-                                 add_bias,
-                                 shape=pre_bias.shape,
-                                 stop_gradient=pre_bias.stop_gradient)
+    if in_dynamic_mode():
+        pre_bias = _C_ops.sparse_conv3d(x, weight, padding, dilation, stride,
+                                        groups, subm,
+                                        key if key is not None else "")
+        if bias is not None:
+            values = pre_bias.values()
+            add_bias = elementwise_add(values, bias, axis=1)
+            return sparse_coo_tensor(pre_bias.indices(),
+                                     add_bias,
+                                     shape=pre_bias.shape,
+                                     stop_gradient=pre_bias.stop_gradient)
+        else:
+            return pre_bias
     else:
-        return pre_bias
+        inputs = {'X': x, 'Kernel': weight}
+        attrs = {
+            'paddings': padding,
+            'dilations': dilation,
+            'strides': stride,
+            'groups': group,
+            'subm': subm,
+            'key': key
+        }
+        helper = LayerHelper(op_type, **locals())
+        rulebook = helper.create_variable_for_type_inference(paddle.int32)
+        counter = helper.create_variable_for_type_inference(paddle.int32)
+        pre_bias = helper.create_sparse_variable_for_type_inference(x.dtype)
+        outputs = {"Out": pre_bias}
+        helper.append_op(type='conv3d_coo',
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
+        if bias is not None:
+            out = helper.create_variable_for_type_inference(x.dtype)
+            helper.append_op(type='elementwise_add',
+                             inputs={
+                                 'X': [pre_bias],
+                                 'Y': [bias]
+                             },
+                             outputs={'Out': [out]},
+                             attrs={
+                                 'axis': 1,
+                             })
+            return out
+        else:
+            return pre_bias
 
 
 def conv3d(x,
