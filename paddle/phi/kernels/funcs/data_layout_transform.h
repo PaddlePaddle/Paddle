@@ -49,7 +49,7 @@ inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
 }
 
 inline OneDNNDataType ToOneDNNDataType(DataType type) {
-#if #if __GNUC__ > 5
+#if __GNUC__ > 5
   using DataTypeMapping = std::unordered_map<DataType, OneDNNDataType>;
 #else
   struct DataTypeHash {
