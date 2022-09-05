@@ -5024,7 +5024,7 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
         dim = [dim]
 
     if in_dygraph_mode():
-        return _C_ops.reduce_all(input, dim if dim != None else [], keep_dim)
+        return _C_ops.all(input, dim if dim != None else [], keep_dim)
 
     check_variable_and_dtype(input, 'input', ('bool'), 'reduce_all')
     helper = LayerHelper('reduce_all', **locals())
