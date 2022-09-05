@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
@@ -104,10 +105,8 @@ InterpreterCore::~InterpreterCore() {
 interpreter::CostInfo InterpreterCore::DryRun(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  if (platform::is_gpu_place(place_)) {
-    platform::SetDeviceId(place_.device);
-  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  platform::CUDADeviceGuard device_guard(place_);
 #endif
   Prepare(feed_names, feed_tensors, true);
   interpreter::CostInfo cost_info;
@@ -138,14 +137,14 @@ interpreter::CostInfo InterpreterCore::DryRun(
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  if (platform::is_gpu_place(place_)) {
-    platform::SetDeviceId(place_.device);
-  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  platform::CUDADeviceGuard device_guard(place_);
 #endif
+
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
+
   bool is_build = is_build_;
   Prepare(feed_names, feed_tensors, is_build);
 
@@ -180,14 +179,14 @@ paddle::framework::FetchList InterpreterCore::Run(
 
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names) {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  if (platform::is_gpu_place(place_)) {
-    platform::SetDeviceId(place_.device);
-  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  platform::CUDADeviceGuard device_guard(place_);
 #endif
+
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
+
   if (!is_build_) {
     paddle::framework::interpreter::build_variable_scope(
         block_, &var_scope_, create_local_scope_);
