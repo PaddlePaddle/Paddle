@@ -20,6 +20,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+using Variable = framework::Variable;
+using LoDTensorArray = framework::LoDTensorArray;
+using DDim = framework::DDim;
+
 template <typename DeviceContext, typename T>
 class StridedSliceNPUKernel : public framework::OpKernel<T> {
  public:
