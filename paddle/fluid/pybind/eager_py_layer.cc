@@ -45,6 +45,16 @@ namespace py = ::pybind11;
 PyTypeObject* p_pylayer_type;
 extern PyTypeObject* p_tensor_type;
 
+PyObject* CallHookWithOneArg(PyObject* hook, PyObject* obj) {
+  auto args = PyTuple_New(1);
+  Py_INCREF(obj);
+  PyTuple_SET_ITEM(args, 0, obj);
+  ::pybind11::gil_scoped_acquire gil;
+  auto ret = PyObject_Call(hook, args, nullptr);
+  Py_XDECREF(args);
+  return ret;
+}
+
 std::set<paddle::experimental::Tensor*> GetTensorsFromPyObject(PyObject* obj) {
   std::set<paddle::experimental::Tensor*> result;
   if (obj == nullptr) {
@@ -475,12 +485,7 @@ PyObject* call_unpack_hook(PyObject* container) {
       auto tmp_list = PyList_New(len);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyList_GetItem(obj, j);
-        auto args = PyTuple_New(1);
-        Py_INCREF(o);
-        PyTuple_SET_ITEM(args, 0, o);
-        PyTuple_SET_ITEM(
-            tmp_list, j, PyObject_Call(unpack_hook, args, nullptr));
-        Py_XDECREF(args);
+        PyTuple_SET_ITEM(tmp_list, j, CallHookWithOneArg(unpack_hook, o));
       }
       PyTuple_SET_ITEM(unpacked_value, i, tmp_list);
     } else if (PyTuple_Check(obj)) {
@@ -488,21 +493,11 @@ PyObject* call_unpack_hook(PyObject* container) {
       auto tmp_tuple = PyTuple_New(len);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyTuple_GetItem(obj, j);
-        auto args = PyTuple_New(1);
-        Py_INCREF(o);
-        PyTuple_SET_ITEM(args, 0, o);
-        PyTuple_SET_ITEM(
-            tmp_tuple, j, PyObject_Call(unpack_hook, args, nullptr));
-        Py_XDECREF(args);
+        PyTuple_SET_ITEM(tmp_tuple, j, CallHookWithOneArg(unpack_hook, o));
       }
       PyTuple_SET_ITEM(unpacked_value, i, tmp_tuple);
     } else {
-      auto args = PyTuple_New(1);
-      Py_INCREF(obj);
-      PyTuple_SET_ITEM(args, 0, obj);
-      PyTuple_SET_ITEM(
-          unpacked_value, i, PyObject_Call(unpack_hook, args, nullptr));
-      Py_XDECREF(args);
+      PyTuple_SET_ITEM(unpacked_value, i, CallHookWithOneArg(unpack_hook, obj));
     }
   }
   egr::Controller::Instance().SetHasGrad(grad_tmp);
@@ -536,8 +531,8 @@ PyObject* call_pack_hook(PyObject* value) {
     PyTuple_SET_ITEM(saved_value, 0, value);
   }
 
-  auto pack_hook = egr::SavedTensorsHooks::GetInstance().get_pack_hook();
-  auto unpack_hook = egr::SavedTensorsHooks::GetInstance().get_unpack_hook();
+  auto pack_hook = egr::SavedTensorsHooks::GetInstance().GetPackHook();
+  auto unpack_hook = egr::SavedTensorsHooks::GetInstance().GetUnpackHook();
 
   PyObject* container = PyTuple_New(2);
   Py_INCREF(unpack_hook);
@@ -553,23 +548,14 @@ PyObject* call_pack_hook(PyObject* value) {
   for (Py_ssize_t i = 0; i < saved_value_size; i++) {
     PyObject* obj = PyTuple_GET_ITEM(saved_value, i);
     if (IsEagerTensor(obj)) {
-      auto args = PyTuple_New(1);
-      Py_INCREF(obj);
-      PyTuple_SET_ITEM(args, 0, obj);
-      PyTuple_SET_ITEM(
-          packed_value, i, PyObject_Call(pack_hook, args, nullptr));
-      Py_XDECREF(args);
+      PyTuple_SET_ITEM(packed_value, i, CallHookWithOneArg(pack_hook, obj));
     } else if (PyList_Check(obj)) {
       Py_ssize_t len = PyList_Size(obj);
       auto tmp_list = PyList_New(len);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyList_GetItem(obj, j);
         if (IsEagerTensor(o)) {
-          auto args = PyTuple_New(1);
-          Py_INCREF(o);
-          PyTuple_SET_ITEM(args, 0, o);
-          PyList_SET_ITEM(tmp_list, j, PyObject_Call(pack_hook, args, nullptr));
-          Py_XDECREF(args);
+          PyTuple_SET_ITEM(tmp_list, j, CallHookWithOneArg(pack_hook, o));
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "save_for_backward only support Tensor, list of Tensor, tuple of "
@@ -583,12 +569,7 @@ PyObject* call_pack_hook(PyObject* value) {
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyTuple_GetItem(obj, j);
         if (IsEagerTensor(o)) {
-          auto args = PyTuple_New(1);
-          Py_INCREF(o);
-          PyTuple_SET_ITEM(args, 0, o);
-          PyTuple_SET_ITEM(
-              tmp_tuple, j, PyObject_Call(pack_hook, args, nullptr));
-          Py_XDECREF(args);
+          PyTuple_SET_ITEM(tmp_tuple, j, CallHookWithOneArg(pack_hook, o));
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "save_for_backward only support Tensor, list of Tensor, tuple of "
@@ -613,7 +594,7 @@ int tensor_properties_set_container(PyLayerObject* self,
                                     PyObject* value,
                                     void* closure) {
   EAGER_TRY
-  if (egr::SavedTensorsHooks::GetInstance().is_enable()) {
+  if (egr::SavedTensorsHooks::GetInstance().IsEnable()) {
     Py_XDECREF(self->container);
     self->container = call_pack_hook(value);
     self->container_be_packed = true;

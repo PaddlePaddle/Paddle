@@ -25,11 +25,11 @@ class SavedTensorsHooks {
 
   ~SavedTensorsHooks() {}
 
-  void set_hooks(PyObject* pack_hook, PyObject* unpack_hook) {
+  void SetHooks(PyObject* pack_hook, PyObject* unpack_hook) {
     PADDLE_ENFORCE_EQ(pack_hook_ == nullptr && unpack_hook_ == nullptr,
                       true,
                       paddle::platform::errors::InvalidArgument(
-                          "paddle.autograd.saved_tensors_hooks only one pair "
+                          "paddle.autograd.SavedTensorsHooks only one pair "
                           "of hooks is allowed at a time."));
 
     pack_hook_ = pack_hook;
@@ -39,7 +39,7 @@ class SavedTensorsHooks {
     is_enable_ = true;
   }
 
-  void reset_hooks() {
+  void ResetHooks() {
     Py_XDECREF(pack_hook_);
     Py_XDECREF(unpack_hook_);
     pack_hook_ = nullptr;
@@ -47,10 +47,10 @@ class SavedTensorsHooks {
     is_enable_ = false;
   }
 
-  bool is_enable() { return is_enable_; }
+  bool IsEnable() { return is_enable_; }
 
-  PyObject* get_pack_hook() { return pack_hook_; }
-  PyObject* get_unpack_hook() { return unpack_hook_; }
+  PyObject* GetPackHook() { return pack_hook_; }
+  PyObject* GetUnpackHook() { return unpack_hook_; }
 
   static SavedTensorsHooks& GetInstance() {
     static SavedTensorsHooks instance;

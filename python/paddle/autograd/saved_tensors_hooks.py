@@ -17,7 +17,7 @@ from paddle.fluid import core
 __all__ = []
 
 
-class saved_tensors_hooks():
+class SavedTensorsHooks():
     """
     Dynamic graph, registers a pair of pack / unpack hooks for saved tensors.
     
@@ -60,7 +60,7 @@ class saved_tensors_hooks():
         b = paddle.ones([3,3]) * 2
         a.stop_gradient = False
         b.stop_gradient = False
-        with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
+        with paddle.autograd.SavedTensorsHooks(pack_hook, unpack_hook):
             y = paddle.multiply(a, b)
         y.sum().backward()
 
@@ -94,7 +94,7 @@ class saved_tensors_hooks():
         b = paddle.ones([3,3]) * 2
         a.stop_gradient = False
         b.stop_gradient = False
-        with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
+        with paddle.autograd.SavedTensorsHooks(pack_hook, unpack_hook):
             y = cus_multiply.apply(a, b)
         y.sum().backward()
     """

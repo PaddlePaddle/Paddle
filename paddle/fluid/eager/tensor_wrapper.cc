@@ -55,6 +55,16 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value) {
   return obj;
 }
 
+PyObject* CallHookWithOneArg(PyObject* hook, PyObject* obj) {
+  auto args = PyTuple_New(1);
+  Py_INCREF(obj);
+  PyTuple_SET_ITEM(args, 0, obj);
+  ::pybind11::gil_scoped_acquire gil;
+  auto ret = PyObject_Call(hook, args, nullptr);
+  Py_XDECREF(args);
+  return ret;
+}
+
 TensorWrapper::TensorWrapper(const TensorWrapper& other) {
   no_need_buffer_ = other.no_need_buffer_;
   intermidiate_tensor_ = other.intermidiate_tensor_;
@@ -120,7 +130,7 @@ TensorWrapper::TensorWrapper(const paddle::experimental::Tensor& tensor,
     }
   } else {
 #if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
-    if (SavedTensorsHooks::GetInstance().is_enable() &&
+    if (SavedTensorsHooks::GetInstance().IsEnable() &&
         tensor.is_dense_tensor()) {
       phi::DenseTensor* dense_tensor =
           static_cast<phi::DenseTensor*>(tensor.impl().get());
@@ -128,18 +138,12 @@ TensorWrapper::TensorWrapper(const paddle::experimental::Tensor& tensor,
           std::move(std::make_shared<phi::DenseTensor>(
               std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
               dense_tensor->meta())));
-      auto pack_hook = SavedTensorsHooks::GetInstance().get_pack_hook();
-      unpack_hook_ = SavedTensorsHooks::GetInstance().get_unpack_hook();
+      auto pack_hook = SavedTensorsHooks::GetInstance().GetPackHook();
+      unpack_hook_ = SavedTensorsHooks::GetInstance().GetUnpackHook();
       Py_XINCREF(unpack_hook_);
       bool grad_tmp = egr::Controller::Instance().HasGrad();
       egr::Controller::Instance().SetHasGrad(false);
-      auto args = PyTuple_New(1);
-      auto obj = ToPyObject(tensor);
-      Py_INCREF(obj);
-      PyTuple_SET_ITEM(args, 0, obj);
-      ::pybind11::gil_scoped_acquire gil;
-      packed_tensor_info_ = PyObject_Call(pack_hook, args, nullptr);
-      Py_XDECREF(args);
+      packed_tensor_info_ = CallHookWithOneArg(pack_hook, ToPyObject(tensor));
       egr::Controller::Instance().SetHasGrad(grad_tmp);
     } else {
 #endif
@@ -174,15 +178,7 @@ paddle::experimental::Tensor TensorWrapper::recover() {
   if (packed_tensor_info_ && unpack_hook_) {
     bool grad_tmp = egr::Controller::Instance().HasGrad();
     egr::Controller::Instance().SetHasGrad(false);
-    PyObject* py_tensor = nullptr;
-    {
-      auto args = PyTuple_New(1);
-      Py_INCREF(packed_tensor_info_);
-      PyTuple_SET_ITEM(args, 0, packed_tensor_info_);
-      ::pybind11::gil_scoped_acquire gil;
-      py_tensor = PyObject_Call(unpack_hook_, args, nullptr);
-      Py_XDECREF(args);
-    }
+    PyObject* py_tensor = CallHookWithOneArg(unpack_hook_, packed_tensor_info_);
     if (p_tensor_type_tensor_wrapper &&
         PyObject_IsInstance(
             py_tensor,
