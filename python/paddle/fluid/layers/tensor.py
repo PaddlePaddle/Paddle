@@ -634,6 +634,8 @@ def assign(input, output=None):
         if _non_static_mode():
             if in_dygraph_mode() and output is None:
                 output = _C_ops.assign(input)
+            elif in_dygraph_mode() and output is not None:
+                _C_ops.assign_out_(input, output)
             else:
                 if output is None:
                     if _in_legacy_dygraph():
