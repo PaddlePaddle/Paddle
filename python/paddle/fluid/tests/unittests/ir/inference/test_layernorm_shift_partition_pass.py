@@ -55,7 +55,7 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
         config.set_trt_dynamic_shape_info({
             "input_data": [1, 49, 96],
         }, {
-            "input_data": [1, 3136, 768],
+            "input_data": [4, 3136, 768],
         }, {
             "input_data": [1, 784, 384],
         })
@@ -75,8 +75,7 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
         epsilon = draw(st.floats(min_value=0.0000001, max_value=0.001))
         # begin_norm_axis has to be 2
         begin_norm_axis = 2
-        #batch_size = draw(st.integers(min_value=1, max_value=4))
-        batch_size = 1
+        batch_size = draw(st.integers(min_value=1, max_value=4))
         input_dim = draw(
             st.sampled_from([[3136, 96], [784, 192], [196, 384], [49, 768]]))
         window_size = 7
