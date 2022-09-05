@@ -3933,7 +3933,6 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     dtype = weight.dtype
 
     # create intput and parameters
-    inputs = {'Weight': weight}
     input_shape = weight.shape
     assert weight.numel() > 0, "Any dimension of input cannot be equal to 0."
     assert dim < len(input_shape), ("The input `dim` should be less than the "
@@ -3947,13 +3946,18 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
                                 dtype=dtype,
                                 default_initializer=Normal(0., 1.))
     u.stop_gradient = True
-    inputs['U'] = u
     v = helper.create_parameter(attr=ParamAttr(),
                                 shape=[w],
                                 dtype=dtype,
                                 default_initializer=Normal(0., 1.))
-    inputs['V'] = v
     v.stop_gradient = True
+
+    if in_dygraph_mode():
+        return _C_ops.spectral_norm(weight, u, v, dim, power_iters, eps)
+
+    inputs = {'Weight': weight}
+    inputs['U'] = u
+    inputs['V'] = v
 
     # create output
     out = helper.create_variable(dtype=dtype)
@@ -5310,8 +5314,11 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     if len(x.shape) == 1:
         axis = 0
     if _non_static_mode():
-        _, out = _legacy_C_ops.norm(x, 'axis', 1 if axis is None else axis,
-                                    'epsilon', epsilon)
+        if in_dygraph_mode():
+            out, _ = _C_ops.norm(x, 1 if axis is None else axis, epsilon, False)
+        elif _in_legacy_dygraph():
+            _, out = _legacy_C_ops.norm(x, 'axis', 1 if axis is None else axis,
+                                        'epsilon', epsilon)
         return out
 
     check_variable_and_dtype(x, "X", ("float16", "float32", "float64"), "norm")
@@ -10252,6 +10259,9 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
                                     dtype=dtype,
                                     is_bias=False,
                                     default_initializer=Constant(0.25))
+    if in_dygraph_mode():
+        return _C_ops.prelu(x, alpha, data_format, mode)
+
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="prelu",
                      inputs={

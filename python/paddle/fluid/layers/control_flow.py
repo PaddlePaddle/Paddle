@@ -1162,6 +1162,9 @@ class While(object):
                 out_vars.append(inner_var)
 
         x_name_list |= set(map(lambda x: x.name, out_vars))
+        # NOTE(dev): cond_var has been contained in Input('Condition'), so
+        # we remove it from Input('X')
+        x_name_list -= {self.cond_var.name}
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
