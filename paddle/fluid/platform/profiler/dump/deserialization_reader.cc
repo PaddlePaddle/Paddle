@@ -128,7 +128,8 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
   }
   // restore NodeTrees object
   std::unique_ptr<NodeTrees> tree(new NodeTrees(thread_event_trees_map));
-  // restore gpuDeviceProp
+// restore gpuDeviceProp
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::map<uint32_t, gpuDeviceProp> device_property_map;
   for (auto indx = 0; indx < node_trees_proto_->device_property_size();
        indx++) {
@@ -139,6 +140,9 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
   }
   ProfilerResult* profiler_result_ptr =
       new ProfilerResult(std::move(tree), extrainfo, device_property_map);
+#endif
+  ProfilerResult* profiler_result_ptr =
+      new ProfilerResult(std::move(tree), extrainfo);
   // restore version and span indx
   profiler_result_ptr->SetVersion(node_trees_proto_->version());
   profiler_result_ptr->SetSpanIndx(node_trees_proto_->span_indx());

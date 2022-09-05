@@ -135,6 +135,7 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
   return host_python_node;
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 ProfilerResult::ProfilerResult(
     std::unique_ptr<NodeTrees> tree,
     const ExtraInfo& extra_info,
@@ -149,6 +150,7 @@ ProfilerResult::ProfilerResult(
     }
   }
 }
+#endif
 
 ProfilerResult::ProfilerResult(std::unique_ptr<NodeTrees> tree,
                                const ExtraInfo& extra_info)

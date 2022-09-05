@@ -39,7 +39,9 @@ class DeserializationReader {
   MemTraceEventNode* RestoreMemTraceEventNode(const MemTraceEventNodeProto&);
   OperatorSupplementEventNode* RestoreOperatorSupplementEventNode(
       const OperatorSupplementEventNodeProto&);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   gpuDeviceProp RestoreDeviceProperty(const DevicePropertyProto&);
+#endif
 
   std::string filename_;
   std::ifstream input_file_stream_;

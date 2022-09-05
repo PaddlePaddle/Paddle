@@ -40,6 +40,7 @@ void SerializationLogger::OpenFile() {
   node_trees_proto_ = new NodeTreesProto();
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void SerializationLogger::LogDeviceProperty(
     const std::map<uint32_t, gpuDeviceProp>& device_property_map) {
   for (auto it = device_property_map.begin(); it != device_property_map.end();
@@ -70,6 +71,7 @@ void SerializationLogger::LogDeviceProperty(
         device_property.sharedMemPerBlockOptin);
   }
 }
+#endif
 
 void SerializationLogger::LogNodeTrees(const NodeTrees& node_trees) {
   // dump the whole tree into file
