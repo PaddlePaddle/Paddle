@@ -64,6 +64,10 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
 void IrAnalysisPass::ReadCalibrationInfo(
     Argument* argument,
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales) {
+  if (!argument->Has("calibration_file_path")) {
+    LOG(INFO) << "argument has no calibration_file_path";
+    return;
+  }
   std::ifstream calibration_file(argument->calibration_file_path());
   std::string one_line;
   while (getline(calibration_file, one_line)) {
