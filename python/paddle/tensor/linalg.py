@@ -905,8 +905,8 @@ def cond(x, p=None, name=None):
                                                     keepdim, 'reduce_all',
                                                     reduce_all)
             if in_dygraph_mode():
-                max_out = _C_ops.max(s, axis, keepdim, reduce_all)
-                min_out = _C_ops.reduce_min(s, axis, keepdim, reduce_all)
+                max_out = _C_ops.max(s, axis, keepdim)
+                min_out = _C_ops.min(s, axis, keepdim)
                 if porder == 2:
                     return _C_ops.divide(max_out, min_out)
                 if porder == -2:
