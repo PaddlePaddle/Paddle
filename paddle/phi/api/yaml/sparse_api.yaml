@@ -82,33 +82,12 @@
 
 - api : conv3d
   args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key)
-  output : Tensor(out), Tensor(rulebook), Tensor(counter) 
+  output : Tensor(out), Tensor(rulebook), Tensor(counter)
   kernel :
     func : conv3d_coo{sparse_coo, dense -> sparse_coo, dense, dense}
     layout : x
   intermediate: rulebook, counter
   backward : conv3d_coo_grad
-
-- api : coo_to_dense
-  args : (Tensor x)
-  output : Tensor(out)
-  invoke : to_dense_impl(x)
-  backward : coo_to_dense_grad
-
-- api : create_sparse_coo_tensor
-  args : (Tensor values, Tensor indices, IntArray dense_shape)
-  output : Tensor(out)
-  kernel :
-    func : sparse_coo_tensor{dense, dense -> sparse_coo}
-    layout : values
-    data_type : values
-  backward : create_sparse_coo_tensor_grad
-
-- api : dense_to_coo
-  args : (Tensor x, int64_t sparse_dim)
-  output : Tensor(out)
-  invoke : to_sparse_coo_impl(x, sparse_dim)
-  backward : dense_to_coo_grad
 
 - api : divide
   args : (Tensor x, Tensor y)
@@ -224,6 +203,15 @@
     layout : x
   backward : softmax_grad
 
+- api : sparse_coo_tensor
+  args : (Tensor values, Tensor indices, IntArray dense_shape)
+  output : Tensor(out)
+  kernel :
+    func : sparse_coo_tensor{dense, dense -> sparse_coo}
+    layout : values
+    data_type : values
+  backward : sparse_coo_tensor_grad
+
 - api : sqrt
   args : (Tensor x)
   output : Tensor(out)
@@ -272,17 +260,25 @@
 - api : to_dense
   args : (Tensor x)
   output : Tensor(out)
-  invoke : to_dense_impl(x)
+  kernel :
+    func : coo_to_dense {sparse_coo -> dense},
+           csr_to_dense {sparse_csr -> dense}
+  backward : to_dense_grad
 
 - api : to_sparse_coo
   args : (Tensor x, int64_t sparse_dim)
   output : Tensor(out)
-  invoke : to_sparse_coo_impl(x, sparse_dim)
+  kernel :
+    func : dense_to_coo { dense -> sparse_coo },
+           csr_to_coo { sparse_csr -> sparse_coo}
+  backward : to_sparse_coo_grad
 
 - api : to_sparse_csr
   args : (Tensor x)
   output : Tensor(out)
-  invoke : to_sparse_csr_impl(x)
+  kernel :
+    func : dense_to_csr {dense -> sparse_csr},
+           coo_to_csr {sparse_coo -> sparse_csr}
 
 - api : values
   args : (Tensor x)
