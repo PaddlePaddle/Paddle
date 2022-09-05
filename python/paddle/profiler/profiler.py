@@ -135,7 +135,7 @@ def make_scheduler(*,
         A scheduler function, conforms to above state transform setting. The function will takes one parameter step_num, and returns corresponding ProfilerState.
 
     Examples:
-        1. profiling range [2, 5]
+        1. profiling range [2, 5].
 
         Assume batch 0: closed, batch 1: ready, batch [2, 5] record
 
@@ -146,7 +146,7 @@ def make_scheduler(*,
                 profiler.make_scheduler(closed=1, ready=1, record=4, repeat=1)
 
 
-        2. profiling range [3,6], [9,12], [15,18]...
+        2. profiling range [3,6], [9,12], [15,18].
 
         Assume batch 0: skiped, batch 1: closed, batch 2: ready, batch [3,6]: record, repeat
 
@@ -196,8 +196,8 @@ def export_chrome_tracing(dir_name: str,
                           worker_name: Optional[str] = None) -> Callable:
     r"""
     Return a callable, used for outputing tracing data to chrome tracing format file.
-    The output file will be saved in directory ``dir_name``, and file name will be set as worker_name.
-    if worker_name is not set, the default name is [hostname]_[pid].
+    The output file will be saved in directory ``dir_name``, and file name will be set as `worker_name`.
+    if `worker_name` is not set, the default name is [hostname]_[pid].
 
     Args:
         dir_name(str): Directory to save profiling data.
