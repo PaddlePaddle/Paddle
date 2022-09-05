@@ -17,19 +17,6 @@ limitations under the License. */
 namespace phi {
 
 TensorArray::TensorArray(const std::vector<DenseTensor>& vec) {
-  bool has_same_meta = true;
-  if (vec.size() > 0) {
-    for (auto tensor : vec) {
-      if (!(tensor.meta() == vec[0].meta())) {
-        has_same_meta = false;
-        break;
-      }
-    }
-    if (has_same_meta) {
-      meta_ = vec[0].meta();
-      place_ = vec[0].place();
-    }
-  }
   tensors_ = vec;
 }
 
@@ -45,44 +32,52 @@ bool TensorArray::initialized() const {
   return init;
 }
 
+int64_t TensorArray::numel() const {
+  PADDLE_THROW(errors::Unavailable("numel() can't be used in TensorArray"));
+  return -1;
+}
+
+const DDim& TensorArray::dims() const noexcept {
+  PADDLE_THROW(errors::Unavailable("dims() can't be used in TensorArray"));
+  return tensors_[0].dims();
+}
+
+const Place& TensorArray::place() const {
+  PADDLE_THROW(errors::Unavailable("place() can't be used in TensorArray"));
+  return tensors_[0].place();
+}
+
+DataType TensorArray::dtype() const noexcept {
+  PADDLE_THROW(errors::Unavailable("dtype() can't be used in TensorArray"));
+  return DataType::UNDEFINED;
+}
+
+DataLayout TensorArray::layout() const noexcept {
+  PADDLE_THROW(errors::Unavailable("layout() can't be used in TensorArray"));
+  return DataLayout::UNDEFINED;
+}
+
+bool TensorArray::valid() const noexcept {
+  PADDLE_THROW(errors::Unavailable("valid() can't be used in TensorArray"));
+  return false;
+}
+
 /// \brief Allocate memory with requested size for all tensors from allocator.
 /// \return Void pointer
 void* TensorArray::AllocateFrom(Allocator* allocator,
                                 DataType dtype,
                                 size_t requested_size) {
-  for (auto tensor : tensors_) {
-    tensor.AllocateFrom(allocator, dtype, requested_size);
+  for (size_t i = 0; i < tensors_.size(); i++) {
+    tensors_[i].AllocateFrom(allocator, tensors_[i].dtype(), requested_size);
   }
   return nullptr;
 }
 
 void TensorArray::push_back(const DenseTensor& tensor) {
-  DenseTensorMeta init_meta;
-  if (!empty()) {
-    if (!(tensor.meta() == meta_) && !(meta_ == init_meta)) {
-      meta_ = init_meta;
-    }
-  } else {
-    meta_ = tensor.meta();
-    if (tensor.IsInitialized()) {
-      place_ = tensor.place();
-    }
-  }
   tensors_.push_back(tensor);
 }
 
 void TensorArray::emplace_back(const DenseTensor& tensor) {
-  DenseTensorMeta init_meta;
-  if (!empty()) {
-    if (!(tensor.meta() == meta_) && !(meta_ == init_meta)) {
-      meta_ = init_meta;
-    }
-  } else {
-    meta_ = tensor.meta();
-    if (tensor.IsInitialized()) {
-      place_ = tensor.place();
-    }
-  }
   tensors_.emplace_back(tensor);
 }
 

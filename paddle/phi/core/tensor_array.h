@@ -18,6 +18,10 @@ limitations under the License. */
 
 namespace phi {
 
+/// \brief The TensorArray store a list of tensor and it is designed for
+/// compatible with LodTensorArray in Fluid. It shouldn't be used widely
+/// in PHI. If you want to store a list of tensor in PHI, please use std::vector
+/// when ever possible.
 class TensorArray : public TensorBase,
                     public TypeInfoTraits<TensorBase, TensorArray> {
  public:
@@ -51,28 +55,22 @@ class TensorArray : public TensorBase,
   static const char* name() { return "TensorArray"; }
 
   /// \brief This overrided function is not used in TensorArray.
-  /// \return It will return -1.
-  int64_t numel() const override { return -1; }
-
-  /// \brief Returns the dims of the tensor in TensorArray.
-  /// \return The dims of the tensor.
-  const DDim& dims() const noexcept override { return meta_.dims; }
-
-  /// \brief Returns the data place of the tensor in TensorArray.
-  /// \return The data place of the tensor.
-  const Place& place() const override { return place_; }
-
-  /// \brief Returns the data type of the tensor in TensorArray.
-  /// \return The data type of the tensor.
-  DataType dtype() const noexcept override { return meta_.dtype; }
-
-  /// \brief Returns the data layout of the tensor in TensorArray.
-  /// \return The data layout of the tensor.
-  DataLayout layout() const noexcept override { return meta_.layout; }
+  int64_t numel() const override;
 
   /// \brief This overrided function is not used in TensorArray.
-  /// \return false.
-  bool valid() const noexcept override { return false; }
+  const DDim& dims() const noexcept override;
+
+  /// \brief This overrided function is not used in TensorArray.
+  const Place& place() const override;
+
+  /// \brief This overrided function is not used in TensorArray.
+  DataType dtype() const noexcept override;
+
+  /// \brief This overrided function is not used in TensorArray.
+  DataLayout layout() const noexcept override;
+
+  /// \brief This overrided function is not used in TensorArray.
+  bool valid() const noexcept override;
 
   /// \brief Test whether the tensor's storage in TensorArray is allocated.
   /// return Whether all tensors in TensorArray is allocated.
@@ -131,10 +129,6 @@ class TensorArray : public TensorBase,
 
  private:
   std::vector<DenseTensor> tensors_;
-  // meta_ store the tensor's meta if all tensors in TensorArray have same meta.
-  // Otherwise, it stores default initial value.
-  DenseTensorMeta meta_;
-  Place place_;
 };
 
 }  // namespace phi
