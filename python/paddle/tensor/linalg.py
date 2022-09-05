@@ -915,9 +915,13 @@ def cond(x, p=None, name=None):
                                                    keepdim, 'reduce_all',
                                                    reduce_all)
             if porder == 2:
+                if in_dygraph_mode():
+                    return _C_ops.divide(max_out, min_out)
                 return _legacy_C_ops.elementwise_div(max_out, min_out, 'aixs',
                                                      axis, 'use_mkldnn', False)
             if porder == -2:
+                if in_dygraph_mode():
+                    return _C_ops.divide(min_out, max_out)
                 return _legacy_C_ops.elementwise_div(min_out, max_out, 'aixs',
                                                      axis, 'use_mkldnn', False)
 
