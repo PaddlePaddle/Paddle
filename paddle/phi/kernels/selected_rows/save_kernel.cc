@@ -17,9 +17,8 @@ limitations under the License. */
 #include <fstream>
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/serialization.h"
 #include "paddle/phi/kernels/cast_kernel.h"
-
-#include "paddle/fluid/framework/selected_rows_utils.h"
 
 namespace phi {
 namespace sr {
@@ -47,7 +46,7 @@ void SaveKernel(const Context& dev_ctx,
       static_cast<bool>(fout),
       true,
       phi::errors::Unavailable("Cannot open %s to save variables.", file_path));
-  paddle::framework::SerializeToStream(fout, x, dev_ctx);
+  SerializeToStream(fout, x, dev_ctx);
   fout.close();
 }
 
@@ -67,3 +66,19 @@ PD_REGISTER_KERNEL(save_sr,
                    int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(save_sr,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sr::SaveKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+#endif

@@ -17,9 +17,8 @@ limitations under the License. */
 #include <fstream>
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/serialization.h"
 #include "paddle/phi/kernels/cast_kernel.h"
-
-#include "paddle/fluid/framework/lod_tensor.h"
 
 namespace phi {
 
@@ -52,9 +51,9 @@ void SaveKernel(const Context& dev_ctx,
 
   if (in_dtype != out_dtype) {
     auto out = Cast<T>(dev_ctx, x, out_dtype);
-    paddle::framework::SerializeToStream(fout, out, dev_ctx);
+    SerializeToStream(fout, out, dev_ctx);
   } else {
-    paddle::framework::SerializeToStream(fout, x, dev_ctx);
+    SerializeToStream(fout, x, dev_ctx);
   }
   fout.close();
 }
@@ -74,3 +73,19 @@ PD_REGISTER_KERNEL(save,
                    int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(save,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SaveKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+#endif
