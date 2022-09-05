@@ -37,7 +37,7 @@ from ..fluid.dygraph.parallel import prepare_context
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 import paddle.fluid.dygraph_utils as dygraph_utils
 import contextlib
 
@@ -355,7 +355,7 @@ def barrier(group=None):
 
     temp = fill_constant([1], dtype="int32", value="1")
     if _non_static_mode():
-        return _C_ops.barrier(temp, temp, 'ring_id', ring_id)
+        return _legacy_C_ops.barrier(temp, temp, 'ring_id', ring_id)
 
     op_type = 'barrier'
 
@@ -657,7 +657,7 @@ def wait(tensor, group=None, use_calc_stream=True):
 def _sync_calc_stream(tensor):
 
     if _non_static_mode():
-        return _C_ops.c_sync_calc_stream(tensor, tensor)
+        return _legacy_C_ops.c_sync_calc_stream(tensor, tensor)
 
     op_type = 'c_sync_calc_stream'
 
@@ -672,7 +672,8 @@ def _sync_calc_stream(tensor):
 def _sync_comm_stream(tensor, ring_id=0):
 
     if _non_static_mode():
-        return _C_ops.c_sync_comm_stream([tensor], [tensor], 'ring_id', ring_id)
+        return _legacy_C_ops.c_sync_comm_stream([tensor], [tensor], 'ring_id',
+                                                ring_id)
 
     op_type = 'c_sync_comm_stream'
 
@@ -750,9 +751,9 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
     assert gsrc >= 0, ("src rank out of group, need global rank")
 
     if _non_static_mode():
-        return _C_ops.c_broadcast(tensor, tensor, 'root', gsrc,
-                                  'use_calc_stream', use_calc_stream, 'ring_id',
-                                  ring_id)
+        return _legacy_C_ops.c_broadcast(tensor, tensor, 'root', gsrc,
+                                         'use_calc_stream', use_calc_stream,
+                                         'ring_id', ring_id)
 
     op_type = 'c_broadcast'
     check_variable_and_dtype(
@@ -774,8 +775,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
 
     Reduce a tensor over all ranks so that all get the result.
-    As shown below, 4 GPUs each start 4 processes and the data on each GPU is represnted
-    by the GPU number. The reduce operator is sum. Through all_reduce operator, 
+    As shown below, one process is started with a GPU and the data of this process is represented
+    by its group rank. The reduce operator is sum. Through all_reduce operator, 
     each GPU will have the sum of the data from all GPUs.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/allreduce.png
@@ -785,8 +786,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 
     Args:
         tensor (Tensor): The input Tensor. It also works as the output Tensor. Its data type
-            should be float16, float32, float64, int32 or int64.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
             Default to True.
@@ -798,21 +799,16 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         .. code-block:: python
 
             # required: distributed
-            import numpy as np
             import paddle
-            from paddle.distributed import ReduceOp
             from paddle.distributed import init_parallel_env
 
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
-                np_data = np.array([[4, 5, 6], [4, 5, 6]])
+                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             else:
-                np_data = np.array([[1, 2, 3], [1, 2, 3]])
-            data = paddle.to_tensor(np_data)
+                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             paddle.distributed.all_reduce(data)
-            out = data.numpy()
-            # [[5, 7, 9], [5, 7, 9]]
     """
     if group is not None and not group.is_member():
         return
@@ -830,23 +826,28 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
     if _non_static_mode():
         if op == ReduceOp.SUM:
-            return _C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
-                                           use_calc_stream, 'ring_id', ring_id)
+            return _legacy_C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
+                                                  use_calc_stream, 'ring_id',
+                                                  ring_id)
         elif op == ReduceOp.MAX:
-            return _C_ops.c_allreduce_max_(tensor, 'use_calc_stream',
-                                           use_calc_stream, 'ring_id', ring_id)
+            return _legacy_C_ops.c_allreduce_max_(tensor, 'use_calc_stream',
+                                                  use_calc_stream, 'ring_id',
+                                                  ring_id)
         elif op == ReduceOp.MIN:
-            return _C_ops.c_allreduce_min_(tensor, 'use_calc_stream',
-                                           use_calc_stream, 'ring_id', ring_id)
+            return _legacy_C_ops.c_allreduce_min_(tensor, 'use_calc_stream',
+                                                  use_calc_stream, 'ring_id',
+                                                  ring_id)
         elif op == ReduceOp.PROD:
-            return _C_ops.c_allreduce_prod_(tensor, 'use_calc_stream',
-                                            use_calc_stream, 'ring_id', ring_id)
+            return _legacy_C_ops.c_allreduce_prod_(tensor, 'use_calc_stream',
+                                                   use_calc_stream, 'ring_id',
+                                                   ring_id)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'all_reduce')
+    check_variable_and_dtype(tensor, 'tensor', [
+        'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
+        'bool'
+    ], 'all_reduce')
     if op == ReduceOp.SUM:
         op_type = 'c_allreduce_sum'
     elif op == ReduceOp.MAX:
@@ -883,7 +884,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         tensor (Tensor): The output Tensor for the destination and the input Tensor otherwise. Its data type
             should be float16, float32, float64, int32 or int64.
         dst (int): The destination rank id.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
             Default to True.
@@ -931,21 +932,22 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 
     if _non_static_mode():
         if op == ReduceOp.SUM:
-            return _C_ops.c_reduce_sum(tensor, tensor, 'use_calc_stream',
-                                       use_calc_stream, 'ring_id', ring_id,
-                                       'root_id', gdst)
+            return _legacy_C_ops.c_reduce_sum(tensor, tensor, 'use_calc_stream',
+                                              use_calc_stream, 'ring_id',
+                                              ring_id, 'root_id', gdst)
         elif op == ReduceOp.MAX:
-            return _C_ops.c_reduce_max(tensor, tensor, 'use_calc_stream',
-                                       use_calc_stream, 'ring_id', ring_id,
-                                       'root_id', gdst)
+            return _legacy_C_ops.c_reduce_max(tensor, tensor, 'use_calc_stream',
+                                              use_calc_stream, 'ring_id',
+                                              ring_id, 'root_id', gdst)
         elif op == ReduceOp.MIN:
-            return _C_ops.c_reduce_min(tensor, tensor, 'use_calc_stream',
-                                       use_calc_stream, 'ring_id', ring_id,
-                                       'root_id', gdst)
+            return _legacy_C_ops.c_reduce_min(tensor, tensor, 'use_calc_stream',
+                                              use_calc_stream, 'ring_id',
+                                              ring_id, 'root_id', gdst)
         elif op == ReduceOp.PROD:
-            return _C_ops.c_reduce_prod(tensor, tensor, 'use_calc_stream',
-                                        use_calc_stream, 'ring_id', ring_id,
-                                        'root_id', gdst)
+            return _legacy_C_ops.c_reduce_prod(tensor, tensor,
+                                               'use_calc_stream',
+                                               use_calc_stream, 'ring_id',
+                                               ring_id, 'root_id', gdst)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 
@@ -978,7 +980,7 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     """
 
     Gather tensors from all participators and all get the result. As shown
-    below, 4 GPUs each start 4 processes and the data on each GPU is represnted
+    below, 4 GPUs each starts 4 processes and the data on each GPU is represented
     by the GPU number. Through the all_gather operator, each GPU will have data
     from all GPUs.
 
@@ -1052,8 +1054,9 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     nranks = _get_global_group().nranks if group is None else group.nranks
 
     if _non_static_mode():
-        out = _C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
-                                 'ring_id', ring_id, 'nranks', nranks)
+        out = _legacy_C_ops.c_allgather(tensor, 'use_calc_stream',
+                                        use_calc_stream, 'ring_id', ring_id,
+                                        'nranks', nranks)
     else:
         op_type = 'c_allgather'
         helper = LayerHelper(op_type, **locals())
@@ -1237,9 +1240,9 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
             return task
 
     if _non_static_mode():
-        return _C_ops.c_scatter(temp, tensor, 'use_calc_stream',
-                                use_calc_stream, 'ring_id', ring_id, 'nranks',
-                                nranks, 'root', gsrc)
+        return _legacy_C_ops.c_scatter(temp, tensor, 'use_calc_stream',
+                                       use_calc_stream, 'ring_id', ring_id,
+                                       'nranks', nranks, 'root', gsrc)
     op_type = 'c_scatter'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -1273,8 +1276,9 @@ def _c_identity(tensor, group=None):
     ring_id = 0 if group is None else group.id
 
     if _non_static_mode():
-        return _C_ops.c_identity(tensor, 'use_calc_stream', True, 'ring_id',
-                                 ring_id, 'use_model_parallel', True)
+        return _legacy_C_ops.c_identity(tensor, 'use_calc_stream', True,
+                                        'ring_id', ring_id,
+                                        'use_model_parallel', True)
     op_type = 'c_identity'
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
@@ -1316,9 +1320,10 @@ def _c_concat(tensor, group=None):
     nranks = group.nranks
 
     if _non_static_mode():
-        return _C_ops.c_concat(tensor, 'ring_id', ring_id, 'use_calc_stream',
-                               True, 'rank', rank, 'nranks', nranks,
-                               'use_model_parallel', True)
+        return _legacy_C_ops.c_concat(tensor, 'ring_id', ring_id,
+                                      'use_calc_stream', True, 'rank', rank,
+                                      'nranks', nranks, 'use_model_parallel',
+                                      True)
 
     op_type = 'c_concat'
     helper = LayerHelper(op_type, **locals())
@@ -1363,9 +1368,9 @@ def _c_split(tensor, group=None):
     nranks = _get_global_env().world_size if group is None else group.nranks
 
     if _non_static_mode():
-        return _C_ops.c_split(tensor, 'use_calc_stream', True, 'ring_id',
-                              ring_id, 'rank', rank, 'nranks', nranks,
-                              'use_model_parallel', True)
+        return _legacy_C_ops.c_split(tensor, 'use_calc_stream', True, 'ring_id',
+                                     ring_id, 'rank', rank, 'nranks', nranks,
+                                     'use_model_parallel', True)
 
     op_type = 'c_split'
     helper = LayerHelper(op_type, **locals())
@@ -1397,9 +1402,9 @@ def _mp_allreduce(tensor,
     """
     if group is not None and not group.is_member():
         return
-    ring_id = 0 if group is None else group.id
 
     if in_dygraph_mode():
+        group = _get_default_group() if group is None else group
         assert op == ReduceOp.SUM, "Unknown parameter: {}.".format(op)
 
         from paddle.autograd import PyLayer
@@ -1407,29 +1412,36 @@ def _mp_allreduce(tensor,
         class mp_allreduce_eager(PyLayer):
 
             @staticmethod
-            def forward(ctx, tensor, use_calc_stream, ring_id,
+            def forward(ctx, tensor, group, use_calc_stream,
                         use_model_parallel):
-                ctx.ring_id = ring_id
-                return _C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
-                                               use_calc_stream, 'ring_id',
-                                               ring_id, "use_model_parallel",
-                                               use_model_parallel)
+                ctx.ring_id = group.id
+
+                if use_calc_stream:
+                    op_type = _get_reduce_op(op, "_mp_allreduce")
+                    group.process_group.allreduce_on_calc_stream(
+                        tensor, op_type)
+                    return tensor
+                else:
+                    return _legacy_C_ops.c_allreduce_sum_(
+                        tensor, 'use_calc_stream', use_calc_stream, 'ring_id',
+                        ring_id, "use_model_parallel", use_model_parallel)
 
             @staticmethod
             def backward(ctx, dy):
-                return _C_ops.c_identity(dy, 'use_calc_stream', True, 'ring_id',
-                                         ctx.ring_id, 'use_model_parallel',
-                                         True)
+                return _legacy_C_ops.c_identity(dy, 'use_calc_stream', True,
+                                                'ring_id', ctx.ring_id,
+                                                'use_model_parallel', True)
 
-        return mp_allreduce_eager.apply(tensor, use_calc_stream, ring_id,
+        return mp_allreduce_eager.apply(tensor, group, use_calc_stream,
                                         use_model_parallel)
 
-    elif _in_legacy_dygraph():
+    ring_id = 0 if group is None else group.id
+    if _in_legacy_dygraph():
         if op == ReduceOp.SUM:
-            return _C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
-                                           use_calc_stream, 'ring_id', ring_id,
-                                           "use_model_parallel",
-                                           use_model_parallel)
+            return _legacy_C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
+                                                  use_calc_stream, 'ring_id',
+                                                  ring_id, "use_model_parallel",
+                                                  use_model_parallel)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 
@@ -1467,7 +1479,8 @@ def _c_lookup_table(table, index, start_index=0, name=None):
         Tensor.
     """
     if _non_static_mode():
-        return _C_ops.c_embedding(table, index, "start_index", start_index)
+        return _legacy_C_ops.c_embedding(table, index, "start_index",
+                                         start_index)
 
     op_type = 'c_embedding'
     helper = LayerHelper(op_type, **locals())
@@ -1543,7 +1556,7 @@ def _c_softmax_with_cross_entropy(logits,
         label = paddle.unsqueeze(label, axis=-1)
 
     if _non_static_mode():
-        softmax, loss = _C_ops.c_softmax_with_cross_entropy(
+        softmax, loss = _legacy_C_ops.c_softmax_with_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks)
         if not return_softmax:
             return loss
@@ -1581,8 +1594,8 @@ def _linear(x, weight, bias=None, name=None):
     """
     if _non_static_mode():
         pre_bias = _varbase_creator(dtype=x.dtype)
-        _C_ops.matmul(x, weight, pre_bias, 'transpose_X', False, 'transpose_Y',
-                      False, "alpha", 1)
+        _legacy_C_ops.matmul(x, weight, pre_bias, 'transpose_X', False,
+                             'transpose_Y', False, "alpha", 1)
         return dygraph_utils._append_bias_in_dygraph(pre_bias,
                                                      bias,
                                                      axis=len(x.shape) - 1)
@@ -2056,8 +2069,8 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
         return
 
     if _non_static_mode():
-        out = _C_ops.alltoall(temp, 'use_calc_stream', use_calc_stream,
-                              'ring_id', ring_id)
+        out = _legacy_C_ops.alltoall(temp, 'use_calc_stream', use_calc_stream,
+                                     'ring_id', ring_id)
     else:
         op_type = 'alltoall'
         helper = LayerHelper(op_type, **locals())
@@ -2225,8 +2238,8 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
 
     if _non_static_mode():
-        return _C_ops.send_v2(tensor, 'use_calc_stream', use_calc_stream,
-                              'ring_id', ring_id, 'peer', dst)
+        return _legacy_C_ops.send_v2(tensor, 'use_calc_stream', use_calc_stream,
+                                     'ring_id', ring_id, 'peer', dst)
     op_type = 'send_v2'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -2288,9 +2301,9 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
 
     if _non_static_mode():
-        return _C_ops.recv_v2(tensor, 'use_calc_stream', use_calc_stream,
-                              'ring_id', ring_id, 'peer', src, 'dtype',
-                              tensor.dtype, 'out_shape', tensor.shape)
+        return _legacy_C_ops.recv_v2(tensor, 'use_calc_stream', use_calc_stream,
+                                     'ring_id', ring_id, 'peer', src, 'dtype',
+                                     tensor.dtype, 'out_shape', tensor.shape)
     op_type = 'recv_v2'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -2570,7 +2583,7 @@ def reduce_scatter(tensor,
     Args:
         tensor (Tensor): Output tensor.
         tensor_list (list[Tensor]): List of tensors to reduce and scatter.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (Group, optional): The group instance return by new_group or None for global 
             default group. Default: None.
         use_calc_stream (bool, optional): Whether this op should be an async op.
@@ -2643,7 +2656,7 @@ def _reduce_scatter_base(output,
     Args:
         output (Tensor): Output tensor.
         input (Tensor): Input tensor that is of size output tensor size times world size
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (ProcessGroup, optional): The process group to work on. If None,
             the default process group will be used.
         use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream (False).

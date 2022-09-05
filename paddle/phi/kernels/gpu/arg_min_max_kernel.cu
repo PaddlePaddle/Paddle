@@ -203,7 +203,7 @@ struct VisitDataCudaArgMinMaxFunctor {
 template <typename Context, typename T, class Reducer>
 void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
                            const DenseTensor& x,
-                           int64_t axis,
+                           const Scalar& axis,
                            bool keepdims,
                            bool flatten,
                            int dtype,
@@ -213,19 +213,19 @@ void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
         static_cast<paddle::framework::proto::VarType::Type>(
             paddle::framework::proto::VarType::INT64),
         VisitDataCudaArgMinMaxFunctor<Context, T, Reducer>(
-            dev_ctx, x, axis, keepdims, flatten, out));
+            dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
     return;
   }
   paddle::framework::VisitDataTypeTiny(
       static_cast<paddle::framework::proto::VarType::Type>(dtype),
       VisitDataCudaArgMinMaxFunctor<Context, T, Reducer>(
-          dev_ctx, x, axis, keepdims, flatten, out));
+          dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
 }
 
 template <typename T, typename Context>
 void ArgMinKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  int64_t axis,
+                  const Scalar& axis,
                   bool keepdims,
                   bool flatten,
                   int dtype,
@@ -237,7 +237,7 @@ void ArgMinKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void ArgMaxKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  int64_t axis,
+                  const Scalar& axis,
                   bool keepdims,
                   bool flatten,
                   int dtype,

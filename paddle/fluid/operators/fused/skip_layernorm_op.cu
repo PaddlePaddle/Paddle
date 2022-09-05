@@ -44,7 +44,8 @@ class SkipLayerNormKernel : public framework::OpKernel<T> {
 
     auto *out = context.Output<framework::Tensor>("Out");
     out->Resize(X->dims());
-    auto *output_d = out->mutable_data<T>(context.GetPlace());
+    auto &dev_ctx = context.template device_context<phi::GPUContext>();
+    auto *output_d = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
 
     size_t num = 1;
     for (size_t i = 0; i < X->dims().size(); i++) {
