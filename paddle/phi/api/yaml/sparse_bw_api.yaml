@@ -279,6 +279,14 @@
     func : tanh_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            tanh_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
+- backward_api : transpose_grad
+  forward : transpose(Tensor x, int[] shape) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  kernel :
+    func : transpose_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
+           transpose_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
+
 - backward_api : values_grad
   forward : coo_values(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)

@@ -82,7 +82,7 @@
 
 - api : conv3d
   args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key)
-  output : Tensor(out), Tensor(rulebook), Tensor(counter) 
+  output : Tensor(out), Tensor(rulebook), Tensor(counter)
   kernel :
     func : conv3d_coo{sparse_coo, dense -> sparse_coo, dense, dense}
     layout : x
@@ -283,6 +283,15 @@
   args : (Tensor x)
   output : Tensor(out)
   invoke : to_sparse_csr_impl(x)
+
+- api : transpose
+  args : (Tensor x, int[] shape)
+  output : Tensor(out)
+  kernel :
+    func : transpose_coo{sparse_coo -> sparse_coo},
+           transpose_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : transpose_grad
 
 - api : values
   args : (Tensor x)

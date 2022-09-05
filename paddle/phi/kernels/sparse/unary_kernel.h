@@ -100,6 +100,18 @@ void CastCsrKernel(const Context& dev_ctx,
                    SparseCsrTensor* out);
 
 template <typename T, typename Context>
+void TransposeCooKernel(const Context& dev_ctx,
+                        const SparseCooTensor& x,
+                        const std::vector<int>& dims,
+                        SparseCooTensor* out);
+
+template <typename T, typename Context>
+void TransposeCsrKernel(const Context& dev_ctx,
+                        const SparseCsrTensor& x,
+                        const std::vector<int>& dims,
+                        SparseCsrTensor* out);
+
+template <typename T, typename Context>
 SparseCooTensor ReluCoo(const Context& dev_ctx, const SparseCooTensor& x) {
   SparseCooTensor coo;
   ReluCooKernel<T, Context>(dev_ctx, x, &coo);
