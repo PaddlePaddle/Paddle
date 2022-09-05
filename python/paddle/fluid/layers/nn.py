@@ -4805,10 +4805,16 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_max(y, dim=[1, 2]) # [4.0, 8.0]
             fluid.layers.reduce_max(y, dim=[0, 1]) # [7.0, 8.0]
     """
-    helper = LayerHelper('reduce_max', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
+
+    if in_dygraph_mode():
+        return _C_ops.max(input, dim, keep_dim)
+
+    helper = LayerHelper('reduce_max', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+
     helper.append_op(type='reduce_max',
                      inputs={'X': input},
                      outputs={'Out': out},
