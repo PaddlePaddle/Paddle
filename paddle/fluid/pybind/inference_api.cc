@@ -730,7 +730,16 @@ void BindAnalysisConfig(py::module *m) {
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_dlnne",
            &AnalysisConfig::EnableDlnne,
-           py::arg("min_subgraph_size") = 3)
+           py::arg("min_subgraph_size") = 3,
+           py::arg("max_batch_size") = 1,
+           py::arg("use_static_batch") = false,
+           py::arg("weight_share_mode") = "0",
+           py::arg("disable_nodes_by_outputs") =
+               std::unordered_set<std::string>(),
+           py::arg("input_shape_dict") =
+               std::map<std::string, std::vector<int64_t>>(),
+           py::arg("use_calib_mode") = false,
+           py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32)
       .def("enable_lite_engine",
            &AnalysisConfig::EnableLiteEngine,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,

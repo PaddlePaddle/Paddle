@@ -2452,6 +2452,53 @@ void PNormInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void Pool2DInferMeta(const MetaTensor& x,
+                     const IntArray& kernel_size,
+                     const std::vector<int>& strides,
+                     const std::vector<int>& paddings,
+                     bool ceil_mode,
+                     bool exclusive,
+                     const std::string& data_format,
+                     const std::string& pooling_type,
+                     bool global_pooling,
+                     bool adaptive,
+                     const std::string& padding_algorithm,
+                     MetaTensor* out,
+                     MetaConfig config) {
+  const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
+                            (data_format == "NHWC" || data_format == "NDHWC");
+  if (!config.is_runtime && kernel_size.FromTensor()) {
+    auto x_dims = x.dims();
+    std::vector<int64_t> output_shape = std::move(phi::vectorize(x_dims));
+    // set dims of HW -1
+    output_shape[x_dims.size() - 2] = -1;
+    if (channel_last) {  // for NHWC, NDHWC
+      output_shape[x_dims.size() - 3] = -1;
+    } else {  // for NCHW
+      output_shape[x_dims.size() - 1] = -1;
+    }
+    out->set_dims(make_ddim(output_shape));
+    out->share_lod(x);
+    out->set_dtype(x.dtype());
+  } else {
+    std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
+                                     kernel_size.GetData().end());
+    PoolInferMeta(x,
+                  kernel_size_val,
+                  strides,
+                  paddings,
+                  ceil_mode,
+                  exclusive,
+                  data_format,
+                  pooling_type,
+                  global_pooling,
+                  adaptive,
+                  padding_algorithm,
+                  out,
+                  config);
+  }
+}
+
 void PoolInferMeta(const MetaTensor& x,
                    const std::vector<int>& kernel_size,
                    const std::vector<int>& strides,

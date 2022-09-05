@@ -62,9 +62,10 @@ namespace gpu {
  *
  */
 
-#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)                     \
-  int64_t __index__ = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x; \
-  for (index_type i = __index__; __index__ < (num);                   \
+#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)                           \
+  int64_t __index__ =                                                       \
+      static_cast<int64_t>(hipBlockIdx_x) * hipBlockDim_x + hipThreadIdx_x; \
+  for (index_type i = __index__; __index__ < (num);                         \
        __index__ += hipBlockDim_x * hipGridDim_x, i = __index__)
 
 }  // namespace gpu
