@@ -233,8 +233,8 @@ class Engine:
         assert "dataset" in self._user_tuning_config, "Optimization Tuning should provide with dataset."
         batch_size = self._user_tuning_config["batch_size"]
         dataset = self._user_tuning_config["dataset"]
-        dataset.dp_world_size = self._input_split_size
-        dataset.dp_rank = self._input_split_rank
+        dataset.dp_world_size = self.dp_world_sizes
+        dataset.dp_rank = self.dp_ranks
 
         from .tuner.optimization_tuner import OptimizationTuner
         self._optimization_tuner = OptimizationTuner(self._user_tuning_config,
@@ -271,9 +271,6 @@ class Engine:
         for var in inputs_var + labels_var:
             if var.name in block.vars:
                 feed_list.append(block.vars[var.name])
-
-        self._input_split_size, self._input_split_rank = self._get_input_split_info(
-            feed_list[0], self._dist_contexts[mode])
 
         self.dp_world_sizes = []
         self.dp_ranks = []
@@ -459,7 +456,12 @@ class Engine:
                 train_logs["step: {:d} "] = step
                 if lr_scheduler is not None:
                     lr_scheduler.step()
-                    train_logs["lr: {:5e} "] = self._lr_optimizer.get_lr()
+                    try:
+                        train_logs["lr: {:5e} "] = self._lr_optimizer.get_lr()
+                    except:
+                        train_logs[
+                            "lr: {:5e} "] = self._lr_optimizer._learning_rate.get_lr(
+                            )
                 # inner fetches
                 if fetch_loss:
                     train_logs["loss: {:9f} "] = outs[0][0]

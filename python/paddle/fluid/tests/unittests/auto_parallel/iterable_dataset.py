@@ -61,6 +61,30 @@ class MyDataset(IterableDataset):
             yield input, label
 
 
+class MyDataset1(Dataset):
+
+    def __init__(self, num_samples):
+        super(MyDataset1, self).__init__()
+        self.num_samples = num_samples
+        self.data = []
+        for i in range(self.num_samples):
+            input1 = np.random.uniform(size=image_size).astype("float32")
+            label1 = np.array(np.random.randint(0, class_num - 1,
+                                                dtype="int64"))
+            input2 = np.random.uniform(size=image_size).astype("float32")
+            label2 = np.array(np.random.randint(0, class_num - 1,
+                                                dtype="int64"))
+            input = np.stack((input1, input2))
+            label = np.stack((label1, label2))
+            self.data.append((input, label))
+
+    def __getitem__(self, idx):
+        return self.data[idx]
+
+    def __len__(self):
+        return len(self.data)
+
+
 class MLPLayer(nn.Layer):
 
     def __init__(self,
@@ -117,6 +141,7 @@ def train(fetch):
 
     dist_strategy = fleet.DistributedStrategy()
     dist_strategy.semi_auto = True
+    dist_strategy.split_data = True
     fleet.init(is_collective=True, strategy=dist_strategy)
 
     # init engine
@@ -134,9 +159,16 @@ def train(fetch):
 
     # train
     train_dataset = MyDataset(batch_num * batch_size)
+    train_dataset1 = MyDataset1(batch_num)
     engine.fit(train_dataset,
                epochs=2,
                batch_size=batch_size,
+               steps_per_epoch=batch_num,
+               fetches=fetches)
+
+    engine.fit(train_dataset1,
+               epochs=2,
+               batch_size=None,
                steps_per_epoch=batch_num,
                fetches=fetches)
 

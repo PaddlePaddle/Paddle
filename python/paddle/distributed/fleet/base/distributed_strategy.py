@@ -2012,7 +2012,7 @@ class DistributedStrategy(object):
         """
         return self.strategy.split_data
 
-    @auto_search.setter
+    @split_data.setter
     def split_data(self, flag):
         if isinstance(flag, bool):
             self.strategy.split_data = flag
