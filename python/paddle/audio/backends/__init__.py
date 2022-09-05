@@ -13,7 +13,7 @@
 # limitations under the License.
 from . import init_backend
 from . import wave_backend
-from .init_backend import get_audio_backend, list_audio_backends, set_audio_backend
+from .init_backend import get_current_audio_backend, list_available_backends, set_backend
 
 init_backend._init_set_audio_backend()
 

@@ -45,7 +45,8 @@ def info(filepath: str, format: Optional[str] = None) -> AudioInfo:
     """
     if hasattr(filepath, 'read'):
         file_obj = filepath
-    file_obj = open(filepath, 'rb')
+    else:
+        file_obj = open(filepath, 'rb')
 
     try:
         file_ = wave.open(file_obj)
@@ -117,7 +118,8 @@ def load(filepath: Union[str, Path],
     """
     if hasattr(filepath, 'read'):
         file_obj = filepath
-    file_obj = open(filepath, 'rb')
+    else:
+        file_obj = open(filepath, 'rb')
 
     try:
         file_ = wave.open(file_obj)
