@@ -39,9 +39,8 @@ class GeluOp : public framework::OperatorWithKernel {
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
-    auto it = this->Attrs().find("use_mkldnn");
     if (library == framework::LibraryType::kPlain &&
-        it != this->Attrs().end() && this->CanMKLDNNBeUsed(ctx, data_type)) {
+        this->CanMKLDNNBeUsed(ctx, data_type)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
