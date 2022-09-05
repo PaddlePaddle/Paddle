@@ -26,7 +26,7 @@ void AllKernel(const Context& dev_ctx,
                bool keep_dim,
                DenseTensor* out) {
   bool reduce_all = false;
-  if (dims.size() == 0 || dims.size() == phi::vectorize(x.dims()).size()) {
+  if (dims.size() == 0 || dims.size() == x.dims().size()) {
     reduce_all = true;
   }
   AllRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
