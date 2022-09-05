@@ -288,8 +288,8 @@
   args : (Tensor x)
   output : Tensor(out)
   kernel :
-    func : coo_values{sparse_coo -> dense},
-           csr_values{sparse_csr -> dense}
+    func : values_coo{sparse_coo -> dense},
+           values_csr{sparse_csr -> dense}
     layout : x
   backward : values_grad
 
