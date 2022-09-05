@@ -90,7 +90,7 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
               with_fp16);
       layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(platform::errors::InvalidArgument(
           "LayernormShiftPartition TRT Plugin should run in dynamic shape."));
     }
 

@@ -653,8 +653,8 @@ int LayernormShiftPartitionPluginDynamic::enqueue(
         eps_,
         stream);
   } else {
-    PADDLE_THROW(platform::errors::Fatal(
-        "The LayerNorm TRT Plugin's input type should be float."));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The LayerNorm TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
 }
