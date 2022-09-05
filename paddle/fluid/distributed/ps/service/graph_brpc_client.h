@@ -49,6 +49,9 @@ class GraphPsService_Stub : public PsService_Stub {
   }
   virtual ~GraphPsService_Stub() {}
 
+  GraphPsService_Stub(const GraphPsService_Stub&);
+  GraphPsService_Stub& operator=(const GraphPsService_Stub&);
+
   // implements PsService ------------------------------------------
   GraphBrpcService* graph_service;
   std::shared_ptr<::ThreadPool> task_pool;
