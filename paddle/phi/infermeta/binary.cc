@@ -812,12 +812,8 @@ void Conv2dTransposeInferMeta(const MetaTensor& x,
                               const std::string& data_format,
                               MetaTensor* out,
                               MetaConfig config) {
-  std::vector<int32_t> vec_output_size;
-  vec_output_size.reserve(output_size.size());
-  std::for_each(
-      output_size.GetData().begin(),
-      output_size.GetData().end(),
-      [&vec_output_size](const int64_t& t) { vec_output_size.push_back(t); });
+  std::vector<int32_t> vec_output_size(output_size.GetData().begin(),
+                                       output_size.GetData().end());
   ConvTransposeInferMeta(x,
                          filter,
                          strides,
