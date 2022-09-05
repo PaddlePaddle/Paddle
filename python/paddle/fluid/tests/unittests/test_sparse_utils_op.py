@@ -493,7 +493,9 @@ class TestStatic(unittest.TestCase):
             'values': values_data
         },
                         fetch_list=[out],
-                        return_numpy=True)
+                        return_numpy=False)
+        print(out)
+        print(fetch)
         paddle.disable_static()
 
 

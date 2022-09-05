@@ -153,6 +153,8 @@ DDim CompatMetaTensor::dims() const {
       return var->Get<phi::DenseTensor>().dims();
     } else if (var->IsType<phi::SelectedRows>()) {
       return var->Get<phi::SelectedRows>().dims();
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      return var->Get<phi::SparseCooTensor>().dims();
     } else if (var->IsType<framework::LoDTensorArray>()) {
       // use tensor array size as dims
       auto& tensor_array = var->Get<framework::LoDTensorArray>();

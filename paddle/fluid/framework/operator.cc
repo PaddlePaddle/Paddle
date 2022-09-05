@@ -2380,6 +2380,10 @@ void OperatorWithKernel::ParseInputDataType(
       t = &var->Get<LoDTensor>();
     } else if (var->IsType<phi::SelectedRows>()) {
       t = &(var->Get<phi::SelectedRows>().value());
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      const phi::SparseCooTensor* sp_t = &(var->Get<phi::SparseCooTensor>());
+      *data_type = paddle::framework::TransToProtoVarType(sp_t->dtype());
+      return;
     } else if (var->IsType<LoDTensorArray>()) {
       auto t_arr = &var->Get<LoDTensorArray>();
       for (size_t j = 0; j < t_arr->size(); j++) {
@@ -2660,6 +2664,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<phi::SelectedRows>()) {
         tensor_in = &(var->Get<phi::SelectedRows>());
+        phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var->IsType<phi::SparseCooTensor>()) {
+        tensor_in = &(var->Get<phi::SparseCooTensor>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<framework::LoDTensorArray>()) {
         need_prepare_phi_data_ = true;
