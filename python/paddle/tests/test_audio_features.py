@@ -246,7 +246,7 @@ class TestFeatures(unittest.TestCase):
         feature_layer = feature_extractor(x).squeeze(0)
         np.testing.assert_array_almost_equal(feature_layer,
                                              feature_bg,
-                                             decimal=4)
+                                             decimal=3)
 
     @parameterize([128, 256, 512], [64, 82],
                   ["hamming", "hann", "triang", "bohman"])
