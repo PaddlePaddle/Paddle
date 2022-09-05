@@ -296,7 +296,7 @@ class TestFeatures(unittest.TestCase):
                                              feature_paddle,
                                              decimal=5)
 
-    @parameterize([8000, 16000], [128, 256, 512], [64, 32], [0.0, 0.5, 1.0],
+    @parameterize([8000, 16000], [128, 256], [64, 32], [0.0, 1.0],
                   ['float32', 'float64'])
     def test_mel(self, sr: int, n_fft: int, n_mels: int, fmin: float,
                  dtype: str):
@@ -325,8 +325,7 @@ class TestFeatures(unittest.TestCase):
         np.testing.assert_array_almost_equal(feature_librosa,
                                              feature_functional)
 
-    @parameterize([8000, 16000], [128, 256, 512], [64, 82], [40, 60, 80],
-                  [0.0, 0.5, 1.0])
+    @parameterize([8000, 16000], [128, 256], [64, 82], [40, 80], [0.0, 0.5])
     def test_melspect(self, sr: int, n_fft: int, hop_length: int, n_mels: int,
                       fmin: int):
         if len(self.waveform.shape) == 2:  # (C, T)
@@ -357,8 +356,7 @@ class TestFeatures(unittest.TestCase):
                                              feature_layer,
                                              decimal=5)
 
-    @parameterize([16000, 8000], [512, 256, 128], [128, 64], [64, 32],
-                  [0.0, 1.0, 50.0])
+    @parameterize([16000, 8000], [512, 128], [128, 64], [64, 32], [0.0, 1.0])
     def test_log_melspect(self, sr: int, n_fft: int, hop_length: int,
                           n_mels: int, fmin: float):
         if len(self.waveform.shape) == 2:  # (C, T)
@@ -390,8 +388,7 @@ class TestFeatures(unittest.TestCase):
                                              feature_layer,
                                              decimal=4)
 
-    @parameterize([16000, 8000], [512, 256, 128], [128, 64], [64, 32],
-                  [0.0, 1.0, 50.0])
+    @parameterize([16000, 8000], [256, 128], [128, 64], [64, 32], [0.0, 50.0])
     def test_mfcc(self, sr: int, n_fft: int, hop_length: int, n_mels: int,
                   fmin: int):
         if len(self.waveform.shape) == 2:  # (C, T)
