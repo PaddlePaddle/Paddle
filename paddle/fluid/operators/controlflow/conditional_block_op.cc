@@ -295,6 +295,35 @@ class ConditionalBlockGradOp : public ConditionalOp {
   }
 };
 
+template <class T>
+struct FilterUnsupportDtype {};
+
+template <>
+struct FilterUnsupportDtype<framework::OpDesc> {
+  static void filter(const framework::BlockDesc *desc,
+                     std::vector<std::string> *vec) {
+    auto f = [desc](const std::string &name) -> std::string {
+      if (name == framework::kEmptyVarName) {
+        // don't drop empty var name, you can use Input(name, true) to drop it.
+        return framework::kEmptyVarName;
+      }
+      auto var_desc = desc->FindVar(name);
+      std::set<framework::proto::VarType::Type> not_support_backward_dtype = {
+          framework::proto::VarType::BOOL,
+          framework::proto::VarType::INT8,
+          framework::proto::VarType::INT16,
+          framework::proto::VarType::INT32,
+          framework::proto::VarType::INT64,
+      };
+      if (!var_desc ||
+          not_support_backward_dtype.count(var_desc->GetDataType()))
+        return framework::kEmptyVarName;
+      return name;
+    };
+    std::transform(vec->begin(), vec->end(), vec->begin(), f);
+  }
+};
+
 class ConditionalBlockGradInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
@@ -352,8 +381,12 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpMaker<T> {
                       this->OutputGrad(ConditionalOp::kOutputs));
     grad_op->SetInput(ConditionalOp::kScope,
                       this->Output(ConditionalOp::kScope));
+
+    auto fwd_inputs = this->InputGrad(ConditionalOp::kInputs, false);
+    FilterUnsupportDtype<framework::OpDesc>::filter(
+        this->grad_block_[0]->ParentBlock(), &fwd_inputs);
     grad_op->SetOutput(framework::GradVarName(ConditionalOp::kInputs),
-                       this->InputGrad(ConditionalOp::kInputs, false));
+                       fwd_inputs);
     grad_op->SetBlockAttr("sub_block", this->grad_block_[0]);
     grad_op->SetAttr("is_scalar_condition",
                      this->GetAttr("is_scalar_condition"));
