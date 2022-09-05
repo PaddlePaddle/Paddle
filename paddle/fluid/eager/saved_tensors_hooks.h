@@ -15,10 +15,40 @@
 #pragma once
 
 #include <Python.h>
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
 
 namespace egr {
+
+class PackHook : public PackHookBase {
+ public:
+  explicit PackHook(PyObject* hook);
+
+  ~PackHook();
+
+  void* operator()(const paddle::experimental::Tensor& tensor) override;
+
+  void* operator()(void* py_tensor) override;
+
+ private:
+  PyObject* hook_;
+};
+
+class UnPackHook : public UnPackHookBase {
+ public:
+  explicit UnPackHook(PyObject* hook);
+
+  ~UnPackHook();
+
+  paddle::experimental::Tensor operator()(void* packed_value) override;
+
+  void* operator()(void* packed_value, void* other) override;
+
+ private:
+  PyObject* hook_;
+};
 
 class SavedTensorsHooks {
  public:
@@ -26,7 +56,16 @@ class SavedTensorsHooks {
 
   ~SavedTensorsHooks() {}
 
-  void SetHooks(PyObject* pack_hook, PyObject* unpack_hook);
+  void SetHooks(PyObject* pack_hook, PyObject* unpack_hook) {
+    PADDLE_ENFORCE_EQ(pack_hook_ == nullptr && unpack_hook_ == nullptr,
+                      true,
+                      paddle::platform::errors::InvalidArgument(
+                          "paddle.autograd.SavedTensorsHooks only one pair "
+                          "of hooks is allowed at a time."));
+    pack_hook_ = std::make_shared<PackHook>(pack_hook);
+    unpack_hook_ = std::make_shared<UnPackHook>(unpack_hook);
+    is_enable_ = true;
+  }
 
   void ResetHooks() {
     pack_hook_ = nullptr;
