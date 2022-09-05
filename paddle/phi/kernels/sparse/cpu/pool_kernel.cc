@@ -43,13 +43,6 @@ void MaxPoolCooCPUKernel(const CPUContext& dev_ctx,
   const auto& x_dims = x.dims();
   const auto& out_dims = out->dims();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
-  // const std::vector<int>& real_kernel_sizes =
-  //     phi::funcs::sparse::PoolResetKernel(kernel_sizes, x_dims[4],
-  //     x_dims[4]);
-  // DDim out_dims = {1, 1, 1, 1, 1};
-  // phi::funcs::sparse::GetOutShape(
-  //     x_dims, real_kernel_sizes, paddings, dilations, strides, &out_dims);
-  // const int in_channels = real_kernel_sizes[3];
   const int in_channels = x_dims[4];
 
   std::vector<int> counter_per_kernel(kernel_size, 0);
@@ -123,7 +116,7 @@ void MaxPoolCooKernel(const Context& dev_ctx,
       x.indices().dtype(), "MaxPoolCooCPUKernel", ([&] {
         MaxPoolCooCPUKernel<T, data_t>(dev_ctx,
                                        x,
-                                       kernel_sizes,
+                                       real_kernel_sizes,
                                        paddings,
                                        dilations,
                                        strides,

@@ -61,7 +61,7 @@ void MaxPoolCooGPUKernel(const GPUContext& dev_ctx,
   const auto& x_dims = x.dims();
   const auto& out_dims = out->dims();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
-  const int in_channels = x_dims[4];  // real_kernel_sizes[3];
+  const int in_channels = x_dims[4];
 
   std::vector<int> offsets(kernel_size + 1), h_counter(kernel_size);
   DenseTensorMeta counter_meta(
@@ -136,10 +136,10 @@ void MaxPoolCooKernel(const Context& dev_ctx,
                       SparseCooTensor* out,
                       DenseTensor* rulebook,
                       DenseTensor* counter) {
-  MetaTensor meta_out(out);
   const auto& x_dims = x.dims();
   const std::vector<int>& real_kernel_sizes =
       phi::funcs::sparse::PoolResetKernel(kernel_sizes, x_dims[4], x_dims[4]);
+  MetaTensor meta_out(out);
   phi::sparse::Conv3DInferMeta(
       x, real_kernel_sizes, paddings, dilations, strides, false, &meta_out);
 
@@ -147,7 +147,7 @@ void MaxPoolCooKernel(const Context& dev_ctx,
       x.indices().dtype(), "MaxPoolCooGPUKernel", ([&] {
         MaxPoolCooGPUKernel<T, data_t>(dev_ctx,
                                        x,
-                                       kernel_sizes,
+                                       real_kernel_sizes,
                                        paddings,
                                        dilations,
                                        strides,
