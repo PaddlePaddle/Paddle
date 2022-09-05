@@ -2268,7 +2268,8 @@ def pool2d(input,
     if in_dygraph_mode():
         return _C_ops.pool2d(input, pool_size, pool_stride, pool_padding,
                              ceil_mode, exclusive, data_format, pool_type,
-                             global_pooling, False, padding_algorithm)
+                             global_pooling, False, padding_algorithm,
+                             use_cudnn)
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
@@ -10259,6 +10260,9 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
                                     dtype=dtype,
                                     is_bias=False,
                                     default_initializer=Constant(0.25))
+    if in_dygraph_mode():
+        return _C_ops.prelu(x, alpha, data_format, mode)
+
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="prelu",
                      inputs={

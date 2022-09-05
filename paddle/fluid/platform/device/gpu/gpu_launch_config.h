@@ -44,7 +44,10 @@
 namespace paddle {
 namespace platform {
 
-inline int DivUp(int a, int b) { return (a + b - 1) / b; }
+template <typename T = int>
+inline T DivUp(T a, T b) {
+  return (a + b - 1) / b;
+}
 
 /* https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
    for round integer value into next highest power of 2. */
@@ -65,8 +68,8 @@ static inline int RoundToPowerOfTwo(int n) {
 #ifdef WITH_NV_JETSON
 // The number of threads cannot be assigned 1024 in some cases when the device
 // is nano or tx2 .
-template <typename phi::GPUContext>
-inline void ChangeThreadNum(const phi::GPUContext& context,
+template <typename GPUContext>
+inline void ChangeThreadNum(const GPUContext& context,
                             int* num_thread,
                             int alternative_num_thread = 512) {
   if (context.GetComputeCapability() == 53 ||
@@ -120,7 +123,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
 #endif
   int threads = limit_threads;
   int sm_count = context.GetSMCount();
-  int active_threads_num = numel / vec_size;
+  int64_t active_threads_num = numel / vec_size;
   if (active_threads_num / (sm_count << 1) < limit_threads) {
     // Round up threads number into an exponential multiple of 2, while number
     // of acitve blocks is about twice of SM, to acquire better performance.
@@ -132,7 +135,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
   }
   // Number of threads per block shall be larger than 64.
   threads = std::max(64, threads);
-  int blocks = DivUp(DivUp(numel, vec_size), threads);
+  int64_t blocks = DivUp<int64_t>(DivUp<int64_t>(numel, vec_size), threads);
   int limit_blocks = context.GetCUDAMaxGridDimSize()[0];
   if (blocks > limit_blocks) {
     blocks = limit_blocks;
@@ -146,8 +149,8 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
 }
 
 inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
-                                            int x_dim,
-                                            int y_dim) {
+                                            int64_t x_dim,
+                                            int64_t y_dim) {
   PADDLE_ENFORCE_GT(
       x_dim,
       0,
@@ -162,8 +165,10 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
                                         y_dim));
 
   const int kThreadsPerBlock = 256;
-  int block_cols = (std::min)(x_dim, kThreadsPerBlock);
-  int block_rows = (std::max)(kThreadsPerBlock / block_cols, 1);
+  // NOTE(zengjinle): cast std::min<int64_t> result to int is safe here, because
+  // kThreadsPerBlock is always very small.
+  int block_cols = std::min<int64_t>(x_dim, kThreadsPerBlock);
+  int block_rows = std::max<int64_t>(kThreadsPerBlock / block_cols, 1);
 
   int max_physical_threads = context.GetMaxPhysicalThreadCount();
   const int max_blocks = (std::max)(max_physical_threads / kThreadsPerBlock, 1);
@@ -172,9 +177,9 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
   // Noticed, block size is not align to 32, if needed do it yourself.
   config.thread_per_block = dim3(block_cols, block_rows, 1);
 
-  int grid_x = (std::min)(DivUp(x_dim, block_cols), max_blocks);
-  int grid_y =
-      (std::min)(max_blocks / grid_x, (std::max)(y_dim / block_rows, 1));
+  int grid_x = std::min<int64_t>(DivUp<int64_t>(x_dim, block_cols), max_blocks);
+  int grid_y = std::min<int64_t>(max_blocks / grid_x,
+                                 std::max<int64_t>(y_dim / block_rows, 1));
 
   config.block_per_grid = dim3(grid_x, grid_y, 1);
   return config;
