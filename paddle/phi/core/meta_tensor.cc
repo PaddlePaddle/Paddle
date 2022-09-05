@@ -152,14 +152,7 @@ void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
       phi::SparseCsrTensor::classof(tensor_)) {
     share_dims(meta_tensor);
     set_dtype(meta_tensor.dtype());
-    if (phi::SparseCooTensor::classof(meta_tensor.tensor()) ||
-        phi::SparseCsrTensor::classof(meta_tensor.tensor())) {
-      set_layout(DenseTensorUtils::GetMutableMeta(
-                     static_cast<SparseCooTensor*>(meta_tensor.tensor()))
-                     ->layout);
-    } else {
-      set_layout(meta_tensor.layout());
-    }
+    set_layout(meta_tensor.layout());
     share_lod(meta_tensor);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
