@@ -1,4 +1,4 @@
 name,os,arch,timeout,run_type,launcher,num_port,run_serial,ENVS,conditions
-test_multinode_dygraph_hybrid_dpppmp,linux,gpu,120,DIST,multinode_dist_test.sh,8,1,http_proxy=;https_proxy=,WITH_MULTINODE_TESTING
-test_multinode_dygraph_hybrid_dp,linux,gpu,120,DIST,multinode_dist_test.sh,8,1,http_proxy=;https_proxy=,WITH_MULTINODE_TESTING
-test_multinode_dygraph_sharding,linux,gpu,120,DIST,multinode_dist_test.sh,8,1,http_proxy=;https_proxy=,WITH_MULTINODE_TESTING
+test_multinode_dygraph_hybrid_dpppmp,linux,gpu,120,DIST,multinode_dist_test.sh,8,,http_proxy=;https_proxy=,WITH_MULTINODE_TESTING
+test_multinode_dygraph_hybrid_dp,linux,gpu,120,DIST,multinode_dist_test.sh,8,,http_proxy=;https_proxy=,WITH_MULTINODE_TESTING
+test_multinode_dygraph_sharding,linux,gpu,120,DIST,multinode_dist_test.sh,8,,http_proxy=;https_proxy=,WITH_MULTINODE_TESTING
