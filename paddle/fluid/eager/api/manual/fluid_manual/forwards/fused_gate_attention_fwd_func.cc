@@ -374,7 +374,6 @@ fused_gate_attention_dygraph_function(
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_Out, 7);
       egr::EagerUtils::SetHistory(p_autograd_Out, grad_node);
       grad_node->SetGradInMeta(Out, 7);
-      egr::EagerUtils::CheckAndRetainGrad(Out);
     }
   }
 

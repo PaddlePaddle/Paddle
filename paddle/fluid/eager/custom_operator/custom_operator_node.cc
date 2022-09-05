@@ -308,7 +308,6 @@ RunCustomOpNode::operator()(
       egr::EagerUtils::SetOutRankWithSlot(&(outs_auto_grad_metas[i]), i);
       egr::EagerUtils::SetHistory(&(outs_auto_grad_metas[i]), grad_node);
       grad_node->SetGradInMeta(out_tensors, i);
-      egr::EagerUtils::CheckAndRetainGrad(out_tensors);
     }
 
     // Prepare Grad inputs with fwd outputs

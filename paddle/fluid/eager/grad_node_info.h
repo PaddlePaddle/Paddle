@@ -74,7 +74,7 @@ class Edge {
   }
 
   void SetGradNode(const std::shared_ptr<GradNodeBase>& node) {
-    VLOG(6) << "Reseting Edge's Grad Node";
+    VLOG(7) << "Reseting Edge's Grad Node";
     grad_node_ = node;
   }
 
@@ -167,10 +167,10 @@ class GradSlotMeta {
 
 class GradNodeBase {
  public:
-  GradNodeBase() { VLOG(6) << "Construct GradNodeBase"; }
+  GradNodeBase() { VLOG(7) << "Construct GradNodeBase"; }
   GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
   // TODO(jiabin): Should we have other constructor here?
-  virtual ~GradNodeBase() { VLOG(6) << "Destruct GradNodeBase"; }
+  virtual ~GradNodeBase() { VLOG(7) << "Destruct GradNodeBase"; }
 
   /**
    * operator() designed to contian the real backward execution logic, it should
@@ -255,14 +255,14 @@ class GradNodeBase {
 
   std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
   GetGradientHookFuntions() {
-    VLOG(6) << "GetGradientHookFuntions ";
+    VLOG(7) << "GetGradientHookFuntions ";
     return gradient_hooks_;
   }
 
   void SetGradientHookFuntions(
       std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
           hooks) {
-    VLOG(6) << "SetGradientHookFuntions ";
+    VLOG(7) << "SetGradientHookFuntions ";
     gradient_hooks_ = hooks;
   }
 

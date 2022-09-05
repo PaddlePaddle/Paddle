@@ -296,7 +296,7 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
     view_output_dense_tensor->ShareInplaceVersionCounterWith(
         *input_dense_tensor);
 
-    VLOG(3) << "Perform View between Output Tensor("
+    VLOG(4) << "Perform View between Output Tensor("
             << view_output_tensor->name() << ") and Input Tensor("
             << input_tensor.name()
             << "), share allocation and inplace version.";
@@ -408,35 +408,6 @@ std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(
     ret.emplace_back(t.recover());
   }
   return ret;
-}
-
-void EagerUtils::CheckAndRetainGrad(
-    const paddle::experimental::Tensor& tensor) {
-  VLOG(6) << "Check RetainGradForTensor: " << tensor.name();
-  if (FLAGS_retain_grad_for_all_tensor) {
-    VLOG(6) << "RetainGradForTensor: " << tensor.name();
-    egr::egr_utils_api::RetainGradForTensor(tensor);
-  }
-}
-
-void EagerUtils::CheckAndRetainGrad(
-    const std::vector<paddle::experimental::Tensor>& tensors) {
-  if (FLAGS_retain_grad_for_all_tensor) {
-    for (auto& tensor : tensors) {
-      VLOG(6) << "RetainGradForTensor: " << tensor.name();
-      egr::egr_utils_api::RetainGradForTensor(tensor);
-    }
-  }
-}
-
-void EagerUtils::CheckAndRetainGrad(
-    const std::vector<paddle::experimental::Tensor*>& tensors) {
-  if (FLAGS_retain_grad_for_all_tensor) {
-    for (auto& tensor : tensors) {
-      VLOG(6) << "RetainGradForTensor: " << tensor->name();
-      egr::egr_utils_api::RetainGradForTensor(*tensor);
-    }
-  }
 }
 
 std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(

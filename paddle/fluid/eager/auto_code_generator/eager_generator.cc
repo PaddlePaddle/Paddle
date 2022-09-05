@@ -1302,14 +1302,6 @@ static std::string GenerateGradNodeCreationContent(
                                   LegalizeVarName(inplace_input_name),
                                   output_position);
 
-      // Intermediate Tensor does not require CheckAndRetainGrad
-      if (!output.intermediate()) {
-        VLOG(6) << "Generated Call RetainGradForTensor";
-        const char* RETAIN_GRAD_TEMPLATE =
-            "      egr::EagerUtils::CheckAndRetainGrad(%s);\n";
-        grad_node_creation_str += paddle::string::Sprintf(
-            RETAIN_GRAD_TEMPLATE, LegalizeVarName(inplace_input_name));
-      }
     } else {
       const std::string& output_autograd_name =
           "p_autograd_" + LegalizeVarName(output_name);
@@ -1358,15 +1350,6 @@ static std::string GenerateGradNodeCreationContent(
             paddle::string::Sprintf(SET_GRAD_IN_META_TEMPLATE,
                                     LegalizeVarName(output_name),
                                     output_position);
-      }
-
-      // Intermediate Tensor does not require CheckAndRetainGrad
-      if (!output.intermediate()) {
-        VLOG(6) << "Generated Call RetainGradForTensor";
-        const char* RETAIN_GRAD_TEMPLATE =
-            "      egr::EagerUtils::CheckAndRetainGrad(%s);\n";
-        grad_node_creation_str += paddle::string::Sprintf(
-            RETAIN_GRAD_TEMPLATE, LegalizeVarName(output_name));
       }
     }
   }
