@@ -1047,6 +1047,7 @@ def max_pool2d(x,
     """
     This API implements max pooling 2d operation.
     See more details in :ref:`api_nn_pooling_MaxPool2d` .
+
     Args:
         x (Tensor): The input tensor of pooling operator which is a 4-D tensor with
                           shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
@@ -1077,31 +1078,26 @@ def max_pool2d(x,
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
-   Raises:
+    Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
         ShapeError: If the output's shape calculated is not greater than 0.
 
     Examples:
         .. code-block:: python
-            import paddle
-            import paddle.nn.functional as F
-            import numpy as np
 
-            # max pool2d
-            x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
-            out = F.max_pool2d(x,
-                                  kernel_size=2,
-                                  stride=2, padding=0)
-            # output.shape [1, 3, 16, 16]
-            # for return_mask=True
-            out, max_indices = F.max_pool2d(x,
-                                               kernel_size=2,
-                                               stride=2,
-                                               padding=0,
-                                               return_mask=True)
-            # out.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
+          import paddle
+          import paddle.nn.functional as F
+
+          # max pool2d
+          x = paddle.uniform([1, 3, 32, 32], paddle.float32)
+          out = F.max_pool2d(x, kernel_size=2, stride=2, padding=0)
+          # output.shape [1, 3, 16, 16]
+          # for return_mask=True
+          out, max_indices = F.max_pool2d(x, kernel_size=2, stride=2, padding=0, return_mask=True)
+          # out.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
     """
+
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
     if stride is None:
         stride = kernel_size
@@ -1193,6 +1189,7 @@ def max_pool3d(x,
     """
     This API implements max pooling 2d operation.
     See more details in :ref:`api_nn_pooling_MaxPool3d` .
+
     Args:
         x (Tensor): The input tensor of pooling operator, which is a 5-D tensor with
                           shape [N, C, D, H, W]. The format of input tensor is `"NCDHW"` or `"NDHWC"`, where N represents batch size, C represents the number of channels, D, H and W represent the depth, height and width of the feature respectively.
@@ -1221,33 +1218,35 @@ def max_pool3d(x,
     
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
-    
+
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
         ShapeError: If the output's shape calculated is not greater than 0.
-    
+
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+          import paddle
+          import paddle.nn.functional as F
 
-            # max pool3d
-            x = paddle.uniform([1, 3, 32, 32, 32])
-            output = F.max_pool3d(x,
-                                  kernel_size=2,
-                                  stride=2, padding=0)
-            # output.shape [1, 3, 16, 16, 16]
-            # for return_mask=True
-            x = paddle.uniform([1, 3, 32, 32, 32])
-            output, max_indices = paddle.nn.functional.max_pool3d(x,
-                                          kernel_size = 2,
-                                          stride = 2,
-                                          padding=0,
-                                          return_mask=True)
-            # output.shape [1, 3, 16, 16, 16], max_indices.shape [1, 3, 16, 16, 16]
+          # max pool3d
+          x = paddle.uniform([1, 3, 32, 32, 32])
+          output = F.max_pool3d(x,
+                                kernel_size=2,
+                                stride=2, padding=0)
+          # output.shape [1, 3, 16, 16, 16]
+          # for return_mask=True
+          x = paddle.uniform([1, 3, 32, 32, 32])
+          output, max_indices = paddle.nn.functional.max_pool3d(x,
+                                                                kernel_size=2,
+                                                                stride=2,
+                                                                padding=0,
+                                                                return_mask=True)
+
+          # output.shape [1, 3, 16, 16, 16], max_indices.shape [1, 3, 16, 16, 16]
     """
+
     kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:
         stride = kernel_size
