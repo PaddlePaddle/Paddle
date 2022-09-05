@@ -36,6 +36,7 @@ import copy
 from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
 from .compiler import _prune_feed_ops
+from .ir import apply_build_strategy
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -1467,6 +1468,10 @@ class Executor(object):
                         program._compile(scope, self.place)
                         ir_graph = framework.IrGraph(program._graph)
                         inner_program = ir_graph.to_program()
+                        if program._build_strategy is not None and program._build_strategy.enable_addto:
+                            apply_build_strategy(inner_program, startup2,
+                                                 build_strategy,
+                                                 {"use_cuda": self.use_cuda})
                         # print(f"Program after convert:\n {inner_program}", flush=True)
                         logging.warning(
                             "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
