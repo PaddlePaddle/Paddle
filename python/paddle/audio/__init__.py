@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import compliance
 from . import features
 from . import functional
 from . import utils
 from . import datasets
 
-__all__ = ["compliance", "functional", "features", "utils", "datasets"]
+__all__ = ["functional", "features", "utils", "datasets"]
