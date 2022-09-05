@@ -40,7 +40,7 @@ cc_library(
 cc_library(
   dense_tensor
   SRCS dense_tensor.cc dense_tensor_impl.cc
-  DEPS convert_utils fluid_convert_utils tensor_meta tensor_base ddim malloc)
+  DEPS convert_utils fluid_convert_utils tensor_meta tensor_base ddim)
 
 target_link_libraries(dense_tensor malloc)
 
