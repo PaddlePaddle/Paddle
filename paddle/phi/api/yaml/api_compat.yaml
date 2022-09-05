@@ -189,11 +189,44 @@
   outputs :
     out : Out
 
+- api : rnn
+  backward : rnn_grad
+  extra :
+    attrs : [bool is_test = false]
+
+- api : seed
+  extra :
+    attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
+
+- api : shape
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- api : shuffle_channel
+  backward : shuffle_channel_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : slice
+  backward : slice_grad
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- api : softmax
+  backward : softmax_grad
+  extra :
+    attrs : [bool use_cudnn = false, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
 - api : solve
   inputs :
     {x : X, y : Y}
   outputs :
     out : Out
+
+- api : squeeze (squeeze2)
+  backward : squeeze_grad (squeeze2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - api : sync_batch_norm
   backward : sync_batch_norm_grad
