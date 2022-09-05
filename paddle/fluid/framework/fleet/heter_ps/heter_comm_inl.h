@@ -664,8 +664,11 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE2, dev_id);
   TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE3, dev_id);
   //timeline.Start();
-  auto d_fidseq_bucket_vals = memory::Alloc(place, bucket_mean_len * sizeof(ValType));
-  ValType* d_fidseq_bucket_vals_ptr = reinterpret_cast<ValType*>(d_fidseq_bucket_vals->ptr());
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
+  xpu::ctx_guard RAII_GUARD(ctx_xpu);
+
+  ValType* d_fidseq_bucket_vals_ptr = RAII_GUARD.alloc_l3_or_gm<ValType>(bucket_mean_len);
   reset_xpu_memory(place, d_fidseq_bucket_vals_ptr, bucket_mean_len * sizeof(ValType), 0, stream);
   //timeline.Pause();
   //total_time += timeline.ElapsedSec();
@@ -697,8 +700,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE5, dev_id);
   TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE6, dev_id);
   //timeline.Start();
-  auto d_all_fidseq_bucket_vals = memory::Alloc(place, all_fidseq_bucket_len * sizeof(ValType));
-  ValType* d_all_fidseq_bucket_vals_ptr = reinterpret_cast<ValType*>(d_all_fidseq_bucket_vals->ptr());
+  ValType* d_all_fidseq_bucket_vals_ptr = RAII_GUARD.alloc_l3_or_gm<ValType>(all_fidseq_bucket_len);
   reset_xpu_memory(place, d_all_fidseq_bucket_vals_ptr, all_fidseq_bucket_len * sizeof(ValType), 0, stream);
   //timeline.Pause();
   //total_time += timeline.ElapsedSec();
@@ -1028,8 +1030,11 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   int all_fidseq_bucket_len = 0;
   cache_mgr_->get_device_all_fidseq_bucket(dev_id, &d_all_fidseq_bucket_ptr, &all_fidseq_bucket_len);
 
-  auto d_all_fidseq_bucket_grads = memory::Alloc(place, all_fidseq_bucket_len * sizeof(GradType));
-  GradType* d_all_fidseq_bucket_grads_ptr = reinterpret_cast<GradType*>(d_all_fidseq_bucket_grads->ptr());
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
+  xpu::ctx_guard RAII_GUARD(ctx_xpu);
+
+  GradType* d_all_fidseq_bucket_grads_ptr = RAII_GUARD.alloc_l3_or_gm<GradType>(all_fidseq_bucket_len);
   reset_xpu_memory(place, d_all_fidseq_bucket_grads_ptr, all_fidseq_bucket_len * sizeof(GradType), 0, stream);
 
   BfidType* d_bfids_ptr = nullptr;
@@ -1071,12 +1076,11 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE3, dev_id);
   TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE4, dev_id);
   // all_gather
-  auto d_all_grads = memory::Alloc(place, all_fidseq_bucket_len * sizeof(GradType));
-  GradType* d_all_grads_ptr = reinterpret_cast<GradType*>(d_all_grads->ptr());
-  auto d_all_grads_after_gather = memory::Alloc(place,
-      all_fidseq_bucket_len * resource_->total_device() * sizeof(GradType));
+  GradType* d_all_grads_ptr =
+      RAII_GUARD.alloc_l3_or_gm<GradType>(all_fidseq_bucket_len);
   GradType* d_all_grads_after_gather_ptr =
-      reinterpret_cast<GradType*>(d_all_grads_after_gather->ptr());
+      RAII_GUARD.alloc_l3_or_gm<GradType>(all_fidseq_bucket_len * resource_->total_device());
+
   if (resource_->total_device() > 1) {
     // sync_stream(stream);
     auto comm = platform::BKCLCommContext::Instance().Get(0, place);
