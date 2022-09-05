@@ -462,48 +462,41 @@ def avg_pool3d(x,
     _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
     _check_value_limitation(stride, "stride", min_limit=1e-3)
 
-    if _non_static_mode():
-        if in_dygraph_mode():
-            output = _C_ops.pool3d(x, kernel_size, stride, padding, ceil_mode,
-                                   exclusive, data_format, 'avg', False, False,
-                                   padding_algorithm, True)
-        if _in_legacy_dygraph():
-            output = _legacy_C_ops.pool3d(
-                x, 'pooling_type', 'avg', 'ksize', kernel_size, 'strides',
-                stride, 'paddings', padding, 'global_pooling', False,
-                'padding_algorithm', padding_algorithm, 'use_cudnn', True,
-                'ceil_mode', ceil_mode, 'use_mkldnn', False, 'exclusive',
-                exclusive, 'data_format', data_format)
-        if divisor_override is None:
-            return output
-        else:
-            _check_instance(divisor_override, "divisor_override")
-            return output * (kernel_size[0] * kernel_size[1] *
-                             kernel_size[2]) / divisor_override
+    if in_dygraph_mode():
+        pool_out = _C_ops.pool3d(x, kernel_size, stride, padding, ceil_mode,
+                                 exclusive, data_format, 'avg', False, False,
+                                 padding_algorithm, True)
+    elif _in_legacy_dygraph():
+        pool_out = _legacy_C_ops.pool3d(
+            x, 'pooling_type', 'avg', 'ksize', kernel_size, 'strides', stride,
+            'paddings', padding, 'global_pooling', False, 'padding_algorithm',
+            padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
+            'use_mkldnn', False, 'exclusive', exclusive, 'data_format',
+            data_format)
+    else:
+        op_type = "pool3d"
+        helper = LayerHelper(op_type, **locals())
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+        outputs = {"Out": pool_out}
 
-    op_type = "pool3d"
-    helper = LayerHelper(op_type, **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
-    dtype = helper.input_dtype(input_param_name='x')
-    pool_out = helper.create_variable_for_type_inference(dtype)
-    outputs = {"Out": pool_out}
-
-    helper.append_op(type=op_type,
-                     inputs={"X": x},
-                     outputs=outputs,
-                     attrs={
-                         "pooling_type": 'avg',
-                         "ksize": kernel_size,
-                         "global_pooling": False,
-                         "strides": stride,
-                         "paddings": padding,
-                         "padding_algorithm": padding_algorithm,
-                         "use_cudnn": True,
-                         "ceil_mode": ceil_mode,
-                         "use_mkldnn": False,
-                         "exclusive": exclusive,
-                         "data_format": data_format,
-                     })
+        helper.append_op(type=op_type,
+                         inputs={"X": x},
+                         outputs=outputs,
+                         attrs={
+                             "pooling_type": 'avg',
+                             "ksize": kernel_size,
+                             "global_pooling": False,
+                             "strides": stride,
+                             "paddings": padding,
+                             "padding_algorithm": padding_algorithm,
+                             "use_cudnn": True,
+                             "ceil_mode": ceil_mode,
+                             "use_mkldnn": False,
+                             "exclusive": exclusive,
+                             "data_format": data_format,
+                         })
 
     if divisor_override is None:
         return pool_out
