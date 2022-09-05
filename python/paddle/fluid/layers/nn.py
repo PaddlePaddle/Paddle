@@ -4211,15 +4211,31 @@ def conv2d_transpose(input,
 
     padding = _update_padding(padding, data_format)
 
+    if output_size is None:
+        output_size = []
+    elif isinstance(output_size, (list, tuple, int)):
+        output_size = utils.convert_to_list(output_size, 2, 'output_size')
+    elif isinstance(output_size, Variable):
+        check_dtype(output_size.dtype, 'output_size', ['int32', 'int64'],
+                    'conv2d_transpose')
+        np_or_var = output_size.numpy() if _non_static_mode() else output_size
+        if len(output_size.shape) == 1 and output_size.shape[0] == 1:
+            output_size = [np_or_var[0], np_or_var[0]]
+        elif len(output_size.shape) == 1 and output_size.shape[0] == 2:
+            output_size = [np_or_var[0], np_or_var[1]]
+        else:
+            raise ValueError("output_size must contain one or two integers.")
+    else:
+        raise ValueError(
+            "output_size should be int, list[int] or tuple[int] or Tensor")
+
     if filter_size is None:
-        if output_size is None:
+        if output_size is []:
             raise ValueError("output_size must be set when filter_size is None")
-        if not _non_static_mode() and isinstance(output_size, Variable):
+        if utils._contain_var(output_size):
             raise ValueError(
                 "filter_size should not be None when output_size is Variable in static mode."
             )
-        if isinstance(output_size, int):
-            output_size = [output_size, output_size]
 
         h_in = input.shape[2] if data_format == 'NCHW' else input.shape[1]
         w_in = input.shape[3] if data_format == 'NCHW' else input.shape[2]
@@ -4235,15 +4251,6 @@ def conv2d_transpose(input,
 
     if len(padding) == 4 and utils._is_symmetric_padding(padding, 2):
         padding = [padding[0], padding[2]]
-
-    if output_size is None:
-        output_size = []
-    elif isinstance(output_size, (list, tuple, int)):
-        output_size = utils.convert_to_list(output_size, 2, 'output_size')
-    elif isinstance(output_size, Variable):
-        pass
-    else:
-        raise ValueError("output_size should be int, list[int] or tuple[int]")
 
     if groups is None:
         groups = 1
