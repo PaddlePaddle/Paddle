@@ -53,7 +53,7 @@ void DenseTensor::check_memory_size() const {
           "Tensor's dimension is out of bound."
           "Tensor's dimension must be equal or less than the size of its "
           "memory."
-          "But received Tensor's dimension is d%, memory's size is %d.",
+          "But received Tensor's dimension is %d, memory's size is %d.",
           numel() * SizeOf(dtype()),
           memory_size()));
 }
@@ -353,7 +353,7 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
 dnnl::memory::desc DenseTensor::mem_desc() const {
   return mem_desc_ ? mem_desc_
                    : dnnl::memory::desc(phi::vectorize(meta_.dims),
-                                        phi::TransToMKLDNNDataType(meta_.dtype),
+                                        phi::TransToOneDNNDataType(meta_.dtype),
                                         format_);
 }
 

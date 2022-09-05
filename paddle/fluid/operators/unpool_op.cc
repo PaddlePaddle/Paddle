@@ -12,11 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/unpool_op.h"
-
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/binary.h"
+
 namespace paddle {
 namespace operators {
 
@@ -57,7 +61,8 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         .InEnum({"max"});
     AddAttr<std::vector<int>>("output_size",
                               "(vector, optional). The shape of output.")
-        .SetDefault({0, 0});
+        .SetDefault({0, 0})
+        .SupportTensor();
     AddAttr<std::string>(
         "data_format",
         "(string, default NCHW) Only used in "
@@ -152,45 +157,6 @@ class UnpoolOp : public framework::OperatorWithKernel {
 
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Unpool");
-    OP_INOUT_CHECK(ctx->HasInput("Indices"), "Input", "Indices", "Unpool");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Unpool");
-    auto in_x_dims = ctx->GetInputDim("X");
-    auto in_y_dims = ctx->GetInputDim("Indices");
-    std::string unpooling_type =
-        ctx->Attrs().Get<std::string>("unpooling_type");
-    std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
-    std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
-    std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    std::vector<int> output_size =
-        ctx->Attrs().Get<std::vector<int>>("output_size");
-    PADDLE_ENFORCE_EQ(in_x_dims.size() == 4,
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Unpool Intput(X) must be of 4-dimensional, but "
-                          "received Input(X)'s dimensions is %d.",
-                          in_x_dims.size()));
-    PADDLE_ENFORCE_EQ(in_x_dims,
-                      in_y_dims,
-                      platform::errors::InvalidArgument(
-                          "The dimensions of Input(X) must equal to be"
-                          "the dimensions of Input(Indices), but received"
-                          "dimensions of Input(X) is [%d], received dimensions"
-                          "of Input(Indices) is [%d]",
-                          in_x_dims,
-                          in_y_dims));
-
-    std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
-    for (size_t i = 0; i < ksize.size(); ++i) {
-      if (!ctx->IsRuntime() && in_x_dims[i + 2] <= 0) {
-        output_shape.push_back(-1);
-      } else {
-        output_shape.push_back(output_size[i]);
-      }
-    }
-    ctx->SetOutputDim("Out", phi::make_ddim(output_shape));
-  }
 };
 
 class Unpool3dOp : public framework::OperatorWithKernel {
@@ -204,45 +170,6 @@ class Unpool3dOp : public framework::OperatorWithKernel {
 
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Unpool3d");
-    OP_INOUT_CHECK(ctx->HasInput("Indices"), "Input", "Indices", "Unpool3d");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Unpool3d");
-    auto in_x_dims = ctx->GetInputDim("X");
-    auto in_y_dims = ctx->GetInputDim("Indices");
-    std::string unpooling_type =
-        ctx->Attrs().Get<std::string>("unpooling_type");
-    std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
-    std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
-    std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    std::vector<int> output_size =
-        ctx->Attrs().Get<std::vector<int>>("output_size");
-    PADDLE_ENFORCE_EQ(in_x_dims.size() == 5,
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Unpool Intput(X) must be of 5-dimensional, but "
-                          "received Input(X)'s dimensions is %d.",
-                          in_x_dims.size()));
-    PADDLE_ENFORCE_EQ(in_x_dims,
-                      in_y_dims,
-                      platform::errors::InvalidArgument(
-                          "The dimensions of Input(X) must equal to be"
-                          "the dimensions of Input(Indices), but received"
-                          "dimensions of Input(X) is [%d], received dimensions"
-                          "of Input(Indices) is [%d]",
-                          in_x_dims,
-                          in_y_dims));
-
-    std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
-    for (size_t i = 0; i < ksize.size(); ++i) {
-      if (!ctx->IsRuntime() && in_x_dims[i + 2] <= 0) {
-        output_shape.push_back(-1);
-      } else {
-        output_shape.push_back(output_size[i]);
-      }
-    }
-    ctx->SetOutputDim("Out", phi::make_ddim(output_shape));
-  }
 };
 
 template <typename T>
@@ -286,14 +213,6 @@ class UnpoolOpGrad : public framework::OperatorWithKernel {
 
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "UnpoolGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output",
-                   framework::GradVarName("X"),
-                   "UnpoolGrad");
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-  }
 };
 
 class Unpool3dOpGrad : public framework::OperatorWithKernel {
@@ -307,44 +226,43 @@ class Unpool3dOpGrad : public framework::OperatorWithKernel {
 
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Unpool3dGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output",
-                   framework::GradVarName("X"),
-                   "Unpool3dGrad");
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-  }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(unpool,
+                            UnpoolInferShapeFunctor,
+                            PD_INFER_META(phi::UnpoolInferMeta));
 REGISTER_OPERATOR(unpool,
                   ops::UnpoolOp,
                   ops::Unpool2dOpMaker,
                   ops::UnpoolOpGradMaker<paddle::framework::OpDesc>,
-                  ops::UnpoolOpGradMaker<paddle::imperative::OpBase>);
+                  ops::UnpoolOpGradMaker<paddle::imperative::OpBase>,
+                  UnpoolInferShapeFunctor);
 
-REGISTER_OPERATOR(unpool_grad, ops::UnpoolOpGrad);
-REGISTER_OP_CPU_KERNEL(unpool,
-                       ops::UnpoolKernel<phi::CPUContext, float>,
-                       ops::UnpoolKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(unpool_grad,
-                       ops::UnpoolGradKernel<phi::CPUContext, float>,
-                       ops::UnpoolGradKernel<phi::CPUContext, double>);
+DECLARE_INFER_SHAPE_FUNCTOR(unpool_grad,
+                            UnpoolGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
+REGISTER_OPERATOR(unpool_grad, ops::UnpoolOpGrad, UnpoolGradInferShapeFunctor);
+
+DECLARE_INFER_SHAPE_FUNCTOR(unpool,
+                            Unpool3dInferShapeFunctor,
+                            PD_INFER_META(phi::Unpool3dInferMeta));
 
 REGISTER_OPERATOR(unpool3d,
                   ops::Unpool3dOp,
                   ops::Unpool3dOpMaker,
                   ops::Unpool3dOpGradMaker<paddle::framework::OpDesc>,
-                  ops::Unpool3dOpGradMaker<paddle::imperative::OpBase>);
+                  ops::Unpool3dOpGradMaker<paddle::imperative::OpBase>,
+                  Unpool3dInferShapeFunctor);
 
-REGISTER_OPERATOR(unpool3d_grad, ops::Unpool3dOpGrad);
-REGISTER_OP_CPU_KERNEL(unpool3d,
-                       ops::Unpool3dKernel<phi::CPUContext, float>,
-                       ops::Unpool3dKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(unpool3d_grad,
-                       ops::Unpool3dGradKernel<phi::CPUContext, float>,
-                       ops::Unpool3dGradKernel<phi::CPUContext, double>);
+DECLARE_INFER_SHAPE_FUNCTOR(unpool3d_grad,
+                            Unpool3dGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
+REGISTER_OPERATOR(unpool3d_grad,
+                  ops::Unpool3dOpGrad,
+                  Unpool3dGradInferShapeFunctor);

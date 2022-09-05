@@ -38,6 +38,22 @@ static void clear_no_grad_edges(
   }
 }
 
+static void clear_no_grad_edges_with_partial_block(
+    const std::vector<paddle::experimental::Tensor>& params,
+    const paddle::framework::BlockDesc* forward_block_desc,
+    const paddle::framework::BlockDesc* backward_block_desc,
+    egr::GradNodeBase* grad_node,
+    size_t slot_id) {
+  for (size_t i = 0; i < params.size(); ++i) {
+    auto p_grad_name = paddle::framework::GradVarName(params[i].name());
+    if (!forward_block_desc->HasVar(p_grad_name) &&
+        !backward_block_desc->HasVar(p_grad_name)) {
+      VLOG(1) << "clear edge of " << p_grad_name;
+      grad_node->MutableOutputMeta()[slot_id][i].GetMutableEdge().Clear();
+    }
+  }
+}
+
 inline void run_program_dygraph_function(
     const std::vector<paddle::experimental::Tensor>& x,
     const std::vector<paddle::experimental::Tensor>& params,
@@ -85,9 +101,26 @@ inline void run_program_dygraph_function(
     // Set Grad out rank as same as fwd input and set stop gradient to bwd
     grad_node->SetGradOutMeta(x, /*slot id*/ 0);
     grad_node->SetGradOutMeta(params, /*slot id*/ 1);
-    auto* global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc*,
-                                          attrs.at("global_block"));
-    clear_no_grad_edges(params, global_block, grad_node.get(), /*slot id*/ 1);
+
+    bool use_interpretorcore =
+        PADDLE_GET_CONST(bool, attrs.at("use_interpretorcore"));
+    VLOG(2) << "clear_no_grad_edges.";
+    if (use_interpretorcore) {
+      auto* forward_global_block = PADDLE_GET_CONST(
+          paddle::framework::BlockDesc*, attrs.at("forward_global_block"));
+      auto* backward_global_block = PADDLE_GET_CONST(
+          paddle::framework::BlockDesc*, attrs.at("backward_global_block"));
+      clear_no_grad_edges_with_partial_block(params,
+                                             forward_global_block,
+                                             backward_global_block,
+                                             grad_node.get(),
+                                             /*slot id*/ 1);
+
+    } else {
+      auto* global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc*,
+                                            attrs.at("global_block"));
+      clear_no_grad_edges(params, global_block, grad_node.get(), /*slot id*/ 1);
+    }
 
     grad_node->SetGradInMeta(deref_out, 0);
 

@@ -18,8 +18,8 @@ limitations under the License. */
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(fsp,
-                        ops::FSPOpKernel<plat::CUDADeviceContext, float>,
-                        ops::FSPOpKernel<plat::CUDADeviceContext, double>);
+                        ops::FSPOpKernel<phi::GPUContext, float>,
+                        ops::FSPOpKernel<phi::GPUContext, double>);
 REGISTER_OP_CUDA_KERNEL(fsp_grad,
-                        ops::FSPGradOpKernel<plat::CUDADeviceContext, float>,
-                        ops::FSPGradOpKernel<plat::CUDADeviceContext, double>);
+                        ops::FSPGradOpKernel<phi::GPUContext, float>,
+                        ops::FSPGradOpKernel<phi::GPUContext, double>);

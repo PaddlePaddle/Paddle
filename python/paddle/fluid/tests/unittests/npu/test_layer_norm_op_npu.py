@@ -53,10 +53,11 @@ class TestLayerNormOp(unittest.TestCase):
         self.atol = 1e-4
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        self.assertTrue(
-            np.allclose(np.array(tensor).astype(np_array.dtype),
-                        np_array,
-                        atol=atol), msg)
+        np.testing.assert_allclose(np.array(tensor).astype(
+            np_array.dtype).reshape(np_array.shape),
+                                   np_array,
+                                   atol=atol,
+                                   err_msg=msg)
 
     def check_forward_backward(self,
                                shape,

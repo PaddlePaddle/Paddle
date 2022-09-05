@@ -123,8 +123,10 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
             grad_tensor = paddle.ones_like(x)
             paddle.autograd.backward([out], [grad_tensor], True)
 
-            self.assertEqual(np.allclose(self.np_out[func], out.numpy()), True)
-            self.assertEqual(np.allclose(self.np_grad[func], x.grad), True)
+            np.testing.assert_allclose(self.np_out[func],
+                                       out.numpy(),
+                                       rtol=1e-05)
+            np.testing.assert_allclose(self.np_grad[func], x.grad, rtol=1e-05)
             paddle.enable_static()
 
         _test_dygraph('amax')
@@ -187,3 +189,7 @@ class TestMaxMinAmaxAminAPI6(TestMaxMinAmaxAminAPI):
         self.dtype = 'float64'
         self.axis = None
         self.keepdim = False
+
+
+if __name__ == '__main__':
+    unittest.main()

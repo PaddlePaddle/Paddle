@@ -8,4 +8,4 @@ op_function6.cc
 op_function7.cc
 op_function8.cc
 eager_op_function.cc
-eager_final_state_op_function.cc
+eager_legacy_op_function.cc

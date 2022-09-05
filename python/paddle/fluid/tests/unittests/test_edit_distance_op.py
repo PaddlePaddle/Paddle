@@ -17,6 +17,22 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
+
+
+def python_edit_distance(input,
+                         label,
+                         input_length=None,
+                         label_length=None,
+                         normalized=True,
+                         ignored_tokens=None):
+    return paddle.nn.functional.loss.edit_distance(
+        input,
+        label,
+        normalized=normalized,
+        ignored_tokens=ignored_tokens,
+        input_length=input_length,
+        label_length=label_length)
 
 
 def Levenshtein(hyp, ref):
@@ -54,6 +70,7 @@ class TestEditDistanceOp(OpTest):
 
     def setUp(self):
         self.op_type = "edit_distance"
+        self.python_api = python_edit_distance
         normalized = False
         x1 = np.array([[12, 3, 5, 8, 2]]).astype("int64")
         x2 = np.array([[12, 4, 7, 8]]).astype("int64")
@@ -83,7 +100,7 @@ class TestEditDistanceOp(OpTest):
         self.outputs = {'Out': distance, 'SequenceNum': sequence_num}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestEditDistanceOpNormalizedCase0(OpTest):
@@ -96,6 +113,7 @@ class TestEditDistanceOpNormalizedCase0(OpTest):
 
     def setUp(self):
         self.op_type = "edit_distance"
+        self.python_api = python_edit_distance
         normalized = True
         self.x1 = np.array([[10, 3, 6, 5, 8, 2]]).astype("int64")
         self.x2 = np.array([[10, 4, 6, 7, 8]]).astype("int64")
@@ -132,7 +150,7 @@ class TestEditDistanceOpNormalizedCase0(OpTest):
         self.post_config()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestEditDistanceOpNormalizedCase1(TestEditDistanceOpNormalizedCase0):
@@ -159,6 +177,7 @@ class TestEditDistanceOpNormalizedTensor(OpTest):
 
     def setUp(self):
         self.op_type = "edit_distance"
+        self.python_api = python_edit_distance
         normalized = True
 
         self.reset_config()
@@ -184,8 +203,9 @@ class TestEditDistanceOpNormalizedTensor(OpTest):
         self.outputs = {'Out': distance, 'SequenceNum': sequence_num}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

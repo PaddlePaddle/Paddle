@@ -40,7 +40,10 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
     auto x_dims = x->dims();
     auto y_dims = y->dims();
     axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
-    if (x_dims.size() >= y_dims.size()) {
+
+    if (x_dims.size() == y_dims.size()) {
+      direct_compute = true;
+    } else if (x_dims.size() > y_dims.size()) {
       direct_compute = x_dims.size() == (y_dims.size() + axis);
     } else {
       direct_compute = y_dims.size() == (x_dims.size() + axis);

@@ -670,7 +670,7 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__",
            [](imperative::VarBase &self,
               framework::proto::VarType::Type dtype,
-              const std::vector<int> &dims,
+              const std::vector<int64_t> &dims,
               const py::handle &name,
               framework::proto::VarType::Type type,
               bool persistable) {
@@ -2061,6 +2061,15 @@ void BindImperative(py::module *m_ptr) {
                       << GetTypeName(self);
               return std::vector<int>();
             }
+          })
+      .def_property_readonly(
+          "layout",
+          [](imperative::VarBase &self) {
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              auto layout = self.Var().Get<framework::LoDTensor>().layout();
+              return paddle::framework::DataLayoutToString(layout);
+            }
+            return std::string("");
           })
       .def_property_readonly("is_leaf",
                              &imperative::VarBase::IsLeaf,

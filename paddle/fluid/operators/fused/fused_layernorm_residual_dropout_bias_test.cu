@@ -54,7 +54,7 @@ struct TestFusedLayernormResidualDropoutBias {
   std::vector<uint8_t> correct_mask;
 
   platform::CUDAPlace place;
-  platform::CUDADeviceContext *ctx;
+  phi::GPUContext *ctx;
 
   TestFusedLayernormResidualDropoutBias() {
     rows = 32;
@@ -69,7 +69,7 @@ struct TestFusedLayernormResidualDropoutBias {
     epsilon = 0.00001f;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
+    ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
 
   TestFusedLayernormResidualDropoutBias(int _rows,
@@ -92,7 +92,7 @@ struct TestFusedLayernormResidualDropoutBias {
     has_layernorm_bias = true;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
+    ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
 
   ~TestFusedLayernormResidualDropoutBias() {}

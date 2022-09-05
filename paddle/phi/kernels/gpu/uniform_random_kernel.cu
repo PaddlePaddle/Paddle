@@ -57,8 +57,8 @@ template <typename T, typename Context>
 void UniformRandomRawKernel(const Context& dev_ctx,
                             const IntArray& shape,
                             DataType dtype,
-                            float min,
-                            float max,
+                            const Scalar& min,
+                            const Scalar& max,
                             int seed,
                             int diag_num,
                             int diag_step,
@@ -70,26 +70,14 @@ void UniformRandomRawKernel(const Context& dev_ctx,
     // Use global Generator seed
     using MT = typename kps::details::MPTypeTrait<T>::Type;
     funcs::uniform_distribution<MT> dist;
-    funcs::uniform_real_transform<MT> trans(min, max);
+    funcs::uniform_real_transform<MT> trans(min.to<float>(), max.to<float>());
     funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
   } else {
     // Use OP seed
-    auto func =
-        UniformGenerator<T>(min, max, seed, diag_num, diag_step, diag_val);
+    auto func = UniformGenerator<T>(
+        min.to<float>(), max.to<float>(), seed, diag_num, diag_step, diag_val);
     IndexKernel<T, UniformGenerator<T>>(dev_ctx, out, func);
   }
-}
-
-template <typename T, typename Context>
-void UniformRandomKernel(const Context& dev_ctx,
-                         const IntArray& shape,
-                         DataType dtype,
-                         float min,
-                         float max,
-                         int seed,
-                         DenseTensor* out) {
-  UniformRandomRawKernel<T>(
-      dev_ctx, shape, dtype, min, max, seed, 0, 0, 0.0f, out);
 }
 
 }  // namespace phi
@@ -100,6 +88,3 @@ PD_REGISTER_KERNEL(uniform_random_raw,
                    phi::UniformRandomRawKernel,
                    float,
                    double) {}
-
-PD_REGISTER_KERNEL(
-    uniform_random, GPU, ALL_LAYOUT, phi::UniformRandomKernel, float, double) {}
