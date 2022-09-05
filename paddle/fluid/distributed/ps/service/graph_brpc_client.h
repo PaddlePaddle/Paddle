@@ -56,7 +56,6 @@ class GraphPsService_Stub : public PsService_Stub {
   GraphBrpcService* graph_service;
   std::shared_ptr<::ThreadPool> task_pool;
   ::google::protobuf::RpcChannel* local_channel;
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(GraphPsService_Stub);
   void service(::google::protobuf::RpcController* controller,
                const ::paddle::distributed::PsRequestMessage* request,
                ::paddle::distributed::PsResponseMessage* response,
