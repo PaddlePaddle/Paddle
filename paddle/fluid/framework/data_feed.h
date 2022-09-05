@@ -917,11 +917,10 @@ class GraphDataGenerator {
   }
   std::vector<std::shared_ptr<phi::Allocation>> SampleNeighbors(
       int64_t* uniq_nodes, int len, int sample_size,
-      std::vector<int64_t>& edges_split_num, int64_t* neighbor_len);
+      std::vector<int>& edges_split_num, int64_t* neighbor_len);
 
   std::shared_ptr<phi::Allocation> GetReindexResult(
-      int64_t* reindex_src_data, int64_t* reindex_dst_data,
-      const int* count, const int64_t* center_nodes,
+      int64_t* reindex_src_data, const int64_t* center_nodes,
       int* final_nodes_len, int node_len, int64_t neighbor_len);
 
   std::shared_ptr<phi::Allocation> GenerateSampleGraph(
