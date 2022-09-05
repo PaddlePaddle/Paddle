@@ -29,7 +29,8 @@ namespace phi {
 template <typename T, typename Context>
 void FakeCoalesceKernel(const Context &dev_ctx,
                         const std::vector<const DenseTensor *> &input,
-                        DenseTensor *output) {
+                        DenseTensor *output,
+                        std::vector<DenseTensor *> xout) {
   int64_t size_of_dtype = sizeof(T);
   auto dtype = input.at(0)->dtype();
   int64_t numel = 0;
@@ -75,9 +76,9 @@ void FakeCoalesceKernel(const Context &dev_ctx,
   numel += paddle::platform::Alignment(
       (*input.rbegin())->numel() * size_of_dtype, dev_ctx.GetPlace());
   // reset holder, do inplace
-  output->ResetHolder(input.at(0)->Holder());
+  output->ShareBufferWith(*input.at(0));
   output->Resize({numel / size_of_dtype});
-  output->set_type(dtype);
+  VLOG(4) << "addr:" << output->data<T>();
 }
 
 }  // namespace phi

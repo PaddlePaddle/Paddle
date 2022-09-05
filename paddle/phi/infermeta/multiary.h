@@ -218,6 +218,7 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
 
 void FakeCoalesceInferMeta(const std::vector<const MetaTensor*>& input,
                            MetaTensor* output,
+                           std::vector<MetaTensor*> xout,
                            MetaConfig config = MetaConfig());
 
 void ConcatInferMeta(const std::vector<const MetaTensor*>& x,

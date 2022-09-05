@@ -110,7 +110,7 @@
 
 - api : fake_coalesce
   args : (Tensor[] x)
-  output : Tensor
+  output : Tensor(out), Tensor[](xout){x.size()}
   infer_meta :
     func : FakeCoalesceInferMeta
   kernel :

@@ -483,6 +483,9 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
     desc->SetAttr(
         "dtype",
         dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)->DType());
+    desc->SetAttr(
+        "value",
+        dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)->Coeff());
   }
 
   desc->SetAttr("force_cpu", false);
@@ -531,6 +534,7 @@ static void ReplaceAllReduceOp(const Node &node,
     var_desc.mutable_type()->set_type(proto::VarType::LOD_TENSOR);
     block->mutable_vars()->Add()->CopyFrom(var_desc);
     desc1.SetOutput("out", {name});
+    desc1.SetOutput("xout", in_names);
     VLOG(4) << "add variable for fake_coalesce: " << name;
 
     desc2.SetInput("X", {name});
@@ -548,7 +552,7 @@ static void ReplaceAllReduceOp(const Node &node,
     int ring_id = platform::NCCLCommContext::Instance().GetRingId(
         dynamic_cast<details::NCCLOpHandleBase *>(&op_hander)->GetComm());
     desc2.SetAttr("ring_id", ring_id);
-    desc2.SetAttr("use_calc_stream", false);
+    desc2.SetAttr("use_calc_stream", true);
   }
 
   desc1.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),

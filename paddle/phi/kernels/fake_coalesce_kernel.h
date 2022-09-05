@@ -34,6 +34,7 @@ namespace phi {
 template <typename T, typename Context>
 void CoalesceTensorKernel(const Context &dev_ctx,
                           const std::vector<const DenseTensor *> &input,
-                          DenseTensor *output);
+                          DenseTensor *output,
+                          std::vector<DenseTensor *> xout);
 
 }  // namespace phi
