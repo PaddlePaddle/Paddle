@@ -41,25 +41,7 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
     VLOG(5) << "Calibration file path of quantize model: "
             << argument->calibration_file_path();
     std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
-    std::ifstream calibration_file(argument->calibration_file_path());
-    std::string one_line;
-    while (getline(calibration_file, one_line)) {
-      if (one_line.find(" ") != one_line.npos) {
-        auto pos = one_line.find(" ");
-        std::string pre_str = one_line.substr(0, pos);
-        std::string pos_str = one_line.substr(pos);
-        if (pre_str.size() && pos_str.size()) {
-          std::string tensor_name = pre_str;
-          float scale = std::stod(pos_str);
-          scale = 1.0 / scale;
-          if (std::isinf(scale) || std::isnan(scale)) {
-            continue;
-          }
-          std::vector<float> scales = {scale};
-          var_quant_scales[tensor_name] = scales;
-        }
-      }
-    }
+    ReadCalibrationInfo(argument, &var_quant_scales);
     // save var_quant_scales in the first op's attr
     // for quant_dequant_mkldnn_pass
     SaveInfoInTheFirstOp(
@@ -77,6 +59,30 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
           "The graph nodes size should be greater than 0, but got 0"));
   argument->SetMainGraph(graph.release());
   CollectFusionStatis(argument);
+}
+
+void IrAnalysisPass::ReadCalibrationInfo(
+    Argument* argument,
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales) {
+  std::ifstream calibration_file(argument->calibration_file_path());
+  std::string one_line;
+  while (getline(calibration_file, one_line)) {
+    if (one_line.find(" ") != one_line.npos) {
+      auto pos = one_line.find(" ");
+      std::string pre_str = one_line.substr(0, pos);
+      std::string pos_str = one_line.substr(pos);
+      if (pre_str.size() && pos_str.size()) {
+        std::string tensor_name = pre_str;
+        float scale = std::stod(pos_str);
+        scale = 1.0 / scale;
+        if (std::isinf(scale) || std::isnan(scale)) {
+          continue;
+        }
+        std::vector<float> scales = {scale};
+        (*var_quant_scales)[tensor_name] = scales;
+      }
+    }
+  }
 }
 
 void IrAnalysisPass::CollectFusionStatis(Argument* argument) {
