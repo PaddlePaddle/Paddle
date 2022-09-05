@@ -235,8 +235,7 @@ endif()
 
 if(WIN32
    OR APPLE
-   OR NOT WITH_GPU
-   OR ON_INFER)
+   OR NOT WITH_GPU)
   set(WITH_DGC OFF)
 endif()
 

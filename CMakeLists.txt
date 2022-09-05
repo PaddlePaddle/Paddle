@@ -248,8 +248,6 @@ option(WITH_MKL "Compile PaddlePaddle with MKL support." ${AVX_FOUND})
 option(WITH_SYSTEM_BLAS "Use system blas library" OFF)
 option(WITH_DISTRIBUTE "Compile with distributed support" OFF)
 option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocal" OFF)
-option(ON_INFER "Turn on inference optimization and inference-lib generation"
-       OFF)
 ################################ Internal Configurations #######################################
 option(WITH_NV_JETSON "Compile PaddlePaddle with NV JETSON" OFF)
 option(WITH_PROFILER "Compile PaddlePaddle with GPU profiler and gperftools"
@@ -334,9 +332,7 @@ if(SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES
   return()
 endif()
 
-if(LINUX
-   AND NOT WITH_CUSTOM_DEVICE
-   AND NOT ON_INFER)
+if(LINUX AND NOT WITH_CUSTOM_DEVICE)
   set(WITH_CUSTOM_DEVICE
       ON
       CACHE BOOL "Enable Custom Device when compiling for Linux" FORCE)
@@ -584,19 +580,7 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 
 add_definitions(-DPADDLE_DLL_EXPORT)
 
-if(ON_INFER)
-  # you can trun off the paddle fluid and inference lib by set ON_INFER=OFF
-  message(
-    STATUS "On inference mode, will take place some specific optimization.")
-  include(inference_lib)
-  add_definitions(-DPADDLE_ON_INFERENCE)
-else()
-  #TODO(luotao), combine this warning with `make inference_lib_dist` command.
-  message(
-    WARNING
-      "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only."
-  )
-endif()
+include(inference_lib)
 
 if(WITH_STRIP)
   find_program(STRIP_PATH strip)

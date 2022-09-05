@@ -19,7 +19,7 @@ cc_test(
   SRCS tensor_wrapper_test.cc
   DEPS ${eager_deps})
 
-if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+if(WITH_PYTHON)
   cc_test(
     test_egr_ds_grad_tensor_holder
     SRCS grad_tensor_holder_test.cc

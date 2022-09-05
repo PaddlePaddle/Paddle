@@ -1306,7 +1306,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT 120)
   endif()
 endif()
-if(ON_INFER OR WITH_GPU)
+if(WITH_GPU)
   set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT 120)
 endif()
 

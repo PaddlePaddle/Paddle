@@ -77,18 +77,8 @@ namespace enforce {
 #define LIKELY(condition) (condition)
 #endif
 
-#if defined _WIN32 && defined PADDLE_ON_INFERENCE && defined PADDLE_NO_PYTHON
-#define HANDLE_THE_ERROR try {
-#define END_HANDLE_THE_ERROR            \
-  }                                     \
-  catch (const std::exception& e) {     \
-    std::cout << e.what() << std::endl; \
-    throw;                              \
-  }
-#else
 #define HANDLE_THE_ERROR
 #define END_HANDLE_THE_ERROR
-#endif
 
 #ifdef __GNUC__
 inline std::string demangle(std::string name) {

@@ -15,7 +15,7 @@ cc_test(
   SRCS nan_inf_utils_test.cc
   DEPS eager_nan_inf_utils)
 
-if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+if(WITH_PYTHON)
   cc_test(
     test_egr_task_hook
     SRCS hook_test.cc

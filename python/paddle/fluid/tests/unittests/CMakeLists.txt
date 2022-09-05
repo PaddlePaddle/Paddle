@@ -68,10 +68,6 @@ foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
 
-if(NOT WITH_PYTHON AND ON_INFER)
-  list(REMOVE_ITEM TEST_OPS test_eager_trace_op)
-endif()
-
 if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_feedforward_op)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_op)
@@ -809,27 +805,25 @@ py_test_modules(
 # it is found that windows CI will run all the training unittests with the ON_INFER option turned on,
 # which will not appear in other CIs. The calculation behavior of some ops in inference mode is
 # inconsistent with that in non-inference mode.
-if(NOT ON_INFER)
-  py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES
-                  test_parallel_executor_seresnext_base_cpu)
-  py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES
-                  test_parallel_executor_seresnext_with_reduce_cpu)
-  py_test_modules(
-    test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES
-    test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
-  set_tests_properties(test_parallel_executor_seresnext_base_cpu
-                       PROPERTIES TIMEOUT 900)
-  set_tests_properties(test_parallel_executor_seresnext_base_cpu
-                       PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
-  set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu
-                       PROPERTIES TIMEOUT 750)
-  set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu
-                       PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
-  set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu
-                       PROPERTIES TIMEOUT 750)
-  set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu
-                       PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
-endif()
+py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES
+                test_parallel_executor_seresnext_base_cpu)
+py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES
+                test_parallel_executor_seresnext_with_reduce_cpu)
+py_test_modules(
+  test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES
+  test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
+set_tests_properties(test_parallel_executor_seresnext_base_cpu
+                     PROPERTIES TIMEOUT 900)
+set_tests_properties(test_parallel_executor_seresnext_base_cpu
+                     PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
+set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu
+                     PROPERTIES TIMEOUT 750)
+set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu
+                     PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
+set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu
+                     PROPERTIES TIMEOUT 750)
+set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu
+                     PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
 
 if(NOT WIN32)
   # TODO: fix these unittests failure on Windows

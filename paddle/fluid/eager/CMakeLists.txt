@@ -27,7 +27,7 @@ set(fluid_deps
 set(generated_deps final_dygraph_function final_dygraph_node dygraph_function
                    dygraph_node)
 
-if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+if(WITH_PYTHON)
   message("Performing Eager Dygraph Auto Code Generation")
   add_subdirectory(auto_code_generator)
 endif()
@@ -35,7 +35,7 @@ endif()
 add_subdirectory(api)
 add_subdirectory(accumulation)
 add_subdirectory(custom_operator)
-if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+if(WITH_PYTHON)
   add_subdirectory(pylayer)
   cc_library(
     grad_tensor_holder
@@ -77,6 +77,6 @@ cc_library(
        autograd_meta
        hook_utils)
 
-if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+if(WITH_PYTHON)
   add_subdirectory(tests)
 endif()

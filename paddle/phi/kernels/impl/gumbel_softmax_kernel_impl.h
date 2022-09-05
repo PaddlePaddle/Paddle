@@ -80,14 +80,8 @@ void GumbelSoftmaxKernel(const Context& ctx,
                                               size_to_axis,
                                               size_from_axis,
                                               temperature);
-
-#ifdef PADDLE_ON_INFERENCE
-  paddle::operators::math::SoftmaxFunctor<Context, T, true>()(
-      ctx, axis_dim, &x_noise_2d, &out_2d);
-#else
   paddle::operators::math::SoftmaxFunctor<Context, T, false>()(
       ctx, axis_dim, &x_noise_2d, &out_2d);
-#endif
 
   if (hard) {
     OneHotGenerator<Context, T>::Transform(ctx, x, out, axis);

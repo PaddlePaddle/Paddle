@@ -18,10 +18,8 @@
 
 option(EXP_CUDA_MODULE_LOADING_LAZY "enable lazy cuda module loading" OFF)
 if(${EXP_CUDA_MODULE_LOADING_LAZY})
-  if(NOT ${ON_INFER} OR NOT ${LINUX})
-    message(
-      "EXP_CUDA_MODULE_LOADING_LAZY only works with ON_INFER=ON on Linux platforms"
-    )
+  if(NOT ${LINUX})
+    message("EXP_CUDA_MODULE_LOADING_LAZY only works on Linux platforms")
     return()
   endif()
   if(NOT ${CUDA_FOUND})

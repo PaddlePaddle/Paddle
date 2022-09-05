@@ -1,4 +1,4 @@
-if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+if(WITH_PYTHON)
   add_subdirectory(fluid_manual)
   set(fluid_manual_functions
       ${fluid_manual_functions}

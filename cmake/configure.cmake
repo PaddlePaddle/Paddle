@@ -230,10 +230,6 @@ if(WITH_BRPC_RDMA)
   add_definitions(-DPADDLE_WITH_BRPC_RDMA)
 endif()
 
-if(ON_INFER)
-  add_definitions(-DPADDLE_ON_INFERENCE)
-endif()
-
 if(WITH_CRYPTO)
   add_definitions(-DPADDLE_WITH_CRYPTO)
 endif()
