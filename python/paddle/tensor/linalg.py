@@ -767,10 +767,11 @@ def cond(x, p=None, name=None):
         keepdim = False
 
         if _non_static_mode():
-            abs_out = _legacy_C_ops.abs(input)
             if in_dygraph_mode():
+                abs_out = _C_ops.abs(input)
                 sum_out = _C_ops.sum(abs_out, axis, None, keepdim)
             else:
+                abs_out = _legacy_C_ops.abs(input)
                 sum_out = _legacy_C_ops.reduce_sum(abs_out, 'dim', axis,
                                                    'keepdim', keepdim,
                                                    'reduce_all', reduce_all)
@@ -830,10 +831,10 @@ def cond(x, p=None, name=None):
         keepdim = False
 
         if in_dygraph_mode():
-            pow_out = _legacy_C_ops.pow(input, 'factor', porder)
+            pow_out = _C_ops.pow(input, porder)
             sum_out_1 = _C_ops.sum(pow_out, axis, None, keepdim)
             sum_out_2 = _C_ops.sum(sum_out_1, axis, None, keepdim)
-            return _legacy_C_ops.pow(sum_out_2, 'factor', float(1. / porder))
+            return _C_ops.pow(sum_out_2, float(1. / porder))
         elif paddle.in_dynamic_mode():
             pow_out = _legacy_C_ops.pow(input, 'factor', porder)
             sum_out_1 = _legacy_C_ops.reduce_sum(pow_out, 'dim', axis,
@@ -905,9 +906,13 @@ def cond(x, p=None, name=None):
                                                keepdim, 'reduce_all',
                                                reduce_all)
             if porder == 2:
+                if in_dygraph_mode():
+                    return _C_ops.divide(max_out, min_out)
                 return _legacy_C_ops.elementwise_div(max_out, min_out, 'aixs',
                                                      axis, 'use_mkldnn', False)
             if porder == -2:
+                if in_dygraph_mode():
+                    return _C_ops.divide(min_out, max_out)
                 return _legacy_C_ops.elementwise_div(min_out, max_out, 'aixs',
                                                      axis, 'use_mkldnn', False)
 
