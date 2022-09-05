@@ -550,10 +550,6 @@ class InterpolateV2OpMaker : public framework::OpProtoAndCheckerMaker {
                  "can be \'0\' for src_idx = scale*(dst_indx+0.5)-0.5 , "
                  "can be \'1\' for src_idx = scale*dst_index .")
         .SetDefault(1);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
           This operator samples input X to given output shape by using specified
           interpolation method, the interpolation methods can be \"nearest\"
