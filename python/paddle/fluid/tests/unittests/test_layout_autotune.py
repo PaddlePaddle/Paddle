@@ -46,6 +46,9 @@ class SimpleNet(paddle.nn.Layer):
 
 class LayoutAutoTune(unittest.TestCase):
 
+    def setUp(self):
+        self.use_autoune()
+
     def use_autoune(self):
         if paddle.is_compiled_with_cuda():
             paddle.incubate.autotune.set_config(
@@ -85,8 +88,12 @@ class LayoutAutoTune(unittest.TestCase):
     def test_enable_autotune(self):
         if self.use_autoune():
             conv_out, predict = self.train(data_format="NCHW")
-            self.assertEqual(conv_out.shape, [1, 14, 14, 8])
-            self.assertEqual(predict.shape, [1, 2])
+            if paddle.fluid.core.use_layout_autotune():
+                self.assertEqual(conv_out.shape, [1, 14, 14, 8])
+                self.assertEqual(predict.shape, [1, 2])
+            else:
+                self.assertEqual(conv_out.shape, [1, 8, 14, 14])
+                self.assertEqual(predict.shape, [1, 2])
         else:
             conv_out, predict = self.train(data_format="NCHW")
             self.assertEqual(conv_out.shape, [1, 8, 14, 14])
@@ -110,7 +117,7 @@ class LayoutAutoTune(unittest.TestCase):
         scaled.backward()
         scaler.minimize(optimizer, scaled)
 
-        if self.use_autoune():
+        if paddle.fluid.core.use_layout_autotune():
             self.assertEqual(conv_out.shape, [1, 14, 12, 8])
             self.assertEqual(out.shape, [1, 12, 8, 14])
         else:
@@ -129,8 +136,12 @@ class LayoutAutoTune(unittest.TestCase):
             # because it flatten the C and H dimensions.
             out = flatten(conv_out)
 
-        self.assertEqual(conv_out.shape, [1, 14, 12, 8])
-        self.assertEqual(out.shape, [1, 112, 12])
+        if paddle.fluid.core.use_layout_autotune():
+            self.assertEqual(conv_out.shape, [1, 14, 12, 8])
+            self.assertEqual(out.shape, [1, 112, 12])
+        else:
+            self.assertEqual(conv_out.shape, [1, 8, 14, 12])
+            self.assertEqual(out.shape, [1, 112, 12])
 
     def test_argmax_op_transposer_keep_dims(self):
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
@@ -139,14 +150,28 @@ class LayoutAutoTune(unittest.TestCase):
             conv_out = conv(data)
             # conv_out.shape = [1, 14, 12, 8] with NHWC
             out = paddle.argmax(conv_out, axis=1, keepdim=True)
-        if self.use_autoune():
+        if paddle.fluid.core.use_layout_autotune():
             self.assertEqual(conv_out.shape, [1, 14, 12, 8])
             self.assertEqual(out.shape, [1, 14, 12, 1])
         else:
-            self.assertEqual(conv_out.shape, [1, 14, 12, 8])
+            self.assertEqual(conv_out.shape, [1, 8, 14, 12])
             self.assertEqual(out.shape, [1, 1, 14, 12])
 
-    def test_argmax_op_transposer(self):
+    def test_argmax_op_transposer_ff(self):
+        conv = paddle.nn.Conv2D(3, 8, (3, 3))
+        data = paddle.rand([1, 3, 16, 14])
+        with paddle.amp.auto_cast(level="O2"):
+            conv_out = conv(data)
+            # conv_out.shape = [1, 14, 12, 8] with NHWC
+            out = paddle.argmax(conv_out)
+        if paddle.fluid.core.use_layout_autotune():
+            self.assertEqual(conv_out.shape, [1, 14, 12, 8])
+            self.assertEqual(out.shape, [1])
+        else:
+            self.assertEqual(conv_out.shape, [1, 8, 14, 12])
+            self.assertEqual(out.shape, [1])
+
+    def test_argmax_op_transposer_t(self):
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data = paddle.rand([1, 3, 16, 14])
         with paddle.amp.auto_cast(level="O2"):
@@ -154,7 +179,7 @@ class LayoutAutoTune(unittest.TestCase):
             # conv_out.shape = [1, 14, 12, 8] with NHWC
             out = paddle.argmax(conv_out)
 
-        if self.use_autoune():
+        if paddle.fluid.core.use_layout_autotune():
             self.assertEqual(conv_out.shape, [1, 14, 12, 8])
             self.assertEqual(out.shape, [1])
         else:
@@ -170,7 +195,7 @@ class LayoutAutoTune(unittest.TestCase):
             # conv_out.shape = [1, 14, 12, 8] with NHWC
             out = paddle.concat(x=[conv_out, in1], axis=0)
 
-        if self.use_autoune():
+        if paddle.fluid.core.use_layout_autotune():
             self.assertEqual(conv_out.shape, [1, 14, 12, 8])
             self.assertEqual(out.shape, [2, 8, 14, 12])
         else:
@@ -187,7 +212,7 @@ class LayoutAutoTune(unittest.TestCase):
             # conv_out.shape = [1, 14, 12, 8] with NHWC
             out = paddle.concat(x=[conv_out1, conv_out2], axis=0)
 
-        if self.use_autoune():
+        if paddle.fluid.core.use_layout_autotune():
             self.assertEqual(conv_out1.shape, [1, 14, 12, 8])
             self.assertEqual(out.shape, [2, 14, 12, 8])
         else:
