@@ -162,15 +162,19 @@ class ProfilerResult {
 
   std::string GetVersion() { return version_; }
   uint32_t GetSpanIndx() { return span_indx_; }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::map<uint32_t, gpuDeviceProp> GetDeviceProperty() {
     return device_property_map_;
   }
+#endif
 
  private:
   std::map<uint64_t, HostPythonNode*> thread_event_trees_map_;
   std::shared_ptr<NodeTrees> tree_;
   ExtraInfo extra_info_;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::map<uint32_t, gpuDeviceProp> device_property_map_;
+#endif
   std::string version_;
   uint32_t span_indx_;
   HostPythonNode* CopyTree(HostTraceEventNode* root);

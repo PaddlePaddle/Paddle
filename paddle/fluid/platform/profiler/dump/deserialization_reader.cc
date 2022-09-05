@@ -154,6 +154,7 @@ DeserializationReader::~DeserializationReader() {
   input_file_stream_.close();
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 gpuDeviceProp DeserializationReader::RestoreDeviceProperty(
     const DevicePropertyProto& device_property_proto) {
   gpuDeviceProp device_property;
@@ -180,6 +181,7 @@ gpuDeviceProp DeserializationReader::RestoreDeviceProperty(
       device_property_proto.shared_memory_per_block_optin();
   return device_property;
 }
+#endif
 
 DeviceTraceEventNode* DeserializationReader::RestoreDeviceTraceEventNode(
     const DeviceTraceEventNodeProto& device_node_proto) {
