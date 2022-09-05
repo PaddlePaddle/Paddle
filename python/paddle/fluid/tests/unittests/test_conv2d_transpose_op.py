@@ -977,14 +977,14 @@ class TestConv2DTransposeRepr(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestTensorOutputSize(UnittestBase):
+class TestTensorOutputSize1(UnittestBase):
 
     def init_info(self):
         self.shapes = [[2, 3, 8, 8]]
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
 
     def path_prefix(self):
-        return 'conv2d_transpose_tensor_output_size'
+        return 'conv2d_transpose_tensor_output_size1'
 
     def var_prefix(self):
         return "Vars["
@@ -1020,6 +1020,86 @@ class TestTensorOutputSize(UnittestBase):
             # Test for Inference Predictor
             infer_outs = self.infer_prog()
             np.testing.assert_allclose(infer_outs[1].shape, (2, 6, 17, 17))
+
+
+class TestTensorOutputSize2(TestTensorOutputSize1):
+
+    def path_prefix(self):
+        return 'conv2d_transpose_tensor_output_size2'
+
+    def call_func(self, x):
+        w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
+        output_size = paddle.assign([17, 17])
+        out = paddle.paddle.nn.functional.conv2d_transpose(
+            x, w_var, stride=2, output_size=output_size)
+        return out
+
+
+class TestTensorOutputSize3(TestTensorOutputSize1):
+
+    def path_prefix(self):
+        return 'conv2d_transpose_tensor_output_size3'
+
+    def call_func(self, x):
+        w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
+        output_size = paddle.assign([17])
+        out = paddle.fluid.layers.conv2d_transpose(x,
+                                                   num_filters=6,
+                                                   output_size=output_size,
+                                                   filter_size=3,
+                                                   stride=2)
+        return out
+
+
+class TestTensorOutputSize4(TestTensorOutputSize1):
+
+    def path_prefix(self):
+        return 'conv2d_transpose_tensor_output_size3'
+
+    def call_func(self, x):
+        output_size = paddle.assign([17, 17])
+        out = paddle.fluid.layers.conv2d_transpose(x,
+                                                   num_filters=6,
+                                                   output_size=output_size,
+                                                   filter_size=3,
+                                                   stride=2)
+        return out
+
+
+class TestTensorOutputSize5(TestTensorOutputSize1):
+
+    def path_prefix(self):
+        return 'conv2d_transpose_tensor_output_size3'
+
+    def call_func(self, x):
+        w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
+        output_size = paddle.assign([17])
+        conv2d_trans = paddle.fluid.dygraph.Conv2DTranspose(
+            num_channels=3,
+            num_filters=6,
+            filter_size=3,
+            output_size=output_size,
+            stride=2)
+        out = conv2d_trans(x)
+        return out
+
+
+class TestTensorOutputSize6(TestTensorOutputSize1):
+
+    def path_prefix(self):
+        return 'conv2d_transpose_tensor_output_size3'
+
+    def call_func(self, x):
+        w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
+        output_size = paddle.assign([17, 17])
+        conv2d_trans = paddle.fluid.dygraph.Conv2DTranspose(
+            num_channels=3,
+            num_filters=6,
+            filter_size=3,
+            output_size=output_size,
+            stride=2)
+        out = conv2d_trans(x)
+        return out
 
 
 if __name__ == '__main__':
