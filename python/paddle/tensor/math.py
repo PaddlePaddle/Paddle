@@ -177,13 +177,14 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.scale(x, scale, float(bias), bias_after_scale)
-    if _non_static_mode():
+        out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
+        return dygraph_utils._append_activation_in_dygraph(out, act)
+    elif _in_legacy_dygraph():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = _legacy_C_ops.scale(x, 'scale',
                            float(_scale), 'bias',
                            float(bias), 'bias_after_scale', bias_after_scale)
-        return dygraph_utils._append_activation_in_dygraph(out)
+        return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(x, "x", [
         'float16', 'uint16', 'float32', 'float64', 'int8', 'int16', 'int32',
