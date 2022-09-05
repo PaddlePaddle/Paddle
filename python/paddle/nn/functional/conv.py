@@ -136,9 +136,17 @@ def _conv_nd(x,
             if isinstance(bias, tuple):
                 bias = bias[0]
             if len(bias.shape) < len(x.shape):
+                tmp_bias = _C_ops.reshape(bias, [1, bias.shape[0], 1, 1])
                 tmp_bias = _C_ops.reshape(
-                    bias, bias.shape +
+                    bias, [1 for i in range(channel_dim)] + bias.shape +
                     [1 for i in range(len(x.shape) - channel_dim - 1)])
+                print(channel_dim)
+                print(pre_bias.shape)
+                print(bias.shape)
+                print([1 for i in range(len(x.shape) - channel_dim - 1)])
+                print(bias.shape +
+                      [1 for i in range(len(x.shape) - channel_dim - 1)])
+                print(tmp_bias.shape)
                 return _C_ops.add(pre_bias, tmp_bias)
             else:
                 return _C_ops.add(pre_bias, bias)
