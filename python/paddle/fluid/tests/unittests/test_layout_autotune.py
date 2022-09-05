@@ -93,8 +93,6 @@ class LayoutAutoTune(unittest.TestCase):
             self.assertEqual(predict.shape, [1, 2])
 
     def test_transpose_op_transposer(self):
-        if not self.use_autoune():
-            return
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data = paddle.rand([1, 3, 16, 14])
         label_data = paddle.randint(0, 1, shape=[1, 1], dtype="int64")
@@ -112,12 +110,14 @@ class LayoutAutoTune(unittest.TestCase):
         scaled.backward()
         scaler.minimize(optimizer, scaled)
 
-        self.assertEqual(conv_out.shape, [1, 14, 12, 8])
-        self.assertEqual(out.shape, [1, 12, 8, 14])
+        if self.use_autoune():
+            self.assertEqual(conv_out.shape, [1, 14, 12, 8])
+            self.assertEqual(out.shape, [1, 12, 8, 14])
+        else:
+            self.assertEqual(conv_out.shape, [1, 8, 14, 12])
+            self.assertEqual(out.shape, [1, 8, 14, 12])
 
     def test_flatten_op_transposer(self):
-        if not self.use_autoune():
-            return
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
         data = paddle.rand([1, 3, 16, 14])
@@ -133,21 +133,20 @@ class LayoutAutoTune(unittest.TestCase):
         self.assertEqual(out.shape, [1, 112, 12])
 
     def test_argmax_op_transposer_keep_dims(self):
-        if not self.use_autoune():
-            return
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data = paddle.rand([1, 3, 16, 14])
         with paddle.amp.auto_cast(level="O2"):
             conv_out = conv(data)
             # conv_out.shape = [1, 14, 12, 8] with NHWC
             out = paddle.argmax(conv_out, axis=1, keepdim=True)
-
-        self.assertEqual(conv_out.shape, [1, 14, 12, 8])
-        self.assertEqual(out.shape, [1, 14, 12, 1])
+        if self.use_autoune():
+            self.assertEqual(conv_out.shape, [1, 14, 12, 8])
+            self.assertEqual(out.shape, [1, 14, 12, 1])
+        else:
+            self.assertEqual(conv_out.shape, [1, 14, 12, 8])
+            self.assertEqual(out.shape, [1, 1, 14, 12])
 
     def test_argmax_op_transposer(self):
-        if not self.use_autoune():
-            return
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data = paddle.rand([1, 3, 16, 14])
         with paddle.amp.auto_cast(level="O2"):
@@ -155,12 +154,14 @@ class LayoutAutoTune(unittest.TestCase):
             # conv_out.shape = [1, 14, 12, 8] with NHWC
             out = paddle.argmax(conv_out)
 
-        self.assertEqual(conv_out.shape, [1, 14, 12, 8])
-        self.assertEqual(out.shape, [1])
+        if self.use_autoune():
+            self.assertEqual(conv_out.shape, [1, 14, 12, 8])
+            self.assertEqual(out.shape, [1])
+        else:
+            self.assertEqual(conv_out.shape, [1, 8, 14, 12])
+            self.assertEqual(out.shape, [1])
 
     def test_concat_op_transposer(self):
-        if not self.use_autoune():
-            return
         in1 = paddle.rand([1, 8, 14, 12])
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data = paddle.rand([1, 3, 16, 14])
@@ -169,12 +170,14 @@ class LayoutAutoTune(unittest.TestCase):
             # conv_out.shape = [1, 14, 12, 8] with NHWC
             out = paddle.concat(x=[conv_out, in1], axis=0)
 
-        self.assertEqual(conv_out.shape, [1, 14, 12, 8])
-        self.assertEqual(out.shape, [2, 8, 14, 12])
+        if self.use_autoune():
+            self.assertEqual(conv_out.shape, [1, 14, 12, 8])
+            self.assertEqual(out.shape, [2, 8, 14, 12])
+        else:
+            self.assertEqual(conv_out.shape, [1, 8, 14, 12])
+            self.assertEqual(out.shape, [2, 8, 14, 12])
 
     def test_concat_op_no_transposer(self):
-        if not self.use_autoune():
-            return
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data1 = paddle.rand([1, 3, 16, 14])
         data2 = paddle.rand([1, 3, 16, 14])
@@ -184,8 +187,12 @@ class LayoutAutoTune(unittest.TestCase):
             # conv_out.shape = [1, 14, 12, 8] with NHWC
             out = paddle.concat(x=[conv_out1, conv_out2], axis=0)
 
-        self.assertEqual(conv_out1.shape, [1, 14, 12, 8])
-        self.assertEqual(out.shape, [2, 14, 12, 8])
+        if self.use_autoune():
+            self.assertEqual(conv_out1.shape, [1, 14, 12, 8])
+            self.assertEqual(out.shape, [2, 14, 12, 8])
+        else:
+            self.assertEqual(conv_out.shape, [1, 8, 14, 12])
+            self.assertEqual(out.shape, [2, 8, 14, 12])
 
 
 class TestAutoTuneAPI(unittest.TestCase):
