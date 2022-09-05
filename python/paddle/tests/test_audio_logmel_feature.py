@@ -87,8 +87,7 @@ class TestFeatures(unittest.TestCase):
                                              feature_layer,
                                              decimal=3)
 
-    @parameterize([16000, 8000], [256, 128], [40, 64], [64, 128],
-                  ['float32', 'float64'])
+    @parameterize([16000, 8000], [256, 128], [40, 64], [64, 128], ['float64'])
     def test_mfcc(self, sr: int, n_fft: int, n_mfcc: int, n_mels: int,
                   dtype: str):
         if len(self.waveform.shape) == 2:  # (C, T)
@@ -96,6 +95,7 @@ class TestFeatures(unittest.TestCase):
                 0)  # 1D input for librosa.feature.melspectrogram
 
         # librosa:
+        nptype = getattr(np, dtype)
         feature_librosa = librosa.feature.mfcc(y=self.waveform,
                                                sr=sr,
                                                S=None,
