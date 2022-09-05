@@ -122,7 +122,7 @@ class LayoutAutoTune(unittest.TestCase):
             self.assertEqual(out.shape, [1, 12, 8, 14])
         else:
             self.assertEqual(conv_out.shape, [1, 8, 14, 12])
-            self.assertEqual(out.shape, [1, 8, 14, 12])
+            self.assertEqual(out.shape, [1, 12, 8, 14])
 
     def test_flatten_op_transposer(self):
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
@@ -216,7 +216,7 @@ class LayoutAutoTune(unittest.TestCase):
             self.assertEqual(conv_out1.shape, [1, 14, 12, 8])
             self.assertEqual(out.shape, [2, 14, 12, 8])
         else:
-            self.assertEqual(conv_out.shape, [1, 8, 14, 12])
+            self.assertEqual(conv_out1.shape, [1, 8, 14, 12])
             self.assertEqual(out.shape, [2, 8, 14, 12])
 
 
