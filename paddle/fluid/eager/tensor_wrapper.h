@@ -27,6 +27,7 @@
 #pragma once
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/saved_tensors_hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 
@@ -69,7 +70,20 @@ class TensorWrapper {
             "Unrecognized tensor type for no_need_buffer feature"));
       }
     } else {
-      intermidiate_tensor_.set_impl(tensor.impl());
+      if (SavedTensorsHooks::GetInstance().IsEnable() &&
+          tensor.is_dense_tensor()) {
+        phi::DenseTensor* dense_tensor =
+            static_cast<phi::DenseTensor*>(tensor.impl().get());
+        intermidiate_tensor_.set_impl(
+            std::move(std::make_shared<phi::DenseTensor>(
+                std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
+                dense_tensor->meta())));
+        auto pack_hook = SavedTensorsHooks::GetInstance().GetPackHook();
+        unpack_hook_ = SavedTensorsHooks::GetInstance().GetUnPackHook();
+        packed_value_ = (*pack_hook)(tensor);
+      } else {
+        intermidiate_tensor_.set_impl(tensor.impl());
+      }
     }
 
     if (VLOG_IS_ON(7)) {
@@ -94,7 +108,15 @@ class TensorWrapper {
       return paddle::experimental::Tensor();
     }
 
-    check_inplace_version();
+    if (packed_value_ && unpack_hook_) {
+      auto tensor_unpacked = (*unpack_hook_)(packed_value_);
+      auto src_dense_tensor =
+          static_cast<phi::DenseTensor*>(tensor_unpacked.impl().get());
+      static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get())
+          ->ResetHolder(src_dense_tensor->MoveMemoryHolder());
+    } else {
+      check_inplace_version();
+    }
 
     paddle::experimental::Tensor recovered_tensor = intermidiate_tensor_;
 
@@ -168,5 +190,7 @@ class TensorWrapper {
   paddle::experimental::Tensor intermidiate_tensor_;
   std::weak_ptr<egr::GradNodeBase> weak_grad_node_;
   uint32_t inplace_version_snapshot_ = 0;
+  void* packed_value_{nullptr};
+  std::shared_ptr<UnPackHookBase> unpack_hook_;
 };
 }  // namespace egr
