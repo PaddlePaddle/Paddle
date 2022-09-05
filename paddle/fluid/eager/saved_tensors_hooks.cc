@@ -95,7 +95,7 @@ class UnPackHook : public UnPackHookBase {
     return reinterpret_cast<paddle::pybind::TensorObject*>(ret)->tensor;
   }
 
-  void* operator()(void* packed_value) override {
+  void* operator()(void* packed_value, void* other) override {
     auto args = PyTuple_New(1);
     Py_INCREF(reinterpret_cast<PyObject*>(packed_value));
     PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value));

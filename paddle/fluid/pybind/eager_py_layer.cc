@@ -474,8 +474,8 @@ PyObject* call_unpack_hook(PyLayerObject* self) {
         PyObject* o = PyList_GetItem(obj, j);
         PyTuple_SET_ITEM(tmp_list,
                          j,
-                         reinterpret_cast<PyObject*>(
-                             ((*unpack_hook)(reinterpret_cast<void*>(o)))));
+                         reinterpret_cast<PyObject*>(((*unpack_hook)(
+                             reinterpret_cast<void*>(o), nullptr))));
       }
       PyTuple_SET_ITEM(unpacked_value, i, tmp_list);
     } else if (PyTuple_Check(obj)) {
@@ -485,15 +485,15 @@ PyObject* call_unpack_hook(PyLayerObject* self) {
         PyObject* o = PyTuple_GetItem(obj, j);
         PyTuple_SET_ITEM(tmp_tuple,
                          j,
-                         reinterpret_cast<PyObject*>(
-                             (*unpack_hook)(reinterpret_cast<void*>(o))));
+                         reinterpret_cast<PyObject*>((*unpack_hook)(
+                             reinterpret_cast<void*>(o), nullptr)));
       }
       PyTuple_SET_ITEM(unpacked_value, i, tmp_tuple);
     } else {
       PyTuple_SET_ITEM(unpacked_value,
                        i,
-                       reinterpret_cast<PyObject*>(
-                           (*unpack_hook)(reinterpret_cast<void*>(obj))));
+                       reinterpret_cast<PyObject*>((*unpack_hook)(
+                           reinterpret_cast<void*>(obj), nullptr)));
     }
   }
 
