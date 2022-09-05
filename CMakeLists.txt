@@ -61,7 +61,10 @@ option(WITH_ASCEND_CL "Compile PaddlePaddle with ASCEND CL" ${WITH_ASCEND})
 option(WITH_ASCEND_CXX11 "Compile PaddlePaddle with ASCEND and CXX11 ABI" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
-# Note(zhouwei): It use option above, so put here
+# NOTE(umiswing): WITH_CUTLASS can be compile on gpu with sm >= 80. Set WITH_CUTLASS=ON if a
+# gather-gemm-scatter fusion in sparse conv 3d is needed.
+option(WITH_CUTLASS "Compile PaddlePaddle with CUTLASS" OFF)
+# # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic) # simplify cmake module
 include(experimental) # experimental build options
@@ -422,6 +425,13 @@ else()
   endif()
 endif()
 
+if(WITH_CUTLASS)
+  add_definitions("-DPADDLE_WITH_CUTLASS")
+  include_directories("cutlass/")
+  include_directories("cutlass/include/")
+  include_directories("cutlass/tools/util/include/")
+endif()
+
 if(WITH_BRPC_RDMA)
   message(STATUS "Use brpc with rdma.")
   if(NOT WITH_DISTRIBUTE)
@@ -526,9 +536,6 @@ include(coveralls) # set code coverage
 include(configure) # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
-include_directories("cutlass/")
-include_directories("cutlass/include/")
-include_directories("cutlass/tools/util/include/")
 
 if(WITH_NV_JETSON)
   set(WITH_ARM
