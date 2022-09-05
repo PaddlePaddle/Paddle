@@ -775,7 +775,7 @@ def cond(x, p=None, name=None):
             if porder == -1 or porder == -np.inf:
                 return _C_ops.min(sum_out, [-1], keepdim)
 
-        elif _in_legacy_dygraph:
+        elif _in_legacy_dygraph():
             abs_out = _legacy_C_ops.abs(input)
             sum_out = _legacy_C_ops.reduce_sum(abs_out, 'dim', axis, 'keepdim',
                                                keepdim, 'reduce_all',
