@@ -25,45 +25,73 @@
 namespace phi {
 namespace funcs {
 
-using MKLDNNMemoryFormat = dnnl::memory::format_tag;
-using MKLDNNDataType = dnnl::memory::data_type;
+using OneDNNMemoryFormat = dnnl::memory::format_tag;
+using OneDNNDataType = dnnl::memory::data_type;
 
 template <typename Type>
 void* to_void_cast(const Type* t) {
   return static_cast<void*>(const_cast<Type*>(t));
 }
 
-inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,
-                                              MKLDNNMemoryFormat data_format) {
+inline OneDNNMemoryFormat OneDNNFormatForSize(size_t dims_size,
+                                              OneDNNMemoryFormat data_format) {
   if (dims_size == 1) {
-    return MKLDNNMemoryFormat::x;
+    return OneDNNMemoryFormat::x;
   } else if (dims_size == 2) {
-    return MKLDNNMemoryFormat::nc;
+    return OneDNNMemoryFormat::nc;
   } else if (dims_size == 3) {
-    if (data_format == MKLDNNMemoryFormat::nchw) {
-      return MKLDNNMemoryFormat::ncw;
-    } else if (data_format == MKLDNNMemoryFormat::nhwc) {
-      return MKLDNNMemoryFormat::nwc;
+    if (data_format == OneDNNMemoryFormat::nchw) {
+      return OneDNNMemoryFormat::ncw;
+    } else if (data_format == OneDNNMemoryFormat::nhwc) {
+      return OneDNNMemoryFormat::nwc;
     }
   } else if (dims_size == 4) {
-    if (data_format == MKLDNNMemoryFormat::goihw) {
-      return MKLDNNMemoryFormat::oihw;
+    if (data_format == OneDNNMemoryFormat::goihw) {
+      return OneDNNMemoryFormat::oihw;
     }
   } else if (dims_size == 5) {
-    if (data_format == MKLDNNMemoryFormat::goidhw) {
-      return MKLDNNMemoryFormat::oidhw;
+    if (data_format == OneDNNMemoryFormat::goidhw) {
+      return OneDNNMemoryFormat::oidhw;
     }
-    if (data_format == MKLDNNMemoryFormat::nchw) {
-      return MKLDNNMemoryFormat::ncdhw;
-    } else if (data_format == MKLDNNMemoryFormat::nhwc) {
-      return MKLDNNMemoryFormat::ndhwc;
+    if (data_format == OneDNNMemoryFormat::nchw) {
+      return OneDNNMemoryFormat::ncdhw;
+    } else if (data_format == OneDNNMemoryFormat::nhwc) {
+      return OneDNNMemoryFormat::ndhwc;
     }
   } else if (dims_size == 6) {
-    if (data_format == MKLDNNMemoryFormat::nchw) {
-      return MKLDNNMemoryFormat::abcdef;
+    if (data_format == OneDNNMemoryFormat::nchw) {
+      return OneDNNMemoryFormat::abcdef;
     }
   }
   return data_format;
+}
+
+inline dnnl::memory::format_tag GetPlainOneDNNFormat(int tensor_rank) {
+  switch (tensor_rank) {
+    case 1:
+      return dnnl::memory::format_tag::a;
+    case 2:
+      return dnnl::memory::format_tag::ab;
+    case 3:
+      return dnnl::memory::format_tag::abc;
+    case 4:
+      return dnnl::memory::format_tag::abcd;
+    case 5:
+      return dnnl::memory::format_tag::abcde;
+    case 6:
+      return dnnl::memory::format_tag::abcdef;
+    case 7:
+      return dnnl::memory::format_tag::abcdefg;
+    case 8:
+      return dnnl::memory::format_tag::abcdefgh;
+    case 9:
+      return dnnl::memory::format_tag::abcdefghi;
+    default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Paddle support tensors with rank in range <1, 9>, but received "
+          "tensor with rank: %d",
+          tensor_rank));
+  }
 }
 
 inline void MatchShapeToLayout(DenseTensor* tensor_in,
@@ -119,14 +147,14 @@ inline void MatchShapeToLayout(DenseTensor* tensor_in,
   }
 }
 
-struct mkldnn_dummy_primitive {
+struct onednn_dummy_primitive {
   struct primitive_desc {};
   struct desc {};
 };
 
-inline dnnl::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
+inline dnnl::memory::desc OneDNNMemDesc(const std::vector<int64_t>& dims,
                                         dnnl::memory::data_type data_type,
-                                        MKLDNNMemoryFormat format) {
+                                        OneDNNMemoryFormat format) {
   return dnnl::memory::desc({dims}, data_type, format);
 }
 
