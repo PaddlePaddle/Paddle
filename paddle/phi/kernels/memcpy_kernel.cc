@@ -25,6 +25,33 @@ namespace phi {
 
 static constexpr size_t WAIT_THRESHOLD = 64 * 1024;
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <>
+void MemcpyH2DKernel(const GPUContext& dev_ctx,
+                     const DenseTensor& x,
+                     int dst_place_type,
+                     DenseTensor* out) {
+  PADDLE_ENFORCE_GE(
+      dst_place_type,
+      0,
+      errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
+                         dst_place_type));
+  PADDLE_ENFORCE_LE(
+      dst_place_type,
+      3,
+      errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
+                         dst_place_type));
+
+  // CPUContext do not support dev_ctx.stream()
+  auto stream = dev_ctx.stream();
+  out->mutable_data(dev_ctx.GetPlace(),
+                    x.dtype(),
+                    phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+}
+#endif
+
 template <typename Context>
 void MemcpyH2DKernel(const Context& dev_ctx,
                      const DenseTensor& x,
@@ -41,9 +68,6 @@ void MemcpyH2DKernel(const Context& dev_ctx,
       errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
                          dst_place_type));
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  dev_ctx.Alloc(out, x.dtype());
-#endif
   Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 }
 
@@ -54,7 +78,8 @@ void MemcpyD2HKernel(const Context& dev_ctx,
                      DenseTensor* out) {
   switch (dst_place_type) {
     case 0:
-      dev_ctx.HostAlloc(out, out->dtype());
+      // Error code: dev_ctx.HostAlloc(out, out->dtype());
+      out->mutable_data(CPUPlace());
       Copy(dev_ctx, x, CPUPlace(), false, out);
       // NOTE(copy from Aurelius84): host <-> device memory copies of a memory
       // block of 64 KB or less are asynchronous. See
