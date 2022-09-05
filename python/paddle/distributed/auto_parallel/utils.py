@@ -49,6 +49,50 @@ def is_dim_replicate(mapping):
         return False
 
 
+def verify_dims_mapping(dims_mapping, process_mesh):
+    if dims_mapping is None:
+        return False
+    if not all(isinstance(d, int) for d in dims_mapping):
+        return False
+    for i in range(len(dims_mapping)):
+        if dims_mapping[i] < -1 or dims_mapping[i] >= len(process_mesh.shape):
+            return False
+    for i in range(len(process_mesh.shape)):
+        if dims_mapping.count(i) > 1:
+            return False
+    return True
+
+
+def convert_to_dims_mapping(shard_spec, process_mesh):
+    dims_mapping = []
+    for shard in shard_spec:
+        if shard is None:
+            dims_mapping.append(-1)
+        else:
+            dims_mapping.append(process_mesh.dim_names.index(shard))
+    return dims_mapping
+
+
+def convert_to_shard_spec(dims_mapping, process_mesh):
+    shard_spec = []
+    for dim_mapping in dims_mapping:
+        if dim_mapping == -1:
+            shard_spec.append(None)
+        else:
+            shard_spec.append(process_mesh.dim_names[dim_mapping])
+    return shard_spec
+
+
+def verify_shard_spec(shard_spec, process_mesh):
+    for shard in shard_spec:
+        if shard is not None and not isinstance(shard, str):
+            return False
+        if shard is not None and shard not in process_mesh.dim_names:
+            return False
+    dims_mapping = convert_to_dims_mapping(shard_spec, process_mesh)
+    return verify_dims_mapping(dims_mapping, process_mesh)
+
+
 def compute_compatible_dim_mapping(dim_mappings):
     if not dim_mappings:
         return None
