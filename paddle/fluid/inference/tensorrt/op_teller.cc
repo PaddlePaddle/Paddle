@@ -311,7 +311,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         "tan",      "tanh",  "sinh",
         "cosh",     "asin",  "acos",
         "atan",     "asinh", "atanh",
-        "ceil",     "floor", "erf"};
+        "ceil",     "floor", "erf",
+        "silu"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
