@@ -132,12 +132,12 @@ def make_scheduler(*,
         skip_first(int, optional): The number of first steps to drop, not participate in the state transform, and at ProfilerState.CLOSED state. Default value is 0.
 
     Returns:
-        A scheduler function, conforms to above state transform setting. The function will takes one parameter step_num, and returns corresponding ProfilerState.
+        A scheduler function, conforms to above state transform setting. The function will takes one parameter `step_num`, and returns corresponding ProfilerState.
 
     Examples:
         1. profiling range [2, 5].
 
-        Assume batch 0: closed, batch 1: ready, batch [2, 5] record
+        Assume batch 0: closed, batch 1: ready, batch [2, 5] record.
 
             .. code-block:: python
                 :name: code-example1
@@ -148,7 +148,7 @@ def make_scheduler(*,
 
         2. profiling range [3,6], [9,12], [15,18].
 
-        Assume batch 0: skiped, batch 1: closed, batch 2: ready, batch [3,6]: record, repeat
+        Assume batch 0: skiped, batch 1: closed, batch 2: ready, batch [3,6]: record, repeat.
 
             .. code-block:: python
                 :name: code-example2
@@ -197,11 +197,11 @@ def export_chrome_tracing(dir_name: str,
     r"""
     Return a callable, used for outputing tracing data to chrome tracing format file.
     The output file will be saved in directory ``dir_name``, and file name will be set as `worker_name`.
-    if `worker_name` is not set, the default name is [hostname]_[pid].
+    if `worker_name` is not set, the default name is `[hostname]_[pid]`.
 
     Args:
         dir_name(str): Directory to save profiling data.
-        worker_name(str, optional): Prefix of the file name saved, default is [hostname]_[pid].
+        worker_name(str, optional): Prefix of the file name saved, default is `[hostname]_[pid]`.
     
     Returns:
         A callable, which takes a Profiler object as parameter and calls its export method to save data to chrome tracing format file.
@@ -246,12 +246,12 @@ def export_protobuf(dir_name: str,
                     worker_name: Optional[str] = None) -> Callable:
     r"""
     Return a callable, used for outputing tracing data to protobuf file.
-    The output file will be saved in directory ``dir_name``, and file name will be set as worker_name.
-    if worker_name is not set, the default name is [hostname]_[pid].
+    The output file will be saved in directory ``dir_name``, and file name will be set as ``worker_name``.
+    if ``worker_name`` is not set, the default name is `[hostname]_[pid]`.
 
     Args:
         dir_name(str): Directory to save profiling data.
-        worker_name(str, optional): Prefix of the file name saved, default is [hostname]_[pid].
+        worker_name(str, optional): Prefix of the file name saved, default is `[hostname]_[pid]`.
 
     Returns:
         A callable, which takes a Profiler object as parameter and calls its export method to save data to protobuf file.
