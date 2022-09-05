@@ -22,7 +22,7 @@ from ..fluid.framework import _in_legacy_dygraph
 from paddle.common_ops_import import convert_np_dtype_to_dtype_
 from paddle.common_ops_import import Variable
 from paddle.common_ops_import import VarDesc
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from .logic import logical_not
 
 # TODO: define searching & indexing functions of a tensor
@@ -93,11 +93,12 @@ def argsort(x, axis=-1, descending=False, name=None):
             #  [0 2 1 1]]]
     """
     if in_dygraph_mode():
-        _, ids = _C_ops.final_state_argsort(x, axis, descending)
+        _, ids = _C_ops.argsort(x, axis, descending)
         return ids
 
     if _in_legacy_dygraph():
-        _, ids = _C_ops.argsort(x, 'axis', axis, 'descending', descending)
+        _, ids = _legacy_C_ops.argsort(x, 'axis', axis, 'descending',
+                                       descending)
         return ids
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
@@ -161,9 +162,9 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
             print(out4)
             # [[2, 2, 0, 1]]
     """
-    if axis is not None and not isinstance(axis, int):
+    if axis is not None and not isinstance(axis, (int, Variable)):
         raise TypeError(
-            "The type of 'axis'  must be int or None in argmax, but received %s."
+            "The type of 'axis'  must be int or Tensor or None in argmax, but received %s."
             % (type(axis)))
 
     if dtype is None:
@@ -178,10 +179,10 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         axis = 0
 
     if in_dygraph_mode():
-        return _C_ops.final_state_argmax(x, axis, keepdim, flatten, var_dtype)
+        return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
     if _in_legacy_dygraph():
-        out = _C_ops.arg_max(x, 'axis', axis, 'dtype', var_dtype, 'keepdims',
-                             keepdim, 'flatten', flatten)
+        out = _legacy_C_ops.arg_max(x, 'axis', axis, 'dtype', var_dtype,
+                                    'keepdims', keepdim, 'flatten', flatten)
         return out
 
     helper = LayerHelper("argmax", **locals())
@@ -243,9 +244,9 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             print(out4)
             # [[1, 1, 1, 2]]
     """
-    if axis is not None and not isinstance(axis, int):
+    if axis is not None and not isinstance(axis, (int, Variable)):
         raise TypeError(
-            "The type of 'axis'  must be int or None in argmin, but received %s."
+            "The type of 'axis'  must be int or Tensor or None in argmin, but received %s."
             % (type(axis)))
 
     if dtype is None:
@@ -260,10 +261,10 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         axis = 0
 
     if in_dygraph_mode():
-        return _C_ops.final_state_argmin(x, axis, keepdim, flatten, var_dtype)
+        return _C_ops.argmin(x, axis, keepdim, flatten, var_dtype)
     if _in_legacy_dygraph():
-        out = _C_ops.arg_min(x, 'axis', axis, 'dtype', var_dtype, 'keepdims',
-                             keepdim, 'flatten', flatten)
+        out = _legacy_C_ops.arg_min(x, 'axis', axis, 'dtype', var_dtype,
+                                    'keepdims', keepdim, 'flatten', flatten)
         return out
 
     helper = LayerHelper("argmin", **locals())
@@ -322,10 +323,10 @@ def index_select(x, index, axis=0, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_index_select(x, index, axis)
+        return _C_ops.index_select(x, index, axis)
 
     if _in_legacy_dygraph():
-        return _C_ops.index_select(x, index, 'dim', axis)
+        return _legacy_C_ops.index_select(x, index, 'dim', axis)
 
     helper = LayerHelper("index_select", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
@@ -402,9 +403,9 @@ def nonzero(x, as_tuple=False):
     rank = len(shape)
 
     if in_dygraph_mode():
-        outs = _C_ops.final_state_where_index(x)
-    elif paddle.in_dynamic_mode():
         outs = _C_ops.where_index(x)
+    elif paddle.in_dynamic_mode():
+        outs = _legacy_C_ops.where_index(x)
     else:
         helper = LayerHelper("where_index", **locals())
 
@@ -483,11 +484,12 @@ def sort(x, axis=-1, descending=False, name=None):
             #  [5. 7. 7. 9.]]]
     """
     if in_dygraph_mode():
-        outs, _ = _C_ops.final_state_argsort(x, axis, descending)
+        outs, _ = _C_ops.argsort(x, axis, descending)
         return outs
 
     if _in_legacy_dygraph():
-        outs, _ = _C_ops.argsort(x, 'axis', axis, 'descending', descending)
+        outs, _ = _legacy_C_ops.argsort(x, 'axis', axis, 'descending',
+                                        descending)
         return outs
     helper = LayerHelper("sort", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype,
@@ -539,9 +541,9 @@ def mode(x, axis=-1, keepdim=False, name=None):
            
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_mode(x, axis, keepdim)
+        return _C_ops.mode(x, axis, keepdim)
     if _in_legacy_dygraph():
-        return _C_ops.mode(x, "axis", axis, "keepdim", keepdim)
+        return _legacy_C_ops.mode(x, "axis", axis, "keepdim", keepdim)
 
     helper = LayerHelper("mode", **locals())
     inputs = {"X": [x]}
@@ -658,11 +660,11 @@ def where(condition, x=None, y=None, name=None):
         broadcast_condition = paddle.cast(broadcast_condition, 'bool')
 
     if in_dygraph_mode():
-        return _C_ops.final_state_where(broadcast_condition, broadcast_x,
-                                        broadcast_y)
+        return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
     else:
         if _in_legacy_dygraph():
-            return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
+            return _legacy_C_ops.where(broadcast_condition, broadcast_x,
+                                       broadcast_y)
         else:
             helper = LayerHelper("where", **locals())
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -752,10 +754,10 @@ def index_sample(x, index):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_index_sample(x, index)
+        return _C_ops.index_sample(x, index)
     else:
         if _in_legacy_dygraph():
-            return _C_ops.index_sample(x, index)
+            return _legacy_C_ops.index_sample(x, index)
         else:
             helper = LayerHelper("index_sample", **locals())
             check_variable_and_dtype(x, 'x',
@@ -804,10 +806,10 @@ def masked_select(x, mask, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_masked_select(x, mask)
+        return _C_ops.masked_select(x, mask)
 
     if _in_legacy_dygraph():
-        return _C_ops.masked_select(x, mask)
+        return _legacy_C_ops.masked_select(x, mask)
 
     helper = LayerHelper("masked_select", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
@@ -875,16 +877,17 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     if in_dygraph_mode():
         if axis == None:
             axis = -1
-        out, indices = _C_ops.final_state_top_k(x, k, axis, largest, sorted)
+        out, indices = _C_ops.top_k(x, k, axis, largest, sorted)
         return out, indices
 
     if _non_static_mode():
         if axis is None:
-            out, indices = _C_ops.top_k_v2(x, 'k', int(k), 'largest', largest,
-                                           'sorted', sorted)
+            out, indices = _legacy_C_ops.top_k_v2(x, 'k', int(k), 'largest',
+                                                  largest, 'sorted', sorted)
         else:
-            out, indices = _C_ops.top_k_v2(x, 'k', int(k), 'axis', axis,
-                                           'largest', largest, 'sorted', sorted)
+            out, indices = _legacy_C_ops.top_k_v2(x, 'k', int(k), 'axis', axis,
+                                                  'largest', largest, 'sorted',
+                                                  sorted)
         return out, indices
 
     helper = LayerHelper("top_k_v2", **locals())
@@ -1015,12 +1018,11 @@ def searchsorted(sorted_sequence,
             
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_searchsorted(sorted_sequence, values,
-                                               out_int32, right)
+        return _C_ops.searchsorted(sorted_sequence, values, out_int32, right)
 
     if _in_legacy_dygraph():
-        return _C_ops.searchsorted(sorted_sequence, values, "out_int32",
-                                   out_int32, "right", right)
+        return _legacy_C_ops.searchsorted(sorted_sequence, values, "out_int32",
+                                          out_int32, "right", right)
 
     check_variable_and_dtype(sorted_sequence, 'SortedSequence',
                              ['float32', 'float64', 'int32', 'int64'],
@@ -1087,13 +1089,13 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
     if _non_static_mode():
         if axis is not None:
             if _in_legacy_dygraph():
-                return _C_ops.kthvalue(x, 'k', k, "axis", axis, "keepdim",
-                                       keepdim)
-            return _C_ops.final_state_kthvalue(x, k, axis, keepdim)
+                return _legacy_C_ops.kthvalue(x, 'k', k, "axis", axis,
+                                              "keepdim", keepdim)
+            return _C_ops.kthvalue(x, k, axis, keepdim)
         else:
             if _in_legacy_dygraph():
-                return _C_ops.kthvalue(x, 'k', k, "keepdim", keepdim)
-            return _C_ops.final_state_kthvalue(x, k, -1, keepdim)
+                return _legacy_C_ops.kthvalue(x, 'k', k, "keepdim", keepdim)
+            return _C_ops.kthvalue(x, k, -1, keepdim)
 
     helper = LayerHelper("kthvalue", **locals())
     inputs = {"X": [x]}

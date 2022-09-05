@@ -117,6 +117,7 @@ pass_library(graph_viz_pass base)
 pass_library(lock_free_optimize_pass base DEPS string_helper)
 pass_library(fc_fuse_pass inference)
 pass_library(attention_lstm_fuse_pass inference)
+pass_library(vit_attention_fuse_pass inference)
 pass_library(fc_lstm_fuse_pass inference)
 pass_library(embedding_fc_lstm_fuse_pass inference)
 pass_library(fc_gru_fuse_pass inference)
@@ -146,6 +147,7 @@ pass_library(delete_dropout_op_pass inference)
 pass_library(delete_c_identity_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(delete_fill_constant_op_pass inference)
+pass_library(constant_folding_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
 pass_library(skip_layernorm_fuse_pass base)
@@ -198,7 +200,6 @@ if(WITH_MKLDNN)
   pass_library(conv_affine_channel_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_bias_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_activation_mkldnn_fuse_pass inference DIR mkldnn)
-  pass_library(conv_concat_relu_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(int8_scale_calculation_mkldnn_pass inference DIR mkldnn)
   pass_library(params_quantization_mkldnn_pass inference DIR mkldnn)
@@ -368,6 +369,10 @@ cc_test(
   test_generate_pass_cc
   SRCS generate_pass_tester.cc
   DEPS generate_pass pass_desc_proto)
+cc_test(
+  test_delete_dropout_pass_cc
+  SRCS delete_dropout_op_pass_test.cc
+  DEPS delete_dropout_op_pass)
 if(WITH_GPU OR WITH_ROCM)
   cc_test(
     test_embedding_eltwise_layernorm_fuse_pass
@@ -408,7 +413,7 @@ if(WITH_MKLDNN)
   cc_test(
     test_conv_concat_relu_mkldnn_fuse_pass
     SRCS mkldnn/conv_concat_relu_mkldnn_fuse_pass_tester.cc
-    DEPS conv_concat_relu_mkldnn_fuse_pass)
+    DEPS conv_activation_mkldnn_fuse_pass)
   cc_test(
     test_conv_elementwise_add_mkldnn_fuse_pass
     SRCS mkldnn/conv_elementwise_add_mkldnn_fuse_pass_tester.cc

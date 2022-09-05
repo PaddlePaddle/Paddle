@@ -21,6 +21,15 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+VarDesc::VarDesc(const VarDesc &other)
+    : desc_(other.desc_),
+      attrs_(other.attrs_),
+      original_id_(other.original_id_) {
+  if (other.dist_attr_) {
+    dist_attr_.reset(new TensorDistAttr(*other.dist_attr_));
+  }
+}
+
 proto::VarType::Type VarDesc::GetType() const { return desc_.type().type(); }
 
 void VarDesc::SetType(proto::VarType::Type type) {
@@ -212,11 +221,11 @@ const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
   PADDLE_ENFORCE_EQ(
       desc_.has_type(),
       true,
-      platform::errors::NotFound("The variable's type was not be set."));
+      platform::errors::NotFound("The variable's type was not set."));
   PADDLE_ENFORCE_EQ(
       desc_.type().has_type(),
       true,
-      platform::errors::NotFound("The variable's type was not be set."));
+      platform::errors::NotFound("The variable's type was not set."));
   switch (desc_.type().type()) {
     case proto::VarType::SELECTED_ROWS:
       return desc_.type().selected_rows();
@@ -352,6 +361,22 @@ Attribute VarDesc::GetAttr(const std::string &name) const {
       attrs_.end(),
       platform::errors::NotFound("Attribute %s is not found.", name));
   return it->second;
+}
+
+TensorDistAttr *VarDesc::MutableDistAttr() {
+  // If dist_attr_ is nullptr, construct a new one and return.
+  if (dist_attr_) {
+    return dist_attr_.get();
+  } else {
+    dist_attr_.reset(new TensorDistAttr(*this));
+    return dist_attr_.get();
+  }
+}
+
+void VarDesc::SetDistAttr(const TensorDistAttr &dist_attr) {
+  // Make sure this dist attr be created
+  MutableDistAttr();
+  *dist_attr_ = dist_attr;
 }
 
 bool operator==(const VarDesc &left, const VarDesc &right) {

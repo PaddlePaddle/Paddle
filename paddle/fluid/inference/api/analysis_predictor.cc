@@ -33,6 +33,7 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/inference/analysis/helper.h"
@@ -906,6 +907,15 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     return false;
   }
 
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled()) {
+    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+        predictor_id_;
+    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+  }
+#endif
+
   // Run the inference program
   // if share variables, we need not create variables
   executor_->Run();
@@ -1040,7 +1050,14 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseFcPadding(config_.use_fc_padding());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
   argument_.SetEnableAnalysisOptim(config_.enable_ir_optim_);
-  argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
+  if (model_precision_ == phi::DataType::FLOAT32) {
+    argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
+  } else {
+    // TODO(inference): mixed precision temporarily not support memory_optim
+    LOG_FIRST_N(WARNING, 1) << "mixed precision model temporarily not support "
+                               "memory optim, so we just turn off that.";
+    argument_.SetEnableMemoryOptim(false);
+  }
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   argument_.SetPredictorID(predictor_id_);
@@ -1090,6 +1107,14 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Dlnne subgraph is enabled";
     argument_.SetUseDlnne(true);
     argument_.SetDlnneMinSubgraphSize(config_.dlnne_min_subgraph_size_);
+    argument_.SetDlnneMaxBatchSize(config_.dlnne_max_batchsize_);
+    argument_.SetDlnneUseStaticBatch(config_.dlnne_use_static_batch_);
+    argument_.SetDlnneWeightShareMode(config_.dlnne_weight_share_mode_);
+    argument_.SetDlnneDisableNodesByOutputs(
+        config_.dlnne_disable_nodes_by_outputs_);
+    argument_.SetDlnneInputShapeDict(config_.dlnne_input_shape_dict_);
+    argument_.SetDlnneUseCalibMode(config_.dlnne_use_calib_mode_);
+    argument_.SetDlnnePrecisionMode(config_.dlnne_precision_mode_);
   }
 
   if (config_.lite_engine_enabled()) {
@@ -1169,6 +1194,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetQuantizeEnabledOpTypes(config_.quantize_enabled_op_types_);
     argument_.SetQuantizeExcludedOpIds(config_.quantize_excluded_op_ids_);
     argument_.SetQuantVarScales({});
+    argument_.SetCalibrationFilePath(config_.calibration_file_path_);
   }
 #endif
 
@@ -1446,6 +1472,37 @@ AnalysisPredictor::GetInputTensorShape() {
   return input_shapes;
 }
 
+std::map<std::string, paddle_infer::DataType>
+AnalysisPredictor::GetInputTypes() {
+  std::map<std::string, paddle_infer::DataType> input_type;
+  std::vector<std::string> names = GetInputNames();
+  for (const auto &name : names) {
+    auto *var = inference_program_->Block(0).FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::PreconditionNotMet(
+            "Input %s does not exist inference_program_.", name));
+    auto dtype = var->GetDataType();
+    if (dtype == paddle::framework::proto::VarType::FP32) {
+      input_type[name] = paddle_infer::DataType::FLOAT32;
+    } else if (dtype == paddle::framework::proto::VarType::FP16) {
+      input_type[name] = paddle_infer::DataType::FLOAT16;
+    } else if (dtype == paddle::framework::proto::VarType::INT64) {
+      input_type[name] = paddle_infer::DataType::INT64;
+    } else if (dtype == paddle::framework::proto::VarType::INT32) {
+      input_type[name] = paddle_infer::DataType::INT32;
+    } else if (dtype == paddle::framework::proto::VarType::UINT8) {
+      input_type[name] = paddle_infer::DataType::UINT8;
+    } else if (dtype == paddle::framework::proto::VarType::INT8) {
+      input_type[name] = paddle_infer::DataType::INT8;
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Unsupported data type `%s` when get input dtype ", dtype));
+    }
+  }
+  return input_type;
+}
+
 std::vector<std::string> AnalysisPredictor::GetOutputNames() {
   std::vector<std::string> output_names;
   for (auto &item : idx2fetches_) {
@@ -1591,6 +1648,16 @@ bool AnalysisPredictor::ZeroCopyRun() {
     MkldnnPreSet(shape_vector);
   }
 #endif
+
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled()) {
+    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+        predictor_id_;
+    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+  }
+#endif
+
   executor_->Run();
 
   if (config_.shape_range_info_collected()) {
@@ -1921,6 +1988,15 @@ AnalysisPredictor::~AnalysisPredictor() {
                               "./profile.log");
   }
   if (sub_scope_) {
+    if (framework::global_transfer_scope_key().find(sub_scope_) !=
+        framework::global_transfer_scope_key().end()) {
+      auto scope_key_set = framework::global_transfer_scope_key()[sub_scope_];
+      for (auto iter = scope_key_set.begin(); iter != scope_key_set.end();
+           iter++) {
+        framework::global_transfer_data_cache().erase(*iter);
+      }
+      framework::global_transfer_scope_key().erase(sub_scope_);
+    }
     scope_->DeleteScope(sub_scope_);
   }
 
@@ -2153,6 +2229,10 @@ Predictor::Predictor(const Config &config) {
 
 std::vector<std::string> Predictor::GetInputNames() {
   return predictor_->GetInputNames();
+}
+
+std::map<std::string, DataType> Predictor::GetInputTypes() {
+  return predictor_->GetInputTypes();
 }
 
 std::unique_ptr<Tensor> Predictor::GetInputHandle(const std::string &name) {

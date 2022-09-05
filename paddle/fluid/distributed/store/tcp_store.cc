@@ -194,8 +194,8 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
                        << " from addr info:" << GetSockName(fds[i].fd);
       }
     } catch (const std::exception& ex) {
-      fds.erase(fds.begin() + i);
       tcputils::close_socket(fds[i].fd);
+      fds.erase(fds.begin() + i);
 #ifdef _WIN32
       _sockets.erase(_sockets.begin() + i - 1);
 #else
@@ -405,12 +405,14 @@ std::vector<uint8_t> TCPStore::get(const std::string& key) {
 void TCPStore::wait(const std::string& key) {
   ReplyType reply;
   VLOG(3) << "TCPStore wait.";
-  do {
-    _client->send_command_for_key(Command::WAIT, _key_prefix + key);
-
-    reply = _client->receive_value<ReplyType>();
+  _client->send_command_for_key(Command::WAIT, _key_prefix + key);
+  reply = _client->receive_value<ReplyType>();
+  while (reply != ReplyType::STOP_WAIT) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  } while (reply != ReplyType::STOP_WAIT);
+
+    _client->send_command_for_key(Command::WAIT, _key_prefix + key);
+    reply = _client->receive_value<ReplyType>();
+  }
 }
 
 TCPStore::~TCPStore() { VLOG(3) << "TCPStore destructure"; }

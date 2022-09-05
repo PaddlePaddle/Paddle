@@ -100,11 +100,7 @@ class reference_content {
  public:  // structors
   ~reference_content() {}
 
-// TODO(zhiqiu): remove it
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
   reference_content(RefT r) : content_(r) {}
-#pragma GCC diagnostic pop
 
   reference_content(const reference_content& operand)
       : content_(operand.content_) {}

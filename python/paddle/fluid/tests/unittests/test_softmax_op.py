@@ -360,8 +360,10 @@ class TestSoftmaxBF16Op(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
-    "core is not compiled with CUDA and cudnn version need larger than 8.1.0")
+    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "only support compiled with CUDA and cudnn version need larger than 8.1.0 and device's compute capability is at least 8.0"
+)
 class TestSoftmaxBF16CUDNNOp(TestSoftmaxBF16Op):
 
     def init_cudnn(self):
@@ -390,7 +392,7 @@ class TestSoftmaxAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_softmax(self.x_np, axis=-1, dtype=None)
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_check(self):
         paddle.disable_static(self.place)
@@ -402,7 +404,7 @@ class TestSoftmaxAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = ref_softmax(self.x_np, axis=-1, dtype=None)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
         out1 = self.softmax(x, axis=0)
         x = paddle.to_tensor(self.x_np)
@@ -410,7 +412,7 @@ class TestSoftmaxAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = ref_softmax(self.x_np, axis=0, dtype=None)
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
         if core.is_compiled_with_rocm():
@@ -419,7 +421,7 @@ class TestSoftmaxAPI(unittest.TestCase):
         else:
             out = self.softmax(x, dtype=np.float64)
             out_ref = ref_softmax(self.x_np, axis=-1, dtype=np.float64)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         paddle.enable_static()
 

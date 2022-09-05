@@ -33,7 +33,7 @@ import numbers
 import logging
 import os
 import paddle.utils.deprecated as deprecated
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',
@@ -240,10 +240,10 @@ class Conv2D(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode() and self._l_type == "conv2d":
-            pre_bias = _C_ops.final_state_conv2d(
-                input, self.weight, self._stride, self._padding, "EXPLICIT",
-                self._groups if self._groups else 1, self._dilation, "NCHW",
-                False, -1, False)
+            pre_bias = _C_ops.conv2d(input, self.weight, self._stride,
+                                     self._padding, "EXPLICIT",
+                                     self._groups if self._groups else 1,
+                                     self._dilation, "NCHW", False, -1, False)
             if self.bias is not None:
                 pre_act = F.elementwise_add(pre_bias, self.bias, axis=1)
             else:
@@ -257,7 +257,7 @@ class Conv2D(layers.Layer):
                      'dilations', self._dilation, 'groups',
                      self._groups if self._groups else 1, 'use_cudnn',
                      self._use_cudnn, 'use_mkldnn', self._use_mkldnn)
-            out = _C_ops.conv2d(input, self.weight, *attrs)
+            out = _legacy_C_ops.conv2d(input, self.weight, *attrs)
             pre_bias = out
 
             pre_act = dygraph_utils._append_bias_in_dygraph(
@@ -886,13 +886,20 @@ class Pool2D(layers.Layer):
 
     def forward(self, input):
         if _non_static_mode():
+            if not self._use_mkldnn and in_dygraph_mode():
+                return _C_ops.pool2d(input, self._pool_size, self._pool_stride,
+                                     self._pool_padding, self._ceil_mode,
+                                     self._exclusive, self._data_format,
+                                     self._pool_type, self._global_pooling,
+                                     False, "EXPLICIT", self._use_cudnn)
+
             attrs = ('pooling_type', self._pool_type, 'ksize', self._pool_size,
                      'global_pooling', self._global_pooling, 'strides',
                      self._pool_stride, 'paddings', self._pool_padding,
                      'use_cudnn', self._use_cudnn, 'ceil_mode', self._ceil_mode,
                      'use_mkldnn', self._use_mkldnn, 'exclusive',
                      self._exclusive, 'data_format', self._data_format)
-            return _C_ops.pool2d(input, *attrs)
+            return _legacy_C_ops.pool2d(input, *attrs)
 
         check_variable_and_dtype(
             input, 'input', ['int8', 'uint8', 'float16', 'float32', 'float64'],
@@ -997,9 +1004,9 @@ class Linear(layers.Layer):
     def forward(self, input):
         if _non_static_mode():
             pre_bias = _varbase_creator(dtype=input.dtype)
-            _C_ops.matmul(input, self.weight, pre_bias, 'transpose_X', False,
-                          'transpose_Y', False, "alpha", 1, "use_mkldnn",
-                          self._use_mkldnn)
+            _legacy_C_ops.matmul(input, self.weight, pre_bias, 'transpose_X',
+                                 False, 'transpose_Y', False, "alpha", 1,
+                                 "use_mkldnn", self._use_mkldnn)
             pre_act = dygraph_utils._append_bias_in_dygraph(
                 pre_bias,
                 self.bias,
@@ -1144,12 +1151,13 @@ class InstanceNorm(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            out = _C_ops.final_state_instance_norm(input, self.scale, self.bias,
-                                                   self._epsilon)
+            out = _C_ops.instance_norm(input, self.scale, self.bias,
+                                       self._epsilon)
             return out
         if _in_legacy_dygraph():
-            out, _, _ = _C_ops.instance_norm(input, self.scale, self.bias,
-                                             'epsilon', self._epsilon)
+            out, _, _ = _legacy_C_ops.instance_norm(input, self.scale,
+                                                    self.bias, 'epsilon',
+                                                    self._epsilon)
             return out
 
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
@@ -1360,7 +1368,7 @@ class BatchNorm(layers.Layer):
 
         if _non_static_mode():
             if in_dygraph_mode():
-                batch_norm_out, t1, t2, t3, t4, _ = _C_ops.final_state_batch_norm(
+                batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
                     input, self.weight, self.bias, self._mean, self._variance,
                     self._momentum, self._epsilon, self._data_layout,
                     not self.training, self._use_global_stats,
@@ -1375,7 +1383,7 @@ class BatchNorm(layers.Layer):
                          "fuse_with_relu", self._fuse_with_relu,
                          "use_global_stats", self._use_global_stats,
                          'trainable_statistics', self._trainable_statistics)
-                batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
+                batch_norm_out, _, _, _, _, _ = _legacy_C_ops.batch_norm(
                     input, self.weight, self.bias, self._mean, self._variance,
                     None, mean_out, variance_out, *attrs)
 
@@ -1529,7 +1537,7 @@ class Dropout(layers.Layer):
 
         if _non_static_mode():
             attrs = sum(attrs.items(), ())
-            out, mask = _C_ops.dropout(input, *attrs)
+            out, mask = _legacy_C_ops.dropout(input, *attrs)
             return out
 
         out = self._helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -1681,12 +1689,10 @@ class Embedding(layers.Layer):
 
     def forward(self, input):
         if _non_static_mode():
-            return _C_ops.lookup_table_v2(self.weight, input, 'is_sparse',
-                                          self._is_sparse, 'is_distributed',
-                                          self._is_distributed,
-                                          'remote_prefetch',
-                                          self._remote_prefetch, 'padding_idx',
-                                          self._padding_idx)
+            return _legacy_C_ops.lookup_table_v2(
+                self.weight, input, 'is_sparse', self._is_sparse,
+                'is_distributed', self._is_distributed, 'remote_prefetch',
+                self._remote_prefetch, 'padding_idx', self._padding_idx)
 
         check_variable_and_dtype(input, 'input',
                                  ['uint8', 'int8', 'int16', 'int32', 'int64'],
@@ -1841,16 +1847,15 @@ class LayerNorm(layers.Layer):
 
         if _non_static_mode():
             if in_dygraph_mode():
-                pre_act, _, _, = _C_ops.final_state_layer_norm(
-                    input, self.weight, self.bias, self._epsilon,
-                    self._begin_norm_axis, False)
+                pre_act, _, _, = _C_ops.layer_norm(input, self.weight,
+                                                   self.bias, self._epsilon,
+                                                   self._begin_norm_axis, False)
                 return dygraph_utils._append_activation_in_dygraph(
                     pre_act, act=self._act)
             else:
-                pre_act, _, _ = _C_ops.layer_norm(input, self.weight, self.bias,
-                                                  'epsilon', self._epsilon,
-                                                  'begin_norm_axis',
-                                                  self._begin_norm_axis)
+                pre_act, _, _ = _legacy_C_ops.layer_norm(
+                    input, self.weight, self.bias, 'epsilon', self._epsilon,
+                    'begin_norm_axis', self._begin_norm_axis)
                 return dygraph_utils._append_activation_in_dygraph(
                     pre_act, act=self._act)
 
@@ -2036,7 +2041,7 @@ class GRUUnit(layers.Layer):
 
     def forward(self, input, hidden):
         if _non_static_mode():
-            gate, reset_hidden_pre, updated_hidden = _C_ops.gru_unit(
+            gate, reset_hidden_pre, updated_hidden = _legacy_C_ops.gru_unit(
                 input, hidden, self.weight, self.bias, 'activation',
                 self.activation, 'gate_activation', self.gate_activation)
             return updated_hidden, reset_hidden_pre, gate
@@ -2286,12 +2291,12 @@ class NCE(layers.Layer):
                      self._attrs['seed'], 'sampler', self._attrs['sampler'],
                      'is_sparse', self._attrs['is_sparse'], 'remote_prefetch',
                      self._attrs['remote_prefetch'])
-            cost, _, _ = _C_ops.nce(input, label, self.weight, self.bias,
-                                    self._inputs['SampleWeight'],
-                                    self._inputs['CustomDistProbs'],
-                                    self._inputs['CustomDistAlias'],
-                                    self._inputs['CustomDistAliasProbs'],
-                                    *attrs)
+            cost, _, _ = _legacy_C_ops.nce(input, label, self.weight, self.bias,
+                                           self._inputs['SampleWeight'],
+                                           self._inputs['CustomDistProbs'],
+                                           self._inputs['CustomDistAlias'],
+                                           self._inputs['CustomDistAliasProbs'],
+                                           *attrs)
             return cost / (self._num_neg_samples + 1)
 
         check_variable_and_dtype(input, "input", ['float32', 'float64'], "NCE")
@@ -2420,6 +2425,9 @@ class PRelu(layers.Layer):
                                             default_initializer=Constant(1.0))
 
     def forward(self, input):
+        if in_dygraph_mode():
+            return _C_ops.prelu(input, self.weight, "NCHW", self._mode)
+
         check_variable_and_dtype(input, 'input', ['float32'], 'PRelu')
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(type="prelu",
@@ -2731,7 +2739,7 @@ class Conv2DTranspose(layers.Layer):
 
     def forward(self, input):
         if _non_static_mode():
-            op = getattr(_C_ops, self._op_type)
+            op = getattr(_legacy_C_ops, self._op_type)
             out = op(input, self.weight, 'output_size', self._output_size,
                      'strides', self._stride, 'paddings', self._padding,
                      'dilations', self._dilation, 'groups', self._groups,
@@ -3032,16 +3040,15 @@ class GroupNorm(layers.Layer):
         variance_out = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
         if in_dygraph_mode():
-            out = _C_ops.final_state_group_norm(input, self.weight, self.bias,
-                                                self._epsilon, self._groups,
-                                                "NCHW")
+            out = _C_ops.group_norm(input, self.weight, self.bias,
+                                    self._epsilon, self._groups, "NCHW")
 
             return dygraph_utils._append_activation_in_dygraph(out, self._act)
 
         elif _in_legacy_dygraph():
             attrs = ('epsilon', self._epsilon, 'groups', self._groups)
-            out, _, _ = _C_ops.group_norm(input, self.weight, self.bias,
-                                          mean_out, variance_out, *attrs)
+            out, _, _ = _legacy_C_ops.group_norm(input, self.weight, self.bias,
+                                                 mean_out, variance_out, *attrs)
 
             return dygraph_utils._append_activation_in_dygraph(out, self._act)
         else:
@@ -3166,6 +3173,10 @@ class SpectralNorm(layers.Layer):
         self.weight_v.stop_gradient = True
 
     def forward(self, weight):
+        if in_dygraph_mode():
+            return _C_ops.spectral_norm(weight, self.weight_u, self.weight_v,
+                                        self._dim, self._power_iters, self._eps)
+
         check_variable_and_dtype(weight, "weight", ['float32', 'float64'],
                                  'SpectralNorm')
         inputs = {'Weight': weight, 'U': self.weight_u, 'V': self.weight_v}
