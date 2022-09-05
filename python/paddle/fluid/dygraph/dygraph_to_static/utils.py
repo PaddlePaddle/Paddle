@@ -33,6 +33,8 @@ from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import assign
+import collections
+from functools import reduce
 
 # Note(Aurelius): Do not forget the dot `.` to distinguish other
 # module such as paddlenlp.
@@ -1020,8 +1022,9 @@ class NameScope:
         self.args = set()
         self.father = None  # point to the nearest function name scope.
         self.w_vars = set()  # all qualified + normal names been stored
-        self.created = set(
-        )  # useful for control flow compatibility. may be remove later
+        self.created = set()  # useful for control flow compatibility
+        # may be remove later.
+        self.push_pop_vars = set()  # we call push and pop in the vars
 
     def set_father(self, father):
         self.father = father
@@ -1040,6 +1043,9 @@ class NameScope:
         # may be globals / non-locals / args / qualified names and created_vars
         return self.w_vars
 
+    def variadic_length_vars(self):
+        return self.push_pop_vars
+
     def control_flow_vars(self):
         valid_names = self.w_vars
         tmp = self.father.global_vars & valid_names,
@@ -1053,17 +1059,25 @@ class NameScope:
         self.nonlocals |= name_scope.nonlocals
         self.args |= name_scope.args
         self.w_vars |= name_scope.w_vars
+        self.push_pop_vars |= name_scope.push_pop_vars
 
 
 class FunctionNameLivenessAnalysis(gast.NodeVisitor):
     """ analyze the liveness of a function.
 
         every variables stored in this scope will be collected,
-        in addition with global/nonlocal information.
+        in addition with global/nonlocal information and 
+        push_pop information.
 
         1. global variable is stored in node.var_globals.
         2. nonlocal variable is stored in node.var_nonlocals.
         3. arguments is stored in node.var_args.
+        4. if a variable's push and pop attribute is called, 
+           it will be collected in push_pop_vars. They are
+           used for transformation to tensor_array.
+           NOTE: push_pop_vars **may not** in w_vars. 
+           a.push(0) don't modify the variable a, but the content
+           of a.
 
         For example:
 
@@ -1073,8 +1087,12 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             nonlocal x,y
             print(a)
             i = k
+            b = []
+            c = [1,2,3]
             for m in range(10):
                 q = 12
+                b.push(1)
+                c.pop()
         
         After this visitor we have: 
         # node is the FunctionDef node with name: "func"
@@ -1082,7 +1100,8 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             globals = ['i', 'j'],
             nonlocals = ['x', 'y'],
             args = ['args', 'kargs'], 
-            wr_vars = ['a', 'i', 'q', 'm']
+            wr_vars = ['a', 'i', 'q', 'm', 'c', 'b']
+            push_pop_vars = ['b', 'c']
         )
     """
 
@@ -1137,7 +1156,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
                 self._get_argument_names(node))
 
         def post_func():
-            """ NOTE: why we need merge w_vars here ? 
+            """ NOTE: why we need merge w_vars and push_pop_vars here ? 
                 because we do ifelse_transformer after loop_transformer. Loops will changed into functioons. but we know this function will be called in if. so we add w_vars to father function scope.
             """
             from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import WHILE_CONDITION_PREFIX, WHILE_BODY_PREFIX, FOR_CONDITION_PREFIX, FOR_BODY_PREFIX
@@ -1155,6 +1174,8 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             if self._father_name_scope() and is_control_flow_def_node():
                 self._father_name_scope().w_vars |= self._current_name_scope(
                 ).w_vars
+                self._father_name_scope(
+                ).push_pop_vars |= self._current_name_scope().push_pop_vars
 
         self._visit_scope_node(node, pre_func, post_func)
 
@@ -1209,6 +1230,17 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
         if isinstance(node.ctx, write_context):
             name = ast_to_source_code(node).strip()
             self._current_name_scope().w_vars.add(name)
+
+    def visit_Call(self, node):
+        self.generic_visit(node)
+        if not isinstance(node.func, gast.Attribute):
+            return
+        variadic_length_method = ['append', 'pop']
+        if node.func.attr not in variadic_length_method:
+            return
+        # we don't treat push and pop as a write operator. such as a[i]=10 is not modify a.
+        name = ast_to_source_code(node.func.value).strip()
+        self._current_name_scope().push_pop_vars.add(name)
 
     def _get_argument_names(self, node):
         """ get all arguments name in the functiondef node.
@@ -1315,3 +1347,57 @@ def create_nonlocal_stmt_nodes(names):
         return []
     func_code = "nonlocal {}".format(','.join(names))
     return [gast.parse(func_code).body[0]]
+
+
+class GetterSetterHelper:
+    """ we have two classes of names in setter and getter function: 
+        w_vars(loop_vars) + push_pop_vars
+        To simplify the setter logic in convert_while and convert_cond,
+        we extract the helper class here.
+    """
+
+    def __init__(self, getter_func, setter_func, *name_lists):
+        name_lists = map(lambda x: [] if x is None else x, name_lists)
+        name_sets = map(lambda x: set(x), name_lists)
+        self._union = list(reduce(lambda x, y: x | y, name_sets, set()))
+        self._union.sort()
+        self.getter = getter_func
+        self.setter = setter_func
+        self.name2id = {name: idx for idx, name in enumerate(self._union)}
+
+    def union(self):
+        return self._union
+
+    def get(self, names):
+        if names is None: names = []
+        vars = self.getter()
+        if vars is None: return tuple()
+        for n in names:
+            assert n in self.name2id, "the name `{}` not in name union set`{}`.".format(
+                n, self.name2id.keys())
+        return tuple(map(lambda n: vars[self.name2id[n]], names))
+
+    def set(self, names, values):
+        if names is None: names = []
+        if values is None: values = []
+        vars = self.getter()
+        if vars is None: return
+        for n in names:
+            assert n in self.name2id, "the name `{}` not in name union set`{}`.".format(
+                n, self.name2id.keys())
+        vars = list(vars)
+        indices = list(map(lambda n: self.name2id[n], names))
+        for i, v in zip(indices, values):
+            vars[i] = v
+        self.setter(vars)
+
+
+def create_name_str(name_ids):
+    """
+    Return "('x', 'y')" for [x, y]
+    """
+    if not name_ids:
+        return 'None'
+
+    names_str = ["'%s'" % name for name in name_ids]
+    return "(%s, )" % ','.join(names_str)

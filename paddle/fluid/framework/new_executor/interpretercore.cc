@@ -821,11 +821,11 @@ void InterpreterCore::RunNextInstructions(
     }
     auto direct_run_ops = interpreter::merge_vector(next_instr.SyncRunIds(),
                                                     next_instr.DirectRunIds());
-    size_t first_op = 0;
+    int64_t first_op = -1;
     for (auto next_id : direct_run_ops) {
       if (IsReady(next_id)) {
         // only keep one op running in current thread
-        if (first_op == 0) {
+        if (first_op == -1) {
           first_op = next_id;
           continue;
         }
@@ -837,7 +837,7 @@ void InterpreterCore::RunNextInstructions(
             });
       }
     }
-    if (first_op != 0) reserved_next_ops->push(first_op);
+    if (first_op != -1) reserved_next_ops->push(first_op);
   }
 }
 

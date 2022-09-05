@@ -35,6 +35,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_no
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_get_args_node, create_set_args_node
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_INDEX_PREFIX, FOR_ITER_TUPLE_PREFIX, FOR_ITER_TUPLE_INDEX_PREFIX, FOR_ITER_VAR_LEN_PREFIX, FOR_ITER_VAR_NAME_PREFIX, FOR_ITER_ZIP_TO_LIST_PREFIX, FOR_ITER_TARGET_PREFIX, FOR_ITER_ITERATOR_PREFIX
+from paddle.fluid.dygraph.dygraph_to_static.utils import GetterSetterHelper, create_name_str
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
@@ -65,16 +66,16 @@ class IfElseTransformer(BaseTransformer):
 
     def visit_If(self, node):
         self.generic_visit(node)
-        new_vars_stmts, true_func_node, false_func_node, get_args_node, set_args_node, return_name_ids = transform_if_else(
+        true_func_node, false_func_node, get_args_node, set_args_node, return_name_ids, push_pop_ids = transform_if_else(
             node, self.root)
 
-        new_node = create_convert_ifelse_node(return_name_ids, node.test,
-                                              true_func_node, false_func_node,
-                                              get_args_node, set_args_node)
+        new_node = create_convert_ifelse_node(return_name_ids, push_pop_ids,
+                                              node.test, true_func_node,
+                                              false_func_node, get_args_node,
+                                              set_args_node)
 
-        return new_vars_stmts + [
-            get_args_node, set_args_node, true_func_node, false_func_node
-        ] + [new_node]
+        return [get_args_node, set_args_node, true_func_node, false_func_node
+                ] + [new_node]
 
     def visit_Call(self, node):
         # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
@@ -91,7 +92,7 @@ class IfElseTransformer(BaseTransformer):
         """
         self.generic_visit(node)
 
-        new_node = create_convert_ifelse_node(None, node.test, node.body,
+        new_node = create_convert_ifelse_node(None, None, node.test, node.body,
                                               node.orelse, None, None, True)
         # Note: A blank line will be added separately if transform gast.Expr
         # into source code. Using gast.Expr.value instead to avoid syntax error
@@ -306,16 +307,7 @@ def transform_if_else(node, root):
 
     # TODO(liym27): Consider variable like `self.a` modified in if/else node.
     return_name_ids = sorted(list(node.pd_scope.modified_vars()))
-    # NOTE: Python can create variable only in if body or only in else body, and use it out of if/else.
-    # E.g.
-    #
-    # if x > 5:
-    #   a = 10
-    # print(a)
-    #
-    # Create static variable for those variables
-    create_new_vars_in_parent_stmts = []
-
+    push_pop_ids = sorted(list(node.pd_scope.variadic_length_vars()))
     nonlocal_names = list(return_name_ids)
     nonlocal_names.sort()
     # NOTE: All var in return_name_ids should be in nonlocal_names.
@@ -359,13 +351,15 @@ def transform_if_else(node, root):
         input_args=empty_arg_node,
         return_name_ids=[])
 
-    get_args_node = create_get_args_node(nonlocal_names)
-    set_args_node = create_set_args_node(nonlocal_names)
+    helper = GetterSetterHelper(None, None, nonlocal_names, push_pop_ids)
+    get_args_node = create_get_args_node(helper.union())
+    set_args_node = create_set_args_node(helper.union())
 
-    return create_new_vars_in_parent_stmts, true_func_node, false_func_node, get_args_node, set_args_node, return_name_ids
+    return true_func_node, false_func_node, get_args_node, set_args_node, return_name_ids, push_pop_ids
 
 
 def create_convert_ifelse_node(return_name_ids,
+                               push_pop_ids,
                                pred,
                                true_func,
                                false_func,
@@ -377,17 +371,6 @@ def create_convert_ifelse_node(return_name_ids,
             pred, true_fn, false_fn, get_args, set_args, return_name_ids)`
     to replace original `python if/else` statement.
     """
-
-    def create_name_str(name_ids):
-        """
-        Return "('x', 'y')" for [x, y]
-        """
-        if not name_ids:
-            return 'None'
-
-        names_str = ["'%s'" % name for name in name_ids]
-        return "(%s, )" % ','.join(names_str)
-
     if is_if_expr:
         true_func_source = "lambda : {}".format(ast_to_source_code(true_func))
         false_func_source = "lambda : {}".format(ast_to_source_code(false_func))
@@ -397,7 +380,7 @@ def create_convert_ifelse_node(return_name_ids,
 
     convert_ifelse_layer = gast.parse(
         '_jst.IfElse('
-        '{pred}, {true_fn}, {false_fn}, {get_args}, {set_args}, {return_name_ids})'
+        '{pred}, {true_fn}, {false_fn}, {get_args}, {set_args}, {return_name_ids}, push_pop_names={push_pop_ids})'
         .format(
             pred=ast_to_source_code(pred),
             true_fn=true_func_source,
@@ -406,6 +389,7 @@ def create_convert_ifelse_node(return_name_ids,
             'lambda: None',  #TODO: better way to deal with this
             set_args=set_args_func.name
             if not is_if_expr else 'lambda args: None',
-            return_name_ids=create_name_str(return_name_ids))).body[0]
+            return_name_ids=create_name_str(return_name_ids),
+            push_pop_ids=create_name_str(push_pop_ids))).body[0]
 
     return convert_ifelse_layer

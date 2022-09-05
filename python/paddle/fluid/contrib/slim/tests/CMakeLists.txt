@@ -524,7 +524,7 @@ if(NOT WIN32)
   set_tests_properties(test_post_training_quantization_program_resnet50
                        PROPERTIES TIMEOUT 240)
   set_tests_properties(test_post_training_quantization_mobilenetv1
-                       PROPERTIES TIMEOUT 600 LABELS "RUN_TYPE=NIGHTLY")
+                       PROPERTIES TIMEOUT 900 LABELS "RUN_TYPE=NIGHTLY")
   set_tests_properties(test_post_training_quantization_resnet50
                        PROPERTIES TIMEOUT 600 LABELS "RUN_TYPE=NIGHTLY")
   set_tests_properties(test_post_training_quantization_mnist PROPERTIES TIMEOUT

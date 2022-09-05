@@ -61,11 +61,10 @@ void CooToCsrKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 SparseCsrTensor CooToCsr(const Context& dev_ctx, const SparseCooTensor& x) {
-  DenseTensor non_zero_crows;
-  DenseTensor non_zero_cols;
+  DenseTensor crows;
+  DenseTensor cols;
   DenseTensor non_zero_elements;
-  SparseCsrTensor csr(
-      non_zero_crows, non_zero_cols, non_zero_elements, x.dims());
+  SparseCsrTensor csr(crows, cols, non_zero_elements, x.dims());
   CooToCsrKernel<T, Context>(dev_ctx, x, &csr);
   return csr;
 }
@@ -90,11 +89,10 @@ void DenseToCsrKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 SparseCsrTensor DenseToCsr(const Context& dev_ctx, const DenseTensor& x) {
-  DenseTensor non_zero_crows;
-  DenseTensor non_zero_cols;
+  DenseTensor crows;
+  DenseTensor cols;
   DenseTensor non_zero_elements;
-  SparseCsrTensor csr(
-      non_zero_crows, non_zero_cols, non_zero_elements, x.dims());
+  SparseCsrTensor csr(crows, cols, non_zero_elements, x.dims());
   DenseToCsrKernel<T, Context>(dev_ctx, x, &csr);
   return csr;
 }
