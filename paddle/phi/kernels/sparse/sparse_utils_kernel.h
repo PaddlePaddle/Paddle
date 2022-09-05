@@ -142,14 +142,14 @@ DenseTensor SparseCsrToDense(const Context& dev_ctx, const SparseCsrTensor& x) {
 }
 
 template <typename T, typename Context>
-void CooValuesKernel(const Context& dev_ctx,
+void ValuesCooKernel(const Context& dev_ctx,
                      const SparseCooTensor& x,
                      DenseTensor* out) {
   *out = x.non_zero_elements();
 }
 
 template <typename T, typename Context>
-void CsrValuesKernel(const Context& dev_ctx,
+void ValuesCsrKernel(const Context& dev_ctx,
                      const SparseCsrTensor& x,
                      DenseTensor* out) {
   *out = x.non_zero_elements();
