@@ -54,6 +54,8 @@ void SerializationLogger::LogDeviceProperty(
         device_property.totalGlobalMem);
     device_property_proto->set_compute_major(device_property.major);
     device_property_proto->set_compute_minor(device_property.minor);
+    device_property_proto->set_sm_count(device_property.multiProcessorCount);
+#if defined(PADDLE_WITH_CUDA)
     device_property_proto->set_max_threads_per_block(
         device_property.maxThreadsPerBlock);
     device_property_proto->set_max_threads_per_multiprocessor(
@@ -66,9 +68,9 @@ void SerializationLogger::LogDeviceProperty(
         device_property.sharedMemPerBlock);
     device_property_proto->set_shared_memory_per_multiprocessor(
         device_property.sharedMemPerMultiprocessor);
-    device_property_proto->set_sm_count(device_property.multiProcessorCount);
     device_property_proto->set_shared_memory_per_block_optin(
         device_property.sharedMemPerBlockOptin);
+#endif
   }
 }
 #endif

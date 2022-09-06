@@ -165,6 +165,8 @@ gpuDeviceProp DeserializationReader::RestoreDeviceProperty(
   device_property.totalGlobalMem = device_property_proto.total_global_memory();
   device_property.major = device_property_proto.compute_major();
   device_property.minor = device_property_proto.compute_minor();
+  device_property.multiProcessorCount = device_property_proto.sm_count();
+#if defined(PADDLE_WITH_CUDA)
   device_property.maxThreadsPerBlock =
       device_property_proto.max_threads_per_block();
   device_property.maxThreadsPerMultiProcessor =
@@ -177,9 +179,9 @@ gpuDeviceProp DeserializationReader::RestoreDeviceProperty(
       device_property_proto.shared_memory_per_block();
   device_property.sharedMemPerMultiprocessor =
       device_property_proto.shared_memory_per_multiprocessor();
-  device_property.multiProcessorCount = device_property_proto.sm_count();
   device_property.sharedMemPerBlockOptin =
       device_property_proto.shared_memory_per_block_optin();
+#endif
   return device_property;
 }
 #endif

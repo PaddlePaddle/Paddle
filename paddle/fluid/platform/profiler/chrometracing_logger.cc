@@ -575,6 +575,7 @@ void ChromeTracingLogger::LogDeviceProperty(
       ],
     )JSON");
   }
+#if defined(PADDLE_WITH_CUDA)
   for (auto it = device_property_map.begin(); it != device_property_map.end();
        it++) {
     const gpuDeviceProp& device_property = it->second;
@@ -635,6 +636,45 @@ void ChromeTracingLogger::LogDeviceProperty(
     }
     device_nums -= 1;
   }
+#endif
+#if defined(PADDLE_WITH_HIP)
+  for (auto it = device_property_map.begin(); it != device_property_map.end();
+       it++) {
+    const gpuDeviceProp& device_property = it->second;
+    if (device_nums > 1) {
+      output_file_stream_ << string_format(std::string(
+                                               R"JSON(
+    {
+      "id": %u, "name": "%s", "totalGlobalMem": %llu,
+      "computeMajor": %d, "computeMinor": %d,
+      "smCount": %d
+    },
+  )JSON"),
+                                           it->first,
+                                           device_property.name,
+                                           device_property.totalGlobalMem,
+                                           device_property.major,
+                                           device_property.minor,
+                                           device_property.multiProcessorCount);
+    } else {
+      output_file_stream_ << string_format(std::string(
+                                               R"JSON(
+      {
+        "id": %u, "name": "%s", "totalGlobalMem": %llu,
+        "computeMajor": %d, "computeMinor": %d,
+        "smCount": %d
+      }],
+    )JSON"),
+                                           it->first,
+                                           device_property.name,
+                                           device_property.totalGlobalMem,
+                                           device_property.major,
+                                           device_property.minor,
+                                           device_property.multiProcessorCount);
+    }
+    device_nums -= 1;
+  }
+#endif
 }
 #endif
 
