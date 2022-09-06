@@ -102,12 +102,7 @@ void BatchNormKernel(const Context& dev_ctx,
                                mean_out_data,
                                variance_out_data,
                                is_nchw);
-    PADDLE_ENFORCE_EQ(r,
-                      xpu::Error_t::SUCCESS,
-                      phi::errors::External(
-                          "The batch_norm XPU API return wrong value[%d %s]",
-                          r,
-                          XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "batch_norm");
   } else {
     const auto* mean_data = mean.data<float>();
     const auto* variance_data = variance.data<float>();
@@ -124,13 +119,7 @@ void BatchNormKernel(const Context& dev_ctx,
                                   mean_data,
                                   variance_data,
                                   is_nchw);
-    PADDLE_ENFORCE_EQ(
-        r,
-        xpu::Error_t::SUCCESS,
-        phi::errors::External(
-            "The batch_norm_infer XPU API return wrong value[%d %s]",
-            r,
-            XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "batch_norm_infer");
   }
 }
 
