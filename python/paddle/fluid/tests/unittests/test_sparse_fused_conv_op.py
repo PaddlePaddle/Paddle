@@ -55,66 +55,182 @@ class TestSparseConv(unittest.TestCase):
     def test_conv3d(self):
         paddle.seed(0)
         with _test_eager_guard():
-            config = {
-                'batch_size': 8,
-                'x': 41,
-                'y': 250,
-                'z': 250,
-                'kernel_size': (3, 3, 3),
-                'in_channels': 3,
-                'out_channels': 16,
-                'paddings': (0, 0, 0),
-                'strides': (1, 1, 1),
-                'dilations': (1, 1, 1),
-                'diff': 1e-3,
-                'sparsity': 0.99
-            }
+            config = [
+                #{'batch_size': 8,
+                 #'x': 41,
+                 #'y': 250,
+                 #'z': 250,
+                 #'kernel_size': (3, 3, 3),
+                 #'in_channels': 3,
+                 #'out_channels': 15,
+                 #'paddings': (0, 0, 0),
+                 #'strides': (1, 1, 1),
+                 #'dilations': (1, 1, 1),
+                 #'diff': 1e-3,
+                 #'sparsity': 0.99},
+                #{'batch_size': 8,
+                 #'x': 41,
+                 #'y': 250,
+                 #'z': 250,
+                 #'kernel_size': (3, 3, 3),
+                 #'in_channels': 3,
+                 #'out_channels': 16,
+                 #'paddings': (0, 0, 0),
+                 #'strides': (1, 1, 1),
+                 #'dilations': (1, 1, 1),
+                 #'diff': 1e-3,
+                 #'sparsity': 0.99},
+                #{'batch_size': 8,
+                 #'x': 41,
+                 #'y': 250,
+                 #'z': 250,
+                 #'kernel_size': (3, 3, 3),
+                 #'in_channels': 3,
+                 #'out_channels': 17,
+                 #'paddings': (0, 0, 0),
+                 #'strides': (1, 1, 1),
+                 #'dilations': (1, 1, 1),
+                 #'diff': 1e-3,
+                 #'sparsity': 0.99},
+                #{'batch_size': 8,
+                 #'x': 41,
+                 #'y': 250,
+                 #'z': 250,
+                 #'kernel_size': (3, 3, 3),
+                 #'in_channels': 4,
+                 #'out_channels': 15,
+                 #'paddings': (0, 0, 0),
+                 #'strides': (1, 1, 1),
+                 #'dilations': (1, 1, 1),
+                 #'diff': 1e-3,
+                 #'sparsity': 0.99},
+                #{'batch_size': 8,
+                 #'x': 41,
+                 #'y': 250,
+                 #'z': 250,
+                 #'kernel_size': (3, 3, 3),
+                 #'in_channels': 4,
+                 #'out_channels': 16,
+                 #'paddings': (0, 0, 0),
+                 #'strides': (1, 1, 1),
+                 #'dilations': (1, 1, 1),
+                 #'diff': 1e-3,
+                 #'sparsity': 0.99},
+                #{'batch_size': 8,
+                 #'x': 41,
+                 #'y': 250,
+                 #'z': 250,
+                 #'kernel_size': (3, 3, 3),
+                 #'in_channels': 4,
+                 #'out_channels': 17,
+                 #'paddings': (0, 0, 0),
+                 #'strides': (1, 1, 1),
+                 #'dilations': (1, 1, 1),
+                 #'diff': 1e-3,
+                 #'sparsity': 0.99},
+                #{'batch_size': 8,
+                 #'x': 41,
+                 #'y': 250,
+                 #'z': 250,
+                 #'kernel_size': (3, 3, 3),
+                 #'in_channels': 5,
+                 #'out_channels': 15,
+                 #'paddings': (0, 0, 0),
+                 #'strides': (1, 1, 1),
+                 #'dilations': (1, 1, 1),
+                 #'diff': 1e-3,
+                 #'sparsity': 0.99},
+                #{'batch_size': 8,
+                 #'x': 41,
+                 #'y': 250,
+                 #'z': 250,
+                 #'kernel_size': (3, 3, 3),
+                 #'in_channels': 5,
+                 #'out_channels': 16,
+                 #'paddings': (0, 0, 0),
+                 #'strides': (1, 1, 1),
+                 #'dilations': (1, 1, 1),
+                 #'diff': 1e-3,
+                 #'sparsity': 0.99},
+                #{'batch_size': 8,
+                 #'x': 41,
+                 #'y': 250,
+                 #'z': 250,
+                 #'kernel_size': (3, 3, 3),
+                 #'in_channels': 5,
+                 #'out_channels': 17,
+                 #'paddings': (0, 0, 0),
+                 #'strides': (1, 1, 1),
+                 #'dilations': (1, 1, 1),
+                 #'diff': 1e-3,
+                 #'sparsity': 0.99},
+                {'batch_size': 8,
+                 'x': 41,
+                 'y': 250,
+                 'z': 250,
+                 'kernel_size': (3, 3, 3),
+                 'in_channels': 4,
+                 'out_channels': 16,
+                 'paddings': (0, 0, 0),
+                 'strides': (1, 1, 1),
+                 'dilations': (1, 1, 1),
+                 'diff': 1e-3,
+                 'sparsity': 0.99}
+            ]
 
-            values, indices = generate_data(config)
+            for i in range(len(config)):
+                values, indices = generate_data(config[i])
 
-            p_shape = [config['batch_size'], config['x'],
-                       config['y'], config['z'], config['in_channels']]
-            p_indices = paddle.to_tensor(indices, dtype='int32')
-            p_indices = paddle.transpose(p_indices, perm=[1, 0])
-            p_values = paddle.to_tensor(values, dtype='float32')
-            p_input = pi.sparse.sparse_coo_tensor(p_indices, p_values, p_shape, False)
-            p_input = paddle.incubate.sparse.coalesce(p_input)
-            p_conv = pi.sparse.nn.Conv3D(in_channels=config['in_channels'], out_channels=config['out_channels'], kernel_size=config['kernel_size'],
-                                           stride=config['strides'], padding=config['paddings'], dilation=config['dilations'])
+                p_shape = [config[i]['batch_size'], config[i]['x'],
+                        config[i]['y'], config[i]['z'], config[i]['in_channels']]
+                p_indices = paddle.to_tensor(indices, dtype='int32')
+                p_indices = paddle.transpose(p_indices, perm=[1, 0])
+                p_values = paddle.to_tensor(values, dtype='float32')
+                p_input = pi.sparse.sparse_coo_tensor(p_indices, p_values, p_shape, False)
+                p_input = paddle.incubate.sparse.coalesce(p_input)
+                p_conv = pi.sparse.nn.Conv3D(in_channels=config[i]['in_channels'], out_channels=config[i]['out_channels'], kernel_size=config[i]['kernel_size'],
+                                            stride=config[i]['strides'], padding=config[i]['paddings'], dilation=config[i]['dilations'])
 
-            device = torch.device("cuda")
-            spatial_shape = [config['x'], config['y'], config['z']]
-            s_values = torch.tensor(np.array(p_input.values()), device=device)
-            s_indices = torch.tensor(np.array(paddle.transpose(p_input.indices(),perm=[1,0])), device=device).int()
-            s_input = spconv.SparseConvTensor(
-                s_values, s_indices, spatial_shape, config['batch_size'])
-            s_conv = spconv.SparseConv3d(config['in_channels'], config['out_channels'], kernel_size=config['kernel_size'],
-                                           stride=config['strides'], padding=config['paddings'], dilation=config['dilations'], bias=False)
+                #device = torch.device("cuda")
+                #spatial_shape = [config[i]['x'], config[i]['y'], config[i]['z']]
+                #s_values = torch.tensor(np.array(p_input.values()), device=device)
+                #s_indices = torch.tensor(np.array(paddle.transpose(p_input.indices(),perm=[1,0])), device=device).int()
+                #s_input = spconv.SparseConvTensor(
+                    #s_values, s_indices, spatial_shape, config[i]['batch_size'])
+                #s_conv = spconv.SparseConv3d(config[i]['in_channels'], config[i]['out_channels'], kernel_size=config[i]['kernel_size'],
+                                            #stride=config[i]['strides'], padding=config[i]['paddings'], dilation=config[i]['dilations'], bias=False)
 
-            s_conv.weight = torch.nn.Parameter(torch.tensor(
-                np.transpose(p_conv.weight.numpy(), (4, 0, 1, 2, 3))).cuda().contiguous())
+                #s_conv.weight = torch.nn.Parameter(torch.tensor(
+                    #np.transpose(p_conv.weight.numpy(), (4, 0, 1, 2, 3))).cuda().contiguous())
 
-            torch.cuda.synchronize(device=device)
-            t0 = time.time()
-            s_out = s_conv(s_input)
-            torch.cuda.synchronize(device=device)
-            t1 = time.time()
+                print(i)
+                #torch.cuda.synchronize(device=device)
+                #t0 = time.time()
+                #s_out = s_conv(s_input)
+                #torch.cuda.synchronize(device=device)
+                #t1 = time.time()
 
-            paddle.device.cuda.synchronize()
-            t2 = time.time()
-            p_out = p_conv(p_input)
-            paddle.device.cuda.synchronize()
-            t3 = time.time()
+                paddle.device.cuda.synchronize()
+                for n in range(100):
+                    p_out = p_conv(p_input)
+                paddle.device.cuda.synchronize()
 
-            p_out = paddle.incubate.sparse.coalesce(p_out)
+                t2 = time.perf_counter()
+                paddle.device.cuda.synchronize()
+                for n in range(500):
+                    p_out = p_conv(p_input)
+                paddle.device.cuda.synchronize()
+                t3 = time.perf_counter()
 
-            assert np.array_equal(
-                s_out.indices.cpu().detach().numpy().transpose(1, 0), p_out.indices().numpy())
+                #p_out = paddle.incubate.sparse.coalesce(p_out)
 
-            assert np.allclose(s_out.features.cpu().detach().numpy().flatten(),
-                               p_out.values().numpy().flatten(), atol=1e-3, rtol=1e-3)
-            print("spconv time:", t1-t0)
-            print("paddle time:", t3-t2)
+                #assert np.array_equal(
+                    #s_out.indices.cpu().detach().numpy().transpose(1, 0), p_out.indices().numpy())
+
+                #assert np.allclose(s_out.features.cpu().detach().numpy().flatten(),
+                                #p_out.values().numpy().flatten(), atol=1e-3, rtol=1e-3)
+                #print("spconv time:", t1-t0)
+                print("paddle time:", t3-t2)
 
 
 
