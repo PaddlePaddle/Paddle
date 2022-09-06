@@ -6155,7 +6155,7 @@ class PipelineOptimizer(object):
             self._num_microbatches,
             "start_cpu_core_id":
             self._start_cpu_core_id,
-            "set_num_microbatches":
+            "set_num_microbatches_func":
             lambda num, is_last: \
                 _set_num_microbatches(main_program, num, is_last)
         }
