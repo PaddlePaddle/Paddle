@@ -93,7 +93,7 @@ class ConditionalBlockOp : public ConditionalOp {
       //          skip_vars,
       //          /* force_disable_gc */ false,
       //          /* keep_kid_scopes */ true);
-      exec.Run(&cur_scope, {}, skip_vars);
+      exec.Run(&cur_scope, {}, skip_vars, block->ID());
     }
   }
 };

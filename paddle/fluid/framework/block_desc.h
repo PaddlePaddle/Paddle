@@ -125,6 +125,18 @@ class BlockDesc {
   std::map<std::string, std::unique_ptr<VarDesc>> vars_;
 
   DISABLE_COPY_AND_ASSIGN(BlockDesc);
+
+  friend std::ostream &operator<<(std::ostream &os,
+                                  const BlockDesc &blockdesc) {
+    const std::string endl = "\n";
+    const std::string split = "--------------\n";
+    os << "Block: " << blockdesc.ID() << endl;
+    for (const auto &op : blockdesc.ops_) {
+      os << *op;
+      os << split;
+    }
+    return os;
+  }
 };
 }  // namespace framework
 }  // namespace paddle
