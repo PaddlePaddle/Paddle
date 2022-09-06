@@ -149,8 +149,10 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     // "enough". I just followed the settings from the NVIDIA MLPerf BERT code.
     size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
     cudaStream_t stream = dev_ctx.stream();
-    memory::allocation::AllocationPtr workspace =
-        memory::Alloc(dev_ctx, workspace_size);
+    memory::allocation::AllocationPtr workspace = memory::Alloc(
+        dev_ctx.GetPlace(),
+        workspace_size,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
     double alpha64 = 1.0, beta64 = 0.0;
     float alpha32 = 1.0f, beta32 = 0.0f;
@@ -485,7 +487,10 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
                 sizeof(aux_ld)));
       }
 
-      auto dx_workspace = memory::Alloc(dev_ctx, workspace_size);
+      auto dx_workspace = memory::Alloc(
+          dev_ctx.GetPlace(),
+          workspace_size,
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
       auto* dx_data = dev_ctx->Alloc<T>(dx, dx->numel() * sizeof(T));
       const auto* y_data = y->data<T>();
@@ -604,7 +609,10 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
                 sizeof(dbias_data)));
       }
 
-      auto dy_workspace = memory::Alloc(dev_ctx, workspace_size);
+      auto dy_workspace = memory::Alloc(
+          dev_ctx.GetPlace(),
+          workspace_size,
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
       auto* dy_data = dev_ctx->Alloc<T>(dy, dy->numel() * sizeof(T));
       const auto* dout_data = dout->data<T>();
       const auto* x_data = x->data<T>();

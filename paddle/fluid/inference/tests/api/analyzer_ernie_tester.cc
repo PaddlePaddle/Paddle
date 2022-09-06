@@ -17,13 +17,19 @@
 namespace paddle {
 namespace inference {
 
+/*
+ * this model is unreasonable, it set a middle-tensor persistable, so
+ * ridiculous! so I disable constant_folding_pass
+ */
+
 using paddle::PaddleTensor;
 
 void profile(bool use_mkldnn = false, bool use_gpu = false) {
   AnalysisConfig config;
 
   SetConfig(&config, use_mkldnn, use_gpu);
-
+  auto pass_builder = config.pass_builder();
+  pass_builder->DeletePass("constant_folding_pass");
   std::vector<std::vector<PaddleTensor>> outputs;
   std::vector<std::vector<PaddleTensor>> inputs;
   LoadInputData(&inputs);
@@ -48,6 +54,9 @@ TEST(Analyzer_Ernie, fuse_statis) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 
+  auto pass_builder = cfg.pass_builder();
+  pass_builder->DeletePass("constant_folding_pass");
+
   int num_ops;
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
   auto fuse_statis = GetFuseStatis(
@@ -70,7 +79,8 @@ void compare(bool use_mkldnn = false) {
 
   AnalysisConfig cfg;
   SetConfig(&cfg, use_mkldnn, false);
-
+  auto pass_builder = cfg.pass_builder();
+  pass_builder->DeletePass("constant_folding_pass");
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), inputs);
 }
@@ -84,7 +94,8 @@ TEST(Analyzer_ernie, compare_mkldnn) { compare(true /* use_mkldnn */); }
 TEST(Analyzer_Ernie, compare_determine) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-
+  auto pass_builder = cfg.pass_builder();
+  pass_builder->DeletePass("constant_folding_pass");
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   LoadInputData(&input_slots_all);
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
@@ -95,7 +106,8 @@ TEST(Analyzer_Ernie, compare_determine) {
 TEST(Analyzer_Ernie, compare_results) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-
+  auto pass_builder = cfg.pass_builder();
+  pass_builder->DeletePass("constant_folding_pass");
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   LoadInputData(&input_slots_all);
 

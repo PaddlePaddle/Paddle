@@ -21,6 +21,8 @@ from paddle.fluid import core
 from op_test import OpTest
 import numpy as np
 import os
+from paddle.fluid import Program, program_guard
+from test_attribute_var import UnittestBase
 
 
 def sample_output_one_dimension(out, dim):
@@ -292,6 +294,48 @@ class TestRandomValue(unittest.TestCase):
         np.testing.assert_array_equal(y[100, 0:10], expect)
 
         paddle.enable_static()
+
+
+class TestMultinomialTensorNumSamples(UnittestBase):
+
+    def init_info(self):
+        self.shapes = [[3, 4]]
+        self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
+
+    def path_prefix(self):
+        return 'multinomial_tensor_num'
+
+    def var_prefix(self):
+        return "Var["
+
+    def call_func(self, x):
+        num_samples = paddle.assign(3)
+        out = paddle.multinomial(x, num_samples)
+        return out
+
+    def test_static(self):
+        main_prog = Program()
+        starup_prog = Program()
+        with program_guard(main_prog, starup_prog):
+            fc = paddle.nn.Linear(4, 10)
+            x = paddle.randn([3, 4])
+            x.stop_gradient = False
+            feat = fc(x)
+            out = self.call_func(paddle.abs(feat))
+            sgd = paddle.optimizer.SGD()
+            sgd.minimize(paddle.mean(paddle.cast(out, 'float32')))
+            self.assertTrue(self.var_prefix() in str(main_prog))
+
+            exe = paddle.static.Executor()
+            exe.run(starup_prog)
+            res = exe.run(fetch_list=[feat, out])
+            paddle.static.save_inference_model(self.save_path, [x], [feat, out],
+                                               exe)
+            np.testing.assert_equal(res[1].shape, (3, 3))
+
+            # Test for Inference Predictor
+            infer_outs = self.infer_prog()
+            np.testing.assert_equal(infer_outs[1].shape, (3, 3))
 
 
 if __name__ == "__main__":
