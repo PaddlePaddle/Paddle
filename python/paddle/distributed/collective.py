@@ -2384,7 +2384,7 @@ def isend(tensor, dst, group=None):
         assert group_dst_rank >= 0, ("dst rank out of group, need global rank")
         return group.process_group.send(tensor, group_dst_rank)
     else:
-        raise RuntimeError("Don't support static graph mode currently.")
+        raise RuntimeError("Only support eager dygraph mode.")
 
 
 def irecv(tensor, src=None, group=None):
@@ -2433,7 +2433,7 @@ def irecv(tensor, src=None, group=None):
         assert group_src_rank >= 0, ("src rank out of group, need global rank")
         return group.process_group.recv(tensor, group_src_rank)
     else:
-        raise RuntimeError("Don't support static graph mode currently.")
+        raise RuntimeError("Only support eager dygraph mode.")
 
 
 class P2POp(object):

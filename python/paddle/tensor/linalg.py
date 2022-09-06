@@ -766,15 +766,20 @@ def cond(x, p=None, name=None):
         axis = axis if axis != None and axis != [] else [0]
         keepdim = False
 
-        if _non_static_mode():
-            if in_dygraph_mode():
-                abs_out = _C_ops.abs(input)
-                sum_out = _C_ops.sum(abs_out, axis, None, keepdim)
-            else:
-                abs_out = _legacy_C_ops.abs(input)
-                sum_out = _legacy_C_ops.reduce_sum(abs_out, 'dim', axis,
-                                                   'keepdim', keepdim,
-                                                   'reduce_all', reduce_all)
+        if in_dygraph_mode():
+            abs_out = _C_ops.abs(input)
+            sum_out = _C_ops.sum(abs_out, axis, None, keepdim)
+
+            if porder == 1 or porder == np.inf:
+                return _C_ops.max(sum_out, [-1], keepdim)
+            if porder == -1 or porder == -np.inf:
+                return _C_ops.min(sum_out, [-1], keepdim)
+
+        elif _in_legacy_dygraph():
+            abs_out = _legacy_C_ops.abs(input)
+            sum_out = _legacy_C_ops.reduce_sum(abs_out, 'dim', axis, 'keepdim',
+                                               keepdim, 'reduce_all',
+                                               reduce_all)
             if porder == 1 or porder == np.inf:
                 return _legacy_C_ops.reduce_max(sum_out, 'dim', [-1], 'keepdim',
                                                 keepdim, 'reduce_all',
@@ -783,44 +788,44 @@ def cond(x, p=None, name=None):
                 return _legacy_C_ops.reduce_min(sum_out, 'dim', [-1], 'keepdim',
                                                 keepdim, 'reduce_all',
                                                 reduce_all)
-
-        block = LayerHelper('norm', **locals())
-        abs_out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype())
-        sum_out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype())
-        out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype())
-        block.append_op(type='abs',
-                        inputs={'X': input},
-                        outputs={'Out': abs_out})
-        block.append_op(type='reduce_sum',
-                        inputs={'X': abs_out},
-                        outputs={'Out': sum_out},
-                        attrs={
-                            'dim': axis,
-                            'keep_dim': keepdim,
-                            'reduce_all': reduce_all
-                        })
-        if porder == 1 or porder == np.inf:
-            block.append_op(type='reduce_max',
-                            inputs={'X': sum_out},
-                            outputs={'Out': out},
+        else:
+            block = LayerHelper('norm', **locals())
+            abs_out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype())
+            sum_out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype())
+            out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype())
+            block.append_op(type='abs',
+                            inputs={'X': input},
+                            outputs={'Out': abs_out})
+            block.append_op(type='reduce_sum',
+                            inputs={'X': abs_out},
+                            outputs={'Out': sum_out},
                             attrs={
-                                'dim': [-1],
+                                'dim': axis,
                                 'keep_dim': keepdim,
                                 'reduce_all': reduce_all
                             })
-        if porder == -1 or porder == -np.inf:
-            block.append_op(type='reduce_min',
-                            inputs={'X': sum_out},
-                            outputs={'Out': out},
-                            attrs={
-                                'dim': [-1],
-                                'keep_dim': keepdim,
-                                'reduce_all': reduce_all
-                            })
-        return out
+            if porder == 1 or porder == np.inf:
+                block.append_op(type='reduce_max',
+                                inputs={'X': sum_out},
+                                outputs={'Out': out},
+                                attrs={
+                                    'dim': [-1],
+                                    'keep_dim': keepdim,
+                                    'reduce_all': reduce_all
+                                })
+            if porder == -1 or porder == -np.inf:
+                block.append_op(type='reduce_min',
+                                inputs={'X': sum_out},
+                                outputs={'Out': out},
+                                attrs={
+                                    'dim': [-1],
+                                    'keep_dim': keepdim,
+                                    'reduce_all': reduce_all
+                                })
+            return out
 
     def fro_norm(input, porder=2, axis=[-1]):
         """
@@ -899,22 +904,27 @@ def cond(x, p=None, name=None):
                     return _legacy_C_ops.reduce_sum(s, 'dim', axis, 'keepdim',
                                                     keepdim, 'reduce_all',
                                                     reduce_all)
-            max_out = _legacy_C_ops.reduce_max(s, 'dim', axis, 'keepdim',
-                                               keepdim, 'reduce_all',
-                                               reduce_all)
-            min_out = _legacy_C_ops.reduce_min(s, 'dim', axis, 'keepdim',
-                                               keepdim, 'reduce_all',
-                                               reduce_all)
-            if porder == 2:
-                if in_dygraph_mode():
+            if in_dygraph_mode():
+                max_out = _C_ops.max(s, axis, keepdim)
+                min_out = _C_ops.min(s, axis, keepdim)
+                if porder == 2:
                     return _C_ops.divide(max_out, min_out)
-                return _legacy_C_ops.elementwise_div(max_out, min_out, 'aixs',
-                                                     axis, 'use_mkldnn', False)
-            if porder == -2:
-                if in_dygraph_mode():
+                if porder == -2:
                     return _C_ops.divide(min_out, max_out)
-                return _legacy_C_ops.elementwise_div(min_out, max_out, 'aixs',
-                                                     axis, 'use_mkldnn', False)
+
+            else:
+                max_out = _legacy_C_ops.reduce_max(s, 'dim', axis, 'keepdim',
+                                                   keepdim, 'reduce_all',
+                                                   reduce_all)
+                min_out = _legacy_C_ops.reduce_min(s, 'dim', axis, 'keepdim',
+                                                   keepdim, 'reduce_all',
+                                                   reduce_all)
+                if porder == 2:
+                    return _legacy_C_ops.elementwise_div(
+                        max_out, min_out, 'aixs', axis, 'use_mkldnn', False)
+                if porder == -2:
+                    return _legacy_C_ops.elementwise_div(
+                        min_out, max_out, 'aixs', axis, 'use_mkldnn', False)
 
         block = LayerHelper('norm', **locals())
         out = block.create_variable_for_type_inference(
