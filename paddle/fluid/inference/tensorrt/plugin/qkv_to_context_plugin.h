@@ -136,6 +136,9 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   int head_number_;
   int head_size_;
   float scale_;
+  framework::Tensor tensor_;
+  half* mask_half_;
+  float* fake_qk_bias_;
   bool has_biasqk_mask_=false;
   std::unique_ptr<fastertransformer::MHARunner> ft_dispatcher_fp16_;
   int ft_dispatcher_fp16_num_head_=-1;
