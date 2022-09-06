@@ -1175,6 +1175,7 @@ void BindEager(pybind11::module* module) {
   }
 
   BindFunctions(m.ptr());
+  BindMathFunctions(m.ptr());
   BindEagerPyLayer(m.ptr());
   BindEagerOpFunctions(&m);
 }

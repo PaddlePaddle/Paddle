@@ -700,6 +700,15 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         c = a + b
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
 
+        np_a = np.random.random((2, 3, 4)).astype(np.float64)
+        np_b = np.random.random((2, 3, 4)).astype(np.float64)
+        expect_out = np_a + np_b
+
+        tensor_a = paddle.to_tensor(np_a, dtype="float64")
+        tensor_b = paddle.to_tensor(np_b, dtype="float64")
+        actual_out = tensor_a + tensor_b
+        np.testing.assert_allclose(actual_out, expect_out)
+
 
 if __name__ == '__main__':
     paddle.enable_static()
