@@ -130,8 +130,8 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
   };
 
   // Compute block flat index against input dims.
-  IDX_T input_origin_block_flat_index = framework::FlatTensorIndex<IDX_T>(
-      block_tile_index_in_input, input_dims, flag);
+  IDX_T input_origin_block_flat_index =
+      framework::FlatTensorIndex<IDX_T>(block_tile_index_in_input, input_dims);
 
   bool full_tile = true;
   IDX_T tile_width = TileY;
