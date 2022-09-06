@@ -53,7 +53,16 @@ class SkipLayerNormOpConverter : public OpConverter {
                             "skip_layernorm op's x and y input."));
 
       // broadcast
-      size_t num = ProductDim(dims_x);
+      nvinfer1::Dims trt_dims_y = dims_x;
+      // this is the special case when dims_y includes batch dimension!
+      // we need remove batch dimension!
+      if (engine_->with_dynamic_shape()) {
+        trt_dims_y.nbDims--;
+        for (int i = 0; i < trt_dims_y.nbDims; i++) {
+          trt_dims_y.d[i] = trt_dims_y.d[i + 1];
+        }
+      }
+      size_t num = ProductDim(trt_dims_y);
       float* y_data =
           const_cast<float*>(static_cast<const float*>(y_weight.get().values));
       float* y_data_tmp = new float[num];
@@ -63,7 +72,7 @@ class SkipLayerNormOpConverter : public OpConverter {
           y_data_tmp[idx++] = y_data[j];
         }
       }
-      input2 = AddConstantLayer(y_data_tmp, dims_x, " ");
+      input2 = AddConstantLayer(y_data_tmp, trt_dims_y, " ");
     } else {
       input2 = engine_->GetITensor(op_desc.Input("Y").front());
     }
