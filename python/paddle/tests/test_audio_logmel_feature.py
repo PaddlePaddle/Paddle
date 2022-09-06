@@ -87,16 +87,13 @@ class TestFeatures(unittest.TestCase):
                                              feature_layer,
                                              decimal=3)
 
-    @parameterize([16000], [256, 128], [40, 64], [64, 128],
-                  ["float32", "float64"])
-    def test_mfcc(self, sr: int, n_fft: int, n_mfcc: int, n_mels: int,
-                  numtype: str):
+    @parameterize([16000, 8000], [256, 128], [40, 64], [64, 128])
+    def test_mfcc(self, sr: int, n_fft: int, n_mfcc: int, n_mels: int):
         if len(self.waveform.shape) == 2:  # (C, T)
             self.waveform = self.waveform.squeeze(
                 0)  # 1D input for librosa.feature.melspectrogram
 
         # librosa:
-        np_dtype = getattr(np, numtype)
         feature_librosa = librosa.feature.mfcc(y=self.waveform,
                                                sr=sr,
                                                S=None,
@@ -106,12 +103,10 @@ class TestFeatures(unittest.TestCase):
                                                n_fft=n_fft,
                                                hop_length=64,
                                                n_mels=n_mels,
-                                               fmin=50.0,
-                                               dtype=np_dtype)
+                                               fmin=50.0)
         # paddlespeech.audio.features.layer
-        paddle_dtype = getattr(paddle, numtype)
         x = paddle.to_tensor(self.waveform,
-                             dtype=paddle_dtype).unsqueeze(0)  # Add batch dim.
+                             dtype='float64').unsqueeze(0)  # Add batch dim.
         feature_extractor = paddle.audio.features.MFCC(sr=sr,
                                                        n_mfcc=n_mfcc,
                                                        n_fft=n_fft,
@@ -123,7 +118,7 @@ class TestFeatures(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(feature_librosa,
                                              feature_layer,
-                                             decimal=1)
+                                             decimal=2)
 
 
 if __name__ == '__main__':
