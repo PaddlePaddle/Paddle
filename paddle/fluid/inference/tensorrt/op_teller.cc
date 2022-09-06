@@ -299,6 +299,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       desc.HasAttr("skip_quant"))
     return false;
 
+  // do not support Attribute with Variable(s) Type
+  if (HasUnsupportAttrVar(*desc)) return false;
+
   for (auto& teller : tellers_) {
     std::unordered_set<std::string> act_op_list = {
         "relu",     "relu6", "sigmoid",
@@ -2248,6 +2251,35 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 
   return false;
 }
+
+bool OpTeller::HasUnsupportAttrVar(const framework::OpDesc& desc) const {
+  const std::string op_type = desc.Type();
+  auto has_attr_var = [](const std::string& attr_name) {
+    // If Attribute is Variable(s), HasAttr() will return False
+    return !op_desc.HasAttr(attr_name, /*with_attr_var=*/false);
+  };
+  std::unordered_map<std::string, std::vector<std::string>> attrs_info = {
+      {"dropout", {"dropout_prob"}},
+      {"pool2d", {"ksize"}},
+      {"arg_max", {"axis"}},
+      {"reduce_mean", {"dim"}},
+      {"reduce_sum", {"dim"}},
+      {"squeeze2", {"axes"}},
+  };
+
+  bool flag = false;
+  auto iter = attrs_info.find(op_type);
+  if (iter != attrs_info.end()) {
+    for (auto& attr_name : iter.second) {
+      if (has_attr_var(attr_name)) {
+        flag = true;
+        break;
+      }
+    }
+  }
+  return flag;
+}
+
 OpTeller::OpTeller() { tellers_.emplace_back(new SimpleOpTypeSetTeller); }
 }  // namespace tensorrt
 }  // namespace inference
