@@ -11,10 +11,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/fused_softmax_mask_op.h"
 
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
+
 namespace paddle {
 namespace operators {
 
@@ -117,6 +117,3 @@ REGISTER_OPERATOR(fused_softmax_mask,
                   ops::SoftmaxMaskFuseGradOpMaker<paddle::framework::OpDesc>,
                   ops::SoftmaxMaskFuseGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_softmax_mask_grad, ops::SoftmaxMaskFuseOpGrad);
-REGISTER_OP_CPU_KERNEL(fused_softmax_mask,
-                       ops::SoftmaxMaskFuseCPUKernel<phi::CPUContext, float>,
-                       ops::SoftmaxMaskFuseCPUKernel<phi::CPUContext, double>);
