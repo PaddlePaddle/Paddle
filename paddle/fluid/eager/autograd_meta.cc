@@ -13,5 +13,5 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/autograd_meta.h"
-// We Leave this to make autograd meta can be compiled as a single target.
+// We leave this to ensure autograd meta can be compiled as a single target.
 namespace egr {}  // namespace egr

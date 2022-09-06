@@ -23,31 +23,31 @@ using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
  *
  * AutogradMeta is what records the backward info for tensor. When we run
  * computation graph eagerly, we can not build a static paddle program like
- * static mode do, so we need a new method to record forward info to trace
- * backward when we finish all forward computation. This require our
- * AutogradMeta class record following main members
+ * static mode does, so we need a new method to record forward info to trace
+ * backward when we finish all forward computation. This requires our
+ * AutogradMeta class record the following main members
  *
  * 1. grad_op:
- * Grad_op indicate the grad operation of the forward op
+ * Grad_op indicates the grad operation of the forward op
  *
  * 2. grad:
- * Grad is the gradient of forward Tensor, which should be compute after
+ * Grad is the gradient of forward Tensor, which should be computed after
  * backward computation
  *
  * NOTE: grad should only be available when current tensor is a leaf tensor, and
- * for non-leaf tensor grad is only available while user set `retain_grad`
+ * for non-leaf tensor grad is only available while the user sets `retain_grad`
  * option as `true`.
  *
  * TODO(jiabin) : support hooks
  * 3. hooks:
- * Hooks are some computation logic which only attached with backward operation,
- * it registered by user and run before accumulator.
+ * Hooks are some computation logic which is only attached to backward operation,
+ * it is registered by user and run before accumulator.
  *
  * 4. overrided_stop_gradient_
- * This member is used to finish some auto-prune related work, which indicate
- * user set stop_gradient should overrided the result indicated by framework.
+ * This member is used to finish some auto-prune related work, which indicates
+ * user-set stop_gradient should override the result indicated by the framework.
  * All non-parameter tensor's stop_gradient properties should be true. We will
- * pass stop_gradient when we find one who need it.
+ * pass stop_gradient when we find one who needs it.
  *
  * NOTE: AutogradMeta is inherited from AbstractAutogradMeta which is defined
  * in tensor's deps, we did this to avoid additional dependency on Autograd.
@@ -56,7 +56,7 @@ using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
  *
  * **/
 
-// No other AutogradMeta class should be derivated from AbstractAutogradMeta.
+// No other AutogradMeta class should be derived from AbstractAutogradMeta.
 // It's only used by
 class AutogradMeta : public AbstractAutogradMeta {
  public:
@@ -74,7 +74,7 @@ class AutogradMeta : public AbstractAutogradMeta {
         paddle::platform::errors::InvalidArgument(
             "Should Not get NULL from Grad pointer, since "
             "we should have default Tensor once we init AutoGradMeta. "
-            "if you got this error may indicates framework error in "
+            "If you got this error, it may indicate framework error in "
             "PaddlePaddle"));
     return *(grad_.get());
   }
@@ -144,19 +144,19 @@ class AutogradMeta : public AbstractAutogradMeta {
   /**
    * Why we need slot id here?
    * Because in paddle most of operators, inputs and outputs
-   * are assemble in form of {"slot name", vector<tensor>}.
-   * So its better for us to set a slot id to fit this format. **/
+   * are assembled in the form of {"slot name", vector<tensor>}.
+   * So it's better for us to set a slot id to fit this format. **/
   size_t out_slot_id_;
 
-  // output rank of forward op, this is a vital num, since
-  // we are now trying to make our forward output is as same
+  // output rank of forward op, this is a vital num, since we are 
+  // now trying to make sure that our forward output is the same
   // sequence as backward input. In case of tracing backward
   // sequence we need to record output rank in slot here.
   size_t out_rank_;
 
   // TODO(jiabin) :Support hooks here and store it in AutogradMeta
 
-  // Stop gradient flag to indicate should we compute backward
+  // Stop gradient flag to indicate if we should compute backward
   int stop_gradient_{-1};
 
   bool persistable_{false};
