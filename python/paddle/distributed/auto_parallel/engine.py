@@ -702,6 +702,8 @@ class Engine:
                     self.model, "gpt"
             ) and self.model.__class__.__name__ == 'GPTForPretraining':
                 exact_ckpts = self.model.gpt.checkpoints
+            else:
+                exact_ckpts = config["checkpoints"]
         else:
             exact_ckpts = config["checkpoints"]
 
