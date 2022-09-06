@@ -154,15 +154,15 @@ def trilinear_interp_np(input,
 
                 out[:, :, i, j, k] = \
                     d2lambda * \
-                    (h2lambda * (w2lambda * input[:, :, d, h, w] + \
-                              w1lambda * input[:, :, d, h, w+wid]) + \
-                    h1lambda * (w2lambda * input[:, :, d, h+hid, w] + \
-                              w1lambda * input[:, :, d, h+hid, w+wid])) + \
+                    (h2lambda * (w2lambda * input[:, :, d, h, w] +
+                                 w1lambda * input[:, :, d, h, w+wid]) +
+                     h1lambda * (w2lambda * input[:, :, d, h+hid, w] +
+                                 w1lambda * input[:, :, d, h+hid, w+wid])) + \
                     d1lambda * \
-                    (h2lambda * (w2lambda * input[:, :, d+did, h, w] + \
-                              w1lambda * input[:, :, d+did, h, w+wid]) + \
-                    h1lambda * (w2lambda * input[:, :, d+did, h+hid, w] + \
-                              w1lambda * input[:, :, d+did, h+hid, w+wid]))
+                    (h2lambda * (w2lambda * input[:, :, d+did, h, w] +
+                                 w1lambda * input[:, :, d+did, h, w+wid]) +
+                     h1lambda * (w2lambda * input[:, :, d+did, h+hid, w] +
+                                 w1lambda * input[:, :, d+did, h+hid, w+wid]))
     if data_layout == "NDHWC":
         out = np.transpose(out, (0, 2, 3, 4, 1))  # NCDHW => NDHWC
 
@@ -807,6 +807,60 @@ class TestTrilinearInterpOpException(unittest.TestCase):
                                                 data_format='NHWC')
 
         self.assertRaises(ValueError, attr_data_format)
+
+
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestTrilinearInterpOpForFloat16(unittest.TestCase):
+
+    def init_test_case(self):
+        self.interp_method = 'trilinear'
+        self.input_shape = [2, 3, 4, 4, 4]
+        self.out_size = np.array([3, 3, 3]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
+        self.data_layout = 'NCDHW'
+
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x_np = x_np.astype(dtype)
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        y = interpolate(x,
+                        size=self.out_size.tolist(),
+                        mode=self.interp_method,
+                        align_corners=self.align_corners,
+                        align_mode=self.align_mode,
+                        data_format=self.data_layout)
+        x_g = paddle.grad(y, x)
+        y_np = y[0].numpy().astype('float32')
+        x_g_np = x_g[0].numpy().astype('float32')
+        paddle.enable_static()
+        return y_np, x_g_np
+
+    def test_main(self):
+        self.init_test_case()
+        x_np = np.random.random(self.input_shape).astype("float16")
+
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
+        # forward
+        np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
+        # backward
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=1e-05)
+
+
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestTrilinearInterpDatalayoutForFloat16(TestTrilinearInterpOpForFloat16):
+
+    def init_test_case(self):
+        self.interp_method = 'trilinear'
+        self.input_shape = [2, 4, 4, 4, 3]
+        self.out_size = np.array([3, 3, 3]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
+        self.data_layout = "NDHWC"
 
 
 if __name__ == "__main__":

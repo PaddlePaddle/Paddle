@@ -773,10 +773,6 @@ class Pad2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "An optional string from: \"NHWC\", \"NCHW\". "
         "Defaults to \"NHWC\". Specify the data format of the input data.")
         .SetDefault("NCHW");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Pad2d Operator.
 Pad 2-d images according to 'paddings' and 'mode'. 

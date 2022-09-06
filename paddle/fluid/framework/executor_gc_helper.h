@@ -71,5 +71,11 @@ void DeleteUnusedTensors(
 std::vector<std::vector<std::vector<std::string>>> GetEagerDeletionCleanVars(
     const ProgramDesc &program, const std::vector<std::string> &skip_vars = {});
 
+std::vector<std::vector<std::vector<std::string>>>
+GetEagerDeletionCleanVarsForPartial(
+    const ProgramDesc &program,
+    const std::vector<std::string> &skip_vars = {},
+    const bool &for_partial_block = false);
+
 }  // namespace framework
 }  // namespace paddle

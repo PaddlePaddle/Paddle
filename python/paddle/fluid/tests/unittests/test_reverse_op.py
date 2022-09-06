@@ -258,6 +258,12 @@ class TestReverseAxisListTensor(TestReverseAxisTensor):
         # axes is a List[Variable]
         axes = [paddle.assign([0]), paddle.assign([2])]
         out = paddle.fluid.layers.reverse(x, axes)
+
+        # check attrs
+        axis_attrs = paddle.static.default_main_program().block(
+            0).ops[-1].all_attrs()["axis"]
+        self.assertTrue(axis_attrs[0].name, axes[0].name)
+        self.assertTrue(axis_attrs[1].name, axes[1].name)
         return out
 
 

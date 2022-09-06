@@ -22,6 +22,7 @@ set_property(GLOBAL PROPERTY PHI_KERNELS "")
 # [ 1. Common kernel compilation dependencies ]
 set(COMMON_KERNEL_DEPS
     dense_tensor
+    string_tensor
     sparse_coo_tensor
     sparse_csr_tensor
     kernel_context
@@ -30,6 +31,7 @@ set(COMMON_KERNEL_DEPS
     convert_utils
     lod_utils
     custom_kernel
+    string_infermeta
     phi_tensor_utils)
 set(COMMON_KERNEL_DEPS
     ${COMMON_KERNEL_DEPS}
@@ -67,23 +69,10 @@ set(COMMON_KERNEL_DEPS
     sequence_padding
     sequence_scale
     fft
-    phi_data_layout_transform)
-
-set(COMMON_KERNEL_DEPS
-    ${COMMON_KERNEL_DEPS}
-    dense_tensor
-    string_tensor
-    sparse_coo_tensor
-    sparse_csr_tensor
-    kernel_context
-    kernel_factory
-    arg_map_context
-    convert_utils
-    lod_utils
-    custom_kernel
-    string_infermeta
+    phi_data_layout_transform
     gpc
-    utf8proc)
+    utf8proc
+    device_memory_aligment)
 
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup)
 if(WITH_NCCL OR WITH_RCCL)
@@ -135,7 +124,7 @@ else()
     "strings/cpu/*.cc")
 endif()
 
-file(GLOB kernel_xpu "xpu/*.cc")
+file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc")
 
 add_library(phi_cpu ${kernel_cc})
 kernel_declare("${kernel_cc}")

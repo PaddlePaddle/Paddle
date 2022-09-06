@@ -187,7 +187,19 @@ class DGCOpKernel : public framework::OpKernel<T> {
                                  ctx.GetPlace());
 
     int buf_size = paddle::communication::dgc::get_buffer_size(k);
-    auto tmp_ious_data = memory::Alloc(dev_ctx, buf_size);
+    paddle::memory::allocation::AllocationPtr tmp_ious_data;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (platform::is_gpu_place(dev_ctx.GetPlace())) {
+      tmp_ious_data = memory::Alloc(
+          dev_ctx.GetPlace(),
+          buf_size,
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+    }
+#endif
+    if (platform::is_cpu_place(dev_ctx.GetPlace())) {
+      tmp_ious_data = memory::Alloc(dev_ctx.GetPlace(), buf_size);
+    }
+
     void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
     if (!paddle::communication::dgc::k_select(
