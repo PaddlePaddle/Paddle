@@ -366,7 +366,5 @@ PD_REGISTER_KERNEL(update_loss_scaling,
                    float,
                    double,
                    phi::dtype::float16) {
-#ifndef PADDLE_WITH_XPU
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
-#endif
 }
