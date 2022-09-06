@@ -478,6 +478,7 @@ if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exit_func)
   list(REMOVE_ITEM TEST_OPS test_imperative_signal_handler)
   list(REMOVE_ITEM TEST_OPS test_paddle_multiprocessing)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_dataset)
 endif()
 
 if(NOT WITH_GLOO)
