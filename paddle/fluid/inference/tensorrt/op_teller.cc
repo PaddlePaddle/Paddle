@@ -2270,7 +2270,7 @@ bool OpTeller::HasUnsupportAttrVar(const framework::OpDesc& desc) const {
   bool flag = false;
   auto iter = attrs_info.find(op_type);
   if (iter != attrs_info.end()) {
-    for (auto& attr_name : iter.second) {
+    for (auto& attr_name : iter->second) {
       if (has_attr_var(attr_name)) {
         flag = true;
         break;
