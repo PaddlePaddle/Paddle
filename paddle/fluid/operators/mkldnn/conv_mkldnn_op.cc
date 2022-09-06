@@ -1055,7 +1055,7 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
       // otherwise there will be problems in next operators working on this data
       if (g > 1) {
         dnnl::memory::data_type in_type =
-            phi::funcs::ToMKLDNNDataType(filter->dtype());
+            phi::funcs::ToOneDNNDataType(filter->dtype());
         // for 3d conv with groups (six dimensional data reorder to goidhw)
         // for 2d conv with groups (five dimensional data reorder to goihw)
         // auto weights_tz = phi::vectorize(filter->dims());
@@ -1064,7 +1064,7 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
         dnnl::memory::format_tag out_format =
             weights_tz.size() == 6 ? dnnl::memory::format_tag::goidhw
                                    : dnnl::memory::format_tag::goihw;
-        phi::funcs::ReorderMKLDNNHandler handler(
+        phi::funcs::ReorderOneDNNHandler handler(
             weights_tz, filter->dtype(), in_type, mkldnn_engine);
         auto reorder_dst_memory_p =
             handler.AcquireDstMemory(filter_grad, out_format, ctx.GetPlace());

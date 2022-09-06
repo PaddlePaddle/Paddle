@@ -85,12 +85,12 @@ class QuantOpKernel : public framework::OpKernel<T> {
       out_paddle_dtype = phi::DataType::UINT8;
     }
 
-    phi::funcs::ReorderMKLDNNHandler reorder_handler(
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
         x_tz,
         x_paddle_dtype,
-        phi::funcs::ToMKLDNNDataType(x_paddle_dtype),
+        phi::funcs::ToOneDNNDataType(x_paddle_dtype),
         out_paddle_dtype,
-        phi::funcs::ToMKLDNNDataType(out_paddle_dtype),
+        phi::funcs::ToOneDNNDataType(out_paddle_dtype),
         dev_ctx.GetEngine());
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(

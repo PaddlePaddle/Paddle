@@ -96,13 +96,13 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
 
     auto x_vec_dims = phi::vectorize(x_dims);
 
-    dnnl::memory::data_type x_type = phi::funcs::ToMKLDNNDataType(x->dtype());
+    dnnl::memory::data_type x_type = phi::funcs::ToOneDNNDataType(x->dtype());
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     std::vector<int64_t> offset(x_vec_dims.size(), 0);
 
-    phi::funcs::ReorderMKLDNNHandler reorder_handler(
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
         x_vec_dims, x->dtype(), x_type, onednn_engine);
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->mem_desc(), platform::to_void_cast(x->data<T>()));

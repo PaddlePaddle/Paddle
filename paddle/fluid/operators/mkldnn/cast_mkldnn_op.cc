@@ -40,13 +40,13 @@ class CastMKLDNNKernel : public framework::OpKernel<T> {
     auto out_paddle_type = framework::TransToPhiDataType(
         framework::proto::VarType::Type(out_dtype));
     dnnl::memory::data_type x_type =
-        phi::funcs::ToMKLDNNDataType(x_paddle_type);
+        phi::funcs::ToOneDNNDataType(x_paddle_type);
     dnnl::memory::data_type out_type =
-        phi::funcs::ToMKLDNNDataType(out_paddle_type);
+        phi::funcs::ToOneDNNDataType(out_paddle_type);
 
     auto x_tz = phi::vectorize(x->dims());
 
-    phi::funcs::ReorderMKLDNNHandler reorder_handler(x_tz,
+    phi::funcs::ReorderOneDNNHandler reorder_handler(x_tz,
                                                      x_paddle_type,
                                                      x_type,
                                                      out_paddle_type,

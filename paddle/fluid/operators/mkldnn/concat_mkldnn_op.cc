@@ -209,8 +209,8 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int64_t> offset(dout_vec_dims.size(), 0);
 
     dnnl::memory::data_type dout_type =
-        phi::funcs::ToMKLDNNDataType(dout->dtype());
-    phi::funcs::ReorderMKLDNNHandler reorder_handler(
+        phi::funcs::ToOneDNNDataType(dout->dtype());
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
         dout_vec_dims, dout->dtype(), dout_type, onednn_engine);
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         dout->mem_desc(), platform::to_void_cast(dout->data<T>()));

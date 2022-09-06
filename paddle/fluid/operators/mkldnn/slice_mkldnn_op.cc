@@ -78,9 +78,9 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
 
     out->Resize(phi::make_ddim(slice_dims));
 
-    dnnl::memory::data_type x_type = phi::funcs::ToMKLDNNDataType(x->dtype());
+    dnnl::memory::data_type x_type = phi::funcs::ToOneDNNDataType(x->dtype());
 
-    phi::funcs::ReorderMKLDNNHandler reorder_handler(
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
         x_vec_dims, x->dtype(), x_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
@@ -175,9 +175,9 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
     }
 
     dnnl::memory::data_type dout_type =
-        phi::funcs::ToMKLDNNDataType(dout->dtype());
+        phi::funcs::ToOneDNNDataType(dout->dtype());
 
-    phi::funcs::ReorderMKLDNNHandler reorder_handler(
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
         slice_dims, dout->dtype(), dout_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(

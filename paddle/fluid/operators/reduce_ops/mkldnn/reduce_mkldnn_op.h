@@ -73,8 +73,8 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
     // In that case reorder must be executed to maintain compatibility with
     // PaddlePaddle reduce op
     if (x_tz == out_tz) {
-      dnnl::memory::data_type x_type = phi::funcs::ToMKLDNNDataType(x->dtype());
-      phi::funcs::ReorderMKLDNNHandler reorder_handler(
+      dnnl::memory::data_type x_type = phi::funcs::ToOneDNNDataType(x->dtype());
+      phi::funcs::ReorderOneDNNHandler reorder_handler(
           x_tz, x->dtype(), x_type, onednn_engine);
 
       auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(

@@ -57,7 +57,7 @@ static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext &dev_ctx,
   auto output_dims = vectorize(output.dims());
 
   memory::data_type input_type = phi::funcs::ToMKLDNNDataType(input->dtype());
-  phi::funcs::ReorderMKLDNNHandler reorder_handler(
+  phi::funcs::ReorderOneDNNHandler reorder_handler(
       output_dims, input->dtype(), input_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(

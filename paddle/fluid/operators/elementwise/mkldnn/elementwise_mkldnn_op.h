@@ -162,10 +162,10 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
 
     auto tz = phi::vectorize<int64_t>(dout->dims());
 
-    phi::funcs::ReorderMKLDNNHandler reorder_handler(
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
         tz,
         dout->dtype(),
-        phi::funcs::ToMKLDNNDataType(dout->dtype()),
+        phi::funcs::ToOneDNNDataType(dout->dtype()),
         onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(

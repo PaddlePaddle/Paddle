@@ -106,10 +106,10 @@ class PadMKLDNNKernel : public framework::OpKernel<T> {
     auto paddle_dtype = framework::TransToProtoVarType(x->dtype());
     auto phi_dtype = framework::TransToPhiDataType(paddle_dtype);
 
-    phi::funcs::ReorderMKLDNNHandler reorder_handler(
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
         x_tz,
         phi_dtype,
-        phi::funcs::ToMKLDNNDataType(phi_dtype),
+        phi::funcs::ToOneDNNDataType(phi_dtype),
         onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
