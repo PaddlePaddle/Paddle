@@ -507,8 +507,9 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
       framework::CeilOrFloor<int, true>(input_dims[2], select_tile_size_j),
   };
 
-  int64_t total_tiles_count =
-      input_dims_aligned[0] * input_dims_aligned[1] * input_dims_aligned[2];
+  int64_t total_tiles_count = input_dims_aligned[0];
+  total_tiles_count *= input_dims_aligned[1];
+  total_tiles_count *= input_dims_aligned[2];
 
   // Suppose T can be replaced by system builtin types
   using ElemType = typename SystemElemType<sizeof(T)>::type;
@@ -575,9 +576,9 @@ void SendSwapDim1And2InTranspose(const phi::GPUContext& d,
         framework::CeilOrFloor<int, true>(input_dims[2], kTileSize),
     };
 
-    int64_t total_tiles_count = static_cast<int64_t>(input_dims_aligned[0]) *
-                                static_cast<int64_t>(input_dims_aligned[1]) *
-                                static_cast<int64_t>(input_dims_aligned[2]);
+    int64_t total_tiles_count = input_dims_aligned[0];
+    total_tiles_count *= input_dims_aligned[1];
+    total_tiles_count *= input_dims_aligned[2];
 
     TilingSwapDim1And2<T, kNumThreads, kTileSize, kTileSize>
         <<<total_tiles_count, kNumThreads, 0, d.stream()>>>(
@@ -590,9 +591,9 @@ void SendSwapDim1And2InTranspose(const phi::GPUContext& d,
     SwapDim1And2InNarrow<T>(d, input, input_dims, output, kMinTileSize);
   } else {
     // If input shape is small, such as 8X8, just do simple copy
-    int64_t total_elements = static_cast<int64_t>(input_dims[0]) *
-                             static_cast<int64_t>(input_dims[1]) *
-                             static_cast<int64_t>(input_dims[2]);
+    int64_t total_elements = input_dims[0];
+    total_elements *= input_dims[1];
+    total_elements *= input_dims[2];
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(d, total_elements);
     TransposeSimpleKernel<T, 0, 2, 1>
         <<<config.block_per_grid.x, config.thread_per_block.x, 0, d.stream()>>>(
@@ -625,9 +626,9 @@ struct SwapDim0And2InTranspose {
                        static_cast<int>(combined_dims[1]),
                        static_cast<int>(combined_dims[2])};
 
-    int64_t total_size = static_cast<int64_t>(combined_dims[0]) *
-                         static_cast<int64_t>(combined_dims[1]) *
-                         static_cast<int64_t>(combined_dims[2]);
+    int64_t total_size = combined_dims[0];
+    total_size *= combined_dims[1];
+    total_size *= combined_dims[2];
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(d, total_size);
 
     TransposeSimpleKernel<T, 2, 1, 0>
