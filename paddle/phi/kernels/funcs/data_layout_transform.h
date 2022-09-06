@@ -48,14 +48,30 @@ inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
   }
 }
 
-// Caution: proto::VarType::Type -> phi::DataType after transfer
 inline OneDNNDataType ToOneDNNDataType(DataType type) {
-  static std::unordered_map<DataType, OneDNNDataType> dict{
-      {DataType::FLOAT32, OneDNNDataType::f32},
-      {DataType::INT8, OneDNNDataType::s8},
-      {DataType::UINT8, OneDNNDataType::u8},
-      {DataType::INT32, OneDNNDataType::s32},
-      {DataType::BFLOAT16, OneDNNDataType::bf16}};
+#if __GNUC__ > 5
+  using DataTypeMapping = std::unordered_map<DataType, OneDNNDataType>;
+#else
+  struct DataTypeHash {
+    std::size_t operator()(const DataType& f) const {
+      return std::hash<int>{}(static_cast<int>(f));
+    }
+  };
+  struct DataTypeEqual {
+    bool operator()(const DataType& lhs, const DataType& rhs) const {
+      return static_cast<int>(lhs) == static_cast<int>(rhs);
+    }
+  };
+  using DataTypeMapping =
+      std::unordered_map<DataType, OneDNNDataType, DataTypeHash, DataTypeEqual>;
+#endif
+
+  static DataTypeMapping dict{{DataType::FLOAT32, OneDNNDataType::f32},
+                              {DataType::INT8, OneDNNDataType::s8},
+                              {DataType::UINT8, OneDNNDataType::u8},
+                              {DataType::INT32, OneDNNDataType::s32},
+                              {DataType::BFLOAT16, OneDNNDataType::bf16}};
+
   auto iter = dict.find(type);
   if (iter != dict.end()) return iter->second;
   return OneDNNDataType::undef;
