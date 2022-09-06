@@ -85,11 +85,6 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The dimension index of Input(x) to perform softmax,"
                  "default -1 for last dimension")
         .SetDefault(-1);
-    AddAttr<bool>(
-        "use_cudnn",
-        "(bool, default false) Only used in cudnn kernel, need install cudnn")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<std::string>(
         "data_format",
         "(string, default NCHW) Only used in "
@@ -97,21 +92,6 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Softmax Operator.
 

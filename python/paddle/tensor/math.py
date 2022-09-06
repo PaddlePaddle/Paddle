@@ -34,6 +34,7 @@ from ..fluid.framework import _in_legacy_dygraph
 from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
+from ..fluid.layers import utils
 
 # TODO: define math functions
 # yapf: disable
@@ -176,13 +177,14 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.scale(x, scale, float(bias), bias_after_scale)
-    if _non_static_mode():
+        out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
+        return dygraph_utils._append_activation_in_dygraph(out, act)
+    elif _in_legacy_dygraph():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = _legacy_C_ops.scale(x, 'scale',
                            float(_scale), 'bias',
                            float(bias), 'bias_after_scale', bias_after_scale)
-        return dygraph_utils._append_activation_in_dygraph(out)
+        return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(x, "x", [
         'float16', 'uint16', 'float32', 'float64', 'int8', 'int16', 'int32',
@@ -298,8 +300,11 @@ def multiplex(inputs, index, name=None):
             print(res) # Tensor([[5., 6.], [3., 4.]], dtype=float32)
 
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.multiplex(inputs, index)
+    elif _in_legacy_dygraph():
         return _legacy_C_ops.multiplex(index, inputs)
+
     helper = LayerHelper('multiplex', **locals())
 
     check_type(inputs, 'inputs', (list), 'multiplex')
@@ -736,7 +741,9 @@ def floor_divide(x, y, name=None):
     """
     op_type = 'elementwise_floordiv'
     axis = -1
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.floor_divide(x, y)
+    elif _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
 
@@ -776,11 +783,32 @@ def remainder(x, y, name=None):
     """
     op_type = 'elementwise_mod'
     axis = -1
-    if paddle.in_dynamic_mode():
+
+    if in_dygraph_mode():
+        return _C_ops.remainder(x, y)
+    elif _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+@inplace_apis_in_dygraph_only
+def remainder_(x, y, name=None):
+    r"""
+    Inplace version of ``remainder`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_remainder`.
+    """
+    op_type = 'elementwise_mod_'
+    axis = -1
+
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape))
+
+    return _elementwise_op_in_dygraph(x, y, axis=axis, op_name=op_type)
 
 
 mod = remainder  # noqa: F841
@@ -894,7 +922,9 @@ def maximum(x, y, name=None):
     op_type = 'elementwise_max'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.maximum(x, y)
+    elif _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -953,7 +983,9 @@ def minimum(x, y, name=None):
     op_type = 'elementwise_min'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.minimum(x, y)
+    elif _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -1144,11 +1176,22 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             out8 = paddle.sum(x, axis=0)  # [1, 1, 1, 1]
             out9 = paddle.sum(x, axis=1)  # [4, 0]
     """
-    if axis is not None and not isinstance(axis, (list, tuple)):
-        axis = [axis]
+    if isinstance(axis, Variable):
+        reduce_all_flag = True if axis.shape[0] == len(x.shape) else False
+    else:
+        if axis is not None and not isinstance(axis, (list, tuple)):
+            axis = [axis]
 
-    if not axis:
-        axis = []
+        if not axis:
+            axis = []
+
+        if len(axis) == 0:
+            reduce_all_flag = True
+        else:
+            if len(axis) == len(x.shape):
+                reduce_all_flag = True
+            else:
+                reduce_all_flag = False
 
     dtype_flag = False
     if dtype is not None:
@@ -1158,16 +1201,12 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     if in_dygraph_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
 
-    if len(axis) == 0:
-        reduce_all_flag = True
-    else:
-        if len(axis) == len(x.shape):
-            reduce_all_flag = True
-        else:
-            reduce_all_flag = False
+    if not isinstance(axis, Variable):
+        axis = axis if axis != None and axis != [] and axis != () else [0]
+        if utils._contain_var(axis):
+            axis = utils._convert_to_tensor_list(axis)
 
     if _in_legacy_dygraph():
-        axis = axis if axis != None and axis != [] else [0]
         if dtype_flag:
             return _legacy_C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
                                        'reduce_all', reduce_all_flag, 'in_dtype',
@@ -1177,7 +1216,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                                        'reduce_all', reduce_all_flag)
 
     attrs = {
-        'dim': axis if axis != None and axis != [] and axis != () else [0],
+        'dim': axis,
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag
     }
@@ -1194,7 +1233,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                 u'bool', u'float16', u'float32', u'float64',
                 u'int32', u'int64', u'complex64', u'complex128'], 'sum')
 
-    check_type(axis, 'axis', (int, list, tuple, type(None)), 'sum')
+    check_type(axis, 'axis', (int, list, tuple, type(None), Variable), 'sum')
 
     helper = LayerHelper('sum', **locals())
     if dtype_flag:
@@ -2058,6 +2097,11 @@ def _get_reduce_axis(axis):
         axis = []
     return reduce_all, axis
 
+def _get_reduce_axis_with_tensor(axis):
+    if isinstance(axis, Variable):
+        return False, axis
+    return _get_reduce_axis(axis)
+
 def _get_reduce_all_value(axis):
     """
     Internal function for max, min, amax and amin. 
@@ -2154,7 +2198,7 @@ def max(x, axis=None, keepdim=False, name=None):
             #[7., 8.], [[[0., 0.], [0., 0.]], [[0., 0.], [1., 1.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis(axis)
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis)
     if in_dygraph_mode():
         return _C_ops.max(x, axis, keepdim)
     if _in_legacy_dygraph():
@@ -2164,6 +2208,8 @@ def max(x, axis=None, keepdim=False, name=None):
     helper = LayerHelper('max', **locals())
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max')
+    if not isinstance(axis, Variable) and utils._contain_var(axis):
+        axis = utils._convert_to_tensor_list(axis)
 
     out = helper.create_variable_for_type_inference(
             dtype=x.dtype)
@@ -2255,7 +2301,7 @@ def min(x, axis=None, keepdim=False, name=None):
             #[1., 2.], [[[1., 1.], [0., 0.]], [[0., 0.], [0., 0.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis(axis)
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis)
     if in_dygraph_mode():
         return _C_ops.min(x, axis, keepdim)
 
@@ -2266,6 +2312,8 @@ def min(x, axis=None, keepdim=False, name=None):
     helper = LayerHelper('min', **locals())
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'min')
+    if not isinstance(axis, Variable) and utils._contain_var(axis):
+        axis = utils._convert_to_tensor_list(axis)
 
     out = helper.create_variable_for_type_inference(
             dtype=x.dtype)
@@ -3369,19 +3417,22 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             x = cast(x, dtype)
 
     dim = axis
-    if dim is not None and not isinstance(dim, list):
-        if isinstance(dim, tuple):
-            dim = list(dim)
-        elif isinstance(dim, int):
-            dim = [dim]
-        else:
-            raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".
-                format(type(dim)))
+    if isinstance(dim, Variable):
+        reduce_all = True if axis.shape[0] == len(x.shape) else False
+    else:
+        if dim is not None and not isinstance(dim, list):
+            if isinstance(dim, tuple):
+                dim = list(dim)
+            elif isinstance(dim, int):
+                dim = [dim]
+            else:
+                raise TypeError(
+                    "The type of axis must be int, list or tuple, but received {}".
+                    format(type(dim)))
 
-    reduce_all = True if dim is None or len(dim) == 0 or len(dim) == len(x.shape) else False
-    if dim is None or len(dim) == 0:
-        dim = [0]
+        reduce_all = True if dim is None or len(dim) == 0 or len(dim) == len(x.shape) else False
+        if dim is None or len(dim) == 0:
+            dim = [0]
 
     if in_dygraph_mode():
         return _C_ops.reduce_prod(x, dim, keepdim, reduce_all)
@@ -3393,6 +3444,8 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     check_variable_and_dtype(
         x, 'x/input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod')
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    if not isinstance(dim, Variable) and utils._contain_var(dim):
+        dim = utils._convert_to_tensor_list(dim)
     helper.append_op(
         type='reduce_prod',
         inputs={'X': x},
@@ -4726,7 +4779,6 @@ def frac(x, name=None):
                 type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": y})
             return _elementwise_op(LayerHelper(op_type, **locals()))
 
-
 def sgn(x, name=None):
     """
     For complex tensor, this API returns a new tensor whose elements have the same angles as the corresponding
@@ -4767,3 +4819,105 @@ def sgn(x, name=None):
         return paddle.as_complex(output)
     else:
         return paddle.sign(x)
+
+def take(x, index, mode='raise', name=None):
+    """
+    Returns a new tensor with the elements of input tensor x at the given index.
+    The input tensor is treated as if it were viewed as a 1-D tensor.
+    The result takes the same shape as the index.
+
+    Args:
+        x (Tensor): An N-D Tensor, its data type should be int32, int64, float32, float64.
+        index (Tensor): An N-D Tensor, its data type should be int32, int64.
+        mode (str, optional): Specifies how out-of-bounds index will behave. the candicates are ``'raise'``, ``'wrap'`` and ``'clip'``.
+
+            - ``'raise'``: raise an error (default);
+            - ``'wrap'``: wrap around;
+            - ``'clip'``: clip to the range. ``'clip'`` mode means that all indices that are too large are replaced by the index that addresses the last element. Note that this disables indexing with negative numbers.
+
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, Tensor with the same shape as index, the data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x_int = paddle.arange(0, 12).reshape([3, 4])
+            x_float = x_int.astype(paddle.float64)
+
+            idx_pos = paddle.arange(4, 10).reshape([2, 3])  # positive index
+            idx_neg = paddle.arange(-2, 4).reshape([2, 3])  # negative index
+            idx_err = paddle.arange(-2, 13).reshape([3, 5])  # index out of range
+
+            paddle.take(x_int, idx_pos)
+            # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[4, 5, 6],
+            #         [7, 8, 9]])
+
+            paddle.take(x_int, idx_neg)
+            # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[10, 11, 0 ],
+            #         [1 , 2 , 3 ]])
+
+            paddle.take(x_float, idx_pos)
+            # Tensor(shape=[2, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [[4., 5., 6.],
+            #         [7., 8., 9.]])
+
+            x_int.take(idx_pos)
+            # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[4, 5, 6],
+            #         [7, 8, 9]])
+
+            paddle.take(x_int, idx_err, mode='wrap')
+            # Tensor(shape=[3, 5], dtype=int32, place=Place(cpu), stop_gradient=True,
+            #        [[10, 11, 0 , 1 , 2 ],
+            #         [3 , 4 , 5 , 6 , 7 ],
+            #         [8 , 9 , 10, 11, 0 ]])
+
+            paddle.take(x_int, idx_err, mode='clip')
+            # Tensor(shape=[3, 5], dtype=int32, place=Place(cpu), stop_gradient=True,
+            #        [[0 , 0 , 0 , 1 , 2 ],
+            #         [3 , 4 , 5 , 6 , 7 ],
+            #         [8 , 9 , 10, 11, 11]])
+
+    """
+    if mode not in ['raise', 'wrap', 'clip']:
+        raise ValueError(
+            "'mode' in 'take' should be 'raise', 'wrap', 'clip', but received {}.".format(mode))
+
+    if paddle.in_dynamic_mode():
+        if not isinstance(index, (paddle.Tensor, Variable)):
+            raise TypeError(
+                "The type of 'index' must be Tensor, but got {}".format(type(index)))
+        if index.dtype not in [paddle.int32, paddle.int64]:
+            raise TypeError(
+                "The data type of 'index' must be one of ['int32', 'int64'], but got {}".format(
+                    index.dtype))
+
+    else:
+        check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'take')
+
+    input_1d = x.flatten()
+    index_1d = index.flatten()
+    max_index = input_1d.shape[-1]
+
+    if mode == 'raise':
+        # This processing enables 'take' to handle negative indexes within the correct range.
+        index_1d = paddle.where(index_1d < 0, index_1d + max_index, index_1d)
+    elif mode == 'wrap':
+        # The out of range indices are constrained by taking the remainder.
+        index_1d = paddle.where(index_1d < 0,
+                                index_1d % max_index, index_1d)
+        index_1d = paddle.where(index_1d >= max_index,
+                                index_1d % max_index, index_1d)
+    elif mode == 'clip':
+        # 'clip' mode disables indexing with negative numbers.
+        index_1d = clip(index_1d, 0, max_index - 1)
+
+    out = input_1d.index_select(index_1d).reshape(index.shape)
+
+    return out

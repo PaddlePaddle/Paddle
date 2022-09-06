@@ -37,8 +37,8 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
       x.dims(),
       mask.dims(),
       phi::errors::InvalidArgument("the input x and mask must have the shape"));
-  const DenseTensor& indices = mask.non_zero_indices();
-  const DenseTensor& values = mask.non_zero_elements();
+  const DenseTensor& indices = mask.indices();
+  const DenseTensor& values = mask.values();
   const int sparse_dim = mask.sparse_dim();
 
   DenseTensor out_indices = phi::EmptyLike<T>(dev_ctx, indices);
@@ -71,7 +71,7 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
 
 /**
  * @brief Filter the DenseTensor x by the
- * mask.non_zero_indices() and output a SparseCooTensor
+ * mask.indices() and output a SparseCooTensor
  * x and mask must have the same shape.
  **/
 template <typename T, typename Context>
@@ -80,7 +80,7 @@ void SparseMaskKernel(const Context& dev_ctx,
                       const SparseCooTensor& mask,
                       SparseCooTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      mask.non_zero_indices().dtype(), "SparseMaskCPUKernel", ([&] {
+      mask.indices().dtype(), "SparseMaskCPUKernel", ([&] {
         SparseMaskCPUKernel<T, data_t>(dev_ctx, x, mask, out);
       }));
 }
@@ -102,7 +102,7 @@ void SparseMaskHelperCPUKernel(const CPUContext& dev_ctx,
   phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
       x.dims(), sparse_dim, sparse_offsets.data());
 
-  phi::funcs::sparse::FlattenIndices(x.non_zero_indices().data<IntT>(),
+  phi::funcs::sparse::FlattenIndices(x.indices().data<IntT>(),
                                      sparse_offsets.data(),
                                      x.nnz(),
                                      sparse_dim,
@@ -121,12 +121,12 @@ void SparseMaskHelperCPUKernel(const CPUContext& dev_ctx,
   for (uint64_t i = 0; i < x_indexs.size(); i++) {
     x_indexs_map[x_indexs[i]] = i;
   }
-  *out = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  *out = phi::EmptyLike<T>(dev_ctx, x.values());
   T* out_ptr = out->data<T>();
   memset(out_ptr, static_cast<T>(0), out->numel() * sizeof(T));
   const int64_t stride =
-      x.dims().size() == sparse_dim ? 1 : x.non_zero_elements().dims()[1];
-  const T* in_ptr = x.non_zero_elements().data<T>();
+      x.dims().size() == sparse_dim ? 1 : x.values().dims()[1];
+  const T* in_ptr = x.values().data<T>();
   // TODO(zhangkaihuo): multithreading can be used for acceleration
   for (uint64_t i = 0; i < mask_indexs.size(); i++) {
     auto iter = x_indexs_map.find(mask_indexs[i]);
@@ -147,7 +147,7 @@ void SparseMaskHelperKernel(const Context& dev_ctx,
                             const DenseTensor& mask_indices,
                             DenseTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "SparseMaskHelperCPUKernel", ([&] {
+      x.indices().dtype(), "SparseMaskHelperCPUKernel", ([&] {
         SparseMaskHelperCPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
       }));
 }
