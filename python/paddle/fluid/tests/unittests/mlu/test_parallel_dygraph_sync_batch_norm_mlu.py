@@ -136,21 +136,6 @@ class TestParallelDygraphMnistMLU(TestDistBase):
 
     def _run_cluster_nccl2(self, model, envs, update_method, check_error_log,
                            log_name):
-        if self._use_hallreduce:
-            self._ps_endpoints = ""
-
-            global DIST_UT_PORT
-            if DIST_UT_PORT == 0:
-                # NOTE(wangxi). hallreduce test must use 4cards after nccl>=2.7
-                for i in range(0, 4):
-                    self._ps_endpoints += "127.0.0.1:%s," % (
-                        self._find_free_port())
-            else:
-                for i in range(0, 4):
-                    self._ps_endpoints += "127.0.0.1:%s," % (DIST_UT_PORT + i)
-                DIST_UT_PORT += 4
-            self._ps_endpoints = self._ps_endpoints[:-1]
-
         # NOTE: we reuse ps_endpoints as nccl2 worker endpoints
         worker_endpoints = self._ps_endpoints.split(",")
 
