@@ -18,6 +18,7 @@ from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.fluid.layers.utils import convert_to_list
 from paddle.fluid.layers.nn import elementwise_add
 from ...creation import sparse_coo_tensor
+from ...binary import values_add
 from paddle.nn.functional.conv import _update_padding_nd
 from paddle.fluid.layer_helper import LayerHelper
 
@@ -98,23 +99,7 @@ def _conv3d(x,
                          outputs=outputs,
                          attrs=attrs)
         if bias is not None:
-            values = pre_bias.values()
-            add_bias = helper.create_variable_for_type_inference(x.dtype)
-            helper.append_op(type='elementwise_add',
-                             inputs={
-                                 'X': [values],
-                                 'Y': [bias]
-                             },
-                             outputs={'Out': [add_bias]},
-                             attrs={
-                                 'axis': 1,
-                             })
-            print(pre_bias)
-            out = sparse_coo_tensor(pre_bias.indices(),
-                                    add_bias,
-                                    shape=pre_bias.shape,
-                                    stop_gradient=pre_bias.stop_gradient)
-            return out
+            return values_add(pre_bias, bias)
         else:
             return pre_bias
 

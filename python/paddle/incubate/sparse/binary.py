@@ -14,6 +14,8 @@
 
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import dygraph_only, core
+from paddle import in_dynamic_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -401,7 +403,6 @@ def divide(x, y, name=None):
         return _C_ops.sparse_divide(x, y)
 
 
-@dygraph_only
 def values_add(x, y, name=None):
     """
     The `values_add` is to perform the addition of two sparse tensors in COO format, or the addition of one spare tensor in COO format and 
@@ -446,4 +447,18 @@ def values_add(x, y, name=None):
         print(out)
         # [[4.0], [6.0]]
     """
-    return _C_ops.sparse_values_add(x, y)
+    if in_dynamic_mode():
+        return _C_ops.sparse_values_add(x, y)
+    else:
+        if y.type == core.VarDesc.VarType.SPARSE_COO:
+            op_type = 'values_add_coo_coo'
+        else:
+            op_type = 'values_add_coo_dense'
+        inputs = {'X': x, 'Y': y}
+        helper = LayerHelper(op_type)
+        out = helper.create_sparse_variable_for_type_inference(x.dtype)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs={'Out': out},
+                         attrs={})
+        return out
