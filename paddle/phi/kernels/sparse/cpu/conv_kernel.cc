@@ -45,14 +45,25 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
   // Currently, only support x.layout is NDHWC, groups = 1
   // if x.layout != NDHWC then transpose(x), transpose(weight)
 
-  // const auto& x_dims = x.dims();
-  const auto& out_dims = out->dims();
+  const auto& x_dims = x.dims();
   const auto& kernel_dims = kernel.dims();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
+  DDim out_dims = {1, 1, 1, 1, 1};
   std::vector<int> kernel_sizes(kernel_dims.size());
   for (int i = 0; i < kernel_dims.size(); i++) {
     kernel_sizes[i] = kernel_dims[i];
   }
+
+  std::vector<int> subm_paddings(paddings), subm_strides(strides);
+  if (subm) {
+    // the out shape of subm_conv is same as input shape
+    // reset the padding=kernel_size/2 and strides=1
+    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
+        kernel.dims(), &subm_paddings, &subm_strides);
+  }
+
+  phi::funcs::sparse::GetOutShape(
+      x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
 
@@ -65,6 +76,7 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
   int* h_counter_ptr = dev_ctx.template HostAlloc<int>(&h_counter);
   int* h_offsets_ptr = dev_ctx.template HostAlloc<int>(&h_offsets);
 
+  // DenseTensor* rulebook = nullptr;
   const IntT* rulebook_ptr = nullptr;
   int n = 0;
   bool need_product_rulebook = true;
@@ -85,9 +97,9 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
     ProductRuleBook<T, CPUContext, IntT>(dev_ctx,
                                          x,
                                          kernel_sizes,
-                                         paddings,
+                                         subm_paddings,
                                          dilations,
-                                         strides,
+                                         subm_strides,
                                          out_dims,
                                          subm,
                                          &tmp_rulebook,
@@ -172,29 +184,28 @@ void Conv3dCooKernel(const Context& dev_ctx,
                      SparseCooTensor* out,
                      DenseTensor* rulebook,
                      DenseTensor* counter) {
-  const auto& kernel_dims = kernel.dims();
-  std::vector<int> kernel_sizes(kernel_dims.size());
-  for (int i = 0; i < kernel_dims.size(); i++) {
-    kernel_sizes[i] = kernel_dims[i];
-  }
-  std::vector<int> subm_paddings(paddings), subm_strides(strides);
-  if (subm) {
-    // the out shape of subm_conv is same as input shape
-    // reset the padding=kernel_size/2 and strides=1
-    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
-        kernel_dims, &subm_paddings, &subm_strides);
-  }
-
   MetaTensor meta_out(out);
-  phi::sparse::Conv3dInferMeta(
-      x, kernel_sizes, subm_paddings, dilations, subm_strides, subm, &meta_out);
+  MetaTensor meta_rulebook(rulebook);
+  MetaTensor meta_counter(counter);
+  phi::sparse::Conv3dInferMeta(x,
+                               kernel,
+                               paddings,
+                               dilations,
+                               strides,
+                               groups,
+                               subm,
+                               key,
+                               &meta_out,
+                               &meta_rulebook,
+                               &meta_counter);
+
   PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "Conv3dCooCPUKernel", ([&] {
                                  Conv3dCooCPUKernel<T, data_t>(dev_ctx,
                                                                x,
                                                                kernel,
-                                                               subm_paddings,
+                                                               paddings,
                                                                dilations,
-                                                               subm_strides,
+                                                               strides,
                                                                groups,
                                                                subm,
                                                                key,

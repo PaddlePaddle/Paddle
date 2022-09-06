@@ -173,17 +173,30 @@ class TestStatic(unittest.TestCase):
                                     dtype='float32')
         dense_shape = [1, 1, 3, 4, 1]
         sp_x = sparse.sparse_coo_tensor(indices, values, dense_shape)
-        conv = sparse.nn.Conv3D(1, 1, 3)
-        out = conv(sp_x)
+
+        weight_shape = [1, 3, 3, 1, 1]
+        weight = paddle.static.data(name='weight',
+                                    shape=weight_shape,
+                                    dtype='float32')
+        out = sparse.nn.functional.conv3d(sp_x,
+                                          weight,
+                                          None,
+                                          stride=1,
+                                          padding=0,
+                                          dilation=1,
+                                          groups=1,
+                                          data_format="NDHWC")
 
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
 
         indices_data = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
         values_data = [[1.0], [2.0], [3.0], [4.0]]
+        weight_data = np.random.random(weight_shape).astype('float32')
 
         fetch = exe.run(feed={
             'indices': indices_data,
-            'values': values_data
+            'values': values_data,
+            'weight': weight_data
         },
                         fetch_list=[out, sp_x],
                         return_numpy=False)

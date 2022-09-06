@@ -43,7 +43,7 @@ KernelSignature Conv3dCooOpArgumentMapping(const ArgumentMappingContext& ctx) {
       "conv3d_coo",
       {"X", "Kernel"},
       {"paddings", "dilations", "strides", "groups", "subm", "key"},
-      {"Out", "rulebook", "counter"});
+      {"Out", "Rulebook", "Counter"});
 }
 
 }  // namespace phi

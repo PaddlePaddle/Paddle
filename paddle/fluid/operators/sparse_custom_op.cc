@@ -135,6 +135,8 @@ class Conv3dCooOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), input 0 of conv3d_coo op.");
     AddInput("Kernel", "(Tensor), input 1 of conv3d_coo op.");
     AddOutput("Out", "(Tensor), output 0 of conv3d_coo op.");
+    AddOutput("Rulebook", "(Tensor), output 1 of conv3d_coo op.");
+    AddOutput("Counter", "(Tensor), output 2 of conv3d_coo op.");
     AddAttr<std::vector<int>>("paddings",
                               "(vector<int>), attribute 0 for conv3d_coo op.");
     AddAttr<std::vector<int>>("dilations",
