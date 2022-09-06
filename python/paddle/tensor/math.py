@@ -352,7 +352,7 @@ def pow(x, y, name=None):
 
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor, the data type is float16, float32, float64, int32 or int64.
         y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     
@@ -762,8 +762,8 @@ def remainder(x, y, name=None):
         ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1003,8 +1003,8 @@ def fmax(x, y, name=None):
         ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1066,8 +1066,8 @@ def fmin(x, y, name=None):
         ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4696,8 +4696,8 @@ def heaviside(x, y, name=None):
         ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
-        x (Tensor): The input tensor of Heaviside step function, it's data type should be float32, float64, int32 or int64.
-        y (Tensor): The tensor that determines a Heaviside step function, it's data type should be float32, float64, int32 or int64.
+        x (Tensor): The input tensor of Heaviside step function, it's data type should be float16, float32, float64, int32 or int64.
+        y (Tensor): The tensor that determines a Heaviside step function, it's data type should be float16, float32, float64, int32 or int64.
         name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
