@@ -4808,8 +4808,13 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
     """
     helper = LayerHelper('reduce_max', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
+
+    if in_dygraph_mode():
+        return _C_ops.max(input, dim if dim != None else [], keep_dim)
+
     helper.append_op(type='reduce_max',
                      inputs={'X': input},
                      outputs={'Out': out},
@@ -4878,6 +4883,10 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
+
+    if in_dygraph_mode():
+        return _C_ops.min(input, dim if dim != None else [], keep_dim)
+
     helper.append_op(type='reduce_min',
                      inputs={'X': input},
                      outputs={'Out': out},
