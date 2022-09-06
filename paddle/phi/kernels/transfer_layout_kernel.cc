@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/phi/kernels/funcs/onednn/mkldnn_helper.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
 namespace phi {
 
@@ -97,7 +97,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
 
   // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
   // data_transfer.cc
-  if (!x.IsInitialized() && src_layout == DataLayout::MKLDNN &&
+  if (!x.IsInitialized() && src_layout == DataLayout::ONEDNN &&
       dst_layout == DataLayout::NHWC) {
     VLOG(4) << src_layout << "->" << dst_layout << " " << x.layout();
     out->Resize(x.dims());
@@ -106,11 +106,11 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
     return;
   }
 
-  if (src_layout != DataLayout::MKLDNN && dst_layout == DataLayout::MKLDNN) {
+  if (src_layout != DataLayout::ONEDNN && dst_layout == DataLayout::ONEDNN) {
     // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
     // Just set layout/format. No real transform occur
-    auto out_format = funcs::MKLDNNFormatForSize(
-        x.dims().size(), funcs::ToMKLDNNFormat(src_layout));
+    auto out_format = funcs::OneDNNFormatForSize(
+        x.dims().size(), funcs::ToOneDNNFormat(src_layout));
 
     out->ShareDataWith(x);
     // For NHWC data we need reshape of tensors as MKL-DNN
@@ -121,16 +121,16 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
       OneDNNContext::tls().set_cur_paddle_data_layout(src_layout);
     }
 
-    out->set_layout(DataLayout::MKLDNN);
+    out->set_layout(DataLayout::ONEDNN);
     out->set_format(out_format);
-  } else if (src_layout == DataLayout::MKLDNN &&
-             dst_layout != DataLayout::MKLDNN) {
+  } else if (src_layout == DataLayout::ONEDNN &&
+             dst_layout != DataLayout::ONEDNN) {
     // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
     // Do transform via MKLDNN lib
-    funcs::innerTransDataLayoutFromMKLDNN(
+    funcs::innerTransDataLayoutFromOneDNN(
         src_layout, dst_layout, x, out, dev_ctx.GetPlace());
-  } else if (src_layout == DataLayout::MKLDNN &&
-             dst_layout == DataLayout::MKLDNN) {
+  } else if (src_layout == DataLayout::ONEDNN &&
+             dst_layout == DataLayout::ONEDNN) {
     PADDLE_ENFORCE_NE(
         src_layout,
         dst_layout,

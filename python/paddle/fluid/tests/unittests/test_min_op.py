@@ -14,12 +14,16 @@
 
 from __future__ import print_function
 
+import os
 import unittest
+import tempfile
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci, check_out_dtype
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
+import paddle.inference as paddle_infer
+from test_sum_op import TestReduceOPTensorAxisBase
 
 
 class ApiMinTest(unittest.TestCase):
@@ -70,15 +74,6 @@ class ApiMinTest(unittest.TestCase):
 
         self.assertRaises(TypeError, test_input_type)
 
-        def test_axis_type():
-            with paddle.static.program_guard(paddle.static.Program(),
-                                             paddle.static.Program()):
-                data = paddle.static.data("data", shape=[10, 10], dtype="int64")
-                axis = paddle.static.data("axis", shape=[10, 10], dtype="int64")
-                result_min = paddle.min(data, axis)
-
-        self.assertRaises(TypeError, test_axis_type)
-
     def test_imperative_api(self):
         paddle.disable_static()
         np_x = np.array([10, 10]).astype('float64')
@@ -101,6 +96,31 @@ class TestOutDtype(unittest.TestCase):
         check_out_dtype(api_fn,
                         in_specs=[(shape, )],
                         expect_dtypes=['float32', 'float64', 'int32', 'int64'])
+
+
+class TestMinWithTensorAxis1(TestReduceOPTensorAxisBase):
+
+    def init_data(self):
+        self.pd_api = paddle.min
+        self.np_api = np.min
+        self.x = paddle.randn([10, 5, 9, 9], dtype='float64')
+        self.np_axis = np.array([1, 2], dtype='int64')
+        self.tensor_axis = paddle.to_tensor([1, 2], dtype='int64')
+
+
+class TestMinWithTensorAxis2(TestReduceOPTensorAxisBase):
+
+    def init_data(self):
+        self.pd_api = paddle.min
+        self.np_api = np.min
+        self.x = paddle.randn([10, 10, 9, 9], dtype='float64')
+        self.np_axis = np.array([0, 1, 2], dtype='int64')
+        self.tensor_axis = [
+            0,
+            paddle.to_tensor([1], 'int64'),
+            paddle.to_tensor([2], 'int64')
+        ]
+        self.keepdim = True
 
 
 if __name__ == '__main__':

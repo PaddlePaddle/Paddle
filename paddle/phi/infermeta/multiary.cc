@@ -785,6 +785,56 @@ void CheckFiniteAndUnscaleInferMeta(const std::vector<const MetaTensor*>& xs,
   found_infinite->set_dtype(DataType::BOOL);
 }
 
+void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
+                             DataType dtype,
+                             bool copy_data,
+                             bool set_constant,
+                             bool persist_output,
+                             float constant,
+                             bool use_align,
+                             int align_size,
+                             int size_of_dtype,
+                             const std::vector<int64_t>& concated_shapes,
+                             const std::vector<int64_t>& concated_ranks,
+                             std::vector<MetaTensor*> output,
+                             MetaTensor* fused_output,
+                             MetaConfig config) {
+  if (config.is_runtime) {
+    return;
+  }
+  if (size_of_dtype == -1) {
+    size_of_dtype = paddle::experimental::SizeOf(dtype);
+  }
+
+  auto alignment = [](size_t size, size_t align_size) {
+    size_t remaining = size % align_size;
+    auto aligned_size = remaining == 0 ? size : size + (align_size - remaining);
+    VLOG(4) << remaining << " " << size << " " << align_size << " "
+            << aligned_size;
+    return aligned_size;
+  };
+  VLOG(4) << "align_size: " << align_size;
+  if (use_align && align_size > 0) {
+    int64_t numel = 0;
+
+    for (size_t i = 0; i < input.size(); ++i) {
+      const auto& dim = input[i]->dims();
+      auto size = phi::product(dim);
+      auto len = use_align
+                     ? alignment(static_cast<size_t>(size) * size_of_dtype,
+                                 align_size) /
+                           size_of_dtype
+                     : static_cast<size_t>(size);
+      numel += len;
+    }
+    if (fused_output) {
+      fused_output->set_dims(phi::make_ddim({numel}));
+      fused_output->set_dtype(dtype);
+      VLOG(4) << "fused_output size:" << phi::make_ddim({numel});
+    }
+  }
+}
+
 void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,

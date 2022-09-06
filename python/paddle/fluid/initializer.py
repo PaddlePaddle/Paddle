@@ -19,7 +19,7 @@ import functools
 from . import framework
 from . import core
 from .framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph, default_main_program, _current_expected_place
-from .lazy_init import lazy_guard
+from .lazy_init import lazy_init_helper
 from .framework import program_guard
 import numpy as np
 from .core import VarDesc
@@ -52,7 +52,7 @@ class Initializer(object):
         pass
 
     def __call__(self, param, block=None):
-        if not lazy_guard().state:
+        if not lazy_init_helper().state:
             return self.forward(param, block)
 
         return self._lazy_init(param, block)
@@ -63,18 +63,21 @@ class Initializer(object):
         raise NotImplementedError()
 
     def _lazy_init(self, param, block=None):
-        # Apply lazy initialization
+        """
+        Apply lazy initialization
+        """
         assert in_dygraph_mode()
-        new_block = lazy_guard().startup_program.global_block()
-        new_var = param._to_static_var(True, block=new_block)
 
-        # Record initializer operator
-        with lazy_guard():
-            self.forward(new_var, new_block)
-        lazy_guard().enable(clear_cache=False)
+        def init_op_creator(forward, param, block):
+            new_var = param._to_static_var(True, block=block)
+            # Record initializer operator
+            with lazy_init_helper():
+                forward(new_var, block)
+
         # Add hook function for initializing param in dygraph mode
-        func = functools.partial(self.forward, param, block)
-        param.set_init_func(func)
+        param.set_init_func(functools.partial(self.forward, param, block))
+        param._init_op_creator = functools.partial(init_op_creator,
+                                                   self.forward, param)
 
         return param
 
@@ -275,13 +278,23 @@ class UniformInitializer(Initializer):
             out_var = var
 
         if framework._non_static_mode():
-            out_var = _legacy_C_ops.uniform_random(
-                'shape', var.shape, 'min', self._low, 'max', self._high, 'seed',
-                self._seed, 'dtype', out_dtype, 'diag_num', self._diag_num,
-                'diag_step', self._diag_step, 'diag_val', self._diag_val)
+            if in_dygraph_mode():
+                out_var = _C_ops.uniform_random(var.shape, out_dtype, self._low,
+                                                self._high, self._seed,
+                                                _current_expected_place())
+            elif _in_legacy_dygraph():
+                out_var = _legacy_C_ops.uniform_random(
+                    'shape', var.shape, 'min', self._low, 'max', self._high,
+                    'seed', self._seed, 'dtype', out_dtype, 'diag_num',
+                    self._diag_num, 'diag_step', self._diag_step, 'diag_val',
+                    self._diag_val)
             if var.dtype == VarDesc.VarType.FP16:
-                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                             'out_dtype', var.dtype)
+                if in_dygraph_mode():
+                    var_tmp = _C_ops.cast(out_var, var.dtype)
+                elif _in_legacy_dygraph():
+                    var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype',
+                                                 out_var.dtype, 'out_dtype',
+                                                 var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -825,8 +838,12 @@ class MSRAInitializer(Initializer):
 
             if var.dtype == VarDesc.VarType.FP16 or (
                     var.dtype == VarDesc.VarType.BF16 and not self._uniform):
-                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                             'out_dtype', var.dtype)
+                if in_dygraph_mode():
+                    var_tmp = _C_ops.cast(out_var, var.dtype)
+                elif _in_legacy_dygraph():
+                    var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype',
+                                                 out_var.dtype, 'out_dtype',
+                                                 var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -986,14 +1003,23 @@ class BilinearInitializer(Initializer):
             raise ValueError("The size of input is too big. ")
 
         if framework._non_static_mode():
-            _legacy_C_ops.assign_value(out_var, 'shape', list(shape), 'dtype',
-                                       out_dtype, value_name, values)
+            if in_dygraph_mode():
+                _C_ops.assign_value_(out_var, list(shape), out_dtype, values,
+                                     _current_expected_place())
+            elif _in_legacy_dygraph():
+                _legacy_C_ops.assign_value(out_var, 'shape', list(shape),
+                                           'dtype', out_dtype, value_name,
+                                           values)
             if var.dtype in [
                     VarDesc.VarType.FP16, VarDesc.VarType.BF16,
                     VarDesc.VarType.FP64
             ]:
-                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                             'out_dtype', var.dtype)
+                if in_dygraph_mode():
+                    var_tmp = _C_ops.cast(out_var, var.dtype)
+                elif _in_legacy_dygraph():
+                    var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype',
+                                                 out_var.dtype, 'out_dtype',
+                                                 var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -1093,12 +1119,21 @@ class NumpyArrayInitializer(Initializer):
                              "saving it to file and 'load_op' to load it")
 
         if framework._non_static_mode():
-            _legacy_C_ops.assign_value(out_var, 'shape',
-                                       list(self._value.shape), 'dtype',
-                                       out_dtype, value_name, values)
+            if in_dygraph_mode():
+                _C_ops.assign_value_(out_var,
+                                     list(self._value.shape), out_dtype, values,
+                                     _current_expected_place())
+            elif _in_legacy_dygraph():
+                _legacy_C_ops.assign_value(out_var, 'shape',
+                                           list(self._value.shape), 'dtype',
+                                           out_dtype, value_name, values)
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype', out_var.dtype,
-                                             'out_dtype', var.dtype)
+                if in_dygraph_mode():
+                    var_tmp = _C_ops.cast(out_var, var.dtype)
+                elif _in_legacy_dygraph():
+                    var_tmp = _legacy_C_ops.cast(out_var, 'in_dtype',
+                                                 out_var.dtype, 'out_dtype',
+                                                 var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)

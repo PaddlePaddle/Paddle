@@ -83,7 +83,7 @@ function(kernel_declare TARGET_LIST)
         "${kernel_impl}")
     if(NOT first_registry STREQUAL "")
       # some gpu kernel only can run on cuda, not support rocm, so we add this branch
-      if(WITH_ROCM)
+      if(WITH_ROCM OR WITH_NV_JETSON)
         string(FIND "${first_registry}" "cuda_only" pos)
         if(pos GREATER 1)
           continue()

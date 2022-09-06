@@ -270,6 +270,8 @@ packages=['paddle',
           'paddle.dataset',
           'paddle.reader',
           'paddle.distributed',
+          'paddle.distributed.communication',
+          'paddle.distributed.communication.stream',
           'paddle.distributed.metric',
           'paddle.distributed.ps',
           'paddle.distributed.ps.utils',
@@ -408,6 +410,7 @@ packages=['paddle',
           'paddle.profiler',
           'paddle.geometric',
           'paddle.geometric.message_passing',
+          'paddle.geometric.sampling',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
