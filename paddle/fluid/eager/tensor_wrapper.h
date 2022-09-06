@@ -100,6 +100,27 @@ class TensorWrapper {
     }
   }
 
+  TensorWrapper(const TensorWrapper& other) {
+    no_need_buffer_ = other.no_need_buffer_;
+    intermidiate_tensor_ = other.intermidiate_tensor_;
+    weak_grad_node_ = other.weak_grad_node_;
+    inplace_version_snapshot_ = other.inplace_version_snapshot_;
+    packed_value_ = other.packed_value_;
+    unpack_hook_ = other.unpack_hook_;
+    Py_XINCREF(packed_value_);
+  }
+
+  TensorWrapper& operator=(const TensorWrapper& other) {
+    no_need_buffer_ = other.no_need_buffer_;
+    intermidiate_tensor_ = other.intermidiate_tensor_;
+    weak_grad_node_ = other.weak_grad_node_;
+    inplace_version_snapshot_ = other.inplace_version_snapshot_;
+    packed_value_ = other.packed_value_;
+    unpack_hook_ = other.unpack_hook_;
+    Py_XINCREF(packed_value_);
+    return *this;
+  }
+
   ~TensorWrapper() { Py_XDECREF(packed_value_); }
 
   paddle::experimental::Tensor recover() {
