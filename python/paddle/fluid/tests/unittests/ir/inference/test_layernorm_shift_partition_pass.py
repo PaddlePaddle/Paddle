@@ -53,7 +53,7 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
             use_static=False,
             use_calib_mode=False)
         config.set_trt_dynamic_shape_info({
-            "input_data": [1, 49, 96],
+            "input_data": [1, 9, 96],
         }, {
             "input_data": [4, 3136, 768],
         }, {
@@ -61,27 +61,21 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
         })
         yield config, ['layernorm_shift_partition'], (1e-5, 1e-5)
 
-    def add_ignore_pass_case(self):
-        # Here we put some skip rules to avoid known bugs
-        def teller1(program_config, predictor_config):
-            return False
-
-        self.add_ignore_check_case(
-            teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
-            "The pass error on TRT while shape of mul_x > 5.")
-
     def sample_program_config(self, draw):
         axis = [0, 1, 3, 2, 4, 5]
         epsilon = draw(st.floats(min_value=0.0000001, max_value=0.001))
         # begin_norm_axis has to be 2
         begin_norm_axis = 2
         batch_size = draw(st.integers(min_value=1, max_value=4))
-        input_dim = draw(
-            st.sampled_from([[3136, 96], [784, 192], [196, 384], [49, 768]]))
-        window_size = 7
+
+        window_size = draw(st.sampled_from([3, 5, 7]))
+        move_shape = draw(st.integers(min_value=1, max_value=8))
+        dim = draw(st.sampled_from([96, 192, 384, 768]))
 
         def generate_input(attrs):
-            return np.random.random([batch_size, *input_dim]).astype(np.float32)
+            return np.random.random(
+                [attrs[1]["batch_size"],
+                 *attrs[1]["input_dim"]]).astype(np.float32)
 
         def generate_weight(attrs):
             return np.random.random(attrs[1]['input_dim'][-1]).astype(
@@ -92,11 +86,11 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
             'epsilon': epsilon,
         }, {
             'batch_size': batch_size,
-            'input_dim': input_dim,
+            'input_dim': [(window_size * move_shape)**2, dim],
         }, {
             'axis': axis,
-            'input_resolution': int(input_dim[0]**0.5),
-            'move_shape': int(int(input_dim[0]**0.5) / window_size),
+            'input_resolution': window_size * move_shape,
+            'move_shape': move_shape,
             'window_size': window_size,
         }]
 
@@ -204,10 +198,10 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(quant=False,
-                            max_examples=4,
+                            max_examples=20,
                             passes=["layernorm_shift_partition_fuse_pass"],
                             max_duration=250,
-                            min_success_num=4)
+                            min_success_num=20)
 
 
 if __name__ == "__main__":
