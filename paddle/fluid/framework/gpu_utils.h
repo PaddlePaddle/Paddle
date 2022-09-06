@@ -83,8 +83,8 @@ struct Index3 : DeviceArray<int, 3, 0> {
 
 // Flat index with real dimension
 template <typename IDX_T = int>
-EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE int64_t
-FlatTensorIndex(const Index3& index, const Dim3& dims) {
+EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE IDX_T FlatTensorIndex(const Index3& index,
+                                                            const Dim3& dims) {
   IDX_T flat_index = index[0];
   for (int i = 1; i < 3; i++) {
     flat_index = flat_index * dims[i] + index[i];
