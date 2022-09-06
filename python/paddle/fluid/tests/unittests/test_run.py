@@ -44,6 +44,20 @@ assert "PADDLE_ROLE" in env
 #assert "PADDLE_RANK" in env
 '''
 
+apipyfile = '''# train.py for unitest
+from paddle.distributed.launch import api as launch_api
+assert launch_api.job_id() == "utest"
+assert len(launch_api.pod_name()) == 6
+assert launch_api.active()
+assert launch_api.global_size() == 4
+assert launch_api.size() == 4
+assert launch_api.local_size() == 2
+assert launch_api.global_rank() in [0, 1, 2, 3]
+assert launch_api.rank() in [0, 1, 2, 3]
+assert launch_api.local_rank() in [0, 1]
+assert launch_api.nnodes() == 2
+'''
+
 
 def write_file(name, ct):
     with open(name, "w") as f:
@@ -185,6 +199,38 @@ class PS_Test(unittest.TestCase):
         print(c)
         self.assertTrue(len(c) == 5)
         log_dir.cleanup()
+
+
+class API_Test(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.path = os.path.join(self.temp_dir.name, pyname)
+        write_file(self.path, apipyfile)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def pdrun(self, args, env=None):
+        cmd = [sys.executable.split('/')[-1], "-m", "paddle.distributed.launch"]
+        if args:
+            cmd.extend(args.split(" "))
+        cmd.extend([self.path])
+        env = os.environ.copy()
+        # virtual devies for testing
+        env.update({'CUDA_VISIBLE_DEVICES': '0,1'})
+        proc = subprocess.Popen(cmd, env=env)
+        return proc
+
+    def test_api(self):
+        port = random.randrange(6000, 8000)
+        args = "--job_id utest --log_dir {} --master 127.0.0.1:{} --nnodes 2"
+        p1 = self.pdrun(args.format(self.temp_dir.name + "/1", port))
+        p2 = self.pdrun(args.format(self.temp_dir.name + "/2", port))
+        p1.wait()
+        p2.wait()
+        self.assertTrue(p1.poll() == 0)
+        self.assertTrue(p2.poll() == 0)
 
 
 if __name__ == '__main__':

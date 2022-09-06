@@ -49,6 +49,7 @@ class ControllerBase(object):
                        jid=self.ctx.args.job_id)
         self.pod = Pod()
 
+        self.ctx.set_envs({"JOB_ID": self.job.id})
         self.ctx.set_envs({"POD_NAME": self.pod.name})
 
         self.join_server = None
