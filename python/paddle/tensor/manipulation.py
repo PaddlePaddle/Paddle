@@ -1956,7 +1956,7 @@ def vsplit(x, num_or_sections, name=None):
             print(out0.shape)  # [1, 6, 7]
             print(out1.shape)  # [3, 6, 7]
             print(out2.shape)  # [4, 6, 7]
-            out0, out1, out2 = paddle.vplit(x, num_or_sections=[2, 3, -1])
+            out0, out1, out2 = paddle.vsplit(x, num_or_sections=[2, 3, -1])
             print(out0.shape)  # [2, 6, 7]
             print(out1.shape)  # [3, 6, 7]
             print(out2.shape)  # [3, 6, 7]
