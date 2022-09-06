@@ -32,9 +32,9 @@ Tensor to_sparse_coo_impl(const Tensor& x, const int64_t sparse_dim) {
   }
 
   // 1. Get kernel signature and kernel
-  std::string kernel_name = "dense_to_sparse_coo";
+  std::string kernel_name = "dense_to_coo";
   if (x.is_sparse_csr_tensor()) {
-    kernel_name = "sparse_csr_to_coo";
+    kernel_name = "csr_to_coo";
   }
 
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
@@ -90,9 +90,9 @@ Tensor to_sparse_csr_impl(const Tensor& x) {
     return x;
   }
   // 1. Get kernel signature and kernel
-  std::string kernel_name = "dense_to_sparse_csr";
+  std::string kernel_name = "dense_to_csr";
   if (x.is_sparse_coo_tensor()) {
-    kernel_name = "sparse_coo_to_csr";
+    kernel_name = "coo_to_csr";
   }
 
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
@@ -137,9 +137,9 @@ Tensor to_dense_impl(const Tensor& x) {
   }
 
   // 1. Get kernel signature and kernel
-  std::string kernel_name = "sparse_coo_to_dense";
+  std::string kernel_name = "coo_to_dense";
   if (x.is_sparse_csr_tensor()) {
-    kernel_name = "sparse_csr_to_dense";
+    kernel_name = "csr_to_dense";
   }
 
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);

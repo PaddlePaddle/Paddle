@@ -271,14 +271,14 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                        SparseCsrTensor* out) {           \
     funcs::name##Functor<T> functor;                                     \
     SparseCooTensor coo_x, coo_y;                                        \
-    SparseCsrToCooKernel<T>(dev_ctx, x, &coo_x);                         \
-    SparseCsrToCooKernel<T>(dev_ctx, y, &coo_y);                         \
+    CsrToCooKernel<T>(dev_ctx, x, &coo_x);                               \
+    CsrToCooKernel<T>(dev_ctx, y, &coo_y);                               \
     SparseCooTensor coo_out;                                             \
     MetaTensor meta_out_coo(&coo_out);                                   \
     phi::sparse::UnchangedInferMeta(x, &meta_out_coo);                   \
     ElementWiseCooKernelImpl<T, IntT, Context, funcs::name##Functor<T>>( \
         dev_ctx, coo_x, coo_y, &coo_out, functor);                       \
-    SparseCooToCsrKernel<T>(dev_ctx, coo_out, out);                      \
+    CooToCsrKernel<T>(dev_ctx, coo_out, out);                            \
   }
 
 #define DEFINE_CSR_ELEMENTWISE_KERNEL(name)                               \
