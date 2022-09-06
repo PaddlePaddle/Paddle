@@ -285,8 +285,7 @@ class MFCC(nn.Layer):
                  norm: Union[str, float] = 'slaney',
                  ref_value: float = 1.0,
                  amin: float = 1e-10,
-                 top_db: Optional[float] = None,
-                 dtype: str = paddle.float32) -> None:
+                 top_db: Optional[float] = None) -> None:
         super(MFCC, self).__init__()
         assert n_mfcc <= n_mels, 'n_mfcc cannot be larger than n_mels: %d vs %d' % (
             n_mfcc, n_mels)
@@ -306,8 +305,10 @@ class MFCC(nn.Layer):
                                                      ref_value=ref_value,
                                                      amin=amin,
                                                      top_db=top_db,
-                                                     dtype=dtype)
-        self.dct_matrix = create_dct(n_mfcc=n_mfcc, n_mels=n_mels, dtype=dtype)
+                                                     dtype=paddle.float64)
+        self.dct_matrix = create_dct(n_mfcc=n_mfcc,
+                                     n_mels=n_mels,
+                                     dtype=paddle.float64)
         self.register_buffer('dct_matrix', self.dct_matrix)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -318,6 +319,7 @@ class MFCC(nn.Layer):
         Returns:
             Tensor: Mel frequency cepstral coefficients with shape `(N, n_mfcc, num_frames)`.
         """
+        x = paddle.cast(x, paddle.float64)
         log_mel_feature = self._log_melspectrogram(x)
         mfcc = paddle.matmul(log_mel_feature.transpose(
             (0, 2, 1)), self.dct_matrix).transpose((0, 2, 1))  # (B, n_mels, L)
