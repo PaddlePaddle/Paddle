@@ -179,7 +179,7 @@ struct Argument {
   // scale file path for quantized model
   DECL_ARGUMENT_FIELD(scale_file_path, ScaleFilePath, std::string);
 
-  // Calibration file path of quantize model, used by Paddle-TRT and MKLDNN backend
+  // Calibration file path of new format quantize model, used by Paddle-TRT and MKLDNN backend
   DECL_ARGUMENT_FIELD(calibration_file_path, CalibrationFilePath, std::string);
 
 #ifdef PADDLE_WITH_MKLDNN

@@ -29,26 +29,10 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-void IrAnalysisPass::RunImpl(Argument* argument) {
-  ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
-  ARGUMENT_CHECK_FIELD(argument, main_program);
-  ARGUMENT_CHECK_FIELD(argument, scope);
-
-  auto* the_graph = argument->ReleaseMainGraph();
-  auto graph = std::unique_ptr<Graph>(the_graph);
-
-
-  std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
-  if (argument->Has("calibration_file_path")) {
-    VLOG(5) << "Calibration file path of quantize model: "
-            << argument->calibration_file_path();
-    ReadCalibrationInfo(argument, &var_quant_scales);
-    // save var_quant_scales in the first op's attr
-    // for quant_dequant_mkldnn_pass
-    SaveInfoInTheFirstOp(
-        the_graph, "has_quant_info", "var_quant_scales", var_quant_scales);
-  }
-
+static void SaveInfoInEachOp(
+    const paddle::framework::ir::Graph* graph,
+    const std::unordered_map<std::string, std::vector<float>>&
+        var_quant_scales) {
   auto op_node_sorted = framework::ir::TopologyVarientSort(
       *graph, static_cast<framework::ir::SortKind>(0));
   for (auto* op_node : op_node_sorted) {
@@ -57,7 +41,7 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
       for (size_t i = 0; i < iter.second.size(); i++) {
         if (var_quant_scales.count(iter.second[i])) {
           op_desc->SetAttr(iter.first + "_" + std::to_string(i),
-                           var_quant_scales[iter.second[i]][0]);
+                           1 / var_quant_scales.at(iter.second[i])[0]);
         }
       }
     }
@@ -65,9 +49,43 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
       for (size_t i = 0; i < iter.second.size(); i++) {
         if (var_quant_scales.count(iter.second[i])) {
           op_desc->SetAttr(iter.first + "_" + std::to_string(i),
-                           var_quant_scales[iter.second[i]][0]);
+                           1 / var_quant_scales.at(iter.second[i])[0]);
         }
       }
+    }
+  }
+}
+
+void IrAnalysisPass::RunImpl(Argument* argument) {
+  ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
+  ARGUMENT_CHECK_FIELD(argument, main_program);
+  ARGUMENT_CHECK_FIELD(argument, scope);
+
+  auto* the_graph = argument->ReleaseMainGraph();
+  auto graph = std::unique_ptr<Graph>(the_graph);
+
+  std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
+
+  if (argument->Has("calibration_file_path")) {
+    VLOG(5) << "Calibration file path of quantize model: "
+            << argument->calibration_file_path();
+    ReadCalibrationInfo(argument, &var_quant_scales);
+
+#ifdef PADDLE_WITH_MKLDNN
+    // save var_quant_scales in the first op's attr
+    // for quant_dequant_mkldnn_pass
+    if (argument->Has("use_mkldnn_int8") && argument->use_mkldnn_int8()) {
+      SaveInfoInTheFirstOp(
+          the_graph, "has_quant_info", "var_quant_scales", var_quant_scales);
+    }
+#endif
+    // for Paddle-TRT int8's use 
+    if (argument->Has("use_tensorrt") && argument->Has("use_gpu") &&
+        argument->Has("tensorrt_precision_mode") && argument->use_tensorrt() &&
+        argument->use_gpu() &&
+        argument->tensorrt_precision_mode() ==
+            AnalysisConfig::Precision::kInt8) {
+      SaveInfoInEachOp(the_graph, var_quant_scales);
     }
   }
 
@@ -87,11 +105,9 @@ void IrAnalysisPass::ReadCalibrationInfo(
     Argument* argument,
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales) {
   std::string calibration_file_path;
-#ifdef PADDLE_WITH_MKLDNN
   if (argument->Has("calibration_file_path")) {
     calibration_file_path = argument->calibration_file_path();
   }
-#endif
   if (calibration_file_path.empty()) {
     LOG(INFO) << "argument has no calibration_file_path";
     return;
