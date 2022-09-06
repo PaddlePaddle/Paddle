@@ -723,13 +723,12 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         check_dtype(intermediate_var_0.dtype, 'dtype',
                     ['float16', 'float32', 'float64'], 'linear')
         attrs = {
-            'transpose_X': False,
-            'transpose_Y': False,
-            'alpha': 1,
+            'trans_x': False,
+            'trans_y': False,
             OP_ROLE_KEY: src_op('op_role')
         }
         inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
-        matmul_op = main_block.append_op(type='matmul',
+        matmul_op = main_block.append_op(type='matmul_v2',
                                          inputs=inputs,
                                          outputs={'Out': Out_var},
                                          attrs=attrs)
@@ -1002,9 +1001,8 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         check_dtype(X_var.dtype, 'dtype', ['float16', 'float32', 'float64'],
                     'linear')
         attrs = {
-            'transpose_X': False,
-            'transpose_Y': False,
-            'alpha': 1,
+            'trans_x': False,
+            'trans_y': False,
             OP_ROLE_KEY: src_op.attr('op_role')
         }
         inputs = {'X': X_var, 'Y': Weight_var}
@@ -1031,7 +1029,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         ctx.set_tensor_dist_attr_for_program(intermediate_var_0,
                                              out_var_dist_attr)
 
-        matmul_op = main_block.append_op(type='matmul',
+        matmul_op = main_block.append_op(type='matmul_v2',
                                          inputs=inputs,
                                          outputs={'Out': intermediate_var_0},
                                          attrs=attrs)
