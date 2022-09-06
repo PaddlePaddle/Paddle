@@ -37,6 +37,10 @@ void SaveKernel(const Context& dev_ctx,
           "%s exists!, cannot save to it when overwrite is set to false.",
           file_path,
           overwrite));
+  PADDLE_ENFORCE_EQ(save_as_fp16,
+                    false,
+                    phi::errors::Unimplemented(
+                        "SelectedRows is not supported to save as float16."));
 
   MkDirRecursively(DirName(file_path).c_str());
 
