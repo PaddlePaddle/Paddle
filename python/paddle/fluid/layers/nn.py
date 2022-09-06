@@ -2268,7 +2268,8 @@ def pool2d(input,
     if in_dygraph_mode():
         return _C_ops.pool2d(input, pool_size, pool_stride, pool_padding,
                              ceil_mode, exclusive, data_format, pool_type,
-                             global_pooling, False, padding_algorithm)
+                             global_pooling, False, padding_algorithm,
+                             use_cudnn)
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
@@ -4807,8 +4808,13 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
     """
     helper = LayerHelper('reduce_max', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
+
+    if in_dygraph_mode():
+        return _C_ops.max(input, dim if dim != None else [], keep_dim)
+
     helper.append_op(type='reduce_max',
                      inputs={'X': input},
                      outputs={'Out': out},
@@ -4877,6 +4883,10 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
+
+    if in_dygraph_mode():
+        return _C_ops.min(input, dim if dim != None else [], keep_dim)
+
     helper.append_op(type='reduce_min',
                      inputs={'X': input},
                      outputs={'Out': out},
@@ -5022,6 +5032,10 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
     """
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
+
+    if in_dygraph_mode():
+        return _C_ops.all(input, dim if dim != None else [], keep_dim)
+
     check_variable_and_dtype(input, 'input', ('bool'), 'reduce_all')
     helper = LayerHelper('reduce_all', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())

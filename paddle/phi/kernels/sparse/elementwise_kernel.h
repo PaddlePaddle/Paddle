@@ -73,5 +73,23 @@ DEFINE_ELEMENTWISE_KERNEL_FUNC(Subtract)
 DEFINE_ELEMENTWISE_KERNEL_FUNC(Multiply)
 DEFINE_ELEMENTWISE_KERNEL_FUNC(Divide)
 
+/*
+ * out.values() = x.values() + y.values()
+ */
+template <typename T, typename Context>
+void ValuesAddCooCooKernel(const Context& dev_ctx,
+                           const SparseCooTensor& x,
+                           const SparseCooTensor& y,
+                           SparseCooTensor* out);
+
+/*
+ * out.values() = x.values() + y
+ */
+template <typename T, typename Context>
+void ValuesAddCooDenseKernel(const Context& dev_ctx,
+                             const SparseCooTensor& x,
+                             const DenseTensor& y,
+                             SparseCooTensor* out);
+
 }  // namespace sparse
 }  // namespace phi

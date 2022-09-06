@@ -609,7 +609,8 @@ def _inject_import_statements():
     import_statements = [
         "import paddle", "from paddle import Tensor",
         "import paddle.fluid as fluid", "import paddle.jit.dy2static as _jst",
-        "from typing import *", "import numpy as np"
+        "from typing import *", "import numpy as np", "import warnings",
+        "warnings.filterwarnings('ignore', category=DeprecationWarning)"
     ]
     return '\n'.join(import_statements) + '\n'
 

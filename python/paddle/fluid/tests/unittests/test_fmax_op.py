@@ -209,3 +209,33 @@ class TestElementwiseFmax2Op(OpTest):
                         max_relative_error=0.005,
                         no_grad_set=set('Y'),
                         check_eager=True)
+
+
+class TestElementwiseFmax3Op(OpTest):
+    """TestElementwiseFmax3Op"""
+
+    def setUp(self):
+        """setUp"""
+        self.op_type = "elementwise_fmax"
+        self.python_api = paddle.fmax
+        # If x and y have the same value, the max() is not differentiable.
+        # So we generate test data by the following method
+        # to avoid them being too close to each other.
+        x = np.random.uniform(0.1, 1, [13, 17]).astype("float16")
+        sgn = np.random.choice([-1, 1], [13, 17]).astype("float16")
+        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float16")
+
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.fmax(self.inputs['X'], self.inputs['Y'])}
+
+    def test_check_output(self):
+        """test_check_output"""
+        self.check_output(check_eager=True)
+
+    def test_check_grad_normal(self):
+        """test_check_grad_normal"""
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+
+
+if __name__ == "__main__":
+    unittest.main()

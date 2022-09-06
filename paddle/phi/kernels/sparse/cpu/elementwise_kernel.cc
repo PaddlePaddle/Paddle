@@ -13,14 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/elementwise_kernel.h"
-
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/sparse/flatten_indices.h"
+#include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 namespace phi {
@@ -338,6 +339,35 @@ DEFINE_COO_ELEMENTWISE_KERNEL(Subtract)
 DEFINE_COO_ELEMENTWISE_KERNEL(Multiply)
 DEFINE_COO_ELEMENTWISE_KERNEL(Divide)
 
+/*
+ * out.values() = x.values() + y.values()
+ */
+template <typename T, typename Context>
+void ValuesAddCooCooKernel(const Context& dev_ctx,
+                           const SparseCooTensor& x,
+                           const SparseCooTensor& y,
+                           SparseCooTensor* out) {
+  // TODO(zkh2016): assert(x.indices() == y.indices())
+  EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
+  phi::AddKernel<T, Context>(dev_ctx,
+                             x.non_zero_elements(),
+                             y.non_zero_elements(),
+                             out->mutable_non_zero_elements());
+}
+
+/*
+ * out.values() = x.values() + values
+ */
+template <typename T, typename Context>
+void ValuesAddCooDenseKernel(const Context& dev_ctx,
+                             const SparseCooTensor& x,
+                             const DenseTensor& y,
+                             SparseCooTensor* out) {
+  EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
+  phi::AddKernel<T, Context>(
+      dev_ctx, x.non_zero_elements(), y, out->mutable_non_zero_elements());
+}
+
 }  // namespace sparse
 }  // namespace phi
 
@@ -443,4 +473,23 @@ PD_REGISTER_KERNEL(divide_coo_coo,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(values_add_coo_coo,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::ValuesAddCooCooKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(values_add_coo_dense,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::ValuesAddCooDenseKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

@@ -189,7 +189,7 @@ class PipelineLayerChunk(Layer):
         # Users shouldn't call PipelineLayerChunk directly, since all logics relating with recompute
         # are in the forward function of PipelineLayer. Any directly call will bring unexpected
         # behavior under recompute circumstance.
-        raise NotImplementedError(
+        raise PermissionError(
             "The forward function of PipelineLayerChunk cannot be called directly. "
             "Please call forward function of PipelineLayer.")
 
@@ -384,6 +384,9 @@ class PipelineLayer(Layer):
                                       stage] <= layer_idx < self.segment_parts[
                                           start_idx + stage + 1]:
                     return stage
+
+    def get_num_virtual_stages(self):
+        return self._num_virtual_pipeline_stages
 
     def get_model_chunks(self):
         return None if self._num_virtual_pipeline_stages == 1 else self._model_chunks

@@ -289,6 +289,15 @@
     layout : x
   backward : values_grad
 
+- api : values_add
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  kernel :
+    func : values_add_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
+           values_add_coo_dense{sparse_coo, dense -> sparse_coo}
+    layout : x
+  backward : values_add_grad
+
 - api: addmm
   args : (Tensor input, Tensor x, Tensor y, float alpha=1.0, float beta=1.0)
   output : Tensor(out)
