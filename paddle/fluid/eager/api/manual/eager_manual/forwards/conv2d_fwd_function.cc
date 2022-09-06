@@ -17,6 +17,7 @@
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
+#include "paddle/fluid/eager/eager_layout_auto_tune.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
@@ -71,6 +72,37 @@ paddle::experimental::Tensor conv2d_dygraph_function(
                                      workspace_size_MB,
                                      exhaustive_search);
     }
+  }
+
+  // Layout autotune
+
+  if (paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune()) {
+    VLOG(5) << "Check and Prepare For LAYOUT";
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        tensors_vector = {{input}, {filter}};
+
+    auto op_name = phi::TransToFluidOpName("conv2d");
+    auto transformer = egr::EagerLayoutAutotune<std::string>(
+        op_name, tensors_vector, &data_format);
+    auto NEW_input = transformer->TransInTensor("input", input);
+
+    paddle::imperative::LayoutAutoTune::Instance().DisableLayoutAutoTune();
+    auto out = conv2d_dygraph_function(NEW_input,
+                                       filter,
+                                       strides,
+                                       paddings,
+                                       paddding_algorithm,
+                                       groups,
+                                       dilations,
+                                       data_format,
+                                       use_addto,
+                                       workspace_size_MB,
+                                       exhaustive_search);
+    transformer->SetOutTensorLayout(&out);
+    paddle::imperative::LayoutAutoTune::Instance().EnableLayoutAutoTune();
+    // Returns
+    return out;
   }
 
   // Get Input AutoGradMeta

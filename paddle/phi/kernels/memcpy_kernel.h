@@ -40,4 +40,9 @@ void MemcpyD2HMultiIOKernel(const Context& dev_ctx,
                             int dst_place_type,
                             std::vector<DenseTensor*> out_array);
 
+template <typename Context>
+void MemcpyKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int dst_place_type,
+                  DenseTensor* out);
 }  // namespace phi

@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/utils/blank.h"
 
 namespace paddle {
@@ -409,6 +410,13 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   const BlockDesc &block_;
 };
 
+static void InitRuntimeAttributeMapByOpExtraInfo(const std::string &op_type,
+                                                 AttributeMap *runtime_attrs) {
+  const auto &extra_attr_map =
+      operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(op_type);
+  runtime_attrs->insert(extra_attr_map.begin(), extra_attr_map.end());
+}
+
 OpDesc::OpDesc(const std::string &type,
                const VariableNameMap &inputs,
                const VariableNameMap &outputs,
@@ -419,6 +427,7 @@ OpDesc::OpDesc(const std::string &type,
   attrs_ = attrs;
   need_update_ = true;
   block_ = nullptr;
+  InitRuntimeAttributeMapByOpExtraInfo(type, &runtime_attrs_);
 }
 
 OpDesc::OpDesc(const OpDesc &other) {
@@ -441,6 +450,8 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   inputs_ = op_desc.inputs_;
   outputs_ = op_desc.outputs_;
   attrs_ = op_desc.attrs_;
+  runtime_attrs_ = op_desc.runtime_attrs_;
+  // The record of original_id_ is only for auto parallel.
   original_id_ = op_desc.original_id_;
   if (op_desc.dist_attr_) {
     dist_attr_.reset(new OperatorDistAttr(*op_desc.dist_attr_));
@@ -473,8 +484,9 @@ OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
     }
   }
   // restore attrs_
+  InitRuntimeAttributeMapByOpExtraInfo(desc.type(), &runtime_attrs_);
   for (const proto::OpDesc::Attr &attr : desc_.attrs()) {
-    std::string attr_name = attr.name();
+    const std::string &attr_name = attr.name();
     // The sub_block referred to by the BLOCK attr hasn't been added
     // to ProgramDesc class yet, we skip setting BLOCK/BLOCKS/VAR/VARS attr
     // here.
@@ -483,7 +495,12 @@ OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
         attr_type != proto::AttrType::BLOCKS &&
         attr_type != proto::AttrType::VAR &&
         attr_type != proto::AttrType::VARS) {
-      attrs_[attr_name] = GetAttrValue(attr);
+      auto iter = runtime_attrs_.find(attr_name);
+      if (iter == runtime_attrs_.end()) {
+        attrs_[attr_name] = GetAttrValue(attr);
+      } else {
+        iter->second = GetAttrValue(attr);
+      }
     }
   }
   this->block_ = block;
@@ -622,7 +639,13 @@ std::vector<std::string> OpDesc::AttrNames(bool with_attr_var) const {
 
 bool OpDesc::HasAttr(const std::string &name, bool with_attr_var) const {
   auto iter = attrs_.find(name);
-  bool is_found = iter != attrs_.end();
+  bool is_found = true;
+  if (iter == attrs_.end()) {
+    iter = runtime_attrs_.find(name);
+    if (iter == runtime_attrs_.end()) {
+      is_found = false;
+    }
+  }
   if (with_attr_var) {
     return is_found;
   }
@@ -631,10 +654,19 @@ bool OpDesc::HasAttr(const std::string &name, bool with_attr_var) const {
 
 void OpDesc::RemoveAttr(const std::string &name) {
   attrs_.erase(name);
+  runtime_attrs_.erase(name);
   need_update_ = true;
 }
 
 void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
+  AttributeMap *attrs_ptr = &(this->attrs_);
+
+  const auto &extra_attr_map =
+      operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(Type());
+  auto extra_attr_iter = extra_attr_map.find(name);
+  if (extra_attr_iter != extra_attr_map.end()) {
+    attrs_ptr = &(this->runtime_attrs_);
+  }
   // NOTICE(minqiyang): pybind11 will take the empty list in python as
   // the std::vector<int> type in C++; so we have to change the attr's type
   // here if we meet this issue
@@ -647,25 +679,25 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
       case proto::AttrType::BOOLEANS: {
         VLOG(11) << "SetAttr: " << Type() << ", " << name
                  << " from INTS to BOOLEANS";
-        this->attrs_[name] = std::vector<bool>();
+        attrs_ptr->operator[](name) = std::vector<bool>();
         break;
       }
       case proto::AttrType::INTS: {
         VLOG(11) << "SetAttr: " << Type() << ", " << name
                  << " from INTS to INTS";
-        this->attrs_[name] = std::vector<int>();
+        attrs_ptr->operator[](name) = std::vector<int>();
         break;
       }
       case proto::AttrType::LONGS: {
         VLOG(11) << "SetAttr: " << Type() << ", " << name
                  << " from LONGS to LONGS";
-        this->attrs_[name] = std::vector<int64_t>();
+        attrs_ptr->operator[](name) = std::vector<int64_t>();
         break;
       }
       case proto::AttrType::FLOATS: {
         VLOG(11) << "SetAttr: " << Type() << ", " << name
                  << " from INTS to FLOATS";
-        this->attrs_[name] = std::vector<float>();
+        attrs_ptr->operator[](name) = std::vector<float>();
         break;
       }
       case proto::AttrType::FLOAT64S: {
@@ -677,13 +709,13 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
       case proto::AttrType::STRINGS: {
         VLOG(11) << "SetAttr: " << Type() << ", " << name
                  << " from INTS to STRINGS";
-        this->attrs_[name] = std::vector<std::string>();
+        attrs_ptr->operator[](name) = std::vector<std::string>();
         break;
       }
       case proto::AttrType::BLOCKS: {
         VLOG(11) << "SetAttr: " << Type() << ", " << name
                  << " from INTS to BLOCKS";
-        this->SetBlocksAttr(name, std::vector<BlockDesc *>());
+        attrs_ptr->operator[](name) = std::vector<BlockDesc *>();
         return;
       }
       default:
@@ -695,14 +727,23 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   }
 
   // In order to set bool attr properly
-  if (attr_type == proto::AttrType::INT && HasProtoAttr(name) &&
-      GetProtoAttr(name).type() == proto::AttrType::BOOLEAN) {
-    this->attrs_[name] = static_cast<bool>(PADDLE_GET_CONST(int, v));
-    need_update_ = true;
-    return;
+  if (attr_type == proto::AttrType::INT) {
+    if (HasProtoAttr(name) &&
+        GetProtoAttr(name).type() == proto::AttrType::BOOLEAN) {
+      attrs_ptr->operator[](name) = static_cast<bool>(PADDLE_GET_CONST(int, v));
+      need_update_ = true;
+      return;
+    }
+    if (extra_attr_iter != extra_attr_map.end() &&
+        static_cast<proto::AttrType>(extra_attr_iter->second.index() - 1) ==
+            proto::AttrType::BOOLEAN) {
+      attrs_ptr->operator[](name) = static_cast<bool>(PADDLE_GET_CONST(int, v));
+      need_update_ = true;
+      return;
+    }
   }
 
-  this->attrs_[name] = v;
+  attrs_ptr->operator[](name) = v;
   need_update_ = true;
 }
 
@@ -733,8 +774,17 @@ void OpDesc::SetAttrMap(
   need_update_ = true;
 }
 
+void OpDesc::SetRuntimeAttrMap(
+    const std::unordered_map<std::string, Attribute> &attr_map) {
+  runtime_attrs_ = attr_map;
+  need_update_ = true;
+}
+
 Attribute OpDesc::GetAttr(const std::string &name, bool with_attr_var) const {
   auto it = attrs_.find(name);
+  if (it == attrs_.end()) {
+    it = runtime_attrs_.find(name);
+  }
   PADDLE_ENFORCE_NE(
       it,
       attrs_.end(),
@@ -801,6 +851,8 @@ int OpDesc::GetBlockAttrId(const std::string &name) const {
 const std::unordered_map<std::string, Attribute> &OpDesc::GetAttrMap() const {
   return attrs_;
 }
+
+const AttributeMap &OpDesc::GetRuntimeAttrMap() const { return runtime_attrs_; }
 
 void OpDesc::Rename(const std::string &old_name, const std::string &new_name) {
   RenameInput(old_name, new_name);
@@ -925,6 +977,15 @@ void OpDesc::Flush() {
     }
 
     this->desc_.mutable_attrs()->Clear();
+    auto set_attr_desc = [this](const std::string &attr_name,
+                                const Attribute &attr) -> void {
+      auto *attr_desc = desc_.add_attrs();
+      attr_desc->set_name(attr_name);
+      attr_desc->set_type(static_cast<proto::AttrType>(attr.index() - 1));
+      SetAttrDescVisitor visitor(attr_desc);
+      paddle::visit(visitor, attr);
+    };
+
     std::vector<std::pair<std::string, Attribute>> sorted_attrs{attrs_.begin(),
                                                                 attrs_.end()};
     std::sort(
@@ -932,13 +993,12 @@ void OpDesc::Flush() {
         sorted_attrs.end(),
         [](std::pair<std::string, Attribute> a,
            std::pair<std::string, Attribute> b) { return a.first < b.first; });
+
     for (auto &attr : sorted_attrs) {
-      auto *attr_desc = desc_.add_attrs();
-      attr_desc->set_name(attr.first);
-      attr_desc->set_type(
-          static_cast<proto::AttrType>(attr.second.index() - 1));
-      SetAttrDescVisitor visitor(attr_desc);
-      paddle::visit(visitor, attr.second);
+      set_attr_desc(attr.first, attr.second);
+    }
+    for (auto &attr : runtime_attrs_) {
+      set_attr_desc(attr.first, attr.second);
     }
 
     need_update_ = false;
@@ -958,6 +1018,13 @@ void OpDesc::CheckAttrs() {
   }
   VLOG(10) << "begin to check attribute of " << Type();
   checker->Check(&attrs_);
+  const auto &extra_attr_checkers =
+      operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(Type());
+  if (!extra_attr_checkers.empty()) {
+    for (const auto &extra_checker : extra_attr_checkers) {
+      extra_checker(&runtime_attrs_, false);
+    }
+  }
 }
 
 void OpDesc::InferShape(const BlockDesc &block) {
@@ -1155,7 +1222,7 @@ bool CompileTimeInferShapeContext::HasOutputs(const std::string &name,
 }
 
 AttrReader CompileTimeInferShapeContext::Attrs() const {
-  return AttrReader(op_.GetAttrMap());
+  return AttrReader(op_.GetAttrMap(), op_.GetRuntimeAttrMap());
 }
 
 std::vector<std::string> CompileTimeInferShapeContext::Inputs(

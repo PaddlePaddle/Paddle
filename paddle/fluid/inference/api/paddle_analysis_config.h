@@ -663,7 +663,15 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableTensorRtInspector();
   bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
 
-  void EnableDlnne(int min_subgraph_size = 3);
+  void EnableDlnne(
+      int min_subgraph_size = 3,
+      int max_batch_size = 1,
+      bool use_static_batch = false,
+      std::string weight_share_mode = "0",
+      std::unordered_set<std::string> disable_nodes_by_outputs = {},
+      std::map<std::string, std::vector<int64_t>> input_dict = {},
+      bool use_calib_mode = false,
+      AnalysisConfig::Precision precision_mode = Precision::kFloat32);
   bool dlnne_enabled() const { return use_dlnne_; }
 
   ///
@@ -756,16 +764,16 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableMkldnnQuantizer();
 
   ///
-  /// \brief Set the scale file path of quantize model.
+  /// \brief Set the calibration ranges file path of quantize model.
   ///
   ///
-  void SetScaleFilePath(const std::string& scale_file_path = "");
+  void SetCalibrationFilePath(const std::string& calibration_file_path = "");
 
   ///
-  /// \brief Return scale path for quantized model.
+  /// \brief Return the calibration ranges file path of quantize model.
   ///
   ///
-  std::string ScaleFilePath() { return scale_file_path_; }
+  std::string CalibrationFilePath() { return calibration_file_path_; }
 
   ///
   /// \brief Turn on MKLDNN int8.
@@ -945,7 +953,8 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string model_dir_;
   mutable std::string prog_file_;
   mutable std::string params_file_;
-  mutable std::string scale_file_path_;
+  mutable std::string calibration_file_path_;
+
   // Mixed precision.
   std::unordered_set<std::string> mixed_black_list_;
 
@@ -1018,6 +1027,13 @@ struct PD_INFER_DECL AnalysisConfig {
   // dlnne related.
   bool use_dlnne_{false};
   int dlnne_min_subgraph_size_{3};
+  int dlnne_max_batchsize_{1};
+  std::unordered_set<std::string> dlnne_disable_nodes_by_outputs_;
+  bool dlnne_use_static_batch_{true};
+  std::string dlnne_weight_share_mode_;
+  std::map<std::string, std::vector<int64_t>> dlnne_input_shape_dict_{};
+  bool dlnne_use_calib_mode_{false};
+  Precision dlnne_precision_mode_{Precision::kFloat32};
 
   // memory reuse related.
   bool enable_memory_optim_{false};
