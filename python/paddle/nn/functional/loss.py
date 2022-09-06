@@ -3539,7 +3539,8 @@ def multi_margin_loss(input,
         check_variable_and_dtype(label, 'label', ['int32', 'int64'],
                                  'multi_margin_loss')
     if not (input.shape[0] == label.shape[0]):
-        raise ValueError("The label's shape is wrong")
+        raise ValueError(
+            "The label's shape[0] should be equal to input's shape[0]")
     label = label.reshape((-1, 1))
     index_sample = paddle.index_sample(input, label)
     if weight is not None:
@@ -3547,7 +3548,8 @@ def multi_margin_loss(input,
             check_variable_and_dtype(weight, 'weight', ['float32', 'float64'],
                                      'multi_margin_loss')
         if not (input.shape[0] == weight.shape[0]):
-            raise ValueError("The weight's shape is wrong ")
+            raise ValueError(
+                "The weight's shape[0] should be equal to weight's shape[0]")
 
         weight = weight.reshape((-1, 1))
         loss = paddle.mean(paddle.pow(
