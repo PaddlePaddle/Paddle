@@ -307,10 +307,12 @@ struct FilterUnsupportDtype<framework::OpDesc> {
         // don't drop empty var name, you can use Input(name, true) to drop it.
         return framework::kEmptyVarName;
       }
-      auto var_desc = desc->FindVar(name);
+      auto var_desc =
+          desc->FindVarRecursive(framework::GradOriginalVarName(name));
       std::set<framework::proto::VarType::Type> not_support_backward_dtype = {
           framework::proto::VarType::BOOL,
           framework::proto::VarType::INT8,
+          framework::proto::VarType::UINT8,
           framework::proto::VarType::INT16,
           framework::proto::VarType::INT32,
           framework::proto::VarType::INT64,
@@ -383,8 +385,7 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpMaker<T> {
                       this->Output(ConditionalOp::kScope));
 
     auto fwd_inputs = this->InputGrad(ConditionalOp::kInputs, false);
-    FilterUnsupportDtype<framework::OpDesc>::filter(
-        this->grad_block_[0]->ParentBlock(), &fwd_inputs);
+    FilterUnsupportDtype<T>::filter(this->GetForwardOpBlock(), &fwd_inputs);
     grad_op->SetOutput(framework::GradVarName(ConditionalOp::kInputs),
                        fwd_inputs);
     grad_op->SetBlockAttr("sub_block", this->grad_block_[0]);
