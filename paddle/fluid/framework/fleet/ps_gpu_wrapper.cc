@@ -1167,9 +1167,34 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_COPY_FOR_PULL, thread_id);
     VLOG(3) << "Begin Copy result to tensor, total_length[" << total_length
             << "]";
-    this->CopyForPull(place, xpu_keys, values, total_values_gpu, xpu_len,
-                      static_cast<int>(slot_lengths.size()), hidden_size,
-                      total_length);
+
+    // this->CopyForPull(place, xpu_keys, values, total_values_gpu, xpu_len,
+    //                   static_cast<int>(slot_lengths.size()), hidden_size,
+    //                   total_length);
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
+
+    float* dst_vals = nullptr;
+    auto dst_vals_tmp = memory::Alloc(place, total_length * sizeof(float) * hidden_size);
+    dst_vals = reinterpret_cast<float*>(dst_vals_tmp->ptr());
+
+    int r = xpu::pull_copy<xpu::FeatureValue>(
+      ctx_xpu,
+      dst_vals,
+      total_keys,
+      reinterpret_cast<xpu::FeatureValue*>(total_values_gpu),
+      total_length,
+      hidden_size);
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External("XPU pull_copy kernel return wrong value[%d %s]",
+                                    r, XPUAPIErrorMsg[r]));
+
+    for (int i = 0; i < static_cast<int>(slot_lengths.size()); i++) {
+      int slot_len = i ? slot_lengths_lod[i] - slot_lengths_lod[i - 1] : slot_lengths_lod[0];
+      int offset = i ? slot_lengths_lod[i-1] : 0;
+      PADDLE_ENFORCE_XDNN_SUCCESS(xpu::copy<float>(ctx_xpu, dst_vals + offset * hidden_size, values[i], slot_len * hidden_size), "copy");
+    }
 
     TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_COPY_FOR_PULL, thread_id);
     TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_DO, thread_id);
