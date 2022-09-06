@@ -4213,16 +4213,20 @@ def conv2d_transpose(input,
 
     if output_size is None:
         output_size = []
-    elif isinstance(output_size, (list, tuple, int)):
+    elif isinstance(output_size, (list, tuple)):
+        if utils._contain_var(output_size):
+            output_size = utils._convert_to_tensor_list(output_size)
+        else:
+            output_size = utils.convert_to_list(output_size, 2, 'output_size')
+    elif isinstance(output_size, int):
         output_size = utils.convert_to_list(output_size, 2, 'output_size')
     elif isinstance(output_size, Variable):
         check_dtype(output_size.dtype, 'output_size', ['int32', 'int64'],
                     'conv2d_transpose')
-        np_or_var = output_size.numpy() if _non_static_mode() else output_size
-        if len(output_size.shape) == 1 and output_size.shape[0] == 1:
-            output_size = [np_or_var[0], np_or_var[0]]
-        elif len(output_size.shape) == 1 and output_size.shape[0] == 2:
-            output_size = [np_or_var[0], np_or_var[1]]
+        if len(output_size.shape) == 1 and (output_size.shape[0] == 1
+                                            or output_size.shape[0] == 2):
+            if output_size.shape[0] == 1:
+                output_size = [output_size, output_size]
         else:
             raise ValueError("output_size must contain one or two integers.")
     else:
@@ -4232,10 +4236,17 @@ def conv2d_transpose(input,
     if filter_size is None:
         if output_size is []:
             raise ValueError("output_size must be set when filter_size is None")
-        if utils._contain_var(output_size):
-            raise ValueError(
-                "filter_size should not be None when output_size is Variable in static mode."
-            )
+        if not _non_static_mode():
+            if isinstance(output_size,
+                          Variable) or utils._contain_var(output_size):
+                raise ValueError(
+                    "filter_size should not be None when output_size is Variable or contain Variable in static mode."
+                )
+        else:
+            output_size = utils.convert_shape_to_list(output_size)
+            if len(output_size) == 1:
+                output_size = utils.convert_to_list(output_size[0], 2,
+                                                    'output_size')
 
         h_in = input.shape[2] if data_format == 'NCHW' else input.shape[1]
         w_in = input.shape[3] if data_format == 'NCHW' else input.shape[2]

@@ -2707,21 +2707,24 @@ class Conv2DTranspose(layers.Layer):
 
         if self._output_size is None:
             self._output_size = []
-        elif isinstance(self._output_size, list) or isinstance(
-                self._output_size, int):
+        elif isinstance(self._output_size, list):
+            if utils._contain_var(self._output_size):
+                self._output_size = utils._convert_to_tensor_list(
+                    self._output_size)
+            else:
+                self._output_size = utils.convert_to_list(
+                    self._output_size, 2, 'output_size')
+        elif isinstance(self._output_size, int):
             self._output_size = utils.convert_to_list(self._output_size, 2,
                                                       'output_size')
         elif isinstance(self._output_size, Variable):
             check_dtype(self._output_size.dtype, 'output_size',
                         ['int32', 'int64'], 'Conv2DTranspose')
-            np_or_var = self._output_size.numpy() if _non_static_mode(
-            ) else self._output_size
-            if len(self._output_size.shape
-                   ) == 1 and self._output_size.shape[0] == 1:
-                self._output_size = [np_or_var[0], np_or_var[0]]
-            elif len(self._output_size.shape
-                     ) == 1 and self._output_size.shape[0] == 2:
-                self._output_size = [np_or_var[0], np_or_var[1]]
+            if len(self._output_size.shape) == 1 and (
+                    self._output_size.shape[0] == 1
+                    or self._output_size.shape[0] == 2):
+                if self._output_size.shape[0] == 1:
+                    self._output_size = [self._output_size, self._output_size]
             else:
                 raise ValueError(
                     "output_size must contain one or two integers.")

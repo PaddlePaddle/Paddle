@@ -17,7 +17,7 @@ import numpy as np
 from ...device import get_cudnn_version
 from ...static import Variable
 from ...fluid import dygraph_utils
-from ...fluid.layers.utils import convert_to_list, _is_symmetric_padding
+from ...fluid.layers.utils import convert_to_list, _is_symmetric_padding, _contain_var, _convert_to_tensor_list
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 from ...framework import ParamAttr
 from ...fluid.layer_helper import LayerHelper
@@ -1132,17 +1132,20 @@ def conv2d_transpose(x,
         if output_padding != 0:
             raise ValueError('output_padding option is mutually exclusive with '
                              'output_size')
-        if isinstance(output_size, (list, tuple, int)):
+        if isinstance(output_size, (list, tuple)):
+            if _contain_var(output_size):
+                output_size = _convert_to_tensor_list(output_size)
+            else:
+                output_size = convert_to_list(output_size, 2, 'output_size')
+        elif isinstance(output_size, int):
             output_size = convert_to_list(output_size, 2, 'output_size')
         elif isinstance(output_size, Variable):
             check_dtype(output_size.dtype, 'output_size', ['int32', 'int64'],
                         'conv2d_transpose')
-            np_or_var = output_size.numpy() if _non_static_mode(
-            ) else output_size
-            if len(output_size.shape) == 1 and output_size.shape[0] == 1:
-                output_size = [np_or_var[0], np_or_var[0]]
-            elif len(output_size.shape) == 1 and output_size.shape[0] == 2:
-                output_size = [np_or_var[0], np_or_var[1]]
+            if len(output_size.shape) == 1 and (output_size.shape[0] == 1
+                                                or output_size.shape[0] == 2):
+                if output_size.shape[0] == 1:
+                    output_size = [output_size, output_size]
             else:
                 raise ValueError(
                     "output_size must contain one or two integers.")

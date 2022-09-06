@@ -1029,7 +1029,7 @@ class TestTensorOutputSize2(TestTensorOutputSize1):
 
     def call_func(self, x):
         w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
-        output_size = paddle.assign([17, 17])
+        output_size = [17, paddle.assign([17])]
         out = paddle.paddle.nn.functional.conv2d_transpose(
             x, w_var, stride=2, output_size=output_size)
         return out
@@ -1054,10 +1054,10 @@ class TestTensorOutputSize3(TestTensorOutputSize1):
 class TestTensorOutputSize4(TestTensorOutputSize1):
 
     def path_prefix(self):
-        return 'conv2d_transpose_tensor_output_size3'
+        return 'conv2d_transpose_tensor_output_size4'
 
     def call_func(self, x):
-        output_size = paddle.assign([17, 17])
+        output_size = [17, paddle.assign([17])]
         out = paddle.fluid.layers.conv2d_transpose(x,
                                                    num_filters=6,
                                                    output_size=output_size,
@@ -1069,7 +1069,7 @@ class TestTensorOutputSize4(TestTensorOutputSize1):
 class TestTensorOutputSize5(TestTensorOutputSize1):
 
     def path_prefix(self):
-        return 'conv2d_transpose_tensor_output_size3'
+        return 'conv2d_transpose_tensor_output_size5'
 
     def call_func(self, x):
         w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
@@ -1087,7 +1087,10 @@ class TestTensorOutputSize5(TestTensorOutputSize1):
 class TestTensorOutputSize6(TestTensorOutputSize1):
 
     def path_prefix(self):
-        return 'conv2d_transpose_tensor_output_size3'
+        return 'conv2d_transpose_tensor_output_size6'
+
+    def var_prefix(self):
+        return "Var["
 
     def call_func(self, x):
         w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
