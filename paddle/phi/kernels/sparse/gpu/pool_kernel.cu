@@ -59,9 +59,13 @@ void MaxPoolCooGPUKernel(const GPUContext& dev_ctx,
                          DenseTensor* rulebook,
                          DenseTensor* counter) {
   const auto& x_dims = x.dims();
-  const auto& out_dims = out->dims();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
-  const int in_channels = x_dims[4];
+  const std::vector<int>& real_kernel_sizes =
+      phi::funcs::sparse::PoolResetKernel(kernel_sizes, x_dims[4], x_dims[4]);
+  DDim out_dims = {1, 1, 1, 1, 1};
+  phi::funcs::sparse::GetOutShape(
+      x_dims, real_kernel_sizes, paddings, dilations, strides, &out_dims);
+  const int in_channels = real_kernel_sizes[3];
 
   std::vector<int> offsets(kernel_size + 1), h_counter(kernel_size);
   DenseTensorMeta counter_meta(
@@ -75,7 +79,7 @@ void MaxPoolCooGPUKernel(const GPUContext& dev_ctx,
   // 1. product rulebook
   int rulebook_len = ProductRuleBook<T, GPUContext, IntT>(dev_ctx,
                                                           x,
-                                                          kernel_sizes,
+                                                          real_kernel_sizes,
                                                           paddings,
                                                           dilations,
                                                           strides,
@@ -136,18 +140,15 @@ void MaxPoolCooKernel(const Context& dev_ctx,
                       SparseCooTensor* out,
                       DenseTensor* rulebook,
                       DenseTensor* counter) {
-  const auto& x_dims = x.dims();
-  const std::vector<int>& real_kernel_sizes =
-      phi::funcs::sparse::PoolResetKernel(kernel_sizes, x_dims[4], x_dims[4]);
   MetaTensor meta_out(out);
-  phi::sparse::Conv3DInferMeta(
-      x, real_kernel_sizes, paddings, dilations, strides, false, &meta_out);
+  phi::sparse::Pool3dInferMeta(
+      x, kernel_sizes, paddings, dilations, strides, &meta_out);
 
   PD_VISIT_BASE_INTEGRAL_TYPES(
       x.indices().dtype(), "MaxPoolCooGPUKernel", ([&] {
         MaxPoolCooGPUKernel<T, data_t>(dev_ctx,
                                        x,
-                                       real_kernel_sizes,
+                                       kernel_sizes,
                                        paddings,
                                        dilations,
                                        strides,

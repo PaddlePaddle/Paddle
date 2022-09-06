@@ -43,18 +43,72 @@ inline void GetOutShape(const DDim& x_dims,
   }
 }
 
-void Conv3DInferMeta(const MetaTensor& x,
+inline void ResetSubmKernelSizeAndStrides(const DDim& kernel_dims,
+                                          std::vector<int>* paddings,
+                                          std::vector<int>* strides) {
+  for (uint64_t i = 0; i < paddings->size(); i++) {
+    (*paddings)[i] = kernel_dims[i] / 2;
+    (*strides)[i] = 1;
+  }
+}
+
+void Conv3dInferMeta(const MetaTensor& x,
+                     const MetaTensor& kernel,
+                     const std::vector<int>& paddings,
+                     const std::vector<int>& dilations,
+                     const std::vector<int>& strides,
+                     const int groups,
+                     const bool subm,
+                     const std::string& key,
+                     MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  const auto& kernel_dims = kernel.dims();
+  DDim out_dims = {1, 1, 1, 1, 1};
+
+  std::vector<int> kernel_sizes(kernel_dims.size());
+  for (int i = 0; i < kernel_dims.size(); i++) {
+    kernel_sizes[i] = kernel_dims[i];
+  }
+
+  std::vector<int> subm_paddings(paddings), subm_strides(strides);
+  if (subm) {
+    // the out shape of subm_conv is same as input shape
+    // reset the padding=kernel_size/2 and strides=1
+    ResetSubmKernelSizeAndStrides(kernel.dims(), &subm_paddings, &subm_strides);
+  }
+
+  GetOutShape(
+      x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
+
+  out->set_dtype(x.dtype());
+  out->set_dims(out_dims);
+  out->set_layout(x.layout());
+}
+
+inline const std::vector<int> PoolResetKernel(
+    const std::vector<int>& kernel_sizes,
+    const int in_channels,
+    const int out_channels) {
+  std::vector<int> res(kernel_sizes);
+  res.resize(5);
+  res[3] = in_channels;
+  res[4] = out_channels;
+  return res;
+}
+
+void Pool3dInferMeta(const MetaTensor& x,
                      const std::vector<int>& kernel_sizes,
                      const std::vector<int>& paddings,
                      const std::vector<int>& dilations,
                      const std::vector<int>& strides,
-                     const bool subm,
                      MetaTensor* out) {
   const auto& x_dims = x.dims();
   DDim out_dims = {1, 1, 1, 1, 1};
 
-  GetOutShape(x_dims, kernel_sizes, paddings, dilations, strides, &out_dims);
-
+  const std::vector<int>& real_kernel_sizes =
+      PoolResetKernel(kernel_sizes, x_dims[4], x_dims[4]);
+  GetOutShape(
+      x_dims, real_kernel_sizes, paddings, dilations, strides, &out_dims);
   out->set_dtype(x.dtype());
   out->set_dims(out_dims);
   out->set_layout(x.layout());
