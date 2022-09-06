@@ -124,10 +124,10 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     if (out_threshold_attr.index()) {
       new_op_desc.SetAttr("out_threshold", out_threshold_attr);
     }
-    auto new_out_threshold_attr =
-        elementwise_add_op_desc->GetNullableAttr("Out_0");
-    if (new_out_threshold_attr.index()) {
-      new_op_desc.SetAttr("Output_0", new_out_threshold_attr);
+    auto out_range_attr =
+        elementwise_add_op_desc->GetNullableAttr("Out0_range");
+    if (out_range_attr.index()) {
+      new_op_desc.SetAttr("Output0_range", out_range_attr);
     }
     new_op_desc.Flush();
 

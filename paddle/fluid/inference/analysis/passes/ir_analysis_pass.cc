@@ -29,6 +29,9 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+// Save every tensor's range in each op's attrs, this is used in Paddle-TRT int8
+// For example : the output's range of conv2d is stored as a attr
+// `Output0_range`
 static void SaveInfoInEachOp(
     const paddle::framework::ir::Graph* graph,
     const std::unordered_map<std::string, std::vector<float>>&
@@ -40,7 +43,7 @@ static void SaveInfoInEachOp(
     for (auto iter : op_desc->Inputs()) {
       for (size_t i = 0; i < iter.second.size(); i++) {
         if (var_quant_scales.count(iter.second[i])) {
-          op_desc->SetAttr(iter.first + "_" + std::to_string(i),
+          op_desc->SetAttr(iter.first + std::to_string(i) + "_range",
                            1 / var_quant_scales.at(iter.second[i])[0]);
         }
       }
@@ -48,7 +51,7 @@ static void SaveInfoInEachOp(
     for (auto iter : op_desc->Outputs()) {
       for (size_t i = 0; i < iter.second.size(); i++) {
         if (var_quant_scales.count(iter.second[i])) {
-          op_desc->SetAttr(iter.first + "_" + std::to_string(i),
+          op_desc->SetAttr(iter.first + std::to_string(i) + "_range",
                            1 / var_quant_scales.at(iter.second[i])[0]);
         }
       }
@@ -77,8 +80,11 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
     }
   }
 
-  bool mkldnn_int8 =
-      argument->Has("use_mkldnn_int8") && argument->use_mkldnn_int8();
+  bool mkldnn_int8 = false;
+
+#ifdef PADDLE_WITH_MKLDNN
+  mkldnn_int8 = argument->Has("use_mkldnn_int8") && argument->use_mkldnn_int8();
+#endif
   bool trt_int8 =
       argument->Has("use_tensorrt") && argument->Has("use_gpu") &&
       argument->Has("tensorrt_precision_mode") && argument->use_tensorrt() &&

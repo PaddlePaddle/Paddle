@@ -111,10 +111,6 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     }
     */
     std::unordered_set<const Node*> nodes2rm = {};
-    int bit_length =
-        PADDLE_GET_CONST(int, quantize_linear_op->Op()->GetAttr("bit_length"));
-    int range = ((1 << (bit_length - 1)) - 1);
-
     // Get input scale from tensor
     const LoDTensor& input_scale_tensor =
         scope->GetVar(quantize_linear_op_scale->Name())->Get<LoDTensor>();
@@ -124,12 +120,35 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
         platform::errors::InvalidArgument(
             "Input scale tensor's place should be CPU."));
     const float* input_scale_data = input_scale_tensor.data<float>();
-    float input_scale = input_scale_data[0] / range * range;
+    float input_range = input_scale_data[0];
 
     int nums_any_ops = dequantize_linear_op_out->outputs.size();
     for (int i = 0; i < nums_any_ops; ++i) {
       auto* any_op_desc = dequantize_linear_op_out->outputs[i]->Op();
-      any_op_desc->SetAttr("Input_0", input_scale);
+      std::vector<std::string> in_names = any_op_desc->InputNames();
+      int outer_i_choose = -1;
+      int inner_i_choose = -1;
+      for (size_t outer_i = 0; outer_i < in_names.size(); outer_i++) {
+        for (size_t inner_i = 0;
+             inner_i < any_op_desc->Input(in_names[outer_i]).size();
+             inner_i++) {
+          if (any_op_desc->Input(in_names[outer_i])[inner_i] ==
+              dequantize_linear_op_out->Var()->Name()) {
+            outer_i_choose = outer_i;
+            inner_i_choose = inner_i;
+          }
+        }
+      }
+      PADDLE_ENFORCE_EQ(outer_i_choose >= 0 && inner_i_choose >= 0,
+                        true,
+                        platform::errors::NotFound(
+                            "Cannot find %s var in %s op's all inputs.",
+                            dequantize_linear_op_out->Var()->Name(),
+                            dequantize_linear_op_out->outputs[i]->Name()));
+      any_op_desc->SetAttr(
+          in_names[outer_i_choose] + std::to_string(inner_i_choose) + "_range",
+          input_range);
+
       // link x to any_op2
       any_op_desc->RenameInput(dequantize_linear_op_out->Var()->Name(),
                                quantize_linear_op_x->Var()->Name());
