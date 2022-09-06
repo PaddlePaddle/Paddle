@@ -121,6 +121,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fc",
       "shuffle_channel",
       "swish",
+      "silu",
       "split",
       "instance_norm",
       "gelu",
@@ -228,6 +229,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fc",
       "shuffle_channel",
       "swish",
+      "silu",
       "split",
       "instance_norm",
       "gelu",
@@ -309,7 +311,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         "tan",      "tanh",  "sinh",
         "cosh",     "asin",  "acos",
         "atan",     "asinh", "atanh",
-        "ceil",     "floor", "erf"};
+        "ceil",     "floor", "erf",
+        "silu"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -340,9 +343,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     if (!with_dynamic_shape) {
       std::string X_name;
       auto inputs = desc.Inputs();
-      if (inputs.count("X")) {
+      if (inputs.count("X") && !desc.Input("X").empty()) {
         X_name = desc.Input("X")[0];
-      } else if (inputs.count("Input")) {
+      } else if (inputs.count("Input") && !desc.Input("Input").empty()) {
         X_name = desc.Input("Input")[0];
       }
       auto* block = desc.Block();

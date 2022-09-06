@@ -14,13 +14,16 @@
 
 from __future__ import print_function
 
+import os
 import unittest
+import tempfile
 import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from op_test import OpTest
+import paddle.inference as paddle_infer
 
 paddle.enable_static()
 
@@ -204,6 +207,67 @@ class TestCase5(TestBincountOp):
         self.minlength = 20
         self.np_input = np.random.randint(low=0, high=10, size=10)
         self.Out = np.bincount(self.np_input, minlength=self.minlength)
+
+
+class TestTensorMinlength(unittest.TestCase):
+
+    def setUp(self):
+        paddle.disable_static()
+        paddle.seed(2022)
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.save_path = os.path.join(self.temp_dir.name,
+                                      'tensor_minlength_bincount')
+        self.place = paddle.CUDAPlace(
+            0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        x = np.random.randint(0, 10, [20])
+        minlength = 2
+        np_out = np.bincount(x, minlength=minlength)
+        pd_out = paddle.bincount(paddle.to_tensor(x),
+                                 minlength=paddle.to_tensor([2], dtype='int32'))
+        np.testing.assert_allclose(np_out, pd_out.numpy())
+
+    def test_static_and_infer(self):
+        paddle.enable_static()
+        np_x = np.random.randn(100).astype('float32')
+        main_prog = paddle.static.Program()
+        starup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, starup_prog):
+            # run static
+            x = paddle.static.data(shape=np_x.shape, name='x', dtype=np_x.dtype)
+            linear = paddle.nn.Linear(np_x.shape[0], np_x.shape[0])
+            linear_out = linear(x)
+            relu_out = paddle.nn.functional.relu(linear_out)
+            minlength = paddle.full([1], 3, dtype='int32')
+            out = paddle.bincount(paddle.cast(relu_out, 'int32'),
+                                  minlength=minlength)
+
+            exe = paddle.static.Executor(self.place)
+            exe.run(starup_prog)
+            static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
+
+            # run infer
+            paddle.static.save_inference_model(self.save_path, [x], [out], exe)
+            config = paddle_infer.Config(self.save_path + '.pdmodel',
+                                         self.save_path + '.pdiparams')
+            if paddle.is_compiled_with_cuda():
+                config.enable_use_gpu(100, 0)
+            else:
+                config.disable_gpu()
+
+            predictor = paddle_infer.create_predictor(config)
+            input_names = predictor.get_input_names()
+            input_handle = predictor.get_input_handle(input_names[0])
+            fake_input = np_x
+            input_handle.reshape(np_x.shape)
+            input_handle.copy_from_cpu(fake_input)
+            predictor.run()
+            output_names = predictor.get_output_names()
+            output_handle = predictor.get_output_handle(output_names[0])
+            infer_out = output_handle.copy_to_cpu()
+            np.testing.assert_allclose(static_out[0], infer_out)
 
 
 if __name__ == "__main__":

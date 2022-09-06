@@ -225,8 +225,8 @@ class InferencePassTest(unittest.TestCase):
                     tensorrt_output = tensorrt_output.flatten()
 
                 np.testing.assert_allclose(
-                    paddle_out,
                     tensorrt_output,
+                    paddle_out,
                     rtol=rtol,
                     atol=atol,
                     err_msg='Output has diff between GPU and TensorRT. ')
