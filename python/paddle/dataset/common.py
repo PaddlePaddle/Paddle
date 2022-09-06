@@ -44,6 +44,7 @@ if not os.access(HOME, os.W_OK):
     HOME = tempfile.gettempdir()
 
 DATA_HOME = os.path.join(HOME, '.cache', 'paddle', 'dataset')
+print("Panyan")
 
 
 # When running unit tests, there could be multiple processes that
