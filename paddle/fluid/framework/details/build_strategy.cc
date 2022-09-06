@@ -169,6 +169,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   }
 
   void AppendOpFusePasses() {
+    // 1. infernce pass if enabled.
+    AppendPassWithCheck(strategy_.inference_ && strategy_.del_dropout_,
+                        "delete_dropout_op_x_pass");
+
+    // 2. trainning pass
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,
                         "fuse_relu_depthwise_conv_pass");
     AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
@@ -509,6 +514,7 @@ USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(add_reader_dependency_pass);
+USE_PASS(delete_dropout_op_x_pass);
 #ifdef PADDLE_WITH_CINN
 USE_PASS(build_cinn_pass);
 #endif

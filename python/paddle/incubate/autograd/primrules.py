@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import typing
+import math
 
 import paddle
 
@@ -19,7 +20,7 @@ from . import primops
 from .primops import (add, broadcast, concat, cos, div, exp, fill_const, gather,
                       matmul, mul, neg, reduce, reshape, scatter_add, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose, log, select, eq)
+                      transpose, log, select, eq, max, erf)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -171,6 +172,11 @@ def exp_orig2prim(op, x):
     return exp(x)
 
 
+@REGISTER_ORIG2PRIM('erf')
+def erf_orig2prim(op, x):
+    return erf(x)
+
+
 @REGISTER_ORIG2PRIM('log')
 def log_orig2prim(op, x):
     return log(x)
@@ -317,9 +323,38 @@ def elementwise_pow_orig2prim(op, x, y):
     return z
 
 
+@REGISTER_ORIG2PRIM('elementwise_max')
+def elementwise_max_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    return primops.max(x, y)
+
+
+@REGISTER_ORIG2PRIM('gelu')
+def gelu_orig2prim(op, x):
+    if op.attr('approximate'):
+        cdf = mul(
+            fill_const(0.5, x.shape, x.dtype),
+            add(
+                fill_const(1.0, x.shape, x.dtype),
+                tanh(
+                    mul(
+                        fill_const(math.sqrt(2 / math.pi), x.shape, x.dtype),
+                        add(
+                            x,
+                            mul(
+                                fill_const(0.044715, x.shape, x.dtype),
+                                primops.pow(x, fill_const(3., x.shape,
+                                                          x.dtype))))))))
+        return mul(x, cdf)
+    else:
+        return mul(
+            mul(fill_const(0.5, x.shape, x.dtype), x),
+            add(fill_const(1.0, x.shape, x.dtype),
+                erf(mul(x, fill_const(1 / math.sqrt(2.), x.shape, x.dtype)))))
+
+
 ## Register prim2orig lower rules
-
-
 @REGISTER_PRIM2ORIG('add_p')
 def add_prim2orig(op, x, y):
     return paddle.add(x, y)
@@ -363,6 +398,11 @@ def cos_prim2orig(op, x):
 @REGISTER_PRIM2ORIG('exp_p')
 def exp_prim2orig(op, x):
     return paddle.exp(x)
+
+
+@REGISTER_PRIM2ORIG('erf_p')
+def erf_prim2orig(op, x):
+    return paddle.erf(x)
 
 
 @REGISTER_PRIM2ORIG('log_p')
@@ -466,6 +506,11 @@ def pow_prim2orig(op, x, y):
     return paddle.pow(x, y)
 
 
+@REGISTER_PRIM2ORIG('max_p')
+def max_prim2orig(op, x, y):
+    return paddle.maximum(x, y)
+
+
 ## Register linearize rules
 @REGISTER_JVP('add_p')
 def add_jvp(op, x_dot, y_dot):
@@ -559,6 +604,16 @@ def exp_jvp(op, x_dot):
         return None
     y = op_position_output(op)
     return mul(x_dot, y)
+
+
+@REGISTER_JVP('erf_p')
+def erf_jvp(op, x_dot):
+    if x_dot is None:
+        return None
+    x, = op_position_inputs(op)
+    return mul(
+        fill_const(2. / math.sqrt(math.pi), x.shape, x.dtype),
+        mul(x_dot, exp(neg(primops.pow(x, fill_const(2., x.shape, x.dtype))))))
 
 
 @REGISTER_JVP('log_p')
@@ -735,6 +790,26 @@ def pow_jvp(op, x_dot, y_dot):
         t1, t2 = _compute_t1(x, y), mul(y_dot, mul(log(x), z))
         z_dot = add(t1, t2)
         return z_dot
+
+
+@REGISTER_JVP('max_p')
+def max_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
+
+    x, y = op_position_inputs(op)
+    z = op_position_output(op)
+    z_zeros = fill_const(value=0.0, shape=z.shape, dtype=z.dtype)
+
+    # To make the grad of max_p consistent with paddle.maximum when x==y,
+    # we just let z_dot = y_dot when compute z_dot to y and x==y,
+    # instead of using balance_eq like Jax.
+    if y_dot is None:
+        return select(eq(y, z), z_zeros, x_dot)
+    elif x_dot is None:
+        return select(eq(y, z), y_dot, z_zeros)
+    else:
+        return select(eq(y, z), y_dot, x_dot)
 
 
 ## Register transpose rules

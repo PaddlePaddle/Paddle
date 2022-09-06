@@ -19,7 +19,7 @@ import numpy as np
 from types import MethodType
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid import layers
 from paddle.fluid.dygraph import to_variable
@@ -209,13 +209,15 @@ def GroupShardedScaler(scaler):
 
         with device_guard(dev_id, device):
             if len(param_grads_fp16):
-                _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
-                                                param_grads_fp16,
-                                                temp_found_inf_fp16)
+                _legacy_C_ops.check_finite_and_unscale(param_grads_fp16,
+                                                       self._scale,
+                                                       param_grads_fp16,
+                                                       temp_found_inf_fp16)
             if len(param_grads_fp32):
-                _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
-                                                param_grads_fp32,
-                                                temp_found_inf_fp32)
+                _legacy_C_ops.check_finite_and_unscale(param_grads_fp32,
+                                                       self._scale,
+                                                       param_grads_fp32,
+                                                       temp_found_inf_fp32)
 
         self._found_inf = 1 if temp_found_inf_fp16 or temp_found_inf_fp32 else 0
         is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")

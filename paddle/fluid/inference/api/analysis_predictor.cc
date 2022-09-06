@@ -907,6 +907,15 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     return false;
   }
 
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled()) {
+    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+        predictor_id_;
+    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+  }
+#endif
+
   // Run the inference program
   // if share variables, we need not create variables
   executor_->Run();
@@ -1098,6 +1107,14 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Dlnne subgraph is enabled";
     argument_.SetUseDlnne(true);
     argument_.SetDlnneMinSubgraphSize(config_.dlnne_min_subgraph_size_);
+    argument_.SetDlnneMaxBatchSize(config_.dlnne_max_batchsize_);
+    argument_.SetDlnneUseStaticBatch(config_.dlnne_use_static_batch_);
+    argument_.SetDlnneWeightShareMode(config_.dlnne_weight_share_mode_);
+    argument_.SetDlnneDisableNodesByOutputs(
+        config_.dlnne_disable_nodes_by_outputs_);
+    argument_.SetDlnneInputShapeDict(config_.dlnne_input_shape_dict_);
+    argument_.SetDlnneUseCalibMode(config_.dlnne_use_calib_mode_);
+    argument_.SetDlnnePrecisionMode(config_.dlnne_precision_mode_);
   }
 
   if (config_.lite_engine_enabled()) {
@@ -1177,6 +1194,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetQuantizeEnabledOpTypes(config_.quantize_enabled_op_types_);
     argument_.SetQuantizeExcludedOpIds(config_.quantize_excluded_op_ids_);
     argument_.SetQuantVarScales({});
+    argument_.SetCalibrationFilePath(config_.calibration_file_path_);
   }
 #endif
 
@@ -1630,6 +1648,16 @@ bool AnalysisPredictor::ZeroCopyRun() {
     MkldnnPreSet(shape_vector);
   }
 #endif
+
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled()) {
+    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+        predictor_id_;
+    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+  }
+#endif
+
   executor_->Run();
 
   if (config_.shape_range_info_collected()) {

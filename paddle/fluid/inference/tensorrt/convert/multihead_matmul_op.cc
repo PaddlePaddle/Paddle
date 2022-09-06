@@ -363,8 +363,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
                 }
               };
           memcpy(weight_data_tmp.data(),
-                weight_data,
-                weight_t->numel() * sizeof(float));
+                 weight_data,
+                 weight_t->numel() * sizeof(float));
           transpose_weight_v2(weight_data_tmp.data(),
                               weight_data,
                               three,

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# to_tensor api will create 1 less op now, this test was changed
-
 from __future__ import print_function
 
 import numpy as np

@@ -325,9 +325,12 @@ class OpAttrChecker {
     explicit_checker_num_ = attr_checkers_.size();
   }
 
-  void InitDefaultAttributeMap() {
+  void InitDefaultAttributeMap(const AttributeMap* extra_attr_map) {
     for (const auto& checker : attr_checkers_) {
       checker(&default_attrs_, true, false);
+    }
+    if (extra_attr_map) {
+      default_attrs_.insert(extra_attr_map->begin(), extra_attr_map->end());
     }
   }
 

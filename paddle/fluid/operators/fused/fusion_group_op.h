@@ -23,17 +23,22 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename DeviceContext>
 static void MutableMultiTypeData(
     std::vector<paddle::framework::LoDTensor*>* var,
     const std::vector<int>& data_type,
+    const DeviceContext& dev_ctx,
     const platform::Place& place) {
   for (size_t i = 0; i < var->size(); i++) {
     if (data_type[i] == framework::proto::VarType::FP32) {
-      (*var)[i]->mutable_data<float>(place);
+      dev_ctx.template Alloc<float>((*var)[i],
+                                    (*var)[i]->numel() * sizeof(float));
     } else if (data_type[i] == framework::proto::VarType::FP16) {
-      (*var)[i]->mutable_data<paddle::platform::float16>(place);
+      dev_ctx.template Alloc<paddle::platform::float16>(
+          (*var)[i], (*var)[i]->numel() * sizeof(paddle::platform::float16));
     } else if (data_type[i] == framework::proto::VarType::FP64) {
-      (*var)[i]->mutable_data<double>(place);
+      dev_ctx.template Alloc<double>((*var)[i],
+                                     (*var)[i]->numel() * sizeof(double));
     }
   }
 }
@@ -52,8 +57,9 @@ class FusionGroupKernel : public framework::OpKernel<T> {
     size_t num_outs = outs.size();
 
     auto place = ctx.GetPlace();
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    MutableMultiTypeData(&outs, outs_dtype, place);
+    MutableMultiTypeData(&outs, outs_dtype, dev_ctx, place);
 
     std::string func_name = ctx.Attr<std::string>("func_name");
     platform::DeviceCode* dev_code =

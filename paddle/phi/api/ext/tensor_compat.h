@@ -71,7 +71,7 @@ using experimental::gather_nd;
 using experimental::gelu;
 using experimental::gumbel_softmax;
 using experimental::imag;
-using experimental::increment;
+using experimental::increment_;
 using experimental::index_sample;
 using experimental::is_empty;
 using experimental::isclose;

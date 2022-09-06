@@ -142,9 +142,9 @@ class TestSigmoidFocalLoss(unittest.TestCase):
                 for alpha in alphas:
                     for gamma in gammas:
                         for normalizer_np in normalizer_nps:
-                            static_result = test_static(place, logit_np,
-                                                        label_np, normalizer_np,
-                                                        alpha, gamma, reduction)
+                            static_result, = test_static(
+                                place, logit_np, label_np, normalizer_np, alpha,
+                                gamma, reduction)
                             dy_result = test_dygraph(place, logit_np, label_np,
                                                      normalizer_np, alpha,
                                                      gamma, reduction)
@@ -155,12 +155,18 @@ class TestSigmoidFocalLoss(unittest.TestCase):
                             expected = calc_sigmoid_focal_loss(
                                 logit_np, label_np, normalizer_np, alpha, gamma,
                                 reduction)
-                            self.assertTrue(np.allclose(static_result,
-                                                        expected))
-                            self.assertTrue(
-                                np.allclose(static_result, dy_result))
-                            self.assertTrue(np.allclose(dy_result, expected))
-                            self.assertTrue(np.allclose(eager_result, expected))
+                            np.testing.assert_allclose(static_result,
+                                                       expected,
+                                                       rtol=1e-05)
+                            np.testing.assert_allclose(static_result,
+                                                       dy_result,
+                                                       rtol=1e-05)
+                            np.testing.assert_allclose(dy_result,
+                                                       expected,
+                                                       rtol=1e-05)
+                            np.testing.assert_allclose(eager_result,
+                                                       expected,
+                                                       rtol=1e-05)
 
     def test_SigmoidFocalLoss_error(self):
         paddle.disable_static()
