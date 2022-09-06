@@ -2193,15 +2193,6 @@
     func : reverse
   backward : reverse_grad
 
-- api : reverse_array
-  args : (Tensor[] x, IntArray axis)
-  output : Tensor[]{x.size()}
-  infer_meta :
-    func : ReverseArrayInferMeta
-  kernel :
-    func : reverse_array
-  backward : reverse_array_grad
-
 - api : rmsprop_
   args : (Tensor param, Tensor mean_square, Tensor grad, Tensor moment, Tensor learning_rate, Tensor mean_grad, float epsilon, float decay, float momentum, bool centered)
   output : Tensor(param_out), Tensor(moment_out), Tensor(mean_square_out), Tensor(mean_grad_out)
