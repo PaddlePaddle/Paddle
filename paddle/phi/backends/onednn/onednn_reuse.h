@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -1012,7 +1013,7 @@ class PoolingOneDNNHandler
                                      dnnl::pooling_backward> {
  public:
   PoolingOneDNNHandler(const std::string& pooling_type,
-                       const std::vector<int>& kernel_size,
+                       const IntArray& kernel_size,
                        const std::vector<int>& strides,
                        const std::vector<int>& paddings,
                        bool global_pooling,
@@ -1027,8 +1028,8 @@ class PoolingOneDNNHandler
       : OneDNNHandlerNoCachingT<T,
                                 dnnl::pooling_forward,
                                 dnnl::pooling_backward>(engine, cpu_place) {
-    std::vector<int64_t> copied_kernel_size(kernel_size.begin(),
-                                            kernel_size.end());
+    std::vector<int64_t> copied_kernel_size(kernel_size.GetData().begin(),
+                                            kernel_size.GetData().end());
     std::vector<int64_t> copied_strides(strides.begin(), strides.end());
     std::vector<int64_t> copied_paddings(paddings.begin(), paddings.end());
     // Only 2D pooling is supported now
@@ -1101,7 +1102,7 @@ class PoolingOneDNNHandler
   }
 
   PoolingOneDNNHandler(const std::string& pooling_type,
-                       const std::vector<int>& kernel_size,
+                       const IntArray& kernel_size,
                        const std::vector<int>& strides,
                        const std::vector<int>& paddings,
                        bool global_pooling,
@@ -1118,8 +1119,8 @@ class PoolingOneDNNHandler
       : OneDNNHandlerNoCachingT<T,
                                 dnnl::pooling_forward,
                                 dnnl::pooling_backward>(engine, cpu_place) {
-    std::vector<int64_t> copied_kernel_size(kernel_size.begin(),
-                                            kernel_size.end());
+    std::vector<int64_t> copied_kernel_size(kernel_size.GetData().begin(),
+                                            kernel_size.GetData().end());
     std::vector<int64_t> copied_strides(strides.begin(), strides.end());
     std::vector<int64_t> copied_paddings(paddings.begin(), paddings.end());
     auto in_x_dims = in_x->dims();

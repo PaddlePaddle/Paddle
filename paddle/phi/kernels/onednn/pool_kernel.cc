@@ -16,7 +16,7 @@ namespace phi {
 template <typename T, typename Context>
 void Pool2dKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const std::vector<int>& kernel_size,
+                  const IntArray& kernel_size,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   bool ceil_mode,
