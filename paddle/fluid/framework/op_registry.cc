@@ -38,8 +38,17 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     }
   }
   auto& info = OpInfoMap::Instance().Get(type);
-  if (attr_check && info.Checker() != nullptr) {
-    info.Checker()->Check(&standard_attrs);
+  if (attr_check) {
+    if (info.Checker() != nullptr) {
+      info.Checker()->Check(&standard_attrs);
+    }
+    const auto& extra_attr_checkers =
+        operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(type);
+    if (!extra_attr_checkers.empty()) {
+      for (const auto& checker : extra_attr_checkers) {
+        checker(&runtime_attrs, false);
+      }
+    }
   }
   auto op_base = std::unique_ptr<OperatorBase>(
       info.Creator()(type, inputs, outputs, standard_attrs));
