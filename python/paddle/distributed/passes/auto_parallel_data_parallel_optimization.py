@@ -245,6 +245,9 @@ class DataParallelOptimizationPass(PassBase):
         if num_dp_comm_stream > __max_stream_num_allow__:
             return False
 
+        if self.dist_context.strategy.sharding:
+            return False
+
         return True
 
     def _comms_overlap_calc(self):
@@ -338,6 +341,9 @@ class DataParallelOptimizationPass(PassBase):
         # TODO  support gradient fuse higher order gradient.
         # should analyse the dependencies of gradient in backward.
         if find_higher_order_backward_op(default_main_program()):
+            return False
+
+        if self.dist_context.strategy.sharding:
             return False
 
         return True
