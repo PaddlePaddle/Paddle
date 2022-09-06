@@ -101,33 +101,6 @@ void dequantize_kernel_launcher(const int32_t* input,
                                                 quant_out_scale_offset);
 }
 
-// template <typename T>
-// static void PrintMatrix(const T* mat_d, int num, std::string name) {
-//     std::vector<T> tmp(num);
-//     cudaMemcpy(tmp.data(), mat_d, sizeof(T) * num, cudaMemcpyDeviceToHost);
-//     int sum_i8 = 0;
-//     T sum = static_cast<T>(0);
-
-//     std::ofstream outfile;
-//     outfile.open(name+".txt", std::ios::out);
-
-//     for (int i = 0; i < num; ++i) {
-//       if(std::is_same<T, int8_t>::value) {
-//         outfile << static_cast<int>(tmp[i]) << std::endl;
-//         // sum_i8 += static_cast<int>(tmp[i*n+j]);
-//       } else {
-//         outfile << tmp[i] << std::endl;
-//         // sum += tmp[i*n+j];
-//       }
-//     }
-//     // if(std::is_same<T, int8_t>::value) {
-//     //   std::cout << "sum = " << sum_i8 << std::endl;
-//     // } else {
-//     //   std::cout << "sum = " << sum << std::endl;
-//     // }
-//     outfile.close();
-// }
-
 template <typename T>
 class AttnMatmulINT8 {
  public:
@@ -150,8 +123,7 @@ class AttnMatmulINT8 {
                       framework::Tensor* bias_out,
                       const float quant_in_scale_data,
                       const framework::Tensor* quant_out_scale,
-                      const int quant_out_scale_offset,
-                      std::string name) {
+                      const int quant_out_scale_offset) {
     int m = m_, k = k_, n = n_;
 
     quantize_kernel_launcher<T>(input->data<T>(),
@@ -161,23 +133,11 @@ class AttnMatmulINT8 {
                                 k_,
                                 dev_ctx_.stream());
 
-    // PrintMatrix(input->data<T>(), m_ * k_, name + " input [float]");
-    // PrintMatrix(input_tmp->data<int8_t>(), m_ * k_, name + " input [int]");
-    VLOG(1) << "[DEBUG] GEMM";
-    VLOG(1) << "input_tmp " << input_tmp->numel() << " dtype "
-            << input_tmp->dtype();
-    VLOG(1) << "weight_tmp " << weight->numel() << " dtype " << weight->dtype();
-    VLOG(1) << "output_tmp " << output_tmp->numel() << " dtype "
-            << output_tmp->dtype();
-
     helpers_[0]->GEMM(input_tmp->data<int8_t>(),
                       weight->data<int8_t>(),
                       output_tmp->data<int32_t>(),
                       dev_ctx_.stream());
-    // PrintMatrix(output_tmp->data<int32_t>(), m_ * n_, name + " output
-    // [int]"); dequant C
-    VLOG(1) << "[DEBUG] col32_to_row_major_dequantize_kernel_launcher";
-    // dequant kernel
+
     dequantize_kernel_launcher<T>(output_tmp->data<int32_t>(),
                                   output->data<T>(),
                                   m_,
@@ -186,10 +146,8 @@ class AttnMatmulINT8 {
                                   quant_out_scale->data<float>(),
                                   quant_out_scale_offset);
 
-    // PrintMatrix(output->data<T>(),  m_ * n_, name + " output [float]");
     if (compute_bias_) {
       // bias_out = output + bias
-      VLOG(1) << "[DEBUG] compute_bias_";
       std::vector<const framework::Tensor*> ins = {output, bias};
       std::vector<framework::Tensor*> outs = {bias_out};
       phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
@@ -205,21 +163,13 @@ class AttnMatmulINT8 {
                                 framework::Tensor* input,
                                 const framework::Tensor* bias,
                                 framework::Tensor* output,
-                                framework::Tensor* bias_out,
-                                std::string name) {
+                                framework::Tensor* bias_out) {
     int m = m_, k = k_, n = n_;
 
-    // PrintMatrix(input->data<int8_t>(), m_ * k_, name + " input [int]");
-
-    VLOG(1) << "[DEBUG] GEMM";
-    VLOG(1) << "input " << input->numel() << " dtype " << input->dtype();
-    VLOG(1) << "weight " << weight->numel() << " dtype " << weight->dtype();
-    VLOG(1) << "output " << output->numel() << " dtype " << output->dtype();
     helpers_[0]->GEMM(input->data<int8_t>(),
                       weight->data<int8_t>(),
                       output->data<int32_t>(),
                       dev_ctx_.stream());
-    // PrintMatrix(output->data<int32_t>(), m_ * n_, name + " output [int]");
   }
 
   // This function is used to execute GEMM, with input and output's types are
@@ -231,26 +181,14 @@ class AttnMatmulINT8 {
                              framework::Tensor* output_tmp,
                              framework::Tensor* bias_out,
                              const framework::Tensor* quant_out_scale,
-                             const int quant_out_scale_offset,
-                             std::string name) {
+                             const int quant_out_scale_offset) {
     int m = m_, k = k_, n = n_;
-    // PrintMatrix(input->data<int8_t>(), m_ * k_, name + " input [int]");
-
-    VLOG(1) << "[DEBUG] GEMM";
-    VLOG(1) << "input_tmp " << input->numel() << " dtype " << input->dtype();
-    VLOG(1) << "weight_tmp " << weight->numel() << " dtype " << weight->dtype();
-    VLOG(1) << "output_tmp " << output_tmp->numel() << " dtype "
-            << output_tmp->dtype();
 
     helpers_[0]->GEMM(input->data<int8_t>(),
                       weight->data<int8_t>(),
                       output_tmp->data<int32_t>(),
                       dev_ctx_.stream());
-    // PrintMatrix(output_tmp->data<int32_t>(), m_ * n_, name + " output
-    // [int]");
 
-    // dequant C
-    VLOG(1) << "[DEBUG] dequantize_kernel_launcher";
     dequantize_kernel_launcher<T>(output_tmp->data<int32_t>(),
                                   output->data<T>(),
                                   m_,
@@ -258,11 +196,9 @@ class AttnMatmulINT8 {
                                   dev_ctx_.stream(),
                                   quant_out_scale->data<float>(),
                                   quant_out_scale_offset);
-    // PrintMatrix(output->data<T>(),  m_ * n_, name + " output [float]");
 
     if (compute_bias_) {
       // bias_out = output + bias
-      VLOG(1) << "[DEBUG] compute_bias_";
       std::vector<const framework::Tensor*> ins = {output, bias};
       std::vector<framework::Tensor*> outs = {bias_out};
       phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
@@ -280,10 +216,8 @@ class AttnMatmulINT8 {
                              framework::Tensor* input_tmp,
                              const framework::Tensor* bias,
                              framework::Tensor* output,
-                             framework::Tensor* bias_out,
-                             std::string name) {
+                             framework::Tensor* bias_out) {
     int m = m_, k = k_, n = n_;
-    VLOG(1) << "[DEBUG] quantize_kernel_launcher";
     quantize_kernel_launcher<T>(input->data<T>(),
                                 input_tmp->data<int8_t>(),
                                 quant_in_scale_data,
@@ -291,19 +225,10 @@ class AttnMatmulINT8 {
                                 k_,
                                 dev_ctx_.stream());
 
-    // PrintMatrix(input->data<T>(), m_ * k_, name + " input [float]");
-    // PrintMatrix(input_tmp->data<int8_t>(), m_ * k_, name + " input [int]");
-    VLOG(1) << "[DEBUG] GEMM";
-    VLOG(1) << "input_tmp " << input_tmp->numel() << " dtype "
-            << input_tmp->dtype();
-    VLOG(1) << "weight_tmp " << weight->numel() << " dtype " << weight->dtype();
-    VLOG(1) << "output_tmp " << output->numel() << " dtype " << output->dtype();
-
     helpers_[0]->GEMM(input_tmp->data<int8_t>(),
                       weight->data<int8_t>(),
                       output->data<int32_t>(),
                       dev_ctx_.stream());
-    // PrintMatrix(output->data<int32_t>(), m_ * n_, name + " output [int]");
   }
 
  private:

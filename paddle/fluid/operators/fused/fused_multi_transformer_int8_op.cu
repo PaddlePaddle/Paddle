@@ -26,11 +26,6 @@ template <typename T>
 class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    if (std::is_same<T, float>::value) {
-      VLOG(1) << "T is float";
-    } else if (std::is_same<T, platform::float16>::value) {
-      VLOG(1) << "T is half";
-    }
     using U = LayerNormParamType<T>;
     auto place = ctx.GetPlace();
     auto &dev_ctx = ctx.cuda_device_context();
@@ -271,8 +266,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                    &qkv_out,
                                    qkv_in_scale[i],
                                    qkv_out_scale,
-                                   i * qkv_out_scale_n,
-                                   "qkv_" + std::to_string(i));
+                                   i * qkv_out_scale_n);
       } else if (!pre_layer_norm) {
         qkv_compute.ComputeForward(qkv_weights[i],
                                    buf1,
@@ -283,8 +277,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                    &qkv_out,
                                    qkv_in_scale[i],
                                    qkv_out_scale,
-                                   i * qkv_out_scale_n,
-                                   "qkv_" + std::to_string(i));
+                                   i * qkv_out_scale_n);
       } else {
         qkv_compute.ComputeForwardINT8ToT(qkv_weights[i],
                                           &input_workspace,
@@ -293,8 +286,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                           &output_workspace,
                                           &qkv_out,
                                           qkv_out_scale,
-                                          i * qkv_out_scale_n,
-                                          "qkv_" + std::to_string(i));
+                                          i * qkv_out_scale_n);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step2";
@@ -379,15 +371,13 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 #endif
 
       if (pre_layer_norm) {
-        out_linear_compute.ComputeForwardTToINT8(
-            out_linear_weights[i],
-            out_linear_in_scale[i],
-            &fmha_out,
-            &input_workspace,
-            nullptr,
-            &output_workspace,
-            nullptr,
-            "out linear_" + std::to_string(i));
+        out_linear_compute.ComputeForwardTToINT8(out_linear_weights[i],
+                                                 out_linear_in_scale[i],
+                                                 &fmha_out,
+                                                 &input_workspace,
+                                                 nullptr,
+                                                 &output_workspace,
+                                                 nullptr);
         AllReduce<int32_t>(output_workspace,
                            ring_id,
                            bsz * seq_len * num_head * dim_head,
@@ -402,8 +392,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                           nullptr,
                                           out_linear_in_scale[i],
                                           out_linear_out_scale,
-                                          i * out_linear_out_scale_n,
-                                          "out linear_" + std::to_string(i));
+                                          i * out_linear_out_scale_n);
         AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
@@ -458,13 +447,11 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
       // step6. ffn matmul1
 
       if (pre_layer_norm) {
-        ffn1_linear_compute.ComputeForwardINT8ToINT8(
-            ffn1_weights[i],
-            &input_workspace,
-            nullptr,
-            &output_workspace,
-            nullptr,
-            "ffn1_" + std::to_string(i));
+        ffn1_linear_compute.ComputeForwardINT8ToINT8(ffn1_weights[i],
+                                                     &input_workspace,
+                                                     nullptr,
+                                                     &output_workspace,
+                                                     nullptr);
       } else {
         ffn1_linear_compute.ComputeForward(ffn1_weights[i],
                                            buf1,
@@ -475,8 +462,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                            nullptr,
                                            ffn1_in_scale[i],
                                            ffn1_out_scale,
-                                           i * ffn1_out_scale_n,
-                                           "ffn1_" + std::to_string(i));
+                                           i * ffn1_out_scale_n);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step6";
@@ -509,13 +495,11 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
       // step8. ffn matmul2
       if (pre_layer_norm) {
-        ffn2_linear_compute.ComputeForwardINT8ToINT8(
-            ffn2_weights[i],
-            &input_workspace,
-            nullptr,
-            &output_workspace,
-            nullptr,
-            "ffn2_" + std::to_string(i));
+        ffn2_linear_compute.ComputeForwardINT8ToINT8(ffn2_weights[i],
+                                                     &input_workspace,
+                                                     nullptr,
+                                                     &output_workspace,
+                                                     nullptr);
       } else {
         ffn2_linear_compute.ComputeForward(ffn2_weights[i],
                                            &ffn1_dropout_out,
@@ -526,8 +510,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                            nullptr,
                                            ffn2_in_scale[i],
                                            ffn2_out_scale,
-                                           i * ffn2_out_scale_n,
-                                           "ffn2_" + std::to_string(i));
+                                           i * ffn2_out_scale_n);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step8.0";
@@ -598,7 +581,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 #endif
       if (pre_layer_norm) {
         x_data = buf1->data<T>();
-        // std::swap(buf0, buf1);
       }
     }
   }

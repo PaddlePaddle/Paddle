@@ -31,12 +31,23 @@ class CublasLtHelper {
     cublasStatus_t status;
     // handle and matmul desc
     status = dyl::cublasLtCreate(&handle_);
+#if CUBLAS_VER_MAJOR < 11
+    cudaDataType_t cudaComputeType = CUDA_R_32I;
+#else
+    cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32I;
+#endif
+
     PADDLE_ENFORCE_EQ(status,
                       CUBLAS_STATUS_SUCCESS,
                       platform::errors::Fatal("cublasLtMatrixLayoutCreate"));
 
+#if CUBLAS_VER_MAJOR < 11
+    status = dyl::cublasLtMatmulDescCreate(&matmul_desc_, cudaComputeType);
+#else
     status = dyl::cublasLtMatmulDescCreate(
-        &matmul_desc_, CUBLAS_COMPUTE_32I, CUDA_R_32I);
+        &matmul_desc_, cudaComputeType, CUDA_R_32I);
+#endif
+
     PADDLE_ENFORCE_EQ(status,
                       CUBLAS_STATUS_SUCCESS,
                       platform::errors::Fatal("cublasLtMatmulDescCreate"));
@@ -95,7 +106,7 @@ class CublasLtHelper {
 #endif
 
     dyl::cublasLtMatmulAlgoInit(handle_,
-                                CUBLAS_COMPUTE_32I,
+                                cudaComputeType,
                                 CUDA_R_32I,
                                 CUDA_R_8I,
                                 CUDA_R_8I,
@@ -145,8 +156,6 @@ class CublasLtHelper {
     PADDLE_ENFORCE_EQ(status,
                       CUBLAS_STATUS_SUCCESS,
                       platform::errors::Fatal("cublasLtMatmul"));
-    VLOG(1) << "gemm finsh";
-    // PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
   }
 
  private:
