@@ -176,9 +176,6 @@ struct Argument {
   // The cache capacity of different input shapes for mkldnn.
   DECL_ARGUMENT_FIELD(mkldnn_cache_capacity, MkldnnCacheCapacity, int);
 
-  // scale file path for quantized model
-  DECL_ARGUMENT_FIELD(scale_file_path, ScaleFilePath, std::string);
-
   // Calibration file path of new format quantize model, used by Paddle-TRT and MKLDNN backend
   DECL_ARGUMENT_FIELD(calibration_file_path, CalibrationFilePath, std::string);
 
