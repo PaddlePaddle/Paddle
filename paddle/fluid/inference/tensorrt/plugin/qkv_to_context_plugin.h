@@ -51,12 +51,14 @@ namespace plugin {
 class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit QkvToContextPluginDynamic(
-      int hidden, int head_number, int head_size, float scale, bool with_fp16, bool has_biasqk_mask)
+      int hidden, int head_number, int head_size, float scale, bool with_fp16, bool has_biasqk_mask,int window_number, bool with_fastertransformer_window_mha)
       : hidden_(hidden),
         head_number_(head_number),
         head_size_(head_size),
         scale_(scale),
-        has_biasqk_mask_(has_biasqk_mask) {
+        has_biasqk_mask_(has_biasqk_mask),
+        window_number_(window_number),
+        with_fastertransformer_window_mha_(with_fastertransformer_window_mha) {
     with_fp16_ = with_fp16;
   }
   QkvToContextPluginDynamic(void const* serial_data, size_t serial_length) {
@@ -66,12 +68,16 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &scale_);
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
     DeserializeValue(&serial_data, &serial_length, &has_biasqk_mask_);
+    DeserializeValue(&serial_data, &serial_length, &window_number_);
+    DeserializeValue(&serial_data, &serial_length, &with_fastertransformer_window_mha_);
 
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
     auto * ptr = new QkvToContextPluginDynamic(
-        hidden_, head_number_, head_size_, scale_, with_fp16_, has_biasqk_mask_);
+        hidden_, head_number_, head_size_, scale_, with_fp16_, has_biasqk_mask_, window_number_,with_fastertransformer_window_mha_);
     ptr->ft_dispatcher_fp16_num_head_=ft_dispatcher_fp16_num_head_;
+    ptr->mask_half_=mask_half_;
+    ptr->fake_qk_bias_=fake_qk_bias_;
     return ptr;
   }
 
@@ -84,7 +90,8 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return SerializedSize(hidden_) + SerializedSize(head_number_) +
            SerializedSize(head_size_) + SerializedSize(scale_) +
-           SerializedSize(with_fp16_) + SerializedSize(has_biasqk_mask_);  
+           SerializedSize(with_fp16_) + SerializedSize(has_biasqk_mask_) +
+           SerializedSize(window_number_) + SerializedSize(with_fastertransformer_window_mha_);  
   }
   void serialize(void* buffer) const TRT_NOEXCEPT override {
     SerializeValue(&buffer, hidden_);
@@ -93,6 +100,8 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, scale_);
     SerializeValue(&buffer, with_fp16_);
     SerializeValue(&buffer, has_biasqk_mask_);
+    SerializeValue(&buffer, window_number_);
+    SerializeValue(&buffer, with_fastertransformer_window_mha_);
   }
 
   nvinfer1::DimsExprs getOutputDimensions(int output_index,
@@ -116,6 +125,23 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
                           const nvinfer1::PluginTensorDesc* outputs,
                           int nb_outputs) const TRT_NOEXCEPT override {
     return 0;
+    // auto input_dims = inputs[0].dims;
+    // const int batch = input_dims.d[0]; // batch = for swin, batch in input = image_batch * window_number
+    // // printf("@@@ in get worksapce, batch :%d \r\n", batch);
+    // int seq_len = input_dims.d[1];
+    // const int padding_num=1;
+    // if(with_fp16_){
+    //   const int padding_num=8;
+    // }
+    // seq_len = (seq_len + padding_num - 1) / padding_num * padding_num;
+    // const int input_num = batch * seq_len * 3 * head_number_ * head_size_;
+    // const size_t biasqk_ptr_size = batch * head_number_ * seq_len * seq_len;
+    // const size_t qk_temp_ptr_size = biasqk_ptr_size + input_num;
+    // if(with_fp16_){
+    //   return sizeof(half)*(qk_temp_ptr_size);
+    // } else {
+    //   return sizeof(float)*(qk_temp_ptr_size);
+    // }
   }
 
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
@@ -142,6 +168,8 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   bool has_biasqk_mask_=false;
   std::unique_ptr<fastertransformer::MHARunner> ft_dispatcher_fp16_;
   int ft_dispatcher_fp16_num_head_=-1;
+  int window_number_;
+  bool with_fastertransformer_window_mha_;
 };
 
 class QkvToContextPluginDynamicCreator : public nvinfer1::IPluginCreator {

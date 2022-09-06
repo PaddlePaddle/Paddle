@@ -91,8 +91,8 @@ void SwinAttention1FusePass::ApplyImpl(ir::Graph* graph) const {
     desc.SetInput("Input", {reshape_i20_out->Name()});
     //get window num here for swin's window attention
     std::vector<int64_t> window_num_tranpose_out_shape=transpose_i00_out->Var()->GetShape();
-    int64_t window_num = window_num_tranpose_out_shape[1]*window_num_tranpose_out_shape[2];
-    printf("@@@@ window num :%ld \r\n", window_num);
+    int window_num = window_num_tranpose_out_shape[1]*window_num_tranpose_out_shape[2];
+    printf("@@@@ window num :%d \r\n", window_num);
     auto* weight_qkv_tensor =
         scope->FindVar(matmul_00_in_y->Name())->GetMutable<LoDTensor>();
     auto weight_qkv_dims = phi::make_ddim(
@@ -119,7 +119,7 @@ void SwinAttention1FusePass::ApplyImpl(ir::Graph* graph) const {
     desc.SetInput("W", {matmul_00_in_y->Name()});
     desc.SetInput("Bias", {elementwise_10_in_y->Name()});
     desc.SetInput("BiasQK", {elementwise_70_in_y->Name()});
-    desc.SetAttr("window_num",window_num);
+    desc.SetAttr("window_number",window_num);
     Node* biaskQK_mask_node = nullptr; 
     if(has_biasQK_mask){
         desc.SetInput("BiasQK_mask",{biasQK_mask_name});
