@@ -43,6 +43,14 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
             << argument->scale_file_path();
     std::ifstream out_scale_file(argument->scale_file_path());
     std::string one_line;
+
+    PADDLE_ENFORCE_EQ(
+        static_cast<bool>(out_scale_file.is_open()),
+        true,
+        platform::errors::NotFound(
+            "Cannot open file %s, please confirm whether the scale_file_path is right.",
+            argument->scale_file_path()));
+
     while (getline(out_scale_file, one_line)) {
       if (one_line.find(" ") != one_line.npos) {
         auto pos = one_line.find(" ");

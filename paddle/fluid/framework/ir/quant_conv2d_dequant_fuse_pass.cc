@@ -441,6 +441,8 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
   patterns::DequantOpFuse pattern(gpd.mutable_pattern(), pattern_name);
   pattern(quantized_op_input, quantized_op_type, dequant_type, weight_name);
 
+  std::unordered_set<Node *> quantized_op_weight_node_set;
+
   // Create new op desc
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -507,6 +509,9 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
     const auto& w_dims = weight_tensor->dims();
     float* quantized_weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());
+
+  if (!quantized_op_weight_node_set.count(quantized_op_weight_node)) {
+    quantized_op_weight_node_set.insert(quantized_op_weight_node);
     // If quantized op is fc, weight scale size = 1;
     // If quantized op is conv2d, weight scale size = weight dims[0]
     // If quantized op is conv2d_transpose, weight scale size = weight dims[1]
@@ -622,7 +627,7 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported quantized op type: %s", quantized_op_type));
     }
-
+  }
     // create new op_desc
     auto base_op_desc = *quantized_op_node->Op()->Proto();
     std::string new_input = quantized_op_input_node->Name();

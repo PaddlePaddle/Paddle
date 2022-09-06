@@ -199,7 +199,7 @@ class OpConverter {
     std::vector<std::string> inputs_name = op_desc.InputNames();
     std::vector<std::string> outputs_name = op_desc.OutputNames();
 
-    if (op.type() == "conv2d" || 1) {
+    if (op.type() == "conv2d" || op.type() == "conv2d_fusion" || 1) {
       for (size_t i = 0; i < inputs_name.size(); i++) {
         auto attr_name = inputs_name[i] + "_0";
         if (op_desc.HasAttr(attr_name)) {

@@ -163,6 +163,7 @@ void TensorRTEngine::FreezeNetwork() {
 
 #if IS_TRT_VERSION_GE(5122)
       auto layer_int8_fallback = [&](nvinfer1::ILayer *layer) -> bool {
+        return false;
         if (layer->getType() == nvinfer1::LayerType::kSHAPE) {
           return false;
         }
