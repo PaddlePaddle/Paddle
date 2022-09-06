@@ -2256,7 +2256,7 @@ bool OpTeller::HasUnsupportAttrVar(const framework::OpDesc& desc) const {
   const std::string op_type = desc.Type();
   auto has_attr_var = [](const std::string& attr_name) {
     // If Attribute is Variable(s), HasAttr() will return False
-    return !op_desc.HasAttr(attr_name, /*with_attr_var=*/false);
+    return !desc.HasAttr(attr_name, /*with_attr_var=*/false);
   };
   std::unordered_map<std::string, std::vector<std::string>> attrs_info = {
       {"dropout", {"dropout_prob"}},
