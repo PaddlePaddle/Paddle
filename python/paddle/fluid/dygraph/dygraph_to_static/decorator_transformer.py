@@ -66,7 +66,7 @@ class DecoratorTransformer(BaseTransformer):
                 elif hasattr(deco.func, 'attr'):
                     deco_name = deco.func.attr
                 else:
-                    deco_name = deco.fun.id
+                    deco_name = deco.func.id
             else:
                 deco_name = deco.id
             if deco_name in IGNORE_NAMES:
