@@ -276,32 +276,36 @@ struct SystemElemType<16> {
   using type = float4;
 };
 
-template <typename T, int tile_long, int tile_short>
+template <typename T, int tile_long, int tile_short, typename IDX_T = int>
 void LaunchNarrowDims2TransposeKernel(const phi::GPUContext& d,
                                       int tile_size_i,
                                       int tile_size_j,
-                                      int total_tiles_count,
+                                      IDX_T total_tiles_count,
                                       const T* input,
                                       const Dim3& input_dims,
                                       T* output) {
   constexpr int NumThreads = tile_long;
   if (tile_size_i <= tile_long && tile_size_j <= tile_short) {
-    TilingSwapDim1And2<T, NumThreads, tile_long, tile_short>
+    TilingSwapDim1And2<T, NumThreads, tile_long, tile_short, IDX_T>
         <<<total_tiles_count, NumThreads, 0, d.stream()>>>(
             input, input_dims, output);
   } else {
-    TilingSwapDim1And2<T, NumThreads, tile_short, tile_long>
+    TilingSwapDim1And2<T, NumThreads, tile_short, tile_long, IDX_T>
         <<<total_tiles_count, NumThreads, 0, d.stream()>>>(
             input, input_dims, output);
   }
 }
 
-template <typename T, int tile_long, int tile_short, typename dummy = void>
+template <typename T,
+          int tile_long,
+          int tile_short,
+          typename IDX_T = int,
+          typename dummy = void>
 struct NarrowDims2TransposeDispatch {
   static void DoTranspose(const phi::GPUContext& d,
                           int tile_size_i,
                           int tile_size_j,
-                          int total_tiles_count,
+                          IDX_T total_tiles_count,
                           const T* input,
                           const Dim3& input_dims,
                           T* output) {
@@ -317,7 +321,7 @@ struct NarrowDims2TransposeDispatch {
                              std::min(tile_size_i, tile_size_j) <= tile_short;
 
     if (request_satisfied) {
-      LaunchNarrowDims2TransposeKernel<T, tile_long, tile_short>(
+      LaunchNarrowDims2TransposeKernel<T, tile_long, tile_short, IDX_T>(
           d,
           tile_size_i,
           tile_size_j,
@@ -332,40 +336,41 @@ struct NarrowDims2TransposeDispatch {
         std::max(tile_size_i, tile_size_j) > tile_long;
 
     if (long_side_request_not_satisfied) {
-      NarrowDims2TransposeDispatch<T, tile_long * 2, tile_short>::DoTranspose(
-          d,
-          tile_size_i,
-          tile_size_j,
-          total_tiles_count,
-          input,
-          input_dims,
-          output);
+      NarrowDims2TransposeDispatch<T, tile_long * 2, tile_short, IDX_T>::
+          DoTranspose(d,
+                      tile_size_i,
+                      tile_size_j,
+                      total_tiles_count,
+                      input,
+                      input_dims,
+                      output);
     } else {
-      NarrowDims2TransposeDispatch<T, tile_long, tile_short + 1>::DoTranspose(
-          d,
-          tile_size_i,
-          tile_size_j,
-          total_tiles_count,
-          input,
-          input_dims,
-          output);
+      NarrowDims2TransposeDispatch<T, tile_long, tile_short + 1, IDX_T>::
+          DoTranspose(d,
+                      tile_size_i,
+                      tile_size_j,
+                      total_tiles_count,
+                      input,
+                      input_dims,
+                      output);
     }
   }
 };
 
 // If Not long tile size, goto this function when compile.
-template <typename T, int tile_long, int tile_short>
+template <typename T, int tile_long, int tile_short, typename IDX_T>
 struct NarrowDims2TransposeDispatch<
     T,
     tile_long,
     tile_short,
+    IDX_T,
     typename std::enable_if<CheckNonLongTileSize(
                                 tile_long, tile_short, sizeof(T)),
                             void>::type> {
   static void DoTranspose(const phi::GPUContext& d,
                           int tile_size_i,
                           int tile_size_j,
-                          int total_tiles_count,
+                          IDX_T total_tiles_count,
                           const T* input,
                           const Dim3& input_dims,
                           T* output) {
@@ -381,7 +386,7 @@ struct NarrowDims2TransposeDispatch<
                              std::min(tile_size_i, tile_size_j) <= tile_short;
 
     if (request_satisfied) {
-      LaunchNarrowDims2TransposeKernel<T, tile_long, tile_short>(
+      LaunchNarrowDims2TransposeKernel<T, tile_long, tile_short, IDX_T>(
           d,
           tile_size_i,
           tile_size_j,
@@ -392,29 +397,30 @@ struct NarrowDims2TransposeDispatch<
       return;
     }
 
-    NarrowDims2TransposeDispatch<T, tile_long, tile_short + 1>::DoTranspose(
-        d,
-        tile_size_i,
-        tile_size_j,
-        total_tiles_count,
-        input,
-        input_dims,
-        output);
+    NarrowDims2TransposeDispatch<T, tile_long, tile_short + 1, IDX_T>::
+        DoTranspose(d,
+                    tile_size_i,
+                    tile_size_j,
+                    total_tiles_count,
+                    input,
+                    input_dims,
+                    output);
   }
 };
 
 // If long tile size, goto this function when compile.
-template <typename T, int tile_long, int tile_short>
+template <typename T, int tile_long, int tile_short, typename IDX_T>
 struct NarrowDims2TransposeDispatch<
     T,
     tile_long,
     tile_short,
+    IDX_T,
     typename std::enable_if<CheckLongTileSize(tile_long, tile_short, sizeof(T)),
                             void>::type> {
   static void DoTranspose(const phi::GPUContext& d,
                           int tile_size_i,
                           int tile_size_j,
-                          int total_tiles_count,
+                          IDX_T total_tiles_count,
                           const T* input,
                           const Dim3& input_dims,
                           T* output) {
@@ -426,7 +432,7 @@ struct NarrowDims2TransposeDispatch<
             " but received is:%d.",
             tile_long));
 
-    LaunchNarrowDims2TransposeKernel<T, tile_long, tile_short>(
+    LaunchNarrowDims2TransposeKernel<T, tile_long, tile_short, IDX_T>(
         d,
         tile_size_i,
         tile_size_j,
@@ -515,7 +521,7 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
   // Suppose T can be replaced by system builtin types
   using ElemType = typename SystemElemType<sizeof(T)>::type;
 
-  NarrowDims2TransposeDispatch<ElemType, 32, 2>::DoTranspose(
+  NarrowDims2TransposeDispatch<ElemType, 32, 2, IDX_T>::DoTranspose(
       d,
       select_tile_size_i,
       select_tile_size_j,
