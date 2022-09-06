@@ -286,15 +286,15 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                    i * qkv_out_scale_n,
                                    "qkv_" + std::to_string(i));
       } else {
-        qkv_compute.ComputeForwardWoQ(qkv_weights[i],
-                                      &input_workspace,
-                                      bias,
-                                      &qkv_out,
-                                      &output_workspace,
-                                      &qkv_out,
-                                      qkv_out_scale,
-                                      i * qkv_out_scale_n,
-                                      "qkv_" + std::to_string(i));
+        qkv_compute.ComputeForwardINT8ToT(qkv_weights[i],
+                                          &input_workspace,
+                                          bias,
+                                          &qkv_out,
+                                          &output_workspace,
+                                          &qkv_out,
+                                          qkv_out_scale,
+                                          i * qkv_out_scale_n,
+                                          "qkv_" + std::to_string(i));
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step2";
@@ -379,7 +379,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 #endif
 
       if (pre_layer_norm) {
-        out_linear_compute.ComputeForwardWoDQ(
+        out_linear_compute.ComputeForwardTToINT8(
             out_linear_weights[i],
             out_linear_in_scale[i],
             &fmha_out,
@@ -458,12 +458,13 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
       // step6. ffn matmul1
 
       if (pre_layer_norm) {
-        ffn1_linear_compute.ComputeForwardWoQDQ(ffn1_weights[i],
-                                                &input_workspace,
-                                                nullptr,
-                                                &output_workspace,
-                                                nullptr,
-                                                "ffn1_" + std::to_string(i));
+        ffn1_linear_compute.ComputeForwardINT8ToINT8(
+            ffn1_weights[i],
+            &input_workspace,
+            nullptr,
+            &output_workspace,
+            nullptr,
+            "ffn1_" + std::to_string(i));
       } else {
         ffn1_linear_compute.ComputeForward(ffn1_weights[i],
                                            buf1,
@@ -508,12 +509,13 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
       // step8. ffn matmul2
       if (pre_layer_norm) {
-        ffn2_linear_compute.ComputeForwardWoQDQ(ffn2_weights[i],
-                                                &input_workspace,
-                                                nullptr,
-                                                &output_workspace,
-                                                nullptr,
-                                                "ffn2_" + std::to_string(i));
+        ffn2_linear_compute.ComputeForwardINT8ToINT8(
+            ffn2_weights[i],
+            &input_workspace,
+            nullptr,
+            &output_workspace,
+            nullptr,
+            "ffn2_" + std::to_string(i));
       } else {
         ffn2_linear_compute.ComputeForward(ffn2_weights[i],
                                            &ffn1_dropout_out,

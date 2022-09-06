@@ -25,13 +25,13 @@ template <typename T, typename Context>
 void ReduceMeanGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& out_grad,
-                          const std::vector<int64_t>& dims,
+                          const IntArray& dims,
                           bool keep_dim,
                           bool reduce_all,
                           DenseTensor* x_grad) {
   int dim_size = x.dims().size();
   std::vector<int> reduce_dims =
-      funcs::details::GetReduceDim(dims, dim_size, reduce_all);
+      funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
   int reduce_num = 1;
   for (auto i : reduce_dims) {
     reduce_num *= (x.dims())[i];
@@ -41,7 +41,7 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
       dev_ctx,
       x,
       out_grad,
-      dims,
+      dims.GetData(),
       keep_dim,
       reduce_all,
       x_grad,

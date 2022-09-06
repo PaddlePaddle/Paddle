@@ -685,7 +685,7 @@ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_quant_dequant_kernel(
     T *__restrict__ residual_out_ptr,
     int8_t *__restrict__ y_ptr,
     const float *__restrict__ quant_out_scale_ptr,
-    const int quant_layer_offset,
+    const int quant_out_scale_offset,
     const float quant_in_scale_data) {
   __shared__ U smem[WARPS_M * WARPS_N];
   using Vec = phi::AlignedVector<T, VecSize>;
@@ -745,7 +745,7 @@ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_quant_dequant_kernel(
       phi::Load<T, VecSize>(residual_ptr + row * ELTS_PER_ROW + col * VecSize,
                             &residual[it]);
       phi::Load<float, VecSize>(
-          quant_out_scale_ptr + quant_layer_offset + col * VecSize,
+          quant_out_scale_ptr + quant_out_scale_offset + col * VecSize,
           &quant_out_scale[it]);
       col += THREADS_PER_ROW;  // 32
     }
@@ -1152,7 +1152,7 @@ void LaunchLayernormResidualDropoutBiasQDQ(
     LayerNormParamType<T> *var,
     const phi::GPUContext &ctx,
     const float *quant_out_scale_data,
-    const int quant_layer_offset,
+    const int quant_out_scale_offset,
     const float quant_in_scale_data) {
   VLOG(1) << "cols=" << cols;
   // dropout_prob == 1.0f
@@ -1229,7 +1229,7 @@ void LaunchLayernormResidualDropoutBiasQDQ(
                                                      dst,                     \
                                                      layernorm_dst,           \
                                                      quant_out_scale_data,    \
-                                                     quant_layer_offset,      \
+                                                     quant_out_scale_offset,  \
                                                      quant_in_scale_data);    \
   } break
 

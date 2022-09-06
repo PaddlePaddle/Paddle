@@ -14,7 +14,7 @@
 
 __all__ = []
 
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import dygraph_only
 
 
@@ -45,7 +45,7 @@ def relu(x, name=None):
             out = paddle.incubate.sparse.nn.functional.relu(sparse_x)
             # [0., 0., 1.]
     """
-    return _C_ops.final_state_sparse_relu(x)
+    return _C_ops.sparse_relu(x)
 
 
 @dygraph_only
@@ -101,7 +101,7 @@ def softmax(x, axis=-1, name=None):
             #                1.        ])
     
     """
-    return _C_ops.final_state_sparse_softmax(x, axis)
+    return _C_ops.sparse_softmax(x, axis)
 
 
 @dygraph_only
@@ -130,7 +130,7 @@ def relu6(x, name=None):
             sparse_x = dense_x.to_sparse_coo(1)
             out = paddle.incubate.sparse.nn.functional.relu6(sparse_x)
     """
-    return _C_ops.final_state_sparse_relu6(x, 6.0)
+    return _C_ops.sparse_relu6(x, 6.0)
 
 
 @dygraph_only
@@ -166,4 +166,4 @@ def leaky_relu(x, negative_slope=0.01, name=None):
             sparse_x = dense_x.to_sparse_coo(1)
             out = paddle.incubate.sparse.nn.functional.leaky_relu(sparse_x, 0.5)
     """
-    return _C_ops.final_state_sparse_leaky_relu(x, negative_slope)
+    return _C_ops.sparse_leaky_relu(x, negative_slope)
