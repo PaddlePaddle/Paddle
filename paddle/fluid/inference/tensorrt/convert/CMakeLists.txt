@@ -23,6 +23,7 @@ list(
   multihead_matmul_op.cc
   shuffle_channel_op.cc
   swish_op.cc
+  silu_op.cc
   instance_norm_op.cc
   stack_op.cc
   transpose_op.cc
