@@ -21,7 +21,7 @@ namespace egr {
 using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
 /**
  *
- * AutogradMeta is what record the backward info for tensor. When we run
+ * AutogradMeta is what records the backward info for tensor. When we run
  * computation graph eagerly, we can not build a static paddle program like
  * static mode do, so we need a new method to record forward info to trace
  * backward when we finish all forward computation. This require our
