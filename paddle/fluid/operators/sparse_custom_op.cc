@@ -44,9 +44,10 @@ class SparseCooTensorOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 };
 
-DECLARE_INFER_SHAPE_FUNCTOR(sparse_coo_tensor,
-                            SparseCooTensorInferShapeFunctor,
-                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(
+    sparse_coo_tensor,
+    SparseCooTensorInferShapeFunctor,
+    PD_INFER_META(phi::sparse::SparseCooTensorInferMeta));
 
 class ValuesCooOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -108,6 +109,26 @@ DECLARE_INFER_SHAPE_FUNCTOR(relu_coo,
                             ReluCooInferShapeFunctor,
                             PD_INFER_META(phi::sparse::UnchangedInferMeta));
 
+class ShapeCooOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of relu_coo op.");
+    AddOutput("Out", "(Tensor), output 0 of relu_coo op.");
+    AddComment(R"DOC(
+TODO: Documentation of relu_coo op.
+)DOC");
+  }
+};
+
+class ShapeCooOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(shape_coo,
+                            ShapeCooInferShapeFunctor,
+                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+
 class Conv3dCooOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -122,7 +143,8 @@ class Conv3dCooOpMaker : public framework::OpProtoAndCheckerMaker {
                               "(vector<int>), attribute 2 for conv3d_coo op.");
     AddAttr<int>("groups", "(int), attribute 3 for conv3d_coo op.");
     AddAttr<bool>("subm", "(bool), attribute 4 for conv3d_coo op.");
-    AddAttr<std::string>("key", "(string), attribute 5 for conv3d_coo op.");
+    AddAttr<std::string>("key", "(string), attribute 5 for conv3d_coo op.")
+        .SetDefault("");
     AddComment(R"DOC(
 TODO: Documentation of conv3d_coo op.
 )DOC");
@@ -170,6 +192,11 @@ REGISTER_OPERATOR(relu_coo,
                   // ops::TraceGradOpMaker<paddle::framework::OpDesc>,
                   // ops::TraceGradOpMaker<paddle::imperative::OpBase>,
                   ops::ReluCooInferShapeFunctor);
+
+REGISTER_OPERATOR(shape_coo,
+                  ops::ShapeCooOp,
+                  ops::ShapeCooOpMaker,
+                  ops::ShapeCooInferShapeFunctor);
 
 REGISTER_OPERATOR(conv3d_coo,
                   ops::Conv3dCooOp,

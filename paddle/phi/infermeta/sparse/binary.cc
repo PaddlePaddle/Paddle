@@ -44,12 +44,17 @@ inline void GetOutShape(const DDim& x_dims,
 }
 
 void Conv3dInferMeta(const MetaTensor& x,
-                     const std::vector<int>& kernel_sizes,
+                     const MetaTensor& kenrel,
+                     // const std::vector<int>& kernel_sizes,
                      const std::vector<int>& paddings,
                      const std::vector<int>& dilations,
                      const std::vector<int>& strides,
+                     const int groups,
                      const bool subm,
-                     MetaTensor* out) {
+                     const std::string& key,
+                     MetaTensor* out,
+                     MetaTensor* rulebook,
+                     MetaTensor* counter) {
   const auto& x_dims = x.dims();
   DDim out_dims = {1, 1, 1, 1, 1};
 

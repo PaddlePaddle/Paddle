@@ -23,7 +23,10 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 // Common InferMeta Functions of SparseTensor for unary operators:
-void UnchangedInferMeta(const MetaTensor& x_meta, MetaTensor* out);
+void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
+void SparseCooTensorInferMeta(const MetaTensor& x,
+                              const IntArray& dense_shape,
+                              MetaTensor* out);
 
 }  // namespace sparse
 }  // namespace phi

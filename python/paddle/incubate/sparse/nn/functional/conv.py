@@ -33,7 +33,7 @@ def _conv3d(x,
             key=None,
             data_format="NDHWC",
             name=None):
-    assert in_dynamic_mode(), "Currently, only support dynamic mode"
+    #assert in_dynamic_mode(), "Currently, only support dynamic mode"
     assert groups == 1, "Currently, only support groups=1"
 
     dims = 3
@@ -82,13 +82,13 @@ def _conv3d(x,
             'paddings': padding,
             'dilations': dilation,
             'strides': stride,
-            'groups': group,
+            'groups': groups,
             'subm': subm,
             'key': key
         }
-        helper = LayerHelper(op_type, **locals())
-        rulebook = helper.create_variable_for_type_inference(paddle.int32)
-        counter = helper.create_variable_for_type_inference(paddle.int32)
+        helper = LayerHelper('conv3d_coo', **locals())
+        rulebook = helper.create_variable_for_type_inference(dtype='int32')
+        counter = helper.create_variable_for_type_inference(dtype='int32')
         pre_bias = helper.create_sparse_variable_for_type_inference(x.dtype)
         outputs = {"Out": pre_bias}
         helper.append_op(type='conv3d_coo',

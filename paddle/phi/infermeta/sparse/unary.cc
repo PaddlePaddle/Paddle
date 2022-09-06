@@ -25,5 +25,13 @@ void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void SparseCooTensorInferMeta(const MetaTensor& x,
+                              const IntArray& dense_shape,
+                              MetaTensor* out) {
+  out->set_dims(phi::make_ddim(dense_shape.GetData()));
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
 }  // namespace sparse
 }  // namespace phi
