@@ -79,7 +79,7 @@ constexpr bool CheckNonLongTileSize(int tile_long, int tile_short, int size_T) {
 
 // Use SM to do data transfer, load a tile into SM then store out.
 // All tile read and write are colascing, so can speedup memory copy
-template <typename T, int NumThreads, int TileX, int TileY>
+template <typename T, int NumThreads, int TileX, int TileY, typename ID_T = int>
 __global__ void TilingSwapDim1And2(const T* __restrict__ input,
                                    Dim3 input_dims,
                                    T* __restrict__ output) {
@@ -116,7 +116,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
 
   // Converts block idx to tile index, each block process a tile
   Index3 input_block_tile_index =
-      ConvertTensorIndex(blockIdx.x, tile_aligned_input_dim);
+      ConvertTensorIndex<ID_T>(blockIdx.x, tile_aligned_input_dim);
 
   // Compute real index align to tile:0, 32, 64...
   Index3 block_tile_index_in_input = {
@@ -126,11 +126,11 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
   };
 
   // Compute block flat index against input dims.
-  int64_t input_origin_block_flat_index =
-      FlatTensorIndex(block_tile_index_in_input, input_dims);
+  ID_T input_origin_block_flat_index =
+      FlatTensorIndex<ID_T>(block_tile_index_in_input, input_dims);
 
   bool full_tile = true;
-  int64_t tile_width = TileY;
+  ID_T tile_width = TileY;
 
   // Last row is not full.
   if (input_block_tile_index[2] == tile_aligned_input_dim[2] - 1) {
@@ -138,22 +138,21 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
     full_tile &= false;
   }
 
-  int64_t tile_height = TileX;
+  ID_T tile_height = TileX;
 
   if (input_block_tile_index[1] == tile_aligned_input_dim[1] - 1) {
     tile_height = input_dims[1] - (tile_aligned_input_dim[1] - 1) * TileX;
     full_tile &= false;
   }
 
-  constexpr int64_t in_effective_thread_num = NumThreads / TileY * TileY;
+  constexpr ID_T in_effective_thread_num = NumThreads / TileY * TileY;
 
   if (x < in_effective_thread_num) {
     // Read a tile from input using block.
     int x_i = x / TileY;
     int x_j = x % TileY;
-    int64_t input_ind =
-        input_origin_block_flat_index + x_i * input_dims[2] + x_j;
-    int64_t input_inc = BlockReadRows * input_dims[2];
+    ID_T input_ind = input_origin_block_flat_index + x_i * input_dims[2] + x_j;
+    ID_T input_inc = BlockReadRows * input_dims[2];
 
     if (full_tile) {
 #pragma unroll
@@ -164,8 +163,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
     } else {
       if (x_j < tile_width) {
 #pragma unroll
-        for (int64_t ind_i = x_i; ind_i < (tile_height);
-             ind_i += BlockReadRows) {
+        for (ID_T ind_i = x_i; ind_i < (tile_height); ind_i += BlockReadRows) {
           tile_sm[ind_i][x_j] = input[input_ind];
           input_ind += input_inc;
         }
@@ -188,17 +186,17 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
       output_block_tile_index[2] * TileX,
   };
 
-  int64_t output_origin_block_flat_index =
-      FlatTensorIndex(block_tile_index_in_output, output_dims);
+  ID_T output_origin_block_flat_index =
+      FlatTensorIndex<ID_T>(block_tile_index_in_output, output_dims);
 
-  constexpr int64_t out_effective_thread_num = NumThreads / TileX * TileX;
+  constexpr ID_T out_effective_thread_num = NumThreads / TileX * TileX;
 
   if (x < out_effective_thread_num) {
     int x_i = x / TileX;
     int x_j = x % TileX;
-    int64_t output_ind =
+    ID_T output_ind =
         output_origin_block_flat_index + x_i * output_dims[2] + x_j;
-    int64_t output_inc = BlockWriteRows * output_dims[2];
+    ID_T output_inc = BlockWriteRows * output_dims[2];
 
     if (full_tile) {
 #pragma unroll
@@ -209,8 +207,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
     } else {
       if (x_j < tile_height) {
 #pragma unroll
-        for (int64_t ind_i = x_i; ind_i < (tile_width);
-             ind_i += BlockWriteRows) {
+        for (ID_T ind_i = x_i; ind_i < (tile_width); ind_i += BlockWriteRows) {
           output[output_ind] = tile_sm[x_j][ind_i];
           output_ind += output_inc;
         }
@@ -436,7 +433,7 @@ struct NarrowDims2TransposeDispatch<
   }
 };
 
-template <typename T, bool conjugate = false>
+template <typename T, bool conjugate = false, typename ID_T = int>
 void SwapDim1And2InNarrow(const phi::GPUContext& d,
                           const T* input,
                           const Dim3& input_dims,
@@ -507,7 +504,7 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
       framework::CeilOrFloor<int, true>(input_dims[2], select_tile_size_j),
   };
 
-  int64_t total_tiles_count = input_dims_aligned[0];
+  ID_T total_tiles_count = input_dims_aligned[0];
   total_tiles_count *= input_dims_aligned[1];
   total_tiles_count *= input_dims_aligned[2];
 
@@ -526,8 +523,8 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
 
 // This is for case that cannot do coalescing read and write.
 // Or input is too small to split into tiles.
-template <typename T, int pos0, int pos1, int pos2>
-__global__ void TransposeSimpleKernel(int64_t nthreads,
+template <typename T, int pos0, int pos1, int pos2, typename ID_T = int>
+__global__ void TransposeSimpleKernel(ID_T nthreads,
                                       const T* __restrict__ input,
                                       Dim3 input_dims,
                                       T* __restrict__ output) {
@@ -536,22 +533,23 @@ __global__ void TransposeSimpleKernel(int64_t nthreads,
   output_dims[pos1] = input_dims[1];
   output_dims[pos2] = input_dims[2];
 
-  CUDA_KERNEL_LOOP_TYPE(output_index, nthreads, int64_t) {
-    Index3 output_tensor_index = ConvertTensorIndex(output_index, output_dims);
+  CUDA_KERNEL_LOOP_TYPE(output_index, nthreads, ID_T) {
+    Index3 output_tensor_index =
+        ConvertTensorIndex<ID_T>(output_index, output_dims);
 
     Index3 input_tensor_index;
     input_tensor_index[0] = output_tensor_index[pos0];
     input_tensor_index[1] = output_tensor_index[pos1];
     input_tensor_index[2] = output_tensor_index[pos2];
 
-    int64_t input_index = FlatTensorIndex(input_tensor_index, input_dims);
+    ID_T input_index = FlatTensorIndex<ID_T>(input_tensor_index, input_dims);
 
     output[output_index] = input[input_index];
   }
 }
 
 // Here suppose convert all tensor to dim3, so just change dim1 and 2.
-template <typename T>
+template <typename T, typename ID_T = int>
 void SendSwapDim1And2InTranspose(const phi::GPUContext& d,
                                  const T* input,
                                  const Dim3& input_dims,
@@ -576,11 +574,11 @@ void SendSwapDim1And2InTranspose(const phi::GPUContext& d,
         framework::CeilOrFloor<int, true>(input_dims[2], kTileSize),
     };
 
-    int64_t total_tiles_count = input_dims_aligned[0];
+    ID_T total_tiles_count = input_dims_aligned[0];
     total_tiles_count *= input_dims_aligned[1];
     total_tiles_count *= input_dims_aligned[2];
 
-    TilingSwapDim1And2<T, kNumThreads, kTileSize, kTileSize>
+    TilingSwapDim1And2<T, kNumThreads, kTileSize, kTileSize, ID_T>
         <<<total_tiles_count, kNumThreads, 0, d.stream()>>>(
             input, input_dims, output);
 
@@ -588,20 +586,21 @@ void SendSwapDim1And2InTranspose(const phi::GPUContext& d,
     // If input shape is like Rect, such as 2X100, use Narrow tile size.
     // It makes things complicated, because need to find a tile can coverr
     // input and also reach best coalescing.
-    SwapDim1And2InNarrow<T>(d, input, input_dims, output, kMinTileSize);
+    SwapDim1And2InNarrow<T, false, ID_T>(
+        d, input, input_dims, output, kMinTileSize);
   } else {
     // If input shape is small, such as 8X8, just do simple copy
-    int64_t total_elements = input_dims[0];
+    ID_T total_elements = input_dims[0];
     total_elements *= input_dims[1];
     total_elements *= input_dims[2];
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(d, total_elements);
-    TransposeSimpleKernel<T, 0, 2, 1>
+    TransposeSimpleKernel<T, 0, 2, 1, ID_T>
         <<<config.block_per_grid.x, config.thread_per_block.x, 0, d.stream()>>>(
             total_elements, input, input_dims, output);
   }
 }
 
-template <typename T>
+template <typename T, typename ID_T = int>
 struct SwapDim1And2InTranspose {
   typedef phi::GPUContext Device;
   void operator()(const Device& d,
@@ -611,11 +610,11 @@ struct SwapDim1And2InTranspose {
     Dim3 input_dims = {static_cast<int>(combined_dims[0]),
                        static_cast<int>(combined_dims[1]),
                        static_cast<int>(combined_dims[2])};
-    SendSwapDim1And2InTranspose<T>(d, in, input_dims, out);
+    SendSwapDim1And2InTranspose<T, ID_T>(d, in, input_dims, out);
   }
 };
 
-template <typename T>
+template <typename T, typename ID_T = int>
 struct SwapDim0And2InTranspose {
   typedef phi::GPUContext Device;
   void operator()(const Device& d,
@@ -626,12 +625,12 @@ struct SwapDim0And2InTranspose {
                        static_cast<int>(combined_dims[1]),
                        static_cast<int>(combined_dims[2])};
 
-    int64_t total_size = combined_dims[0];
+    ID_T total_size = combined_dims[0];
     total_size *= combined_dims[1];
     total_size *= combined_dims[2];
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(d, total_size);
 
-    TransposeSimpleKernel<T, 2, 1, 0>
+    TransposeSimpleKernel<T, 2, 1, 0, ID_T>
         <<<config.block_per_grid.x, config.thread_per_block.x, 0, d.stream()>>>(
             total_size, in, input_dims, out);
   }
@@ -695,7 +694,7 @@ inline void CombineTransposeDim3(const framework::DDim& shape,
   *new_dims = phi::make_ddim(dim_vec);
 }
 
-template <typename T>
+template <typename T, typename ID_T = int>
 struct TransposeSimple {
   static bool run(const phi::GPUContext& ctx,
                   const Tensor& in,
@@ -718,21 +717,24 @@ struct TransposeSimple {
         if (new_perm[0] == 1 && new_perm[1] == 0) {
           // Add the first dimension size as 1.
           new_dim_vec.insert(new_dim_vec.begin(), 1);
-          SwapDim1And2InTranspose<T>()(ctx, in_data, new_dim_vec, out_data);
+          SwapDim1And2InTranspose<T, ID_T>()(
+              ctx, in_data, new_dim_vec, out_data);
           return true;
         }
         break;
       case 3:
         // In this case, suppose we can do coalescing read and write in tile.
         if (new_perm == std::vector<int>({0, 2, 1})) {
-          SwapDim1And2InTranspose<T>()(ctx, in_data, new_dim_vec, out_data);
+          SwapDim1And2InTranspose<T, ID_T>()(
+              ctx, in_data, new_dim_vec, out_data);
           return true;
         } else if (new_perm == std::vector<int>({2, 1, 0})) {
           // Maybe can optimize later, find a way to do coalescing memory copy.
           // But I think it depends on the data size. If span is not large,
           // maybe
           // can do coalescing.
-          SwapDim0And2InTranspose<T>()(ctx, in_data, new_dim_vec, out_data);
+          SwapDim0And2InTranspose<T, ID_T>()(
+              ctx, in_data, new_dim_vec, out_data);
           return true;
         } else {
           return false;
@@ -826,7 +828,7 @@ class IdxAndOffsetHelper {
   __device__ inline T IndexToOffset(const T* index) const {
     T offset = 0;
 #pragma unroll
-    for (int64_t i = 0; i < N - 1; ++i) {
+    for (int i = 0; i < N - 1; ++i) {
       offset += index[i] * index_helper.GetStride(i);
     }
     offset += index[N - 1];
@@ -1168,7 +1170,13 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
                               const std::vector<int32_t>& perm,
                               Tensor* out) {
   const int rank = perm.size();
-  auto ret = TransposeSimple<T>::run(ctx, in, perm, out);
+  int64_t numel = in.numel();
+  bool ret{false};
+  if (numel >= INT32_MAX) {
+    ret = TransposeSimple<T, int64_t>::run(ctx, in, perm, out);
+  } else {
+    ret = TransposeSimple<T>::run(ctx, in, perm, out);
+  }
   if (!ret) {
     auto* tuner =
         phi::autotune::MakeTransposeTuner<T>(TransCompute<phi::GPUContext, T>);
