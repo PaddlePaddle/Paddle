@@ -35,22 +35,6 @@ const char ConditionalOp::kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
 using Executor = framework::Executor;
 using ExecutorPrepareContext = framework::ExecutorPrepareContext;
 
-std::pair<std::shared_ptr<Executor>, std::unique_ptr<ExecutorPrepareContext>>
-ConstruceExecAndCtx(const framework::BlockDesc *block,
-                    const std::vector<std::string> &skip_vars,
-                    const platform::Place &dev_place,
-                    bool force_disable_gc) {
-  auto &pdesc = *block->Program();
-  std::shared_ptr<Executor> exec{new Executor(dev_place)};
-  if (FLAGS_use_mkldnn) exec->EnableMKLDNN(pdesc);
-  auto ctx = exec->Prepare(pdesc, block->ID(), skip_vars, force_disable_gc);
-#ifdef PADDLE_WITH_MKLDNN
-  platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
-  platform::RegisterModelLayout(ctx->ops_, dev_place);
-#endif
-  return std::make_pair(exec, ctx);
-}
-
 class ConditionalBlockOp : public ConditionalOp {
  public:
   ConditionalBlockOp(const std::string &type,
@@ -103,10 +87,14 @@ class ConditionalBlockOp : public ConditionalOp {
       auto &skip_vars =
           Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
       if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {
-        auto exec_and_ctx =
-            ConstruceExecAndCtx(block, skip_vars, dev_place, false);
-        exec = exec_and_ctx.first;
-        ctx = std::move(exec_and_ctx.second);
+        auto &pdesc = *block->Program();
+        exec.reset(new Executor(dev_place));
+        if (FLAGS_use_mkldnn) exec->EnableMKLDNN(pdesc);
+        ctx = exec->Prepare(pdesc, block->ID(), skip_vars, false);
+#ifdef PADDLE_WITH_MKLDNN
+        platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
+        platform::RegisterModelLayout(ctx->ops_, dev_place);
+#endif
       }
       exec->RunPreparedContext(ctx.get(), &cur_scope, false, true, true);
     }
@@ -180,10 +168,14 @@ class ConditionalBlockGradOp : public ConditionalOp {
       VLOG(3) << "Conditional Grad block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
       if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {
-        auto exec_and_ctx =
-            ConstruceExecAndCtx(block, inside_grads, dev_place, false);
-        exec = exec_and_ctx.first;
-        ctx = std::move(exec_and_ctx.second);
+        auto &pdesc = *block->Program();
+        exec.reset(new Executor(dev_place));
+        if (FLAGS_use_mkldnn) exec->EnableMKLDNN(pdesc);
+        ctx = exec->Prepare(pdesc, block->ID(), inside_grads, false);
+#ifdef PADDLE_WITH_MKLDNN
+        platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
+        platform::RegisterModelLayout(ctx->ops_, dev_place);
+#endif
       }
       exec->RunPreparedContext(ctx.get(), &cur_scope, false, true, false);
 
