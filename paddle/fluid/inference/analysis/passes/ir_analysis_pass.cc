@@ -66,25 +66,38 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
 
   std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
 
-  if (argument->Has("calibration_file_path")) {
-    VLOG(5) << "Calibration file path of quantize model: "
-            << argument->calibration_file_path();
+  // There are two quant format models from PaddleSlim.
+  // when running int8 precision, the new format needs a calibration file while
+  // the old needn't.
+  bool new_quant_format = false;
+  for (auto node : graph->Nodes()) {
+    if (node->IsOp() && node->Name() == "quantize_linear") {
+      new_quant_format = true;
+      break;
+    }
+  }
+
+  bool mkldnn_int8 =
+      argument->Has("use_mkldnn_int8") && argument->use_mkldnn_int8();
+  bool trt_int8 =
+      argument->Has("use_tensorrt") && argument->Has("use_gpu") &&
+      argument->Has("tensorrt_precision_mode") && argument->use_tensorrt() &&
+      argument->use_gpu() &&
+      argument->tensorrt_precision_mode() == AnalysisConfig::Precision::kInt8;
+
+  if (new_quant_format && (mkldnn_int8 || trt_int8)) {
     ReadCalibrationInfo(argument, &var_quant_scales);
 
-#ifdef PADDLE_WITH_MKLDNN
     // save var_quant_scales in the first op's attr
-    // for quant_dequant_mkldnn_pass
-    if (argument->Has("use_mkldnn_int8") && argument->use_mkldnn_int8()) {
+    // for quant_dequant_mkldnn_pass in MKLDNN int8
+    // or save var_quant_scales in the each op's attr for Paddle-TRT int8
+#ifdef PADDLE_WITH_MKLDNN
+    if (mkldnn_int8) {
       SaveInfoInTheFirstOp(
           the_graph, "has_quant_info", "var_quant_scales", var_quant_scales);
     }
 #endif
-    // for Paddle-TRT int8's use 
-    if (argument->Has("use_tensorrt") && argument->Has("use_gpu") &&
-        argument->Has("tensorrt_precision_mode") && argument->use_tensorrt() &&
-        argument->use_gpu() &&
-        argument->tensorrt_precision_mode() ==
-            AnalysisConfig::Precision::kInt8) {
+    if (trt_int8) {
       SaveInfoInEachOp(the_graph, var_quant_scales);
     }
   }
@@ -104,15 +117,14 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
 void IrAnalysisPass::ReadCalibrationInfo(
     Argument* argument,
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales) {
-  std::string calibration_file_path;
-  if (argument->Has("calibration_file_path")) {
-    calibration_file_path = argument->calibration_file_path();
-  }
-  if (calibration_file_path.empty()) {
-    LOG(INFO) << "argument has no calibration_file_path";
-    return;
-  }
+  std::string calibration_file_path = argument->calibration_file_path();
   std::ifstream calibration_file(calibration_file_path);
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(calibration_file.is_open()),
+      true,
+      platform::errors::NotFound("Cannot open file %s, please confirm whether "
+                                 "the calibration_file_path is right.",
+                                 calibration_file_path));
   std::string one_line;
   while (getline(calibration_file, one_line)) {
     if (one_line.find(" ") != one_line.npos) {
