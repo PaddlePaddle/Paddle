@@ -76,7 +76,10 @@ class ProcessContext(object):
                 break
 
         if force and self.alive():
-            self._proc.kill()
+            if self._group:
+                os.killpg(os.getpgid(self._proc.pid), signal.SIGKILL)
+            else:
+                self._proc.kill()
 
         self._close_std()
 
