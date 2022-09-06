@@ -40,9 +40,9 @@ def iinfo(dtype):
     """
 
     paddle.iinfo is a function that returns an object that represents the numerical properties of 
-    an integer paddle.dtype 
-    (i.e. paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64). 
-    This is similar to numpy.iinfo.
+    an integer paddle.dtype.
+    This is similar to numpy.iinfo, see here: 
+    https://numpy.org/doc/stable/reference/generated/numpy.iinfo.html#numpy-iinfo
 
     Args:
         dtype(paddle.dtype):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64
@@ -54,21 +54,18 @@ def iinfo(dtype):
         bits: int, The number of bits occupied by the type.
         dtype: str, The string name of the argument dtype.
 
-    Raises:
-        ValueError: If the input "dtype" is not an integer paddle.dtype, it will raise an ValueError
-
     Examples:
         .. code-block:: python
 
             import paddle
 
             iinfo_uint8 = paddle.iinfo(paddle.uint8)
-            # output: paddle.iinfo(min=0, max=255, bits=8, dtype=uint8)
             print(iinfo_uint8)
-            print(iinfo_uint8.min)
-            print(iinfo_uint8.max)
-            print(iinfo_uint8.bits)
-            print(iinfo_uint8.dtype)
+            # paddle.iinfo(min=0, max=255, bits=8, dtype=uint8)
+            print(iinfo_uint8.min) # 0
+            print(iinfo_uint8.max) # 255
+            print(iinfo_uint8.bits) # 8
+            print(iinfo_uint8.dtype) # uint8
 
     """
     return core_iinfo(dtype)
