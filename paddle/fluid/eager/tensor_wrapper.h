@@ -100,6 +100,8 @@ class TensorWrapper {
     }
   }
 
+  ~TensorWrapper() { Py_XDECREF(packed_value_); }
+
   paddle::experimental::Tensor recover() {
     VLOG(6) << "Recover tensor: " << intermidiate_tensor_.name()
             << " for wrapper";
@@ -190,7 +192,7 @@ class TensorWrapper {
   paddle::experimental::Tensor intermidiate_tensor_;
   std::weak_ptr<egr::GradNodeBase> weak_grad_node_;
   uint32_t inplace_version_snapshot_ = 0;
-  void* packed_value_{nullptr};
+  PyObject* packed_value_{nullptr};
   std::shared_ptr<UnPackHookBase> unpack_hook_;
 };
 }  // namespace egr

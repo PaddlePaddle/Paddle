@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <Python.h>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -65,15 +66,15 @@ class CppVoidHook : public VoidHook {
 class PackHookBase {
  public:
   virtual ~PackHookBase() = default;
-  virtual void* operator()(const paddle::experimental::Tensor& tensor) = 0;
-  virtual void* operator()(void* py_tensor) = 0;
+  virtual PyObject* operator()(const paddle::experimental::Tensor& tensor) = 0;
+  virtual PyObject* operator()(PyObject* py_tensor) = 0;
 };
 
 class UnPackHookBase {
  public:
   virtual ~UnPackHookBase() = default;
-  virtual paddle::experimental::Tensor operator()(void* packed_value) = 0;
-  virtual void* operator()(void* packed_value, void* other) = 0;
+  virtual paddle::experimental::Tensor operator()(PyObject* packed_value) = 0;
+  virtual PyObject* operator()(PyObject* packed_value, PyObject* other) = 0;
 };
 
 }  // namespace egr

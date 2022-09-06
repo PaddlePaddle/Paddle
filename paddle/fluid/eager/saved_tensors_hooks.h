@@ -28,9 +28,9 @@ class PackHook : public PackHookBase {
 
   ~PackHook();
 
-  void* operator()(const paddle::experimental::Tensor& tensor) override;
+  PyObject* operator()(const paddle::experimental::Tensor& tensor) override;
 
-  void* operator()(void* py_tensor) override;
+  PyObject* operator()(PyObject* py_tensor) override;
 
  private:
   PyObject* hook_;
@@ -42,9 +42,9 @@ class UnPackHook : public UnPackHookBase {
 
   ~UnPackHook();
 
-  paddle::experimental::Tensor operator()(void* packed_value) override;
+  paddle::experimental::Tensor operator()(PyObject* packed_value) override;
 
-  void* operator()(void* packed_value, void* other) override;
+  PyObject* operator()(PyObject* packed_value, PyObject* other) override;
 
  private:
   PyObject* hook_;
