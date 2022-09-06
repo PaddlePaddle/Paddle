@@ -58,19 +58,19 @@ class TensorArray : public TensorBase,
   int64_t numel() const override;
 
   /// \brief This overrided function is not used in TensorArray.
-  const DDim& dims() const noexcept override;
+  const DDim& dims() const override;
 
   /// \brief This overrided function is not used in TensorArray.
   const Place& place() const override;
 
   /// \brief This overrided function is not used in TensorArray.
-  DataType dtype() const noexcept override;
+  DataType dtype() const override;
 
   /// \brief This overrided function is not used in TensorArray.
-  DataLayout layout() const noexcept override;
+  DataLayout layout() const override;
 
   /// \brief This overrided function is not used in TensorArray.
-  bool valid() const noexcept override;
+  bool valid() const override;
 
   /// \brief Test whether the tensor's storage in TensorArray is allocated.
   /// return Whether all tensors in TensorArray is allocated.

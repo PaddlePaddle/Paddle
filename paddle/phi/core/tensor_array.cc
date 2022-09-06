@@ -37,7 +37,7 @@ int64_t TensorArray::numel() const {
   return -1;
 }
 
-const DDim& TensorArray::dims() const noexcept {
+const DDim& TensorArray::dims() const {
   PADDLE_THROW(errors::Unavailable("dims() can't be used in TensorArray"));
   return tensors_[0].dims();
 }
@@ -47,17 +47,17 @@ const Place& TensorArray::place() const {
   return tensors_[0].place();
 }
 
-DataType TensorArray::dtype() const noexcept {
+DataType TensorArray::dtype() const {
   PADDLE_THROW(errors::Unavailable("dtype() can't be used in TensorArray"));
   return DataType::UNDEFINED;
 }
 
-DataLayout TensorArray::layout() const noexcept {
+DataLayout TensorArray::layout() const {
   PADDLE_THROW(errors::Unavailable("layout() can't be used in TensorArray"));
   return DataLayout::UNDEFINED;
 }
 
-bool TensorArray::valid() const noexcept {
+bool TensorArray::valid() const {
   PADDLE_THROW(errors::Unavailable("valid() can't be used in TensorArray"));
   return false;
 }
