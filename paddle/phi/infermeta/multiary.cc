@@ -2479,8 +2479,10 @@ void UpdateLossScalingInferMeta(const std::vector<const MetaTensor*>& xs,
                         xs.size(),
                         outs.size()));
   for (size_t i = 0; i < xs.size(); ++i) {
-    outs[i]->set_dims(xs[i]->dims());
-    outs[i]->set_dtype(xs[i]->dtype());
+    if (xs[i] != nullptr && outs[i] != nullptr) {
+      outs[i]->set_dims(xs[i]->dims());
+      outs[i]->set_dtype(xs[i]->dtype());
+    }
   }
   loss_scaling->set_dims({1});
   out_good_steps->set_dims({1});
