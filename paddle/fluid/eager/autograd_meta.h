@@ -94,7 +94,7 @@ class AutogradMeta : public AbstractAutogradMeta {
     grad_node_ = grad_node;
   }
 
-  std::shared_ptr<GradNodeBase>& GetMutableGradNode() const {
+  const std::shared_ptr<GradNodeBase>& GetMutableGradNode() const {
     return grad_node_;
   }
 
