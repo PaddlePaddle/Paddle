@@ -1073,7 +1073,7 @@ class TestTensorOutputSize5(TestTensorOutputSize1):
 
     def call_func(self, x):
         w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
-        output_size = paddle.assign([17])
+        output_size = [17, paddle.assign([17])]
         conv2d_trans = paddle.fluid.dygraph.Conv2DTranspose(
             num_channels=3,
             num_filters=6,
@@ -1095,6 +1095,48 @@ class TestTensorOutputSize6(TestTensorOutputSize1):
     def call_func(self, x):
         w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
         output_size = paddle.assign([17, 17])
+        conv2d_trans = paddle.fluid.dygraph.Conv2DTranspose(
+            num_channels=3,
+            num_filters=6,
+            filter_size=3,
+            output_size=output_size,
+            stride=2)
+        out = conv2d_trans(x)
+        return out
+
+
+class TestTensorOutputSize7(TestTensorOutputSize1):
+
+    def path_prefix(self):
+        return 'conv2d_transpose_tensor_output_size7'
+
+    def var_prefix(self):
+        return ""
+
+    def call_func(self, x):
+        w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
+        output_size = 17
+        conv2d_trans = paddle.fluid.dygraph.Conv2DTranspose(
+            num_channels=3,
+            num_filters=6,
+            filter_size=3,
+            output_size=output_size,
+            stride=2)
+        out = conv2d_trans(x)
+        return out
+
+
+class TestTensorOutputSize8(TestTensorOutputSize1):
+
+    def path_prefix(self):
+        return 'conv2d_transpose_tensor_output_size8'
+
+    def var_prefix(self):
+        return ""
+
+    def call_func(self, x):
+        w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
+        output_size = [17, 17]
         conv2d_trans = paddle.fluid.dygraph.Conv2DTranspose(
             num_channels=3,
             num_filters=6,
