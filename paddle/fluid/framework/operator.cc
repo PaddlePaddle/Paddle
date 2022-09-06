@@ -1328,8 +1328,10 @@ bool OperatorWithKernel::SupportsMKLDNN(
   auto has_phi_kernel =
       std::any_of(phi_kernels.begin(),
                   phi_kernels.end(),
-                  [](phi::KernelKeyMap::const_reference kern_pair) {
-                    return kern_pair.first.backend() == phi::Backend::ONEDNN;
+                  [data_type](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == phi::Backend::ONEDNN &&
+                           kern_pair.first.dtype() ==
+                               framework::TransToPhiDataType(data_type);
                   });
   if (has_phi_kernel) {
     return true;

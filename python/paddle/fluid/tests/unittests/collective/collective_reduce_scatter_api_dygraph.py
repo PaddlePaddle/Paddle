@@ -14,21 +14,24 @@
 
 from __future__ import print_function
 
-import unittest
+import paddle
 import paddle.fluid as fluid
-import os
+import unittest
+import test_collective_api_base as test_base
 
-from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
+class TestCollectiveReduceScatterAPI(test_base.TestCollectiveAPIRunnerBase):
 
-class TestHybridPipeParallelWithVirtualStage(TestMultipleGpus):
+    def __init__(self):
+        self.global_ring_id = 0
 
-    def test_hybrid_parallel_pp_layer_with_virtual_stage(self):
-        self.run_mnist_2gpu('hybrid_parallel_pp_layer_with_virtual_stage.py')
-        self.run_mnist_2gpu('hybrid_parallel_pp_layer_with_virtual_stage.py',
-                            eager_mode=False)
+    def get_model(self, main_prog, startup_program, rank, indata=None):
+        with fluid.program_guard(main_prog, startup_program):
+            tindata = paddle.to_tensor(indata)
+            subdata1, subdata2 = paddle.split(tindata, 2, axis=0)
+            paddle.distributed.reduce_scatter(subdata1, [subdata1, subdata2])
+            return [subdata1.numpy()]
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
-    unittest.main()
+    test_base.runtime_main(TestCollectiveReduceScatterAPI, "reduce_scatter")

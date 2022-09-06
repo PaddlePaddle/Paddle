@@ -89,9 +89,7 @@ void TensorRTEngine::Execute(int batch_size,
   if (!with_dynamic_shape()) {
     infer_context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
-#if IS_TRT_VERSION_GE(6000)
     infer_context->enqueueV2(buffers->data(), stream, nullptr);
-#endif
   }
   SetRuntimeBatch(batch_size);
 }
@@ -134,7 +132,6 @@ void TensorRTEngine::FreezeNetwork() {
     } else {
       infer_builder_config_->setInt8Calibrator(nullptr);
 
-#if IS_TRT_VERSION_GE(5000)
       for (auto &quant_range : quant_dynamic_range_) {
         auto tensor = quant_range.first;
         float range = quant_range.second;
@@ -160,6 +157,7 @@ void TensorRTEngine::FreezeNetwork() {
                   << ", this might be ok when trt does not need this range";
         }
       }
+<<<<<<< HEAD
 
 #if IS_TRT_VERSION_GE(5122)
       auto layer_int8_fallback = [&](nvinfer1::ILayer *layer) -> bool {
@@ -227,6 +225,8 @@ void TensorRTEngine::FreezeNetwork() {
                       "TRT to run.";
 #endif
 #endif
+=======
+>>>>>>> develop
     }
   }
 
@@ -266,7 +266,6 @@ void TensorRTEngine::FreezeNetwork() {
   }
 
   if (with_dynamic_shape_) {
-#if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
     for (int i = 0; i < max_profile_num_; i++) {
       for (auto &input : min_input_shape_) {
@@ -311,7 +310,6 @@ void TensorRTEngine::FreezeNetwork() {
                    "'config.SetDynamicShapeInfo(min_shape, max_shape, "
                    "opt_shape, false /*disable_trt_plugin_fp16*/)'";
     }
-#endif
   }
 #if IS_TRT_VERSION_GE(8200)
   if (use_inspector_) {
