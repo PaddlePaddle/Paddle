@@ -105,7 +105,7 @@ class PoolingMKLDNNHandler
     const auto src_tz = phi::vectorize(input->dims());
     const auto dst_tz = phi::vectorize(output->dims());
     const auto dst_md =
-        phi::funcs::MKLDNNMemDesc(dst_tz, dt, MKLDNNMemoryFormat::any);
+        phi::funcs::OneDNNMemDesc(dst_tz, dt, MKLDNNMemoryFormat::any);
 
     if (ceil_mode) {
       CorrectOutputSize(

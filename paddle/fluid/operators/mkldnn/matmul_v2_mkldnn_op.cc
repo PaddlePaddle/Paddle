@@ -24,7 +24,7 @@ using paddle::platform::MKLDNNDeviceContext;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::to_void_cast;
 using phi::vectorize;
-using phi::funcs::MKLDNNFormatForSize;
+using phi::funcs::OneDNNFormatForSize;
 using Tensor = paddle::framework::Tensor;
 using paddle::framework::GradVarName;
 using phi::make_ddim;
@@ -212,7 +212,7 @@ class MatMulMKLDNNHandler
     astream.wait();
 
     auto format =
-        MKLDNNFormatForSize(out->dims().size(), dnnl::memory::format_tag::nchw);
+        OneDNNFormatForSize(out->dims().size(), dnnl::memory::format_tag::nchw);
     out->set_format(format);
     out->set_layout(DataLayout::kMKLDNN);
   }
@@ -649,7 +649,7 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
   matmul_p->execute(astream, matmul_args);
   astream.wait();
   auto format =
-      MKLDNNFormatForSize(out->dims().size(), dnnl::memory::format_tag::nchw);
+      OneDNNFormatForSize(out->dims().size(), dnnl::memory::format_tag::nchw);
   out->set_format(format);
   out->set_layout(DataLayout::kMKLDNN);
 }

@@ -32,7 +32,7 @@ using paddle::platform::CreateKey;
 using paddle::platform::MKLDNNGetDataType;
 using phi::CPUContext;
 using phi::vectorize;
-using phi::funcs::MKLDNNMemDesc;
+using phi::funcs::OneDNNMemDesc;
 using platform::to_void_cast;
 using Direction = dnnl::rnn_direction;
 
@@ -178,23 +178,23 @@ class MultiGRUHandler {
       const auto weights_dt =
           is_int8 ? dnnl::memory::data_type::s8 : dnnl::memory::data_type::f32;
 
-      auto x_md = MKLDNNMemDesc({Ti_, N_, ICs[layer]},
+      auto x_md = OneDNNMemDesc({Ti_, N_, ICs[layer]},
                                 MKLDNNGetDataType<T>(),
                                 MKLDNNMemoryFormat::ntc);
-      auto h0_md = MKLDNNMemDesc({L, D, N_, OCs[layer]},
+      auto h0_md = OneDNNMemDesc({L, D, N_, OCs[layer]},
                                  MKLDNNGetDataType<T>(),
                                  MKLDNNMemoryFormat::ldnc);
-      auto wx_md = MKLDNNMemDesc({L, D, ICs[layer], G, OCs[layer]},
+      auto wx_md = OneDNNMemDesc({L, D, ICs[layer], G, OCs[layer]},
                                  weights_dt,
                                  MKLDNNMemoryFormat::any);
-      auto wh_md = MKLDNNMemDesc({L, D, OCs[layer], G, OCs[layer]},
+      auto wh_md = OneDNNMemDesc({L, D, OCs[layer], G, OCs[layer]},
                                  weights_dt,
                                  MKLDNNMemoryFormat::any);
-      auto b_md = MKLDNNMemDesc({L, D, G, OCs[layer]},
+      auto b_md = OneDNNMemDesc({L, D, G, OCs[layer]},
                                 MKLDNNGetDataType<float>(),
                                 MKLDNNMemoryFormat::ldgo);
       auto h_md =
-          MKLDNNMemDesc({Ti_, N_, OCs[layer]},
+          OneDNNMemDesc({Ti_, N_, OCs[layer]},
                         (layer == layers_ - 1) ? MKLDNNGetDataType<T_out>()
                                                : MKLDNNGetDataType<T>(),
                         MKLDNNMemoryFormat::ntc);
@@ -228,7 +228,7 @@ class MultiGRUHandler {
     if (pd == nullptr) {
       const int axis = 2;
       auto in_md =
-          MKLDNNMemDesc({Ti_, N_, OCs[layer]},
+          OneDNNMemDesc({Ti_, N_, OCs[layer]},
                         (layer == layers_ - 1) ? MKLDNNGetDataType<T_out>()
                                                : MKLDNNGetDataType<T>(),
                         MKLDNNMemoryFormat::ntc);
@@ -363,7 +363,7 @@ class MultiGRUHandler {
         std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(key));
 
     if (!memory_p) {
-      auto user_md = MKLDNNMemDesc({1, 1, ICs[layer], 3, OCs[layer]},
+      auto user_md = OneDNNMemDesc({1, 1, ICs[layer], 3, OCs[layer]},
                                    MKLDNNGetDataType<float>(),
                                    MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, engine_);
@@ -403,7 +403,7 @@ class MultiGRUHandler {
         std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(key));
 
     if (!memory_p) {
-      auto user_md = MKLDNNMemDesc({1, 1, OCs[layer], 3, OCs[layer]},
+      auto user_md = OneDNNMemDesc({1, 1, OCs[layer], 3, OCs[layer]},
                                    MKLDNNGetDataType<float>(),
                                    MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, engine_);

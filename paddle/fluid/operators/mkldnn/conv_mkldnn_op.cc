@@ -25,7 +25,7 @@ namespace paddle {
 namespace operators {
 namespace {
 
-using phi::funcs::MKLDNNMemDesc;
+using phi::funcs::OneDNNMemDesc;
 
 inline MKLDNNMemoryFormat GetWeightsFormat(const int groups,
                                            const bool is_conv3d) {
@@ -212,19 +212,19 @@ class ConvMKLDNNHandlerT
       dnnl::memory::desc src_md, weights_md;
       if (platform::is_int8<T>()) {
         src_md =
-            MKLDNNMemDesc(src_tz,
+            OneDNNMemDesc(src_tz,
                           framework::ToMKLDNNDataType(
                               framework::TransToProtoVarType(input->dtype())),
                           chosen_memory_format);
-        weights_md = MKLDNNMemDesc(
+        weights_md = OneDNNMemDesc(
             weights_tz, dnnl::memory::data_type::s8, chosen_memory_format);
       } else {
-        src_md = MKLDNNMemDesc(src_tz, data_type, chosen_memory_format);
+        src_md = OneDNNMemDesc(src_tz, data_type, chosen_memory_format);
         weights_md =
-            MKLDNNMemDesc(weights_tz, data_type, MKLDNNMemoryFormat::any);
+            OneDNNMemDesc(weights_tz, data_type, MKLDNNMemoryFormat::any);
       }
 
-      const auto dst_md = MKLDNNMemDesc(
+      const auto dst_md = OneDNNMemDesc(
           dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
       const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
                                          : dnnl::prop_kind::forward_training;
@@ -235,10 +235,10 @@ class ConvMKLDNNHandlerT
         auto bias_tz = phi::vectorize(bias->dims());
         dnnl::memory::desc bias_md;
         if (platform::is_int8<T>()) {
-          bias_md = MKLDNNMemDesc(
+          bias_md = OneDNNMemDesc(
               bias_tz, dnnl::memory::data_type::s32, MKLDNNMemoryFormat::x);
         } else {
-          bias_md = MKLDNNMemDesc(bias_tz, data_type, MKLDNNMemoryFormat::x);
+          bias_md = OneDNNMemDesc(bias_tz, data_type, MKLDNNMemoryFormat::x);
         }
 
         this->AcquireForwardPrimitiveDescriptor(
@@ -356,17 +356,17 @@ class ConvMKLDNNHandlerT
       const auto chosen_memory_format = MKLDNNMemoryFormat::any;
       const auto weights_format = MKLDNNMemoryFormat::any;
 
-      auto src_md = MKLDNNMemDesc(
+      auto src_md = OneDNNMemDesc(
           src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
-      const auto dst_md = MKLDNNMemDesc(
+      const auto dst_md = OneDNNMemDesc(
           dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
-      auto diff_src_md = MKLDNNMemDesc(
+      auto diff_src_md = OneDNNMemDesc(
           src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
-      auto weights_md = MKLDNNMemDesc(
+      auto weights_md = OneDNNMemDesc(
           weights_tz, platform::MKLDNNGetDataType<T>(), weights_format);
-      auto diff_weights_md = MKLDNNMemDesc(
+      auto diff_weights_md = OneDNNMemDesc(
           weights_tz, platform::MKLDNNGetDataType<T>(), weights_format);
-      auto diff_dst_md = MKLDNNMemDesc(
+      auto diff_dst_md = OneDNNMemDesc(
           dst_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
 
       auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
@@ -383,10 +383,10 @@ class ConvMKLDNNHandlerT
         auto bias_tz = phi::vectorize(bias->dims());
         dnnl::memory::desc bias_md;
         if (platform::is_int8<T>()) {
-          bias_md = MKLDNNMemDesc(
+          bias_md = OneDNNMemDesc(
               bias_tz, dnnl::memory::data_type::s32, MKLDNNMemoryFormat::x);
         } else {
-          bias_md = MKLDNNMemDesc(
+          bias_md = OneDNNMemDesc(
               bias_tz, dnnl::memory::data_type::f32, MKLDNNMemoryFormat::x);
         }
 
@@ -573,7 +573,7 @@ class ConvMKLDNNHandlerT
     auto weights_tz = phi::vectorize(filter->dims());
     platform::GetGroupConvWeightsTz(weights_tz, groups);
 
-    auto user_src_md = MKLDNNMemDesc(weights_tz,
+    auto user_src_md = OneDNNMemDesc(weights_tz,
                                      platform::MKLDNNGetDataType<K>(),
                                      GetWeightsFormat(groups, is_conv3d));
 
@@ -669,7 +669,7 @@ class ConvMKLDNNHandlerT
       auto weights_tz = phi::vectorize(filter->dims());
       platform::GetGroupConvWeightsTz(weights_tz, groups);
 
-      auto user_src_md = MKLDNNMemDesc(weights_tz,
+      auto user_src_md = OneDNNMemDesc(weights_tz,
                                        platform::MKLDNNGetDataType<K>(),
                                        GetWeightsFormat(groups, is_conv3d));
 
@@ -687,7 +687,7 @@ class ConvMKLDNNHandlerT
       auto weights_tz = phi::vectorize(filter->dims());
       platform::GetGroupConvWeightsTz(weights_tz, groups);
 
-      auto user_src_md = MKLDNNMemDesc(weights_tz,
+      auto user_src_md = OneDNNMemDesc(weights_tz,
                                        platform::MKLDNNGetDataType<T>(),
                                        GetWeightsFormat(groups, is_conv3d));
 

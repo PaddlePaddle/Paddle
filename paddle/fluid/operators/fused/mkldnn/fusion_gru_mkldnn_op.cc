@@ -24,7 +24,7 @@ using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
 using paddle::platform::MKLDNNGetDataType;
 using phi::CPUContext;
-using phi::funcs::MKLDNNMemDesc;
+using phi::funcs::OneDNNMemDesc;
 using platform::to_void_cast;
 
 template <typename T, typename T_out = T>
@@ -83,17 +83,17 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
       const int64_t G = 3;  // Number of Gates, 3 for GRU
 
       // Create memory descriptors
-      auto input_md = MKLDNNMemDesc(
+      auto input_md = OneDNNMemDesc(
           {Ti, N, IC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::ntc);
       auto weight_x_md =
-          MKLDNNMemDesc({L, D, IC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
+          OneDNNMemDesc({L, D, IC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
       auto weight_h_md =
-          MKLDNNMemDesc({L, D, OC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
-      auto bias_md = MKLDNNMemDesc(
+          OneDNNMemDesc({L, D, OC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
+      auto bias_md = OneDNNMemDesc(
           {L, D, G, OC}, MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldgo);
-      auto hidden_md = MKLDNNMemDesc(
+      auto hidden_md = OneDNNMemDesc(
           {Ti, N, OC}, MKLDNNGetDataType<T_out>(), MKLDNNMemoryFormat::ntc);
-      auto h0_md = MKLDNNMemDesc(
+      auto h0_md = OneDNNMemDesc(
           {L, D, N, OC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::ldnc);
 
       // Create GRU oneDNN primitive
@@ -123,7 +123,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wx_key));
 
     if (!memory_p) {
-      auto user_md = MKLDNNMemDesc({1, 1, this->IC, this->G, this->OC},
+      auto user_md = OneDNNMemDesc({1, 1, this->IC, this->G, this->OC},
                                    MKLDNNGetDataType<U>(),
                                    MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
@@ -163,7 +163,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wh_key));
 
     if (!memory_p) {
-      auto user_md = MKLDNNMemDesc({1, 1, this->OC, this->G, this->OC},
+      auto user_md = OneDNNMemDesc({1, 1, this->OC, this->G, this->OC},
                                    MKLDNNGetDataType<U>(),
                                    MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);

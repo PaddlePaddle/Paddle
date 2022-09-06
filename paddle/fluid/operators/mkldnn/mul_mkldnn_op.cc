@@ -248,7 +248,7 @@ class MulPrimitiveFactory {
       MKLDNNMemoryFormat format,
       memory::data_type type = platform::MKLDNNGetDataType<T>()) {
     auto dims = phi::vectorize<int64_t>(tensor->dims());
-    return phi::funcs::MKLDNNMemDesc(dims, type, format);
+    return phi::funcs::OneDNNMemDesc(dims, type, format);
   }
 
   template <typename T>
@@ -256,7 +256,7 @@ class MulPrimitiveFactory {
       const std::vector<int64_t> &dims,
       MKLDNNMemoryFormat format,
       memory::data_type type = platform::MKLDNNGetDataType<T>()) {
-    return phi::funcs::MKLDNNMemDesc(dims, type, format);
+    return phi::funcs::OneDNNMemDesc(dims, type, format);
   }
 
   template <typename T>
@@ -393,7 +393,7 @@ class MulMKLDNNINT8Kernel : public framework::OpKernel<XT> {
       out->Resize(out_dims);
     }
     out->set_layout(DataLayout::kMKLDNN);
-    out->set_format(phi::funcs::MKLDNNFormatForSize(out_dims.size(),
+    out->set_format(phi::funcs::OneDNNFormatForSize(out_dims.size(),
                                                     MKLDNNMemoryFormat::nchw));
   }
 };
@@ -444,7 +444,7 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
 
     out->set_layout(framework::DataLayout::kMKLDNN);
     // plain output formats are enforced inside handler
-    out->set_format(phi::funcs::MKLDNNFormatForSize(
+    out->set_format(phi::funcs::OneDNNFormatForSize(
         out->dims().size(), dnnl::memory::format_tag::nchw));
   }
 

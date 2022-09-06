@@ -24,7 +24,7 @@ using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
 using paddle::platform::MKLDNNGetDataType;
 using phi::CPUContext;
-using phi::funcs::MKLDNNMemDesc;
+using phi::funcs::OneDNNMemDesc;
 using platform::to_void_cast;
 
 template <typename T, typename T_out = T>
@@ -90,20 +90,20 @@ class LSTMMKLDNNHandler
       const int64_t G = 4;  // Number of Gates, 4 for LSTM
 
       // Create memory descriptors
-      auto input_md = MKLDNNMemDesc(
+      auto input_md = OneDNNMemDesc(
           {Ti, N, IC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::tnc);
       auto weight_x_md =
-          MKLDNNMemDesc({L, D, IC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
+          OneDNNMemDesc({L, D, IC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
       auto weight_h_md =
-          MKLDNNMemDesc({L, D, OC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
-      auto bias_md = MKLDNNMemDesc(
+          OneDNNMemDesc({L, D, OC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
+      auto bias_md = OneDNNMemDesc(
           {L, D, G, OC}, MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldgo);
-      auto hidden_md = MKLDNNMemDesc(
+      auto hidden_md = OneDNNMemDesc(
           {Ti, N, OC}, MKLDNNGetDataType<T_out>(), MKLDNNMemoryFormat::any);
 
-      auto h0_md = MKLDNNMemDesc(
+      auto h0_md = OneDNNMemDesc(
           {L, D, N, OC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
-      auto c0_md = MKLDNNMemDesc(
+      auto c0_md = OneDNNMemDesc(
           {L, D, N, OC}, MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::any);
 
       // Create LSTM oneDNN primitive
@@ -125,7 +125,7 @@ class LSTMMKLDNNHandler
             dnnl::memory::desc(),
             dnnl::memory::desc());
       } else {
-        auto weight_peephole_md = MKLDNNMemDesc({L, D, 3, OC},
+        auto weight_peephole_md = OneDNNMemDesc({L, D, 3, OC},
                                                 MKLDNNGetDataType<float>(),
                                                 MKLDNNMemoryFormat::ldgo);
         this->AcquireForwardPrimitiveDescriptor(
@@ -174,7 +174,7 @@ class LSTMMKLDNNHandler
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wx_key));
 
     if (!memory_p) {
-      auto user_md = MKLDNNMemDesc({1, 1, this->IC, this->G, this->OC},
+      auto user_md = OneDNNMemDesc({1, 1, this->IC, this->G, this->OC},
                                    MKLDNNGetDataType<U>(),
                                    MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
@@ -205,7 +205,7 @@ class LSTMMKLDNNHandler
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wh_key));
 
     if (!memory_p) {
-      auto user_md = MKLDNNMemDesc({1, 1, this->OC, this->G, this->OC},
+      auto user_md = OneDNNMemDesc({1, 1, this->OC, this->G, this->OC},
                                    MKLDNNGetDataType<U>(),
                                    MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
@@ -262,7 +262,7 @@ class LSTMMKLDNNHandler
         this->dev_ctx_.GetBlob(peepholes_key));
 
     if (!memory_p) {
-      auto user_md = MKLDNNMemDesc({1, 1, 3, this->OC},
+      auto user_md = OneDNNMemDesc({1, 1, 3, this->OC},
                                    MKLDNNGetDataType<float>(),
                                    MKLDNNMemoryFormat::ldgo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
