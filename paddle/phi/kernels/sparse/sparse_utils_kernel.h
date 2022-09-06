@@ -154,6 +154,13 @@ void ValuesCsrKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void IndicesCooKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      DenseTensor* out) {
+  *out = x.indices();
+}
+
+template <typename T, typename Context>
 void SparseCooTensorKernel(const Context& dev_ctx,
                            const DenseTensor& values,
                            const DenseTensor& indices,

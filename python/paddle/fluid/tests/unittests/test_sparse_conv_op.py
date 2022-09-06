@@ -178,32 +178,41 @@ class TestStatic(unittest.TestCase):
         weight = paddle.static.data(name='weight',
                                     shape=weight_shape,
                                     dtype='float32')
+        bias_shape = [1]
+        bias = paddle.static.data(name='bias',
+                                  shape=bias_shape,
+                                  dtype='float32')
         out = sparse.nn.functional.conv3d(sp_x,
                                           weight,
-                                          None,
+                                          bias,
                                           stride=1,
                                           padding=0,
                                           dilation=1,
                                           groups=1,
                                           data_format="NDHWC")
+        out = out.to_dense()
 
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
 
         indices_data = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
         values_data = [[1.0], [2.0], [3.0], [4.0]]
-        weight_data = np.random.random(weight_shape).astype('float32')
+        #weight_data = np.random.random(weight_shape).astype('float32')
+        weight_data = np.array([[[[[1], [1], [1]], [[1], [1], [1]],
+                                  [[1], [1], [1]]]]]).astype('float32')
+        weight_data = weight_data.reshape(weight_shape)
+        bias_data = np.array([1]).astype('float32')
 
         fetch = exe.run(feed={
             'indices': indices_data,
             'values': values_data,
-            'weight': weight_data
+            'weight': weight_data,
+            'bias': bias_data
         },
-                        fetch_list=[out, sp_x],
-                        return_numpy=False)
-        print(sp_x)
-        print(sp_x.shape)
-        print(out)
+                        fetch_list=[out],
+                        return_numpy=True)
+        correct_out_values = [[5], [11]]
         print(fetch)
+        assert np.array_equal(correct_out_values, fetch)
         paddle.disable_static()
 
 

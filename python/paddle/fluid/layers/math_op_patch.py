@@ -401,6 +401,15 @@ def monkey_patch_variable():
                         attrs={})
         return out
 
+    def indices(var):
+        block = current_block(var)
+        out = create_new_tmp_var(block, var.dtype)
+        block.append_op(type="indices_coo",
+                        inputs={"X": [var]},
+                        outputs={"Out": [out]},
+                        attrs={})
+        return out
+
     def to_dense(var):
         block = current_block(var)
         out = create_new_tmp_var(block, var.dtype)
@@ -476,6 +485,7 @@ def monkey_patch_variable():
         ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
         ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
         ('values', values),
+        ('indices', indices),
         ('to_dense', to_dense),
     ]
 

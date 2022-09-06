@@ -412,6 +412,21 @@ PD_REGISTER_KERNEL(values_coo,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
+PD_REGISTER_KERNEL(indices_coo,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::IndicesCooKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
 PD_REGISTER_KERNEL(values_csr,
                    CPU,
                    ALL_LAYOUT,
@@ -424,7 +439,7 @@ PD_REGISTER_KERNEL(values_csr,
                    int16_t,
                    int,
                    int64_t) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
 PD_REGISTER_KERNEL(sparse_coo_tensor,

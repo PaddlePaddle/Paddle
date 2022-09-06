@@ -69,6 +69,26 @@ DECLARE_INFER_SHAPE_FUNCTOR(values_coo,
                             ValuesCooInferShapeFunctor,
                             PD_INFER_META(phi::sparse::UnchangedInferMeta));
 
+class IndicesCooOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of indices_coo op.");
+    AddOutput("Out", "(Tensor), output 0 of indices_coo op.");
+    AddComment(R"DOC(
+TODO: Documentation of indices_coo op.
+)DOC");
+  }
+};
+
+class IndicesCooOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(indices_coo,
+                            IndicesCooInferShapeFunctor,
+                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+
 class CooToDenseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -180,6 +200,11 @@ REGISTER_OPERATOR(values_coo,
                   // ops::TraceGradOpMaker<paddle::framework::OpDesc>,
                   // ops::TraceGradOpMaker<paddle::imperative::OpBase>,
                   ops::ValuesCooInferShapeFunctor);
+
+REGISTER_OPERATOR(indices_coo,
+                  ops::IndicesCooOp,
+                  ops::IndicesCooOpMaker,
+                  ops::IndicesCooInferShapeFunctor);
 
 REGISTER_OPERATOR(coo_to_dense,
                   ops::CooToDenseOp,

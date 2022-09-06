@@ -26,6 +26,10 @@ KernelSignature ValuesCooOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("values_coo", {"X"}, {}, {"Out"});
 }
 
+KernelSignature IndicesCooOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("indices_coo", {"X"}, {}, {"Out"});
+}
+
 KernelSignature CooToDenseOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("coo_to_dense", {"X"}, {}, {"Out"});
 }
@@ -52,6 +56,8 @@ PD_REGISTER_ARG_MAPPING_FN(sparse_coo_tensor,
                            phi::SparseCooTensorOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(values_coo, phi::ValuesCooOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(indices_coo, phi::IndicesCooOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(coo_to_dense, phi::CooToDenseOpArgumentMapping);
 

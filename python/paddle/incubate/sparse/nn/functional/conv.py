@@ -99,16 +99,21 @@ def _conv3d(x,
                          attrs=attrs)
         if bias is not None:
             values = pre_bias.values()
-            out = helper.create_variable_for_type_inference(x.dtype)
+            add_bias = helper.create_variable_for_type_inference(x.dtype)
             helper.append_op(type='elementwise_add',
                              inputs={
                                  'X': [values],
                                  'Y': [bias]
                              },
-                             outputs={'Out': [out]},
+                             outputs={'Out': [add_bias]},
                              attrs={
                                  'axis': 1,
                              })
+            print(pre_bias)
+            out = sparse_coo_tensor(pre_bias.indices(),
+                                    add_bias,
+                                    shape=pre_bias.shape,
+                                    stop_gradient=pre_bias.stop_gradient)
             return out
         else:
             return pre_bias
