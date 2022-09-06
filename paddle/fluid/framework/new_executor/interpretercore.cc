@@ -29,9 +29,6 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/cuda_device_guard.h"
-#endif
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
                             false,
@@ -108,7 +105,9 @@ interpreter::CostInfo InterpreterCore::DryRun(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  platform::CUDADeviceGuard device_guard(place_);
+  if (platform::is_gpu_place(place_)) {
+    platform::SetDeviceId(place_.device);
+  }
 #endif
   Prepare(feed_names, feed_tensors, true);
   interpreter::CostInfo cost_info;
@@ -140,7 +139,9 @@ paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  platform::CUDADeviceGuard device_guard(place_);
+  if (platform::is_gpu_place(place_)) {
+    platform::SetDeviceId(place_.device);
+  }
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -182,7 +183,9 @@ paddle::framework::FetchList InterpreterCore::Run(
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  platform::CUDADeviceGuard device_guard(place_);
+  if (platform::is_gpu_place(place_)) {
+    platform::SetDeviceId(place_.device);
+  }
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
