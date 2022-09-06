@@ -88,8 +88,8 @@ class AutogradMeta : public AbstractAutogradMeta {
         grad_node.get(),
         paddle::platform::errors::InvalidArgument(
             "Should Not set NULL as GradNode pointer, since "
-            "our default Edge and autogradMeta has nullptr for "
-            "grad node. Set Nullptr will lead error."));
+            "our default Edge and AutogradMeta have nullptr for "
+            "grad node. Setting Nullptr will lead to error."));
 
     grad_node_ = grad_node;
   }
