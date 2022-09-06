@@ -325,7 +325,7 @@ class _ProgramHolder(object):
         self._persistable_names = []
 
         # execution scope
-        self._inner_scope = core.Scope()
+        self._scope_cache = {}
 
         # append suffix var name dict
         self._suffix_varname_dict = None
@@ -398,9 +398,22 @@ class _ProgramHolder(object):
     def double_grad_descs(self):
         return self._double_grad_descs
 
-    @property
-    def scope(self):
-        return self._inner_scope
+    def scope(self, program_id=None, use_scope_cache=False):
+        if use_scope_cache:
+            if program_id not in self._scope_cache:
+                scope = core.Scope()
+                self._scope_cache[program_id] = [scope]
+                return scope
+            else:
+                for scope in self._scope_cache[program_id]:
+                    if scope._can_reuesd:
+                        print("can reused")
+                        return scope
+                scope = core.Scope()
+                self._scope_cache[program_id].append(scope)
+                return scope
+        else:
+            return core.Scope()
 
     def _preprocess(self, program_desc):
         # rename persistable variables of 'program_desc'
@@ -883,15 +896,6 @@ def _run_dygraph(instance, input, program_holder):
                                var_desc.name(), var_desc.type(), False)
         output_vars.append(var)
 
-    # hold forward variables
-    if framework._in_eager_without_dygraph_check():
-        tmp_scope_vec = [program_holder.scope]
-    else:
-        tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
-                                     "program_out_scope",
-                                     core.VarDesc.VarType.STEP_SCOPES, True)
-        tmp_scope_vec.value().set_scope(program_holder.scope)
-
     double_grad_vars = []
     for var_desc in program_holder.double_grad_descs:
         if framework._in_eager_without_dygraph_check():
@@ -920,6 +924,24 @@ def _run_dygraph(instance, input, program_holder):
     use_interpretorcore = _is_enable_standalone_executor(
     ) and _is_dy2st_enable_standalone_executor()
     attrs.extend(('use_interpretorcore', use_interpretorcore))
+
+    def _create_scope_vec(program_id=None, use_scope_cache=False):
+        # hold forward variables
+        inner_scope = program_holder.scope(program_id=program_id,
+                                           use_scope_cache=use_scope_cache)
+        if framework._in_eager_without_dygraph_check():
+            tmp_scope_vec = [inner_scope]
+        else:
+            tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
+                                         "program_out_scope",
+                                         core.VarDesc.VarType.STEP_SCOPES, True)
+            tmp_scope_vec.value().set_scope(inner_scope)
+        return tmp_scope_vec
+
+    tmp_scope_vec = _create_scope_vec(program_id=_hash_with_id(
+        trace_program, instance),
+                                      use_scope_cache=use_interpretorcore)
+
     if use_interpretorcore:
         attrs.extend(
             ('forward_global_block', forward_program.block(0),
@@ -955,12 +977,15 @@ def _run_dygraph(instance, input, program_holder):
     return outs
 
 
-def drop_scope_if_no_grad(instance, scope_vec):
+def drop_scope_if_no_grad(instance, scope_vec, use_scope_cache=False):
     tracer = framework._dygraph_tracer()
     scope = scope_vec.value().get_scope() if isinstance(
         scope_vec, (core.VarBase)) else scope_vec[0]
     if (not instance._is_test) and (not tracer._has_grad):
-        scope.drop_kids()
+        if not use_scope_cache:
+            scope.drop_kids()
+        else:
+            scope._can_reuesd = True
 
 
 def _run_static_graph(input, program_holder, trace_program):
