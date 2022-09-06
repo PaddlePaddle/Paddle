@@ -20,6 +20,12 @@ import paddle.fluid as fluid
 import paddle
 
 
+def pow_grad(x, y, dout):
+    dx = dout * y * np.power(x, (y - 1))
+    dy = dout * np.log(x) * np.power(x, y)
+    return dx, dy
+
+
 class TestElementwisePowOp(OpTest):
 
     def setUp(self):
@@ -194,7 +200,6 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
         # dy = dout * log(x) * pow(x, y)
         self.grad_y = (self.grad_res * np.log(self.x) *
                        (self.x**self.y)).astype("int")
-        print(self.grad_res, self.grad_x, self.grad_y)
 
     def test_grad(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
@@ -205,7 +210,6 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
             with fluid.dygraph.guard(place):
                 x = fluid.dygraph.to_variable(self.x, zero_copy=False)
                 y = fluid.dygraph.to_variable(self.y, zero_copy=False)
-                print(x, y)
                 x.stop_gradient = False
                 y.stop_gradient = False
                 res = x**y
@@ -214,6 +218,32 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
                 np.testing.assert_array_equal(x.gradient(), self.grad_x)
                 np.testing.assert_array_equal(y.gradient(), self.grad_y)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+
+class TestElementwisePowOpFP16(OpTest):
+
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.inputs = {
+            'X': np.random.uniform(1, 2, [20, 5]).astype("float16"),
+            'Y': np.random.uniform(1, 2, [20, 5]).astype("float16")
+        }
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+    def test_check_output(self):
+        if hasattr(self, 'attrs'):
+            self.check_output(check_eager=False)
+        else:
+            self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        user_defined_grads=pow_grad(self.inputs['X'],
+                                                    self.inputs['Y'],
+                                                    1 / self.inputs['X'].size),
+                        check_eager=True)
 
 
 if __name__ == '__main__':

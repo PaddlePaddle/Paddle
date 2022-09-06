@@ -16,8 +16,10 @@
 
 #include <cstdio>
 
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/os_info.h"
+#include "paddle/fluid/platform/profiler/utils.h"
 
 namespace paddle {
 namespace platform {
@@ -52,10 +54,50 @@ void AddKernelRecord(const CUpti_ActivityKernel4* kernel,
   event.kernel_info.queued = kernel->queued;
   event.kernel_info.submitted = kernel->submitted;
   event.kernel_info.completed = kernel->completed;
+
+  float blocks_per_sm = 0.0;
+  float warps_per_sm = 0.0;
+  float occupancy = 0.0;
+
 #ifdef PADDLE_WITH_HIP
-  event.kernel_info.kernelFunc = kernel->kernelFunc;
-  event.kernel_info.launchType = kernel->launchType;
+  constexpr int threads_per_warp = 64;
+#else
+  constexpr int threads_per_warp = 32;
 #endif
+  const gpuDeviceProp& device_property =
+      paddle::platform::GetDeviceProperties(kernel->deviceId);
+  blocks_per_sm =
+      static_cast<float>(event.kernel_info.grid_x * event.kernel_info.grid_y *
+                         event.kernel_info.grid_z) /
+      device_property.multiProcessorCount;
+  warps_per_sm = blocks_per_sm *
+                 (event.kernel_info.block_x * event.kernel_info.block_y *
+                  event.kernel_info.block_z) /
+                 threads_per_warp;
+#ifdef PADDLE_WITH_HIP
+  occupancy = paddle::platform::CalculateEstOccupancy(
+      kernel->deviceId,
+      event.kernel_info.dynamic_shared_memory,
+      event.kernel_info.block_x,
+      event.kernel_info.block_y,
+      event.kernel_info.block_z,
+      kernel->kernelFunc,
+      kernel->launchType);
+#else
+  occupancy = paddle::platform::CalculateEstOccupancy(
+      kernel->deviceId,
+      event.kernel_info.registers_per_thread,
+      event.kernel_info.static_shared_memory,
+      event.kernel_info.dynamic_shared_memory,
+      event.kernel_info.block_x,
+      event.kernel_info.block_y,
+      event.kernel_info.block_z,
+      blocks_per_sm);
+#endif  // PADDLE_WITH_HIP
+  event.kernel_info.blocks_per_sm = blocks_per_sm;
+  event.kernel_info.warps_per_sm = warps_per_sm;
+  event.kernel_info.occupancy = occupancy;
+
   collector->AddDeviceEvent(std::move(event));
 }
 

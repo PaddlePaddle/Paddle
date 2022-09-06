@@ -28,5 +28,8 @@ std::string GetKeyFromPlaces(const std::vector<Place>& places);
 
 bool CheckTensorsInCudaPlace(const std::vector<phi::DenseTensor>& tensors);
 
+bool CheckTensorsInCustomPlace(const std::vector<phi::DenseTensor>& tensors,
+                               const std::string& dev_type);
+
 }  //  namespace distributed
 }  //  namespace paddle

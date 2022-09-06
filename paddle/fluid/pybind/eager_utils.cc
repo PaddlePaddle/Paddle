@@ -92,7 +92,7 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
 }
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj) {
-  if ((PyLong_Check(*obj) && !PyBool_Check(*obj))) {
+  if (PyLong_Check(*obj) && !PyBool_Check(*obj)) {
     return true;
   }
 
@@ -129,7 +129,7 @@ bool PyObject_CheckStr(PyObject* obj) { return PyUnicode_Check(obj); }
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
   if (obj == Py_None) {
     return false;  // To be compatible with QA integration testing. Some
-                   // test case pass in None.
+                   // test cases pass in None.
   } else if (obj == Py_True) {
     return true;
   } else if (obj == Py_False) {
@@ -305,7 +305,7 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
-      item = PyList_GetItem(obj, i);
+      item = PyList_GET_ITEM(obj, i);
       if (PyObject_CheckLongOrConvertToLong(&item)) {
         result.emplace_back(static_cast<int>(PyLong_AsLong(item)));
       } else {
@@ -321,13 +321,13 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
     Py_ssize_t len = PyTuple_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
-      item = PyTuple_GetItem(obj, i);
+      item = PyTuple_GET_ITEM(obj, i);
       if (PyObject_CheckLongOrConvertToLong(&item)) {
         result.emplace_back(static_cast<int>(PyLong_AsLong(item)));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument (position %d) must be "
-            "list of bool, but got %s at pos %d",
+            "list of int, but got %s at pos %d",
             arg_pos + 1,
             reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
             i));
@@ -1289,7 +1289,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
     int64_t value = CastPyArg2Long(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (PyFloat_Check(obj)) {
-    float value = CastPyArg2Float(obj, op_type, arg_pos);
+    double value = CastPyArg2Double(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (IsEagerTensor(obj)) {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(

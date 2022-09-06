@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import dygraph_only, core
 
 __all__ = []
@@ -94,7 +94,7 @@ def matmul(x, y, name=None):
             #         [2., 2.],
             #         [3., 3.]])
     """
-    return _C_ops.final_state_sparse_matmul(x, y)
+    return _C_ops.sparse_matmul(x, y)
 
 
 @dygraph_only
@@ -154,7 +154,7 @@ def masked_matmul(x, y, mask, name=None):
             #        values=[0.98986477, 0.97800624, 1.14591956, 0.68561077, 0.94714981])
 
     """
-    return _C_ops.final_state_sparse_masked_matmul(x, y, mask)
+    return _C_ops.sparse_masked_matmul(x, y, mask)
 
 
 @dygraph_only
@@ -210,7 +210,7 @@ def mv(x, vec, name=None):
                 #        [-3.85499096, -2.42975140, -1.75087738])
 
     """
-    return _C_ops.final_state_sparse_mv(x, vec)
+    return _C_ops.sparse_mv(x, vec)
 
 
 def add(x, y, name=None):
@@ -253,8 +253,8 @@ def add(x, y, name=None):
 
     """
     if y.dtype != x.dtype:
-        y = _C_ops.final_state_sparse_cast(y, None, x.dtype)
-    return _C_ops.final_state_sparse_add(x, y)
+        y = _C_ops.sparse_cast(y, None, x.dtype)
+    return _C_ops.sparse_add(x, y)
 
 
 @dygraph_only
@@ -298,8 +298,8 @@ def subtract(x, y, name=None):
 
     """
     if y.dtype != x.dtype:
-        y = _C_ops.final_state_sparse_cast(y, None, x.dtype)
-    return _C_ops.final_state_sparse_subtract(x, y)
+        y = _C_ops.sparse_cast(y, None, x.dtype)
+    return _C_ops.sparse_subtract(x, y)
 
 
 @dygraph_only
@@ -343,11 +343,11 @@ def multiply(x, y, name=None):
 
     """
     if isinstance(y, (int, float)):
-        return _C_ops.final_state_sparse_scale(x, float(y), 0.0, True)
+        return _C_ops.sparse_scale(x, float(y), 0.0, True)
     else:
         if y.dtype != x.dtype:
-            y = _C_ops.final_state_sparse_cast(y, None, x.dtype)
-        return _C_ops.final_state_sparse_multiply(x, y)
+            y = _C_ops.sparse_cast(y, None, x.dtype)
+        return _C_ops.sparse_multiply(x, y)
 
 
 @dygraph_only
@@ -391,14 +391,14 @@ def divide(x, y, name=None):
 
     """
     if x.dtype in _int_dtype_:
-        x = _C_ops.final_state_sparse_cast(x, None, core.VarDesc.VarType.FP32)
+        x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
 
     if isinstance(y, (int, float)):
-        return _C_ops.final_state_sparse_divide_scalar(x, float(y))
+        return _C_ops.sparse_divide_scalar(x, float(y))
     else:
         if y.dtype != x.dtype:
-            y = _C_ops.final_state_sparse_cast(y, None, x.dtype)
-        return _C_ops.final_state_sparse_divide(x, y)
+            y = _C_ops.sparse_cast(y, None, x.dtype)
+        return _C_ops.sparse_divide(x, y)
 
 
 @dygraph_only
@@ -446,4 +446,4 @@ def values_add(x, y, name=None):
         print(out)
         # [[4.0], [6.0]]
     """
-    return _C_ops.final_state_sparse_values_add(x, y)
+    return _C_ops.sparse_values_add(x, y)

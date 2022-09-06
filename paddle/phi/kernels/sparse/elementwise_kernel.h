@@ -43,25 +43,24 @@ namespace sparse {
   SparseCsrTensor ElementWise##name##Csr(const Context& dev_ctx,     \
                                          const SparseCsrTensor& x,   \
                                          const SparseCsrTensor& y) { \
-    DenseTensor non_zero_crows;                                      \
-    DenseTensor non_zero_cols;                                       \
+    DenseTensor crows;                                               \
+    DenseTensor cols;                                                \
     DenseTensor non_zero_elements;                                   \
-    SparseCsrTensor out(                                             \
-        non_zero_crows, non_zero_cols, non_zero_elements, x.dims()); \
+    SparseCsrTensor out(crows, cols, non_zero_elements, x.dims());   \
     ElementWise##name##CsrKernel<T, Context>(dev_ctx, x, y, &out);   \
     return out;                                                      \
   }
 
-#define DEFINE_COO_ELEMENTWISE_KERNEL_FUNC(name)                        \
-  template <typename T, typename Context>                               \
-  SparseCooTensor ElementWise##name##Coo(const Context& dev_ctx,        \
-                                         const SparseCooTensor& x,      \
-                                         const SparseCooTensor& y) {    \
-    DenseTensor non_zero_indices;                                       \
-    DenseTensor non_zero_elements;                                      \
-    SparseCooTensor out(non_zero_indices, non_zero_elements, x.dims()); \
-    ElementWise##name##CooKernel<T, Context>(dev_ctx, x, y, &out);      \
-    return out;                                                         \
+#define DEFINE_COO_ELEMENTWISE_KERNEL_FUNC(name)                     \
+  template <typename T, typename Context>                            \
+  SparseCooTensor ElementWise##name##Coo(const Context& dev_ctx,     \
+                                         const SparseCooTensor& x,   \
+                                         const SparseCooTensor& y) { \
+    DenseTensor indices;                                             \
+    DenseTensor non_zero_elements;                                   \
+    SparseCooTensor out(indices, non_zero_elements, x.dims());       \
+    ElementWise##name##CooKernel<T, Context>(dev_ctx, x, y, &out);   \
+    return out;                                                      \
   }
 
 DEFINE_ELEMENTWISE_KERNEL_HEAD(Add)
