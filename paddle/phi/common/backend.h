@@ -32,7 +32,7 @@ namespace experimental {
  * more specific, we need to distinguish the calculation method.
  *
  * Such as the kernel for CPU device, it can be a native CPU kernel,
- * or a kernel implemented by MKLDNN library.
+ * or a kernel implemented by oneDNN library.
  *
  * Note(chenweihang): HIP is not needed now, we can added it if needed
  * in the future

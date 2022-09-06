@@ -529,16 +529,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, double>);
 #endif
 
-#ifdef PADDLE_WITH_XPU
-REGISTER_OP_XPU_KERNEL(
-    coalesce_tensor,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext,
-                                plat::float16>,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, int>,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, double>);
-#endif
-
 #if defined(PADDLE_WITH_ASCEND_CL)
 REGISTER_OP_NPU_KERNEL(
     coalesce_tensor,

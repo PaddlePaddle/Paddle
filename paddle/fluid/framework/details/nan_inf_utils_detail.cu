@@ -161,8 +161,10 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
 
     std::lock_guard<std::mutex> guard(op_var2gpu_str_mutex);
     if (op_var2gpu_str.find(op_var) == op_var2gpu_str.end()) {  // insert
-      auto gpu_str_tensor =
-          paddle::memory::Alloc(*dev_ctx, op_var.length() + 1);
+      auto gpu_str_tensor = paddle::memory::Alloc(
+          dev_ctx->GetPlace(),
+          op_var.length() + 1,
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx->stream())));
       gpu_str_ptr = reinterpret_cast<char*>(gpu_str_tensor->ptr());
 
       op_var2gpu_str.emplace(op_var, std::move(gpu_str_tensor));
