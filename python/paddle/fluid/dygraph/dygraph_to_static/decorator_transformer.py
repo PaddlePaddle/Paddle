@@ -87,7 +87,9 @@ class DecoratorTransformer(BaseTransformer):
         arg_str = ''
         for arg in node.args.args:
             arg_str += arg.id + ', '
-        callfun_str = 'return _decoed_{}({})'.format(node.name, arg_str[0:-1])
+        if len(arg_str) > 0:
+            arg_str = arg_str[0:-2]
+        callfun_str = 'return _decoed_{}({})'.format(node.name, arg_str)
         callfun_node = gast.parse(callfun_str).body[0]
 
         node.body = [orig_func_node, decofun_node, callfun_node]
