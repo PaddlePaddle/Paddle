@@ -29,11 +29,9 @@ PackHook::~PackHook() {
   Py_DECREF(hook_);
 }
 
-PyObject* PackHook::operator()(const paddle::experimental::Tensor& tensor) {
+void* PackHook::operator()(const paddle::experimental::Tensor& tensor) {
   auto args = PyTuple_New(1);
-  auto obj = paddle::pybind::ToPyObject(tensor);
-  Py_INCREF(obj);
-  PyTuple_SET_ITEM(args, 0, obj);
+  PyTuple_SET_ITEM(args, 0, paddle::pybind::ToPyObject(tensor));
   bool grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
   PyObject* ret = nullptr;
@@ -43,16 +41,16 @@ PyObject* PackHook::operator()(const paddle::experimental::Tensor& tensor) {
     Py_XDECREF(args);
   }
   egr::Controller::Instance().SetHasGrad(grad_tmp);
-  return ret;
+  return reinterpret_cast<void*>(ret);
 }
 
-PyObject* PackHook::operator()(PyObject* py_tensor) {
+void* PackHook::operator()(void* py_tensor) {
   auto args = PyTuple_New(1);
-  Py_INCREF(py_tensor);
-  PyTuple_SET_ITEM(args, 0, py_tensor);
+  Py_INCREF(reinterpret_cast<PyObject*>(py_tensor));
+  PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(py_tensor));
   bool grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
-  PyObject* ret = nullptr;
+  void* ret = nullptr;
   {
     ::pybind11::gil_scoped_acquire gil;
     ret = PyObject_Call(hook_, args, nullptr);
@@ -60,7 +58,7 @@ PyObject* PackHook::operator()(PyObject* py_tensor) {
   }
 
   egr::Controller::Instance().SetHasGrad(grad_tmp);
-  return ret;
+  return reinterpret_cast<void*>(ret);
 }
 
 UnPackHook::UnPackHook(PyObject* hook) : hook_(hook) { Py_INCREF(hook_); }
@@ -70,10 +68,10 @@ UnPackHook::~UnPackHook() {
   Py_DECREF(hook_);
 }
 
-paddle::experimental::Tensor UnPackHook::operator()(PyObject* packed_value) {
+paddle::experimental::Tensor UnPackHook::operator()(void* packed_value) {
   auto args = PyTuple_New(1);
-  Py_INCREF(packed_value);
-  PyTuple_SET_ITEM(args, 0, packed_value);
+  Py_INCREF(reinterpret_cast<PyObject*>(packed_value));
+  PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value));
   bool grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
   PyObject* ret = nullptr;
@@ -94,10 +92,10 @@ paddle::experimental::Tensor UnPackHook::operator()(PyObject* packed_value) {
   return tensor;
 }
 
-PyObject* UnPackHook::operator()(PyObject* packed_value, PyObject* other) {
+void* UnPackHook::operator()(void* packed_value, void* other) {
   auto args = PyTuple_New(1);
-  Py_INCREF(packed_value);
-  PyTuple_SET_ITEM(args, 0, packed_value);
+  Py_INCREF(reinterpret_cast<PyObject*>(packed_value));
+  PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value));
   bool grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
   PyObject* ret = nullptr;
@@ -115,7 +113,7 @@ PyObject* UnPackHook::operator()(PyObject* packed_value, PyObject* other) {
                         "paddle.autograd.SavedTensorsHooks only one pair "
                         "of hooks is allowed at a time."));
 
-  return ret;
+  return reinterpret_cast<void*>(ret);
 }
 #endif
 

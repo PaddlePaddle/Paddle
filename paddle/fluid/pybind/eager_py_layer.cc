@@ -472,7 +472,10 @@ PyObject* call_unpack_hook(PyLayerObject* self) {
       auto tmp_list = PyList_New(len);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyList_GetItem(obj, j);
-        PyTuple_SET_ITEM(tmp_list, j, (*unpack_hook)(o, nullptr));
+        PyTuple_SET_ITEM(tmp_list,
+                         j,
+                         reinterpret_cast<PyObject*>(((*unpack_hook)(
+                             reinterpret_cast<void*>(o), nullptr))));
       }
       PyTuple_SET_ITEM(unpacked_value, i, tmp_list);
     } else if (PyTuple_Check(obj)) {
@@ -480,11 +483,17 @@ PyObject* call_unpack_hook(PyLayerObject* self) {
       auto tmp_tuple = PyTuple_New(len);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyTuple_GetItem(obj, j);
-        PyTuple_SET_ITEM(tmp_tuple, j, (*unpack_hook)(o, nullptr));
+        PyTuple_SET_ITEM(tmp_tuple,
+                         j,
+                         reinterpret_cast<PyObject*>((*unpack_hook)(
+                             reinterpret_cast<void*>(o), nullptr)));
       }
       PyTuple_SET_ITEM(unpacked_value, i, tmp_tuple);
     } else {
-      PyTuple_SET_ITEM(unpacked_value, i, (*unpack_hook)(obj, nullptr));
+      PyTuple_SET_ITEM(unpacked_value,
+                       i,
+                       reinterpret_cast<PyObject*>((*unpack_hook)(
+                           reinterpret_cast<void*>(obj), nullptr)));
     }
   }
 
@@ -526,14 +535,20 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
   for (Py_ssize_t i = 0; i < saved_value_size; i++) {
     PyObject* obj = PyTuple_GET_ITEM(saved_value, i);
     if (IsEagerTensor(obj)) {
-      PyTuple_SET_ITEM(packed_value, i, (*pack_hook)(obj));
+      PyTuple_SET_ITEM(packed_value,
+                       i,
+                       reinterpret_cast<PyObject*>(
+                           (*pack_hook)(reinterpret_cast<void*>(obj))));
     } else if (PyList_Check(obj)) {
       Py_ssize_t len = PyList_Size(obj);
       auto tmp_list = PyList_New(len);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyList_GetItem(obj, j);
         if (IsEagerTensor(o)) {
-          PyTuple_SET_ITEM(tmp_list, j, (*pack_hook)(o));
+          PyTuple_SET_ITEM(tmp_list,
+                           j,
+                           reinterpret_cast<PyObject*>(
+                               (*pack_hook)(reinterpret_cast<void*>(o))));
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "save_for_backward only support Tensor, list of Tensor, tuple of "
@@ -547,7 +562,10 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyTuple_GetItem(obj, j);
         if (IsEagerTensor(o)) {
-          PyTuple_SET_ITEM(tmp_tuple, j, (*pack_hook)(o));
+          PyTuple_SET_ITEM(tmp_tuple,
+                           j,
+                           reinterpret_cast<PyObject*>(
+                               (*pack_hook)(reinterpret_cast<void*>(o))));
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "save_for_backward only support Tensor, list of Tensor, tuple of "
