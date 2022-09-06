@@ -428,6 +428,7 @@ class CMakeGenerator():
         "PADDLE_DIST_UT_PORT={dist_ut_port};{envs}")%s
     endif()
     '''
+            run_type_str = ""
         else:
             cmd += f'''if({archs} AND {os_})
         py_test_modules(
@@ -438,13 +439,15 @@ class CMakeGenerator():
         "{envs}")%s
     endif()
     '''
+            run_type_str = "" if len(
+                run_type) == 0 else f' LABELS "RUN_TYPE={run_type}"'
         time_out_str = f' TIMEOUT "{timeout}"' if len(
             timeout.strip()) > 0 else ''
         run_serial_str = f' RUN_SERIAL {run_serial}' if len(
             run_serial) > 0 else ''
         if len(time_out_str) > 0 or len(run_serial_str) > 0:
             set_properties = f'''
-        set_tests_properties({name} PROPERTIES{time_out_str}{run_serial_str})'''
+        set_tests_properties({name} PROPERTIES{time_out_str}{run_serial_str}{run_type_str})'''
         else:
             set_properties = ""
         cmd = cmd % set_properties

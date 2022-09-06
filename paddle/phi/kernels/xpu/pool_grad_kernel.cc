@@ -24,7 +24,7 @@ void Pool2dGradKernel(const Context& ctx,
                       const DenseTensor& x,
                       const DenseTensor& out,
                       const DenseTensor& dout,
-                      const std::vector<int>& kernel_size_t,
+                      const IntArray& kernel_size_t,
                       const std::vector<int>& strides_t,
                       const std::vector<int>& paddings_t,
                       bool ceil_mode,
@@ -38,7 +38,8 @@ void Pool2dGradKernel(const Context& ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   std::vector<int> paddings(paddings_t);
-  std::vector<int> kernel_size(kernel_size_t);
+  std::vector<int> kernel_size(kernel_size_t.GetData().begin(),
+                               kernel_size_t.GetData().end());
   std::vector<int> strides(strides_t);
 
   PADDLE_ENFORCE_EQ(

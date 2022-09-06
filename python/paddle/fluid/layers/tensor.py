@@ -634,6 +634,8 @@ def assign(input, output=None):
         if _non_static_mode():
             if in_dygraph_mode() and output is None:
                 output = _C_ops.assign(input)
+            elif in_dygraph_mode() and output is not None:
+                _C_ops.assign_out_(input, output)
             else:
                 if output is None:
                     if _in_legacy_dygraph():
@@ -1831,7 +1833,7 @@ def eye(num_rows,
         re_shape = re_shape + [num_rows, num_columns]
         expand_times = batch_shape + [1, 1]
         if _non_static_mode():
-            out = _legacy_C_ops.reshape(out, 'shape', re_shape)
+            out, _ = _legacy_C_ops.reshape2(out, None, 'shape', re_shape)
             return _legacy_C_ops.expand(out, None, 'expand_times', expand_times)
 
         if not isinstance(batch_shape, list):
