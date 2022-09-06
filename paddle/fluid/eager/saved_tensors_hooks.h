@@ -21,7 +21,7 @@
 #include "paddle/phi/core/errors.h"
 
 namespace egr {
-
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
 class PackHook : public PackHookBase {
  public:
   explicit PackHook(PyObject* hook);
@@ -49,6 +49,7 @@ class UnPackHook : public UnPackHookBase {
  private:
   PyObject* hook_;
 };
+#endif
 
 class SavedTensorsHooks {
  public:
@@ -57,6 +58,7 @@ class SavedTensorsHooks {
   ~SavedTensorsHooks() {}
 
   void SetHooks(PyObject* pack_hook, PyObject* unpack_hook) {
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
     PADDLE_ENFORCE_EQ(pack_hook_ == nullptr && unpack_hook_ == nullptr,
                       true,
                       paddle::platform::errors::InvalidArgument(
@@ -65,12 +67,15 @@ class SavedTensorsHooks {
     pack_hook_ = std::make_shared<PackHook>(pack_hook);
     unpack_hook_ = std::make_shared<UnPackHook>(unpack_hook);
     is_enable_ = true;
+#endif
   }
 
   void ResetHooks() {
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
     pack_hook_ = nullptr;
     unpack_hook_ = nullptr;
     is_enable_ = false;
+#endif
   }
 
   bool IsEnable() { return is_enable_; }

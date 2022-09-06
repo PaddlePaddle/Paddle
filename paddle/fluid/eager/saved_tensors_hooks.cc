@@ -14,11 +14,14 @@
 
 #include "paddle/fluid/eager/saved_tensors_hooks.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#endif
 
 namespace egr {
-
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
 PackHook::PackHook(PyObject* hook) : hook_(hook) { Py_INCREF(hook_); }
 
 PackHook::~PackHook() {
@@ -114,5 +117,6 @@ PyObject* UnPackHook::operator()(PyObject* packed_value, PyObject* other) {
 
   return ret;
 }
+#endif
 
 }  // namespace egr
