@@ -50,7 +50,6 @@ int LayerNormPlugin::enqueue(int batch_size,
   const auto &input_dims = this->getInputDims(0);
   const float *input = reinterpret_cast<const float *>(inputs[0]);
   float *output = reinterpret_cast<float *const *>(outputs)[0];
-
   int begin_norm_axis = begin_norm_axis_;
   float eps = eps_;
 
@@ -261,12 +260,14 @@ int LayerNormPluginDynamic::enqueue(
     bias_t.Resize(phi::make_ddim({feature_size}));
     mean_t.Resize(phi::make_ddim(mean_shape_));
     variance_t.Resize(phi::make_ddim(variance_shape_));
+
     float *scale_d =
         scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
     float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
     float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
     float *variance_d =
         variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+
     cudaMemcpyAsync(scale_d,
                     scale_.data(),
                     sizeof(float) * feature_size,
@@ -289,7 +290,6 @@ int LayerNormPluginDynamic::enqueue(
                variance_d,
                begin_norm_axis,
                eps);
-
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "The LayerNorm TRT Plugin's input type should be float."));
