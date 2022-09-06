@@ -379,7 +379,7 @@ void Tensor::CopyToCpuImpl(T *data,
   if (paddle::platform::is_cpu_place(t_place)) {
 #ifdef PADDLE_WITH_MKLDNN
     if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN)
-      phi::funcs::innerTransDataLayoutFromMKLDNN(
+      phi::funcs::innerTransDataLayoutFromOneDNN(
           tensor->layout(),
           paddle::platform::MKLDNNDeviceContext::tls()
               .get_cur_paddle_data_layout(),
@@ -855,7 +855,7 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
   if (paddle::platform::is_cpu_place(t_place)) {
 #ifdef PADDLE_WITH_MKLDNN
     if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN)
-      phi::funcs::innerTransDataLayoutFromMKLDNN(
+      phi::funcs::innerTransDataLayoutFromOneDNN(
           tensor->layout(),
           paddle::platform::MKLDNNDeviceContext::tls()
               .get_cur_paddle_data_layout(),

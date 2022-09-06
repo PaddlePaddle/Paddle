@@ -42,7 +42,7 @@ static void DeepCopy(const framework::LoDTensor &src_item,
       framework::Tensor out;
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
-      phi::funcs::innerTransDataLayoutFromMKLDNN(
+      phi::funcs::innerTransDataLayoutFromOneDNN(
           src_item.layout(),
           fetch_var_name == framework::GradVarName("Filter")
               ? framework::DataLayout::kNCHW

@@ -78,7 +78,7 @@ tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e,
   return tf_pd<Type>(desc, e, p);
 }
 
-using mkldnn_dummy_primitive = phi::funcs::mkldnn_dummy_primitive;
+using mkldnn_dummy_primitive = phi::funcs::onednn_dummy_primitive;
 
 inline void ClearMKLDNNCache(const platform::Place& place,
                              void* ptr = nullptr) {
