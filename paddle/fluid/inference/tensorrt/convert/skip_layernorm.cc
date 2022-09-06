@@ -31,45 +31,46 @@ class SkipLayerNormOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
-
-    nvinfer1::ITensor* Y = nullptr;
+    nvinfer1::ITensor* input2 = nullptr;
     auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
-    if (Y_v) {
+    int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
+
+    if (Y_v && axis == 2) {
       // Y is weight
       auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
       std::vector<int> dims_y = phi::vectorize<int>(Y_t->dims());
+      nvinfer1::Dims dims_x = input1->getDimensions();
       auto y_weight = engine_->GetTrtWeight(op_desc.Input("Y").front(), *Y_t);
+      PADDLE_ENFORCE_EQ(
+          dims_y.size(),
+          1,
+          platform::errors::InvalidArgument(
+              "skip_layernorm op's y input size is not 1 when axis=2."));
+      PADDLE_ENFORCE_EQ(dims_y[0],
+                        dims_x.d[2],
+                        platform::errors::InvalidArgument(
+                            "Dimension mismatch found in trt "
+                            "skip_layernorm op's x and y input."));
 
-      nvinfer1::Dims trt_dims_y;
-      trt_dims_y.nbDims = dims_y.size();
-      for (int i = 0; i < trt_dims_y.nbDims; i++) {
-        trt_dims_y.d[i] = dims_y[i];
-      }
-      // this is the special case when dims_y includes batch dimension!
-      // we need remove batch dimension!
-      if (!engine_->with_dynamic_shape() &&
-          trt_dims_y.nbDims == (input1->getDimensions().nbDims + 1)) {
-        trt_dims_y.nbDims--;
-        PADDLE_ENFORCE_EQ(trt_dims_y.d[0],
-                          1,
-                          platform::errors::InvalidArgument(
-                              "Elementwise op's Y is a weight "
-                              "including batch dimension. Please "
-                              "check if the 0th dimension equals 1."));
-        for (int i = 0; i < trt_dims_y.nbDims; i++) {
-          trt_dims_y.d[i] = trt_dims_y.d[i + 1];
+      // broadcast
+      size_t num = ProductDim(dims_x);
+      float* y_data =
+          const_cast<float*>(static_cast<const float*>(y_weight.get().values));
+      float* y_data_tmp = new float[num];
+      int idx = 0;
+      for (int i = 0; i < static_cast<int>(num) / dims_y[0]; i++) {
+        for (int j = 0; j < dims_y[0]; j++) {
+          y_data_tmp[idx++] = y_data[j];
         }
       }
-      Y = TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_dims_y, y_weight.get())
-              ->getOutput(0);
+      input2 = AddConstantLayer(y_data_tmp, dims_x, " ");
     } else {
-      LOG(INFO) << "Y is tensor";
-      Y = engine_->GetITensor(op_desc.Input("Y").front());
+      input2 = engine_->GetITensor(op_desc.Input("Y").front());
     }
 
     std::vector<nvinfer1::ITensor*> inputs;
     inputs.push_back(input1);
-    inputs.push_back(Y);
+    inputs.push_back(input2);
 
     bool enable_int8 = op_desc.HasAttr("enable_int8");
 
