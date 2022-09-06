@@ -1352,8 +1352,8 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 layout_autotune_attr) == 0:
             layout_logic_str = ""
         else:
-            # after_call_str = f"return {forward_function_name}({layout_inputs_call_args_str});\n"
-            after_call_str = f"auto api_result = {forward_function_name}({layout_inputs_call_args_str});\n"
+            # after_call_str = f"return {forward_ad_function_name}({layout_inputs_call_args_str});\n"
+            after_call_str = f"auto api_result = {forward_ad_function_name}({layout_inputs_call_args_str});\n"
             layout_logic_str = LAYOUT_LOGIC_TEMPLATE.format(
                 amp_tensors_vector_list_str,
                 "    ".join(layout_tensors_vector_optional_list),
