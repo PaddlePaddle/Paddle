@@ -6,6 +6,7 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
+
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,7 +20,7 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node, ast_to_source_code
 
-DECORATOR_NAMES = ['declarative', 'to_static', 'dygraph_to_static_func']
+IGNORE_NAMES = ['declarative', 'to_static', 'dygraph_to_static_func', 'wraps']
 
 
 class DecoratorTransformer(BaseTransformer):
@@ -57,19 +58,19 @@ class DecoratorTransformer(BaseTransformer):
 
         decofun_str = '_orig_' + node.name
         for deco in reversed(deco_list):
-            if isinstance(deco,
-                          gast.Attribute) and deco.attr in DECORATOR_NAMES:
-                continue
-            elif isinstance(deco,
-                            gast.Call) and deco.func.args[0].id == 'wraps':
-                continue
-            else:
-                if isinstance(deco, gast.Attribute):
-                    deco_name = deco.attr
-                elif isinstance(deco, gast.Call):
+            if isinstance(deco, gast.Attribute):
+                deco_name = deco.attr
+            elif isinstance(deco, gast.Call):
+                if hasattr(deco.func, 'args'):
                     deco_name = deco.func.args[0].id
+                elif hasattr(deco.func, 'attr'):
+                    deco_name = deco.func.attr
                 else:
-                    deco_name = deco.id
+                    deco_name = deco.fun.id
+            else:
+                deco_name = deco.id
+            if deco_name in IGNORE_NAMES:
+                continue
             decofun_str = '_jst.Call({})({})'.format(deco_name, decofun_str)
 
         if decofun_str == '_orig_' + node.name:
