@@ -19,7 +19,6 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace phi {
 
