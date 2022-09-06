@@ -177,10 +177,17 @@ class FusedBatchNormActKernel<phi::GPUContext, T>
             /*xDesc=*/data_desc_,
             /*sizeInBytes=*/&reserve_space_size));
 
+    reserve_space->Resize({static_cast<int64_t>(
+        (reserve_space_size + experimental::SizeOf(x->dtype()) - 1) /
+        experimental::SizeOf(x->dtype()))});
     reserve_space_ptr =
-        dev_ctx.Alloc(reserve_space, x->dtype(), reserve_space_size);
-    workspace_ptr =
-        dev_ctx.Alloc(&workspace_tensor, x->dtype(), workspace_size);
+        dev_ctx.Alloc<T>(reserve_space, reserve_space->numel() * sizeof(T));
+    workspace_tensor.Resize({static_cast<int64_t>(
+        (workspace_size + experimental::SizeOf(x->dtype()) - 1) /
+        experimental::SizeOf(x->dtype()))});
+    workspace_ptr = dev_ctx.Alloc<T>(&workspace_tensor,
+                                     workspace_tensor.numel() * sizeof(T));
+
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
             handle,
@@ -353,8 +360,11 @@ class FusedBatchNormActGradKernel<phi::GPUContext, T>
             /*activationDesc=*/activation_desc_,
             /*sizeInBytes=*/&workspace_size));
 
-    workspace_ptr =
-        dev_ctx.Alloc(&workspace_tensor, x->dtype(), workspace_size);
+    workspace_tensor.Resize({static_cast<int64_t>(
+        (workspace_size + experimental::SizeOf(x->dtype()) - 1) /
+        experimental::SizeOf(x->dtype()))});
+    workspace_ptr = dev_ctx.Alloc<T>(&workspace_tensor,
+                                     workspace_tensor.numel() * sizeof(T));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnBatchNormalizationBackwardEx(

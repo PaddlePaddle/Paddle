@@ -23,6 +23,7 @@
 #include "paddle/fluid/operators/norm_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
@@ -153,10 +154,17 @@ class FusedBatchNormAddActKernel<phi::GPUContext, T>
             /*xDesc=*/data_desc_,
             /*sizeInBytes=*/&reserve_space_size));
 
+    reserve_space->Resize({static_cast<int64_t>(
+        (reserve_space_size + experimental::SizeOf(x->dtype()) - 1) /
+        experimental::SizeOf(x->dtype()))});
     reserve_space_ptr =
-        dev_ctx.Alloc(reserve_space, x->dtype(), reserve_space_size);
-    workspace_ptr =
-        dev_ctx.Alloc(&workspace_tensor, x->dtype(), workspace_size);
+        dev_ctx.Alloc<T>(reserve_space, reserve_space->numel() * sizeof(T));
+    workspace_tensor.Resize({static_cast<int64_t>(
+        (workspace_size + experimental::SizeOf(x->dtype()) - 1) /
+        experimental::SizeOf(x->dtype()))});
+    workspace_ptr = dev_ctx.Alloc<T>(&workspace_tensor,
+                                     workspace_tensor.numel() * sizeof(T));
+
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
             handle,
@@ -232,17 +240,15 @@ class FusedBatchNormAddActGradKernel<phi::GPUContext, T>
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
-    dev_ctx.Alloc<T>(d_x, d_x->numel() * sizeof(T));
-    dev_ctx.Alloc<T>(d_z, d_z->numel() * sizeof(T));
+    d_x->mutable_data<T>(ctx.GetPlace());
+    d_z->mutable_data<T>(ctx.GetPlace());
     PADDLE_ENFORCE_EQ(
         d_scale && d_bias,
         true,
         platform::errors::PreconditionNotMet(
             "Both the scale grad and the bias grad must not be null."));
-    dev_ctx.Alloc<BatchNormParamType<T>>(
-        d_scale, d_scale->numel() * sizeof(BatchNormParamType<T>));
-    dev_ctx.Alloc<BatchNormParamType<T>>(
-        d_bias, d_bias->numel() * sizeof(BatchNormParamType<T>));
+    d_scale->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    d_bias->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
     PADDLE_ENFORCE_EQ(scale->dims().size(),
                       1UL,
                       platform::errors::PreconditionNotMet(
@@ -310,8 +316,8 @@ class FusedBatchNormAddActGradKernel<phi::GPUContext, T>
             /*activationDesc=*/activation_desc_,
             /*sizeInBytes=*/&workspace_size));
 
-    workspace_ptr =
-        dev_ctx.Alloc(&workspace_tensor, x->dtype(), workspace_size);
+    workspace_ptr = workspace_tensor.mutable_data(
+        ctx.GetPlace(), x->dtype(), workspace_size);
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnBatchNormalizationBackwardEx(
             /*handle=*/dev_ctx.cudnn_handle(),
