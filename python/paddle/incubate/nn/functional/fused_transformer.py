@@ -1147,7 +1147,11 @@ def fused_multi_transformer_int8(
             'dropout_implementation': mode,
             'act_method': activation,
             'trans_qkvw': trans_qkvw,
-            'ring_id': ring_id
+            'ring_id': ring_id,
+            'qkv_in_scale': qkv_in_scale,
+            'out_linear_in_scale': out_linear_in_scale,
+            'ffn1_in_scale': ffn1_in_scale,
+            'ffn2_in_scale': ffn2_in_scale
         }
 
         outputs = dict()
