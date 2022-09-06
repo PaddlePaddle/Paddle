@@ -953,6 +953,13 @@ class Executor(object):
     def _add_scope_cache(self, scope_cache_key, scope):
         self.scope_caches[scope_cache_key] = scope
 
+    # just for testing, will be removed later
+    @lru_cache()
+    def _log_force_set_program_cache(self, use_program_cache):
+        logging.warning(
+            f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE"
+        )
+
     def _feed_data(self, program, feed, feed_var_name, scope):
         # feed var to framework
         global_block = program.global_block()
@@ -1427,9 +1434,7 @@ class Executor(object):
             use_program_cache = force_use_program_cache in [
                 1, '1', True, 'True', 'true'
             ]
-            warnings.warn(
-                f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE",
-                UserWarning)
+            self._log_force_set_program_cache(use_program_cache)
 
         try:
             res = self._run_impl(program=program,
