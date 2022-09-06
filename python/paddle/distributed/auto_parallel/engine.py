@@ -416,7 +416,8 @@ class Engine:
             steps_per_epoch=None,
             collate_fn=None,
             use_cache=False,
-            return_numpy=True):
+            return_numpy=True,
+            profile_dir=""):
         # TODO: callbacks
         # TODO: evaluate after training
 
@@ -439,8 +440,15 @@ class Engine:
 
         for epoch in range(epochs):
             train_logs = {"epoch: {:d} ": epoch}
+            start_time = time.time()
             for step, _ in enumerate(train_dataloader):
 
+                if len(profile_dir) and step == 30:
+                    from paddle.fluid import core
+                    core.nvprof_start()
+                    core.nvprof_enable_record_event()
+                if len(profile_dir) and step >= 30 and step < 40:
+                    core.nvprof_nvtx_push(str(step))
                 outs = self._executor.run(self.main_program,
                                           fetch_list=fetch_list,
                                           use_program_cache=use_cache,
@@ -449,9 +457,22 @@ class Engine:
                 if lr_scheduler is not None:
                     lr_scheduler.step()
                     train_logs["lr: {:5e} "] = self._lr_optimizer.get_lr()
+                if len(profile_dir) and step >= 30 and step < 40:
+                    core.nvprof_nvtx_pop()
+                if len(profile_dir) and step == 40:
+                    core.nvprof_stop()
+                if len(profile_dir) and step == 50:
+                    import sys
+                    sys.exit("NV sys profile finish!")
                 # inner fetches
                 if fetch_loss:
                     train_logs["loss: {:9f} "] = outs[0][0]
+                duration = time.time() - start_time
+                speed = 1.0 / duration
+                train_logs["speed: {:5f}"] = speed
+                train_logs["ips_total: {:5f}"] = batch_size * 1024 * speed
+                train_logs[
+                    "ips: {:5f}"] = batch_size * 1024 * speed / self._input_split_size
                 # user fetches
                 user_outs = outs[len(fetch_loss):]
                 user_fetch_list = fetch_list[len(fetch_loss):]
@@ -460,6 +481,8 @@ class Engine:
                 # logger
                 string = '[train] ' + ''.join(list(train_logs.keys()))
                 self._logger.info(string.format(*list(train_logs.values())))
+
+                start_time = time.time()
 
     def evaluate(self,
                  eval_data,
@@ -677,14 +700,12 @@ class Engine:
         config = self.strategy.recompute_configs
 
         # extract ckpts by specific model
+        exact_ckpts = config["checkpoints"]
         if isinstance(self.model, paddle.nn.Layer):
             if hasattr(
                     self.model, "gpt"
             ) and self.model.__class__.__name__ == 'GPTForPretraining':
                 exact_ckpts = self.model.gpt.checkpoints
-        else:
-            exact_ckpts = config["checkpoints"]
-
         # modify strategy
         if self.strategy.recompute:
             config["checkpoints"] = exact_ckpts[:]
