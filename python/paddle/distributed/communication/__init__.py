@@ -12,4 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["stream"]
+from .init import init_process_group
+from paddle.fluid.core import TCPStore
+
+__all__ = ["stream", "init_process_group", "TCPStore"]

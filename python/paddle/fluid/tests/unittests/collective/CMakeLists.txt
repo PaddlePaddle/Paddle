@@ -304,6 +304,13 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   set_tests_properties(test_communication_stream_allreduce_api
                        PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
 endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  py_test_modules(
+    test_communication_init_api MODULES test_communication_init_api ENVS
+    "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
+  set_tests_properties(test_communication_init_api
+                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+endif()
 if((WITH_ROCM OR WITH_GPU) AND (LINUX))
   bash_test_modules(
     test_world_size_and_rank
