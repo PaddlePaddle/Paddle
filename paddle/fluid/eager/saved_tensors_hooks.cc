@@ -30,33 +30,26 @@ PackHook::~PackHook() {
 }
 
 void* PackHook::operator()(const paddle::experimental::Tensor& tensor) {
-  auto args = PyTuple_New(1);
-  PyTuple_SET_ITEM(args, 0, paddle::pybind::ToPyObject(tensor));
   bool grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
-  PyObject* ret = nullptr;
-  {
-    ::pybind11::gil_scoped_acquire gil;
-    ret = PyObject_Call(hook_, args, nullptr);
-    Py_XDECREF(args);
-  }
+  ::pybind11::gil_scoped_acquire gil;
+  auto args = PyTuple_New(1);
+  PyTuple_SET_ITEM(args, 0, paddle::pybind::ToPyObject(tensor));
+  PyObject* ret = PyObject_Call(hook_, args, nullptr);
+  Py_XDECREF(args);
   egr::Controller::Instance().SetHasGrad(grad_tmp);
   return reinterpret_cast<void*>(ret);
 }
 
 void* PackHook::operator()(void* py_tensor) {
+  bool grad_tmp = egr::Controller::Instance().HasGrad();
+  egr::Controller::Instance().SetHasGrad(false);
+  ::pybind11::gil_scoped_acquire gil;
   auto args = PyTuple_New(1);
   Py_INCREF(reinterpret_cast<PyObject*>(py_tensor));
   PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(py_tensor));
-  bool grad_tmp = egr::Controller::Instance().HasGrad();
-  egr::Controller::Instance().SetHasGrad(false);
-  void* ret = nullptr;
-  {
-    ::pybind11::gil_scoped_acquire gil;
-    ret = PyObject_Call(hook_, args, nullptr);
-    Py_XDECREF(args);
-  }
-
+  PyObject* ret = PyObject_Call(hook_, args, nullptr);
+  Py_XDECREF(args);
   egr::Controller::Instance().SetHasGrad(grad_tmp);
   return reinterpret_cast<void*>(ret);
 }
@@ -69,16 +62,14 @@ UnPackHook::~UnPackHook() {
 }
 
 paddle::experimental::Tensor UnPackHook::operator()(void* packed_value) {
+  bool grad_tmp = egr::Controller::Instance().HasGrad();
+  egr::Controller::Instance().SetHasGrad(false);
+  ::pybind11::gil_scoped_acquire gil;
   auto args = PyTuple_New(1);
   Py_INCREF(reinterpret_cast<PyObject*>(packed_value));
   PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value));
-  bool grad_tmp = egr::Controller::Instance().HasGrad();
-  egr::Controller::Instance().SetHasGrad(false);
-  PyObject* ret = nullptr;
-  ::pybind11::gil_scoped_acquire gil;
-  ret = PyObject_Call(hook_, args, nullptr);
+  PyObject* ret = PyObject_Call(hook_, args, nullptr);
   Py_XDECREF(args);
-
   egr::Controller::Instance().SetHasGrad(grad_tmp);
 
   PADDLE_ENFORCE_EQ(paddle::pybind::IsEagerTensor(ret),
@@ -93,18 +84,14 @@ paddle::experimental::Tensor UnPackHook::operator()(void* packed_value) {
 }
 
 void* UnPackHook::operator()(void* packed_value, void* other) {
+  bool grad_tmp = egr::Controller::Instance().HasGrad();
+  egr::Controller::Instance().SetHasGrad(false);
+  ::pybind11::gil_scoped_acquire gil;
   auto args = PyTuple_New(1);
   Py_INCREF(reinterpret_cast<PyObject*>(packed_value));
   PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value));
-  bool grad_tmp = egr::Controller::Instance().HasGrad();
-  egr::Controller::Instance().SetHasGrad(false);
-  PyObject* ret = nullptr;
-  {
-    ::pybind11::gil_scoped_acquire gil;
-    ret = PyObject_Call(hook_, args, nullptr);
-    Py_XDECREF(args);
-  }
-
+  PyObject* ret = PyObject_Call(hook_, args, nullptr);
+  Py_XDECREF(args);
   egr::Controller::Instance().SetHasGrad(grad_tmp);
 
   PADDLE_ENFORCE_EQ(paddle::pybind::IsEagerTensor(ret),
