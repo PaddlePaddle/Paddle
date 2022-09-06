@@ -12,16 +12,48 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/unsqueeze_kernel.h"
+#include "paddle/phi/kernels/unsqueeze_grad_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/unsqueeze_kernel_impl.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/unsqueeze.h"
 
-PD_REGISTER_KERNEL(unsqueeze,
+namespace phi {
+template <typename T, typename Context>
+void UnsqueezeGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x_shape,
+                         const DenseTensor& dout,
+                         DenseTensor* dx) {
+  auto xshape_dims = x_shape.dims();
+  auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  dev_ctx.template Alloc<T>(dx);
+  phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), true, dx);
+  dx->Resize(x_dims);
+}
+}  // namespace phi
+
+PD_REGISTER_KERNEL(unsqueeze_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::UnsqueezeGradKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   bool,
+                   int,
+                   int16_t,
+                   uint8_t,
+                   int8_t,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(unsqueeze_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::UnsqueezeKernel,
+                   phi::UnsqueezeGradKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -35,19 +67,20 @@ PD_REGISTER_KERNEL(unsqueeze,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PD_REGISTER_KERNEL(unsqueeze_with_xshape,
-                   GPU,
+#endif
+
+#ifdef PADDLE_WITH_XPU
+PD_REGISTER_KERNEL(unsqueeze_grad,
+                   XPU,
                    ALL_LAYOUT,
-                   phi::UnsqueezeWithXShapeKernel,
+                   phi::UnsqueezeGradKernel,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16,
                    bool,
                    int,
-                   int16_t,
                    uint8_t,
                    int8_t,
-                   int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   int64_t) {}
+
+#endif

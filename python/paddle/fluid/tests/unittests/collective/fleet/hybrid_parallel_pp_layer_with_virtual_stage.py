@@ -19,7 +19,7 @@ import paddle
 from paddle.distributed import fleet
 import paddle.nn as nn
 from paddle.fluid.dygraph.layers import Layer
-from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
+from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer, PipelineParallelWithInterleave
 import paddle.nn.functional as F
 
 
@@ -87,7 +87,8 @@ class TestPipeLayerAPI(unittest.TestCase):
 
         try:
             model_chunks[0](paddle.to_tensor([1., 2.]))
-        except NotImplementedError:
+            raise NotImplementedError
+        except PermissionError:
             pass
 
         # fake call for the forward function of virtual pipeline layer
@@ -102,6 +103,7 @@ class TestPipeLayerAPI(unittest.TestCase):
 
         # just make sure the model can be wrapped with distributed model
         dist_model = fleet.distributed_model(pipe_model)
+        assert isinstance(dist_model, PipelineParallelWithInterleave)
 
 
 if __name__ == '__main__':

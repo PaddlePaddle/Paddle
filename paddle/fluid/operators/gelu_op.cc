@@ -39,9 +39,8 @@ class GeluOp : public framework::OperatorWithKernel {
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
-    auto it = this->Attrs().find("use_mkldnn");
     if (library == framework::LibraryType::kPlain &&
-        it != this->Attrs().end() && this->CanMKLDNNBeUsed(ctx, data_type)) {
+        this->CanMKLDNNBeUsed(ctx, data_type)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
@@ -100,21 +99,6 @@ class GeluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("approximate",
                   "(bool, default false) use approximation of gelu")
         .SetDefault(false);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"})
-        .AsExtra();
-    AddAttr<bool>("use_cudnn",
-                  "(bool, default false) Only used in cudnn kernel, need "
-                  "install cudnn")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Gelu Activation Operator. 
 
