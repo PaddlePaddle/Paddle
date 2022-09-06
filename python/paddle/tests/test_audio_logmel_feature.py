@@ -106,14 +106,13 @@ class TestFeatures(unittest.TestCase):
                                                fmin=50.0)
         # paddlespeech.audio.features.layer
         x = paddle.to_tensor(self.waveform,
-                             dtype='float64').unsqueeze(0)  # Add batch dim.
+                             dtype='float32').unsqueeze(0)  # Add batch dim.
         feature_extractor = paddle.audio.features.MFCC(sr=sr,
                                                        n_mfcc=n_mfcc,
                                                        n_fft=n_fft,
                                                        hop_length=64,
                                                        n_mels=n_mels,
-                                                       top_db=self.top_db,
-                                                       dtype=x.dtype)
+                                                       top_db=self.top_db)
         feature_layer = feature_extractor(x).squeeze(0).numpy()
 
         np.testing.assert_array_almost_equal(feature_librosa,
