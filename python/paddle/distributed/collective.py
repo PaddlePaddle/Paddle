@@ -1594,8 +1594,8 @@ def _linear(x, weight, bias=None, name=None):
     """
     if _non_static_mode():
         pre_bias = _varbase_creator(dtype=x.dtype)
-        _legacy_C_ops.matmul(x, weight, pre_bias, 'transpose_X', False,
-                             'transpose_Y', False, "alpha", 1)
+        pre_bias = _legacy_C_ops.matmul_v2(x, weight, 'trans_x', False,
+                                           'trans_y', False)
         return dygraph_utils._append_bias_in_dygraph(pre_bias,
                                                      bias,
                                                      axis=len(x.shape) - 1)
@@ -1610,11 +1610,7 @@ def _linear(x, weight, bias=None, name=None):
         check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
 
         inputs = {'X': [x], 'Y': [weight]}
-        attrs = {
-            'transpose_X': False,
-            'transpose_Y': False,
-            'alpha': 1,
-        }
+        attrs = {'trans_x': False, 'trans_y': False}
         tmp = helper.create_variable_for_type_inference(dtype)
         helper.append_op(type='matmul_v2',
                          inputs=inputs,
