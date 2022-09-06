@@ -94,7 +94,7 @@ class AutogradMeta : public AbstractAutogradMeta {
     grad_node_ = grad_node;
   }
 
-  const std::shared_ptr<GradNodeBase>& GetMutableGradNode() const {
+  std::shared_ptr<GradNodeBase> GetMutableGradNode() const {
     return grad_node_;
   }
 
@@ -114,7 +114,7 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   bool IsInitialized() const { return grad_node_.get(); }
 
-  // TODO(jiabin): This may cause error, since -1 still can indication true;
+  // TODO(jiabin): This may cause error, since -1 still can indicate true;
   bool StopGradient() const { return stop_gradient_ != 0; }
 
   int NumericStopGradient() const { return stop_gradient_; }
@@ -129,7 +129,7 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   bool RetainGrads() const { return retain_grads_; }
 
-  void SetRetainGrads(bool value) { retain_grads_ = value; }
+  void SetRetainGrads(bool retain_grads) { retain_grads_ = retain_grads; }
 
  private:
   // TODO(jiabin) :Should we use pointer instead of object?
