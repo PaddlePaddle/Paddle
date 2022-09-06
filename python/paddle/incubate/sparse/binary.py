@@ -431,4 +431,3 @@ def is_same_shape(x, y):
 
     """
     return x.is_same_shape(y)
-
