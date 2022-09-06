@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/phi/kernels/funcs/onednn/onednn_helper.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
