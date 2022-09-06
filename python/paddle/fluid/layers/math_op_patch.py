@@ -378,7 +378,8 @@ def monkey_patch_variable():
                     "If your code works well in the older versions but crashes in this version, try to use "
                     "%s(X, Y, axis=0) instead of %s. This transitional warning will be dropped in the future."
                     % (file_name, line_num, EXPRESSION_MAP[method_name],
-                       op_type, op_type, EXPRESSION_MAP[method_name]))
+                       op_type, op_type, EXPRESSION_MAP[method_name]),
+                    category=DeprecationWarning)
             current_block(self).append_op(type=op_type,
                                           inputs={
                                               'X': [self],
