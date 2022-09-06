@@ -300,7 +300,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     return false;
 
   // do not support Attribute with Variable(s) Type
-  if (HasUnsupportAttrVar(*desc)) return false;
+  if (HasUnsupportAttrVar(desc)) return false;
 
   for (auto& teller : tellers_) {
     std::unordered_set<std::string> act_op_list = {
