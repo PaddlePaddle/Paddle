@@ -2254,7 +2254,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 
 bool OpTeller::HasUnsupportAttrVar(const framework::OpDesc& desc) const {
   const std::string op_type = desc.Type();
-  auto has_attr_var = [](const std::string& attr_name) {
+  auto has_attr_var = [&](const std::string& attr_name) -> bool {
     // If Attribute is Variable(s), HasAttr() will return False
     return !desc.HasAttr(attr_name, /*with_attr_var=*/false);
   };
