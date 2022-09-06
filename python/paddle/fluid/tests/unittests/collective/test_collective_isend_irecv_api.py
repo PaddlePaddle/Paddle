@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,33 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
-import numpy as np
 import paddle
-
-from test_collective_api_base import TestDistBase
-
-paddle.enable_static()
+import test_collective_api_base as test_base
 
 
-class TestCollectiveSendRecvAPI(TestDistBase):
+class TestCollectiveIsendIrecvAPI(test_base.TestDistBase):
 
     def _setup_config(self):
         pass
 
-    #def test_sendrecv_nccl(self):
-    #    if paddle.fluid.core.is_compiled_with_cuda():
-    #        self.check_with_place("collective_sendrecv_api.py", "sendrecv",
-    #                              "nccl")
-
-    def test_sendrecv_nccl_dygraph(self):
+    def test_isend_irecv_nccl_dygraph(self):
         dtypes_to_test = [
             'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
             'bool'
         ]
         for dtype in dtypes_to_test:
-            self.check_with_place("collective_sendrecv_api_dygraph.py",
+            self.check_with_place("collective_isend_irecv_api_dygraph.py",
                                   "sendrecv",
                                   "nccl",
                                   static_mode="0",
