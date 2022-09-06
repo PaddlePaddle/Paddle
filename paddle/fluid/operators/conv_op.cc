@@ -285,11 +285,6 @@ framework::OpKernelType ConvOp::GetKernelTypeForVar(
 }
 
 void Conv2DOpMaker::Make() {
-  AddAttr<bool>("is_test",
-                "(bool, default false) Set to true for inference only, false "
-                "for training. Some layers may run faster when this is true.")
-      .SetDefault(false)
-      .AsExtra();
   AddInput("Input",
            "(Tensor) The input tensor of convolution operator. "
            "The format of input tensor is NCHW or NHWC, where N is batch size, "
@@ -356,22 +351,6 @@ void Conv2DOpMaker::Make() {
       "the input will be transformed automatically. ")
       .SetDefault("NCHW");
   // TODO(dzhwinter): need to registered layout transform function
-  AddAttr<int>("workspace_size_MB",
-               "Only used in cudnn kernel. Need set use_cudnn to true."
-               "workspace size for cudnn, in MB, "
-               "workspace is a section of GPU memory which will be "
-               "allocated/freed each time the operator runs, larger "
-               "workspace size can increase performance but also requires "
-               "better hardware. This size should be chosen carefully.")
-      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB())
-      .AsExtra();
-  AddAttr<bool>("exhaustive_search",
-                "(bool, default false) cuDNN has many algorithm to calculation "
-                "convolution, whether enable exhaustive search "
-                "for cuDNN convolution or not, default is False.")
-      .SetDefault(false)
-      .AsExtra();
-
   AddComment(R"DOC(
 Convolution Operator.
 
@@ -403,12 +382,18 @@ $$
   Apply();
 }
 
+class DepthwiseConv2DOpMaker : public Conv2DOpMaker {
+ protected:
+  void Apply() override {
+    AddAttr<bool>(
+        "use_cudnn",
+        "(bool, default false) Only used in cudnn kernel, need install cudnn")
+        .SetDefault(false)
+        .AsExtra();
+  }
+};
+
 void Conv3DOpMaker::Make() {
-  AddAttr<bool>("is_test",
-                "(bool, default false) Set to true for inference only, false "
-                "for training. Some layers may run faster when this is true.")
-      .SetDefault(false)
-      .AsExtra();
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution operator. "
@@ -465,47 +450,6 @@ void Conv3DOpMaker::Make() {
                             "dilations(d_dilation, h_dilation, w_dilation) of "
                             "convolution operator.")
       .SetDefault({1, 1, 1});
-  AddAttr<bool>(
-      "use_cudnn",
-      "(bool, default false) Only used in cudnn kernel, need install cudnn")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<std::string>(
-      "mkldnn_data_type",
-      "(string, default \"float32\"). Data type of mkldnn kernel")
-      .SetDefault("float32")
-      .InEnum({"float32", "int8", "bfloat16"})
-      .AsExtra();
-  AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<std::string>("fuse_activation",
-                       "(string, default \"\") Only used in mkldnn kernel")
-      .SetDefault("")
-      .AsExtra();
-  AddAttr<float>("fuse_alpha",
-                 "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f)
-      .AsExtra();
-  AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f)
-      .AsExtra();
-  AddAttr<bool>(
-      "use_addto",
-      "(bool, default false) If use addto strategy or not, only used in "
-      "cudnn kernel")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>("fuse_residual_connection",
-                "(bool, default false) Only used in mkldnn kernel. Used "
-                "whenever convolution output is as an input to residual "
-                "connection.")
-      .SetDefault(false)
-      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCDHW) Only used in "
@@ -513,25 +457,6 @@ void Conv3DOpMaker::Make() {
       "Defaults to \"NDHWC\". Specify the data format of the output data, "
       "the input will be transformed automatically. ")
       .SetDefault("NCDHW");
-  AddAttr<bool>("force_fp32_output",
-                "(bool, default false) Only used in mkldnn INT8 kernel")
-      .SetDefault(false)
-      .AsExtra();
-  // TODO(dzhwinter): need to registered layout transform function
-  AddAttr<int>("workspace_size_MB",
-               "Only used in cudnn kernel. workspace size for cudnn, in MB, "
-               "workspace is a section of GPU memory which will be "
-               "allocated/freed each time the operator runs, larger "
-               "workspace size can increase performance but also requires "
-               "better hardware. This size should be chosen carefully.")
-      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB())
-      .AsExtra();
-  AddAttr<bool>("exhaustive_search",
-                "(bool, default false) cuDNN has many algorithm to calculation "
-                "convolution, whether enable exhaustive search "
-                "for cuDNN convolution or not, default is False.")
-      .SetDefault(false)
-      .AsExtra();
   AddComment(R"DOC(
 Convolution3D Operator.
 
@@ -811,7 +736,7 @@ REGISTER_OPERATOR(conv2d_grad_grad, ops::ConvOpDoubleGrad);
 // depthwise convolution op
 REGISTER_OPERATOR(depthwise_conv2d,
                   ops::ConvOp,
-                  ops::Conv2DOpMaker,
+                  ops::DepthwiseConv2DOpMaker,
                   ops::ConvOpInferVarType,
                   ops::Conv2DGradMaker<paddle::framework::OpDesc>,
                   ops::Conv2DGradMaker<paddle::imperative::OpBase>);

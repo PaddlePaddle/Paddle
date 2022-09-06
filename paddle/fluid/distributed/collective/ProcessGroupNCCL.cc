@@ -738,14 +738,23 @@ void* GetPointerByOffset(void* raw_pointer,
   } else if (type == experimental::DataType::FLOAT64) {
     return reinterpret_cast<void*>(reinterpret_cast<double*>(raw_pointer) +
                                    offset);
+  } else if (type == experimental::DataType::FLOAT16) {
+    return reinterpret_cast<void*>(reinterpret_cast<int16_t*>(raw_pointer) +
+                                   offset);
   } else if (type == experimental::DataType::INT32) {
     return reinterpret_cast<void*>(reinterpret_cast<int32_t*>(raw_pointer) +
                                    offset);
   } else if (type == experimental::DataType::INT64) {
     return reinterpret_cast<void*>(reinterpret_cast<int64_t*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::FLOAT16) {
-    return reinterpret_cast<void*>(reinterpret_cast<int16_t*>(raw_pointer) +
+  } else if (type == experimental::DataType::INT8) {
+    return reinterpret_cast<void*>(reinterpret_cast<int8_t*>(raw_pointer) +
+                                   offset);
+  } else if (type == experimental::DataType::UINT8) {
+    return reinterpret_cast<void*>(reinterpret_cast<uint8_t*>(raw_pointer) +
+                                   offset);
+  } else if (type == experimental::DataType::BOOL) {
+    return reinterpret_cast<void*>(reinterpret_cast<bool*>(raw_pointer) +
                                    offset);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(

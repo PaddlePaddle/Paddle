@@ -108,6 +108,7 @@ class Lamb(Optimizer):
                  parameters=None,
                  grad_clip=None,
                  exclude_from_weight_decay_fn=None,
+                 multi_precision=False,
                  name=None):
         assert learning_rate is not None
         assert beta1 is not None
@@ -134,7 +135,7 @@ class Lamb(Optimizer):
         self._master_weights = {}
         self._used_master_weights = {}
         # TODO(zengjinle): expose API as soon as possible
-        self._multi_precision = False
+        self._multi_precision = multi_precision
 
     def _get_parameter(self, name, scope=None):
         if scope is None:

@@ -953,6 +953,13 @@ class Executor(object):
     def _add_scope_cache(self, scope_cache_key, scope):
         self.scope_caches[scope_cache_key] = scope
 
+    # just for testing, will be removed later
+    @lru_cache()
+    def _log_force_set_program_cache(self, use_program_cache):
+        logging.warning(
+            f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE"
+        )
+
     def _feed_data(self, program, feed, feed_var_name, scope):
         # feed var to framework
         global_block = program.global_block()
@@ -978,7 +985,8 @@ class Executor(object):
         ]
         return outs
 
-    def _split_optimize_ops_in_fetch_list(self, fetch_list):
+    @classmethod
+    def _split_optimize_ops_in_fetch_list(cls, fetch_list):
         """
         Split optimize_ops from fetch_list, which provided to specify program prunning.
         Args:
@@ -1030,7 +1038,8 @@ class Executor(object):
 
         return _fetch_list, _optimize_ops
 
-    def _prune_program(self,
+    @classmethod
+    def _prune_program(cls,
                        program,
                        feed=None,
                        fetch_list=None,
@@ -1093,7 +1102,8 @@ class Executor(object):
 
         return program
 
-    def _update_feed(self, program, feed):
+    @classmethod
+    def _update_feed(cls, program, feed):
         """
         Update the feed dict, remove the feed item which is pruned in program.  
 
@@ -1424,9 +1434,7 @@ class Executor(object):
             use_program_cache = force_use_program_cache in [
                 1, '1', True, 'True', 'true'
             ]
-            warnings.warn(
-                f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE",
-                UserWarning)
+            self._log_force_set_program_cache(use_program_cache)
 
         try:
             res = self._run_impl(program=program,
@@ -1552,17 +1560,22 @@ class Executor(object):
                               UserWarning)
                 return False
 
-            compiled = isinstance(program, compiler.CompiledProgram)
+            compiled = isinstance(program,
+                                  compiler.CompiledProgram) or isinstance(
+                                      program._graph, compiler.CompiledProgram)
             if compiled:
+                compiled_program = program if isinstance(
+                    program, compiler.CompiledProgram) else program._graph
                 # Unsupported case 1 : the CompiledProgram is constructed by Graph
-                if program._program is None:
+                if compiled_program._program is None:
                     warnings.warn("Standalone executor is not used for Graph",
                                   UserWarning)
                     return False
 
                 # Unsupported case 2: data parallel
-                if program._is_data_parallel and len(
-                        program._get_places(place, program._places)) != 1:
+                if compiled_program._is_data_parallel and len(
+                        compiled_program._get_places(
+                            place, compiled_program._places)) != 1:
                     warnings.warn(
                         "Standalone executor is not used for data parallel",
                         UserWarning)
@@ -1578,36 +1591,28 @@ class Executor(object):
                     return False
 
                 # Unsupported case 4: inference
-                if program._is_inference:
+                if compiled_program._is_inference:
                     warnings.warn(
                         "Standalone executor is not used for inference",
                         UserWarning)
                     return False
 
                 # Unsupported case 5: CUDA Graph
-                if program._build_strategy is not None and program._build_strategy.allow_cuda_graph_capture:
+                if compiled_program._build_strategy is not None and compiled_program._build_strategy.allow_cuda_graph_capture:
                     warnings.warn(
                         "Standalone executor is not used for CUDA Graph",
                         UserWarning)
                     return False
 
-                # Unsupported case 6: distributed
-                if program._build_strategy is not None and (
-                        program._build_strategy.is_distribution
-                        or program._build_strategy.num_trainers > 1):
+                # Unsupported case 6: async mode
+                if compiled_program._build_strategy is not None and compiled_program._build_strategy.async_mode:
                     warnings.warn(
-                        "Standalone executor is not used for distribution",
+                        "Standalone executor is not used for async mode",
                         UserWarning)
                     return False
 
                 return use_standalone_executor_for_compiled_program
             else:
-                if isinstance(
-                        program._graph, compiler.CompiledProgram
-                ) and not use_standalone_executor_for_compiled_program:
-                    warnings.warn("Standalone executor is not used for Graph",
-                                  UserWarning)
-                    return False
                 assert isinstance(program, Program)
                 return True
 
@@ -1615,51 +1620,46 @@ class Executor(object):
         # use StandaloneExecutor to run the program.
         if return_merged and self._enable_interpreter_core and _can_use_interpreter_core(
                 program, self.place):
-            inner_program = program._program if isinstance(
-                program, compiler.CompiledProgram) else program
-            if not inner_program._is_start_up_program_:
-                if feed is None:
-                    feed = {}
-                elif isinstance(feed, (list, tuple)):
-                    assert len(feed) == 1, "Not compiled with data parallel"
-                    feed = feed[0]
-                if not isinstance(feed, dict):
-                    raise TypeError(
-                        "feed requires dict as its Parameter. But you passed in %s"
-                        % (type(feed)))
-                feed = self._update_feed(program, feed)
 
-                program, new_exe = self._executor_cache.get_program_and_executor(
-                    program, feed, fetch_list, feed_var_name, fetch_var_name,
-                    self.place, scope)
+            if feed is None:
+                feed = {}
+            elif isinstance(feed, (list, tuple)):
+                assert len(feed) == 1, "Not compiled with data parallel"
+                feed = feed[0]
+            if not isinstance(feed, dict):
+                raise TypeError(
+                    "feed requires dict as its Parameter. But you passed in %s"
+                    % (type(feed)))
+            feed = self._update_feed(program, feed)
 
-                self._feed_data(program, feed, feed_var_name, scope)
-                if hasattr(program, 'lr_sheduler'):
-                    from paddle.optimizer.lr import LRScheduler
-                    assert isinstance(program.lr_sheduler,
-                                      LRScheduler), "must be LRScheduler"
-                    lr_sheduler = program.lr_sheduler
-                    lr_value = lr_sheduler()
-                    lr_var = program.global_block().vars[lr_sheduler._var_name]
-                    data = np.array([lr_value
-                                     ]).astype(convert_dtype(lr_var.dtype))
-                    tensor = core.get_variable_tensor(scope,
-                                                      lr_sheduler._var_name)
-                    # NOTE(dev): `set` always call TensorCopySync that is a
-                    # blocking behavior. So we use `_copy_from` to replace it.
-                    cpu_tensor = _as_lodtensor(data, core.CPUPlace())
-                    # for ipu, tensor is allocated on cpu
-                    if core.is_compiled_with_ipu():
-                        tensor._copy_from(cpu_tensor, tensor._place())
-                    else:
-                        tensor._copy_from(cpu_tensor, self.place)
+            program, new_exe = self._executor_cache.get_program_and_executor(
+                program, feed, fetch_list, feed_var_name, fetch_var_name,
+                self.place, scope)
 
-                warnings.warn(
-                    "FLAGS_USE_STANDALONE_EXECUTOR is set to 1. New executor is used to execute Program."
-                )
+            self._feed_data(program, feed, feed_var_name, scope)
+            if hasattr(program, 'lr_sheduler'):
+                from paddle.optimizer.lr import LRScheduler
+                assert isinstance(program.lr_sheduler,
+                                  LRScheduler), "must be LRScheduler"
+                lr_sheduler = program.lr_sheduler
+                lr_value = lr_sheduler()
+                lr_var = program.global_block().vars[lr_sheduler._var_name]
+                data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+                tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+                # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
+                cpu_tensor = _as_lodtensor(data, core.CPUPlace())
+                # for ipu, tensor is allocated on cpu
+                if core.is_compiled_with_ipu():
+                    tensor._copy_from(cpu_tensor, tensor._place())
+                else:
+                    tensor._copy_from(cpu_tensor, self.place)
 
-                return new_exe.run(scope, list(feed.keys()), fetch_list,
-                                   return_numpy)
+            warnings.warn(
+                "FLAGS_USE_STANDALONE_EXECUTOR is set to 1. New executor is used to execute Program."
+            )
+
+            return new_exe.run(scope, list(feed.keys()), fetch_list,
+                               return_numpy)
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
@@ -2382,7 +2382,8 @@ class Executor(object):
 
         return tmp_program
 
-    def _add_fetch_ops(self,
+    @classmethod
+    def _add_fetch_ops(cls,
                        program,
                        fetch_list,
                        fetch_var_name,
@@ -2416,6 +2417,17 @@ class Executor(object):
                                        inputs={'X': [var]},
                                        outputs={'Out': [fetch_var]},
                                        attrs={'col': i})
+
+        return tmp_program
+
+    @classmethod
+    def _remove_fetch_ops(cls, program, fetch_op_name='fetch'):
+        tmp_program = program.clone()
+        global_block = tmp_program.global_block()
+        op_num = len(global_block.ops)
+        for idx in reversed(range(op_num)):
+            if global_block.ops[idx].type == fetch_op_name:
+                global_block._remove_op(idx)
 
         return tmp_program
 

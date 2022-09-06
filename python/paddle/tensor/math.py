@@ -177,13 +177,14 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.scale(x, scale, float(bias), bias_after_scale)
-    if _non_static_mode():
+        out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
+        return dygraph_utils._append_activation_in_dygraph(out, act)
+    elif _in_legacy_dygraph():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = _legacy_C_ops.scale(x, 'scale',
                            float(_scale), 'bias',
                            float(bias), 'bias_after_scale', bias_after_scale)
-        return dygraph_utils._append_activation_in_dygraph(out)
+        return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(x, "x", [
         'float16', 'uint16', 'float32', 'float64', 'int8', 'int16', 'int32',
@@ -299,8 +300,11 @@ def multiplex(inputs, index, name=None):
             print(res) # Tensor([[5., 6.], [3., 4.]], dtype=float32)
 
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.multiplex(inputs, index)
+    elif _in_legacy_dygraph():
         return _legacy_C_ops.multiplex(index, inputs)
+
     helper = LayerHelper('multiplex', **locals())
 
     check_type(inputs, 'inputs', (list), 'multiplex')
@@ -348,7 +352,7 @@ def pow(x, y, name=None):
 
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor, the data type is float16, float32, float64, int32 or int64.
         y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     
@@ -737,7 +741,9 @@ def floor_divide(x, y, name=None):
     """
     op_type = 'elementwise_floordiv'
     axis = -1
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.floor_divide(x, y)
+    elif _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
 
@@ -756,8 +762,8 @@ def remainder(x, y, name=None):
         ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -777,7 +783,10 @@ def remainder(x, y, name=None):
     """
     op_type = 'elementwise_mod'
     axis = -1
-    if paddle.in_dynamic_mode():
+
+    if in_dygraph_mode():
+        return _C_ops.remainder(x, y)
+    elif _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
 
@@ -913,7 +922,9 @@ def maximum(x, y, name=None):
     op_type = 'elementwise_max'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.maximum(x, y)
+    elif _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -972,7 +983,9 @@ def minimum(x, y, name=None):
     op_type = 'elementwise_min'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.minimum(x, y)
+    elif _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -990,8 +1003,8 @@ def fmax(x, y, name=None):
         ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1053,8 +1066,8 @@ def fmin(x, y, name=None):
         ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4683,8 +4696,8 @@ def heaviside(x, y, name=None):
         ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
-        x (Tensor): The input tensor of Heaviside step function, it's data type should be float32, float64, int32 or int64.
-        y (Tensor): The tensor that determines a Heaviside step function, it's data type should be float32, float64, int32 or int64.
+        x (Tensor): The input tensor of Heaviside step function, it's data type should be float16, float32, float64, int32 or int64.
+        y (Tensor): The tensor that determines a Heaviside step function, it's data type should be float16, float32, float64, int32 or int64.
         name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
