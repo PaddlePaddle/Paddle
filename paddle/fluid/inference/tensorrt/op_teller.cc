@@ -121,6 +121,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fc",
       "shuffle_channel",
       "swish",
+      "silu",
       "split",
       "instance_norm",
       "gelu",
@@ -175,7 +176,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "sum",
       "shape",
       "squeeze2",
-      "unsqueeze2"};
+      "unsqueeze2",
+      "layernorm_shift_partition"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -228,6 +230,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fc",
       "shuffle_channel",
       "swish",
+      "silu",
       "split",
       "instance_norm",
       "gelu",
@@ -284,7 +287,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shape",
       "squeeze2",
       "unsqueeze2",
-      "fused_token_prune"};
+      "fused_token_prune",
+      "layernorm_shift_partition"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node,
@@ -309,7 +313,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         "tan",      "tanh",  "sinh",
         "cosh",     "asin",  "acos",
         "atan",     "asinh", "atanh",
-        "ceil",     "floor", "erf"};
+        "ceil",     "floor", "erf",
+        "silu"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -2241,6 +2246,14 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       }
 #endif
+    }
+
+    if (op_type == "layernorm_shift_partition") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the layernorm_shift_partition does not support "
+                   "static shape yet";
+        return false;
+      }
     }
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
