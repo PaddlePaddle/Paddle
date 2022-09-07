@@ -658,7 +658,13 @@ class PipelineLayer(Layer):
             return
 
         def _offset_dirname(ckpt_dir, local_layer_idx, local_chunk_id=None):
-            idx = local_layer_idx + self._start_pos
+            if self._num_virtual_pipeline_stages == 1:
+                pos_offset = self._start_pos
+            else:
+                assert hasattr(self, 'start_poss')
+                assert local_chunk_id < len(self._start_poss)
+                pos_offset = self._start_poss[local_chunk_id]
+            idx = local_layer_idx + pos_offset
             model_rank = self._topo.get_coord(self.global_rank).model
             rank_message = "-tensor_" + "{:0>2d}".format(model_rank)
             virtual_pipeline_stage_message = ""
@@ -697,7 +703,13 @@ class PipelineLayer(Layer):
             for idx, layer in enumerate(run_functions):
                 if not hasattr(layer, 'set_state_dict'):
                     continue
-                layer_idx = idx + self._start_pos
+                if self._num_virtual_pipeline_stages == 1:
+                    pos_offset = self._start_pos
+                else:
+                    assert hasattr(self, 'start_poss')
+                    assert local_chunk_id < len(self._start_poss)
+                    pos_offset = self._start_poss[local_chunk_id]
+                layer_idx = idx + pos_offset
                 layer_save_path = os.path.join(
                     path, 'layer_{0:0>2d}'.format(layer_idx))
                 if self._num_virtual_pipeline_stages > 1:
