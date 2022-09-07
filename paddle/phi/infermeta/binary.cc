@@ -1507,6 +1507,63 @@ void IndexSelectInferMeta(const MetaTensor& x,
   output->share_lod(x);
 }
 
+void IndexAddInferMeta(const MetaTensor& x,
+                       const MetaTensor& index,
+                       const MetaTensor& add_value,
+                       int axis,
+                       MetaTensor* output) {
+  auto input_dim = x.dims();
+  auto index_dim = index.dims();
+  auto add_value_dim = add_value.dims();
+
+  PADDLE_ENFORCE_EQ(
+      axis < input_dim.size() && axis >= (0 - input_dim.size()),
+      true,
+      phi::errors::OutOfRange(
+          "Attr(dim) is out of range, It's expected "
+          "to be in range of [-%d, %d]. But received Attr(axis) = %d.",
+          input_dim.size(),
+          input_dim.size() - 1,
+          axis));
+
+  int real_axis = axis >= 0 ? axis : axis + input_dim.size();
+
+  PADDLE_ENFORCE_EQ(index_dim.size() == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The 'shape' of Input(Index) must be 1-D tensor. "
+                        "But received: the 'shape' of Input(Index) is [%s], "
+                        "the dimension of Input(Index) is [%d].",
+                        index_dim,
+                        index_dim.size()));
+
+  PADDLE_ENFORCE_EQ(
+      index_dim[0] != 0,
+      true,
+      phi::errors::InvalidArgument("The length of Input(Index) can't be 0."));
+
+  // Note, add_value does not support broadcast now.
+  PADDLE_ENFORCE_EQ(input_dim.size() == add_value_dim.size(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The add_value must be the same dimension as x."));
+  for (int i = 0; i < input_dim.size(); i++) {
+    if (i != real_axis) {
+      PADDLE_ENFORCE_EQ(input_dim[i] == add_value_dim[i],
+                        true,
+                        phi::errors::InvalidArgument(
+                            "The add_value parameter does not supported "
+                            "broadcast, so input_dim[i] must be equal to "
+                            "add_value_dim[i] when i != axis."));
+    }
+  }
+
+  output->set_dims(x.dims());
+  output->set_dtype(x.dtype());
+  output->set_layout(x.layout());
+  output->share_lod(x);
+}
+
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto dim_x = x.dims();
   auto dim_y = y.dims();
@@ -2699,7 +2756,7 @@ void UnpoolInferMeta(const MetaTensor& x,
                      const std::vector<int>& ksize,
                      const std::vector<int>& strides,
                      const std::vector<int>& paddings,
-                     const std::vector<int>& output_size,
+                     const IntArray& output_size,
                      const std::string& data_format,
                      MetaTensor* out,
                      MetaConfig config) {
@@ -2723,11 +2780,16 @@ void UnpoolInferMeta(const MetaTensor& x,
                         in_y_dims));
 
   std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
+
+  std::vector<int64_t> output_size_val(output_size.size(), -1);
+  if (config.is_runtime || !output_size.FromTensor()) {
+    output_size_val = output_size.GetData();
+  }
   for (size_t i = 0; i < ksize.size(); ++i) {
     if (!config.is_runtime && in_x_dims[i + 2] <= 0) {
       output_shape.push_back(-1);
     } else {
-      output_shape.push_back(output_size[i]);
+      output_shape.push_back(output_size_val[i]);
     }
   }
   if (out != nullptr) {

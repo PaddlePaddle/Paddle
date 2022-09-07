@@ -70,6 +70,13 @@ def generate_extra_info(api_compat_yaml_path, ops_extra_info_path):
     with open(api_compat_yaml_path, 'rt') as f:
         compat_apis = yaml.safe_load(f)
 
+    def get_op_name(api_item):
+        names = api_item.split('(')
+        if len(names) == 1:
+            return names[0].strip()
+        else:
+            return names[1].split(')')[0].strip()
+
     extra_map_str_list = []
     extra_checker_str_list = []
 
@@ -96,18 +103,19 @@ def generate_extra_info(api_compat_yaml_path, ops_extra_info_path):
                 api_extra_attr_checkers = ",\n      ".join(
                     attr_checker_func_list)
                 extra_map_str_list.append(
-                    f"{{\"{api_compat_args['api']}\", {{ {api_extra_attr_map} }}}}"
+                    f"{{\"{get_op_name(api_compat_args['api'])}\", {{ {api_extra_attr_map} }}}}"
                 )
                 extra_checker_str_list.append(
-                    f"{{\"{api_compat_args['api']}\", {{ {api_extra_attr_checkers} }}}}"
+                    f"{{\"{get_op_name(api_compat_args['api'])}\", {{ {api_extra_attr_checkers} }}}}"
                 )
                 if 'backward' in api_compat_args:
-                    extra_map_str_list.append(
-                        f"{{\"{api_compat_args['backward']}\", {{ {api_extra_attr_map} }}}}"
-                    )
-                    extra_checker_str_list.append(
-                        f"{{\"{api_compat_args['backward']}\", {{ {api_extra_attr_checkers} }}}}"
-                    )
+                    for bw_item in api_compat_args['backward'].split(','):
+                        bw_op_name = get_op_name(bw_item)
+                        extra_map_str_list.append(
+                            f"{{\"{bw_op_name}\", {{ {api_extra_attr_map} }}}}")
+                        extra_checker_str_list.append(
+                            f"{{\"{bw_op_name}\", {{ {api_extra_attr_checkers} }}}}"
+                        )
 
     ops_extra_info_file = open(ops_extra_info_path, 'w')
     ops_extra_info_file.write(

@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/phi/kernels/funcs/onednn/onednn_helper.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
 namespace phi {
 

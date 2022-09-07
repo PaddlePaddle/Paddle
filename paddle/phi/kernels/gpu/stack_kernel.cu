@@ -57,7 +57,10 @@ void StackKernel(const Context& dev_ctx,
     x_datas[i] = x[i]->data<T>();
   }
 
-  auto tmp_x_data = paddle::memory::Alloc(dev_ctx, x_datas.size() * sizeof(T*));
+  auto tmp_x_data = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      x_datas.size() * sizeof(T*),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   paddle::memory::Copy(dev_ctx.GetPlace(),
                        tmp_x_data->ptr(),
                        phi::CPUPlace(),
