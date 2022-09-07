@@ -681,8 +681,8 @@ class LoopTransformer(BaseTransformer):
         new_stmts.append(body_func_node)
 
         helper = GetterSetterHelper(None, None, nonlocal_names, push_pop_names)
-        get_args_node = create_get_args_node(helper.union())
-        set_args_node = create_set_args_node(helper.union())
+        get_args_node = create_get_args_node(nonlocal_names, helper.union())
+        set_args_node = create_set_args_node(nonlocal_names, helper.union())
 
         while_loop_nodes = create_while_nodes(condition_func_node.name,
                                               body_func_node.name,
