@@ -60,3 +60,8 @@ cc_test(
   SRCS test_string_tensor.cc
   DEPS string_tensor)
 cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
+
+cc_test(
+  test_tensor_array
+  SRCS test_tensor_array.cc
+  DEPS tensor_array)
