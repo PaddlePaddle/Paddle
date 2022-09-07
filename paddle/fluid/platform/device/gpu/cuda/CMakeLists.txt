@@ -1,7 +1,7 @@
 nv_library(
   cuda_graph
   SRCS cuda_graph.cc
-  DEPS enforce allocator_facade)
+  DEPS enforce)
 nv_library(
   cuda_profiler
   SRCS cuda_profiler.cc
@@ -10,4 +10,4 @@ nv_library(
 nv_test(
   cudnn_helper_test
   SRCS cudnn_helper_test.cc
-  DEPS dynload_cuda phi)
+  DEPS dynload_cuda)

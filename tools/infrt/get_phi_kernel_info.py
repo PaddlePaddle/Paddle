@@ -20,8 +20,8 @@ import yaml
 from typing import List, Dict, Any
 
 skipped_phi_api_list_file = "/tools/infrt/skipped_phi_api.json"
-api_yaml_file = "/python/paddle/utils/code_gen/api.yaml"
-legacy_api_yaml_file = "/python/paddle/utils/code_gen/legacy_api.yaml"
+api_yaml_file = "/paddle/phi/api/yaml/api.yaml"
+legacy_api_yaml_file = "/paddle/phi/api/yaml/legacy_api.yaml"
 
 
 def get_skipped_kernel_list():

@@ -43,7 +43,7 @@ void InsertCallStackInfo(const std::string &type,
   const std::vector<std::string> *callstack = nullptr;
   auto iter = attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
   if (iter != attrs.end()) {
-    callstack = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
+    callstack = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
     if (callstack->empty()) callstack = nullptr;
   }
 

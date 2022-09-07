@@ -15,6 +15,9 @@
 import paddle
 import paddle.static as static
 from paddle.distributed import fleet
+from paddle.distributed.auto_parallel.cost import CostEstimator
+from paddle.distributed.auto_parallel.cluster import Cluster
+from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
 
 
 def train():
@@ -38,6 +41,30 @@ def train():
     optimizer = fleet.distributed_optimizer(optimizer)
     _, _, distributed_startup_program, distributed_main_program = optimizer.minimize(
         loss, start_program)
+
+    # add cost estimator
+    dist_context = get_default_distributed_context()
+    cluster = Cluster()
+    for op in train_program.global_block().ops:
+        dist_op = dist_context.get_dist_op_for_program(op)
+        for var_name in op.input_arg_names:
+            dims_mapping = dist_op.dist_attr.get_input_dims_mapping(var_name)
+            if dims_mapping is None:
+                dist_op.dist_attr.set_input_dims_mapping(
+                    var_name, [
+                        -1 for i in range(
+                            len(train_program.global_block().vars[var_name].
+                                shape))
+                    ])
+    cluster.gen_default_config_cluster(device_count=2)
+    cost_estimator = CostEstimator(train_program, cluster)
+    global_cost = cost_estimator.estimate(dist_context)
+    max_memory = cost_estimator._estimate_max_memory_by_dist_op(dist_context)
+    # test cache
+    global_cost = cost_estimator.estimate(dist_context)
+    max_memory = cost_estimator._estimate_max_memory_by_dist_op(dist_context)
+    assert global_cost.time > 0
+    assert max_memory > 0
 
     places = static.cuda_places()
     loader.set_batch_generator(batch_generator_creator(), places=places)

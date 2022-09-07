@@ -62,6 +62,7 @@ DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardShrink, "hard_shrink", "threshold");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Mish, "mish", "threshold");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(TanhShrink, "tanh_shrink", );  // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Silu, "silu", );               // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Softsign, "softsign", );       // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(LogSigmoid, "logsigmoid", );   // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Log, "log", );                 // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Log2, "log2", );               // NOLINT
@@ -294,6 +295,7 @@ PD_REGISTER_ARG_MAPPING_FN(elu, phi::EluOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elu_grad, phi::EluGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elu_grad_grad, phi::EluDoubleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(silu_grad, phi::SiluGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(softsign_grad, phi::SoftsignGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(sigmoid_grad, phi::SigmoidGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(sigmoid_grad_grad,
                            phi::SigmoidDoubleGradOpArgumentMapping);

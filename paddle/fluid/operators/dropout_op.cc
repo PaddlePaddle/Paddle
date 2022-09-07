@@ -71,20 +71,12 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                             true,
                             platform::errors::InvalidArgument(
                                 "'dropout_prob' must be between 0.0 and 1.0."));
-        });
+        })
+        .SupportTensor();
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
-    AddAttr<bool>("fix_seed",
-                  "A flag indicating whether to use a fixed seed to generate "
-                  "random mask. NOTE: DO NOT set this flag to true in "
-                  "training. Setting this flag to true is only useful in "
-                  "unittest or for debug that always the same output units "
-                  "will be dropped.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<int>("seed", "Dropout random seed.").SetDefault(0).AsExtra();
     AddAttr<std::string>(
         "dropout_implementation",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"

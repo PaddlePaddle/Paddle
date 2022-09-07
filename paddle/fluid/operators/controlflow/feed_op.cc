@@ -29,7 +29,7 @@ namespace operators {
 
 // FeedVariableVisitor is to feed the variable data
 // according to data type (LoDTensor or  Strings).
-class FeedVariableVisitor : public boost::static_visitor<void> {
+class FeedVariableVisitor {
  public:
   explicit FeedVariableVisitor(framework::Variable *out_var,
                                const platform::Place &place)

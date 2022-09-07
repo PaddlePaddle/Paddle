@@ -21,7 +21,7 @@ namespace operators {
 template <typename T>
 class ScaleMLUKernel : public framework::OpKernel<T> {
  public:
-  virtual void Compute(const framework::ExecutionContext& ctx) const {
+  void Compute(const framework::ExecutionContext& ctx) const {
     auto& dev_ctx = GetDevCtxFromCTX(ctx);
     auto* in_var = ctx.InputVar("X");
     auto* in = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in_var);

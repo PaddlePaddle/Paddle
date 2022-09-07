@@ -279,13 +279,13 @@ FetchResultType ParallelSSAGraphExecutor::Run(
           continue;
         }
         const auto &fetch_list =
-            BOOST_GET_CONST(FetchList, fetch_data[scope_idx]);
+            PADDLE_GET_CONST(FetchList, fetch_data[scope_idx]);
         if (data_is_lod_tensor(fetch_list[fetch_idx])) {
           lodtensor_ptrs.push_back(
-              &(BOOST_GET_CONST(LoDTensor, fetch_list[fetch_idx])));
+              &(PADDLE_GET_CONST(LoDTensor, fetch_list[fetch_idx])));
         } else {
           lodtensorarray_ptrs.push_back(
-              &(BOOST_GET_CONST(LoDTensorArray, fetch_list[fetch_idx])));
+              &(PADDLE_GET_CONST(LoDTensorArray, fetch_list[fetch_idx])));
         }
       }
       if (lodtensor_ptrs.size() != 0) {
@@ -318,7 +318,7 @@ FetchResultType ParallelSSAGraphExecutor::Run(
           continue;
         }
         const auto &fetch_list =
-            BOOST_GET_CONST(FetchUnmergedList, fetch_data[scope_idx]);
+            PADDLE_GET_CONST(FetchUnmergedList, fetch_data[scope_idx]);
         PADDLE_ENFORCE_EQ(
             fetch_list[fetch_idx].size(),
             1,

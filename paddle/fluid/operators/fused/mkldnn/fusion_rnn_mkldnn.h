@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
+
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
@@ -19,10 +21,10 @@ namespace operators {
 
 using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
-using paddle::platform::CPUDeviceContext;
 using paddle::platform::CreateKey;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;
+using phi::CPUContext;
 using platform::to_void_cast;
 
 template <typename T, typename T_alg, typename T_out = T>

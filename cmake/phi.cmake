@@ -15,7 +15,7 @@
 function(generate_unify_header DIR_NAME)
   set(options "")
   set(oneValueArgs HEADER_NAME SKIP_SUFFIX)
-  set(multiValueArgs "")
+  set(multiValueArgs EXCLUDES)
   cmake_parse_arguments(generate_unify_header "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
 
@@ -33,6 +33,9 @@ function(generate_unify_header DIR_NAME)
     set(skip_suffix "${generate_unify_header_SKIP_SUFFIX}")
   endif()
 
+  # exclude files
+  list(LENGTH generate_unify_header_EXCLUDES generate_unify_header_EXCLUDES_len)
+
   # generate target header file
   set(header_file ${CMAKE_CURRENT_SOURCE_DIR}/include/${header_name}.h)
   file(
@@ -43,6 +46,13 @@ function(generate_unify_header DIR_NAME)
   # get all top-level headers and write into header file
   file(GLOB HEADERS "${CMAKE_CURRENT_SOURCE_DIR}\/${DIR_NAME}\/*.h")
   foreach(header ${HEADERS})
+    if(${generate_unify_header_EXCLUDES_len} GREATER 0)
+      get_filename_component(header_file_name ${header} NAME)
+      list(FIND generate_unify_header_EXCLUDES ${header_file_name} _index)
+      if(NOT ${_index} EQUAL -1)
+        continue()
+      endif()
+    endif()
     if("${skip_suffix}" STREQUAL "")
       string(REPLACE "${PADDLE_SOURCE_DIR}\/" "" header "${header}")
       file(APPEND ${header_file} "#include \"${header}\"\n")
@@ -73,7 +83,7 @@ function(kernel_declare TARGET_LIST)
         "${kernel_impl}")
     if(NOT first_registry STREQUAL "")
       # some gpu kernel only can run on cuda, not support rocm, so we add this branch
-      if(WITH_ROCM)
+      if(WITH_ROCM OR WITH_NV_JETSON)
         string(FIND "${first_registry}" "cuda_only" pos)
         if(pos GREATER 1)
           continue()
@@ -103,6 +113,9 @@ function(kernel_declare TARGET_LIST)
       elseif(${kernel_path} MATCHES "./kps\/")
         file(APPEND ${kernel_declare_file}
              "PD_DECLARE_KERNEL(${kernel_name}, KPS, ALL_LAYOUT);\n")
+      elseif(${kernel_path} MATCHES "./onednn\/")
+        file(APPEND ${kernel_declare_file}
+             "PD_DECLARE_KERNEL(${kernel_name}, OneDNN, ALL_LAYOUT);\n")
       else()
         # deal with device independent kernel, now we use CPU temporaary
         file(APPEND ${kernel_declare_file}

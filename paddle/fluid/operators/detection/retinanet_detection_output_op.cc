@@ -507,7 +507,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
     int64_t box_dim = box_dims[2];
     int64_t out_dim = box_dim + 2;
 
-    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
 
     std::vector<std::vector<std::vector<T>>> all_nmsed_out;
     std::vector<size_t> batch_starts = {0};

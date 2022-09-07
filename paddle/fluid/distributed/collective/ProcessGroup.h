@@ -46,6 +46,7 @@ enum class CommType : std::uint8_t {
   SEND = 9,
   RECV = 10,
   BARRIER = 11,
+  ALLTOALL_SINGLE = 12,
   UNKNOWN = 100,
 };
 
@@ -54,19 +55,27 @@ class ProcessGroup {
   class Task {
    public:
     Task(int rank,
-         const std::vector<phi::DenseTensor>& inputTensors,
-         CommType opType = CommType::UNKNOWN);
+         const std::vector<phi::DenseTensor>& inputs,
+         CommType comm_type);
+    Task(int rank,
+         const std::vector<phi::DenseTensor>& inputs,
+         CommType comm_type,
+         bool sync_op);
 
     virtual ~Task();
     virtual bool IsCompleted();
     virtual bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
     virtual void Synchronize();
+    bool IsSync() const { return sync_op_; }
 
    protected:
     const int rank_;
-    CommType comm_type_;
+    CommType comm_type_{CommType::UNKNOWN};
     std::mutex mutex_;
-    bool is_completed_ = false;
+    bool is_completed_{false};
+
+   private:
+    bool sync_op_{true};
   };
 
   explicit ProcessGroup(int rank,
@@ -80,13 +89,29 @@ class ProcessGroup {
   int GetSize() const { return size_; }
 
   virtual const std::string GetBackendName() const = 0;
+  virtual phi::DeviceContext* GetDeviceContext(const Place& place) const {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Does not support to get device_context from ProcessGroup%s.",
+        GetBackendName()));
+  }
 
+  // TODO(liyurui): This API will be moved later
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& /* input tensors */,   // NOLINT
       std::vector<phi::DenseTensor>& /* output tensors */,  // NOLINT
       const AllreduceOptions& = AllreduceOptions()) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support allreduce", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
+      std::vector<phi::DenseTensor>& /* input tensors */,   // NOLINT
+      std::vector<phi::DenseTensor>& /* output tensors */,  // NOLINT
+      const AllreduceOptions&,
+      bool) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support allreduce with sync_op flag",
+        GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
@@ -136,11 +161,29 @@ class ProcessGroup {
         "ProcessGroup%s does not support AllGather", GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
+      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
+      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+      int offset,
+      int length) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support AllGather_Partial", GetBackendName()));
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
       std::vector<phi::DenseTensor>&,    // NOLINT
       std::vector<phi::DenseTensor>&) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support AllToAll", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllToAll_Single(
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      std::vector<int64_t>&,
+      std::vector<int64_t>&) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support AllToAll_Single", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Reduce(
@@ -157,6 +200,14 @@ class ProcessGroup {
       const ScatterOptions&) {         // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support Scatter", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
+      phi::DenseTensor&,              // NOLINT
+      phi::DenseTensor&,              // NOLINT
+      const ReduceScatterOptions&) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support ReduceScatter", GetBackendName()));
   }
 
  protected:

@@ -25,8 +25,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext &dev_ctx,
+struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext &dev_ctx,
                   const framework::Tensor *in,
                   const framework::Tensor *scale,
                   T max_range,
@@ -72,8 +72,8 @@ struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, float>;
-template struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, double>;
+template struct ChannelDequantizeFunctorV2<phi::CPUContext, float>;
+template struct ChannelDequantizeFunctorV2<phi::CPUContext, double>;
 
 class QuantizeLinearOp : public framework::OperatorWithKernel {
  public:
@@ -92,6 +92,12 @@ class QuantizeLinearOp : public framework::OperatorWithKernel {
       } else {
         ctx->SetOutputDim("OutScale", {ctx->GetInputDim("X")[quant_axis]});
       }
+    }
+    if (ctx->HasOutput("OutState")) {
+      ctx->SetOutputDim("OutState", {1});
+    }
+    if (ctx->HasOutput("OutAccum")) {
+      ctx->SetOutputDim("OutAccum", {1});
     }
     ctx->ShareLoD("X", /*->*/ "Y");
   }
@@ -113,7 +119,25 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Y",
               "(Tensor) Output of quantized low level tensor, "
               "but also saved as float data type.");
-    AddOutput("OutScale", "(Tensor) Current scale").AsDispensable().AsExtra();
+    AddInput("InAccum", "Last accum.")
+        .AsDispensable()
+        .AsExtra();  // only qat use
+    AddInput("InState", "Last state.")
+        .AsDispensable()
+        .AsExtra();  // only qat use
+    AddOutput("OutState", "(Tensor) state buffer.")
+        .AsDispensable()
+        .AsExtra();  // only qat use
+    AddOutput("OutAccum", "(Tensor) accum buffer.")
+        .AsDispensable()
+        .AsExtra();  // only qat use
+    AddOutput("OutScale", "(Tensor) Current scale")
+        .AsDispensable()
+        .AsExtra();  // only qat use
+    AddAttr<float>("moving_rate",
+                   "(float, default 0.9) moving rate.")  // only qat use
+        .SetDefault(0.9)
+        .AsExtra();
     AddAttr<int>("quant_axis",
                  "(int, default 0) The axis for quantization. "
                  "For conv2d, depthwise_conv2d, conv2d_transpose "
@@ -154,8 +178,7 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
                   "nearest ties to even and 1 is rounding to nearest "
                   "ties away from zero.but the received is %d",
                   round_type));
-        })
-        .AsExtra();
+        });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
@@ -176,7 +199,7 @@ $$0 \leq c \lt \ the\ channel\ number\ of\ X$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
     quantize_linear,

@@ -171,7 +171,8 @@ class SqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("axes",
                               "(std::vector<int>). List of integers,"
                               " indicating the dimensions to squeeze.")
-        .SetDefault({});
+        .SetDefault({})
+        .SupportTensor();
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)
@@ -295,15 +296,46 @@ class SqueezeDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
 // squeeze_grad, in this way, the framework can reuse the memory of X
 // immediately the squeeze2_op is finished.
 // Considering compatibility issues, we could not fix squeeze2_op
-class Squeeze2OpMaker : public SqueezeOpMaker {
+class Squeeze2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    SqueezeOpMaker::Make();
+    AddInput("X", "(Tensor). The input tensor of squeeze operator.");
+    AddOutput("Out", "(Tensor). The output tensor of squeeze operator.");
     AddOutput("XShape",
               "XShape is just used to store the shape and lod of X, which will "
               "be used in SqueezeGradOp.")
         .AsIntermediate()
         .AsExtra();
+    AddAttr<std::vector<int>>("axes",
+                              "(std::vector<int>). List of integers,"
+                              " indicating the dimensions to squeeze.")
+        .SetDefault({})
+        .SupportTensor();
+    AddComment(R"DOC(
+        Squeeze2 Operator.
+
+        Remove single-dimensional entries from the shape of a tensor.
+        Takes a parameter axes with a list of axes to squeeze.
+        If axes is not provided, all the single dimensions will be removed from the shape.
+        If an axis is selected with shape entry not equal to one, an error is raised.
+
+        Examples:
+        Case 1:
+          Given
+            X.shape = (1, 3, 1, 5)
+          and
+            axes = [0]
+          we get:
+            Out.shape = (3, 1, 5)
+
+        Case 2:
+          Given
+            X.shape = (1, 3, 1, 5)
+          and
+            axes = []
+          we get:
+            Out.shape = (3, 5)
+    )DOC");
   }
 };
 
@@ -347,7 +379,7 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(squeeze2,
                             SqueezeInferShapeFunctor,
-                            PD_INFER_META(phi::SqueezeInferMeta));
+                            PD_INFER_META(phi::SqueezeWithXShapeInferMeta));
 
 REGISTER_OPERATOR(squeeze,
                   ops::SqueezeOp,
@@ -375,31 +407,25 @@ REGISTER_OPERATOR(squeeze2_grad,
 
 REGISTER_OP_CPU_KERNEL(
     squeeze,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex<float>>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex<double>>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::bfloat16>);
+    ops::SqueezeKernel<phi::CPUContext, float>,
+    ops::SqueezeKernel<phi::CPUContext, double>,
+    ops::SqueezeKernel<phi::CPUContext, bool>,
+    ops::SqueezeKernel<phi::CPUContext, int>,
+    ops::SqueezeKernel<phi::CPUContext, uint8_t>,
+    ops::SqueezeKernel<phi::CPUContext, int8_t>,
+    ops::SqueezeKernel<phi::CPUContext, int64_t>,
+    ops::SqueezeKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::SqueezeKernel<phi::CPUContext, paddle::platform::complex<double>>,
+    ops::SqueezeKernel<phi::CPUContext, paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(
     squeeze_grad,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext,
-                           paddle::platform::complex<float>>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext,
-                           paddle::platform::complex<double>>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext,
-                           paddle::platform::bfloat16>);
+    ops::SqueezeGradKernel<phi::CPUContext, float>,
+    ops::SqueezeGradKernel<phi::CPUContext, double>,
+    ops::SqueezeGradKernel<phi::CPUContext, bool>,
+    ops::SqueezeGradKernel<phi::CPUContext, int>,
+    ops::SqueezeGradKernel<phi::CPUContext, uint8_t>,
+    ops::SqueezeGradKernel<phi::CPUContext, int8_t>,
+    ops::SqueezeGradKernel<phi::CPUContext, int64_t>,
+    ops::SqueezeGradKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::SqueezeGradKernel<phi::CPUContext, paddle::platform::complex<double>>,
+    ops::SqueezeGradKernel<phi::CPUContext, paddle::platform::bfloat16>);

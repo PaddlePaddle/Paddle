@@ -98,7 +98,7 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 template <typename T>
-using Kernel = ops::RandomCropKernel<paddle::platform::CPUDeviceContext, T>;
+using Kernel = ops::RandomCropKernel<phi::CPUContext, T>;
 REGISTER_OP_CPU_KERNEL(random_crop,
                        Kernel<float>,
                        Kernel<int>,

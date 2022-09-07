@@ -30,6 +30,7 @@
 #include <string>
 #include <vector>
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -161,8 +162,8 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
 }
 
 inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
-                                            int x_dim,
-                                            int y_dim) {
+                                            int64_t x_dim,
+                                            int64_t y_dim) {
   PADDLE_ENFORCE_GT(
       x_dim,
       0,
@@ -177,7 +178,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
                                    y_dim));
 
   const int kThreadsPerBlock = 256;
-  int block_cols = std::min(x_dim, kThreadsPerBlock);
+  int block_cols = std::min<int64_t>(x_dim, kThreadsPerBlock);
   int block_rows = std::max(kThreadsPerBlock / block_cols, 1);
 
   int max_physical_threads = context.GetMaxPhysicalThreadCount();
@@ -187,8 +188,9 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
   // Noticed, block size is not align to 32, if needed do it yourself.
   config.thread_per_block = dim3(block_cols, block_rows, 1);
 
-  int grid_x = std::min(DivUp<int>(x_dim, block_cols), max_blocks);
-  int grid_y = std::min(max_blocks / grid_x, std::max(y_dim / block_rows, 1));
+  int grid_x = std::min<int64_t>(DivUp<int64_t>(x_dim, block_cols), max_blocks);
+  int grid_y = std::min<int64_t>(max_blocks / grid_x,
+                                 std::max<int64_t>(y_dim / block_rows, 1));
 
   config.block_per_grid = dim3(grid_x, grid_y, 1);
   return config;
@@ -228,6 +230,14 @@ inline GpuLaunchConfig GetGpuLaunchConfig3D(const phi::GPUContext& context,
   return config;
 }
 
+template <typename Context>
+void LimitGridDim(const Context& ctx, dim3* grid_dim) {
+  auto max_grid_dim =
+      reinterpret_cast<const phi::GPUContext&>(ctx).GetCUDAMaxGridDimSize();
+  grid_dim->x = grid_dim->x < max_grid_dim[0] ? grid_dim->x : max_grid_dim[0];
+  grid_dim->y = grid_dim->y < max_grid_dim[1] ? grid_dim->y : max_grid_dim[1];
+  grid_dim->z = grid_dim->z < max_grid_dim[2] ? grid_dim->z : max_grid_dim[2];
+}
 }  // namespace gpu
 }  // namespace backends
 }  // namespace phi

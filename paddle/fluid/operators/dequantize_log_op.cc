@@ -32,8 +32,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct DequantizeFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& dev_ctx,
+struct DequantizeFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& dev_ctx,
                   const framework::Tensor* in,
                   const framework::Tensor* dict,
                   framework::Tensor* out) {
@@ -51,7 +51,7 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct DequantizeFunctor<platform::CPUDeviceContext, int8_t>;
+template struct DequantizeFunctor<phi::CPUContext, int8_t>;
 
 class DequantizeLogOp : public framework::OperatorWithKernel {
  public:
@@ -108,7 +108,7 @@ This calculation is an opposite operation of QuantizeLogOp:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
     dequantize_log,

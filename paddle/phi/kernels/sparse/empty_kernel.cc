@@ -26,37 +26,27 @@ template <typename T, typename Context>
 void EmptyLikeCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         SparseCooTensor* out) {
-  const DenseTensor& x_indices = x.non_zero_indices();
+  out->set_dims(x.dims());
+  *(out->mutable_indices()) = x.indices();
+
   const DenseTensor& x_values = x.non_zero_elements();
-  DenseTensor* out_indices = out->mutable_non_zero_indices();
   DenseTensor* out_values = out->mutable_non_zero_elements();
-
-  phi::Copy(dev_ctx, x_indices, dev_ctx.GetPlace(), false, out_indices);
-
   out_values->Resize(x_values.dims());
   dev_ctx.template Alloc<T>(out_values);
-
-  out->set_dims(x.dims());
 }
 
 template <typename T, typename Context>
 void EmptyLikeCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
                         SparseCsrTensor* out) {
-  const DenseTensor& x_crows = x.non_zero_crows();
-  const DenseTensor& x_cols = x.non_zero_cols();
+  out->set_dims(x.dims());
+  *(out->mutable_crows()) = x.crows();
+  *(out->mutable_cols()) = x.cols();
+
   const DenseTensor& x_values = x.non_zero_elements();
-  DenseTensor* out_crows = out->mutable_non_zero_crows();
-  DenseTensor* out_cols = out->mutable_non_zero_cols();
   DenseTensor* out_values = out->mutable_non_zero_elements();
-
-  phi::Copy(dev_ctx, x_crows, dev_ctx.GetPlace(), false, out_crows);
-  phi::Copy(dev_ctx, x_cols, dev_ctx.GetPlace(), false, out_cols);
-
   out_values->Resize(x_values.dims());
   dev_ctx.template Alloc<T>(out_values);
-
-  out->set_dims(x.dims());
 }
 
 }  // namespace sparse
@@ -97,6 +87,7 @@ PD_REGISTER_KERNEL(empty_like_coo,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::EmptyLikeCooKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    int8_t,
@@ -112,6 +103,7 @@ PD_REGISTER_KERNEL(empty_like_csr,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::EmptyLikeCsrKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    int8_t,

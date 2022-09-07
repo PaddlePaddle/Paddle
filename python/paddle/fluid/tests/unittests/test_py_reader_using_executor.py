@@ -95,15 +95,12 @@ def simple_fc_net(in_size,
         py_reader = fluid.layers.create_py_reader_by_data(
             capacity=queue_capacity,
             use_double_buffer=use_double_buffer,
-            feed_list=[in_data, label],
-            name=unique_name.generate('py_reader_name'))
+            feed_list=[in_data, label])
     else:
-        py_reader = fluid.layers.py_reader(
-            capacity=queue_capacity,
-            shapes=[in_data.shape, label.shape],
-            dtypes=['float32', 'int64'],
-            name=unique_name.generate('py_reader_name'),
-            use_double_buffer=use_double_buffer)
+        py_reader = fluid.layers.py_reader(capacity=queue_capacity,
+                                           shapes=[in_data.shape, label.shape],
+                                           dtypes=['float32', 'int64'],
+                                           use_double_buffer=use_double_buffer)
 
     in_data, label = fluid.layers.read_file(py_reader)
 
@@ -119,7 +116,7 @@ def simple_fc_net(in_size,
                 value=1.0)))
 
     predict_label = fluid.layers.fc(hidden, size=class_num, act='softmax')
-    loss = fluid.layers.mean(
+    loss = paddle.mean(
         fluid.layers.cross_entropy(input=predict_label, label=label))
 
     optimizer = fluid.optimizer.Adam()

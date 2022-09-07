@@ -32,8 +32,8 @@ struct Compare {
 };
 
 template <typename T>
-struct FindAbsMaxFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext &ctx,
+struct FindAbsMaxFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext &ctx,
                   const T *in,
                   const int num,
                   T *out) {
@@ -41,11 +41,11 @@ struct FindAbsMaxFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct FindAbsMaxFunctor<platform::CPUDeviceContext, float>;
+template struct FindAbsMaxFunctor<phi::CPUContext, float>;
 
 template <typename T>
-struct FindChannelAbsMaxFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext &ctx,
+struct FindChannelAbsMaxFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext &ctx,
                   const framework::Tensor &in_tensor,
                   const int quant_axis,
                   T *out_abs_max) {
@@ -86,11 +86,11 @@ struct FindChannelAbsMaxFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct FindChannelAbsMaxFunctor<platform::CPUDeviceContext, float>;
+template struct FindChannelAbsMaxFunctor<phi::CPUContext, float>;
 
 template <typename T>
-struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext &ctx,
+struct ClipAndFakeQuantFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext &ctx,
                   const framework::Tensor &in,
                   const framework::Tensor &scale,
                   const int bin_cnt,
@@ -98,7 +98,7 @@ struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
                   framework::Tensor *out) {
     T s = scale.data<T>()[0];
     T inv_s = inverse(s);
-    platform::Transform<platform::CPUDeviceContext> trans;
+    platform::Transform<phi::CPUContext> trans;
     if (round_type == 0) {
       trans(ctx,
             in.data<T>(),
@@ -117,11 +117,11 @@ struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, float>;
+template struct ClipAndFakeQuantFunctor<phi::CPUContext, float>;
 
 template <typename T>
-struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext &ctx,
+struct ClipAndFakeQuantDequantFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext &ctx,
                   const framework::Tensor &in,
                   const framework::Tensor &scale,
                   const int bin_cnt,
@@ -130,7 +130,7 @@ struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
     T s = scale.data<T>()[0];
     T inv_s = inverse(s);
 
-    platform::Transform<platform::CPUDeviceContext> trans;
+    platform::Transform<phi::CPUContext> trans;
     if (round_type == 0) {
       trans(ctx,
             in.data<T>(),
@@ -151,12 +151,11 @@ struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
     }
   }
 };
-template struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext,
-                                               float>;
+template struct ClipAndFakeQuantDequantFunctor<phi::CPUContext, float>;
 
 template <typename T>
-struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext &ctx,
+struct ChannelClipAndFakeQuantFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext &ctx,
                   const framework::Tensor &in,
                   const framework::Tensor &scale,
                   const int bin_cnt,
@@ -176,7 +175,7 @@ struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
     auto *out_data = out->mutable_data<T>(ctx.GetPlace());
     auto in_dims = in.dims();
     const int64_t channel = in_dims[quant_axis];
-    platform::Transform<platform::CPUDeviceContext> trans;
+    platform::Transform<phi::CPUContext> trans;
     if (quant_axis == 0) {
       const int64_t channel_size = in.numel() / channel;
       for (int64_t i = 0; i < channel; i++) {
@@ -235,11 +234,10 @@ struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext,
-                                               float>;
+template struct ChannelClipAndFakeQuantFunctor<phi::CPUContext, float>;
 template <typename T>
-struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext &ctx,
+struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext &ctx,
                   const framework::Tensor &in,
                   const framework::Tensor &scale,
                   const int bin_cnt,
@@ -258,7 +256,7 @@ struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
     auto *out_data = out->mutable_data<T>(ctx.GetPlace());
     auto in_dims = in.dims();
     const int64_t channel = in_dims[quant_axis];
-    platform::Transform<platform::CPUDeviceContext> trans;
+    platform::Transform<phi::CPUContext> trans;
     if (quant_axis == 0) {
       const int64_t channel_size = in.numel() / channel;
       for (int i = 0; i < channel; i++) {
@@ -326,11 +324,10 @@ struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext,
-                                                   float>;
+template struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, float>;
 template <typename T>
-struct FindRangeAbsMaxFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext &ctx,
+struct FindRangeAbsMaxFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext &ctx,
                   const framework::Tensor &cur_scale,
                   const framework::Tensor &last_scale,
                   const framework::Tensor &iter,
@@ -349,18 +346,17 @@ struct FindRangeAbsMaxFunctor<platform::CPUDeviceContext, T> {
       max = cur;
     } else if (fabs(removed - max) < 1e-6) {
       int size = (it > window_size) ? window_size : it;
-      FindAbsMaxFunctor<platform::CPUDeviceContext, T>()(
-          ctx, scale_arr, size, &max);
+      FindAbsMaxFunctor<phi::CPUContext, T>()(ctx, scale_arr, size, &max);
     }
     out_scale->mutable_data<T>(ctx.GetPlace())[0] = max;
   }
 };
 
-template struct FindRangeAbsMaxFunctor<platform::CPUDeviceContext, float>;
+template struct FindRangeAbsMaxFunctor<phi::CPUContext, float>;
 
 template <typename T>
-struct FindMovingAverageAbsMaxFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext &ctx,
+struct FindMovingAverageAbsMaxFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext &ctx,
                   const framework::Tensor &in_accum,
                   const framework::Tensor &in_state,
                   const T *cur_scale,
@@ -382,8 +378,7 @@ struct FindMovingAverageAbsMaxFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct FindMovingAverageAbsMaxFunctor<platform::CPUDeviceContext,
-                                               float>;
+template struct FindMovingAverageAbsMaxFunctor<phi::CPUContext, float>;
 
 class FakeQuantOrWithDequantAbsMaxOp : public framework::OperatorWithKernel {
  public:
@@ -968,7 +963,7 @@ class StrightThroughEstimatorMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
     fake_quantize_abs_max,

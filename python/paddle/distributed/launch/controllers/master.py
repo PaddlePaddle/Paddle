@@ -102,7 +102,7 @@ class HTTPMaster(Master):
             print(" ".join(cmd))
             print("-" * 80)
 
-            if self.ctx.args.rank >= 0:
+            if int(self.ctx.args.rank) >= 0:
                 self.ctx.logger.warning(
                     "--rank set in the command may not compatible in auto mode")
 

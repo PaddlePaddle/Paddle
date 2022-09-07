@@ -15,18 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/cos_sim_functor.h"
 
 namespace paddle {
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 namespace math {
-
 template <typename T>
-struct CosSimDyFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& ctx,
+struct CosSimDyFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& ctx,
                   const T* x_norm,
                   const T* y_norm,
                   const T* x,
@@ -53,8 +46,8 @@ struct CosSimDyFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct CosSimDyFunctor<platform::CPUDeviceContext, float>;
-template struct CosSimDyFunctor<platform::CPUDeviceContext, double>;
+template struct CosSimDyFunctor<phi::CPUContext, float>;
+template struct CosSimDyFunctor<phi::CPUContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

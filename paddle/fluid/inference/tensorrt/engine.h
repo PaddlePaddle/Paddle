@@ -25,6 +25,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "NvInferRuntimeCommon.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
@@ -34,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {
@@ -174,6 +177,7 @@ class TRTInt8Calibrator;
 class TensorRTEngine {
   using DescType = ::paddle::framework::proto::BlockDesc;
   using ShapeMapType = std::map<std::string, std::vector<int>>;
+  using PredictorID = int;
 
  public:
   // Weight is model parameter.
@@ -187,6 +191,14 @@ class TensorRTEngine {
     }
     const nvinfer1::Weights& get() { return w_; }
 
+    void SetDataType(nvinfer1::DataType type) { w_.type = type; }
+
+    void SetDataType(phi::DataType type);
+
+    void SetValues(const void* values) { w_.values = values; }
+
+    void SetCount(int64_t num) { w_.count = num; }
+
     std::vector<int64_t> dims;
 
    private:
@@ -195,7 +207,7 @@ class TensorRTEngine {
 
   TensorRTEngine(
       int max_batch,
-      int max_workspace,
+      int64_t max_workspace,
       AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
       TRTInt8Calibrator* calibrator = nullptr,
       int device_id = 0,
@@ -203,6 +215,7 @@ class TensorRTEngine {
       const ShapeMapType max_input_shape = {},
       const ShapeMapType optim_input_shape = {},
       bool disable_trt_plugin_fp16 = false,
+      phi::DataType model_precision = phi::DataType::FLOAT32,
       nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
@@ -213,6 +226,7 @@ class TensorRTEngine {
         max_input_shape_(max_input_shape),
         optim_input_shape_(optim_input_shape),
         disable_trt_plugin_fp16_(disable_trt_plugin_fp16),
+        model_precision_(model_precision),
         logger_(logger) {
     if (min_input_shape_.size() != 0 && max_input_shape_.size() != 0 &&
         optim_input_shape_.size() != 0) {
@@ -265,15 +279,25 @@ class TensorRTEngine {
   void DeclareOutput(const std::string& name);
   void ClearTensorMap() { itensor_map_.clear(); }
 
+  void DeleteITensor(const std::string& name, nvinfer1::ITensor* tensor);
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);
+  std::unordered_map<std::string, nvinfer1::ITensor*>* GetITensorMap();
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::IExecutionContext* context() {
+#ifndef PADDLE_WITH_TESTING
+    PADDLE_ENFORCE_GT(
+        predictor_id_per_thread,
+        -1,
+        platform::errors::InvalidArgument(
+            "thread local var predictor_id_per_thread must be "
+            "initialized to >= 0, but now predictor_id_per_thread = %d",
+            predictor_id_per_thread));
+#endif
     std::unique_lock<std::mutex> lock(mutex_);
-    const std::thread::id tid = std::this_thread::get_id();
-    if (infer_context_.find(tid) == infer_context_.end()) {
+    if (infer_context_.find(predictor_id_per_thread) == infer_context_.end()) {
       PADDLE_ENFORCE_NOT_NULL(
           infer_engine_,
           platform::errors::InvalidArgument(
@@ -281,24 +305,34 @@ class TensorRTEngine {
       // We may see trt warning: Profile 0 has been chosen by another
       // IExecutionContext...
       // It's ok. We will set it later.
-      infer_context_[tid].reset(infer_engine_->createExecutionContext());
+      infer_context_[predictor_id_per_thread].reset(
+          infer_engine_->createExecutionContext());
       if (with_dynamic_shape_) {
         // need new profile if it's not the first
         if (cur_profile_num_ > 0) {
-          infer_context_[tid]->setOptimizationProfile(cur_profile_num_);
+          infer_context_[predictor_id_per_thread]->setOptimizationProfile(
+              cur_profile_num_);
         }
-        profile_index_[tid] = cur_profile_num_;
+        profile_index_[predictor_id_per_thread] = cur_profile_num_;
         ++cur_profile_num_;
       }
     }
-    return infer_context_[tid].get();
+    return infer_context_[predictor_id_per_thread].get();
   }
 
   int GetProfileIndex() {
     if (max_profile_num_ > 1) {
+#ifndef PADDLE_WITH_TESTING
+      PADDLE_ENFORCE_GT(
+          predictor_id_per_thread,
+          -1,
+          platform::errors::InvalidArgument(
+              "thread local var predictor_id_per_thread must be "
+              "initialized to >= 0, but now predictor_id_per_thread = %d",
+              predictor_id_per_thread));
+#endif
       std::unique_lock<std::mutex> lock(mutex_);
-      const std::thread::id tid = std::this_thread::get_id();
-      return profile_index_[tid];
+      return profile_index_[predictor_id_per_thread];
     } else {
       return 0;
     }
@@ -311,14 +345,22 @@ class TensorRTEngine {
   int GetNbBindings() { return binding_num_; }
 
   void ResetContext() {
-    std::unique_lock<std::mutex> lock(mutex_);
-    const std::thread::id tid = std::this_thread::get_id();
     PADDLE_ENFORCE_NOT_NULL(
         infer_engine_,
         platform::errors::InvalidArgument(
             "You should build engine first and then set the context."));
-    infer_context_[tid].reset(nullptr);
-    infer_context_.erase(tid);
+#ifndef PADDLE_WITH_TESTING
+    PADDLE_ENFORCE_GT(
+        predictor_id_per_thread,
+        -1,
+        platform::errors::InvalidArgument(
+            "thread local var predictor_id_per_thread must be "
+            "initialized to >= 0, but now predictor_id_per_thread = %d",
+            predictor_id_per_thread));
+#endif
+    std::unique_lock<std::mutex> lock(mutex_);
+    infer_context_[predictor_id_per_thread].reset(nullptr);
+    infer_context_.erase(predictor_id_per_thread);
   }
 
   nvinfer1::IHostMemory* Serialize() {
@@ -406,8 +448,25 @@ class TensorRTEngine {
     quant_dynamic_range_[tensor] = range;
   }
 
-  float* GetWeightCPUData(const std::string& name,
-                          framework::Tensor* weight_tensor);
+  // Get fp16 trt weight. If src weight is not fp16, we will cast.
+  Weight GetFp16TrtWeight(const std::string& name,
+                          const framework::Tensor& weight_tensor);
+
+  // Get fp32 trt weight. If src weight is not fp32, we will cast.
+  Weight GetFp32TrtWeight(const std::string& name,
+                          const framework::Tensor& weight_tensor);
+
+  // if the src weight type is fp16, then return fp16 trt weight, etc.
+  Weight GetTrtWeight(const std::string& name,
+                      const framework::Tensor& weight_tensor);
+
+  float GetTensorDynamicRange(nvinfer1::ITensor* tensor) {
+    return quant_dynamic_range_[tensor];
+  }
+
+  bool DynamicRangeIsSet(nvinfer1::ITensor* tensor) {
+    return quant_dynamic_range_.count(tensor);
+  }
 
   // A pointer to CPU memory is needed of the TRT weight.
   // Before TRT runs, fluid loads weight into GPU storage.
@@ -424,7 +483,14 @@ class TensorRTEngine {
     static int suffix_counter = 0;
     std::string suffix = std::to_string(suffix_counter);
     std::string splitter = "__";
-    weight_map[w_name + splitter + suffix] = std::move(w_tensor);
+    std::string name_with_suffix = w_name + splitter + suffix;
+    PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix),
+                      0,
+                      platform::errors::AlreadyExists(
+                          "The weight named %s is set into the weight map "
+                          "twice in TRT OP converter.",
+                          name_with_suffix));
+    weight_map[name_with_suffix] = std::move(w_tensor);
     suffix_counter += 1;
   }
 
@@ -637,7 +703,7 @@ class TensorRTEngine {
   // the runtime batch size
   static int runtime_batch_;
   // the max memory size the engine uses
-  int max_workspace_;
+  int64_t max_workspace_;
 
   AnalysisConfig::Precision precision_;
   TRTInt8Calibrator* calibrator_;
@@ -647,11 +713,12 @@ class TensorRTEngine {
   int device_id_;
   int max_profile_num_{1};
   int cur_profile_num_{0};
-  std::unordered_map<std::thread::id, int> profile_index_;
+  std::unordered_map<PredictorID, int> profile_index_;
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
   bool disable_trt_plugin_fp16_{false};
+  phi::DataType model_precision_{phi::DataType::FLOAT32};
   bool use_varseqlen_{false};
   bool use_dla_{false};
   int dla_core_{0};
@@ -683,7 +750,7 @@ class TensorRTEngine {
   infer_ptr<nvinfer1::IBuilder> infer_builder_;
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
-  std::unordered_map<std::thread::id, infer_ptr<nvinfer1::IExecutionContext>>
+  std::unordered_map<PredictorID, infer_ptr<nvinfer1::IExecutionContext>>
       infer_context_;
   infer_ptr<nvinfer1::IHostMemory> ihost_memory_;
   std::unordered_map<nvinfer1::ITensor*, float> quant_dynamic_range_;
@@ -701,6 +768,9 @@ class TensorRTEngine {
 #endif
   std::mutex mutex_;
   bool use_inspector_;
+
+ public:
+  thread_local static int predictor_id_per_thread;
 };  // class TensorRTEngine
 
 // Add a layer__ into engine__ with args ARGS.
@@ -731,7 +801,7 @@ class TRTEngineManager {
   TensorRTEngine* Create(
       std::string name,
       int max_batch,
-      int max_workspace,
+      int64_t max_workspace,
       AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
       TRTInt8Calibrator* calibrator = nullptr,
       int device_id = 0,
@@ -739,6 +809,7 @@ class TRTEngineManager {
       const std::map<std::string, std::vector<int>> max_input_shape = {},
       const std::map<std::string, std::vector<int>> optim_input_shape = {},
       bool disable_trt_plugin_fp16 = false,
+      phi::DataType model_precision = phi::DataType::FLOAT32,
       nvinfer1::ILogger& logger = NaiveLogger::Global()) {
     auto* p = new TensorRTEngine(max_batch,
                                  max_workspace,
@@ -749,6 +820,7 @@ class TRTEngineManager {
                                  max_input_shape,
                                  optim_input_shape,
                                  disable_trt_plugin_fp16,
+                                 model_precision,
                                  logger);
     engines_[name].reset(p);
     return p;

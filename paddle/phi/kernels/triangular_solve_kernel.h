@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace phi {
 
@@ -26,5 +27,20 @@ void TriangularSolveKernel(const Context& dev_ctx,
                            bool transpose,
                            bool unitriangular,
                            DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor TriangularSolve(const Context& ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& y,
+                            bool upper,
+                            bool transpose,
+                            bool unitriangular) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  TriangularSolveInferMeta(x, y, upper, transpose, unitriangular, &meta_out);
+  TriangularSolveKernel<T, Context>(
+      ctx, x, y, upper, transpose, unitriangular, &dense_out);
+  return dense_out;
+}
 
 }  // namespace phi

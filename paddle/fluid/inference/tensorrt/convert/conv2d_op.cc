@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace framework {
@@ -48,16 +50,15 @@ void ConvertConv2d(TensorRTEngine* engine,
       platform::errors::NotFound("Can not find %s presistale var in scope.",
                                  filter_var_name));
   auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
-  float* weight_data = nullptr;
+
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
   if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
-    float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+    float in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
     engine->SetTensorDynamicRange(X, in_scale);
 #endif
   }
-  weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t);
 
   PADDLE_ENFORCE_EQ(Y_t->dims().size(),
                     4UL,
@@ -69,17 +70,23 @@ void ConvertConv2d(TensorRTEngine* engine,
   const int n_input = Y_t->dims()[1];
   const int filter_h = Y_t->dims()[2];
   const int filter_w = Y_t->dims()[3];
-  const int groups = BOOST_GET_CONST(int, op_desc.GetAttr("groups"));
+  const int groups = PADDLE_GET_CONST(int, op_desc.GetAttr("groups"));
   const std::vector<int> dilations =
-      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
   const std::vector<int> strides =
-      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
   std::vector<int> paddings =
-      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+  // for conv2d_transpose
+  std::vector<int> output_padding;
+  if (op_desc.HasAttr("output_padding")) {
+    output_padding =
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_padding"));
+  }
   std::string padding_algorithm = "EXPLICIT";
   if (op_desc.HasAttr("padding_algorithm"))
     padding_algorithm =
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
   if (padding_algorithm == "VALID") {
     for (size_t i = 0; i < paddings.size(); i++) {
       paddings[i] = 0;
@@ -89,36 +96,33 @@ void ConvertConv2d(TensorRTEngine* engine,
   nvinfer1::DimsHW nv_ksize(filter_h, filter_w);
   nvinfer1::DimsHW nv_dilations(dilations[0], dilations[1]);
   nvinfer1::DimsHW nv_strides(strides[0], strides[1]);
-  nvinfer1::DimsHW nv_paddings;
-  nvinfer1::Dims nv_pre_paddings;
-  nvinfer1::Dims nv_post_paddings;
+  nvinfer1::DimsHW nv_pre_paddings;
+  nvinfer1::DimsHW nv_post_paddings;
   if (paddings.size() == 2) {
-    nv_paddings.d[0] = paddings[0];
-    nv_paddings.d[1] = paddings[1];
+    nv_pre_paddings.d[0] = paddings[0];
+    nv_pre_paddings.d[1] = paddings[1];
+    nv_post_paddings.d[0] = paddings[0];
+    nv_post_paddings.d[1] = paddings[1];
   } else {
-    nv_pre_paddings.nbDims = 2;
-    nv_post_paddings.nbDims = 2;
     nv_pre_paddings.d[0] = paddings[0];
     nv_pre_paddings.d[1] = paddings[2];
     nv_post_paddings.d[0] = paddings[1];
     nv_post_paddings.d[1] = paddings[3];
   }
 
-  TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
-                                static_cast<void*>(weight_data),
-                                static_cast<size_t>(Y_t->numel())};
-  float* bias_data = nullptr;
-  size_t bias_size = 0;
+  auto weight = engine->GetTrtWeight(op_desc.Input("Filter").front(), *Y_t);
+
+  TensorRTEngine::Weight bias;
+  bias.SetDataType(weight.get().type);
+  bias.SetCount(0);
+  bias.SetValues(nullptr);
   if (op_desc.Type() == "conv2d_fusion") {
     auto* bias_tensor = scope.GetVar(op_desc.Input("Bias").front());
     auto* bias_tensor_data = bias_tensor->GetMutable<framework::LoDTensor>();
-    bias_data = engine->GetWeightCPUData(op_desc.Input("Bias").front(),
-                                         bias_tensor_data);
-    bias_size = static_cast<size_t>(bias_tensor_data->numel());
+    bias =
+        engine->GetTrtWeight(op_desc.Input("Bias").front(), *bias_tensor_data);
   }
 
-  TensorRTEngine::Weight bias{
-      nvinfer1::DataType::kFLOAT, static_cast<void*>(bias_data), bias_size};
   // In conv2d_transpose and depthwise_conv2d_transpose,
   // output channels = filter_dims[1] * groups
   auto* layer = (op_desc.Type() == "conv2d_transpose" ||
@@ -139,12 +143,16 @@ void ConvertConv2d(TensorRTEngine* engine,
       platform::errors::Fatal("TensorRT create conv2d/conv2d_transpose"
                               " layer failed."));
   layer->setStride(nv_strides);
-  if (paddings.size() == 2) {
-    layer->setPadding(nv_paddings);
-  } else {
-    layer->setPrePadding(nv_pre_paddings);
-    layer->setPostPadding(nv_post_paddings);
+  layer->setPrePadding(nv_pre_paddings);
+  if (output_padding.size() > 0) {
+    nv_post_paddings.d[0] -= output_padding[0];
+    nv_post_paddings.d[1] -= output_padding[1];
   }
+  if (nv_post_paddings.d[0] < 0 || nv_post_paddings.d[1] < 0) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "The value in conv2d_transpose's PostPadding should be >= 0."));
+  }
+  layer->setPostPadding(nv_post_paddings);
 
   layer->setNbGroups(groups);
   if (padding_algorithm == "SAME") {

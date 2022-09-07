@@ -57,86 +57,6 @@ typedef SSIZE_T ssize_t;
 namespace paddle {
 namespace pybind {
 
-namespace py = ::pybind11;
-
-class PyTensorHook : public egr::TensorHook {
- public:
-  explicit PyTensorHook(PyObject* func) : py_func_(func) {
-    Py_INCREF(py_func_);
-  }
-
-  ~PyTensorHook() {
-    py::gil_scoped_acquire gil;
-    Py_DECREF(py_func_);
-  }
-
-  paddle::experimental::Tensor operator()(
-      const paddle::experimental::Tensor& var) override {
-    py::gil_scoped_acquire gil;
-    VLOG(3) << "Call PyTensorHook for var " << var.name();
-
-    PyObject* res = nullptr;
-    try {
-      PyObject* p_tmp_var = ToPyObject(var);
-      res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
-      Py_DECREF(p_tmp_var);
-    } catch (platform::EnforceNotMet& e) {
-      throw std::move(e);
-    } catch (std::exception& e) {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Hook function of Tensor raises an exception: %s.", e.what()));
-    } catch (...) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "Hook function of Tensor raises an unknown exception."));
-    }
-
-    PADDLE_ENFORCE_NOT_NULL(res,
-                            platform::errors::Unavailable(
-                                "Hook function of Tensor return a nullptr."));
-    if (res == Py_None) {
-      return var;
-    }
-    auto res_tensor = reinterpret_cast<TensorObject*>(res)->tensor;
-    Py_DECREF(res);
-    return res_tensor;
-  }
-
- private:
-  PyObject* py_func_;
-};
-
-class PyTensorVoidHook : public egr::TensorVoidHook {
- public:
-  explicit PyTensorVoidHook(PyObject* func) : py_func_(func) {
-    Py_INCREF(py_func_);
-  }
-
-  ~PyTensorVoidHook() {
-    py::gil_scoped_acquire gil;
-    Py_DECREF(py_func_);
-  }
-
-  void operator()() override {
-    py::gil_scoped_acquire gil;
-    VLOG(3) << "Call PyTensorVoidHook";
-
-    try {
-      PyObject_CallFunctionObjArgs(py_func_, nullptr);
-    } catch (platform::EnforceNotMet& e) {
-      throw std::move(e);
-    } catch (std::exception& e) {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Hook function of Tensor raises an exception: %s.", e.what()));
-    } catch (...) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "Hook function of Tensor raises an unknown exception."));
-    }
-  }
-
- private:
-  PyObject* py_func_;
-};
-
 extern void InitTensorWithNumpyValue(TensorObject* self,
                                      const pybind11::object& array,
                                      const paddle::platform::Place& place,
@@ -802,6 +722,33 @@ static PyObject* tensor_method_get_underline_selected_rows(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method__get_tensor_from_selected_rows(
+    TensorObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE(self->tensor.is_selected_rows(),
+                 paddle::platform::errors::Fatal(
+                     "this method is only effective for SelectedRows."));
+
+  auto* selected_rows =
+      static_cast<phi::SelectedRows*>(self->tensor.impl().get());
+
+  PADDLE_ENFORCE(
+      selected_rows->initialized(),
+      paddle::platform::errors::Fatal("SelectedRows must be initialized."));
+
+  auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
+      selected_rows->mutable_value());
+  VLOG(1) << "dense_tensor: " << dense_tensor->IsInitialized();
+
+  auto t = paddle::experimental::Tensor(
+      egr::Controller::Instance().GenerateUniqueName());
+  t.set_impl(std::make_shared<phi::DenseTensor>(*dense_tensor));
+
+  return ToPyObject(t);
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                                                   PyObject* args,
                                                   PyObject* kwargs) {
@@ -859,14 +806,14 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                                            decrease_axis.end());
 
     if (op_type == "slice") {
-      out = slice_final_state_dygraph_function(self->tensor,
-                                               slice_axes_tmp,
-                                               slice_starts,
-                                               slice_ends,
-                                               infer_flags_tmp,
-                                               decrease_axis_tmp);
+      out = slice_dygraph_function(self->tensor,
+                                   slice_axes_tmp,
+                                   slice_starts,
+                                   slice_ends,
+                                   infer_flags_tmp,
+                                   decrease_axis_tmp);
     } else if (op_type == "strided_slice") {
-      out = strided_slice_final_state_dygraph_function(
+      out = strided_slice_dygraph_function(
           self->tensor, slice_axes, slice_starts, slice_ends, slice_strides);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -905,8 +852,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
       }
 
       paddle::experimental::Tensor new_out;
-      framework::AttributeMap attrs = {{"axes", none_axes}};
-      new_out = std::get<0>(unsqueeze2_dygraph_function(out, std::move(attrs)));
+      new_out = unsqueeze_dygraph_function(out, none_axes);
       return ToPyObject(new_out);
     }
   }
@@ -922,8 +868,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     paddle::framework::TensorFromVector(
         list_select_idxs, *dev_ctx, idx_tensor.get());
     framework::AttributeMap attrs = {{"dim", 0}};
-    out = index_select_final_state_dygraph_function(
-        self->tensor, select_index, 0);
+    out = index_select_dygraph_function(self->tensor, select_index, 0);
   }
 
   return ToPyObject(out);
@@ -1363,7 +1308,7 @@ static PyObject* tensor_register_reduce_hook(TensorObject* self,
   auto accumulation_grad_node =
       std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
   accumulation_grad_node->RegisterReduceHook(
-      std::make_shared<PyTensorVoidHook>(hook_func));
+      std::make_shared<PyVoidHook>(hook_func));
 
   RETURN_PY_NONE
 
@@ -1470,6 +1415,27 @@ static PyObject* tensor_method_get_map_tensor(TensorObject* self,
   auto* var_tensor =
       static_cast<const egr::VariableCompatTensor*>(self->tensor.impl().get());
   return ToPyObject(var_tensor->Get<Vocab>());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_get_non_zero_nums(TensorObject* self,
+                                                 PyObject* args,
+                                                 PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE(
+      self->tensor.is_sparse_coo_tensor() ||
+          self->tensor.is_sparse_csr_tensor(),
+      paddle::platform::errors::Fatal("this method is only effective for "
+                                      "SparseCooTensor or SparseCsrTensor"));
+  if (self->tensor.is_sparse_coo_tensor()) {
+    auto sparse_coo_tensor =
+        std::dynamic_pointer_cast<phi::SparseCooTensor>(self->tensor.impl());
+    return ToPyObject(sparse_coo_tensor->nnz());
+  } else {
+    auto sparse_csr_tensor =
+        std::dynamic_pointer_cast<phi::SparseCsrTensor>(self->tensor.impl());
+    return ToPyObject(sparse_csr_tensor->nnz());
+  }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1912,6 +1878,10 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method_get_underline_selected_rows,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+    {"_get_tensor_from_selected_rows",
+     (PyCFunction)(void (*)(void))tensor_method__get_tensor_from_selected_rows,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
     {"_getitem_index_not_tensor",
      (PyCFunction)(void (*)(void))tensor__getitem_index_not_tensor,
      METH_VARARGS | METH_KEYWORDS,
@@ -1962,6 +1932,10 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     /***the method of sparse tensor****/
+    {"nnz",
+     (PyCFunction)(void (*)(void))tensor_method_get_non_zero_nums,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
     {"indices",
      (PyCFunction)(void (*)(void))tensor_method_get_non_zero_indices,
      METH_VARARGS | METH_KEYWORDS,

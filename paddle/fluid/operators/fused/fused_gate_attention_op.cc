@@ -276,7 +276,7 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Query"), this->InputGrad("Query"));
 
     op->SetAttrMap(this->Attrs());
-    bool merge_qkv = BOOST_GET_CONST(bool, op->GetAttr("merge_qkv"));
+    bool merge_qkv = PADDLE_GET_CONST(bool, op->GetAttr("merge_qkv"));
     if (merge_qkv) {
       op->SetInput("QKVWeight", this->Input("QKVWeight"));
       op->SetOutput(framework::GradVarName("QKVWeight"),
@@ -307,7 +307,7 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetInput("SoftmaxOut", this->Output("SoftmaxOut"));
 
-    bool has_gating = BOOST_GET_CONST(bool, op->GetAttr("has_gating"));
+    bool has_gating = PADDLE_GET_CONST(bool, op->GetAttr("has_gating"));
     if (has_gating) {
       op->SetInput("GateWeight", this->Input("GateWeight"));
       op->SetOutput(framework::GradVarName("GateWeight"),

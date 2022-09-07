@@ -589,6 +589,7 @@ class AllocatorFacadePrivate {
           std::make_shared<AutoGrowthBestFitAllocator>(
               cuda_allocator,
               platform::GpuMinChunkSize(),
+              /*chunk_size=*/0,
               allow_free_idle_chunk_);
     }
 #else
@@ -637,7 +638,10 @@ class AllocatorFacadePrivate {
 #if defined(PADDLE_WITH_HIP)
     auto cuda_allocator = CreateCUDAAllocator(p);
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-        cuda_allocator, platform::GpuMinChunkSize(), allow_free_idle_chunk);
+        cuda_allocator,
+        platform::GpuMinChunkSize(),
+        /*chunk_size=*/0,
+        allow_free_idle_chunk);
 #endif
 
 #if defined(PADDLE_WITH_CUDA)
@@ -665,7 +669,10 @@ class AllocatorFacadePrivate {
     } else {
       auto cuda_allocator = CreateCUDAAllocator(p);
       allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-          cuda_allocator, platform::GpuMinChunkSize(), allow_free_idle_chunk);
+          cuda_allocator,
+          platform::GpuMinChunkSize(),
+          /*chunk_size=*/0,
+          allow_free_idle_chunk);
     }
 
 #else
@@ -821,6 +828,7 @@ class AllocatorFacadePrivate {
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
         custom_allocator,
         phi::DeviceManager::GetMinChunkSize(p),
+        /*chunk_size=*/0,
         allow_free_idle_chunk);
   }
 #endif
@@ -1080,11 +1088,11 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
   } else {
     return m->GetAllocator(p, size)->Allocate(size);
   }
-#elif defined PADDLE_WITH_XPU
+#elif defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_ASCEND_CL)
   return GetAllocator(place)->Allocate(size);
 #else
-  PADDLE_THROW(
-      platform::errors::PreconditionNotMet("Not compiled with GPU or XPU."));
+  PADDLE_THROW(platform::errors::PreconditionNotMet(
+      "Not compiled with GPU or XPU or NPU."));
 #endif
 }
 

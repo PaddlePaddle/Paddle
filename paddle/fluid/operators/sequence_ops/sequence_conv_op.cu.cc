@@ -15,11 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/sequence_ops/sequence_conv_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    sequence_conv,
-    ops::SequenceConvKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceConvKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    sequence_conv_grad,
-    ops::SequenceConvGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceConvGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(sequence_conv,
+                        ops::SequenceConvKernel<phi::GPUContext, float>,
+                        ops::SequenceConvKernel<phi::GPUContext, double>);
+REGISTER_OP_CUDA_KERNEL(sequence_conv_grad,
+                        ops::SequenceConvGradKernel<phi::GPUContext, float>,
+                        ops::SequenceConvGradKernel<phi::GPUContext, double>);

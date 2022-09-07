@@ -86,6 +86,19 @@ class WhileOp : public framework::OperatorBase {
 
     std::set<std::string> no_copy_var_names;
     if (!is_test) {
+      // set all persistable parameters into no_copy_var_names.
+      auto *global_block = block;
+
+      while (global_block->ID() != 0)
+        global_block = global_block->ParentBlock();
+      auto all_vars = global_block->AllVars();
+      std::for_each(all_vars.begin(),
+                    all_vars.end(),
+                    [&no_copy_var_names](framework::VarDesc *var) {
+                      if (var->IsParameter())
+                        no_copy_var_names.insert(var->Name());
+                    });
+
       const std::vector<framework::OpDesc *> &all_ops = block->AllOps();
       for (const framework::OpDesc *op : all_ops) {
         const framework::VariableNameMap &input_var_names = op->Inputs();
@@ -560,8 +573,8 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
         continue;
       }
       framework::VarDesc *in_var =
-          BOOST_GET(framework::VarDesc *, in_var_ptrs[i]);
-      BOOST_GET(framework::VarDesc *, out_var_ptrs[i])
+          PADDLE_GET(framework::VarDesc *, in_var_ptrs[i]);
+      PADDLE_GET(framework::VarDesc *, out_var_ptrs[i])
           ->SetShape(in_var->GetShape());
     }
   }

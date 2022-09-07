@@ -39,7 +39,7 @@ imperative::ParallelStrategy GetStrategy(int local_rank) {
 void AllReduceByStream(int local_rank, int device_id) {
   int data_size = 32;
   const auto& place = platform::CUDAPlace(device_id);
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
 
   // heter_parallel_ctx
   imperative::HeterParallelContext hpc(GetStrategy(local_rank), device_id);

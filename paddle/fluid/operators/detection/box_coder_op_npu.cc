@@ -9,8 +9,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/detection/box_coder_op.h"
+#include <string>
+#include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/kernels/impl/box_coder.h"
 
 namespace paddle {
 namespace operators {
@@ -407,10 +410,11 @@ class BoxCoderNPUKernel : public framework::OpKernel<T> {
                             " supports LoD with one level."));
     }
 
-    auto code_type = GetBoxCodeType(ctx.Attr<std::string>("code_type"));
+    auto code_type =
+        phi::funcs::GetBoxCodeType(ctx.Attr<std::string>("code_type"));
     bool normalized = ctx.Attr<bool>("box_normalized");
 
-    if (code_type == BoxCodeType::kEncodeCenterSize) {
+    if (code_type == phi::funcs::BoxCodeType::kEncodeCenterSize) {
       BoxCoderEnc<T>(ctx,
                      target_box,
                      prior_box,

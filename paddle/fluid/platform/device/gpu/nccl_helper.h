@@ -55,6 +55,10 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
     return ncclFloat16;
   } else if (type == framework::proto::VarType::INT8) {
     return ncclInt8;
+  } else if (type == framework::proto::VarType::UINT8) {
+    return ncclUint8;
+  } else if (type == framework::proto::VarType::BOOL) {
+    return ncclUint8;
 #if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
   } else if (type == framework::proto::VarType::BF16) {
     return ncclBfloat16;
@@ -76,6 +80,12 @@ inline ncclDataType_t ToNCCLDataType(experimental::DataType type) {
     return ncclInt64;
   } else if (type == experimental::DataType::FLOAT16) {
     return ncclFloat16;
+  } else if (type == experimental::DataType::UINT8) {
+    return ncclUint8;
+  } else if (type == experimental::DataType::INT8) {
+    return ncclInt8;
+  } else if (type == experimental::DataType::BOOL) {
+    return ncclUint8;
 #if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
   } else if (type == experimental::DataType::BFLOAT16) {
     return ncclBfloat16;
@@ -110,11 +120,11 @@ class NCCLGroupGuard {
 };
 
 struct NCCLContext {
-  std::unique_ptr<CUDADeviceContext> ctx_;
+  std::unique_ptr<phi::GPUContext> ctx_;
   ncclComm_t comm_;
 
   explicit NCCLContext(int dev_id) : comm_{nullptr} {
-    ctx_.reset(new CUDADeviceContext(CUDAPlace(dev_id)));
+    ctx_.reset(new phi::GPUContext(CUDAPlace(dev_id)));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(CUDAPlace(dev_id), ctx_->stream())
                            .get());
@@ -201,11 +211,9 @@ struct NCCLContextMap {
   NCCLContextMap(const NCCLContextMap &other) = delete;
   NCCLContextMap &operator=(const NCCLContextMap &other) = delete;
 
-  CUDADeviceContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
+  phi::GPUContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 
-  CUDADeviceContext *DevCtx(platform::Place p) const {
-    return DevCtx(p.device);
-  }
+  phi::GPUContext *DevCtx(platform::Place p) const { return DevCtx(p.device); }
 
   const NCCLContext &at(platform::Place p) const { return this->at(p.device); }
 

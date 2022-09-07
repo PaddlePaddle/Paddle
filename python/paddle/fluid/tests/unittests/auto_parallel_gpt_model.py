@@ -391,7 +391,7 @@ class TransformerDecoder(nn.Layer):
                             mod,
                             dist_attr={
                                 "process_mesh": PP_MESH_LIST[mod.mesh_idx]
-                            })(output, memory, tgt_mask, use_cache, cache)[0]
+                            })(output, memory, tgt_mask, use_cache, cache)
                         auto.shard_tensor(
                             output,
                             dist_attr={
@@ -405,7 +405,7 @@ class TransformerDecoder(nn.Layer):
                             mod,
                             dist_attr={
                                 "process_mesh": DPPP_MESH_LIST[mod.mesh_idx]
-                            })(output, memory, tgt_mask, use_cache, cache)[0]
+                            })(output, memory, tgt_mask, use_cache, cache)
                         auto.shard_tensor(
                             output,
                             dist_attr={
@@ -419,7 +419,7 @@ class TransformerDecoder(nn.Layer):
                             mod,
                             dist_attr={
                                 "process_mesh": MPPP_MESH_LIST[mod.mesh_idx]
-                            })(output, memory, tgt_mask, use_cache, cache)[0]
+                            })(output, memory, tgt_mask, use_cache, cache)
                         auto.shard_tensor(
                             output,
                             dist_attr={
@@ -433,7 +433,7 @@ class TransformerDecoder(nn.Layer):
                             mod,
                             dist_attr={
                                 "process_mesh": DPMPPP_MESH_LIST[mod.mesh_idx]
-                            })(output, memory, tgt_mask, use_cache, cache)[0]
+                            })(output, memory, tgt_mask, use_cache, cache)
                         auto.shard_tensor(
                             output,
                             dist_attr={
@@ -456,7 +456,7 @@ class TransformerDecoder(nn.Layer):
                                                    "process_mesh":
                                                    PP_MESH_LIST[mod.mesh_idx]
                                                })(output, memory, tgt_mask,
-                                                  use_cache, cache)[0]
+                                                  use_cache, cache)
                         auto.shard_tensor(
                             output,
                             dist_attr={
@@ -471,7 +471,7 @@ class TransformerDecoder(nn.Layer):
                                                    "process_mesh":
                                                    DPPP_MESH_LIST[mod.mesh_idx]
                                                })(output, memory, tgt_mask,
-                                                  use_cache, cache)[0]
+                                                  use_cache, cache)
                         auto.shard_tensor(
                             output,
                             dist_attr={
@@ -486,7 +486,7 @@ class TransformerDecoder(nn.Layer):
                                                    "process_mesh":
                                                    MPPP_MESH_LIST[mod.mesh_idx]
                                                })(output, memory, tgt_mask,
-                                                  use_cache, cache)[0]
+                                                  use_cache, cache)
                         auto.shard_tensor(
                             output,
                             dist_attr={
@@ -500,7 +500,7 @@ class TransformerDecoder(nn.Layer):
                             mod,
                             dist_attr={
                                 "process_mesh": DPMPPP_MESH_LIST[mod.mesh_idx]
-                            })(output, memory, tgt_mask, use_cache, cache)[0]
+                            })(output, memory, tgt_mask, use_cache, cache)
                         auto.shard_tensor(
                             output,
                             dist_attr={

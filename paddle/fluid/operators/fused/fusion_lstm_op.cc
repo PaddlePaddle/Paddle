@@ -306,23 +306,23 @@ This operator fuse the X into LSTM, more details can refer to LSTM op.
 template <typename T>
 class FuisonLSTMKernel : public framework::OpKernel<T> {
  public:
-#define INIT_BASE_DEFINES                                   \
-  using DeviceContext = paddle::platform::CPUDeviceContext; \
-  auto* x = ctx.Input<LoDTensor>("X");                      \
-  auto* h0 = ctx.Input<Tensor>("H0");                       \
-  auto* c0 = ctx.Input<Tensor>("C0");                       \
-  auto* wx = ctx.Input<Tensor>("WeightX");                  \
-  auto* wh = ctx.Input<Tensor>("WeightH");                  \
-  auto* bias = ctx.Input<Tensor>("Bias");                   \
-  auto* xx = ctx.Output<LoDTensor>("XX");                   \
-  auto* hidden_out = ctx.Output<LoDTensor>("Hidden");       \
-  auto* cell_out = ctx.Output<LoDTensor>("Cell");           \
-  bool is_reverse = ctx.Attr<bool>("is_reverse");           \
-  bool use_peepholes = ctx.Attr<bool>("use_peepholes");     \
-  auto x_dims = x->dims();   /* T x M*/                     \
-  auto wh_dims = wh->dims(); /* D x 4D*/                    \
-  const int M = x_dims[1];                                  \
-  const int D = wh_dims[0];                                 \
+#define INIT_BASE_DEFINES                               \
+  using DeviceContext = phi::CPUContext;                \
+  auto* x = ctx.Input<LoDTensor>("X");                  \
+  auto* h0 = ctx.Input<Tensor>("H0");                   \
+  auto* c0 = ctx.Input<Tensor>("C0");                   \
+  auto* wx = ctx.Input<Tensor>("WeightX");              \
+  auto* wh = ctx.Input<Tensor>("WeightH");              \
+  auto* bias = ctx.Input<Tensor>("Bias");               \
+  auto* xx = ctx.Output<LoDTensor>("XX");               \
+  auto* hidden_out = ctx.Output<LoDTensor>("Hidden");   \
+  auto* cell_out = ctx.Output<LoDTensor>("Cell");       \
+  bool is_reverse = ctx.Attr<bool>("is_reverse");       \
+  bool use_peepholes = ctx.Attr<bool>("use_peepholes"); \
+  auto x_dims = x->dims();   /* T x M*/                 \
+  auto wh_dims = wh->dims(); /* D x 4D*/                \
+  const int M = x_dims[1];                              \
+  const int D = wh_dims[0];                             \
   const int D4 = wh_dims[1]
 
 #define INIT_OTHER_DEFINES                                                     \

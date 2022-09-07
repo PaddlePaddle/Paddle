@@ -347,7 +347,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnsqueezeGradOpNoNeedBufferVarInferer, "X");
 
 DECLARE_INFER_SHAPE_FUNCTOR(unsqueeze2,
                             Unsqueeze2InferShapeFunctor,
-                            PD_INFER_META(phi::UnsqueezeInferMeta));
+                            PD_INFER_META(phi::UnsqueezeWithXShapeInferMeta));
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(unsqueeze,
@@ -378,33 +378,28 @@ REGISTER_OPERATOR(unsqueeze2_grad,
 
 REGISTER_OP_CPU_KERNEL(
     unsqueeze,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int16_t>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<float>>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::bfloat16>);
+    ops::UnsqueezeKernel<phi::CPUContext, float>,
+    ops::UnsqueezeKernel<phi::CPUContext, double>,
+    ops::UnsqueezeKernel<phi::CPUContext, bool>,
+    ops::UnsqueezeKernel<phi::CPUContext, int>,
+    ops::UnsqueezeKernel<phi::CPUContext, int16_t>,
+    ops::UnsqueezeKernel<phi::CPUContext, uint8_t>,
+    ops::UnsqueezeKernel<phi::CPUContext, int8_t>,
+    ops::UnsqueezeKernel<phi::CPUContext, int64_t>,
+    ops::UnsqueezeKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::UnsqueezeKernel<phi::CPUContext, paddle::platform::complex<double>>,
+    ops::UnsqueezeKernel<phi::CPUContext, paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(
     unsqueeze_grad,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int16_t>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<float>>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext,
+    ops::UnsqueezeGradKernel<phi::CPUContext, float>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, double>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, bool>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, int>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, int16_t>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, uint8_t>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, int8_t>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, int64_t>,
+    ops::UnsqueezeGradKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::UnsqueezeGradKernel<phi::CPUContext,
                              paddle::platform::complex<double>>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::bfloat16>);
+    ops::UnsqueezeGradKernel<phi::CPUContext, paddle::platform::bfloat16>);

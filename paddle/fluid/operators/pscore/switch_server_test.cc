@@ -55,7 +55,7 @@ void StartSwitchInterServer(
 
 int main(int argc, char* argv[]) {
   platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
   framework::Executor exe(place);
 
   framework::ProgramDesc program;

@@ -15,9 +15,32 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/randperm_op.h"
 
+namespace paddle {
+namespace operators {
+
 template <typename T>
-using kernel =
-    paddle::operators::RandpermKernel<paddle::platform::MLUDeviceContext, T>;
+class RandpermMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    int n = ctx.Attr<int>("n");
+    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
+    framework::Variable* out_var = ctx.OutputVar("Out");
+    framework::Tensor* out_tensor =
+        framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
+
+    framework::Tensor tmp_tensor;
+    tmp_tensor.Resize(phi::make_ddim({n}));
+    T* tmp_data = tmp_tensor.mutable_data<T>(platform::CPUPlace());
+    random_permate<T>(tmp_data, n, seed);
+    framework::TensorCopySync(tmp_tensor, ctx.GetPlace(), out_tensor);
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
+template <typename T>
+using kernel = paddle::operators::RandpermMLUKernel<T>;
 
 REGISTER_OP_MLU_KERNEL(
     randperm, kernel<int64_t>, kernel<int>, kernel<float>, kernel<double>);

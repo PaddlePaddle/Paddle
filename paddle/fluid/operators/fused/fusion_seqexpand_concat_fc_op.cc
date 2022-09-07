@@ -149,7 +149,7 @@ template <typename T>
 class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using DeviceContext = paddle::platform::CPUDeviceContext;
+    using DeviceContext = phi::CPUContext;
     auto ins = ctx.MultiInput<LoDTensor>("X");
     auto* w = ctx.Input<Tensor>("FCWeight");
     auto* b = ctx.Input<Tensor>("FCBias");
@@ -239,7 +239,7 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
 
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
-    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
     phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx,
        total_T,

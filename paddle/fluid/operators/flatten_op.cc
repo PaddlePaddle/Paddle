@@ -438,35 +438,31 @@ REGISTER_OPERATOR(flatten_contiguous_range_grad,
                   ops::FlattenContiguousRangeGradOp,
                   ops::FlattenGradInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    flatten,
-    ops::FlattenKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FlattenKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FlattenKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::FlattenKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FlattenKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::FlattenKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    flatten_grad,
-    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    flatten2,
-    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, float>,
-    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, double>,
-    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int>,
-    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    flatten2_grad,
-    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(flatten,
+                       ops::FlattenKernel<phi::CPUContext, float>,
+                       ops::FlattenKernel<phi::CPUContext, double>,
+                       ops::FlattenKernel<phi::CPUContext, uint8_t>,
+                       ops::FlattenKernel<phi::CPUContext, int>,
+                       ops::FlattenKernel<phi::CPUContext, int8_t>,
+                       ops::FlattenKernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(flatten_grad,
+                       ops::FlattenGradKernel<phi::CPUContext, float>,
+                       ops::FlattenGradKernel<phi::CPUContext, double>,
+                       ops::FlattenGradKernel<phi::CPUContext, uint8_t>,
+                       ops::FlattenGradKernel<phi::CPUContext, int>,
+                       ops::FlattenGradKernel<phi::CPUContext, int8_t>,
+                       ops::FlattenGradKernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(flatten2,
+                       ops::Flatten2Kernel<phi::CPUContext, float>,
+                       ops::Flatten2Kernel<phi::CPUContext, double>,
+                       ops::Flatten2Kernel<phi::CPUContext, uint8_t>,
+                       ops::Flatten2Kernel<phi::CPUContext, int>,
+                       ops::Flatten2Kernel<phi::CPUContext, int8_t>,
+                       ops::Flatten2Kernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(flatten2_grad,
+                       ops::Flatten2GradKernel<phi::CPUContext, float>,
+                       ops::Flatten2GradKernel<phi::CPUContext, double>,
+                       ops::Flatten2GradKernel<phi::CPUContext, uint8_t>,
+                       ops::Flatten2GradKernel<phi::CPUContext, int>,
+                       ops::Flatten2GradKernel<phi::CPUContext, int8_t>,
+                       ops::Flatten2GradKernel<phi::CPUContext, int64_t>);

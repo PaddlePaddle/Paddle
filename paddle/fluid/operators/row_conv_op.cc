@@ -140,8 +140,7 @@ https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
 };
 
 template <typename T>
-class RowConvKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
+class RowConvKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *x = context.Input<LoDTensor>("X");
@@ -216,8 +215,7 @@ class RowConvKernel<platform::CPUDeviceContext, T>
 };
 
 template <typename T>
-class RowConvGradKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
+class RowConvGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *x = context.Input<LoDTensor>("X");
@@ -353,8 +351,6 @@ REGISTER_OPERATOR(row_conv,
                   ops::RowConvGradOpMaker<paddle::framework::OpDesc>,
                   ops::RowConvGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(row_conv_grad, ops::RowConvGradOp);
-REGISTER_OP_CPU_KERNEL(
-    row_conv, ops::RowConvKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    row_conv_grad,
-    ops::RowConvGradKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(row_conv, ops::RowConvKernel<phi::CPUContext, float>);
+REGISTER_OP_CPU_KERNEL(row_conv_grad,
+                       ops::RowConvGradKernel<phi::CPUContext, float>);

@@ -197,7 +197,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
       const int m = batch_size * idx_width;
       const int n = table_width;
       const int k = table_height;
-      auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
+      auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
       blas.CSRMM(&transa,
                  &m,
                  &n,
@@ -313,7 +313,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
                           padding_idx);
 
       auto *d_output_data = d_output->data<T>();
-      auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
+      auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
       int width = static_cast<int>(table_dim[1]);
       int num_seq = batch_size * idx_width;
       LOG(INFO) << "num seq = " << num_seq << " width = " << width;

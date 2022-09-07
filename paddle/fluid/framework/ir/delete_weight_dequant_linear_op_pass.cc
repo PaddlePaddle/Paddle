@@ -297,7 +297,7 @@ void DeleteWeightQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     }
     */
     std::unordered_set<const Node*> nodes2rm = {};
-    int bit_length = BOOST_GET_CONST(
+    int bit_length = PADDLE_GET_CONST(
         int, weight_dequantize_linear_op->Op()->GetAttr("bit_length"));
     int range = ((1 << (bit_length - 1)) - 1);
 
@@ -327,7 +327,7 @@ void DeleteWeightQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     std::vector<float> weight_data_tmp;
     weight_data_tmp.reserve(weight_tensor->numel());
 
-    int quant_axis = BOOST_GET_CONST(
+    int quant_axis = PADDLE_GET_CONST(
         int, weight_dequantize_linear_op->Op()->GetAttr("quant_axis"));
     if (quant_axis == -1) {  // per_layer quant_dequant: all OP
       PADDLE_ENFORCE_EQ(weight_scale_nums,

@@ -400,11 +400,9 @@ REGISTER_OPERATOR(lstmp,
                   ops::LSTMPGradMaker<paddle::framework::OpDesc>,
                   ops::LSTMPGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstmp_grad, ops::LSTMPGradOp);
-REGISTER_OP_CPU_KERNEL(
-    lstmp,
-    ops::LSTMPKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LSTMPKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    lstmp_grad,
-    ops::LSTMPGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LSTMPGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(lstmp,
+                       ops::LSTMPKernel<phi::CPUContext, float>,
+                       ops::LSTMPKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(lstmp_grad,
+                       ops::LSTMPGradKernel<phi::CPUContext, float>,
+                       ops::LSTMPGradKernel<phi::CPUContext, double>);

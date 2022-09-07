@@ -86,7 +86,7 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
         pred = while_softmax_regression(img)
 
         loss = fluid.layers.cross_entropy(input=pred, label=label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
 
         optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         optimizer.minimize(avg_loss)
@@ -144,7 +144,7 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
                 cost = while_net(img)
 
                 loss = fluid.layers.cross_entropy(cost, label)
-                avg_loss = fluid.layers.mean(loss)
+                avg_loss = paddle.mean(loss)
 
                 avg_loss.backward()
                 sgd.minimize(avg_loss)
@@ -169,7 +169,7 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
             pred = while_softmax_regression(img)
 
             loss = fluid.layers.cross_entropy(input=pred, label=label)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
 
             optimizer = fluid.optimizer.SGD(learning_rate=0.001)
             optimizer.minimize(avg_loss)
@@ -232,13 +232,16 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
                 static_param_init_value.keys())
         for key, value in six.iteritems(static_param_init_value):
             key = dict_old_new_init[key]
-            self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
+            np.testing.assert_array_equal(value, dy_param_init_value[key])
 
-        self.assertTrue(np.allclose(static_out, dy_out))
+        np.testing.assert_allclose(static_out, dy_out, rtol=1e-05)
 
         for key, value in six.iteritems(static_param_value):
             key += LOADED_VAR_SUFFIX
-            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
+            np.testing.assert_allclose(value,
+                                       dy_param_value[key],
+                                       rtol=1e-05,
+                                       atol=1e-05)
 
 
 if __name__ == '__main__':

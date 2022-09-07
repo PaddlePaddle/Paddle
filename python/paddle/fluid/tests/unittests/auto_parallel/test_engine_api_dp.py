@@ -34,8 +34,8 @@ class TestEngineAPI(unittest.TestCase):
 
         tmp_dir = tempfile.TemporaryDirectory()
         cmd = [sys.executable, "-u"] + coverage_args + [
-            "-m", "launch", "--gpus", "0,1", "--log_dir", tmp_dir.name,
-            launch_model_path
+            "-m", "paddle.distributed.launch", "--devices", "0,1", "--log_dir",
+            tmp_dir.name, launch_model_path
         ]
 
         process = subprocess.Popen(cmd)

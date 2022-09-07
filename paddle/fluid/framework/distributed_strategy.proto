@@ -27,6 +27,7 @@ message RecomputeConfig {
   repeated string checkpoints = 1;
   optional bool enable_offload = 2 [ default = false ];
   repeated int32 checkpoint_shape = 3;
+  optional bool enable_tuning = 4 [ default = false ]; // incubate for auto parallel
 }
 
 message ShardingConfig {
@@ -46,6 +47,7 @@ message ShardingConfig {
   // Optimizer sharding. Temporary plans and may be deprecated
   optional bool _dp_as_optimizer_sharding = 13 [ default = false ];
   optional int32 stage = 14 [ default = 1 ];
+  optional bool enable_tuning = 15 [ default = false ]; // incubate for auto parallel
 }
 
 message HybridConfig {
@@ -166,6 +168,8 @@ message TrainerDescConfig {
   repeated string stat_var_names = 4;
   optional string trainer = 5;
   optional string device_worker = 6;
+  repeated string local_sparse = 7;
+  repeated string remote_sparse = 8;
 }
 
 message PipelineConfig {
@@ -178,6 +182,14 @@ message PipelineConfig {
 message TensorParallelConfig {
   optional int32 tensor_parallel_degree = 1 [ default = 1 ];
   optional int32 tensor_init_seed = 2 [ default = -1 ];
+}
+
+message QatConfig {
+  optional bool channel_wise_abs_max = 1 [default = true];
+  optional int32 weight_bits = 2 [default = 8];
+  optional int32 activation_bits = 3 [default = 8];
+  repeated string not_quant_pattern = 4;
+  optional string algo = 5;
 }
 
 enum TableType {
@@ -193,18 +205,31 @@ message TableParameter {
   optional TableType type = 5;
   optional TableAccessorParameter accessor = 6;
   optional bool compress_in_save = 7 [ default = false ];
+  // for cache model
+  optional bool enable_sparse_table_cache = 10 [ default = true ];
+  optional double sparse_table_cache_rate = 11 [ default = 0.00055 ];
+  optional uint32 sparse_table_cache_file_num = 12 [ default = 16 ];
+  // for patch model
+  optional bool enable_revert = 13 [ default = false ];
+  optional float shard_merge_rate = 14 [ default = 1.0 ];
 }
 
 message TableAccessorParameter {
   optional string accessor_class = 1;
-  optional SGDParameter embed_sgd_param = 2;
-  optional SGDParameter embedx_sgd_param = 3;
   optional uint32 fea_dim = 4 [ default = 11 ];   // field size of one value
   optional uint32 embedx_dim = 5 [ default = 8 ]; // embedx feature size
   optional uint32 embedx_threshold = 6
       [ default = 10 ]; // embedx feature create threshold
   optional CtrAccessorParameter ctr_accessor_param = 7;
   repeated TableAccessorSaveParameter table_accessor_save_param = 8;
+  optional SGDParameter embed_sgd_param = 10;
+  optional SGDParameter embedx_sgd_param = 11;
+  optional GraphSGDParameter graph_sgd_param = 12;
+}
+
+message GraphSGDParameter {
+  optional uint32 nodeid_slot = 1 [ default = 9008 ];
+  optional float feature_learning_rate = 2 [ default = 0.05 ];
 }
 
 message SGDParameter {
@@ -228,7 +253,7 @@ message
   repeated float weight_bounds = 4;
 }
 
-message SparseAdamSGDParameter { // SparseAdamSGDRule
+message SparseAdamSGDParameter { // SparseAdamSGDRule | SparseSharedAdamSGDRule
   optional double learning_rate = 1 [ default = 0.001 ];
   optional double initial_range = 2 [ default = 0.0001 ];
   optional double beta1_decay_rate = 3 [ default = 0.9 ];
@@ -316,6 +341,9 @@ message DistributedStrategy {
   optional bool auto_search = 37 [ default = false ];
   optional bool heter_ccl_mode = 38 [ default = false ];
   optional bool is_fl_ps_mode = 39 [ default = false ];
+  optional bool with_coordinator = 40 [ default = false ];
+  optional bool qat = 41 [ default = false ];
+  optional bool split_data = 42 [ default = true ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
@@ -333,6 +361,7 @@ message DistributedStrategy {
   optional TrainerDescConfig trainer_desc_configs = 114;
   repeated TableParameter downpour_table_param = 115;
   optional FsClientParameter fs_client_param = 116;
+  optional QatConfig qat_configs = 117;
 
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;

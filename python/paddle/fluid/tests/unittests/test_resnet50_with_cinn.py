@@ -108,7 +108,11 @@ class TestResnet50Accuracy(unittest.TestCase):
 
         loss_c = self.train(place, loop_num, feed, use_cinn=True)
         loss_p = self.train(place, loop_num, feed, use_cinn=False)
-        self.assertTrue(np.allclose(loss_c, loss_p, atol=1e-5))
+        print("Losses of CINN:")
+        print(loss_c)
+        print("Losses of Paddle")
+        print(loss_p)
+        np.testing.assert_allclose(loss_c, loss_p, rtol=1e-05, atol=1e-05)
 
 
 if __name__ == '__main__':

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace paddle {
 namespace experimental {
@@ -75,6 +76,23 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
     const std::vector<Tensor>& inputs,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
+
+paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
+    const paddle::optional<std::vector<Tensor>>& inputs,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag);
+
+void TransDataBackend(const phi::DenseTensor* tensor,
+                      Backend target_backend,
+                      phi::DenseTensor* out);
+
+void TransDataBackend(const std::vector<phi::DenseTensor*>& tensor,
+                      Backend target_backend,
+                      std::vector<phi::DenseTensor*> out);
+
+void TransDataBackend(const phi::SelectedRows* tensor,
+                      Backend target_backend,
+                      phi::SelectedRows* out);
 
 }  // namespace experimental
 }  // namespace paddle

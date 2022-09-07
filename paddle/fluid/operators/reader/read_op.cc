@@ -55,7 +55,7 @@ class ReadInferShape : public framework::InferShapeBase {
               "The reader's dim number doesn't match the output number."));
       ctx->SetOutputsDim("Out", reader_dims);
       auto in_desc =
-          BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Reader")[0]);
+          PADDLE_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Reader")[0]);
       auto in_lod_levels = in_desc->GetLoDLevels();
       auto out_var_ptrs = ctx->GetOutputVarPtrs("Out");
       PADDLE_ENFORCE_EQ(
@@ -65,7 +65,7 @@ class ReadInferShape : public framework::InferShapeBase {
               "LoDLevels of Input(Reader) must be the same as the "
               "number of Outputs(Out)."));
       for (size_t i = 0; i < out_var_ptrs.size(); ++i) {
-        auto* out_desc = BOOST_GET(framework::VarDesc*, out_var_ptrs[i]);
+        auto* out_desc = PADDLE_GET(framework::VarDesc*, out_var_ptrs[i]);
         out_desc->SetLoDLevel(in_lod_levels[i]);
       }
     }
@@ -75,7 +75,7 @@ class ReadInferShape : public framework::InferShapeBase {
 class ReadInferVarType : public framework::StaticGraphVarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    bool infer_out = BOOST_GET_CONST(bool, ctx->GetAttr("infer_out"));
+    bool infer_out = PADDLE_GET_CONST(bool, ctx->GetAttr("infer_out"));
     if (infer_out) {
       std::string reader_name = Input(ctx, "Reader")[0];
       auto& out_names = Output(ctx, "Out");
@@ -106,7 +106,7 @@ class ReadOp : public framework::OperatorBase {
             scope.FindVar(Input("Reader")), "Input", "Reader", "Read")
             .GetMutable<framework::ReaderHolder>();
     std::vector<std::string> out_arg_names = Outputs("Out");
-    std::vector<framework::LoDTensor> ins;
+    paddle::framework::LoDTensorArray ins;
 
     // For profiling
     platform::RecordEvent record_event(

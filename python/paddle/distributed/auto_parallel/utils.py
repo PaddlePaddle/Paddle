@@ -23,6 +23,7 @@ from functools import reduce
 
 import paddle.fluid.core as core
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.distributed.auto_parallel.process_group import get_all_process_groups
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
 
@@ -1042,7 +1043,7 @@ def set_grad_var_shape(program, dist_context):
                     "fill_zeros_like"
             ]:
                 forward_var_name = op.input_arg_names[0]
-            elif op.type == "matmul_v2_grad":
+            elif op.type == "matmul_v2_grad" or op.type == "matmul_grad" or op.type == "mul_grad":
                 forward_var_name = None
                 for output_name in op.output_names:
                     if var_name in op.output(output_name):
@@ -1058,14 +1059,16 @@ def set_grad_var_shape(program, dist_context):
                 "dropout_grad", "tanh_grad", "slice", "assign",
                 "matmul_v2_triple_grad", "elementwise_add_triple_grad",
                 "fill_constant", "sqrt_grad",
-                "fused_softmax_mask_upper_triangle_grad"
+                "fused_softmax_mask_upper_triangle_grad",
+                "flatten_contiguous_range_grad", "relu_grad"
             ]
             forward_list = [
                 "reshape2", "softmax_with_cross_entropy", "transpose2",
                 "softmax", "cross_entropy2", "dropout", "tanh",
                 ["slice_grad", "c_allgather"], "assign", "matmul_v2_grad_grad",
                 "elementwise_add_grad_grad", "shape", "sqrt",
-                "fused_softmax_mask_upper_triangle_grad"
+                "fused_softmax_mask_upper_triangle", "flatten_contiguous_range",
+                "relu"
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
@@ -1096,11 +1099,9 @@ OpRole = core.op_proto_and_checker_maker.OpRole
 
 
 def is_forward_op(op):
-    ref_role1 = int(core.op_proto_and_checker_maker.OpRole.Forward)
-    ref_role2 = int(core.op_proto_and_checker_maker.OpRole.Loss)
     op_role = int(op.attr('op_role'))
-    return OP_ROLE_KEY in op.attr_names and (op_role == ref_role1
-                                             or op_role == ref_role2)
+    return OP_ROLE_KEY in op.attr_names and (op_role == int(OpRole.Forward)
+                                             or op_role == int(OpRole.Loss))
 
 
 def is_backward_op(op):
@@ -1113,9 +1114,26 @@ def is_optimize_op(op):
             int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize)
 
 
+def is_lr_sched_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize.LRSched)
+
+
 def is_loss_op(op):
     return OP_ROLE_KEY in op.attr_names and \
-        int(op.all_attrs()[OP_ROLE_KEY]) == (int(core.op_proto_and_checker_maker.OpRole.Forward) | int(core.op_proto_and_checker_maker.OpRole.Loss))
+        int(op.all_attrs()[OP_ROLE_KEY]) == (int(OpRole.Forward) | int(OpRole.Loss))
+
+
+def is_loss_grad_op(op):
+    if OP_ROLE_KEY not in op.attr_names:
+        return False
+    op_role = int(op.all_attrs()[OP_ROLE_KEY])
+    return op_role & int(OpRole.Backward) and op_role & int(OpRole.Loss)
+
+
+def is_gradient_clip_op(op):
+    return op.desc.has_attr("op_namescope") \
+        and op.desc.attr("op_namescope").startswith("/gradient_clip")
 
 
 def is_prim_op(op):
@@ -1406,7 +1424,10 @@ def get_standalone_cost_data(distributed_programs):
     }
 
     standalone_cost_data = []
-    not_enum_ops = ["create_py_reader", "create_double_buffer_reader", "read"]
+    # skip ops
+    not_enum_ops = [
+        "create_py_reader", "create_double_buffer_reader", "read", "assign"
+    ]
     for distributed_program in distributed_programs:
         cost_data = {}
         vars = distributed_program.global_block().vars
@@ -1468,3 +1489,18 @@ def to_list(value):
     if isinstance(value, (list, tuple)):
         return list(value)
     return [value]
+
+
+def debug_program(program, path, name):
+
+    filename = os.path.join(
+        path, name + '_program' + ".%d" % (paddle.distributed.get_rank()))
+    with open(filename, 'w') as f:
+        f.write(str(program))
+
+
+def ring_id_to_process_group(ring_id):
+    for g in get_all_process_groups():
+        if g.id == ring_id:
+            return g
+    return None

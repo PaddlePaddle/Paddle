@@ -18,6 +18,10 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSCORE
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+#endif
 
 namespace paddle {
 namespace distributed {
@@ -129,10 +133,45 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
       worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
           paddle::distributed::PSClientFactory::Create(ps_param));
       worker_ptr_->Configure(ps_param, dense_pull_regions, ps_env_, index);
+#if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSCORE
+      VLOG(3) << "FleetWrapper::InitWorker InitializeGPUServer";
+      auto* accessor = worker_ptr_->GetTableAccessor(0);
+      auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
+      ps_gpu_wrapper->InitializeGPUServer(ps_param);
+      ps_gpu_wrapper->SetTableAccessor(accessor);
+#endif
     }
   } else {
     VLOG(3) << "Client can be initialized only once";
   }
+}
+
+void FleetWrapper::InitFlWorker(const std::vector<std::string>& host_list,
+                                int index,
+                                const std::string& self_endpoint) {
+  assert(worker_ptr_.get() != nullptr);
+  uint32_t coordinator_num = host_list.size();
+  ps_env_.SetCoordinators(&host_list, coordinator_num);
+  auto ptr = dynamic_cast<BrpcPsClient*>(worker_ptr_.get());
+  ptr->InitializeFlWorker(self_endpoint);
+  return;
+}
+
+void FleetWrapper::PushFLClientInfoSync(const std::string& fl_client_info) {
+  // FLClientInfo fci;
+  // google::protobuf::TextFormat::ParseFromString(fl_client_info, &fci);
+  // InitGFlag(fci.init_gflags());
+  auto ptr = dynamic_cast<BrpcPsClient*>(worker_ptr_.get());
+  VLOG(0) << "fl-ps > PushFLClientInfoSync: " << typeid(worker_ptr_).name()
+          << ", " << typeid(ptr).name() << ", " << typeid(BrpcPsClient).name();
+  ptr->PushFLClientInfoSync(fl_client_info);
+  return;
+}
+
+std::string FleetWrapper::PullFlStrategy() {
+  auto ptr = dynamic_cast<BrpcPsClient*>(worker_ptr_.get());
+  std::string str = ptr->PullFlStrategy();
+  return str;
 }
 
 void FleetWrapper::StopServer() {
@@ -518,18 +557,20 @@ void FleetWrapper::PushSparseFromTensorAsync(
     uint64_t padding_id,
     platform::Place place,
     std::vector<const LoDTensor*>* inputs,
+    std::vector<int>& slots,
     const LoDTensor* shows,
     const LoDTensor* clks,
     std::vector<LoDTensor*>* outputs,
     bool use_cvm_op) {
+  CHECK(slots.size() == inputs->size());
   int batch_size = -1;
   bool batch_size_consist = true;
   for (auto* input : *inputs) {
-    int cur_batch_size =
+    size_t cur_batch_size =
         input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
-      batch_size = cur_batch_size;
-    } else if (batch_size != cur_batch_size) {
+      batch_size = int(cur_batch_size);
+    } else if (batch_size != int(cur_batch_size)) {
       // CHECK(batch_size == cur_batch_size);  // NOLINT
       batch_size_consist = false;
       break;
@@ -537,12 +578,12 @@ void FleetWrapper::PushSparseFromTensorAsync(
   }
   CHECK(batch_size > 0);  // NOLINT
 
-  int show_size =
+  size_t show_size =
       shows->lod().size() ? shows->lod()[0].size() - 1 : shows->dims()[0];
-  CHECK(show_size == batch_size || show_size == 1);
-  int clk_size =
+  CHECK(show_size == size_t(batch_size) || show_size == 1);
+  size_t clk_size =
       clks->lod().size() ? clks->lod()[0].size() - 1 : clks->dims()[0];
-  CHECK(clk_size == batch_size || clk_size == 1);
+  CHECK(clk_size == size_t(batch_size) || clk_size == 1);
 
   CHECK(outputs->size() == inputs->size());
   std::vector<uint64_t> push_keys;
@@ -557,8 +598,8 @@ void FleetWrapper::PushSparseFromTensorAsync(
   // TODO(zhaocaibei123): check type of show/clk is int? float? uint64?
   // const long int* show_tensor = shows->data<int64_t>();
   // const long int* clk_tensor = clks->data<int64_t>();
-  const int64_t* show_tensor = shows->data<int64_t>();
-  const int64_t* clk_tensor = clks->data<int64_t>();
+  const float* show_tensor = shows->data<float>();
+  const float* clk_tensor = clks->data<float>();
 
   for (size_t index = 0; index < inputs->size(); ++index) {
     framework::LoDTensor* g_tensor = outputs->at(index);
@@ -592,21 +633,18 @@ void FleetWrapper::PushSparseFromTensorAsync(
           push_keys.emplace_back(real_id);
           if (use_cvm_op) {
             push_values.emplace_back(fea_dim + 1);
-            push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+            push_values.back()[0] = static_cast<float>(slots[index]);
             float* data = push_values.back().data() + 1;
             memcpy(data, g + output_len, sizeof(float) * fea_dim);
           } else {
             push_values.emplace_back(fea_dim + 3);
             // slot show clk grad... consistent with CtrCommonPushValue defined
-            // in
-            // ctr_accessor.h
-            push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
-            push_values.back()[1] = (static_cast<int>(i) >= show_size
-                                         ? 1
-                                         : static_cast<float>(show_tensor[i]));
-            push_values.back()[2] = (static_cast<int>(i) >= clk_size
-                                         ? 0
-                                         : static_cast<float>(clk_tensor[i]));
+            // in ctr_accessor.h
+            push_values.back()[0] = static_cast<float>(slots[index]);
+            push_values.back()[1] =
+                (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
+            push_values.back()[2] =
+                (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
             float* data = push_values.back().data() + 3;
             memcpy(data, g + output_len, sizeof(float) * fea_dim);
           }
@@ -622,20 +660,16 @@ void FleetWrapper::PushSparseFromTensorAsync(
         push_keys.emplace_back(real_id);
         if (use_cvm_op) {
           push_values.emplace_back(fea_dim + 1);
-          push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+          push_values.back()[0] = static_cast<float>(slots[index]);
           float* data = push_values.back().data() + 1;
           memcpy(data, g + output_len, sizeof(float) * fea_dim);
         } else {
           push_values.emplace_back(fea_dim + 3);
           // slot show clk grad... consistent with CtrCommonPushValue defined in
           // ctr_accessor.h
-          push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
-          push_values.back()[1] = (static_cast<int>(i) >= show_size
-                                       ? 1
-                                       : static_cast<float>(show_tensor[i]));
-          push_values.back()[2] = (static_cast<int>(i) >= clk_size
-                                       ? 0
-                                       : static_cast<float>(clk_tensor[i]));
+          push_values.back()[0] = static_cast<float>(slots[index]);
+          push_values.back()[1] = (i >= show_size ? 1 : show_tensor[i]);
+          push_values.back()[2] = (i >= clk_size ? 0 : clk_tensor[i]);
           float* data = push_values.back().data() + 3;
           memcpy(data, g + output_len, sizeof(float) * fea_dim);
         }
@@ -851,6 +885,24 @@ int32_t FleetWrapper::SaveCache(int table_id,
     exit(-1);
   }
   return feasign_cnt;
+}
+
+void FleetWrapper::Revert() {
+  auto ret = worker_ptr_->Revert();
+  ret.wait();
+  if (ret.get() == -1) {
+    LOG(ERROR) << "table revert failed";
+    exit(-1);
+  }
+}
+
+void FleetWrapper::CheckSavePrePatchDone() {
+  auto ret = worker_ptr_->CheckSavePrePatchDone();
+  ret.wait();
+  if (ret.get() == -1) {
+    LOG(ERROR) << "table revert failed";
+    exit(-1);
+  }
 }
 
 std::default_random_engine& FleetWrapper::LocalRandomEngine() {

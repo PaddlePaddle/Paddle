@@ -46,9 +46,10 @@ import numbers
 import warnings
 from ...framework import no_grad
 from .. import functional as F
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from .. import Layer
 from paddle import in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
 
@@ -410,8 +411,15 @@ class GroupNorm(Layer):
         variance_out = self._helper.create_variable_for_type_inference(
             dtype=input.dtype, stop_gradient=True)
 
-        if _non_static_mode():
-            pre_act, _, _ = _C_ops.group_norm(
+        if in_dygraph_mode():
+            pre_act = _C_ops.group_norm(input, self.weight, self.bias,
+                                        self._epsilon, self._num_groups, "NCHW")
+
+            return dygraph_utils._append_activation_in_dygraph(pre_act,
+                                                               act=None)
+
+        elif _in_legacy_dygraph():
+            pre_act, _, _ = _legacy_C_ops.group_norm(
                 input,
                 self.weight,
                 self.bias,
@@ -730,7 +738,7 @@ class BatchNorm1D(_BatchNormBase):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as weight_attr. If it is set to Fasle, the weight is not learnable.
-            If the Initializer of the weight_attr is not set, the parameter is initialized with Xavier. Default: None.
+            If the Initializer of the weight_attr is not set, the parameter is initialized with ones. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
@@ -833,7 +841,7 @@ class BatchNorm2D(_BatchNormBase):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as weight_attr. If it is set to Fasle, the weight is not learnable.
-            If the Initializer of the weight_attr is not set, the parameter is initialized with Xavier. Default: None.
+            If the Initializer of the weight_attr is not set, the parameter is initialized with ones. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
@@ -921,7 +929,7 @@ class BatchNorm3D(_BatchNormBase):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as weight_attr. If it is set to Fasle, the weight is not learnable.
-            If the Initializer of the weight_attr is not set, the parameter is initialized with Xavier. Default: None.
+            If the Initializer of the weight_attr is not set, the parameter is initialized with ones. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
@@ -1039,7 +1047,7 @@ class SyncBatchNorm(_BatchNormBase):
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of this layer. If it is set to None or one attribute of ParamAttr, this layerr
              will create ParamAttr as param_attr. If the Initializer of the param_attr
-             is not set, the parameter is initialized with Xavier. If it is set to False, 
+             is not set, the parameter is initialized with ones. If it is set to False, 
              this layer will not have trainable scale parameter. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of this layer.
              If it is set to None or one attribute of ParamAttr, this layer
@@ -1100,16 +1108,22 @@ class SyncBatchNorm(_BatchNormBase):
 
         ### train mode: use mini-batch stats, eval mode: use global stats
         ### use_global_stats only support False in sync_batch_norm
-        if in_dynamic_mode():
+        if in_dygraph_mode():
+            sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
+                x, self.weight, self.bias, self._mean, self._variance,
+                self._momentum, self._epsilon, self._data_format,
+                not self.training, False, False, False)
+            return sync_batch_norm_out
+
+        elif in_dynamic_mode():
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
                      "is_test", not self.training, "data_layout",
                      self._data_format, "use_mkldnn", False, "fuse_with_relu",
                      False, "use_global_stats", False, 'trainable_statistics',
                      False)
-            sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm(
+            sync_batch_norm_out, _, _, _, _, _ = _legacy_C_ops.sync_batch_norm(
                 x, self.weight, self.bias, self._mean, self._variance, mean_out,
                 variance_out, *attrs)
-
             return sync_batch_norm_out
 
         check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],

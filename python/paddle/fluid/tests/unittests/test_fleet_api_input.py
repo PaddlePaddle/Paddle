@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
@@ -56,7 +57,7 @@ class FleetTest(unittest.TestCase):
 
         data = fluid.layers.data(name='X', shape=[1], dtype='float32')
         hidden = fluid.layers.fc(input=data, size=10)
-        loss = fluid.layers.mean(hidden)
+        loss = paddle.mean(hidden)
         adam = fluid.optimizer.Adam()
         adam.minimize(loss)
         place = fluid.CPUPlace()
@@ -156,7 +157,7 @@ class TranspilerOptimizerTest(unittest.TestCase):
         self.assertRaises(Exception, transpiler.minimize, loss=[])
         data = fluid.layers.data(name='X', shape=[1], dtype='float32')
         hidden = fluid.layers.fc(input=data, size=10)
-        loss = fluid.layers.mean(hidden)
+        loss = paddle.mean(hidden)
         self.assertRaises(Exception,
                           transpiler.minimize,
                           loss=loss.name,

@@ -23,6 +23,11 @@ namespace inference {
 
 TEST(TensorRT_mobilenet, compare) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
+  AnalysisConfig config;
+  config.EnableUseGpu(100, 0);
+  config.SetModel(model_dir);
+  config.DisableGlogInfo();
+  auto predictor = CreatePaddlePredictor(config);
   compare(model_dir, /* use_tensorrt */ true);
   // Open it when need.
   // profile(model_dir, /* use_analysis */ true, FLAGS_use_tensorrt);

@@ -22,7 +22,9 @@ import sys
 sys.path.append('..')
 from op_test import OpTest
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
+
+paddle.enable_static()
 
 
 class TestL2LossOp(OpTest):
@@ -55,9 +57,9 @@ class TestL2LossDeterministic(unittest.TestCase):
         with paddle.fluid.dygraph.guard(place):
             x_np = np.random.rand(5, 11, 13).astype('float32')
             x = paddle.to_tensor(x_np)
-            y1 = _C_ops.squared_l2_norm(x)
-            y2 = _C_ops.squared_l2_norm(x)
-            self.assertTrue(np.array_equal(y1.numpy(), y2.numpy()))
+            y1 = _legacy_C_ops.squared_l2_norm(x)
+            y2 = _legacy_C_ops.squared_l2_norm(x)
+            np.testing.assert_allclose(y1.numpy(), y2.numpy())
 
     def test_main(self):
         self.check_place(paddle.CPUPlace())
@@ -66,5 +68,4 @@ class TestL2LossDeterministic(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

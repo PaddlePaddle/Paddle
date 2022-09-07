@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {

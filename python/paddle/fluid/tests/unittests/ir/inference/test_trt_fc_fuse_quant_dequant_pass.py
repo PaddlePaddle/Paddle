@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 from quant_dequant_test import QuantDequantTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig
@@ -40,7 +41,7 @@ class FCQuantDequantFusePassTRTDims3Cols1Test(QuantDequantTest):
                                      act="relu")
             result = fluid.layers.relu(fc_out)
             loss = fluid.layers.cross_entropy(input=result, label=self.label)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             return avg_loss, result
 
         self.main_program.random_seed = 2
@@ -105,7 +106,7 @@ class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
             c_out = fluid.layers.reshape(fc_out, shape=[0, 784])
             result = fluid.layers.relu(c_out)
             loss = fluid.layers.cross_entropy(input=result, label=self.label)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             return avg_loss, result
 
         self.main_program.random_seed = 2
@@ -172,7 +173,7 @@ class FCQuantDequantFusePassTRTDims3Cols3Test(QuantDequantTest):
             c_out = fluid.layers.reshape(fc_out, shape=[1, 1, 2744])
             result = fluid.layers.relu(c_out)
             loss = fluid.layers.cross_entropy(input=result, label=label_shape)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             return avg_loss, result
 
         self.main_program.random_seed = 2

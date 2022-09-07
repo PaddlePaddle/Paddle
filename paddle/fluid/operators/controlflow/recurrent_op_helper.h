@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/controlflow/op_variant.h"
 #include "paddle/fluid/operators/recurrent_op.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {

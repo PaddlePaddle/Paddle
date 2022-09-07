@@ -14,14 +14,14 @@
 
 #include "paddle/fluid/framework/ir/generate_pass.h"
 
-#include "boost/blank.hpp"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/utils/blank.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class element_visitor : public boost::static_visitor<Attribute> {
+class element_visitor {
  public:
   explicit element_visitor(int index) : index_(index) {}
 
@@ -40,14 +40,14 @@ class element_visitor : public boost::static_visitor<Attribute> {
     if (index >= 0 && static_cast<size_t>(index) < attr.size()) {
       return static_cast<ET>(attr[index]);
     }
-    return boost::blank();
+    return paddle::blank();
   }
 
  private:
   int index_;
 };
 
-class operation_visitor : public boost::static_visitor<Attribute> {
+class operation_visitor {
  public:
   explicit operation_visitor(const proto::PassDesc::OperationType& type)
       : type_(type) {}
@@ -99,7 +99,7 @@ Attribute GetVarAttrValue(const VarDesc* desc,
       return shape;
     }
   }
-  return boost::blank();
+  return paddle::blank();
 }
 
 Attribute GetOpAttrValue(const OpDesc* desc,

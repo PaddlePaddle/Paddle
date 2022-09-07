@@ -104,7 +104,6 @@ REGISTER_OPERATOR(
     ops::BoxClipOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    box_clip,
-    ops::BoxClipKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BoxClipKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(box_clip,
+                       ops::BoxClipKernel<phi::CPUContext, float>,
+                       ops::BoxClipKernel<phi::CPUContext, double>);

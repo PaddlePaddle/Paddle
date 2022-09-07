@@ -69,7 +69,7 @@ struct TestReduceOpHandle {
       for (int i = 0; i < count; ++i) {
         auto p = p::CUDAPlace(i);
         gpu_list_.push_back(p);
-        ctxs_.emplace_back(new p::CUDADeviceContext(p));
+        ctxs_.emplace_back(new phi::GPUContext(p));
       }
       nccl_ctxs_.reset(new platform::NCCLContextMap(gpu_list_));
 #else
@@ -81,7 +81,7 @@ struct TestReduceOpHandle {
       for (int i = 0; i < count; ++i) {
         auto p = p::CPUPlace();
         gpu_list_.push_back(p);
-        ctxs_.emplace_back(new p::CPUDeviceContext(p));
+        ctxs_.emplace_back(new phi::CPUContext(p));
       }
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       nccl_ctxs_.reset(nullptr);

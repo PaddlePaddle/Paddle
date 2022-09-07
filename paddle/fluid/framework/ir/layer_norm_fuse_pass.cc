@@ -57,14 +57,14 @@ bool validateReduceOpAttrs(const Node* node,
   const auto* op = node->Op();
   if (op->HasAttr("reduce_all")) {
     EXPECT_TRUE(
-        !BOOST_GET_CONST(bool, op->GetAttr("reduce_all")),
+        !PADDLE_GET_CONST(bool, op->GetAttr("reduce_all")),
         ::paddle::string::Sprintf(
             "The LayerNorm fusion %s"
             "reduction must have \'reduce_all\' attribute set to false.",
             name));
   }
   if (op->HasAttr("dim")) {
-    auto dims = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dim"));
+    auto dims = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("dim"));
     if (dims.size() == x_shape.size()) return false;
     if (1 == dims.size() && -1 == dims.front()) return true;
 
@@ -289,18 +289,18 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     CHECK_TRUE(validateReduceOpAttrs(std_dev, x_shape, "std_dev mean"),
                "Validation of standard deviation node failed.");
 
-    bool keep_dim = BOOST_GET_CONST(bool, x_mean->Op()->GetAttr("keep_dim"));
+    bool keep_dim = PADDLE_GET_CONST(bool, x_mean->Op()->GetAttr("keep_dim"));
     std::vector<int> mean_dim =
-        BOOST_GET_CONST(std::vector<int>, x_mean->Op()->GetAttr("dim"));
+        PADDLE_GET_CONST(std::vector<int>, x_mean->Op()->GetAttr("dim"));
     std::vector<int> std_mean_dim =
-        BOOST_GET_CONST(std::vector<int>, std_dev->Op()->GetAttr("dim"));
+        PADDLE_GET_CONST(std::vector<int>, std_dev->Op()->GetAttr("dim"));
     if (mean_dim != std_mean_dim) {
       LOG(WARNING) << "The LayerNorm dim of all mean must be same";
       return;
     }
     if (!keep_dim) {
-      int sub_axis = BOOST_GET_CONST(int, x_sub_mean->Op()->GetAttr("axis"));
-      int div_axis = BOOST_GET_CONST(int, division->Op()->GetAttr("axis"));
+      int sub_axis = PADDLE_GET_CONST(int, x_sub_mean->Op()->GetAttr("axis"));
+      int div_axis = PADDLE_GET_CONST(int, division->Op()->GetAttr("axis"));
       if (sub_axis != 0 || div_axis != 0) return;
     }
 

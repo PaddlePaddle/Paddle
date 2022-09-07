@@ -261,8 +261,7 @@ __global__ void GroupNormForward(const T* x,
 }
 
 template <typename T>
-class GroupNormKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class GroupNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
@@ -291,8 +290,8 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     y->mutable_data<T>(ctx.GetPlace());
     mean->mutable_data<T>(ctx.GetPlace());
     var->mutable_data<T>(ctx.GetPlace());
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     Tensor temp_var;
     temp_var.mutable_data<T>(var->dims(), ctx.GetPlace());
     auto* x_data = x->data<T>();
@@ -428,8 +427,21 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
   }
   CudaAtomicAddWithWarp(&(d_mean[bid * groups + gid]), d_mean_data);
   CudaAtomicAddWithWarp(&(d_var[bid * groups + gid]), d_var_data);
-  if (flags & kHasScale) CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
-  if (flags & kHasBias) CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
+
+  if (flags & kHasScale) {
+#if CUDA_VERSION >= 11070
+    platform::CudaAtomicAdd(&(d_scale[ccid]), d_scale_data);
+#else
+    CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
+#endif
+  }
+  if (flags & kHasBias) {
+#if CUDA_VERSION >= 11070
+    platform::CudaAtomicAdd(&(d_bias[ccid]), d_bias_data);
+#else
+    CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
+#endif
+  }
 }
 
 template <typename T, int flags>
@@ -597,8 +609,7 @@ __global__ void GetXGradientCUDAKernel(int imsize,
 }
 
 template <typename T>
-class GroupNormGradKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class GroupNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
@@ -629,8 +640,8 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
                                           : x_dims[x_dims.size() - 2]);
 
     d_x->mutable_data<T>(ctx.GetPlace());
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     Tensor ds, db;
     ds.mutable_data<T>({x_dims[0], C}, ctx.GetPlace());
@@ -816,11 +827,9 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    group_norm,
-    ops::GroupNormKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GroupNormKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    group_norm_grad,
-    ops::GroupNormGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GroupNormGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(group_norm,
+                        ops::GroupNormKernel<phi::GPUContext, float>,
+                        ops::GroupNormKernel<phi::GPUContext, double>);
+REGISTER_OP_CUDA_KERNEL(group_norm_grad,
+                        ops::GroupNormGradKernel<phi::GPUContext, float>,
+                        ops::GroupNormGradKernel<phi::GPUContext, double>);

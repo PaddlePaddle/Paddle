@@ -27,8 +27,8 @@ namespace ir {
 static void GetTransposeAttrsFromOp(const OpDesc &op,
                                     bool *trans_x,
                                     bool *trans_y) {
-  *trans_x = BOOST_GET_CONST(bool, op.GetAttr("trans_x"));
-  *trans_y = BOOST_GET_CONST(bool, op.GetAttr("trans_y"));
+  *trans_x = PADDLE_GET_CONST(bool, op.GetAttr("trans_x"));
+  *trans_y = PADDLE_GET_CONST(bool, op.GetAttr("trans_y"));
 }
 
 void FuseGemmEpiloguePass::ApplyImpl(ir::Graph *graph) const {
@@ -492,7 +492,7 @@ bool FuseGemmEpiloguePass::IsGemmFromLinear_(
                          "fused_transpose_Y"}) {
     if (matmul_v2_op->HasAttr(attr_name)) {
       std::vector<int> tmp_vec =
-          BOOST_GET_CONST(std::vector<int>, matmul_v2_op->GetAttr(attr_name));
+          PADDLE_GET_CONST(std::vector<int>, matmul_v2_op->GetAttr(attr_name));
       if (tmp_vec.size() > 0) return false;
     }
   }

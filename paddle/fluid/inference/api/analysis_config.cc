@@ -246,6 +246,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(opt_cache_dir_);
   CP_MEMBER(prog_file_);
   CP_MEMBER(params_file_);
+  CP_MEMBER(calibration_file_path_);
 
   CP_MEMBER(use_fc_padding_);
   // GPU related.
@@ -255,6 +256,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_cudnn_);
   CP_MEMBER(gpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
+
+  // Mixed related.
+  CP_MEMBER(mixed_black_list_);
 
   CP_MEMBER(enable_memory_optim_);
   // TensorRT related.
@@ -280,6 +284,13 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
+  CP_MEMBER(dlnne_max_batchsize_);
+  CP_MEMBER(dlnne_use_static_batch_);
+  CP_MEMBER(dlnne_weight_share_mode_);
+  CP_MEMBER(dlnne_use_calib_mode_);
+  CP_MEMBER(dlnne_precision_mode_);
+  CP_MEMBER(dlnne_disable_nodes_by_outputs_);
+  CP_MEMBER(dlnne_input_shape_dict_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -407,6 +418,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
       pass_builder_->DeletePass(ps);
     }
   }
+
+  for (auto &delete_pass : other.pass_builder()->GetAllDeletedPasses()) {
+    pass_builder_->DeletePass(delete_pass);
+  }
 }
 
 void AnalysisConfig::EnableCUDNN() {
@@ -502,6 +517,14 @@ void AnalysisConfig::EnableMkldnnInt8(
   Update();
 }
 
+void AnalysisConfig::SetCalibrationFilePath(
+    const std::string &calibration_file_path) {
+  calibration_file_path_ = calibration_file_path;
+  VLOG(1) << "Set calibration file path of quantize model: " +
+                 calibration_file_path_;
+  Update();
+}
+
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
                           platform::errors::PreconditionNotMet(
@@ -510,7 +533,7 @@ MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
 }
 
 void AnalysisConfig::EnableTensorRtEngine(
-    int workspace_size,
+    int64_t workspace_size,
     int max_batch_size,
     int min_subgraph_size,
     AnalysisConfig::Precision precision_mode,
@@ -537,9 +560,24 @@ void AnalysisConfig::EnableTensorRtEngine(
 #endif
 }
 
-void AnalysisConfig::EnableDlnne(int min_subgraph_size) {
+void AnalysisConfig::EnableDlnne(
+    int min_subgraph_size,
+    int max_batch_size,
+    bool use_static_batch,
+    std::string weight_share_mode,
+    std::unordered_set<std::string> disable_nodes_by_ouputs,
+    std::map<std::string, std::vector<int64_t>> dlnne_input_shape_dict,
+    bool use_calib_mode,
+    AnalysisConfig::Precision precision_mode) {
   use_dlnne_ = true;
   dlnne_min_subgraph_size_ = min_subgraph_size;
+  dlnne_max_batchsize_ = max_batch_size;
+  dlnne_use_static_batch_ = use_static_batch;
+  dlnne_weight_share_mode_ = weight_share_mode;
+  dlnne_disable_nodes_by_outputs_ = disable_nodes_by_ouputs;
+  dlnne_input_shape_dict_ = dlnne_input_shape_dict;
+  dlnne_use_calib_mode_ = use_calib_mode;
+  dlnne_precision_mode_ = precision_mode;
   Update();
 }
 
@@ -798,6 +836,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << prog_file_;
   ss << params_file_;
 
+  ss << calibration_file_path_;
+
   ss << use_gpu_;
   ss << use_external_stream_;
   ss << exec_stream_;
@@ -871,6 +911,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ipu_available_memory_proportion_;
   ss << ipu_enable_half_partial_;
 
+  for (auto &op : mixed_black_list_) ss << op.c_str();
   return ss.str();
 }
 
@@ -979,6 +1020,10 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"model_file", prog_file_});
     os.InsertRow({"params_file", params_file_});
   }
+  if (!(calibration_file_path_.empty())) {
+    os.InsertRow({"calibration_file_path", calibration_file_path_});
+  }
+
   if (model_from_memory_) {
     os.InsertRow({"model_from_memory", params_file_});
   }
@@ -1188,4 +1233,10 @@ bool AnalysisConfig::tuned_tensorrt_dynamic_shape() {
 bool AnalysisConfig::trt_allow_build_at_runtime() {
   return trt_allow_build_at_runtime_;
 }
+
+void AnalysisConfig::Exp_SetBlackListOpsForMixedModel(
+    const std::unordered_set<std::string> &black_list) {
+  mixed_black_list_ = black_list;
+}
+
 }  // namespace paddle

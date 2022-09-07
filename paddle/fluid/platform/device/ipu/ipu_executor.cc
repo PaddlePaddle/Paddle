@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device/ipu/ipu_executor.h"
 
+#include <popart/devicemanager.hpp>
+#include <popdist/popdist_poplar.hpp>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device/ipu/ipu_compiler.h"
 #include "paddle/fluid/platform/device/ipu/ipu_names.h"
@@ -204,17 +207,20 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   }
   VLOG(10) << "Prepared inputs/anchors";
 
-  if (ipu_strategy_->is_training && compiler_resources_->with_lr_sched &&
-      !(ipu_strategy_->popart_options.createImplicitPipeliningFwdOnlyProgram &&
-        ipu_strategy_->runtime_options.enable_eval)) {
+  if (ipu_strategy_->is_training && compiler_resources_->with_lr_sched) {
     popart::Optimizer *optimizer;
     if (ipu_strategy_->runtime_options.enable_eval) {
       VLOG(10) << "Switch optimizer to eval mode";
       optimizer = compiler_resources_->eval_optimizer.get();
     } else {
       VLOG(10) << "Update learning_rate";
-      auto new_lr =
-          GetSingleVarFromScope<float>(scope_, compiler_resources_->lr_var);
+      float new_lr;
+      if (ipu_strategy_->is_dynamic) {
+        new_lr = ipu_strategy_->lr;
+      } else {
+        new_lr =
+            GetSingleVarFromScope<float>(scope_, compiler_resources_->lr_var);
+      }
       VLOG(10) << "New Lr: " << new_lr;
       optimizer = compiler_resources_->UpdateOptimizer(new_lr);
     }
@@ -224,12 +230,7 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
 
   popart::StepIO stepio(popart_inputs, popart_anchors);
   VLOG(10) << "Running...";
-  if (ipu_strategy_->popart_options.createImplicitPipeliningFwdOnlyProgram &&
-      ipu_strategy_->runtime_options.enable_eval) {
-    session_->run("implicitPipeliningFwdOnly", stepio);
-  } else {
-    session_->run(stepio);
-  }
+  session_->run(stepio);
   VLOG(10) << "Running...done";
 }
 
@@ -257,6 +258,7 @@ void Executor::AcquireDevice() {
             "numIPUs",
             std::to_string(ipu_strategy_->num_ipus),
         },
+        {"tilesPerIPU", std::to_string(ipu_strategy_->tiles_per_ipu)},
         {"ipuVersion", "ipu2"},
     };
     device_ = popart::DeviceManager::createDeviceManager().createIpuModelDevice(
@@ -269,6 +271,7 @@ void Executor::AcquireDevice() {
             "numIPUs",
             std::to_string(ipu_strategy_->num_ipus),
         },
+        {"tilesPerIPU", std::to_string(ipu_strategy_->tiles_per_ipu)},
         {"ipuVersion", "ipu2"},
     };
     device_ =
@@ -279,7 +282,7 @@ void Executor::AcquireDevice() {
     VLOG(10) << "Create distribution device...";
     auto ipus_per_replica = ipu_strategy_->num_ipus /
                             ipu_strategy_->popart_options.replicatedGraphCount;
-    auto device_id = popdist_get_device(ipus_per_replica);
+    auto device_id = popdist::getDeviceId(ipus_per_replica);
     device_ = popart::DeviceManager::createDeviceManager().acquireDeviceById(
         device_id);
     PADDLE_ENFORCE_NOT_NULL(

@@ -13,6 +13,10 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -31,17 +35,6 @@ namespace operators {
 class MemcpyD2HOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    auto type = ctx->GetInputsVarType("X")[0];
-    if (type == framework::proto::VarType::SELECTED_ROWS ||
-        type == framework::proto::VarType::LOD_TENSOR) {
-      ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-      if (type == framework::proto::VarType::LOD_TENSOR) {
-        ctx->ShareLoD("X", /*->*/ "Out");
-      }
-    }
-  }
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
@@ -116,98 +109,50 @@ raise error if the type is not listed above.
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+
+DECLARE_INFER_SHAPE_FUNCTOR(memcpy_d2h,
+                            MemcpyD2HInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
 REGISTER_OPERATOR(
     memcpy_d2h,
     ops::MemcpyD2HOp,
     ops::MemcpyD2HOpProtoMaker,
     ops::MemcpyD2HInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL_FUNCTOR(memcpy_d2h,
-                               float,
-                               ops::MemcpyD2HKernel,
-                               double,
-                               ops::MemcpyD2HKernel,
-                               int8_t,
-                               ops::MemcpyD2HKernel,
-                               uint8_t,
-                               ops::MemcpyD2HKernel,
-                               int,
-                               ops::MemcpyD2HKernel,
-                               int64_t,
-                               ops::MemcpyD2HKernel,
-                               bool,
-                               ops::MemcpyD2HKernel,
-                               paddle::platform::bfloat16,
-                               ops::MemcpyD2HKernel,
-                               paddle::platform::complex<float>,
-                               ops::MemcpyD2HKernel,
-                               paddle::platform::complex<double>,
-                               ops::MemcpyD2HKernel,
-                               plat::float16,
-                               ops::MemcpyD2HKernel,
-                               int16_t,
-                               ops::MemcpyD2HKernel);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(memcpy_d2h,
-                                float,
-                                ops::MemcpyD2HKernel,
-                                double,
-                                ops::MemcpyD2HKernel,
-                                int8_t,
-                                ops::MemcpyD2HKernel,
-                                uint8_t,
-                                ops::MemcpyD2HKernel,
-                                int,
-                                ops::MemcpyD2HKernel,
-                                int64_t,
-                                ops::MemcpyD2HKernel,
-                                bool,
-                                ops::MemcpyD2HKernel,
-                                paddle::platform::bfloat16,
-                                ops::MemcpyD2HKernel,
-                                paddle::platform::complex<float>,
-                                ops::MemcpyD2HKernel,
-                                paddle::platform::complex<double>,
-                                ops::MemcpyD2HKernel,
-                                plat::float16,
-                                ops::MemcpyD2HKernel,
-                                int16_t,
-                                ops::MemcpyD2HKernel);
-#endif
-
-#ifdef PADDLE_WITH_XPU
-REGISTER_OP_XPU_KERNEL_FUNCTOR(memcpy_d2h,
-                               float,
-                               ops::MemcpyD2HKernel,
-                               double,
-                               ops::MemcpyD2HKernel,
-                               int8_t,
-                               ops::MemcpyD2HKernel,
-                               uint8_t,
-                               ops::MemcpyD2HKernel,
-                               int,
-                               ops::MemcpyD2HKernel,
-                               int64_t,
-                               ops::MemcpyD2HKernel,
-                               bool,
-                               ops::MemcpyD2HKernel,
-                               paddle::platform::bfloat16,
-                               ops::MemcpyD2HKernel,
-                               paddle::platform::complex<float>,
-                               ops::MemcpyD2HKernel,
-                               paddle::platform::complex<double>,
-                               ops::MemcpyD2HKernel,
-                               plat::float16,
-                               ops::MemcpyD2HKernel,
-                               int16_t,
-                               ops::MemcpyD2HKernel);
-#endif
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    MemcpyD2HInferShapeFunctor);
 
 #ifdef PADDLE_WITH_ASCEND_CL
 REGISTER_OP_NPU_KERNEL_FUNCTOR(memcpy_d2h,
+                               float,
+                               ops::MemcpyD2HKernel,
+                               double,
+                               ops::MemcpyD2HKernel,
+                               int8_t,
+                               ops::MemcpyD2HKernel,
+                               uint8_t,
+                               ops::MemcpyD2HKernel,
+                               int,
+                               ops::MemcpyD2HKernel,
+                               int64_t,
+                               ops::MemcpyD2HKernel,
+                               bool,
+                               ops::MemcpyD2HKernel,
+                               paddle::platform::bfloat16,
+                               ops::MemcpyD2HKernel,
+                               paddle::platform::complex<float>,
+                               ops::MemcpyD2HKernel,
+                               paddle::platform::complex<double>,
+                               ops::MemcpyD2HKernel,
+                               plat::float16,
+                               ops::MemcpyD2HKernel,
+                               int16_t,
+                               ops::MemcpyD2HKernel);
+#endif
+
+#ifdef PADDLE_WITH_IPU
+REGISTER_OP_IPU_KERNEL_FUNCTOR(memcpy_d2h,
                                float,
                                ops::MemcpyD2HKernel,
                                double,

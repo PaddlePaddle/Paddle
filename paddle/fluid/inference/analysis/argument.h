@@ -35,7 +35,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {
@@ -177,6 +177,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(mkldnn_cache_capacity, MkldnnCacheCapacity, int);
 
 #ifdef PADDLE_WITH_MKLDNN
+  // Calibration file path of quantize model
+  DECL_ARGUMENT_FIELD(calibration_file_path, CalibrationFilePath, std::string);
+
   // A set of op types to enable their quantized kernels
   DECL_ARGUMENT_FIELD(quantize_enabled_op_types,
                       QuantizeEnabledOpTypes,
@@ -216,7 +219,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_use_dla, TensorRtUseDLA, bool);
   DECL_ARGUMENT_FIELD(tensorrt_dla_core, TensorRtDLACore, int);
   DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);
-  DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int);
+  DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int64_t);
   DECL_ARGUMENT_FIELD(tensorrt_min_subgraph_size, TensorRtMinSubgraphSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_disabled_ops,
                       TensorRtDisabledOPs,
@@ -250,6 +253,22 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
   DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);
   DECL_ARGUMENT_FIELD(dlnne_max_batch_size, DlnneMaxBatchSize, int);
+  DECL_ARGUMENT_FIELD(dlnne_use_static_batch, DlnneUseStaticBatch, bool);
+  DECL_ARGUMENT_FIELD(dlnne_weight_share_mode,
+                      DlnneWeightShareMode,
+                      std::string);
+  DECL_ARGUMENT_FIELD(dlnne_disable_nodes_by_outputs,
+                      DlnneDisableNodesByOutputs,
+                      std::unordered_set<std::string>);
+  DECL_ARGUMENT_FIELD(dlnne_use_calib_mode, DlnneUseCalibMode, bool);
+  DECL_ARGUMENT_FIELD(dlnne_precision_mode,
+                      DlnnePrecisionMode,
+                      AnalysisConfig::Precision);
+
+  using dlnne_input_shape_type = std::map<std::string, std::vector<int64_t>>;
+  DECL_ARGUMENT_FIELD(dlnne_input_shape_dict,
+                      DlnneInputShapeDict,
+                      dlnne_input_shape_type);
   DECL_ARGUMENT_FIELD(dlnne_workspace_size, DlnneWorkspaceSize, int);
 
   DECL_ARGUMENT_FIELD(lite_passes_filter,
@@ -331,6 +350,9 @@ struct Argument {
 
   // mixed precision related
   DECL_ARGUMENT_FIELD(model_precision, ModelPrecision, int);
+  DECL_ARGUMENT_FIELD(mixed_black_list,
+                      MixedBlackList,
+                      std::unordered_set<std::string>);
 
  private:
   std::unordered_set<std::string> valid_fields_;

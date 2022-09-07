@@ -18,9 +18,10 @@ from paddle.utils import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 
-class AssertTransformer(gast.NodeTransformer):
+class AssertTransformer(BaseTransformer):
     """
     A class transforms python assert to convert_assert.
     """

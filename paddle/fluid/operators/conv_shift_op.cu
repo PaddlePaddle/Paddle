@@ -124,8 +124,7 @@ __global__ void ConvShiftDy(const T *x,
 }  // namespace
 
 template <typename T>
-class ConvShiftKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class ConvShiftKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const Tensor *X = context.Input<Tensor>("X");
@@ -146,8 +145,7 @@ class ConvShiftKernel<platform::CUDADeviceContext, T>
 
     dim3 grid_dim(num_x_blocks, batch_size);
 
-    auto stream =
-        context.template device_context<platform::CUDADeviceContext>().stream();
+    auto stream = context.template device_context<phi::GPUContext>().stream();
 
     ConvShiftForward<T><<<grid_dim, x_per_block, mem_per_block, stream>>>(
         x_data, y_data, x_width, y_width, y_half_width, batch_size, out_data);
@@ -155,8 +153,7 @@ class ConvShiftKernel<platform::CUDADeviceContext, T>
 };
 
 template <typename T>
-class ConvShiftGradKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class ConvShiftGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const Tensor *X = context.Input<Tensor>("X");
@@ -174,9 +171,8 @@ class ConvShiftGradKernel<platform::CUDADeviceContext, T>
     int y_width = Y->dims()[1];
     int y_half_width = (y_width - 1) / 2;
 
-    auto &device_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
+    auto &device_ctx = context.template device_context<phi::GPUContext>();
+    phi::funcs::SetConstant<phi::GPUContext, T> zero;
 
     const int x_per_block = 256;
     int num_x_blocks = DivUp(x_width, x_per_block);
@@ -212,9 +208,7 @@ class ConvShiftGradKernel<platform::CUDADeviceContext, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    conv_shift,
-    ops::ConvShiftKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    conv_shift_grad,
-    ops::ConvShiftGradKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(conv_shift,
+                        ops::ConvShiftKernel<phi::GPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(conv_shift_grad,
+                        ops::ConvShiftGradKernel<phi::GPUContext, float>);

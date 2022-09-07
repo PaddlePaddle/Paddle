@@ -293,14 +293,6 @@ void BatchNormOpMaker::Make() {
             "NHWC kernel")
       .AsDispensable()
       .AsExtra();
-  AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>("fuse_with_relu",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
-      .AsExtra();
   AddAttr<bool>("use_global_stats",
                 "(bool, default false) Whether to use global mean and "
                 "variance. In inference or test mode, set use_global_stats "
@@ -460,8 +452,8 @@ void BatchNormGradMaker<T>::Apply(GradOpPtr<T> op) const {
   }
 
   // used when setting use_global_stats True during training
-  if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats")) ||
-      BOOST_GET_CONST(bool, this->GetAttr("is_test"))) {
+  if (PADDLE_GET_CONST(bool, this->GetAttr("use_global_stats")) ||
+      PADDLE_GET_CONST(bool, this->GetAttr("is_test"))) {
     op->SetInput("Mean", this->Output("MeanOut"));
     op->SetInput("Variance", this->Output("VarianceOut"));
   }
@@ -480,7 +472,7 @@ void BatchNormDoubleGradMaker<T>::Apply(GradOpPtr<T> op) const {
   op->SetInput("Scale", this->Input("Scale"));
   op->SetInput("SavedMean", this->Input("SavedMean"));
   op->SetInput("SavedVariance", this->Input("SavedVariance"));
-  if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
+  if (PADDLE_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
     op->SetInput("Mean", this->Input("Mean"));
     op->SetInput("Variance", this->Input("Variance"));
   }

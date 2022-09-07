@@ -36,7 +36,7 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
         for p in self.get_places():
             grad_value1 = self.run_program(p, stop_gradient=False)
             grad_value2 = self.run_program(p, stop_gradient=True)
-            self.assertTrue(np.array_equal(grad_value1, grad_value2))
+            np.testing.assert_array_equal(grad_value1, grad_value2)
 
     def run_program(self, place, stop_gradient=False):
         np.random.seed(1)
@@ -59,7 +59,7 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
                 x.stop_gradient = stop_gradient
 
                 emb = fluid.embedding(x, size=[10, 32], dtype='float32')
-                avg_cost = fluid.layers.mean(emb, name='mean_loss')
+                avg_cost = paddle.mean(emb, name='mean_loss')
                 optim = fluid.optimizer.SGD(learning_rate=0.001)
                 optim.minimize(avg_cost)
 

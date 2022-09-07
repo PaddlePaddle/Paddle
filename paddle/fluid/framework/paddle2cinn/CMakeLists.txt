@@ -1,7 +1,7 @@
 cc_library(
   cinn_cache_key
   SRCS cinn_cache_key.cc
-  DEPS boost graph graph_helper lod_tensor proto_desc)
+  DEPS graph graph_helper lod_tensor proto_desc)
 cc_library(
   build_cinn_pass
   SRCS build_cinn_pass.cc

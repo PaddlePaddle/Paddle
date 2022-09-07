@@ -45,6 +45,9 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["slice"]["Input"] = ScaleAlgo::KL;
   rules_["slice"]["Out"] = ScaleAlgo::NONE;
 
+  rules_["shape"]["Input"] = ScaleAlgo::KL;
+  rules_["shape"]["Out"] = ScaleAlgo::NONE;
+
   rules_["fc"]["Input"] = ScaleAlgo::KL;
   rules_["fc"]["W"] = ScaleAlgo::MAX_CH_T;
   rules_["fc"]["Bias"] = ScaleAlgo::NONE;
@@ -61,6 +64,10 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["elementwise_mul"]["X"] = ScaleAlgo::KL;
   rules_["elementwise_mul"]["Y"] = ScaleAlgo::KL;
   rules_["elementwise_mul"]["Out"] = ScaleAlgo::KL;
+
+  rules_["elementwise_sub"]["X"] = ScaleAlgo::KL;
+  rules_["elementwise_sub"]["Y"] = ScaleAlgo::KL;
+  rules_["elementwise_sub"]["Out"] = ScaleAlgo::KL;
 
   // Reshape2 does not perform calculation on the data and shapes are not
   // changed. Scale is calculated on input data and assign to Quantize and

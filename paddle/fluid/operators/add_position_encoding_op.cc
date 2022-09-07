@@ -122,12 +122,11 @@ REGISTER_OPERATOR(
     ops::AddPositionEncodingGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(add_position_encoding_grad, ops::AddPositionEncodingOpGrad);
 
-REGISTER_OP_CPU_KERNEL(
-    add_position_encoding,
-    ops::AddPositionEncodingKernel<plt::CPUDeviceContext, float>,
-    ops::AddPositionEncodingKernel<plt::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(add_position_encoding,
+                       ops::AddPositionEncodingKernel<phi::CPUContext, float>,
+                       ops::AddPositionEncodingKernel<phi::CPUContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
     add_position_encoding_grad,
-    ops::AddPositionEncodingGradKernel<plt::CPUDeviceContext, float>,
-    ops::AddPositionEncodingGradKernel<plt::CPUDeviceContext, double>);
+    ops::AddPositionEncodingGradKernel<phi::CPUContext, float>,
+    ops::AddPositionEncodingGradKernel<phi::CPUContext, double>);

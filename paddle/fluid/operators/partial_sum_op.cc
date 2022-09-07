@@ -155,11 +155,6 @@ class PartialSumOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input tensors of partial_sum operator.").AsDuplicable();
     AddOutput("Out", "Output tensor of partial_sum operator.");
-    AddAttr<bool>(
-        "use_mkldnn",
-        "(bool, default false) Indicates if MKL-DNN kernel will be used")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<int>("start_index", "The start index of tensor wanted to be added.")
         .SetDefault(0);
     AddAttr<int>("length", "The length of tensor wanted to be added.")
@@ -210,12 +205,11 @@ REGISTER_OPERATOR(partial_sum,
 
 REGISTER_OPERATOR(partial_sum_grad, ops::PartialSumGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    partial_sum,
-    ops::PartialSumKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PartialSumKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::PartialSumKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::PartialSumKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(partial_sum,
+                       ops::PartialSumKernel<phi::CPUContext, float>,
+                       ops::PartialSumKernel<phi::CPUContext, int>,
+                       ops::PartialSumKernel<phi::CPUContext, double>,
+                       ops::PartialSumKernel<phi::CPUContext, int64_t>);
 
 REGISTER_OP_CPU_KERNEL(partial_sum_grad,
                        ops::PartialSumGradientOpKernel<float>,

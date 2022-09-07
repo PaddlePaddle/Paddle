@@ -215,7 +215,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(crf_decoding,
                              ops::CRFDecodingOp,
                              ops::CRFDecodingOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    crf_decoding,
-    ops::CRFDecodingOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CRFDecodingOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(crf_decoding,
+                       ops::CRFDecodingOpKernel<phi::CPUContext, float>,
+                       ops::CRFDecodingOpKernel<phi::CPUContext, double>);

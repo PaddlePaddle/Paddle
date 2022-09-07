@@ -49,12 +49,9 @@ namespace tests {
                                    const Sparse##type##Tensor& y,            \
                                    const DDim& dense_dims) {                 \
     auto out = sparse::ElementWise##name##type<T>(dev_ctx_cpu, x, y);        \
-    const DenseTensor denseX =                                               \
-        sparse::Sparse##type##ToDense<T>(dev_ctx_cpu, x);                    \
-    const DenseTensor denseY =                                               \
-        sparse::Sparse##type##ToDense<T>(dev_ctx_cpu, y);                    \
-    const DenseTensor denseOut =                                             \
-        sparse::Sparse##type##ToDense<T>(dev_ctx_cpu, out);                  \
+    const DenseTensor denseX = sparse::type##ToDense<T>(dev_ctx_cpu, x);     \
+    const DenseTensor denseY = sparse::type##ToDense<T>(dev_ctx_cpu, y);     \
+    const DenseTensor denseOut = sparse::type##ToDense<T>(dev_ctx_cpu, out); \
     auto expectResult = name<T>(dev_ctx_cpu, denseX, denseY);                \
     for (int j = 0; j < denseOut.numel(); ++j) {                             \
       auto actualResultRow = denseOut.template data<T>()[j];                 \
@@ -113,10 +110,9 @@ TEST(DEV_API, sparse_elementwise_coo_kernel_double) {
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetAllocator(paddle::platform::CPUPlace())
             .get());
-    dev_ctx_cpu.Init();
 
-    auto coo_x = sparse::DenseToSparseCoo<T>(dev_ctx_cpu, dense_x, sparse_dim);
-    auto coo_y = sparse::DenseToSparseCoo<T>(dev_ctx_cpu, dense_y, sparse_dim);
+    auto coo_x = sparse::DenseToCoo<T>(dev_ctx_cpu, dense_x, sparse_dim);
+    auto coo_y = sparse::DenseToCoo<T>(dev_ctx_cpu, dense_y, sparse_dim);
 
     TestElementWiseAddCoo<T>(dev_ctx_cpu, coo_x, coo_y, dense_dims);
     TestElementWiseSubtractCoo<T>(dev_ctx_cpu, coo_x, coo_y, dense_dims);
@@ -159,10 +155,9 @@ TEST(DEV_API, sparse_elementwise_csr_kernel_float) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
-  auto csr_x = sparse::DenseToSparseCsr<T>(dev_ctx_cpu, dense_x);
-  auto csr_y = sparse::DenseToSparseCsr<T>(dev_ctx_cpu, dense_y);
+  auto csr_x = sparse::DenseToCsr<T>(dev_ctx_cpu, dense_x);
+  auto csr_y = sparse::DenseToCsr<T>(dev_ctx_cpu, dense_y);
 
   TestElementWiseAddCsr<T>(dev_ctx_cpu, csr_x, csr_y, dense_dims);
   TestElementWiseSubtractCsr<T>(dev_ctx_cpu, csr_x, csr_y, dense_dims);
@@ -192,20 +187,18 @@ TEST(DEV_API, sparse_elementwise_csr_kernel_float) {
         dev_ctx_cpu,                                                         \
         DenseTensorMeta(DataType::FLOAT32, dense_dims, DataLayout::NCHW));   \
                                                                              \
-    phi::name##GradKernel<T>(                                                \
-        dev_ctx_cpu,                                                         \
-        sparse::Sparse##type##ToDense<T>(dev_ctx_cpu, x),                    \
-        sparse::Sparse##type##ToDense<T>(dev_ctx_cpu, y),                    \
-        sparse::Sparse##type##ToDense<T>(dev_ctx_cpu, out),                  \
-        -1,                                                                  \
-        &expectdx,                                                           \
-        &expectdy);                                                          \
+    phi::name##GradKernel<T>(dev_ctx_cpu,                                    \
+                             sparse::type##ToDense<T>(dev_ctx_cpu, x),       \
+                             sparse::type##ToDense<T>(dev_ctx_cpu, y),       \
+                             sparse::type##ToDense<T>(dev_ctx_cpu, out),     \
+                             -1,                                             \
+                             &expectdx,                                      \
+                             &expectdy);                                     \
     const DenseTensor densedX =                                              \
-        sparse::Sparse##type##ToDense<T>(dev_ctx_cpu, dresult[0]);           \
+        sparse::type##ToDense<T>(dev_ctx_cpu, dresult[0]);                   \
     const DenseTensor densedY =                                              \
-        sparse::Sparse##type##ToDense<T>(dev_ctx_cpu, dresult[1]);           \
-    const DenseTensor denseOut =                                             \
-        sparse::Sparse##type##ToDense<T>(dev_ctx_cpu, out);                  \
+        sparse::type##ToDense<T>(dev_ctx_cpu, dresult[1]);                   \
+    const DenseTensor denseOut = sparse::type##ToDense<T>(dev_ctx_cpu, out); \
                                                                              \
     for (int j = 0; j < densedX.numel(); ++j) {                              \
       auto actualResultRow = densedX.template data<T>()[j];                  \
@@ -250,18 +243,16 @@ void TestElementWiseDivideCsrGrad(const Context& dev_ctx_cpu,
       dev_ctx_cpu,
       DenseTensorMeta(DataType::FLOAT32, dense_dims, DataLayout::NCHW));
   phi::DivideGradKernel<T>(dev_ctx_cpu,
-                           sparse::SparseCsrToDense<T>(dev_ctx_cpu, x),
-                           sparse::SparseCsrToDense<T>(dev_ctx_cpu, y),
-                           sparse::SparseCsrToDense<T>(dev_ctx_cpu, out),
-                           sparse::SparseCsrToDense<T>(dev_ctx_cpu, out),
+                           sparse::CsrToDense<T>(dev_ctx_cpu, x),
+                           sparse::CsrToDense<T>(dev_ctx_cpu, y),
+                           sparse::CsrToDense<T>(dev_ctx_cpu, out),
+                           sparse::CsrToDense<T>(dev_ctx_cpu, out),
                            -1,
                            &expectdx,
                            &expectdy);
-  const DenseTensor densedX =
-      sparse::SparseCsrToDense<T>(dev_ctx_cpu, dresult[0]);
-  const DenseTensor densedY =
-      sparse::SparseCsrToDense<T>(dev_ctx_cpu, dresult[1]);
-  const DenseTensor denseOut = sparse::SparseCsrToDense<T>(dev_ctx_cpu, out);
+  const DenseTensor densedX = sparse::CsrToDense<T>(dev_ctx_cpu, dresult[0]);
+  const DenseTensor densedY = sparse::CsrToDense<T>(dev_ctx_cpu, dresult[1]);
+  const DenseTensor denseOut = sparse::CsrToDense<T>(dev_ctx_cpu, out);
   for (int j = 0; j < densedX.numel(); ++j) {
     auto actualResultRow = densedX.template data<T>()[j];
     auto expectResultRow = expectdx.template data<T>()[j];
@@ -293,18 +284,16 @@ void TestElementWiseDivideCooGrad(const Context& dev_ctx_cpu,
       dev_ctx_cpu,
       DenseTensorMeta(DataType::FLOAT32, dense_dims, DataLayout::NCHW));
   phi::DivideGradKernel<T>(dev_ctx_cpu,
-                           sparse::SparseCooToDense<T>(dev_ctx_cpu, x),
-                           sparse::SparseCooToDense<T>(dev_ctx_cpu, y),
-                           sparse::SparseCooToDense<T>(dev_ctx_cpu, out),
-                           sparse::SparseCooToDense<T>(dev_ctx_cpu, out),
+                           sparse::CooToDense<T>(dev_ctx_cpu, x),
+                           sparse::CooToDense<T>(dev_ctx_cpu, y),
+                           sparse::CooToDense<T>(dev_ctx_cpu, out),
+                           sparse::CooToDense<T>(dev_ctx_cpu, out),
                            -1,
                            &expectdx,
                            &expectdy);
-  const DenseTensor densedX =
-      sparse::SparseCooToDense<T>(dev_ctx_cpu, dresult[0]);
-  const DenseTensor densedY =
-      sparse::SparseCooToDense<T>(dev_ctx_cpu, dresult[1]);
-  const DenseTensor denseOut = sparse::SparseCooToDense<T>(dev_ctx_cpu, out);
+  const DenseTensor densedX = sparse::CooToDense<T>(dev_ctx_cpu, dresult[0]);
+  const DenseTensor densedY = sparse::CooToDense<T>(dev_ctx_cpu, dresult[1]);
+  const DenseTensor denseOut = sparse::CooToDense<T>(dev_ctx_cpu, out);
   for (int j = 0; j < densedX.numel(); ++j) {
     auto actualResultRow = densedX.template data<T>()[j];
     auto expectResultRow = expectdx.template data<T>()[j];
@@ -357,13 +346,12 @@ TEST(DEV_API, sparse_elementwise_csr_grad_kernel_float) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
-  auto csr_x = sparse::DenseToSparseCsr<T>(dev_ctx_cpu, dense_x);
-  auto csr_y = sparse::DenseToSparseCsr<T>(dev_ctx_cpu, dense_y);
+  auto csr_x = sparse::DenseToCsr<T>(dev_ctx_cpu, dense_x);
+  auto csr_y = sparse::DenseToCsr<T>(dev_ctx_cpu, dense_y);
 
-  auto dx = sparse::DenseToSparseCsr<T>(dev_ctx_cpu, dense_y);
-  auto dy = sparse::DenseToSparseCsr<T>(dev_ctx_cpu, dense_x);
+  auto dx = sparse::DenseToCsr<T>(dev_ctx_cpu, dense_y);
+  auto dy = sparse::DenseToCsr<T>(dev_ctx_cpu, dense_x);
 
   TestElementWiseAddCsrGrad<T>(dev_ctx_cpu, csr_x, csr_y, dense_dims);
   TestElementWiseSubtractCsrGrad<T>(dev_ctx_cpu, csr_x, csr_y, dense_dims);
@@ -404,13 +392,12 @@ TEST(DEV_API, sparse_elementwise_coo_grad_kernel_double) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
-  auto csr_x = sparse::DenseToSparseCoo<T>(dev_ctx_cpu, dense_x, sparse_dim);
-  auto csr_y = sparse::DenseToSparseCoo<T>(dev_ctx_cpu, dense_y, sparse_dim);
+  auto csr_x = sparse::DenseToCoo<T>(dev_ctx_cpu, dense_x, sparse_dim);
+  auto csr_y = sparse::DenseToCoo<T>(dev_ctx_cpu, dense_y, sparse_dim);
 
-  auto dx = sparse::DenseToSparseCoo<T>(dev_ctx_cpu, dense_y, sparse_dim);
-  auto dy = sparse::DenseToSparseCoo<T>(dev_ctx_cpu, dense_x, sparse_dim);
+  auto dx = sparse::DenseToCoo<T>(dev_ctx_cpu, dense_y, sparse_dim);
+  auto dy = sparse::DenseToCoo<T>(dev_ctx_cpu, dense_x, sparse_dim);
 
   TestElementWiseAddCooGrad<T>(dev_ctx_cpu, csr_x, csr_y, dense_dims);
   TestElementWiseSubtractCooGrad<T>(dev_ctx_cpu, csr_x, csr_y, dense_dims);

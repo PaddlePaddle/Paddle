@@ -25,6 +25,8 @@ from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import switch_to_static_graph
 
+paddle.enable_static()
+
 
 class TestScatterOp(OpTest):
 
@@ -210,7 +212,7 @@ class TestScatterAPI(unittest.TestCase):
                 mlu_value = mlu_exe.run(feed=feed, fetch_list=fetch)[0]
                 return mlu_value
 
-        self.assertTrue(np.array_equal(test_dygraph(), test_static_graph()))
+        np.testing.assert_allclose(test_dygraph(), test_static_graph())
 
 
 class TestScatterOpFp16(OpTest):
@@ -243,5 +245,4 @@ class TestScatterInplaceAPI(TestScatterAPI):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

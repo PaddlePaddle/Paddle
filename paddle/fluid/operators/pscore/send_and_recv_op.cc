@@ -98,18 +98,16 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(send_and_recv, ops::SendAndRecvOp, ops::SendAndRecvOpMaker);
-REGISTER_OP_CUDA_KERNEL(
-    send_and_recv,
-    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    send_and_recv,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(send_and_recv,
+                        ops::SendAndRecvKernel<phi::GPUContext, float>,
+                        ops::SendAndRecvKernel<phi::GPUContext, double>,
+                        ops::SendAndRecvKernel<phi::GPUContext, int>,
+                        ops::SendAndRecvKernel<phi::GPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(send_and_recv,
+                       ops::SendAndRecvKernel<phi::CPUContext, float>,
+                       ops::SendAndRecvKernel<phi::CPUContext, double>,
+                       ops::SendAndRecvKernel<phi::CPUContext, int>,
+                       ops::SendAndRecvKernel<phi::CPUContext, int64_t>);
 
 REGISTER_OP_VERSION(send_and_recv)
     .AddCheckpoint(

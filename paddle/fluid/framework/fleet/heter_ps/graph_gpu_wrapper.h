@@ -32,39 +32,76 @@ class GraphGpuWrapper {
   }
   static std::shared_ptr<GraphGpuWrapper> s_instance_;
   void initialize();
-  void test();
+  void finalize();
   void set_device(std::vector<int> ids);
   void init_service();
   void set_up_types(std::vector<std::string>& edge_type,
                     std::vector<std::string>& node_type);
-  void upload_batch(int idx, std::vector<std::vector<int64_t>>& ids);
+  void upload_batch(int type,
+                    int idx,
+                    int slice_num,
+                    const std::string& edge_type);
+  void upload_batch(int type, int slice_num, int slot_num);
   void add_table_feat_conf(std::string table_name,
                            std::string feat_name,
                            std::string feat_dtype,
                            int feat_shape);
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
+  void load_node_and_edge(std::string etype,
+                          std::string ntype,
+                          std::string epath,
+                          std::string npath,
+                          int part_num,
+                          bool reverse);
   int32_t load_next_partition(int idx);
   int32_t get_partition_num(int idx);
   void load_node_weight(int type_id, int idx, std::string path);
   void export_partition_files(int idx, std::string file_path);
-  std::vector<int64_t> get_partition(int idx, int num);
+  std::vector<uint64_t> get_partition(int idx, int num);
   void make_partitions(int idx, int64_t byte_size, int device_len);
   void make_complementary_graph(int idx, int64_t byte_size);
   void set_search_level(int level);
   void init_search_level(int level);
-  std::vector<std::vector<int64_t>> get_all_id(int type,
-                                               int idx,
-                                               int slice_num);
-  NodeQueryResult query_node_list(int gpu_id, int start, int query_size);
+  int get_all_id(int type,
+                 int slice_num,
+                 std::vector<std::vector<uint64_t>>* output);
+  int get_all_neighbor_id(int type,
+                          int slice_num,
+                          std::vector<std::vector<uint64_t>>* output);
+  int get_all_id(int type,
+                 int idx,
+                 int slice_num,
+                 std::vector<std::vector<uint64_t>>* output);
+  int get_all_neighbor_id(int type,
+                          int idx,
+                          int slice_num,
+                          std::vector<std::vector<uint64_t>>* output);
+  int get_all_feature_ids(int type,
+                          int idx,
+                          int slice_num,
+                          std::vector<std::vector<uint64_t>>* output);
+  NodeQueryResult query_node_list(int gpu_id,
+                                  int idx,
+                                  int start,
+                                  int query_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
                                                 bool cpu_switch);
-  std::vector<int64_t> graph_neighbor_sample(int gpu_id,
-                                             std::vector<int64_t>& key,
-                                             int sample_size);
+  NeighborSampleResult graph_neighbor_sample(int gpu_id,
+                                             uint64_t* device_keys,
+                                             int walk_degree,
+                                             int len);
+  std::vector<uint64_t> graph_neighbor_sample(int gpu_id,
+                                              int idx,
+                                              std::vector<uint64_t>& key,
+                                              int sample_size);
+  void set_feature_separator(std::string ch);
+  int get_feature_of_nodes(int gpu_id,
+                           uint64_t* d_walk,
+                           uint64_t* d_offset,
+                           uint32_t size,
+                           int slot_num);
 
-  void init_sample_status();
-  void free_sample_status();
   std::unordered_map<std::string, int> edge_to_id, feature_to_id;
   std::vector<std::string> id_to_feature, id_to_edge;
   std::vector<std::unordered_map<std::string, int>> table_feat_mapping;
@@ -75,6 +112,9 @@ class GraphGpuWrapper {
   std::vector<int> device_id_mapping;
   int search_level = 1;
   void* graph_table;
+  int upload_num = 8;
+  std::shared_ptr<::ThreadPool> upload_task_pool;
+  std::string feature_separator_ = std::string(" ");
 };
 #endif
 }  // namespace framework

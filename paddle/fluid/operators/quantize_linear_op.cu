@@ -24,8 +24,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct ChannelDequantizeFunctorV2<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& dev_ctx,
+struct ChannelDequantizeFunctorV2<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& dev_ctx,
                   const framework::Tensor* in,
                   const framework::Tensor* scale,
                   T max_range,
@@ -61,14 +61,14 @@ struct ChannelDequantizeFunctorV2<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct ChannelDequantizeFunctorV2<platform::CUDADeviceContext, float>;
-template struct ChannelDequantizeFunctorV2<platform::CUDADeviceContext, double>;
+template struct ChannelDequantizeFunctorV2<phi::GPUContext, float>;
+template struct ChannelDequantizeFunctorV2<phi::GPUContext, double>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CUDA = paddle::platform::CUDADeviceContext;
+using CUDA = phi::GPUContext;
 REGISTER_OP_CUDA_KERNEL(dequantize_linear,
                         ops::DeQuantizeLinearKernel<CUDA, float, float>,
                         ops::DeQuantizeLinearKernel<CUDA, int8_t, float>,

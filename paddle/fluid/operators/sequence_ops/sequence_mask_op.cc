@@ -103,11 +103,7 @@ REGISTER_OPERATOR(
 
 REGISTER_OP_CPU_KERNEL(
     sequence_mask,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CPUDeviceContext,
-                                          int>,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CPUDeviceContext,
-                                          int64_t>,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CPUDeviceContext,
-                                          float>,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CPUDeviceContext,
-                                          double>);
+    paddle::operators::SequenceMaskKernel<phi::CPUContext, int>,
+    paddle::operators::SequenceMaskKernel<phi::CPUContext, int64_t>,
+    paddle::operators::SequenceMaskKernel<phi::CPUContext, float>,
+    paddle::operators::SequenceMaskKernel<phi::CPUContext, double>);

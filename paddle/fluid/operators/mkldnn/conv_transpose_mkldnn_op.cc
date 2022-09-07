@@ -12,7 +12,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "boost/optional.hpp"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
@@ -60,11 +59,6 @@ class ConvTransposeMKLDNNHandlerT
         DataLayout::kMKLDNN,
         platform::errors::InvalidArgument(
             "Got wrong layout = %d for Input tensor.", input->layout()));
-    PADDLE_ENFORCE_NE(input->format(),
-                      MKLDNNMemoryFormat::undef,
-                      platform::errors::InvalidArgument(
-                          "Got wrong format for Input tensor. The input "
-                          "format is undefined."));
 
     PADDLE_ENFORCE_EQ(
         filter->layout(),
@@ -73,10 +67,6 @@ class ConvTransposeMKLDNNHandlerT
             "The filter tensor's layout should be %d, but got %d.",
             DataLayout::kMKLDNN,
             filter->layout()));
-    PADDLE_ENFORCE_NE(filter->format(),
-                      MKLDNNMemoryFormat::undef,
-                      platform::errors::InvalidArgument(
-                          "Got wrong formats for Filter tensor."));
 
     PADDLE_ENFORCE_EQ(
         input->dims().size(),
@@ -99,10 +89,6 @@ class ConvTransposeMKLDNNHandlerT
               "The bias tensor's laytout should be %d, but got %d.",
               DataLayout::kMKLDNN,
               bias->layout()));
-      PADDLE_ENFORCE_NE(bias->format(),
-                        MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Got wrong format for Bias tensor."));
 
       PADDLE_ENFORCE_EQ(
           bias->dims().size(),
@@ -234,11 +220,8 @@ class ConvTransposeMKLDNNHandlerT
   std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(
       const framework::Tensor* input) {
     const T* input_data = input->data<T>();
-    auto user_src_md = platform::MKLDNNMemDesc(phi::vectorize(input->dims()),
-                                               platform::MKLDNNGetDataType<T>(),
-                                               input->format());
     return platform::MKLDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>::
-        AcquireMemoryWithReorder(user_src_md,
+        AcquireMemoryWithReorder(input->mem_desc(),
                                  this->fwd_pd_->src_desc(),
                                  platform::to_void_cast<T>(input_data));
   }
@@ -428,8 +411,7 @@ class ConvTransposeMKLDNNOpKernel : public framework::OpKernel<T> {
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     conv_p->execute(astream, args);
     astream.wait();
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(*dst_memory_p));
+    output->set_mem_desc(dst_memory_p->get_desc());
   }
 };
 

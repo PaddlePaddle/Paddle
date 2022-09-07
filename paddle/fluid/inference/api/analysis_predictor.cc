@@ -33,6 +33,7 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/inference/analysis/helper.h"
@@ -43,6 +44,7 @@
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/inference/utils/model_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
@@ -56,6 +58,7 @@
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/split.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
@@ -192,8 +195,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
                           "Only one choice can be made between CPU and XPU."));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto *dev_ctx =
-        static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
+    auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(place));
     auto dst_gpu_place = place;
     memory::Copy(dst_gpu_place,
                  static_cast<void *>(input_ptr),
@@ -281,7 +283,7 @@ bool AnalysisPredictor::Init(
     // NOTE: If the external_stream equals to global_device_contexts's stream,
     // then fallback.
     auto global_stream =
-        static_cast<platform::CUDADeviceContext *>(
+        static_cast<phi::GPUContext *>(
             platform::DeviceContextPool::Instance().Get(place_))
             ->stream();
     if (predictor_stream_ != global_stream) {
@@ -290,6 +292,7 @@ bool AnalysisPredictor::Init(
     }
   }
 #endif
+  inference::DisplayMemoryInfo(place_, "Init predictor");
   return true;
 }
 
@@ -302,11 +305,8 @@ void AnalysisPredictor::InitPlace() {
     place_ = paddle::platform::CUDAPlace(config_.gpu_device_id());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (config_.thread_local_stream_enabled()) {
-      auto *ctx = static_cast<platform::CUDADeviceContext *>(
-          platform::DeviceContextPool::Instance().Get(place_));
-      VLOG(3) << "The prediction process will be completed using a separate "
-                 "normal-priority stream on each thread.";
-      ctx->ResetThreadContext(platform::stream::Priority::kNormal);
+      LOG_FIRST_N(WARNING, 1) << "We will remove this interface in the future. "
+                                 "Please use config.SetExecStream instead.";
     }
 #endif
   } else if (config_.use_xpu()) {
@@ -394,7 +394,7 @@ void AnalysisPredictor::InitDeviceContexts() {
         place_, std::async(std::launch::deferred, [=] {
           auto *gpu_resource =
               ResourceManager::Instance().GetGPUResource(predictor_stream_);
-          auto *gpu_context = new InferGPUContext();
+          auto *gpu_context = new InferGPUContext(place_);
           gpu_context->SetAllocator(
               memory::allocation::AllocatorFacade::Instance()
                   .GetAllocator(place_, gpu_resource->GetStream())
@@ -416,14 +416,16 @@ void AnalysisPredictor::InitDeviceContexts() {
           gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
 
           gpu_context->SetStream(gpu_resource->GetStream());
-          gpu_context->SetBlasHandle(gpu_resource->GetBlasHandle());
+          gpu_context->SetBlasHandle(gpu_resource->GetBlasHandleCreator());
           gpu_context->SetBlasTensorCoreHandle(
-              gpu_resource->GetBlasTensorCoreHandle());
-          gpu_context->SetBlasTF32Handle(gpu_resource->GetBlasTF32Handle());
-          gpu_context->SetDnnHandle(gpu_resource->GetDnnHandle());
-          gpu_context->SetSolverHandle(gpu_resource->GetSolverDnHandle());
-          gpu_context->SetSparseHandle(gpu_resource->GetSparseHandle());
-          gpu_context->SetEigenDevice(gpu_resource->GetGpuEigenDevice());
+              gpu_resource->GetBlasTensorCoreHandleCreator());
+          gpu_context->SetBlasTF32Handle(
+              gpu_resource->GetBlasTF32TensorCoreHandleCreator());
+          gpu_context->SetDnnHandle(gpu_resource->GetDnnHandleCreator());
+          gpu_context->SetSolverHandle(
+              gpu_resource->GetSolverDnHandleCreator());
+          gpu_context->SetSparseHandle(gpu_resource->GetSparseHandleCreator());
+          gpu_context->SetEigenDevice(gpu_resource->GetGpuEigenDeviceCreator());
           gpu_context->SetComputeCapability(
               gpu_resource->GetGpuComputeCapability());
           gpu_context->SetMaxThreadsPerBlock(
@@ -906,6 +908,15 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     return false;
   }
 
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled()) {
+    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+        predictor_id_;
+    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+  }
+#endif
+
   // Run the inference program
   // if share variables, we need not create variables
   executor_->Run();
@@ -969,7 +980,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       }
       idx = feed_names_[name];
     } else {
-      idx = BOOST_GET_CONST(int, feeds_[i]->GetAttr("col"));
+      idx = PADDLE_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }
     framework::SetFeedVariable(scope, *input, "feed", idx);
   }
@@ -1001,7 +1012,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   VLOG(3) << "Predictor::get_fetch";
   outputs->resize(fetches_.size());
   for (size_t i = 0; i < fetches_.size(); ++i) {
-    int idx = BOOST_GET_CONST(int, fetches_[i]->GetAttr("col"));
+    int idx = PADDLE_GET_CONST(int, fetches_[i]->GetAttr("col"));
     PADDLE_ENFORCE_EQ(
         static_cast<size_t>(idx),
         i,
@@ -1011,7 +1022,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
-    auto &fetch = BOOST_GET(framework::LoDTensor, fetch_var);
+    auto &fetch = PADDLE_GET(framework::LoDTensor, fetch_var);
     auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(outputs->at(i));
     output->name = fetches_[idx]->Input("X")[0];
@@ -1090,6 +1101,14 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Dlnne subgraph is enabled";
     argument_.SetUseDlnne(true);
     argument_.SetDlnneMinSubgraphSize(config_.dlnne_min_subgraph_size_);
+    argument_.SetDlnneMaxBatchSize(config_.dlnne_max_batchsize_);
+    argument_.SetDlnneUseStaticBatch(config_.dlnne_use_static_batch_);
+    argument_.SetDlnneWeightShareMode(config_.dlnne_weight_share_mode_);
+    argument_.SetDlnneDisableNodesByOutputs(
+        config_.dlnne_disable_nodes_by_outputs_);
+    argument_.SetDlnneInputShapeDict(config_.dlnne_input_shape_dict_);
+    argument_.SetDlnneUseCalibMode(config_.dlnne_use_calib_mode_);
+    argument_.SetDlnnePrecisionMode(config_.dlnne_precision_mode_);
   }
 
   if (config_.lite_engine_enabled()) {
@@ -1169,6 +1188,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetQuantizeEnabledOpTypes(config_.quantize_enabled_op_types_);
     argument_.SetQuantizeExcludedOpIds(config_.quantize_excluded_op_ids_);
     argument_.SetQuantVarScales({});
+    argument_.SetCalibrationFilePath(config_.calibration_file_path_);
   }
 #endif
 
@@ -1216,7 +1236,9 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(scope_.get());
 
+  // mixed precison.
   argument_.SetModelPrecision(static_cast<int>(model_precision_));
+  argument_.SetMixedBlackList(config_.mixed_black_list_);
 }
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.
@@ -1240,9 +1262,9 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
         for (auto &op_desc : block.AllOps()) {
           if (op_desc->Type() == "tensorrt_engine") {
             std::string engine_key =
-                BOOST_GET_CONST(std::string, op_desc->GetAttr("engine_key"));
+                PADDLE_GET_CONST(std::string, op_desc->GetAttr("engine_key"));
             int engine_predictor_id =
-                BOOST_GET_CONST(int, op_desc->GetAttr("predictor_id"));
+                PADDLE_GET_CONST(int, op_desc->GetAttr("predictor_id"));
             std::string engine_name =
                 engine_key + std::to_string(engine_predictor_id);
             if (paddle::inference::Singleton<
@@ -1394,7 +1416,7 @@ void AnalysisPredictor::PrepareFeedFetch() {
   CreateFeedFetchVar(sub_scope_);
   for (auto *op : inference_program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
-      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (feeds_.size() <= static_cast<size_t>(idx)) {
         feeds_.resize(idx + 1);
       }
@@ -1402,7 +1424,7 @@ void AnalysisPredictor::PrepareFeedFetch() {
       feed_names_[op->Output("Out")[0]] = idx;
       idx2feeds_[idx] = op->Output("Out")[0];
     } else if (op->Type() == "fetch") {
-      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (fetches_.size() <= static_cast<size_t>(idx)) {
         fetches_.resize(idx + 1);
       }
@@ -1442,6 +1464,37 @@ AnalysisPredictor::GetInputTensorShape() {
     input_shapes[name] = var->GetShape();
   }
   return input_shapes;
+}
+
+std::map<std::string, paddle_infer::DataType>
+AnalysisPredictor::GetInputTypes() {
+  std::map<std::string, paddle_infer::DataType> input_type;
+  std::vector<std::string> names = GetInputNames();
+  for (const auto &name : names) {
+    auto *var = inference_program_->Block(0).FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::PreconditionNotMet(
+            "Input %s does not exist inference_program_.", name));
+    auto dtype = var->GetDataType();
+    if (dtype == paddle::framework::proto::VarType::FP32) {
+      input_type[name] = paddle_infer::DataType::FLOAT32;
+    } else if (dtype == paddle::framework::proto::VarType::FP16) {
+      input_type[name] = paddle_infer::DataType::FLOAT16;
+    } else if (dtype == paddle::framework::proto::VarType::INT64) {
+      input_type[name] = paddle_infer::DataType::INT64;
+    } else if (dtype == paddle::framework::proto::VarType::INT32) {
+      input_type[name] = paddle_infer::DataType::INT32;
+    } else if (dtype == paddle::framework::proto::VarType::UINT8) {
+      input_type[name] = paddle_infer::DataType::UINT8;
+    } else if (dtype == paddle::framework::proto::VarType::INT8) {
+      input_type[name] = paddle_infer::DataType::INT8;
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Unsupported data type `%s` when get input dtype ", dtype));
+    }
+  }
+  return input_type;
 }
 
 std::vector<std::string> AnalysisPredictor::GetOutputNames() {
@@ -1563,6 +1616,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 }
 
 bool AnalysisPredictor::ZeroCopyRun() {
+  inference::DisplayMemoryInfo(place_, "before run");
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     VLOG(3) << "ZeroCopyRun will use the fleet executor.";
@@ -1589,7 +1643,18 @@ bool AnalysisPredictor::ZeroCopyRun() {
     MkldnnPreSet(shape_vector);
   }
 #endif
+
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled()) {
+    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+        predictor_id_;
+    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+  }
+#endif
+
   executor_->Run();
+  inference::DisplayMemoryInfo(place_, "after run");
 
   if (config_.shape_range_info_collected()) {
     CollectShapeRangeInfo();
@@ -1619,14 +1684,31 @@ bool AnalysisPredictor::ZeroCopyRun() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
-  if (stream != nullptr) {
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
-    auto gpu_place = place_;
-    auto *dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext *>(
-        pool.Get(gpu_place));
-    dev_ctx->SetThreadLocalStream(stream);
+  if (!private_context_) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Please use config.SetExecStream to init gpu resources, and then we "
+        "will bind gpu resources to execution stream."));
   }
+
+  if (stream != predictor_stream_) {
+#ifdef PADDLE_WITH_HIP
+    hipStreamSynchronize(static_cast<gpuStream_t>(predictor_stream_));
+#else
+    cudaStreamSynchronize(static_cast<gpuStream_t>(predictor_stream_));
+#endif
+    ResourceManager::Instance().GpuResourceReBindStream(predictor_stream_,
+                                                        stream);
+    predictor_stream_ = stream;
+
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place,
+        std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        this->GetDeviceContexts());
+    auto *dev_ctx =
+        static_cast<InferGPUContext *>(dev_ctxs->at(place_).get().get());
+    dev_ctx->SetStream(stream);
+  }
+
   return ZeroCopyRun();
 }
 #endif
@@ -1638,8 +1720,7 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
     auto gpu_place = place_;
-    auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
-        pool.Get(gpu_place));
+    auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(gpu_place));
 #ifdef PADDLE_WITH_HIP
     hipStreamSynchronize(dev_ctx->stream());
 #else
@@ -1844,7 +1925,7 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
   auto &block = inference_program_->Block(0);
   for (auto &op_desc : block.AllOps()) {
     if (op_desc->Type() == "tensorrt_engine") {
-      std::string engine_name = BOOST_GET_CONST(
+      std::string engine_name = PADDLE_GET_CONST(
           std::string, op_desc->GetAttr("calibration_engine_key"));
       if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_name)) {
         LOG(ERROR) << "You should run the predictor(with trt) on the real data "
@@ -1903,6 +1984,15 @@ AnalysisPredictor::~AnalysisPredictor() {
                               "./profile.log");
   }
   if (sub_scope_) {
+    if (framework::global_transfer_scope_key().find(sub_scope_) !=
+        framework::global_transfer_scope_key().end()) {
+      auto scope_key_set = framework::global_transfer_scope_key()[sub_scope_];
+      for (auto iter = scope_key_set.begin(); iter != scope_key_set.end();
+           iter++) {
+        framework::global_transfer_data_cache().erase(*iter);
+      }
+      framework::global_transfer_scope_key().erase(sub_scope_);
+    }
     scope_->DeleteScope(sub_scope_);
   }
 
@@ -2038,6 +2128,7 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(swish);
+USE_TRT_CONVERTER(silu);
 USE_TRT_CONVERTER(group_norm);
 USE_TRT_CONVERTER(instance_norm);
 USE_TRT_CONVERTER(layer_norm);
@@ -2078,6 +2169,8 @@ USE_TRT_CONVERTER(preln_residual_bias)
 USE_TRT_CONVERTER(c_allreduce_sum)
 USE_TRT_CONVERTER(roll)
 USE_TRT_CONVERTER(strided_slice)
+USE_TRT_CONVERTER(rnn)
+USE_TRT_CONVERTER(fill_constant_batch_size_like)
 USE_TRT_CONVERTER(transformer_input_convert)
 USE_TRT_CONVERTER(cast)
 USE_TRT_CONVERTER(recover_padding)
@@ -2087,6 +2180,11 @@ USE_TRT_CONVERTER(top_k)
 USE_TRT_CONVERTER(top_k_v2)
 USE_TRT_CONVERTER(squeeze2)
 USE_TRT_CONVERTER(unsqueeze2)
+USE_TRT_CONVERTER(sum)
+USE_TRT_CONVERTER(shape)
+USE_TRT_CONVERTER(fill_constant)
+USE_TRT_CONVERTER(fused_token_prune)
+USE_TRT_CONVERTER(layernorm_shift_partition)
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)
@@ -2129,6 +2227,10 @@ Predictor::Predictor(const Config &config) {
 
 std::vector<std::string> Predictor::GetInputNames() {
   return predictor_->GetInputNames();
+}
+
+std::map<std::string, DataType> Predictor::GetInputTypes() {
+  return predictor_->GetInputTypes();
 }
 
 std::unique_ptr<Tensor> Predictor::GetInputHandle(const std::string &name) {
@@ -2307,8 +2409,7 @@ void InternalUtils::SyncStream(paddle_infer::Predictor *p) {
   auto *pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
   paddle::platform::DeviceContextPool &pool =
       paddle::platform::DeviceContextPool::Instance();
-  auto *dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext *>(
-      pool.Get(pred->place_));
+  auto *dev_ctx = reinterpret_cast<phi::GPUContext *>(pool.Get(pred->place_));
   cudaStreamSynchronize(dev_ctx->stream());
 #endif
 }

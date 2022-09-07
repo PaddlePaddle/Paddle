@@ -18,7 +18,6 @@
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace framework {
@@ -54,7 +53,7 @@ class OpVariant {
         it,
         attrs.end(),
         platform::errors::NotFound("Cannot find attribute %s.", name));
-    return BOOST_GET_CONST(AttrType, it->second);
+    return PADDLE_GET_CONST(AttrType, it->second);
   }
 
   bool operator==(const OpVariant &other) const {

@@ -244,8 +244,7 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
         context.Attr<bool>("remove_accidental_hits");
 
     // device contexts
-    auto& dev_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = context.template device_context<phi::CPUContext>();
 
     // UNDERSTAND: allocate memories for temporaries
     sampled_logits->mutable_data<T>(samples_dim, context.GetPlace());
@@ -278,8 +277,7 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
       probabilities->mutable_data<T>(samples_dim, context.GetPlace());
       // UNDERSTAND: sampling
       const auto seed = context.Attr<int>("seed");
-      auto sampler_with_prob =
-          math::SampleWithProb<platform::CPUDeviceContext, T>();
+      auto sampler_with_prob = math::SampleWithProb<phi::CPUContext, T>();
       sampler_with_prob(dev_ctx,
                         math::LogUniformSampler(num_classes, seed),
                         num_samples,
@@ -315,9 +313,8 @@ class SampleLogitsGradKernel : public framework::OpKernel<T> {
         context.Input<Tensor>(framework::GradVarName("SampledLogits"));
     logits_grad->mutable_data<T>(context.GetPlace());
 
-    auto& dev_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
-    phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
+    auto& dev_ctx = context.template device_context<phi::CPUContext>();
+    phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
     set_zero(dev_ctx, logits_grad, static_cast<T>(0));
 
     // UNDERSTAND: scatter it back to logit_grad

@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import numpy
+import numpy as np
 
 import unittest
 import paddle
@@ -39,7 +39,7 @@ def dyfunc_tensor_shape_2(x):
 def dyfunc_tensor_shape_3(x):
     # Transform y.shape but run y.shape actually because y is not Tensor
     x = fluid.dygraph.to_variable(x)
-    y = numpy.ones(5)
+    y = np.ones(5)
     res = fluid.layers.reshape(x, shape=y.shape)
     return res
 
@@ -200,7 +200,7 @@ def dyfunc_with_while_3(x):
 
 def dyfunc_with_while_4(x):
     x = paddle.to_tensor(x)
-    y = numpy.ones(5)
+    y = np.ones(5)
     y_shape_0 = y.shape[0]
     i = 1
 
@@ -235,7 +235,7 @@ def dyfunc_dict_assign_shape():
 class TestTensorShapeBasic(unittest.TestCase):
 
     def setUp(self):
-        self.input = numpy.ones(5).astype("int32")
+        self.input = np.ones(5).astype("int32")
         self.place = fluid.CUDAPlace(
             0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
         self._set_input_spec()
@@ -265,9 +265,7 @@ class TestTensorShapeBasic(unittest.TestCase):
     def test_transformed_static_result(self):
         static_res = self.get_static_output()
         dygraph_res = self.get_dygraph_output()
-        self.assertTrue(numpy.allclose(dygraph_res, static_res),
-                        msg='dygraph res is {}\nstatic_res is {}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
     def _set_expected_op_num(self):
         self.expected_op_num = 2
@@ -300,7 +298,7 @@ class TestTensorShapeBasic2(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_tensor_shape_2
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 2
+        self.expected_op_num = 1
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
 
@@ -342,14 +340,14 @@ class TestTensorShapeBasic6(TestTensorShapeBasic):
 class TestTupleShape1(TestTensorShapeBasic):
 
     def init_test_func(self):
-        self.input = numpy.ones((5, 7)).astype("int32")
+        self.input = np.ones((5, 7)).astype("int32")
         self.input_spec = [
             paddle.static.InputSpec(shape=[-1, -1], dtype="int32")
         ]
         self.dygraph_func = dyfunc_tuple_shape_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 5
+        self.expected_op_num = 4
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 2
 
@@ -357,14 +355,14 @@ class TestTupleShape1(TestTensorShapeBasic):
 class TestTupleShape2(TestTensorShapeBasic):
 
     def init_test_func(self):
-        self.input = numpy.ones((5, 7)).astype("int32")
+        self.input = np.ones((5, 7)).astype("int32")
         self.input_spec = [
             paddle.static.InputSpec(shape=[-1, 7], dtype="int32")
         ]
         self.dygraph_func = dyfunc_tuple_shape_2
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 5
+        self.expected_op_num = 4
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 1
 
@@ -372,12 +370,12 @@ class TestTupleShape2(TestTensorShapeBasic):
 class TestTupleShape3(TestTensorShapeBasic):
 
     def init_test_func(self):
-        self.input = numpy.ones((5, 7)).astype("int32")
+        self.input = np.ones((5, 7)).astype("int32")
         self.input_spec = [paddle.static.InputSpec(shape=[5, 7], dtype="int32")]
         self.dygraph_func = dyfunc_tuple_shape_3
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 5
+        self.expected_op_num = 4
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 2
 
@@ -385,12 +383,12 @@ class TestTupleShape3(TestTensorShapeBasic):
 class TestPaddleShapeApi(TestTensorShapeBasic):
 
     def init_test_func(self):
-        self.input = numpy.ones((5, 7)).astype("int32")
+        self.input = np.ones((5, 7)).astype("int32")
         self.input_spec = [paddle.static.InputSpec(shape=[5, 7], dtype="int32")]
         self.dygraph_func = dyfunc_paddle_shape_api
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 6
+        self.expected_op_num = 5
         self.expected_shape_op_num = 2
         self.expected_slice_op_num = 2
 
@@ -492,7 +490,7 @@ class TestTensorShapeInWhile4(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_with_while_4
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 5
+        self.expected_op_num = 4
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
 
@@ -556,7 +554,7 @@ class TestOpNumWithTensorShapeTuple1(TestOpNumBasicWithTensorShape):
         self.dygraph_func = dyfunc_tuple_shape_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 5
+        self.expected_op_num = 4
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 1
 
@@ -578,8 +576,8 @@ class TestOpNumWithTensorShapeInFor1(TestOpNumBasicWithTensorShape):
         self.dygraph_func = dyfunc_with_for_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 22
-        self.expected_shape_op_num = 3
+        self.expected_op_num = 29
+        self.expected_shape_op_num = 2
         self.expected_slice_op_num = 3
 
 
@@ -589,7 +587,7 @@ class TestOpNumWithTensorShapeInWhile1(TestOpNumBasicWithTensorShape):
         self.dygraph_func = dyfunc_with_while_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 22
+        self.expected_op_num = 21
         self.expected_shape_op_num = 3
         self.expected_slice_op_num = 3
 
@@ -597,14 +595,14 @@ class TestOpNumWithTensorShapeInWhile1(TestOpNumBasicWithTensorShape):
 class TestChangeShapeAfterAssign(TestTensorShapeBasic):
 
     def init_test_func(self):
-        self.input = numpy.ones((2, 3)).astype("int32")
+        self.input = np.ones((2, 3)).astype("int32")
         self.input_spec = [
             paddle.static.InputSpec(shape=[-1, 3], dtype="int32")
         ]
         self.dygraph_func = dyfunc_change_shape_after_assign
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 6
+        self.expected_op_num = 5
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 1
 

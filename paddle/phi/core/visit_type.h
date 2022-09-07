@@ -87,6 +87,20 @@ namespace phi {
     }                                                                         \
   }()
 
+#define PD_VISIT_BASE_INTEGRAL_TYPES(TYPE, NAME, ...)                         \
+  [&] {                                                                       \
+    const auto& __dtype__ = TYPE;                                             \
+    switch (__dtype__) {                                                      \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT32, int, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(                                                   \
+          NAME, ::paddle::DataType::INT64, int64_t, __VA_ARGS__)              \
+      default:                                                                \
+        PD_THROW("function " #NAME " is not implemented for data type `",     \
+                 __dtype__,                                                   \
+                 "`");                                                        \
+    }                                                                         \
+  }()
+
 ///////// Complex Dispatch Marco ///////////
 
 #define PD_VISIT_COMPLEX_TYPES(TYPE, NAME, ...)                           \

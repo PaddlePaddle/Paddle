@@ -69,11 +69,6 @@ class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
                             platform::errors::InvalidArgument(
                                 "group should be larger than 0."));
         });
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-
     AddComment(R"DOC(
 		Shuffle Channel operator
 		This opearator shuffles the channels of input x.
@@ -137,13 +132,11 @@ REGISTER_OPERATOR(shuffle_channel,
 
 REGISTER_OPERATOR(shuffle_channel_grad, ops::ShuffleChannelGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    shuffle_channel,
-    ops::ShuffleChannelOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ShuffleChannelOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(shuffle_channel,
+                       ops::ShuffleChannelOpKernel<phi::CPUContext, float>,
+                       ops::ShuffleChannelOpKernel<phi::CPUContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
     shuffle_channel_grad,
-    ops::ShuffleChannelGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ShuffleChannelGradOpKernel<paddle::platform::CPUDeviceContext,
-                                    double>);
+    ops::ShuffleChannelGradOpKernel<phi::CPUContext, float>,
+    ops::ShuffleChannelGradOpKernel<phi::CPUContext, double>);

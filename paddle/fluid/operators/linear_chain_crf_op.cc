@@ -395,12 +395,10 @@ REGISTER_OPERATOR(linear_chain_crf,
 REGISTER_OPERATOR(linear_chain_crf_grad,
                   ops::LinearChainCRFGradOp,
                   ops::LinearChainCRFGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    linear_chain_crf,
-    ops::LinearChainCRFOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LinearChainCRFOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(linear_chain_crf,
+                       ops::LinearChainCRFOpKernel<phi::CPUContext, float>,
+                       ops::LinearChainCRFOpKernel<phi::CPUContext, double>);
 REGISTER_OP_CPU_KERNEL(
     linear_chain_crf_grad,
-    ops::LinearChainCRFGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LinearChainCRFGradOpKernel<paddle::platform::CPUDeviceContext,
-                                    double>);
+    ops::LinearChainCRFGradOpKernel<phi::CPUContext, float>,
+    ops::LinearChainCRFGradOpKernel<phi::CPUContext, double>);

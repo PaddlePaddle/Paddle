@@ -16,7 +16,7 @@ import paddle
 import paddle.fluid as fluid
 import numpy as np
 import unittest
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _in_eager_without_dygraph_check
 
 if fluid.is_compiled_with_cuda():
@@ -117,8 +117,9 @@ class InstanceNorm(fluid.dygraph.Layer):
 
     def forward(self, input):
         if fluid._non_static_mode():
-            out, _, _ = _C_ops.instance_norm(input, self.scale, self.bias,
-                                             'epsilon', self.epsilon)
+            out, _, _ = _legacy_C_ops.instance_norm(input, self.scale,
+                                                    self.bias, 'epsilon',
+                                                    self.epsilon)
             return out
         else:
             return fluid.layers.instance_norm(
@@ -427,7 +428,7 @@ def get_generator_loss(image_real, label_org, label_trg, generator,
 
     pred_fake, cls_fake = discriminator(fake_img)
 
-    g_loss_fake = -fluid.layers.mean(pred_fake)
+    g_loss_fake = -paddle.mean(pred_fake)
     g_loss_cls = loss_cls(cls_fake, label_trg, cfg)
     g_loss = g_loss_fake + cfg.lambda_rec * g_loss_rec + g_loss_cls
     return g_loss
@@ -439,8 +440,8 @@ def get_discriminator_loss(image_real, label_org, label_trg, generator,
     pred_real, cls_real = discriminator(image_real)
     pred_fake, _ = discriminator(fake_img)
     d_loss_cls = loss_cls(cls_real, label_org, cfg)
-    d_loss_fake = fluid.layers.mean(pred_fake)
-    d_loss_real = -fluid.layers.mean(pred_real)
+    d_loss_fake = paddle.mean(pred_fake)
+    d_loss_real = -paddle.mean(pred_real)
     d_loss = d_loss_real + d_loss_fake + d_loss_cls
 
     d_loss_gp = gradient_penalty(discriminator, image_real, fake_img,

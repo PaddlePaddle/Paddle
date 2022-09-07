@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/string_array.h"
-#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace framework {

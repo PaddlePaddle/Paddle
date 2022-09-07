@@ -33,7 +33,7 @@ limitations under the License. */
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "paddle/fluid/framework/python_headers.h"
-#include "paddle/fluid/pybind/eager_op_function_impl.h"
+#include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/string_tensor.h"
@@ -98,10 +98,11 @@ void EmptyTensorInitializer(TensorObject* self,
   }
 
   if (!autograd_meta->GetMutableGradNode()) {
-    VLOG(3) << "Tensor(" << name
-            << ") have not GradNode, add GradNodeAccumulation for it.";
     autograd_meta->SetGradNode(
         std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+    VLOG(3) << "Tensor(" << name
+            << ") have not GradNode, add GradNodeAccumulation"
+            << autograd_meta->GradNode() << " for it.";
   }
 }
 

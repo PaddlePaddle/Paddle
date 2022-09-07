@@ -16,9 +16,6 @@ if(WITH_XPU_BKCL)
   list(APPEND DIST_TEST_OPS test_gen_bkcl_id_op)
 endif()
 
-list(REMOVE_ITEM TEST_OPS test_concat_op_xpu)
-list(REMOVE_ITEM TEST_OPS test_mean_op_xpu)
-
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
@@ -27,5 +24,7 @@ foreach(TEST_OP ${DIST_TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
 
-set_tests_properties(test_mul_op_xpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_op_xpu PROPERTIES TIMEOUT 120)
+set_tests_properties(test_mul_op_xpu PROPERTIES TIMEOUT 120)
+set_tests_properties(test_matmul_v2_op_xpu PROPERTIES TIMEOUT 900)
+set_tests_properties(test_matmul_op_xpu PROPERTIES TIMEOUT 300)

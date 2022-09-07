@@ -149,8 +149,8 @@ for i-th instance and each `id` of NegIndices in this instance:
 };
 
 template <typename T, typename WT>
-struct NegTargetAssignFunctor<platform::CPUDeviceContext, T, WT> {
-  void operator()(const platform::CPUDeviceContext& ctx,
+struct NegTargetAssignFunctor<phi::CPUContext, T, WT> {
+  void operator()(const phi::CPUContext& ctx,
                   const int* neg_indices,
                   const size_t* lod,
                   const int N,
@@ -172,10 +172,8 @@ struct NegTargetAssignFunctor<platform::CPUDeviceContext, T, WT> {
   }
 };
 
-template struct NegTargetAssignFunctor<platform::CPUDeviceContext, int, float>;
-template struct NegTargetAssignFunctor<platform::CPUDeviceContext,
-                                       float,
-                                       float>;
+template struct NegTargetAssignFunctor<phi::CPUContext, int, float>;
+template struct NegTargetAssignFunctor<phi::CPUContext, float, float>;
 
 }  // namespace operators
 }  // namespace paddle
@@ -187,7 +185,6 @@ REGISTER_OPERATOR(
     ops::TargetAssignOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    target_assign,
-    ops::TargetAssignKernel<paddle::platform::CPUDeviceContext, int, float>,
-    ops::TargetAssignKernel<paddle::platform::CPUDeviceContext, float, float>);
+REGISTER_OP_CPU_KERNEL(target_assign,
+                       ops::TargetAssignKernel<phi::CPUContext, int, float>,
+                       ops::TargetAssignKernel<phi::CPUContext, float, float>);

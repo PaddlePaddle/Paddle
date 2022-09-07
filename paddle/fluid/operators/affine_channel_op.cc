@@ -342,7 +342,7 @@ DECLARE_INPLACE_OP_INFERER(AffineChannelGradInplaceInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(affine_channel,
                   ops::AffineChannelOp,

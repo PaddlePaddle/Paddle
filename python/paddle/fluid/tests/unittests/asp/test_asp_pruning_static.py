@@ -66,7 +66,7 @@ class TestASPStaticPruningBase(unittest.TestCase):
 
     def test_training_pruning(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            loss = fluid.layers.mean(
+            loss = paddle.mean(
                 fluid.layers.cross_entropy(input=self.predict,
                                            label=self.label))
             optimizer = paddle.incubate.asp.decorate(

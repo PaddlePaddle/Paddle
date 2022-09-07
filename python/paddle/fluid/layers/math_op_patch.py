@@ -21,6 +21,7 @@ from .. import core
 from ..framework import Variable, unique_name, static_only
 from .layer_function_generator import OpProtoHolder
 from .control_flow import array_write, array_length
+from paddle.fluid.dygraph.base import in_declarative_mode
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
@@ -128,6 +129,24 @@ def monkey_patch_variable():
         var.stop_gradient = True
         return var
 
+    @static_only
+    def cpu(self):
+        """ 
+            Variable should not have cpu() and cuda() interface.
+            But this interface can greatly facilitate dy2static.
+            We do nothing here.
+        """
+        return self
+
+    @static_only
+    def cuda(self):
+        """ 
+            Variable should not have cpu() and cuda() interface.
+            But this interface can greatly facilitate dy2static.
+            We do nothing here.
+        """
+        return self
+
     def astype(self, dtype):
         """
         **Notes**:
@@ -193,15 +212,34 @@ def monkey_patch_variable():
         
         """
         if not isinstance(var, Variable):
-            raise TypeError(
-                "Required input var should be Variable, but received {}".format(
-                    type(var)))
+            if in_declarative_mode():
+                """ in dy2static mode, x may be tensorable values such as int, float, np.array
+                """
+                from paddle.tensor.creation import to_tensor
+                var = to_tensor(var)
+            else:
+                raise TypeError(
+                    "Required input var should be Variable, but received {}".
+                    format(type(var)))
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
                 "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}"
                 .format(self.type))
-
         array_write(x=var, i=array_length(self), array=self)
+
+    @static_only
+    def pop(self, *args):
+        """
+         **Notes**:
+            **The type variable must be LoD Tensor Array.
+        
+        """
+        from paddle.fluid.dygraph.dygraph_to_static.convert_operators import _run_paddle_pop
+        if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            raise TypeError(
+                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}"
+                .format(self.type))
+        return _run_paddle_pop(self, *args)
 
     def _scalar_op_(var, scale, bias):
         block = current_block(var)
@@ -340,7 +378,8 @@ def monkey_patch_variable():
                     "If your code works well in the older versions but crashes in this version, try to use "
                     "%s(X, Y, axis=0) instead of %s. This transitional warning will be dropped in the future."
                     % (file_name, line_num, EXPRESSION_MAP[method_name],
-                       op_type, op_type, EXPRESSION_MAP[method_name]))
+                       op_type, op_type, EXPRESSION_MAP[method_name]),
+                    category=DeprecationWarning)
             current_block(self).append_op(type=op_type,
                                           inputs={
                                               'X': [self],
@@ -368,7 +407,10 @@ def monkey_patch_variable():
         #   b=-a
         ('__neg__', _neg_),
         ('astype', astype),
+        ('cpu', cpu),
+        ('cuda', cuda),
         ('append', append),
+        ('pop', pop),
         ('dim', lambda x: len(x.shape)),
         ('ndimension', lambda x: len(x.shape)),
         ('ndim', _ndim_),

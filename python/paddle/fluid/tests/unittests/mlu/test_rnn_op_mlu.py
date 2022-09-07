@@ -135,43 +135,50 @@ class TestRNNOp(OpTest):
 
     def test_output(self):
         self.check_output_with_place(
-            self.place, no_check_set=['Reserve', 'DropoutState', 'State'])
+            self.place,
+            atol=1e-4,
+            no_check_set=['Reserve', 'DropoutState', 'State'])
 
     def set_attrs(self):
         pass
 
-    # def test_grad(self):
-    #     if not self.is_test:
-    #         var_name_list = self.get_weight_names()
-    #         grad_check_list = ['Input', 'init_h', 'init_c']
-    #         grad_check_list.extend(var_name_list)
-    #         self.check_grad_with_place(self.place, set(grad_check_list),
-    #                                    ['Out', 'last_hidden', 'last_cell'])
+    def test_grad(self):
+        if not self.is_test and self.sequence_length is None:
+            # if not self.is_test:
+            var_name_list = self.get_weight_names()
+            grad_check_list = ['Input', 'init_h', 'init_c']
+            grad_check_list.extend(var_name_list)
+            self.check_grad_with_place(self.place, set(grad_check_list),
+                                       ['Out', 'last_hidden', 'last_cell'])
 
 
-# class TestRNNOp1(TestRNNOp):
+class TestRNNOp1(TestRNNOp):
 
-#     def set_attrs(self):
-#         self.sequence_length = None
+    def set_attrs(self):
+        self.sequence_length = None
 
-# class TestRNNOp2(TestRNNOp):
 
-#     def set_attrs(self):
-#         self.sequence_length = None
-#         self.is_bidirec = True
+class TestRNNOp2(TestRNNOp):
 
-# class TestRNNOp3(TestRNNOp):
+    def set_attrs(self):
+        self.sequence_length = None
+        self.is_bidirec = True
 
-#     def set_attrs(self):
-#         self.is_test = True
-#         self.sequence_length = None
 
-# class TestRNNOp4(TestRNNOp):
+class TestRNNOp3(TestRNNOp):
 
-#     def set_attrs(self):
-#         self.is_test = True
-#         self.sequence_length = None
-#         self.is_bidirec = True
+    def set_attrs(self):
+        self.is_test = True
+        self.sequence_length = None
+
+
+class TestRNNOp4(TestRNNOp):
+
+    def set_attrs(self):
+        self.is_test = True
+        self.sequence_length = None
+        self.is_bidirec = True
+
 
 #TODO(chenxiao): cnnl doesn't support num_layers > 1 case
 # class TestRNNOp5(TestRNNOp):

@@ -194,16 +194,14 @@ REGISTER_OPERATOR(sequence_unpad,
 REGISTER_OPERATOR(sequence_unpad_grad,
                   ops::SequenceUnpadGradOp,
                   ops::SequenceUnpadGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_unpad,
-    ops::SequenceUnpadOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceUnpadOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceUnpadOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceUnpadOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_unpad,
+                       ops::SequenceUnpadOpKernel<phi::CPUContext, float>,
+                       ops::SequenceUnpadOpKernel<phi::CPUContext, double>,
+                       ops::SequenceUnpadOpKernel<phi::CPUContext, int>,
+                       ops::SequenceUnpadOpKernel<phi::CPUContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     sequence_unpad_grad,
-    ops::SequenceUnpadGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceUnpadGradOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceUnpadGradOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceUnpadGradOpKernel<paddle::platform::CPUDeviceContext,
-                                   int64_t>);
+    ops::SequenceUnpadGradOpKernel<phi::CPUContext, float>,
+    ops::SequenceUnpadGradOpKernel<phi::CPUContext, double>,
+    ops::SequenceUnpadGradOpKernel<phi::CPUContext, int>,
+    ops::SequenceUnpadGradOpKernel<phi::CPUContext, int64_t>);

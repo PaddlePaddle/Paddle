@@ -36,7 +36,7 @@ from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 from paddle.fluid.layers import slice, reshape
 import warnings
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
@@ -933,7 +933,7 @@ def shuffle_batch(x, seed=None):
         seed = helper.create_variable(
             name=unique_name.generate("shuffle_batch_seed"),
             dtype="int64",
-            persistable=True)
+            persistable=False)
     helper.append_op(type='shuffle_batch',
                      inputs={
                          'X': x,
@@ -1073,7 +1073,8 @@ def sparse_embedding(input,
                      entry=None,
                      table_class="MemorySparseTable",
                      param_attr=None,
-                     dtype='float32'):
+                     dtype='float32',
+                     slot=None):
     r"""
     :api_attr: Static Graph
 
@@ -1220,6 +1221,9 @@ def sparse_embedding(input,
             )
         entry_str = entry._to_attr()
 
+    if slot == None:
+        slot = 0
+
     helper.append_op(type='lookup_table',
                      inputs={
                          'Ids': input,
@@ -1233,9 +1237,9 @@ def sparse_embedding(input,
                          'remote_prefetch': True,
                          'is_test': is_test,
                          'entry': entry_str,
-                         'table_class': table_class
+                         'table_class': table_class,
+                         'slot': slot
                      })
-
     return tmp
 
 
@@ -1779,7 +1783,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
     """
     if paddle.fluid._non_static_mode():
         attrs = ('has_offset', has_offset)
-        return getattr(_C_ops, "bilateral_slice")(x, grid, guide, *attrs)
+        return getattr(_legacy_C_ops, "bilateral_slice")(x, grid, guide, *attrs)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'bilateral_slice')
     check_variable_and_dtype(guide, 'guide', ['float32', 'float64'],
@@ -1854,7 +1858,7 @@ def correlation(x,
         attrs = ("pad_size", pad_size, "kernel_size", kernel_size,
                  "max_displacement", max_displacement, "stride1", stride1,
                  "stride2", stride2, "corr_type_multiply", corr_type_multiply)
-        output = getattr(_C_ops, "correlation")(x, y, *attrs)
+        output = getattr(_legacy_C_ops, "correlation")(x, y, *attrs)
     else:
         helper = LayerHelper("correlation", **locals())
         output = helper.create_variable_for_type_inference(dtype=x.dtype)

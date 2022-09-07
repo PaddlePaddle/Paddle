@@ -24,7 +24,7 @@ repos:
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
     -   id: end-of-file-fixer
     -   id: sort-simple-yaml
-        files: (api|backward)\.yaml$
+        files: (api|backward|api_[a-z_]+)\.yaml$
 -   repo: local
     hooks:
     -   id: clang-format
@@ -64,6 +64,13 @@ repos:
             (?x)^(
                 paddle/utils/.*
             )$
+-   repo: local
+    hooks:
+    -   id: auto-generate-cmakelists
+        name: auto-generate-cmakelists
+        entry: bash ./tools/gen_ut_cmakelists.hook
+        language: system
+        files: testslist.csv$
 -   repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13
     hooks:

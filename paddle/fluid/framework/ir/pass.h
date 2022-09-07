@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/variant.h"
+#include "paddle/phi/core/macros.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {

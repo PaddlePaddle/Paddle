@@ -31,7 +31,7 @@ from distutils.util import strtobool
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [  #noqa
     'get_host_name_ip',
@@ -146,7 +146,7 @@ def global_scatter(x,
 
     ring_id = 0 if group is None else group.id
     if _non_static_mode():
-        return _C_ops.global_scatter(x, local_count, \
+        return _legacy_C_ops.global_scatter(x, local_count, \
                                     global_count,  \
                                     'use_calc_stream', use_calc_stream, \
                                     'ring_id', ring_id)
@@ -259,7 +259,7 @@ def global_gather(x,
 
     ring_id = 0 if group is None else group.id
     if _non_static_mode():
-        return _C_ops.global_gather(x, local_count, \
+        return _legacy_C_ops.global_gather(x, local_count, \
                                     global_count, \
                                     'use_calc_stream', use_calc_stream, \
                                     'ring_id', ring_id)

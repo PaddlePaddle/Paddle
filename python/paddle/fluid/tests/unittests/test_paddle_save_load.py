@@ -117,7 +117,7 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
         dict_load = paddle.load(path, return_numpy=True)
         # compare results before and after saving
         for key, value in save_dict.items():
-            self.assertTrue(np.array_equal(dict_load[key], value.numpy()))
+            np.testing.assert_array_equal(dict_load[key], value.numpy())
 
 
 class TestSaveLoadPickle(unittest.TestCase):
@@ -158,8 +158,8 @@ class TestSaveLoadPickle(unittest.TestCase):
             dict_load = paddle.load(path)
             # compare results before and after saving
             for key, value in save_dict.items():
-                self.assertTrue(
-                    np.array_equal(dict_load[key].numpy(), value.numpy()))
+                np.testing.assert_array_equal(dict_load[key].numpy(),
+                                              value.numpy())
 
 
 class TestSaveLoadAny(unittest.TestCase):
@@ -242,7 +242,7 @@ class TestSaveLoadAny(unittest.TestCase):
                     new_t = np.array(fluid.global_scope().find_var(
                         var.name).get_tensor())
                     base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, np.array(base_t)))
+                    np.testing.assert_array_equal(new_t, np.array(base_t))
             # legacy paddle.fluid.save, paddle.load
             paddle.fluid.io.save(prog, path)
             self.set_zero(prog, place)
@@ -252,7 +252,7 @@ class TestSaveLoadAny(unittest.TestCase):
                     new_t = np.array(fluid.global_scope().find_var(
                         var.name).get_tensor())
                     base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    np.testing.assert_array_equal(new_t, base_t)
             # test for return tensor
             path_vars = 'test_replace_save_load_return_tensor_static/model'
             for var in prog.list_vars():
@@ -285,7 +285,7 @@ class TestSaveLoadAny(unittest.TestCase):
                     new_t = np.array(fluid.global_scope().find_var(
                         var.name).get_tensor())
                     base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    np.testing.assert_array_equal(new_t, base_t)
 
     def test_paddle_save_load_v2(self):
         paddle.disable_static()
@@ -329,12 +329,12 @@ class TestSaveLoadAny(unittest.TestCase):
             if isinstance(v, dict):
                 self.assertTrue(v == load_dict_tensor[k])
             else:
-                self.assertTrue(
-                    np.array_equal(v.numpy(), load_dict_tensor[k].numpy()))
+                np.testing.assert_array_equal(v.numpy(),
+                                              load_dict_tensor[k].numpy())
                 if not np.array_equal(v.numpy(), load_dict_np[k]):
                     print(v.numpy())
                     print(load_dict_np[k])
-                self.assertTrue(np.array_equal(v.numpy(), load_dict_np[k]))
+                np.testing.assert_array_equal(v.numpy(), load_dict_np[k])
 
     def test_single_pickle_var_dygraph(self):
         # enable dygraph mode
@@ -354,14 +354,14 @@ class TestSaveLoadAny(unittest.TestCase):
             isinstance(
                 t_dygraph,
                 (paddle.fluid.core.VarBase, paddle.fluid.core.eager.Tensor)))
-        self.assertTrue(np.array_equal(tensor.numpy(), np_dygraph))
-        self.assertTrue(np.array_equal(tensor.numpy(), t_dygraph.numpy()))
+        np.testing.assert_array_equal(tensor.numpy(), np_dygraph)
+        np.testing.assert_array_equal(tensor.numpy(), t_dygraph.numpy())
         paddle.enable_static()
         lod_static = paddle.load(path)
         np_static = paddle.load(path, return_numpy=True)
         self.assertTrue(isinstance(lod_static, paddle.fluid.core.LoDTensor))
-        self.assertTrue(np.array_equal(tensor.numpy(), np_static))
-        self.assertTrue(np.array_equal(tensor.numpy(), np.array(lod_static)))
+        np.testing.assert_array_equal(tensor.numpy(), np_static)
+        np.testing.assert_array_equal(tensor.numpy(), np.array(lod_static))
 
     def test_single_pickle_var_static(self):
         # enable static mode
@@ -394,17 +394,17 @@ class TestSaveLoadAny(unittest.TestCase):
         np_static = paddle.load(path, return_numpy=True)
         # set_tensor(np.ndarray)
         var.set_value(np_static, scope)
-        self.assertTrue(np.array_equal(origin_tensor, np.array(tensor)))
+        np.testing.assert_array_equal(origin_tensor, np.array(tensor))
         # set_tensor(LoDTensor)
         self.set_zero(prog, place, scope)
         var.set_value(lod_static, scope)
-        self.assertTrue(np.array_equal(origin_tensor, np.array(tensor)))
+        np.testing.assert_array_equal(origin_tensor, np.array(tensor))
         # enable dygraph mode
         paddle.disable_static()
         var_dygraph = paddle.load(path)
         np_dygraph = paddle.load(path, return_numpy=True)
-        self.assertTrue(np.array_equal(np.array(tensor), np_dygraph))
-        self.assertTrue(np.array_equal(np.array(tensor), var_dygraph.numpy()))
+        np.testing.assert_array_equal(np.array(tensor), np_dygraph)
+        np.testing.assert_array_equal(np.array(tensor), var_dygraph.numpy())
 
     def test_dygraph_save_static_load(self):
         inps = np.random.randn(1, IMAGE_SIZE).astype('float32')
@@ -432,9 +432,8 @@ class TestSaveLoadAny(unittest.TestCase):
             program.set_state_dict(state_dict)
             state_dict_param = program.state_dict("param")
             for name, tensor in state_dict_dy.items():
-                self.assertTrue(
-                    np.array_equal(tensor.numpy(),
-                                   np.array(state_dict_param[tensor.name])))
+                np.testing.assert_array_equal(
+                    tensor.numpy(), np.array(state_dict_param[tensor.name]))
 
     def test_save_load_complex_object_dygraph_save(self):
         paddle.disable_static()
@@ -471,58 +470,55 @@ class TestSaveLoadAny(unittest.TestCase):
         load_tensor3 = paddle.load(path3, return_numpy=False)
         load_tensor4 = paddle.load(path4, return_numpy=False)
 
-        self.assertTrue(np.array_equal(load_tensor1[0].numpy(),
-                                       obj1[0].numpy()))
-        self.assertTrue(np.array_equal(load_tensor1[1], obj1[1]))
-        self.assertTrue(np.array_equal(load_tensor1[2].numpy(), obj1[2][1]))
+        np.testing.assert_array_equal(load_tensor1[0].numpy(), obj1[0].numpy())
+        np.testing.assert_array_equal(load_tensor1[1], obj1[1])
+        np.testing.assert_array_equal(load_tensor1[2].numpy(), obj1[2][1])
         for i in range(len(load_tensor1)):
             self.assertTrue(
                 type(load_tensor1[i]) == type(load_tensor2['k1'][i]))
         for k, v in state_dict.items():
-            self.assertTrue(
-                np.array_equal(v.numpy(), load_tensor2['k2'][k].numpy()))
+            np.testing.assert_array_equal(v.numpy(),
+                                          load_tensor2['k2'][k].numpy())
         self.assertTrue(load_tensor2['epoch'] == 123)
 
-        self.assertTrue(np.array_equal(load_tensor3[0].numpy(),
-                                       obj3[0].numpy()))
-        self.assertTrue(np.array_equal(np.array(load_tensor3[1]), obj3[1]))
+        np.testing.assert_array_equal(load_tensor3[0].numpy(), obj3[0].numpy())
+        np.testing.assert_array_equal(np.array(load_tensor3[1]), obj3[1])
 
         for k, v in state_dict.items():
-            self.assertTrue(
-                np.array_equal(load_tensor3[2]["state_dict"][k].numpy(),
-                               v.numpy()))
+            np.testing.assert_array_equal(
+                load_tensor3[2]['state_dict'][k].numpy(), v.numpy())
 
         for k, v in state_dict.items():
-            self.assertTrue(
-                np.array_equal(load_tensor3[2]["opt"][k].numpy(), v.numpy()))
+            np.testing.assert_array_equal(load_tensor3[2]['opt'][k].numpy(),
+                                          v.numpy())
 
-        self.assertTrue(np.array_equal(load_tensor4[0].numpy(), obj4[0]))
+        np.testing.assert_array_equal(load_tensor4[0].numpy(), obj4[0])
 
         load_array1 = paddle.load(path1, return_numpy=True)
         load_array2 = paddle.load(path2, return_numpy=True)
         load_array3 = paddle.load(path3, return_numpy=True)
         load_array4 = paddle.load(path4, return_numpy=True)
 
-        self.assertTrue(np.array_equal(load_array1[0], obj1[0].numpy()))
-        self.assertTrue(np.array_equal(load_array1[1], obj1[1]))
-        self.assertTrue(np.array_equal(load_array1[2], obj1[2][1]))
+        np.testing.assert_array_equal(load_array1[0], obj1[0].numpy())
+        np.testing.assert_array_equal(load_array1[1], obj1[1])
+        np.testing.assert_array_equal(load_array1[2], obj1[2][1])
         for i in range(len(load_array1)):
             self.assertTrue(type(load_array1[i]) == type(load_array2['k1'][i]))
         for k, v in state_dict.items():
-            self.assertTrue(np.array_equal(v.numpy(), load_array2['k2'][k]))
+            np.testing.assert_array_equal(v.numpy(), load_array2['k2'][k])
         self.assertTrue(load_array2['epoch'] == 123)
 
-        self.assertTrue(np.array_equal(load_array3[0], obj3[0].numpy()))
-        self.assertTrue(np.array_equal(load_array3[1], obj3[1]))
+        np.testing.assert_array_equal(load_array3[0], obj3[0].numpy())
+        np.testing.assert_array_equal(load_array3[1], obj3[1])
 
         for k, v in state_dict.items():
-            self.assertTrue(
-                np.array_equal(load_array3[2]["state_dict"][k], v.numpy()))
+            np.testing.assert_array_equal(load_array3[2]['state_dict'][k],
+                                          v.numpy())
 
         for k, v in state_dict.items():
-            self.assertTrue(np.array_equal(load_array3[2]["opt"][k], v.numpy()))
+            np.testing.assert_array_equal(load_array3[2]['opt'][k], v.numpy())
 
-        self.assertTrue(np.array_equal(load_array4[0], obj4[0]))
+        np.testing.assert_array_equal(load_array4[0], obj4[0])
 
         # static mode
         paddle.enable_static()
@@ -532,69 +528,68 @@ class TestSaveLoadAny(unittest.TestCase):
         load_tensor3 = paddle.load(path3, return_numpy=False)
         load_tensor4 = paddle.load(path4, return_numpy=False)
 
-        self.assertTrue(
-            np.array_equal(np.array(load_tensor1[0]), obj1[0].numpy()))
-        self.assertTrue(np.array_equal(np.array(load_tensor1[1]), obj1[1]))
-        self.assertTrue(np.array_equal(np.array(load_tensor1[2]), obj1[2][1]))
+        np.testing.assert_array_equal(np.array(load_tensor1[0]),
+                                      obj1[0].numpy())
+        np.testing.assert_array_equal(np.array(load_tensor1[1]), obj1[1])
+        np.testing.assert_array_equal(np.array(load_tensor1[2]), obj1[2][1])
 
         for i in range(len(load_tensor1)):
             self.assertTrue(
                 type(load_tensor1[i]) == type(load_tensor2['k1'][i]))
         for k, v in state_dict.items():
-            self.assertTrue(
-                np.array_equal(v.numpy(), np.array(load_tensor2['k2'][k])))
+            np.testing.assert_array_equal(v.numpy(),
+                                          np.array(load_tensor2['k2'][k]))
         self.assertTrue(load_tensor2['epoch'] == 123)
 
         self.assertTrue(isinstance(load_tensor3[0],
                                    paddle.fluid.core.LoDTensor))
-        self.assertTrue(
-            np.array_equal(np.array(load_tensor3[0]), obj3[0].numpy()))
-        self.assertTrue(np.array_equal(np.array(load_tensor3[1]), obj3[1]))
+        np.testing.assert_array_equal(np.array(load_tensor3[0]),
+                                      obj3[0].numpy())
+        np.testing.assert_array_equal(np.array(load_tensor3[1]), obj3[1])
 
         for k, v in state_dict.items():
             self.assertTrue(
                 isinstance(load_tensor3[2]["state_dict"][k],
                            paddle.fluid.core.LoDTensor))
-            self.assertTrue(
-                np.array_equal(np.array(load_tensor3[2]["state_dict"][k]),
-                               v.numpy()))
+            np.testing.assert_array_equal(
+                np.array(load_tensor3[2]['state_dict'][k]), v.numpy())
 
         for k, v in state_dict.items():
             self.assertTrue(
                 isinstance(load_tensor3[2]["opt"][k],
                            paddle.fluid.core.LoDTensor))
-            self.assertTrue(
-                np.array_equal(np.array(load_tensor3[2]["opt"][k]), v.numpy()))
+            np.testing.assert_array_equal(np.array(load_tensor3[2]['opt'][k]),
+                                          v.numpy())
 
         self.assertTrue(load_tensor4[0], paddle.fluid.core.LoDTensor)
-        self.assertTrue(np.array_equal(np.array(load_tensor4[0]), obj4[0]))
+        np.testing.assert_array_equal(np.array(load_tensor4[0]), obj4[0])
 
         load_array1 = paddle.load(path1, return_numpy=True)
         load_array2 = paddle.load(path2, return_numpy=True)
         load_array3 = paddle.load(path3, return_numpy=True)
         load_array4 = paddle.load(path4, return_numpy=True)
 
-        self.assertTrue(np.array_equal(load_array1[0], obj1[0].numpy()))
-        self.assertTrue(np.array_equal(load_array1[1], obj1[1]))
-        self.assertTrue(np.array_equal(load_array1[2], obj1[2][1]))
+        np.testing.assert_array_equal(load_array1[0], obj1[0].numpy())
+        np.testing.assert_array_equal(load_array1[1], obj1[1])
+        np.testing.assert_array_equal(load_array1[2], obj1[2][1])
         for i in range(len(load_array1)):
             self.assertTrue(type(load_array1[i]) == type(load_array2['k1'][i]))
         for k, v in state_dict.items():
-            self.assertTrue(np.array_equal(v.numpy(), load_array2['k2'][k]))
+            np.testing.assert_array_equal(v.numpy(), load_array2['k2'][k])
         self.assertTrue(load_array2['epoch'] == 123)
 
         self.assertTrue(isinstance(load_array3[0], np.ndarray))
-        self.assertTrue(np.array_equal(load_array3[0], obj3[0].numpy()))
-        self.assertTrue(np.array_equal(load_array3[1], obj3[1]))
+        np.testing.assert_array_equal(load_array3[0], obj3[0].numpy())
+        np.testing.assert_array_equal(load_array3[1], obj3[1])
 
         for k, v in state_dict.items():
-            self.assertTrue(
-                np.array_equal(load_array3[2]["state_dict"][k], v.numpy()))
+            np.testing.assert_array_equal(load_array3[2]['state_dict'][k],
+                                          v.numpy())
 
         for k, v in state_dict.items():
-            self.assertTrue(np.array_equal(load_array3[2]["opt"][k], v.numpy()))
+            np.testing.assert_array_equal(load_array3[2]['opt'][k], v.numpy())
 
-        self.assertTrue(np.array_equal(load_array4[0], obj4[0]))
+        np.testing.assert_array_equal(load_array4[0], obj4[0])
 
     def test_save_load_complex_object_static_save(self):
         paddle.enable_static()
@@ -649,72 +644,66 @@ class TestSaveLoadAny(unittest.TestCase):
             load_tensor3 = paddle.load(path3, return_numpy=False)
             load_tensor4 = paddle.load(path4, return_numpy=False)
 
-            self.assertTrue(
-                np.array_equal(np.array(load_tensor1[0]), np.array(obj1[0])))
-            self.assertTrue(np.array_equal(np.array(load_tensor1[1]), obj1[1]))
-            self.assertTrue(
-                np.array_equal(np.array(load_tensor1[2]), obj1[2][1]))
+            np.testing.assert_array_equal(np.array(load_tensor1[0]),
+                                          np.array(obj1[0]))
+            np.testing.assert_array_equal(np.array(load_tensor1[1]), obj1[1])
+            np.testing.assert_array_equal(np.array(load_tensor1[2]), obj1[2][1])
             for i in range(len(load_tensor1)):
                 self.assertTrue(
                     type(load_tensor1[i]) == type(load_tensor2['k1'][i]))
             for k, v in state_dict.items():
-                self.assertTrue(
-                    np.array_equal(np.array(v),
-                                   np.array(load_tensor2['k2'][k])))
+                np.testing.assert_array_equal(np.array(v),
+                                              np.array(load_tensor2['k2'][k]))
             self.assertTrue(load_tensor2['epoch'] == 123)
 
             self.assertTrue(isinstance(load_tensor3[0], fluid.core.LoDTensor))
-            self.assertTrue(np.array_equal(np.array(load_tensor3[0]), obj3[0]))
+            np.testing.assert_array_equal(np.array(load_tensor3[0]), obj3[0])
             self.assertTrue(isinstance(load_tensor3[1], fluid.core.LoDTensor))
-            self.assertTrue(np.array_equal(np.array(load_tensor3[1]), obj3[1]))
+            np.testing.assert_array_equal(np.array(load_tensor3[1]), obj3[1])
 
             for k, v in state_dict.items():
                 self.assertTrue(
                     isinstance(load_tensor3[2]["state_dict"][k],
                                fluid.core.LoDTensor))
-                self.assertTrue(
-                    np.array_equal(np.array(load_tensor3[2]["state_dict"][k]),
-                                   np.array(v)))
+                np.testing.assert_array_equal(
+                    np.array(load_tensor3[2]['state_dict'][k]), np.array(v))
 
             for k, v in state_dict.items():
                 self.assertTrue(
                     isinstance(load_tensor3[2]["opt"][k], fluid.core.LoDTensor))
-                self.assertTrue(
-                    np.array_equal(np.array(load_tensor3[2]["opt"][k]),
-                                   np.array(v)))
+                np.testing.assert_array_equal(
+                    np.array(load_tensor3[2]['opt'][k]), np.array(v))
 
             self.assertTrue(isinstance(load_tensor4[0], fluid.core.LoDTensor))
-            self.assertTrue(np.array_equal(np.array(load_tensor4[0]), obj4[0]))
+            np.testing.assert_array_equal(np.array(load_tensor4[0]), obj4[0])
 
             load_array1 = paddle.load(path1, return_numpy=True)
             load_array2 = paddle.load(path2, return_numpy=True)
             load_array3 = paddle.load(path3, return_numpy=True)
             load_array4 = paddle.load(path4, return_numpy=True)
 
-            self.assertTrue(np.array_equal(load_array1[0], np.array(obj1[0])))
-            self.assertTrue(np.array_equal(load_array1[1], obj1[1]))
-            self.assertTrue(np.array_equal(load_array1[2], obj1[2][1]))
+            np.testing.assert_array_equal(load_array1[0], np.array(obj1[0]))
+            np.testing.assert_array_equal(load_array1[1], obj1[1])
+            np.testing.assert_array_equal(load_array1[2], obj1[2][1])
             for i in range(len(load_array1)):
                 self.assertTrue(
                     type(load_array1[i]) == type(load_array2['k1'][i]))
             for k, v in state_dict.items():
-                self.assertTrue(
-                    np.array_equal(np.array(v), load_array2['k2'][k]))
+                np.testing.assert_array_equal(np.array(v), load_array2['k2'][k])
             self.assertTrue(load_array2['epoch'] == 123)
 
-            self.assertTrue(np.array_equal(load_array3[0], np.array(obj3[0])))
-            self.assertTrue(np.array_equal(load_array3[1], obj3[1]))
+            np.testing.assert_array_equal(load_array3[0], np.array(obj3[0]))
+            np.testing.assert_array_equal(load_array3[1], obj3[1])
 
             for k, v in state_dict.items():
-                self.assertTrue(
-                    np.array_equal(load_array3[2]["state_dict"][k],
-                                   np.array(v)))
+                np.testing.assert_array_equal(load_array3[2]['state_dict'][k],
+                                              np.array(v))
 
             for k, v in state_dict.items():
-                self.assertTrue(
-                    np.array_equal(load_array3[2]["opt"][k], np.array(v)))
+                np.testing.assert_array_equal(load_array3[2]['opt'][k],
+                                              np.array(v))
 
-            self.assertTrue(np.array_equal(load_array4[0], obj4[0]))
+            np.testing.assert_array_equal(load_array4[0], obj4[0])
 
             # dygraph mode
             paddle.disable_static()
@@ -724,79 +713,74 @@ class TestSaveLoadAny(unittest.TestCase):
             load_tensor3 = paddle.load(path3, return_numpy=False)
             load_tensor4 = paddle.load(path4, return_numpy=False)
 
-            self.assertTrue(
-                np.array_equal(np.array(load_tensor1[0]), np.array(obj1[0])))
-            self.assertTrue(np.array_equal(np.array(load_tensor1[1]), obj1[1]))
-            self.assertTrue(np.array_equal(load_tensor1[2].numpy(), obj1[2][1]))
+            np.testing.assert_array_equal(np.array(load_tensor1[0]),
+                                          np.array(obj1[0]))
+            np.testing.assert_array_equal(np.array(load_tensor1[1]), obj1[1])
+            np.testing.assert_array_equal(load_tensor1[2].numpy(), obj1[2][1])
             for i in range(len(load_tensor1)):
                 self.assertTrue(
                     type(load_tensor1[i]) == type(load_tensor2['k1'][i]))
             for k, v in state_dict.items():
-                self.assertTrue(
-                    np.array_equal(np.array(v),
-                                   np.array(load_tensor2['k2'][k])))
+                np.testing.assert_array_equal(np.array(v),
+                                              np.array(load_tensor2['k2'][k]))
             self.assertTrue(load_tensor2['epoch'] == 123)
 
             self.assertTrue(
                 isinstance(load_tensor3[0],
                            (fluid.core.VarBase, fluid.core.eager.Tensor)))
-            self.assertTrue(np.array_equal(load_tensor3[0].numpy(), obj3[0]))
+            np.testing.assert_array_equal(load_tensor3[0].numpy(), obj3[0])
             self.assertTrue(
                 isinstance(load_tensor3[1],
                            (fluid.core.VarBase, fluid.core.eager.Tensor)))
-            self.assertTrue(np.array_equal(load_tensor3[1].numpy(), obj3[1]))
+            np.testing.assert_array_equal(load_tensor3[1].numpy(), obj3[1])
 
             for k, v in state_dict.items():
                 self.assertTrue(
                     isinstance(load_tensor3[2]["state_dict"][k],
                                (fluid.core.VarBase, fluid.core.eager.Tensor)))
-                self.assertTrue(
-                    np.array_equal(load_tensor3[2]["state_dict"][k].numpy(),
-                                   np.array(v)))
+                np.testing.assert_array_equal(
+                    load_tensor3[2]['state_dict'][k].numpy(), np.array(v))
 
             for k, v in state_dict.items():
                 self.assertTrue(
                     isinstance(load_tensor3[2]["opt"][k],
                                (fluid.core.VarBase, fluid.core.eager.Tensor)))
-                self.assertTrue(
-                    np.array_equal(load_tensor3[2]["opt"][k].numpy(),
-                                   np.array(v)))
+                np.testing.assert_array_equal(load_tensor3[2]['opt'][k].numpy(),
+                                              np.array(v))
 
             self.assertTrue(
                 isinstance(load_tensor4[0],
                            (fluid.core.VarBase, fluid.core.eager.Tensor)))
-            self.assertTrue(np.array_equal(load_tensor4[0].numpy(), obj4[0]))
+            np.testing.assert_array_equal(load_tensor4[0].numpy(), obj4[0])
 
             load_array1 = paddle.load(path1, return_numpy=True)
             load_array2 = paddle.load(path2, return_numpy=True)
             load_array3 = paddle.load(path3, return_numpy=True)
             load_array4 = paddle.load(path4, return_numpy=True)
 
-            self.assertTrue(np.array_equal(load_array1[0], np.array(obj1[0])))
-            self.assertTrue(np.array_equal(load_array1[1], obj1[1]))
-            self.assertTrue(np.array_equal(load_array1[2], obj1[2][1]))
+            np.testing.assert_array_equal(load_array1[0], np.array(obj1[0]))
+            np.testing.assert_array_equal(load_array1[1], obj1[1])
+            np.testing.assert_array_equal(load_array1[2], obj1[2][1])
             for i in range(len(load_array1)):
                 self.assertTrue(
                     type(load_array1[i]) == type(load_array2['k1'][i]))
             for k, v in state_dict.items():
-                self.assertTrue(
-                    np.array_equal(np.array(v), load_array2['k2'][k]))
+                np.testing.assert_array_equal(np.array(v), load_array2['k2'][k])
             self.assertTrue(load_array2['epoch'] == 123)
 
-            self.assertTrue(np.array_equal(load_array3[0], np.array(obj3[0])))
-            self.assertTrue(np.array_equal(load_array3[1], obj3[1]))
+            np.testing.assert_array_equal(load_array3[0], np.array(obj3[0]))
+            np.testing.assert_array_equal(load_array3[1], obj3[1])
 
             for k, v in state_dict.items():
-                self.assertTrue(
-                    np.array_equal(load_array3[2]["state_dict"][k],
-                                   np.array(v)))
+                np.testing.assert_array_equal(load_array3[2]['state_dict'][k],
+                                              np.array(v))
 
             for k, v in state_dict.items():
-                self.assertTrue(
-                    np.array_equal(load_array3[2]["opt"][k], np.array(v)))
+                np.testing.assert_array_equal(load_array3[2]['opt'][k],
+                                              np.array(v))
 
             self.assertTrue(isinstance(load_array4[0], np.ndarray))
-            self.assertTrue(np.array_equal(load_array4[0], obj4[0]))
+            np.testing.assert_array_equal(load_array4[0], obj4[0])
 
     def test_varbase_binary_var(self):
         paddle.disable_static()
@@ -810,8 +794,8 @@ class TestSaveLoadAny(unittest.TestCase):
         load_tensor_array = load_tensor.numpy()
         if paddle.fluid.core.is_compiled_with_cuda():
             fluid.core._cuda_synchronize(paddle.CUDAPlace(0))
-        self.assertTrue(np.array_equal(origin_array, load_array))
-        self.assertTrue(np.array_equal(origin_array, load_tensor_array))
+        np.testing.assert_array_equal(origin_array, load_array)
+        np.testing.assert_array_equal(origin_array, load_tensor_array)
 
 
 class TestSaveLoadToMemory(unittest.TestCase):
@@ -828,10 +812,10 @@ class TestSaveLoadToMemory(unittest.TestCase):
         # load state_dict
         dict_load = paddle.load(byio, return_numpy=True)
         for k, v in state_dict.items():
-            self.assertTrue(np.array_equal(v.numpy(), dict_load[k]))
+            np.testing.assert_array_equal(v.numpy(), dict_load[k])
         # load tensor
         tensor_load = paddle.load(byio, return_numpy=True)
-        self.assertTrue(np.array_equal(tensor_load, tensor.numpy()))
+        np.testing.assert_array_equal(tensor_load, tensor.numpy())
 
         with self.assertRaises(ValueError):
             paddle.save(4, 3)
@@ -874,11 +858,11 @@ class TestSaveLoadToMemory(unittest.TestCase):
                             prog_load.desc.serialize_to_string())
 
             tensor_load = paddle.load(byio, return_numpy=True)
-            self.assertTrue(np.array_equal(tensor_load, np.array(tensor)))
+            np.testing.assert_array_equal(tensor_load, np.array(tensor))
 
             state_dict_load = paddle.load(byio, return_numpy=True)
             for k, v in state_dict.items():
-                self.assertTrue(np.array_equal(np.array(v), state_dict_load[k]))
+                np.testing.assert_array_equal(np.array(v), state_dict_load[k])
 
 
 class TestSaveLoad(unittest.TestCase):
@@ -915,7 +899,7 @@ class TestSaveLoad(unittest.TestCase):
         for var_name, value in orig_dict.items():
             load_value = load_dict[var_name].numpy() if hasattr(
                 load_dict[var_name], 'numpy') else np.array(load_dict[var_name])
-            self.assertTrue(np.array_equal(value.numpy(), load_value))
+            np.testing.assert_array_equal(value.numpy(), load_value)
 
     def test_save_load(self):
         layer, opt = self.build_and_train_model()

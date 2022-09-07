@@ -16,10 +16,9 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(
-    load,
-    ops::LoadOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::LoadOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::LoadOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::LoadOpKernel<paddle::platform::CUDADeviceContext, int8_t>,
-    ops::LoadOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(load,
+                        ops::LoadOpKernel<phi::GPUContext, float>,
+                        ops::LoadOpKernel<phi::GPUContext, double>,
+                        ops::LoadOpKernel<phi::GPUContext, int>,
+                        ops::LoadOpKernel<phi::GPUContext, int8_t>,
+                        ops::LoadOpKernel<phi::GPUContext, int64_t>);

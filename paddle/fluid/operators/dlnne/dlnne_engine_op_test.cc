@@ -40,7 +40,7 @@ void CreateCUDATensor(framework::Scope* scope,
   auto dims = phi::make_ddim(shape);
   tensor->Resize(dims);
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
   inference::tensorrt::RandomizeTensor(tensor, place, ctx);
 }
 
@@ -127,7 +127,7 @@ TEST(DlnneEngineOp, manual) {
 
   framework::Scope scope;
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
   // Prepare variables.
   CreateCUDATensor(&scope, "x", std::vector<int64_t>({2, 4}));
   CreateCUDATensor(&scope, "y", std::vector<int64_t>({4, 6}));
@@ -145,7 +145,7 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   framework::ProgramDesc program;
   framework::Scope scope;
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
 
   auto* block_ = program.Proto()->add_blocks();
   block_->set_idx(0);

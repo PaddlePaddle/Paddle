@@ -89,31 +89,37 @@ class TestCinnLaunchOp : public ::testing::Test {
   void TearDown() override { CinnCompiler::GetInstance()->Clear(); }
 };
 
-TEST_F(TestCinnLaunchOp, TestRunInstructionByPE) {
-  // CPU
+TEST_F(TestCinnLaunchOp, TestRunCPUInstructionByPE) {
   RunAndCheck(platform::CPUPlace());
   // the second run on the same place is to check the cache logic
   RunAndCheck(platform::CPUPlace());
-#ifdef PADDLE_WITH_CUDA
-  // GPU
-  RunAndCheck(platform::CUDAPlace());
-  RunAndCheck(platform::CUDAPlace());
-#endif
 }
 
-TEST_F(TestCinnLaunchOp, TestRunInstructionByCinnProgram) {
+#ifdef PADDLE_WITH_CUDA
+TEST_F(TestCinnLaunchOp, TestRunGPUInstructionByPE) {
+  RunAndCheck(platform::CUDAPlace());
+  RunAndCheck(platform::CUDAPlace());
+}
+#endif
+
+TEST_F(TestCinnLaunchOp, TestRunCPUInstructionByCinnProgram) {
   // set FLAGS_enable_pe_launch_cinn=false to switch to use
   // default scheduler of CINN to execute the compiled program
   FLAGS_enable_pe_launch_cinn = false;
 
   RunAndCheck(platform::CPUPlace());
   RunAndCheck(platform::CPUPlace());
-#ifdef PADDLE_WITH_CUDA
-  // GPU
-  RunAndCheck(platform::CUDAPlace());
-  RunAndCheck(platform::CUDAPlace());
-#endif
 }
+
+#ifdef PADDLE_WITH_CUDA
+TEST_F(TestCinnLaunchOp, TestRunGPUInstructionByCinnProgram) {
+  // set FLAGS_enable_pe_launch_cinn=false to switch to use
+  // default scheduler of CINN to execute the compiled program
+  FLAGS_enable_pe_launch_cinn = false;
+  RunAndCheck(platform::CUDAPlace());
+  RunAndCheck(platform::CUDAPlace());
+}
+#endif
 
 TEST_F(TestCinnLaunchOp, TestRunWithAutoTuneEnabled) {
   FLAGS_enable_cinn_auto_tune = true;

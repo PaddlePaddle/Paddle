@@ -153,8 +153,6 @@ REGISTER_OPERATOR(minus,
                   ops::MinusOpMaker,
                   ops::MinusGradDescMaker,
                   ops::MinusGradMaker);
-REGISTER_OP_CPU_KERNEL(
-    minus, ops::MinusKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(minus, ops::MinusKernel<phi::CPUContext, float>);
 
-REGISTER_OP_CUDA_KERNEL(
-    minus, ops::MinusKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(minus, ops::MinusKernel<phi::GPUContext, float>);
