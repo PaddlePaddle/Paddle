@@ -580,20 +580,15 @@ class MultiheadMatMulOpConverter : public OpConverter {
           nvinfer1::ITensor* input_bias_qk_mask = nullptr;
           if (has_BiasQK_mask){
             if (with_fastertransformer_window_mha){
-              printf("@@ has biasqk mask\r\n");
               auto biasqk_mask_name = op_desc.Input("BiasQK_mask").front();
-              printf("@@ %s", biasqk_mask_name.c_str());
               auto biasqk_mask_constlayer_outputname = biasqk_mask_name + "_cl";
               auto* biasqk_mask_v = scope.FindVar(biasqk_mask_name);
               auto* biasqk_mask_t = biasqk_mask_v->GetMutable<framework::LoDTensor>();
               nvinfer1::Dims biasqk_mask_dims;
               biasqk_mask_dims.nbDims = 0;
-              printf("@@@@ mask dims : \r\n");
               for (int i = 0; i < biasqk_mask_t->dims().size(); ++i) {
                 biasqk_mask_dims.d[biasqk_mask_dims.nbDims++] = biasqk_mask_t->dims()[i];
-                printf("%ld, ",biasqk_mask_t->dims()[i]);
               }
-              printf("\r\n");
               biasqk_mask_const_nvWeight.count = biasqk_mask_t->numel();
               if (with_fp16) {
                 auto biasqk_mask_const_weight =

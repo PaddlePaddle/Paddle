@@ -271,18 +271,6 @@ __global__ void broadcast_batch(const T *src,
   }
 }
 
-// TODO wangbojun for debug
-template<typename T>
-__global__ void print_float(const T *src, int start_index, int end_index, int numPerRow=49, int stride=1){
-  printf("start print float \r\n");
-  for (int i=start_index;i<end_index;i+=stride){
-    printf("%f, ",static_cast<double>(src[i]));
-    if((i-start_index)/stride%numPerRow==numPerRow-1){
-      printf("\r\n");
-    }
-  }
-}
-
 template <typename DeviceContext, typename T>
 class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
  public:
@@ -426,13 +414,6 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
                              __float2half(static_cast<float>(scale)),
                              __float2half(0.0));
     } else {
-      printf("@@@ fp32 input : \r\n");
-      cudaDeviceSynchronize();
-      if(batch==64){
-        print_float<float><<<1,1>>>(reinterpret_cast<float *>(qkptr),0,seq_len*3*head_size*head_number,3*head_size*head_number,1);
-      }
-      cudaDeviceSynchronize();
-      printf("\r\n");
       math::MultiHeadGPUComputeFunctor<T> multihead_compute_func;
       multihead_compute_func(device_ctx,
                              batch,
@@ -445,13 +426,6 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
                              scale,
                              T(0.0));
     }
-    printf("@@@ fp32 output : \r\n");
-    cudaDeviceSynchronize();
-    if(batch==64){
-      print_float<float><<<1,1>>>(reinterpret_cast<float *>(tptr),0,seq_len*3*head_size*head_number,3*head_size*head_number,1);
-    }
-    cudaDeviceSynchronize();
-    printf("\r\n");
     int grid = batch * head_number * seq_len;
     int block = head_size;
     transpose<T><<<grid, block, 0, stream>>>(

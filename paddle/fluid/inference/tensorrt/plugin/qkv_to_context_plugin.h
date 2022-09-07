@@ -125,23 +125,6 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
                           const nvinfer1::PluginTensorDesc* outputs,
                           int nb_outputs) const TRT_NOEXCEPT override {
     return 0;
-    // auto input_dims = inputs[0].dims;
-    // const int batch = input_dims.d[0]; // batch = for swin, batch in input = image_batch * window_number
-    // // printf("@@@ in get worksapce, batch :%d \r\n", batch);
-    // int seq_len = input_dims.d[1];
-    // const int padding_num=1;
-    // if(with_fp16_){
-    //   const int padding_num=8;
-    // }
-    // seq_len = (seq_len + padding_num - 1) / padding_num * padding_num;
-    // const int input_num = batch * seq_len * 3 * head_number_ * head_size_;
-    // const size_t biasqk_ptr_size = batch * head_number_ * seq_len * seq_len;
-    // const size_t qk_temp_ptr_size = biasqk_ptr_size + input_num;
-    // if(with_fp16_){
-    //   return sizeof(half)*(qk_temp_ptr_size);
-    // } else {
-    //   return sizeof(float)*(qk_temp_ptr_size);
-    // }
   }
 
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
