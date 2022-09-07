@@ -67,15 +67,27 @@ class TestReshape(unittest.TestCase):
 
     @unittest.skipIf(not paddle.is_compiled_with_cuda()
                      or get_cuda_version() < 11000, "only support cuda>=11.0")
-    def test_reshape_2d(self):
+    def test_reshape_case1(self):
         self.check_result([16, 12], [8, 24], 'coo')
         self.check_result([16, 12], [8, 24], 'csr')
 
     @unittest.skipIf(not paddle.is_compiled_with_cuda()
                      or get_cuda_version() < 11070, "only support cuda>=11.7")
-    def test_reshape_3d(self):
+    def test_reshape_case2(self):
         self.check_result([8, 16, 12], [4, 2, 12, 16], 'coo')
         self.check_result([8, 16, 12], [4, 2, 12, 16], 'csr')
+
+    @unittest.skipIf(not paddle.is_compiled_with_cuda()
+                     or get_cuda_version() < 11070, "only support cuda>=11.7")
+    def test_reshape_case3(self):
+        self.check_result([12], [4, 3], 'coo')
+        self.check_result([12], [4, 3], 'csr')
+
+    @unittest.skipIf(not paddle.is_compiled_with_cuda()
+                     or get_cuda_version() < 11070, "only support cuda>=11.7")
+    def test_reshape_case3(self):
+        self.check_result([4, 2, 12, 16], [8, 16, 12], 'coo')
+        self.check_result([4, 2, 12, 16], [8, 16, 12], 'csr')
 
 
 if __name__ == "__main__":
