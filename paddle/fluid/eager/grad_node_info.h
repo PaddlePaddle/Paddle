@@ -297,14 +297,14 @@ class GradNodeBase {
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
       bwd_out_meta_;
 
-  // bwd_in_meta_ used to record Grad input info for backward
+  // bwd_in_meta_ is used to record Grad input info for backward
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
       bwd_in_meta_;
   // Gradient Hooks
   // Customer may register a list of hooks which will be called in order during
   // backward
-  // Each entry consists one pair of
-  // <hook_id, <out_rank, std::shared_ptr<TensorHook>>>
+  // Each entry consists of one pair of
+  // <hook_id, <slot_id, out_rank, std::shared_ptr<TensorHook>>>
   std::map<int64_t,
            std::tuple<
                /* slot id */ size_t,
@@ -313,7 +313,7 @@ class GradNodeBase {
       gradient_hooks_;
   int64_t next_hook_id_{0};
 
-  // We handle complex to real conversion only if any complex GradIn is involved
+  // We handle complex-to-real conversion only if any complex GradIn is involved
   bool need_complex_to_real_ = false;
 
   bool is_tensor_wrappers_cleared_ = false;
