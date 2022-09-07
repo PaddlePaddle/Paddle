@@ -483,7 +483,10 @@ std::vector<framework::Tensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
   } else if (PyObject_IsInstance(obj,
                                  reinterpret_cast<PyObject*>(
                                      g_framework_lodtensorarray_pytype))) {
-    return ::pybind11::handle(obj).cast<framework::LoDTensorArray>();
+    for (auto& tensor :
+         (::pybind11::handle(obj).cast<framework::LoDTensorArray>())) {
+      result.emplace_back(tensor);
+    }
   } else if (obj == Py_None) {
     return {};
   } else {

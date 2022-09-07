@@ -50,7 +50,7 @@ def relu(x, name=None):
         return _C_ops.sparse_relu(x)
     else:
         helper = LayerHelper('relu_coo')
-        out = helper.create_sparse_variable_for_type_inference(dtype)
+        out = helper.create_sparse_variable_for_type_inference(x.dtype)
         helper.append_op(type='relu_coo',
                          inputs={'X': x},
                          outputs={'Out': out},

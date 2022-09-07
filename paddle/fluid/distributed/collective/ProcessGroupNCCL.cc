@@ -20,6 +20,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/device_context.h"
 
 DECLARE_bool(nccl_blocking_wait);
 DECLARE_bool(use_stream_safe_cuda_allocator);
@@ -1039,6 +1040,17 @@ ncclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
                     platform::errors::InvalidArgument(
                         "Cannot find nccl comm in process group."));
   return iter->second[0]->GetNcclComm();
+}
+
+phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
+    const Place& place) const {
+  std::vector<Place> places = {place};
+  const auto& iter = places_to_ctx_.find(GetKeyFromPlaces(places));
+  PADDLE_ENFORCE_NE(iter,
+                    places_to_ctx_.end(),
+                    platform::errors::InvalidArgument(
+                        "Cannot find device context in process group."));
+  return iter->second[0].get();
 }
 
 }  //  namespace distributed
