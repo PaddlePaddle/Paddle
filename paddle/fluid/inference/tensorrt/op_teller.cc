@@ -176,7 +176,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "sum",
       "shape",
       "squeeze2",
-      "unsqueeze2"};
+      "unsqueeze2",
+      "celu"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -286,7 +287,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shape",
       "squeeze2",
       "unsqueeze2",
-      "fused_token_prune"};
+      "fused_token_prune",
+      "celu"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node,
@@ -312,7 +314,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         "cosh",     "asin",  "acos",
         "atan",     "asinh", "atanh",
         "ceil",     "floor", "erf",
-        "silu"};
+        "silu",     "celu"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
