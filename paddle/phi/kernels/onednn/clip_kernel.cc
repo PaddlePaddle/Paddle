@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/clip_kernel.h"
+
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 
