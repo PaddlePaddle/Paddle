@@ -98,8 +98,7 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
 //   }
 // #endif
 #ifdef PADDLE_WITH_MKLDNN
-  auto it = oper.Attrs().find("use_mkldnn");
-  if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
+  if (library == framework::LibraryType::kPlain &&
       oper.CanMKLDNNBeUsed(ctx, data_type)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;

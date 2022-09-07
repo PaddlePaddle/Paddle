@@ -383,6 +383,11 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
+- api : prelu
+  backward : prelu_grad
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
 - api : reciprocal
   backward : reciprocal_grad
   extra :
@@ -455,10 +460,6 @@
   backward : softmax_grad
   extra :
     attrs : [bool use_cudnn = false, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
-- api : prelu
-  backward : prelu_grad
-  extra :
-    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - api : softplus
   backward : softplus_grad
