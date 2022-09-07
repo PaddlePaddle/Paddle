@@ -92,7 +92,7 @@ void SwinAttention1FusePass::ApplyImpl(ir::Graph* graph) const {
     //get window num here for swin's window attention
     std::vector<int64_t> window_num_tranpose_out_shape=transpose_i00_out->Var()->GetShape();
     int window_num = window_num_tranpose_out_shape[1]*window_num_tranpose_out_shape[2];
-    printf("@@@@ window num :%d \r\n", window_num);
+    VLOG(1)<<"swin attention fused with window num: "<<window_num;
     auto* weight_qkv_tensor =
         scope->FindVar(matmul_00_in_y->Name())->GetMutable<LoDTensor>();
     auto weight_qkv_dims = phi::make_ddim(

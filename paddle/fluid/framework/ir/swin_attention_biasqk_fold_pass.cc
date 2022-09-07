@@ -44,9 +44,7 @@ void SwinAttentionBiasqkFoldPass::ApplyImpl(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   const std::string pattern_name = "swin_attention_bisqk_fold";
   FusePassBase::Init(pattern_name, graph);
-  // auto* scope = param_scope();
 
-  // std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
   PDNode* x = gpd.mutable_pattern()
                   ->NewNode("x")
                   ->assert_is_op_input("elementwise_add", "X")
@@ -58,11 +56,6 @@ void SwinAttentionBiasqkFoldPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     GET_NODES;
-    // do nothing for test
-    // OpDesc desc(elementwise_00_op->Op()->Block());
-    // desc.SetType("elementwise_add");
-    // desc.SetInput("X",{subgraph.at(x)->Name()});
-    // desc.SetAttr("BiasQK_swinFolded",true);
     auto* elementwise_00_op_desc = elementwise_00_op->Op();
 
     elementwise_00_op_desc->SetInput("BiasQK_mask",{unsqueeze_01_op_x->Name()});
