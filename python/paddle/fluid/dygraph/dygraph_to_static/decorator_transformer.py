@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from __future__ import print_function
 
 from paddle.utils import gast
@@ -46,7 +45,6 @@ class DecoratorTransformer(BaseTransformer):
         """
         self.visit(self.root)
 
-
     def visit_FunctionDef(self, node):
         assert isinstance(node, gast.FunctionDef)
         self.generic_visit(node)
@@ -60,7 +58,7 @@ class DecoratorTransformer(BaseTransformer):
         deco_target = '_orig_' + node.name
         # last decoed func
         decoed_func = ''
-        
+
         for deco in reversed(deco_list):
             # skip INGNORE_NAMES
             if isinstance(deco, gast.Attribute):
@@ -83,15 +81,17 @@ class DecoratorTransformer(BaseTransformer):
             if isinstance(deco, gast.Call):
                 # in this case , the deco_full_name will be like:
                 # '_jst.Call(deco)(5)'
-                rematch = re.match(r'\_jst\.Call\((.+?)\)\((.+?)\)', deco_full_name)
+                rematch = re.match(r'\_jst\.Call\((.+?)\)\((.+?)\)',
+                                   deco_full_name)
                 re_name = rematch.group(1)
                 re_args = rematch.group(2)
                 re_args_with_func = deco_target + ', ' + re_args
                 decofun_str = 'try:\n\t{0} = _jst.Call({1})({2})\nexcept:\n\t{0} = _jst.Call({1})({3})({4})'\
                     .format(decoed_func, re_name, re_args_with_func, re_args, deco_target)
             else:
-                decofun_str = '{} = _jst.Call({})({})'.format(decoed_func, deco_full_name, deco_target)
-            
+                decofun_str = '{} = _jst.Call({})({})'.format(
+                    decoed_func, deco_full_name, deco_target)
+
             decofun_nodes.extend(gast.parse(decofun_str).body)
             deco_target = decoed_func
 
@@ -99,11 +99,11 @@ class DecoratorTransformer(BaseTransformer):
             return node
 
         orig_func_node = gast.FunctionDef(name='_orig_' + node.name,
-                                        args=node.args,
-                                        body=node.body,
-                                        decorator_list=[],
-                                        returns=None,
-                                        type_comment=None)
+                                          args=node.args,
+                                          body=node.body,
+                                          decorator_list=[],
+                                          returns=None,
+                                          type_comment=None)
 
         args = [arg.id for arg in node.args.args]
         arg_str = ','.join(args)

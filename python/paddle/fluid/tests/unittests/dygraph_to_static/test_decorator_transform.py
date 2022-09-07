@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from __future__ import print_function
 
 import numpy
@@ -57,26 +56,34 @@ def deco2(fun):
 
 
 def deco3(x=3):
+
     def inner_deco(func):
+
         @wraps(func)
         def inner(*args, **kwargs):
             print('in deco3, added {}'.format(x))
             _t = paddle.to_tensor(x)
             _tt = func(*args, **kwargs)
             return paddle.add(_t, _tt)
+
         return inner
+
     return inner_deco
 
 
 def deco4(func=None, x=0):
+
     def decorated(pyfunc):
+
         @wraps(pyfunc)
         def inner_deco(*args, **kwargs):
             print('in deco4, added {}'.format(x))
             _t = paddle.to_tensor(x)
             _tt = pyfunc(*args, **kwargs)
             return paddle.add(_t, _tt)
+
         return inner_deco
+
     if func == None:
         return decorated
     return decorated(func)
@@ -88,6 +95,7 @@ def fun1(x, y=0):
     print('in fun1, x=%d' % (x))
     return a
 
+
 @deco1
 @deco2
 def fun2(x, y=0):
@@ -95,11 +103,13 @@ def fun2(x, y=0):
     print('in fun2, x=%d' % (x))
     return a
 
+
 @deco3(3)
 def fun3(x, y=0):
     a = paddle.to_tensor(y)
     print('in fun3, x=%d' % (x))
     return a
+
 
 @deco4(x=4)
 def fun4(x, y=0):
@@ -107,19 +117,21 @@ def fun4(x, y=0):
     print('in fun4, x=%d' % (x))
     return a
 
+
 @deco2
 @deco4(x=5)
 def fun5(x, y=0):
     a = paddle.to_tensor(y)
-    print('in fun4, x=%d' % (x))
+    print('in fun5, x=%d' % (x))
     return a
+
 
 @paddle.jit.to_static
 def forward():
     funcs = [fun1, fun2, fun3, fun4, fun5]
     out = []
     for idx, fun in enumerate(funcs):
-        out.append(fun(idx+1, idx+1))
+        out.append(fun(idx + 1, idx + 1))
     return out
 
 

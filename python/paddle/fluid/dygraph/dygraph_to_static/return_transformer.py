@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from __future__ import print_function
 
 from paddle.utils import gast
@@ -240,7 +239,7 @@ class ReturnTransformer(BaseTransformer):
                 return True
             else:
                 return False
-        '''  
+        '''
         if self.function_def:
             self.pre_analysis = ReturnAnalysisVisitor(self.function_def[-1])
         return node
