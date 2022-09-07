@@ -50,3 +50,8 @@ PD_REGISTER_KERNEL(mean,
 #if defined(PADDLE_WITH_XPU_KP)
 PD_REGISTER_KERNEL(mean, KPS, ALL_LAYOUT, phi::MeanKernel, float) {}
 #endif
+
+#if defined(PADDLE_WITH_MKLDNN)
+PD_REGISTER_KERNEL(
+    mean, OneDNN, ALL_LAYOUT, phi::MeanKernel, float, phi::dtype::bfloat16) {}
+#endif
