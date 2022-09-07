@@ -218,14 +218,23 @@ void TransposeCooKernel(const Context& dev_ctx,
   const DenseTensor& x_values = x.non_zero_elements();
   DenseTensor* out_indices = out->mutable_indices();
   DenseTensor* out_values = out->mutable_non_zero_elements();
-  *out_indices = x_indices;
 
-  int* out_indices_data = out_indices->data<int>();
-  for (int i = 0; i < ; ++i) {
+  int64_t* x_indices_data = x_indices.data<int64_t>();
+  int64_t* out_indices_data = out_indices->data<int64_t>();
+  int64_t x_nnz = x.nnz();
+  std::vector<int> shape;
+  for (int64_t i = 0; i < dims.size(); ++i) {
+    for (int64_t j = 0; j < x_nnz; ++j) {
+      out_indices_data[j + i * x_nnz] = x_indices_data[j + dims[i] * x_nnz];
+    }
+    shape.push_back()
   }
 
+  DDim out_ddim(x.dims());
+  out_ddim.transpose(dims);
+
   phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, out_values);
-  out->Resize(phi::make_ddim(shape), x.sparse_dim(), x_values.dims()[0]);
+  out->Resize(out_ddim, x.sparse_dim(), x_nnz);
 }
 
 template <typename T, typename Context>

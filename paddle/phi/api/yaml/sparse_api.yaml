@@ -285,7 +285,7 @@
   invoke : to_sparse_csr_impl(x)
 
 - api : transpose
-  args : (Tensor x, int[] shape)
+  args : (Tensor x, int[] dims)
   output : Tensor(out)
   kernel :
     func : transpose_coo{sparse_coo -> sparse_coo},
