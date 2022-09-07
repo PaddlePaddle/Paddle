@@ -335,6 +335,12 @@ class TestDistBase(unittest.TestCase):
             need_result2 = need_result[need_result.shape[0] // 2:]
             np.testing.assert_allclose(tr0_out[0], need_result1, rtol=1e-05)
             np.testing.assert_allclose(tr1_out[0], need_result2, rtol=1e-05)
+        elif col_type == "reduce_scatter":
+            need_result = input1 + input2
+            need_result1 = need_result[0:need_result.shape[0] // 2]
+            need_result2 = need_result[need_result.shape[0] // 2:]
+            np.testing.assert_allclose(tr0_out[0], need_result1, rtol=1e-05)
+            np.testing.assert_allclose(tr1_out[0], need_result2, rtol=1e-05)
         elif col_type == "allreduce":
             need_result = input1 + input2
             np.testing.assert_allclose(tr0_out[0],
