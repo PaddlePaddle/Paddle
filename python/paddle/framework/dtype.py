@@ -47,7 +47,7 @@ def iinfo(dtype):
         dtype(paddle.dtype):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64.
 
     Returns:
-        An iinfo object, which has the following 4 attributes.
+        An iinfo object, which has the following 4 attributes:
 
             - min: int, The smallest representable integer number.
             - max: int, The largest representable integer number.
