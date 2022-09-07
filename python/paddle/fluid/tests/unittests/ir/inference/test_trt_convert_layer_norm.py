@@ -51,57 +51,54 @@ class TrtConvertLayerNormTest(TrtLayerAutoScanTest):
                 sum *= shape_input[x]
             return np.ones([sum]).astype(np.float32)
 
-        for batch in [1, 5, 100]:
-            for channel in [1, 32, 64]:
-                for epsilon in [0.0005, -1, 1]:
-                    for begin_norm_axis in [1, 0, -1, 2, 3]:
-                        dics = [{
-                            "epsilon": epsilon,
-                            "begin_norm_axis": begin_norm_axis
-                        }, {}]
+        for epsilon in [0.0005, -1, 1]:
+            for begin_norm_axis in [1, 0, -1, 2, 3]:
+                dics = [{
+                    "epsilon": epsilon,
+                    "begin_norm_axis": begin_norm_axis
+                }, {}]
 
-                        ops_config = [{
-                            "op_type": "layer_norm",
-                            "op_inputs": {
-                                "X": ["input_data"],
-                                "Scale": ["scale_data"],
-                                "Bias": ["bias_data"]
-                            },
-                            "op_outputs": {
-                                "Y": ["y_data"],
-                                "Mean": ["saved_mean_data"],
-                                "Variance": ["saved_variance_data"]
-                            },
-                            "op_attrs": dics[0]
-                        }]
-                        ops = self.generate_op_config(ops_config)
-                        shape_input = [batch, channel, 64, 64]
-                        program_config = ProgramConfig(
-                            ops=ops,
-                            weights={
-                                "bias_data":
-                                TensorConfig(data_gen=partial(
-                                    generate_input2, dics, shape_input)),
-                                "scale_data":
-                                TensorConfig(data_gen=partial(
-                                    generate_input2, dics, shape_input))
-                            },
-                            inputs={
-                                "input_data":
-                                TensorConfig(data_gen=partial(
-                                    generate_input1, dics, shape_input))
-                            },
-                            outputs=["y_data"])
-                        yield program_config
+                ops_config = [{
+                    "op_type": "layer_norm",
+                    "op_inputs": {
+                        "X": ["input_data"],
+                        "Scale": ["scale_data"],
+                        "Bias": ["bias_data"]
+                    },
+                    "op_outputs": {
+                        "Y": ["y_data"],
+                        "Mean": ["saved_mean_data"],
+                        "Variance": ["saved_variance_data"]
+                    },
+                    "op_attrs": dics[0]
+                }]
+                ops = self.generate_op_config(ops_config)
+                shape_input = [1, 3, 64, 64]
+                program_config = ProgramConfig(
+                    ops=ops,
+                    weights={
+                        "bias_data":
+                        TensorConfig(data_gen=partial(generate_input2, dics,
+                                                      shape_input)),
+                        "scale_data":
+                        TensorConfig(data_gen=partial(generate_input2, dics,
+                                                      shape_input))
+                    },
+                    inputs={
+                        "input_data":
+                        TensorConfig(data_gen=partial(generate_input1, dics,
+                                                      shape_input))
+                    },
+                    outputs=["y_data"])
+
+                yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
 
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-            self.dynamic_shape.max_input_shape = {
-                "input_data": [200, 128, 64, 64]
-            }
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
             self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
 
         def clear_dynamic_shape():
