@@ -204,12 +204,6 @@ def monkey_patch_math_varbase():
                          call_final_api=False):
 
         def __impl__(self, other_var):
-            # 0. inner cpp function is supported
-            if op_type == "add" and isinstance(
-                    self, core.eager.Tensor) and isinstance(
-                        other_var, core.eager.Tensor):
-                return core.eager.__add__(self, other_var)
-
             # 1. scalar exists cases
             # we need combine the tensor.dtype and scalar.dtype, cast correct object
             if isinstance(other_var, float):
@@ -293,7 +287,13 @@ def monkey_patch_math_varbase():
                 self = astype(self, 'float32')
                 other_var = astype(other_var, 'float32')
 
-            # 4. calculation
+            # 4. invoke math func directly
+            if op_type == "add" and isinstance(
+                    self, core.eager.Tensor) and isinstance(
+                        other_var, core.eager.Tensor):
+                return core.eager.__add__(self, other_var)
+
+            # 5. _C_ops or _legacy_C_ops calculation
             axis = -1
             if in_dygraph_mode():
                 math_op = getattr(_C_ops, op_type)
