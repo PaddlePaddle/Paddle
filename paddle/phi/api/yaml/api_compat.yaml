@@ -448,7 +448,7 @@
 
 - api : relu6
   backward : relu6_grad
-    extra :
+  extra :
     attrs : [bool use_mkldnn = false]
 
 - api : renorm
