@@ -81,7 +81,10 @@ struct MatrixBandPartFunctor {
     int workspace_size = 0;                                              \
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDn##C##potrf_bufferSize( \
         handle, uplo, n, A, lda, &workspace_size));                      \
-    auto workspace = paddle::memory::Alloc(dev_ctx, workspace_size);     \
+    auto workspace = paddle::memory::Alloc(                              \
+        dev_ctx.GetPlace(),                                              \
+        workspace_size,                                                  \
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()))); \
     T* workspace_ptr = reinterpret_cast<T*>(workspace->ptr());           \
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDn##C##potrf(            \
         handle, uplo, n, A, lda, workspace_ptr, workspace_size, info));  \
@@ -146,7 +149,10 @@ void CholeskyKernel(const Context& dev_ctx,
     for_range(matrix_band_part_functor);
   }
 
-  auto info = paddle::memory::Alloc(dev_ctx, sizeof(int) * batch_count);
+  auto info = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      sizeof(int) * batch_count,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   auto* info_ptr = reinterpret_cast<int*>(info->ptr());
 
 #if CUDA_VERSION >= 9020 && !defined(_WIN32)

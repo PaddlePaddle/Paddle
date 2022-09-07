@@ -177,7 +177,9 @@ class OperatorBase {
 
   const std::string& Type() const { return type_; }
 
-  bool HasAttr(const std::string& name) const { return attrs_.count(name); }
+  bool HasAttr(const std::string& name) const {
+    return attrs_.count(name) || runtime_attrs_.count(name);
+  }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
     PADDLE_ENFORCE_NE(
@@ -196,6 +198,10 @@ class OperatorBase {
     attrs_[name] = v;
   }
   const AttributeMap& Attrs() const { return attrs_; }
+  const AttributeMap& RuntimeAttrs() const { return runtime_attrs_; }
+  void SetRuntimeAttributeMap(const AttributeMap& runtime_attrs) {
+    runtime_attrs_ = runtime_attrs;
+  }
 
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
@@ -250,6 +256,12 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
+  // NOTE: runtime_attrs_ contains the attributes which used for dispatching
+  // kernel (use_mkldnn, use_cudnn, ...) or passing additional configuration
+  // for special heterogeneous kernel (workspace_size_MB, ...).
+  // The attributes in runtime_attrs_ are setted by framework (such as PASS),
+  // and not in the python api.
+  AttributeMap runtime_attrs_;
 
   // OpInfo
   const OpInfo* info_;
@@ -302,7 +314,12 @@ class ExecutionContext {
   }
 
   virtual const Attribute& GetAttr(const std::string& name) const {
-    return op_.Attrs().at(name);
+    auto iter = op_.Attrs().find(name);
+    if (iter == op_.Attrs().end()) {
+      return op_.RuntimeAttrs().at(name);
+    } else {
+      return iter->second;
+    }
   }
 
   virtual bool HasInput(const std::string& name) const;
@@ -428,26 +445,10 @@ class ExecutionContext {
   template <typename T, typename DevContext>
   Tensor AllocateTmpTensor(const framework::DDim& dim,
                            const DevContext& dev_ctx) const {
-    auto tmp_allocation_ptr = memory::Alloc(dev_ctx, product(dim) * sizeof(T));
-    auto& deleter = tmp_allocation_ptr.get_deleter();
-    auto* allocation_ptr = tmp_allocation_ptr.release();
-    auto shared_allocation =
-        std::shared_ptr<phi::Allocation>(allocation_ptr, deleter);
-
-    PADDLE_ENFORCE_GE(
-        allocation_ptr->size(),
-        phi::product(dim) * sizeof(T),
-        platform::errors::PreconditionNotMet(
-            "The data memory size(%d) is less than the tensor needed memory "
-            "size(%d).",
-            allocation_ptr->size(),
-            phi::product(dim) * sizeof(T)));
-
-    paddle::framework::Tensor temp_tensor(framework::TransToPhiDataType(
-        framework::ToDataType(std::type_index(typeid(T)))));
-    temp_tensor.Resize(dim);
-    temp_tensor.ResetHolder(std::move(shared_allocation));
-    return temp_tensor;
+    phi::DenseTensor tmp;
+    tmp.Resize(dim);
+    dev_ctx.template Alloc<T>(&tmp);
+    return tmp;
   }
 
   const RuntimeContext Context() const { return ctx_; }
