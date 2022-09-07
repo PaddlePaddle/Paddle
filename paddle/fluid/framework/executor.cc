@@ -184,7 +184,7 @@ void Executor::Run(const ProgramDesc& pdesc,
                    bool force_disable_gc,
                    bool keep_kid_scopes) {
   if (!is_run_) {
-    VLOG(0) << "Old Executor is Running.";
+    VLOG(1) << "Old Executor is Running.";
     is_run_ = true;
   }
   platform::RecordEvent record_run(

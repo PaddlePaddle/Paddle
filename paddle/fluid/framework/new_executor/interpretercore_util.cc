@@ -446,9 +446,17 @@ void build_op_func_list(const platform::Place& place,
   }
   auto unused_var_map = get_unused_vars(block, ops);
 
+  bool flag_log_is_printed = false;
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
     VLOG(6) << "Build OpFuncNode from : " << op->Type();
+
+    // Print new executor log if grad op is used.
+    // It's only for test and will be removed later.
+    if (!flag_log_is_printed && op->Type().find("_grad") != std::string::npos) {
+      VLOG(1) << "Standalone Executor is Used.";
+      flag_log_is_printed = true;
+    }
 
     auto inputs_names = op->Inputs();
     auto outputs_names = op->Outputs();
