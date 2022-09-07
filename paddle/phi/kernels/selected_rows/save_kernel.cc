@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/serialization.h"
-#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace phi {
 namespace sr {
