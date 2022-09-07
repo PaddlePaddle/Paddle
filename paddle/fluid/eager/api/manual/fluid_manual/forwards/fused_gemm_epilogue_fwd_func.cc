@@ -122,6 +122,7 @@ paddle::experimental::Tensor fused_gemm_epilogue_dygraph_function(
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_Out, 0);
       egr::EagerUtils::SetHistory(p_autograd_Out, grad_node);
       grad_node->SetGradInMeta(Out, 0);
+      egr::EagerUtils::CheckAndRetainGrad(Out);
     }
   }
 

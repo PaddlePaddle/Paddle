@@ -176,6 +176,7 @@ paddle::experimental::Tensor conv2d_ad_func(
       egr::EagerUtils::SetHistory(out_autograd_meta, grad_node);
     }
     grad_node->SetGradInMeta(out, 0);
+    egr::EagerUtils::CheckAndRetainGrad(out);
     // Set TensorWrappers for Forward Outputs if needed
   }
 

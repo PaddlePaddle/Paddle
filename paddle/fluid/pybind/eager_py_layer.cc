@@ -428,10 +428,12 @@ PyObject* pylayer_method_apply(PyObject* cls,
         for (auto t : outputs_tensor[i]) {
           grad_node->SetGradInMeta(*t, i);
         }
+        egr::EagerUtils::CheckAndRetainGrad(outputs_tensor[i]);
       } else {
         egr::EagerUtils::SetOutRankWithSlot(outputs_autograd_meta[i][0], i);
         egr::EagerUtils::SetHistory(outputs_autograd_meta[i][0], grad_node);
         grad_node->SetGradInMeta(*outputs_tensor[i][0], i);
+        egr::EagerUtils::CheckAndRetainGrad(*outputs_tensor[i][0]);
       }
     }
     VLOG(6) << "PyLayer construct backward node finish...";

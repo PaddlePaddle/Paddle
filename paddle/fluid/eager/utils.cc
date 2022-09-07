@@ -409,6 +409,35 @@ std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(
   }
   return ret;
 }
+// TODO(jiabin): remove all this when we fix all test using tmp grad
+void EagerUtils::CheckAndRetainGrad(
+    const paddle::experimental::Tensor& tensor) {
+  VLOG(6) << "Check RetainGradForTensor: " << tensor.name();
+  if (FLAGS_retain_grad_for_all_tensor) {
+    VLOG(6) << "RetainGradForTensor: " << tensor.name();
+    egr::egr_utils_api::RetainGradForTensor(tensor);
+  }
+}
+
+void EagerUtils::CheckAndRetainGrad(
+    const std::vector<paddle::experimental::Tensor>& tensors) {
+  if (FLAGS_retain_grad_for_all_tensor) {
+    for (auto& tensor : tensors) {
+      VLOG(6) << "RetainGradForTensor: " << tensor.name();
+      egr::egr_utils_api::RetainGradForTensor(tensor);
+    }
+  }
+}
+
+void EagerUtils::CheckAndRetainGrad(
+    const std::vector<paddle::experimental::Tensor*>& tensors) {
+  if (FLAGS_retain_grad_for_all_tensor) {
+    for (auto& tensor : tensors) {
+      VLOG(6) << "RetainGradForTensor: " << tensor->name();
+      egr::egr_utils_api::RetainGradForTensor(*tensor);
+    }
+  }
+}
 
 std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
     const paddle::experimental::Tensor& tensor) {

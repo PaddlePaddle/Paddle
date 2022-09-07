@@ -168,6 +168,8 @@ Conv2dGradNodeFinal::operator()(
     }
     grad_node->SetGradInMeta(grad_input, 0);
     grad_node->SetGradInMeta(grad_filter, 1);
+    egr::EagerUtils::CheckAndRetainGrad(grad_input);
+    egr::EagerUtils::CheckAndRetainGrad(grad_filter);
     // Set TensorWrappers for Forward Outputs if needed
   }
 

@@ -365,6 +365,7 @@ fused_feedforward_dygraph_function(
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_Out, 0);
       egr::EagerUtils::SetHistory(p_autograd_Out, grad_node);
       grad_node->SetGradInMeta(Out, 0);
+      egr::EagerUtils::CheckAndRetainGrad(Out);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_Dropout1Mask, 1);
       grad_node->SetGradInMeta(Dropout1Mask, 1);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_Dropout2Mask, 2);
