@@ -127,8 +127,13 @@ void CPUQuantizePass::QuantizeInput(Graph* g,
   auto quantize_op = g->CreateOpNode(&q_desc);  // OpDesc will be copied.
 
   // update op's input
-  op->Op()->SetInput(input_name,
-                     std::vector<std::string>({quantize_out_node->Name()}));
+  if (residual_fc) {
+    op->Op()->SetOutput(input_name,
+                        std::vector<std::string>({quantize_out_node->Name()}));
+  } else {
+    op->Op()->SetInput(input_name,
+                       std::vector<std::string>({quantize_out_node->Name()}));
+  }
 
   // link quantize op
   UnlinkNodes(input, op);
