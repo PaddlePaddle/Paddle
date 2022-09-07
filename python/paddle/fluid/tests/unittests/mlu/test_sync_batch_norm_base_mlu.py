@@ -126,19 +126,19 @@ class TestSyncBatchNormRunnerBase(object):
             for layout in ["NCHW", "NHWC"]:
                 self._compare(args, place, layout, True)
 
-        # # Test FP16 - @TODO
-        # self.dtype = np.float16
-        # self.atol = 1e-2
+        # Test FP16 - @TODO
+        self.dtype = np.float16
+        self.atol = 1e-2
 
-        # # Test training
-        # for place in places:
-        #     for layout in ["NCHW", "NHWC"]:
-        #         self._compare(args, place, layout, False)
+        # Test training
+        for place in places:
+            for layout in ["NCHW", "NHWC"]:
+                self._compare(args, place, layout, False)
 
-        # # Test inference
-        # for place in places:
-        #     for layout in ["NCHW", "NHWC"]:
-        #         self._compare(args, place, layout, True)
+        # Test inference
+        for place in places:
+            for layout in ["NCHW", "NHWC"]:
+                self._compare(args, place, layout, True)
 
         sys.stdout.buffer.write(
             pickle.dumps(
@@ -333,8 +333,8 @@ class TestSyncBatchNormRunnerBase(object):
 
         self.initCommunicator(startup_prog, rank, nranks, True,
                               current_endpoint, endpoints)
-        sys.stderr.write("after init, startup_prog: " +
-                         startup_prog.to_string(True) + "\n")
+        # sys.stderr.write("after init, startup_prog: " +
+        #                  startup_prog.to_string(True) + "\n")
         train_prog.global_seed(SEED)
         train_prog._sync_with_cpp()
         startup_prog.global_seed(SEED)
@@ -344,10 +344,10 @@ class TestSyncBatchNormRunnerBase(object):
         self.rank = rank
         outs = self.get_model(train_prog, startup_prog, place, layout, SEED,
                               True, only_forward)
-        sys.stderr.write("after get_model, train_prog: " +
-                         train_prog.to_string(True) + "\n")
-        sys.stderr.write("after get_model, startup_prog: " +
-                         startup_prog.to_string(True) + "\n")
+        # sys.stderr.write("after get_model, train_prog: " +
+        #                  train_prog.to_string(True) + "\n")
+        # sys.stderr.write("after get_model, startup_prog: " +
+        #                  startup_prog.to_string(True) + "\n")
 
         ops = train_prog.blocks[0].ops
         for i, op in enumerate(ops):
@@ -360,8 +360,8 @@ class TestSyncBatchNormRunnerBase(object):
                 sys.stderr.write("op type: " + op.type + "\n")
                 op.desc.set_type('sync_batch_norm_grad')
 
-        sys.stderr.write("after update sync_batch_norm, train_prog: " +
-                         train_prog.to_string(True) + "\n")
+        # sys.stderr.write("after update sync_batch_norm, train_prog: " +
+        #                  train_prog.to_string(True) + "\n")
 
         exe = fluid.Executor(place)
         exe.run(startup_prog)

@@ -2717,12 +2717,29 @@ class Conv2DTranspose(layers.Layer):
 
         if self._output_size is None:
             self._output_size = []
-        elif isinstance(self._output_size, list) or isinstance(
-                self._output_size, int):
+        elif isinstance(self._output_size, list):
+            if utils._contain_var(self._output_size):
+                self._output_size = utils._convert_to_tensor_list(
+                    self._output_size)
+            else:
+                self._output_size = utils.convert_to_list(
+                    self._output_size, 2, 'output_size')
+        elif isinstance(self._output_size, int):
             self._output_size = utils.convert_to_list(self._output_size, 2,
                                                       'output_size')
+        elif isinstance(self._output_size, Variable):
+            check_dtype(self._output_size.dtype, 'output_size',
+                        ['int32', 'int64'], 'Conv2DTranspose')
+            if len(self._output_size.shape) == 1 and (
+                    self._output_size.shape[0] == 1
+                    or self._output_size.shape[0] == 2):
+                if self._output_size.shape[0] == 1:
+                    self._output_size = [self._output_size, self._output_size]
+            else:
+                raise ValueError(
+                    "output_size must contain one or two integers.")
         else:
-            raise ValueError("output_size should be list or int")
+            raise ValueError("output_size should be list or int or Tensor")
         self._padding = utils.convert_to_list(self._padding, 2, 'padding')
         self._groups = 1 if self._groups is None else self._groups
         filter_shape = [self._num_channels, self._num_filters // self._groups
