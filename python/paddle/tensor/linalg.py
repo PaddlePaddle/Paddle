@@ -634,10 +634,9 @@ def dist(x, y, p=2, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[3, 3],[3, 3]]), "float32")
-            y = paddle.to_tensor(np.array([[3, 3],[3, 1]]), "float32")
+            x = paddle.to_tensor([[3, 3],[3, 3]], "float32")
+            y = paddle.to_tensor([[3, 3],[3, 1]], "float32")
             out = paddle.dist(x, y, 0)
             print(out) # out = [1.]
 
@@ -1046,12 +1045,9 @@ def dot(x, y, name=None):
     .. code-block:: python
 
         import paddle
-        import numpy as np
 
-        x_data = np.random.uniform(0.1, 1, [10]).astype(np.float32)
-        y_data = np.random.uniform(1, 3, [10]).astype(np.float32)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
+        x=paddle.uniform(shape=[10],dtype='float32', min=0.1, max=1, seed=10, name=None)
+        y=paddle.uniform(shape=[10],dtype='float32', min=1, max=3, seed=10, name=None)
         z = paddle.dot(x, y)
         print(z)
 
