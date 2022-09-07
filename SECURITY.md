@@ -17,7 +17,7 @@ These tools include adversarial example evaluation test, pseudo-natural environm
 ### Running untrusted models
 
 Always load and execute untrusted models inside a sandbox and be sure to know the security impacts.
-There are several ways in which a model could become untrusted. PaddlePaddle has enough features to impact on the system. (e.g. `pickle.load` malformed models to achieve arbitrary code execution). So we recommend when using the untrusted models, you need to carefully audit it and run PaddlePaddle inside a sandbox.
+There are several ways in which a model could become untrusted. PaddlePaddle has enough features to impact on the system. (e.g. `paddle.load` uses [pickle](https://docs.python.org/3/library/pickle.html) implicitly, which may cause malformed models to achieve arbitrary code execution). So we recommend when using the untrusted models, you need to carefully audit it and run PaddlePaddle inside a sandbox.
 
 ## PaddlePaddle Code Security
 
