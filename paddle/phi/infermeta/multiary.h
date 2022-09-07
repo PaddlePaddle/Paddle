@@ -452,7 +452,8 @@ void SgdInferMeta(const MetaTensor& param,
 
 void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
-                    MetaTensor* out);
+                    MetaTensor* out,
+                    MetaConfig config = MetaConfig());
 
 void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
                              std::vector<MetaTensor*> out);

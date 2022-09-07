@@ -253,6 +253,11 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- api : frobenius_norm
+  backward : frobenius_norm_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - api : gelu
   backward : gelu_grad
   extra :
@@ -393,6 +398,49 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- api : reduce_all
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_amax
+  backward : reduce_amax_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_amin
+  backward : reduce_amin_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_any
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_max
+  backward : reduce_max_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_mean
+  backward : reduce_mean_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_min
+  backward : reduce_min_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_prod
+  backward : reduce_prod_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_sum
+  backward : reduce_sum_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - api : relu
   backward : relu_grad
   extra :
@@ -400,7 +448,7 @@
 
 - api : relu6
   backward : relu6_grad
-  extra :
+    extra :
     attrs : [bool use_mkldnn = false]
 
 - api : renorm

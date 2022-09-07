@@ -2408,7 +2408,8 @@ void SgdInferMeta(const MetaTensor& param,
 
 void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
-                    MetaTensor* out) {
+                    MetaTensor* out,
+                    MetaConfig config) {
   PADDLE_ENFORCE_GT(x.size(),
                     0UL,
                     phi::errors::InvalidArgument(
@@ -2416,17 +2417,10 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
                         " received value is:%d.",
                         x.size()));
   const auto& input_dims = GetMetaTensorsDim(x);
-  for (size_t i = 1; i < input_dims.size(); ++i) {
-    PADDLE_ENFORCE_EQ(input_dims[i],
-                      input_dims[0],
-                      phi::errors::InvalidArgument(
-                          "Dims of all Inputs(X) must be the same, but"
-                          " received input %d dim is:%d not equal to input 0"
-                          " dim:%d.",
-                          i,
-                          input_dims[i],
-                          input_dims[0]));
-  }
+  // we reuse concat logic to compute out_dim. we set concat_axis==-1 to check
+  // every axis in input_tensors.
+  auto out_dim =
+      phi::funcs::ComputeAndCheckShape(config.is_runtime, input_dims, -1);
   int rank = input_dims[0].size();
   PADDLE_ENFORCE_GE(
       axis,
@@ -2445,7 +2439,7 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
           rank,
           axis));
   if (axis < 0) axis += (rank + 1);
-  auto vec = phi::vectorize<int>(input_dims[0]);
+  auto vec = phi::vectorize<int>(out_dim);
   vec.insert(vec.begin() + axis, input_dims.size());
   out->set_dims(phi::make_ddim(vec));
   out->set_dtype(x.at(0)->dtype());
@@ -2479,8 +2473,10 @@ void UpdateLossScalingInferMeta(const std::vector<const MetaTensor*>& xs,
                         xs.size(),
                         outs.size()));
   for (size_t i = 0; i < xs.size(); ++i) {
-    outs[i]->set_dims(xs[i]->dims());
-    outs[i]->set_dtype(xs[i]->dtype());
+    if (xs[i] != nullptr && outs[i] != nullptr) {
+      outs[i]->set_dims(xs[i]->dims());
+      outs[i]->set_dtype(xs[i]->dtype());
+    }
   }
   loss_scaling->set_dims({1});
   out_good_steps->set_dims({1});
