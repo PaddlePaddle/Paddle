@@ -1242,7 +1242,12 @@ class FusedMultiTransformer(Layer):
         self.activation = activation
         self.name = name
 
-    def forward(self, src, attn_mask=None, caches=None, time_step=None):
+    def forward(self,
+                src,
+                attn_mask=None,
+                caches=None,
+                pre_caches=None,
+                time_step=None):
         """
         Applies multi transformer layers on the input.
 
@@ -1292,6 +1297,7 @@ class FusedMultiTransformer(Layer):
             pre_layer_norm=self.normalize_before,
             epsilon=self._epsilon,
             cache_kvs=caches,
+            pre_caches=pre_caches,
             time_step=time_step,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_rate,

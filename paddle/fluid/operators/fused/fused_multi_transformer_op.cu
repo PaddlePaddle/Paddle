@@ -1218,6 +1218,11 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto *src_mask = ctx.Input<Tensor>("SrcMask");
     auto cache_kvs = ctx.MultiInput<Tensor>("CacheKV");
     auto cache_kv_outs = ctx.MultiOutput<Tensor>("CacheKVOut");
+    auto pre_caches = ctx.MultiInput<Tensor>("PreCaches");
+    int cache_offset = 0;
+    if (pre_caches.size() > 0) {
+      cache_offset = pre_caches[0]->dims()[3];
+    }
     // auto *time_step = ctx.Input<Tensor>("TimeStep");
 
     auto out_seq_len = seq_len;
@@ -1240,6 +1245,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
               "In decode stage, the seq_len of input must be 1, but now is %d",
               seq_len));
       out_seq_len += time_step_value;
+    } else {
+      out_seq_len += cache_offset;
     }
 
     Tensor transpose_out_2, qk_out;
@@ -1247,6 +1254,20 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         {3, bsz, num_head, seq_len, dim_head}, place);
     auto *qk_out_data =
         qk_out.mutable_data<T>({bsz, num_head, seq_len, out_seq_len}, place);
+
+    Tensor src_mask_out;
+    if (cache_offset > 0) {
+      auto *src_mask_out_data = src_mask_out.mutable_data<T>(
+          {bsz, num_head, seq_len, out_seq_len}, place);
+    }
+
+    // [2, bs, num_head, cache_seq_len + seq_len, head_dim]
+    Tensor pre_cache_kv_out;
+    T *pre_cache_kv_out_data = nullptr;
+    if (cache_offset > 0) {
+      pre_cache_kv_out_data = pre_cache_kv_out.mutable_data<T>(
+          {2, bsz, num_head, seq_len + cache_offset, dim_head}, place);
+    }
 
     Tensor softmax_out;
     Tensor attn_dropout_mask_out, attn_dropout_out;
@@ -1404,26 +1425,39 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 1. / sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
         // TODO(wangxi): can remove dropout in inference
-        fmha_compute.ComputeForward(qkv_out,
-                                    nullptr,
-                                    src_mask,
-                                    &transpose_out_2,
-                                    nullptr,
-                                    &qk_out,
-                                    nullptr,
-                                    &softmax_out,
-                                    &attn_dropout_mask_out,
-                                    &attn_dropout_out,
-                                    &qktv_out,
-                                    &fmha_out);
-        // [3, bsz, num_head, seq_len, head_dim]
-        T *qkv_data = transpose_out_2_data;
-        int64_t q_size = bsz * seq_len * num_head * dim_head;
-        int64_t k_size = q_size;
-        const T *q_ptr = qkv_data;
-        const T *k_ptr = q_ptr + q_size;
-        const T *v_ptr = k_ptr + k_size;
+        const Tensor *pre_cache_kv_tensor =
+            pre_caches.size() > 0 ? pre_caches[i] : nullptr;
 
+        fmha_compute.ComputeForward(
+            qkv_out,
+            pre_cache_kv_tensor,
+            src_mask,
+            &transpose_out_2,
+            cache_offset > 0 ? &pre_cache_kv_out : nullptr,
+            &qk_out,
+            cache_offset > 0 ? &src_mask_out : nullptr,
+            &softmax_out,
+            &attn_dropout_mask_out,
+            &attn_dropout_out,
+            &qktv_out,
+            &fmha_out);
+        const T *k_ptr = nullptr;
+        const T *v_ptr = nullptr;
+        if (cache_offset > 0) {
+          // [2, bsz, num_head, cache_offset + seq_len, head_dim]
+          const T *kv_data = pre_cache_kv_out_data;
+          k_ptr = pre_cache_kv_out_data;
+          int64_t k_size = bsz * num_head * (seq_len + cache_offset) * dim_head;
+          v_ptr = k_ptr + k_size;
+        } else {
+          // [3, bsz, num_head, seq_len, head_dim]
+          T *qkv_data = transpose_out_2_data;
+          int64_t q_size = bsz * seq_len * num_head * dim_head;
+          int64_t k_size = q_size;
+          const T *q_ptr = qkv_data;
+          k_ptr = q_ptr + q_size;
+          v_ptr = k_ptr + k_size;
+        }
         // [2, bsz, num_head, max_seq_len, head_dim]
         int max_seq_len = cache_kv_out->dims()[3];
         T *cache_kv_data = cache_kv_out->data<T>();
@@ -1439,7 +1473,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                           v_ptr,
                           bsz,
                           num_head,
-                          seq_len,
+                          seq_len + cache_offset,
                           max_seq_len,
                           dim_head);
       } else {  // not generation
