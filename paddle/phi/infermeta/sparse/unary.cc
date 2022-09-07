@@ -34,7 +34,8 @@ void SparseCooTensorInferMeta(const MetaTensor& x,
 }
 
 void ValuesInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims({-1, x.dims()[-1]});
+  const auto& x_dims = x.dims();
+  out->set_dims({-1, x_dims[x_dims.size() - 1]});
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
 }
