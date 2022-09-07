@@ -352,8 +352,8 @@ def transform_if_else(node, root):
         return_name_ids=[])
 
     helper = GetterSetterHelper(None, None, nonlocal_names, push_pop_ids)
-    get_args_node = create_get_args_node(nonlocal_names, helper.union())
-    set_args_node = create_set_args_node(nonlocal_names, helper.union())
+    get_args_node = create_get_args_node(helper.union())
+    set_args_node = create_set_args_node(helper.union())
 
     return true_func_node, false_func_node, get_args_node, set_args_node, return_name_ids, push_pop_ids
 

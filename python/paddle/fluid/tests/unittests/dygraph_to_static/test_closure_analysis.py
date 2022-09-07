@@ -268,6 +268,7 @@ class TestPushPopTrans(unittest.TestCase):
             return ma
 
         x = paddle.to_tensor([3])
+        print(paddle.jit.to_static(vlist_of_dict).code)
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
     def test2(self):
@@ -296,6 +297,33 @@ class TestPushPopTrans(unittest.TestCase):
         print(paddle.jit.to_static(vlist_of_dict).code)
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
+    def test4(self):
+
+        def vlist_of_dict(x):
+            a = np.array([1, 2, 3])
+            for i in range(3):
+                append(a, 4)
+            return a
+
+        x = paddle.to_tensor([3])
+        print(paddle.jit.to_static(vlist_of_dict).code)
+        print(paddle.jit.to_static(vlist_of_dict)(x))
+
+    def test5(self):
+
+        def vlist_of_dict(x):
+            a = np.array([1, 2, 3])
+            for i in range(3):
+                global_a.append(4)
+            return a
+
+        x = paddle.to_tensor([3])
+        print(paddle.jit.to_static(vlist_of_dict).code)
+        print(paddle.jit.to_static(vlist_of_dict)(x))
+
+
+global_a = []
+from numpy import append
 
 if __name__ == '__main__':
     unittest.main()
