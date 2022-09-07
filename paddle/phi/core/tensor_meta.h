@@ -61,7 +61,7 @@ struct DenseTensorMeta {
                   const LoD& lod,
                   size_t offset = 0);
 
-  /// \brief Test whether the metadata is valid. Does not throw exceptions.
+  /// \brief Test whether the metadata is valid. Do not throw exceptions.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept;
 
