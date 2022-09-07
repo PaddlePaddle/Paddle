@@ -75,6 +75,17 @@ class ActivationOpConverter : public OpConverter {
           engine_, Activation, *input_tensor, op_pair->second);
     }
 
+    if (op_type_ == "hardtanh") {
+      const float min = op_desc.HasAttr("min")
+                            ? PADDLE_GET_CONST(float, op_desc.GetAttr("min"))
+                            : -1.0f;
+      const float max = op_desc.HasAttr("max")
+                            ? PADDLE_GET_CONST(float, op_desc.GetAttr("max"))
+                            : 1.0f;
+      layer->setAlpha(min);
+      layer->setBeta(max);
+    }
+
 #if IS_TRT_VERSION_GE(5130)
     // max(alpha, min(beta, x))
     if (op_type_ == "relu6") {
@@ -136,6 +147,7 @@ const std::unordered_map<std::string, nvinfer1::ActivationType>
         {"relu", nvinfer1::ActivationType::kRELU},
         {"sigmoid", nvinfer1::ActivationType::kSIGMOID},
         {"tanh", nvinfer1::ActivationType::kTANH},
+        {"hardtanh", nvinfer1::ActivationType::kCLIP},
 #if IS_TRT_VERSION_GE(5130)
         {"relu6", nvinfer1::ActivationType::kCLIP},
         {"elu", nvinfer1::ActivationType::kELU},
@@ -159,6 +171,11 @@ class SigmoidOpConverter : public ActivationOpConverter {
 class TanhOpConverter : public ActivationOpConverter {
  public:
   TanhOpConverter() { op_type_ = "tanh"; }
+};
+
+class HardtanhOpConverter : public ActivationOpConverter {
+ public:
+  HardtanhOpConverter() { op_type_ = "hardtanh"; }
 };
 
 #if IS_TRT_VERSION_GE(5130)
@@ -205,6 +222,7 @@ class ThreasholdedReluOpConverter : public ActivationOpConverter {
 REGISTER_TRT_OP_CONVERTER(relu, ReluOpConverter);
 REGISTER_TRT_OP_CONVERTER(sigmoid, SigmoidOpConverter);
 REGISTER_TRT_OP_CONVERTER(tanh, TanhOpConverter);
+REGISTER_TRT_OP_CONVERTER(hardtanh, HardtanhOpConverter);
 #if IS_TRT_VERSION_GE(5130)
 REGISTER_TRT_OP_CONVERTER(relu6, Relu6OpConverter);
 REGISTER_TRT_OP_CONVERTER(elu, EluOpConverter);
