@@ -177,6 +177,15 @@ class TestDistBase(unittest.TestCase):
 
         self.temp_dir = tempfile.TemporaryDirectory()
 
+        # NOTE: this is a hack to get int format nccl version, like 2134
+        # if current platform is not linux, version number will be 0
+        nccl_version_str = subprocess.check_output(
+            r"ldconfig -v | grep 'libnccl.so' | tail -n1 | sed -r 's/^.*\.so\.//'",
+            stderr=subprocess.DEVNULL,
+            shell=True).decode('utf-8')
+        self._nccl_version = int("".join(
+            nccl_version_str.split("."))) if nccl_version_str else 0
+
     def tearDown(self):
         self.temp_dir.cleanup()
 
