@@ -67,7 +67,7 @@ class ValuesCooOp : public framework::OperatorWithKernel {
 
 DECLARE_INFER_SHAPE_FUNCTOR(values_coo,
                             ValuesCooInferShapeFunctor,
-                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+                            PD_INFER_META(phi::sparse::ValuesInferMeta));
 
 class IndicesCooOpMaker : public framework::OpProtoAndCheckerMaker {
  public:

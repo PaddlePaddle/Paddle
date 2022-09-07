@@ -28,5 +28,6 @@ void SparseCooTensorInferMeta(const MetaTensor& x,
                               const IntArray& dense_shape,
                               MetaTensor* out);
 
+void ValuesInferMeta(const MetaTensor& x, MetaTensor* out);
 }  // namespace sparse
 }  // namespace phi
