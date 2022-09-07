@@ -648,31 +648,45 @@ def _remove_no_grad_branch_(op_descs,
                             target_vars=[]):
     """
     Remove unnecessary grad ops
-    A grad op can be removed in two cases:
+    A grad op can be removed in following cases:
         1. all outputs of the grad op are in 'no_grad_set'
         2. all grad inputs of the grad op are in 'no_grad_set'
+        3. unreachable grad_ops.
     NOTE: we will skip target_vars's grad name.
     """
 
-    def _op_can_be_removed_(op_desc, no_grad_set):
+    def _op_can_be_removed_(op_desc, no_grad_set, reachable_set):
+
+        def grad_names(names):
+            return list(
+                filter(lambda name: name.find(core.grad_var_suffix()) != -1,
+                       names))
+
+        def reachable(op_desc, reachable_set):
+            grad_input = grad_names(op_desc.input_arg_names())
+            if len(grad_input) == 0: return True
+            return _some_in_set_(grad_input, reachable_set)
+
         out_arg_names = op_desc.output_arg_names()
         if len(out_arg_names) == 0 or _all_in_set_(out_arg_names, no_grad_set):
             return True
-        if _all_in_set_([
-                name for name in op_desc.input_arg_names()
-                if name.find(core.grad_var_suffix()) != -1
-        ], no_grad_set):
+
+        if _all_in_set_(grad_names(op_desc.input_arg_names()),
+                        no_grad_set) or not reachable(op_desc, reachable_set):
             no_grad_set.update(set(out_arg_names) - target_grad_var_names)
             return True
+        reachable_set.update(set(out_arg_names))
         return False
 
     # Remove ops whose outputs are all in no_grad_dict
     target_grad_var_names = set(
         [var.name + core.grad_var_suffix() for var in target_vars])
+    reachable_set = set(target_grad_var_names)
     op_descs = [
         op_desc for op_desc in op_descs
-        if not _op_can_be_removed_(op_desc, no_grad_set)
+        if not _op_can_be_removed_(op_desc, no_grad_set, reachable_set)
     ]
+
     # Insert fill_any_like_op with value 0
     to_insert = []
     for idx, op_desc in enumerate(op_descs):
