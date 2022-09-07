@@ -430,6 +430,7 @@ class TensorRTEngine {
   // After finishing adding ops, freeze this network and creates the execution
   // environment.
   void FreezeNetwork();
+
   void Execute(int batch_size,
                std::vector<void*>* buffers,
                cudaStream_t stream = nullptr);
