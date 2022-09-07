@@ -77,7 +77,7 @@ void ExpandGradKernel(const Context& dev_ctx,
 
     reduction_p->execute(astream, reduction_args);
     astream.wait();
-    in_grad->set_layout(paddle::framework::DataLayout::kMKLDNN);
+    in_grad->set_layout(DataLayout::ONEDNN);
     in_grad->set_mem_desc(
         dst_memory_p->get_desc().reshape(vectorize<int64_t>(in_grad->dims())));
   }
