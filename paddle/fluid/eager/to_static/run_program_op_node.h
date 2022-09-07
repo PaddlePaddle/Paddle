@@ -246,6 +246,34 @@ static void BuildScopeByBlock(
   }
 }
 
+static void GcScope(paddle::framework::Scope *scope) {
+  std::deque<std::shared_ptr<paddle::memory::Allocation>> *garbages =
+      new std::deque<std::shared_ptr<paddle::memory::Allocation>>();
+
+  for (auto &var : scope->LocalVars()) {
+    if (var != nullptr) {
+      if (var->IsType<paddle::framework::LoDTensor>()) {
+        garbages->emplace_back(var->GetMutable<paddle::framework::LoDTensor>()
+                                   ->MoveMemoryHolder());
+      }
+      if (var->IsType<phi::SelectedRows>()) {
+        garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
+                                   ->mutable_value()
+                                   ->MoveMemoryHolder());
+      }
+      if (var->IsType<paddle::framework::LoDTensorArray>()) {
+        auto *lod_tensor_arr =
+            var->GetMutable<paddle::framework::LoDTensorArray>();
+        for (auto &t : *lod_tensor_arr) {
+          garbages->emplace_back(t.MoveMemoryHolder());
+        }
+        lod_tensor_arr->clear();
+      }
+    }
+  }
+  delete garbages;  // free mem
+}
+
 }  // namespace details
 
 inline void RunProgramAPI(
@@ -367,10 +395,11 @@ inline void RunProgramAPI(
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
     if (is_test) {
-      VLOG(0) << "is test, set this scope can reused";
+      VLOG(4) << "is test, set this scope can reused";
       global_inner_scope->SetCanReuesd(true);
+      details::GcScope(global_inner_scope);
     } else {
-      VLOG(0) << "not test, set this scope can reused";
+      VLOG(4) << "not test, set this scope can not reused";
       global_inner_scope->SetCanReuesd(false);
     }
 #ifdef PADDLE_WITH_MKLDNN
@@ -560,8 +589,9 @@ inline void RunProgramGradAPI(
                                                    *forward_global_block,
                                                    *backward_global_block,
                                                    global_inner_scope);
-
+    VLOG(4) << "after backward gc all vars";
     global_inner_scope->SetCanReuesd(true);
+    details::GcScope(global_inner_scope);
   } else {
     VLOG(2) << "RunProgramGradOp use pe to execute program.";
 
