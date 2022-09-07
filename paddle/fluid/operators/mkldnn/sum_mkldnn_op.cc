@@ -24,7 +24,8 @@
   See the License for the specific language governing permissions and
   limitations under the License. */
 
-#include "paddle/fluid/operators/sum_op.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace phi {
@@ -37,6 +38,9 @@ namespace operators {
 using paddle::platform::MKLDNNDeviceContext;
 using phi::CPUContext;
 using platform::to_void_cast;
+using Tensor = framework::Tensor;
+using SelectedRows = phi::SelectedRows;
+using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 class SumMKLDNNHandler

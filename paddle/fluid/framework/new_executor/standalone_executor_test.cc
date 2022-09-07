@@ -50,7 +50,7 @@ USE_OP_ITSELF(concat_grad);
 USE_OP_ITSELF(elementwise_mul_grad);
 USE_OP_ITSELF(sigmoid_grad);
 USE_OP_ITSELF(tanh_grad);
-USE_OP(sum);
+USE_OP_ITSELF(sum);
 USE_OP_ITSELF(slice_grad);
 USE_OP_ITSELF(lookup_table_grad);
 USE_OP_ITSELF(sqrt);
@@ -101,6 +101,7 @@ PD_DECLARE_KERNEL(slice_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(cross_entropy_with_softmax, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(cross_entropy_with_softmax_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sqrt, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_n, GPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace framework {

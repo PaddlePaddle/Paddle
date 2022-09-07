@@ -71,6 +71,9 @@ phi::MetaTensor MakeMetaTensor(
 std::vector<phi::MetaTensor> MakeMetaTensor(
     const paddle::optional<std::vector<const phi::DenseTensor*>>& tensors);
 
+std::vector<phi::MetaTensor> MakeMetaTensor(
+    const std::vector<const phi::TensorBase*>& tensors);
+
 /* ------------------ for output ----------------------- */
 
 phi::DenseTensor* SetKernelOutput(Tensor* out);

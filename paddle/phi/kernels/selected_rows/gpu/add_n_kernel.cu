@@ -12,21 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/selected_rows/impl/add_n_kernel_impl.h"
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/tensor_array.h"
-
-namespace phi {
-
-template <typename T, typename Context>
-void AddNKernel(const Context& dev_ctx,
-                const std::vector<const TensorBase*>& x,
-                DenseTensor* out);
-
-template <typename T, typename Context>
-void AddNArrayKernel(const Context& dev_ctx,
-                     const std::vector<const TensorArray*>& x,
-                     TensorArray* out);
-
-}  // namespace phi
+PD_REGISTER_KERNEL(add_n_sr,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sr::AddNKernel,
+                   float,
+                   double,
+                   int,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16,
+                   int64_t) {}

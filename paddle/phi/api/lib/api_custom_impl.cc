@@ -34,6 +34,66 @@ namespace experimental {
 
 ////////////////// Forward api impls //////////////////////
 
+Tensor add_n_impl(const std::vector<Tensor>& x) {
+  Backend kernel_backend = Backend::UNDEFINED;
+  DataLayout kernel_layout = DataLayout::UNDEFINED;
+  DataType kernel_data_type = DataType::UNDEFINED;
+
+  if (kernel_backend == Backend::UNDEFINED ||
+      kernel_layout == DataLayout::UNDEFINED ||
+      kernel_data_type == DataType::UNDEFINED) {
+    auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+    if (kernel_backend == Backend::UNDEFINED) {
+      kernel_backend = kernel_key.backend();
+    }
+    if (kernel_layout == DataLayout::UNDEFINED) {
+      kernel_layout = kernel_key.layout();
+    }
+    if (kernel_data_type == DataType::UNDEFINED) {
+      kernel_data_type = kernel_key.dtype();
+    }
+  }
+
+  VLOG(6) << "add_n API kernel key: [" << kernel_backend << ", "
+          << kernel_layout << ", " << kernel_data_type << "]";
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "add_n", {kernel_backend, kernel_layout, kernel_data_type});
+  const auto& kernel = kernel_result.kernel;
+  VLOG(6) << "add_n kernel: " << kernel;
+  auto* dev_ctx = GetDeviceContextByBackend(
+      kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
+
+  std::vector<const phi::TensorBase*> input_x(x.size());
+  for (size_t i = 0; i < input_x.size(); ++i) {
+    input_x[i] = x[i].impl().get();
+  }
+
+  Tensor api_output;
+  auto kernel_out = SetKernelOutput(&api_output);
+
+  auto x_meta_vec = MakeMetaTensor(input_x);
+  std::vector<const phi::MetaTensor*> x_metas(x_meta_vec.size());
+  for (size_t i = 0; i < x_meta_vec.size(); ++i) {
+    x_metas[i] = &x_meta_vec[i];
+  }
+  phi::MetaTensor meta_out(kernel_out);
+
+  phi::AddNInferMeta(x_metas, &meta_out);
+
+  using kernel_signature = void (*)(const platform::DeviceContext&,
+                                    const std::vector<const phi::TensorBase*>&,
+                                    phi::DenseTensor*);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+
+  (*kernel_fn)(*dev_ctx, input_x, kernel_out);
+
+  if (kernel_result.has_fallback_cpu) {
+    TransDataBackend(kernel_out, kernel_backend, kernel_out);
+  }
+  return api_output;
+}
+
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
   Tensor out;
   copy(x, place, blocking, &out);

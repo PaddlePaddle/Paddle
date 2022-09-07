@@ -31,6 +31,8 @@ namespace experimental {
 
 ////////////////// Forward api impls //////////////////////
 
+Tensor add_n_impl(const std::vector<Tensor>& x);
+
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
     const Tensor& x,
     const Tensor& scale,
