@@ -32,6 +32,7 @@
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -116,6 +117,11 @@ using framework::ir::Node;
 void analysis::TensorRtSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph);
+
+  static std::once_flag trt_plugin_registered;
+  std::call_once(trt_plugin_registered, []() {
+    tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
+  });
 
   auto model_precision =
       static_cast<phi::DataType>(Get<int>("model_precision"));
