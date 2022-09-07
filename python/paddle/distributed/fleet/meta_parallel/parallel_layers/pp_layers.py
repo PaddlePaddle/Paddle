@@ -669,6 +669,7 @@ class PipelineLayer(Layer):
             rank_message = "-tensor_" + "{:0>2d}".format(model_rank)
             virtual_pipeline_stage_message = ""
             if self._num_virtual_pipeline_stages > 1:
+                # add virtual pipeline info to the save path
                 assert local_chunk_id is not None
                 virtual_pipeline_stage_message = "-virtual_pp_stage_{:0>2d}".format(
                     local_chunk_id)
@@ -713,6 +714,7 @@ class PipelineLayer(Layer):
                 layer_save_path = os.path.join(
                     path, 'layer_{0:0>2d}'.format(layer_idx))
                 if self._num_virtual_pipeline_stages > 1:
+                    # add virtual pipeline info to the path
                     assert local_chunk_id is not None
                     layer_save_path = layer_save_path + "-virtual_pp_stage_{:0>2d}".format(
                         local_chunk_id)
