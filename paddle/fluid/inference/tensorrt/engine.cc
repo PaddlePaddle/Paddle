@@ -124,7 +124,7 @@ void TensorRTEngine::Execute(int batch_size,
     void *context_memory{nullptr};
     context_memory =
         inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-            .getContextMemory(this);
+            .getContextMemory(predictor_id_per_thread);
     infer_context->setDeviceMemory(context_memory);
   }
   if (!with_dynamic_shape()) {

@@ -770,20 +770,33 @@ class TRTEngineManager {
   }
 
   void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
-    releaseContextMemory(predictor_id);
-    std::unique_lock<std::mutex> lock(mutex_);
-    max_ctx_mem_size_ = std::max(max_ctx_mem_size_, mem_size);
+    bool size_updated{false};
+
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      if (max_ctx_mem_sizes_.count(predictor_id)) {
+        if (max_ctx_mem_sizes_[predictor_id] < mem_size) {
+          max_ctx_mem_sizes_[predictor_id] = mem_size;
+          size_updated = true;
+        }
+      } else {
+        max_ctx_mem_sizes_[predictor_id] = mem_size;
+      }
+    }
+
+    if (size_updated) {
+      releaseContextMemory(predictor_id);
+    }
   }
 
-  void* getContextMemory(TensorRTEngine* trt_engine) {
+  void* getContextMemory(PredictorID predictor_id) {
     std::unique_lock<std::mutex> lock(mutex_);
-    auto predictor_id = trt_engine->predictor_id_per_thread;
     if (context_memorys_.count(predictor_id) == 0) {
       void* context_memory_{nullptr};
-      cudaMalloc(&context_memory_, max_ctx_mem_size_);
+      cudaMalloc(&context_memory_, max_ctx_mem_sizes_[predictor_id]);
       if (context_memory_ == nullptr) {
         PADDLE_ENFORCE_EQ(
-            max_ctx_mem_size_,
+            max_ctx_mem_sizes_[predictor_id],
             0,
             platform::errors::InvalidArgument(
                 "The context memory size is non-zero, but the "
@@ -804,7 +817,7 @@ class TRTEngineManager {
 
  private:
   mutable std::mutex mutex_;
-  size_t max_ctx_mem_size_{0};
+  std::unordered_map<PredictorID, size_t> max_ctx_mem_sizes_;
   std::unordered_map<PredictorID, void*> context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
 };
