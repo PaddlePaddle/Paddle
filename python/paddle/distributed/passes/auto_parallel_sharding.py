@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from functools import reduce
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import numpy as np
 
 import paddle
@@ -27,15 +27,17 @@ from paddle.distributed.auto_parallel.utils import _get_comm_group, naive_set_di
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-_skip_ops = [
-    'create_py_reader', 'create_double_buffer_reader', 'read', 'slice', 'split',
-    'assign', "send_v2"
-]
+_skip_ops = ['create_py_reader', 'create_double_buffer_reader', 'read']
 # update here to support new optimizers
 _supported_optimizer_type = [
     "adam", "adamax", "adamw", "decayed_adagrad", "momentum", "dgc_momentum",
     "lars_momentum", "merged_momentum", "lamb", "sgd"
 ]
+
+
+def _is_reshard_op(op):
+    return op.desc.has_attr("op_namescope") and \
+        "/auto_parallel/reshard" in op.desc.attr('op_namescope')
 
 
 # NOTE we add the "auto_parallel" prefix to the pass in order to
@@ -99,6 +101,8 @@ class ShardingPass(PassBase):
     def _collective_data_parallel_groups(self, main_block):
         for op in main_block.ops:
             if not _is_forward_op(op) or op.type in _skip_ops:
+                continue
+            if _is_reshard_op(op):
                 continue
             group = _inference_data_parallel_group_for_operator(
                 self.global_rank, op, self._dist_context)
@@ -187,8 +191,25 @@ class ShardingPass(PassBase):
 
                     if self._is_parameter_in_local_shard(param_name):
                         reversed_x.append(input_name)
-                op.desc.set_input('X', reversed_x)
-                op.desc.set_output('Out', reversed_x)
+                if reversed_x:
+                    op.desc.set_input('X', reversed_x)
+                    op.desc.set_output('Out', reversed_x)
+                else:
+                    if op.type == "check_finite_and_unscale":
+                        out_name = op.output_arg_names[0]
+                        out_var = main_block.vars[out_name]
+                        main_block._remove_op(idx, sync=False)
+                        main_block._insert_op_without_sync(
+                            idx,
+                            type="fill_constant",
+                            outputs={"Out": out_var},
+                            attrs={
+                                "shape": out_var.shape,
+                                "dtype": out_var.dtype,
+                                "value": 0,
+                            })
+                    else:
+                        main_block._remove_op(idx, sync=False)
 
         main_block._sync_with_cpp()
 

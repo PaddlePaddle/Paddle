@@ -36,7 +36,7 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed import fleet
 from paddle.distributed.passes import new_pass, PassContext
 
-from .hepler import ProgramHelper
+from .helper import ProgramHelper
 from ..collective import _get_global_env
 from .cluster import Cluster, get_default_cluster
 from .planner_v2 import Planner
@@ -118,8 +118,7 @@ class Engine:
                     "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
                         " or `paddle.fluid.optimizer.Optimizer`."
                 )
-        self._optimizer = optimizer
-        self._all_ranks = all_ranks
+        self._optimizer = self._validate_opt(optimizer)
 
         if loss and not isinstance(loss,
                                    paddle.nn.Layer) and not callable(loss):
@@ -136,6 +135,7 @@ class Engine:
         self._metrics = to_list(metrics)
         self._gradient_scale = gradient_scale
         self._planned_mode = None
+        self._all_ranks = all_ranks
         self._prepare_single_mode("train")
 
     def _prepare_single_mode(self, mode):
@@ -161,21 +161,21 @@ class Engine:
             self._dygraph_mode = True
             self._logger.info("Building model with 'to_static' method.")
 
-            program_helper = ProgramHelper(self.model, self._loss,
-                                           self._metrics, self.inputs_spec,
-                                           self.labels_spec)
+            self.program_helper = ProgramHelper(self.model, self._loss,
+                                                self._metrics, self.inputs_spec,
+                                                self.labels_spec)
             # build forward main program
-            program_helper.build_program(mode)
+            self.program_helper.build_program(mode)
 
-            self.concrete_program = program_helper.concrete_program
-            serial_main_prog = program_helper.main_program
-            serial_startup_prog = program_helper.startup_program
+            self.concrete_program = self.program_helper.concrete_program
+            serial_main_prog = self.program_helper.main_program
+            serial_startup_prog = self.program_helper.startup_program
 
-            inputs = program_helper.input_vars
-            outputs = program_helper.output_vars
-            labels = program_helper.label_vars
-            losses = program_helper.loss_vars
-            metrics = program_helper.metric_vars
+            inputs = self.program_helper.input_vars
+            outputs = self.program_helper.output_vars
+            labels = self.program_helper.label_vars
+            losses = self.program_helper.loss_vars
+            metrics = self.program_helper.metric_vars
 
             paddle.enable_static()
         else:
@@ -334,40 +334,17 @@ class Engine:
                     continue
                 process_group.instantiate()
 
-        self._place = _get_device()
-        if isinstance(self._place, fluid.CUDAPlace):
-            self._place = fluid.CUDAPlace(ParallelEnv().dev_id)
+        place = _get_device()
+        if isinstance(place, fluid.CUDAPlace):
+            place = fluid.CUDAPlace(ParallelEnv().dev_id)
 
         if self._dygraph_mode:
-            paddle.disable_static()
-            main_program = self._dist_main_progs[mode][self._cur_rank]
-            for param in self.concrete_program.parameters:
-                # create var in scope and share parameters to scope
-                if param.name not in main_program.global_block().vars:
-                    continue
-                # get param_var's dist_attr
-                var = main_program.global_block().vars[param.name]
-                var_dist_attr = self._dist_contexts[
-                    mode].get_tensor_dist_attr_for_program(var)
-                dist_attr = {
-                    "dims_mapping": var_dist_attr.dims_mapping,
-                    "process_shape": var_dist_attr.process_mesh.topology,
-                    "process_group": var_dist_attr.process_mesh.processes
-                }
-                # slice param_value with dist_attr
-                # share sliced_param_value with param_tensor in global_scope
-                from .converter import Converter
-                param_tensor = global_scope().var(param.name).get_tensor()
-                sliced_param = Converter.slice_with_dist_attr(
-                    param.numpy(), dist_attr)
-                shared_tensor = paddle.to_tensor(sliced_param,
-                                                 place=self._place)
-                param_tensor._share_data_with(
-                    shared_tensor.value().get_tensor())
-            paddle.enable_static()
+            dist_context = self._dist_contexts[mode]
+            dist_main_program = self._dist_main_progs[mode][self._cur_rank]
+            self.program_helper.init(dist_main_program, place, dist_context)
 
         if self._executor is None:
-            self._executor = paddle.static.Executor(self._place)
+            self._executor = paddle.static.Executor(place)
             uninitialized = []
             dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
             for var in dist_startup_prog.list_vars():
@@ -411,7 +388,7 @@ class Engine:
                             data = np.array(param_t)
                             param_t.set(np.float16(data), place)
 
-                cast_parameters_to_fp16(self._place, prune_startup_prog)
+                cast_parameters_to_fp16(place, prune_startup_prog)
 
     def fit(self,
             train_data,
@@ -586,6 +563,10 @@ class Engine:
         for var in inputs_var + labels_var:
             if var.name in dist_main_block.vars:
                 feed_list.append(dist_main_block.vars[var.name])
+            else:
+                copy_var = dist_main_block._clone_variable(var, var.persistable)
+                copy_var.desc.set_original_id(var.desc.original_id())
+                feed_list.append(copy_var)
 
         # remove the first three ops if multi run fit/evaluate/predict
         op_size = len(dist_main_block.ops)
@@ -688,7 +669,7 @@ class Engine:
                                           batch_size_axis, rank_id)
             return len(group_ranks), group_ranks.index(rank_id)
 
-        return None, None
+        return 1, 0
 
     def _set_recompute_ckpts(self):
         # NOTE hack to enable recompute in engine api for GPT-3
@@ -716,6 +697,11 @@ class Engine:
                 'Applied Recompute ckpts': exact_ckpts
             }
             self._logger.info(logs)
+
+    def _validate_opt(self, optimizer):
+        optimizer._parameter_list = None
+        optimizer._param_groups = None
+        return optimizer
 
     def save(self, path, training=True, mode=None):
         if not mode:

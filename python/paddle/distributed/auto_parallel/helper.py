@@ -15,11 +15,14 @@
 import logging
 from collections import defaultdict
 
+import paddle
+
 from paddle.nn import Layer
 from paddle.jit import to_static, not_to_static
 from paddle.distributed.utils import get_logger
 from paddle.fluid.framework import Operator, Parameter, _non_static_mode
 from paddle.fluid.framework import program_guard
+from paddle.fluid.executor import global_scope
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 
 from .utils import to_list
@@ -165,6 +168,10 @@ class ProxyLayer(Layer):
     def metric_vars(self):
         return self._metric_vars[self.mode]
 
+    @property
+    def startup_program(self):
+        return self.inner_layer._startup_program()
+
 
 class BuildInfo:
 
@@ -199,6 +206,7 @@ class ProgramHelper(object):
 
         self.build_info = BuildInfo()
         self._logger = get_logger(logging.INFO)
+        self.lazy_init = False
 
     def reset(self):
         """
@@ -238,6 +246,9 @@ class ProgramHelper(object):
         """
         Create and Sync parameters into startup program.
         """
+        if len(self.startup_program.global_block().ops) > 1:
+            self.lazy_init = True
+            return
         for param in self.concrete_program.parameters:
             Parameter(name=param.name,
                       desc=param,
@@ -294,6 +305,29 @@ class ProgramHelper(object):
         func_name = '_' + self.proxy_layer.mode
         return getattr(self.proxy_layer, func_name)
 
+    def init(self, main_program, place, dist_context):
+        if self.lazy_init:
+            return
+        for param in self.concrete_program.parameters:
+            # create var in scope and share parameters to scope
+            if param.name not in main_program.global_block().vars:
+                continue
+            # get param_var's dist_attr
+            var = main_program.global_block().vars[param.name]
+            var_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
+            dist_attr = {
+                "dims_mapping": var_dist_attr.dims_mapping,
+                "process_shape": var_dist_attr.process_mesh.topology,
+                "process_group": var_dist_attr.process_mesh.processes
+            }
+            # slice param_value with dist_attr
+            # share sliced_param_value with param_tensor in global_scope
+            from .converter import Converter
+            param_tensor = global_scope().var(param.name).get_tensor()
+            sliced_param = Converter.slice_with_dist_attr(
+                param.numpy(), dist_attr)
+            param_tensor.set(sliced_param, place)
+
     @property
     def concrete_program(self):
         return self.static_func().concrete_program
@@ -304,7 +338,10 @@ class ProgramHelper(object):
 
     @property
     def startup_program(self):
-        return self.concrete_program.startup_program
+        try:
+            return self.proxy_layer.startup_program
+        except:
+            return self.concrete_program.startup_program
 
     @property
     def input_vars(self):
