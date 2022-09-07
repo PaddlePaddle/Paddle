@@ -296,10 +296,10 @@ class ConditionalBlockGradOp : public ConditionalOp {
 };
 
 template <class T>
-struct FilterUnsupportDtype {};
+struct FilterNoGradInput {};
 
 template <>
-struct FilterUnsupportDtype<framework::OpDesc> {
+struct FilterNoGradInput<framework::OpDesc> {
   static void filter(const framework::BlockDesc *desc,
                      std::vector<std::string> *vec) {
     auto f = [desc](const std::string &name) -> std::string {
@@ -385,7 +385,7 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpMaker<T> {
                       this->Output(ConditionalOp::kScope));
 
     auto fwd_inputs = this->InputGrad(ConditionalOp::kInputs, false);
-    FilterUnsupportDtype<T>::filter(this->GetForwardOpBlock(), &fwd_inputs);
+    FilterNoGradInput<T>::filter(this->GetForwardOpBlock(), &fwd_inputs);
     grad_op->SetOutput(framework::GradVarName(ConditionalOp::kInputs),
                        fwd_inputs);
     grad_op->SetBlockAttr("sub_block", this->grad_block_[0]);
