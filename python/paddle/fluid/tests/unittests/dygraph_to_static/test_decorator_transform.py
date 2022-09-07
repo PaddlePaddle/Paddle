@@ -26,64 +26,111 @@ from paddle.fluid import core
 from functools import wraps
 
 
-def deco1(fun):
+def deco1(func):
 
-    @wraps(fun)
+    @wraps(func)
     def inner(*args, **kwargs):
-        return fun(*args, **kwargs)
+        print('in deco1, added 1')
+        _x = 2
+        if (_x < 1):
+            _x += 1
+        else:
+            _x -= 1
+        _t = paddle.to_tensor([1])
+        _tt = func(*args, **kwargs)
+        return paddle.add(_t, _tt)
 
     return inner
 
 
-@deco1
 def deco2(fun):
 
     @wraps(fun)
     def inner(*args, **kwargs):
-        _x = 2
-        if (_x < 1):
-            print('small')
-        else:
-            print('large')
-        _t = paddle.to_tensor([1])
+        print('in deco2, added 2')
+        _t = paddle.to_tensor([2])
         _tt = fun(*args, **kwargs)
         return paddle.add(_t, _tt)
 
     return inner
 
 
+def deco3(x=3):
+    def inner_deco(func):
+        @wraps(func)
+        def inner(*args, **kwargs):
+            print('in deco3, added {}'.format(x))
+            _t = paddle.to_tensor(x)
+            _tt = func(*args, **kwargs)
+            return paddle.add(_t, _tt)
+        return inner
+    return inner_deco
+
+
+def deco4(func=None, x=0):
+    def decorated(pyfunc):
+        @wraps(pyfunc)
+        def inner_deco(*args, **kwargs):
+            print('in deco4, added {}'.format(x))
+            _t = paddle.to_tensor(x)
+            _tt = pyfunc(*args, **kwargs)
+            return paddle.add(_t, _tt)
+        return inner_deco
+    if func == None:
+        return decorated
+    return decorated(func)
+
+
 @deco2
 def fun1(x, y=0):
-    a = paddle.to_tensor([y])
-    print('in fun1, x=%s' % (x))
+    a = paddle.to_tensor(y)
+    print('in fun1, x=%d' % (x))
     return a
-
 
 @deco1
 @deco2
 def fun2(x, y=0):
-    a = paddle.to_tensor([5])
-    b = fun1(x, y)
-    return paddle.add(a, b)
+    a = paddle.to_tensor(y)
+    print('in fun2, x=%d' % (x))
+    return a
 
+@deco3(3)
+def fun3(x, y=0):
+    a = paddle.to_tensor(y)
+    print('in fun3, x=%d' % (x))
+    return a
+
+@deco4(x=4)
+def fun4(x, y=0):
+    a = paddle.to_tensor(y)
+    print('in fun4, x=%d' % (x))
+    return a
+
+@deco2
+@deco4(x=5)
+def fun5(x, y=0):
+    a = paddle.to_tensor(y)
+    print('in fun4, x=%d' % (x))
+    return a
 
 @paddle.jit.to_static
-def case1(x, y=0):
-    fun1(x, y)
-
-
-@paddle.jit.to_static
-def case2(x, y=0):
-    fun2(x, y)
+def forward():
+    funcs = [fun1, fun2, fun3, fun4, fun5]
+    out = []
+    for idx, fun in enumerate(funcs):
+        out.append(fun(idx+1, idx+1))
+    return out
 
 
 class TestDecoratorTransform(unittest.TestCase):
 
     def test_deco_transform(self):
-        case1('case1', 5)
-
-    def test_multi_deco_transform(self):
-        case2('case2', 8)
+        outs = forward()
+        np.testing.assert_allclose(outs[0], np.array(3), rtol=1e-05)
+        np.testing.assert_allclose(outs[1], np.array(5), rtol=1e-05)
+        np.testing.assert_allclose(outs[2], np.array(6), rtol=1e-05)
+        np.testing.assert_allclose(outs[3], np.array(8), rtol=1e-05)
+        np.testing.assert_allclose(outs[4], np.array(12), rtol=1e-05)
 
 
 if __name__ == '__main__':

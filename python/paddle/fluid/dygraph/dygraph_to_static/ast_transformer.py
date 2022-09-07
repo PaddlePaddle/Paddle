@@ -93,7 +93,6 @@ class DygraphToStaticAst(BaseTransformer):
         transformers = [
             EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
-            DecoratorTransformer,  # transform decorators to function call
             TensorShapeTransformer,  # Tensor.shape -> layers.shape(Tensor)
             ListTransformer,  # List used in control flow
             BreakContinueTransformer,  # break/continue in loops
@@ -107,6 +106,7 @@ class DygraphToStaticAst(BaseTransformer):
             CallTransformer,  # transform call recursively
             CastTransformer,  # type casting statement
             GradTransformer,  # transform paddle.grad to paddle.gradients
+            DecoratorTransformer,  # transform decorators to function call
         ]
 
         apply_optimization(transformers)

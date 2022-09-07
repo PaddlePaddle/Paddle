@@ -20,6 +20,8 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node, ast_to_source_code
 
+import re
+
 IGNORE_NAMES = ['declarative', 'to_static', 'dygraph_to_static_func', 'wraps']
 
 
@@ -43,11 +45,6 @@ class DecoratorTransformer(BaseTransformer):
         """
         self.visit(self.root)
 
-    def visit(self, node):
-        self.ancestor_nodes.append(node)
-        ret = super(DecoratorTransformer, self).visit(node)
-        self.ancestor_nodes.pop()
-        return ret
 
     def visit_FunctionDef(self, node):
         assert isinstance(node, gast.FunctionDef)
@@ -56,8 +53,15 @@ class DecoratorTransformer(BaseTransformer):
         deco_list = node.decorator_list
         node.decorator_list = []
 
-        decofun_str = '_orig_' + node.name
+        # every decorator will append a node
+        decofun_nodes = []
+        # func to be decoed next time
+        deco_target = '_orig_' + node.name
+        # last decoed func
+        decoed_func = ''
+        
         for deco in reversed(deco_list):
+            # skip INGNORE_NAMES
             if isinstance(deco, gast.Attribute):
                 deco_name = deco.attr
             elif isinstance(deco, gast.Call):
@@ -71,27 +75,40 @@ class DecoratorTransformer(BaseTransformer):
                 deco_name = deco.id
             if deco_name in IGNORE_NAMES:
                 continue
-            decofun_str = '_jst.Call({})({})'.format(deco_name, decofun_str)
 
-        if decofun_str == '_orig_' + node.name:
+            # get function after decoration
+            deco_full_name = ast_to_source_code(deco).strip()
+            decoed_func = '_decoby_' + deco_name
+            if isinstance(deco, gast.Call):
+                # in this case , the deco_full_name will be like:
+                # '_jst.Call(deco)(5)'
+                rematch = re.match(r'\_jst\.Call\((.+?)\)\((.+?)\)', deco_full_name)
+                re_name = rematch.group(1)
+                re_args = rematch.group(2)
+                re_args_with_func = deco_target + ', ' + re_args
+                decofun_str = 'try:\n\t{0} = _jst.Call({1})({2})\nexcept:\n\t{0} = _jst.Call({1})({3})({4})'\
+                    .format(decoed_func, re_name, re_args_with_func, re_args, deco_target)
+            else:
+                decofun_str = '{} = _jst.Call({})({})'.format(decoed_func, deco_full_name, deco_target)
+            
+            decofun_nodes.extend(gast.parse(decofun_str).body)
+            deco_target = decoed_func
+
+        if not decofun_nodes:
             return node
 
-        orig_func_node = create_funcDef_node(node.body,
-                                             name='_orig_' + node.name,
-                                             input_args=node.args,
-                                             return_name_ids=[])
+        orig_func_node = gast.FunctionDef(name='_orig_' + node.name,
+                                        args=node.args,
+                                        body=node.body,
+                                        decorator_list=[],
+                                        returns=None,
+                                        type_comment=None)
 
-        decofun_str = '_decoed_{} = {}'.format(node.name, decofun_str)
-        decofun_node = gast.parse(decofun_str).body[0]
-
-        arg_str = ''
-        for arg in node.args.args:
-            arg_str += arg.id + ', '
-        if len(arg_str) > 0:
-            arg_str = arg_str[0:-2]
-        callfun_str = 'return _decoed_{}({})'.format(node.name, arg_str)
+        args = [arg.id for arg in node.args.args]
+        arg_str = ','.join(args)
+        callfun_str = 'return {}({})'.format(decoed_func, arg_str)
         callfun_node = gast.parse(callfun_str).body[0]
 
-        node.body = [orig_func_node, decofun_node, callfun_node]
+        node.body = [orig_func_node] + decofun_nodes + [callfun_node]
 
         return node
