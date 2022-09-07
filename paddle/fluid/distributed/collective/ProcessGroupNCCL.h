@@ -96,6 +96,8 @@ class ProcessGroupNCCL : public ProcessGroupStream {
     return std::string(NCCL_BACKEND_NAME);
   }
 
+  phi::DeviceContext* GetDeviceContext(const Place& place) const override;
+
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
