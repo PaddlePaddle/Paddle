@@ -41,17 +41,18 @@ def iinfo(dtype):
 
     paddle.iinfo is a function that returns an object that represents the numerical properties of 
     an integer paddle.dtype.
-    This is similar to [numpy.iinfo](https://numpy.org/doc/stable/reference/generated/numpy.iinfo.html#numpy-iinfo).
+    This is similar to `numpy.iinfo <https://numpy.org/doc/stable/reference/generated/numpy.iinfo.html#numpy-iinfo>`_.
 
     Args:
         dtype(paddle.dtype):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64.
 
     Returns:
         An iinfo object, which has the following 4 attributes.
-        min: int, The smallest representable integer number.
-        max: int, The largest representable integer number.
-        bits: int, The number of bits occupied by the type.
-        dtype: str, The string name of the argument dtype.
+
+            - min: int, The smallest representable integer number.
+            - max: int, The largest representable integer number.
+            - bits: int, The number of bits occupied by the type.
+            - dtype: str, The string name of the argument dtype.
 
     Examples:
         .. code-block:: python
