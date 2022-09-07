@@ -393,6 +393,20 @@ def monkey_patch_variable():
                                           attrs={'axis': axis})
             return out
 
+        comment = OpProtoHolder.instance().get_op_proto(op_type).comment
+
+        __impl__.__doc__ = """
+        {0}
+        Args:
+            self(Variable): left hand variable
+            other_var(Variable|float|int): right hand variable
+
+        Returns:
+            Variable
+        """.format(comment)
+        __impl__.__name__ = method_name
+        return __impl__
+
     def values(var):
         block = current_block(var)
         out = create_new_tmp_var(block, var.dtype)
@@ -419,20 +433,6 @@ def monkey_patch_variable():
                         outputs={"Out": [out]},
                         attrs={})
         return out
-
-        comment = OpProtoHolder.instance().get_op_proto(op_type).comment
-
-        __impl__.__doc__ = """
-        {0}
-        Args:
-            self(Variable): left hand variable
-            other_var(Variable|float|int): right hand variable
-
-        Returns:
-            Variable
-        """.format(comment)
-        __impl__.__name__ = method_name
-        return __impl__
 
     variable_methods = [
         #   b=-a
