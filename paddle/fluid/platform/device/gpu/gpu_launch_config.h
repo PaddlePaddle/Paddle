@@ -68,8 +68,8 @@ static inline int RoundToPowerOfTwo(int n) {
 #ifdef WITH_NV_JETSON
 // The number of threads cannot be assigned 1024 in some cases when the device
 // is nano or tx2 .
-template <typename phi::GPUContext>
-inline void ChangeThreadNum(const phi::GPUContext& context,
+template <typename GPUContext>
+inline void ChangeThreadNum(const GPUContext& context,
                             int* num_thread,
                             int alternative_num_thread = 512) {
   if (context.GetComputeCapability() == 53 ||

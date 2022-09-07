@@ -87,7 +87,7 @@ class MemcpyFunctor {
         true,
         false,
         platform::errors::PermissionDenied(
-            "Not support type for Memcpy  op with type %s", typeid(T).name()));
+            "Not support type for Memcpy op with type %s", typeid(T).name()));
   }
 
  private:

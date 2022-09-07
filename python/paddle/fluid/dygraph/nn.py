@@ -886,6 +886,13 @@ class Pool2D(layers.Layer):
 
     def forward(self, input):
         if _non_static_mode():
+            if not self._use_mkldnn and in_dygraph_mode():
+                return _C_ops.pool2d(input, self._pool_size, self._pool_stride,
+                                     self._pool_padding, self._ceil_mode,
+                                     self._exclusive, self._data_format,
+                                     self._pool_type, self._global_pooling,
+                                     False, "EXPLICIT", self._use_cudnn)
+
             attrs = ('pooling_type', self._pool_type, 'ksize', self._pool_size,
                      'global_pooling', self._global_pooling, 'strides',
                      self._pool_stride, 'paddings', self._pool_padding,
