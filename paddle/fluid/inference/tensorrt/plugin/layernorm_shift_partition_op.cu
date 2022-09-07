@@ -386,7 +386,6 @@ void invokeLayernormShiftPartition(T *out,
   }
 }
 
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
 template <>
 void invokeLayernormShiftPartition(half *out,
                                    const half *input,
@@ -433,7 +432,6 @@ void invokeLayernormShiftPartition(half *out,
         eps);
   }
 }
-#endif
 
 template <typename T>
 static void convertAndCopy(const std::vector<float> &host, T *dev) {
