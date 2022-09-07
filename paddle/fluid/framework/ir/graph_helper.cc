@@ -18,12 +18,15 @@ limitations under the License. */
 #include <stack>
 
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
-#include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_utils.h"
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#endif
 
 DECLARE_bool(convert_all_blocks);
 PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir,
@@ -505,6 +508,7 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
 static void ReplaceAllReduceOp(const Node &node,
                                proto::BlockDesc *block,
                                std::vector<OpDesc> *ops) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   ops->emplace_back();
   auto &desc1 = ops->back();
   std::string name = "fake_coalesce_" + std::to_string(ops->size());
@@ -559,6 +563,10 @@ static void ReplaceAllReduceOp(const Node &node,
                 (static_cast<int>(OpRole::kBackward)));
   desc2.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 (static_cast<int>(OpRole::kBackward)));
+#else
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "ReplaceAllReduceOp is only implemented for paddle compiled with GPU."));
+#endif
 }
 
 void UpdateControlOpSkipEagerDeletionVars(const Node &node,

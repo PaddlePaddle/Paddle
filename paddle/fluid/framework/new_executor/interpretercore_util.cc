@@ -528,14 +528,6 @@ void build_op_func_list(const platform::Place& place,
         auto& pool = platform::DeviceContextPool::Instance();
         auto* dev_ctx = pool.Get(place);
         VLOG(4) << "get dev_ctx";
-        if (op->Type() == "c_allreduce_sum") {
-          auto t = local_scope->Var("batch_norm_10.b_0@GRAD")
-                       ->GetMutable<LoDTensor>();
-          std::vector<float> out_vec;
-          paddle::framework::TensorToVector(*t, *dev_ctx, &out_vec);
-          VLOG(4) << "batch_norm_10:" << out_vec[0] << " " << out_vec[1] << " "
-                  << out_vec[2];
-        }
         auto exec_ctx = ExecutionContext(
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
         VLOG(4) << "get exec_ctx";
@@ -685,15 +677,6 @@ void build_op_func_list(const platform::Place& place,
     } catch (...) {
       LOG(WARNING) << op->Type() << " raises an unknown exception";
       std::rethrow_exception(std::current_exception());
-    }
-
-    if (op->Type() == "c_allreduce_sum") {
-      auto t =
-          local_scope->Var("batch_norm_10.b_0@GRAD")->GetMutable<LoDTensor>();
-      std::vector<float> out_vec;
-      paddle::framework::TensorToVector(*t, *op_func_node.dev_ctx_, &out_vec);
-      VLOG(4) << "batch_norm_10:" << out_vec[0] << " " << out_vec[1] << " "
-              << out_vec[2];
     }
 
     VLOG(4) << "End run " << place << " "

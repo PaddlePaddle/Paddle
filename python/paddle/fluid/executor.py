@@ -756,7 +756,7 @@ class _ExecutorCache(object):
             compiled_program = program if isinstance(
                 program, compiler.CompiledProgram) else program._graph
             build_strategy = compiled_program._build_strategy
-            print(f"Program before convert:\n {inner_program}", flush=True)
+            # print(f"Program before convert:\n {inner_program}", flush=True)
             compiled_program._compile(scope, place)
             ir_graph = framework.IrGraph(compiled_program._graph)
             converted_program = ir_graph.to_program()
@@ -765,7 +765,7 @@ class _ExecutorCache(object):
                 converted_program.lr_sheduler = inner_program.lr_sheduler
 
             inner_program = converted_program
-            print(f"Program after convert:\n {inner_program}", flush=True)
+            # print(f"Program after convert:\n {inner_program}", flush=True)
             warnings.warn(
                 "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
             )

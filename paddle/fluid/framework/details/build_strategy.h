@@ -1,5 +1,5 @@
-// Copyright (c) 2018 PaddlePaddle Authorstrategy. All Rights Reserved.
-// Copyright (c) 2022 NVIDIA Authorstrategy. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,13 +55,13 @@ struct BuildStrategy {
   // ParallelExecutor supports two modes of ReduceStrategy, kAllReduce and
   // kReduce, for CPU and GPU. If you use kAllReduce, different threads
   // optimize their parameters separately. If you use kReduce, the optimizations
-  // of parameters are distributed to different threadstrategy.
+  // of parameters are distributed to different threads.
   // For example, a model has 100 parameters and is running with four threads,
   // if you choose kAllReduce, every thread is to optimize 100 parameters
   // separately, if you choose kReduce, every thread is to optimize 25
-  // parameterstrategy.
+  // parameters.
   // Of particular note is, if you use kReduce when using CPU training,
-  // all the parameters are shared between different threadstrategy. This
+  // all the parameters are shared between different threads. This
   // feature will save memory.
   // FIXME(zcd): The result of the two modes(kAllReduce and kReduce) maybe not
   // equal for GPU. Because, the result of the different order of summing maybe
@@ -89,7 +89,7 @@ struct BuildStrategy {
 
   // Add dependency between backward ops and optimization ops, make sure that
   // all the backward ops are finished before running the optimization
-  // opstrategy. It might make the training speed of data parallelism faster.
+  // ops. It might make the training speed of data parallelism faster.
   bool enable_backward_optimizer_op_deps_{true};
   // TODO(dev-paddle): enable_sequential_execution depends on
   // kStaleProgramOpDescs, it is not appropriate, because kStaleProgramOpDescs
@@ -172,7 +172,7 @@ struct BuildStrategy {
   // https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
   bool use_hierarchical_allreduce_{false};
   // Nccl ranks in a node when use hierarchical allreduce, it's set to gpu
-  // cards' number in most casestrategy.
+  // cards' number in most cases.
   size_t hierarchical_allreduce_inter_nranks_{0};
   // Nccl ranks bewteen nodes when use hierarchical allreduce, it's set to
   // nodes number.
@@ -221,7 +221,7 @@ struct BuildStrategy {
   // graphs,
   // each of the graphs would run with one device. This approach can achieve
   // better performance
-  // on some scenariostrategy.
+  // on some scenarios.
   mutable bool enable_parallel_graph_ = false;
 
  private:
@@ -267,8 +267,10 @@ inline std::ostream &operator<<(std::ostream &os,
   os << "enable_inplace_: " << strategy.enable_inplace_ << std::endl;
   os << "allow_cuda_graph_capture_: " << strategy.allow_cuda_graph_capture_
      << std::endl;
-  os << "inference_: " << strategy.inference_ << std::endl;
-  os << "del_dropout_: " << strategy.del_dropout_ << std::endl;
+  os << "enable_inference_pass_: " << strategy.enable_inference_pass_
+     << std::endl;
+  os << "delete_dropout_: " << strategy.delete_dropout_ << std::endl;
+  os << "use_mkldnn_: " << strategy.use_mkldnn_ << std::endl;
   os << "is_distribution_: " << strategy.is_distribution_ << std::endl;
   os << "async_mode_: " << strategy.async_mode_ << std::endl;
   os << "num_trainers_: " << strategy.num_trainers_ << std::endl;
