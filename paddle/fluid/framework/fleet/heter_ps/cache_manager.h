@@ -45,23 +45,25 @@ namespace framework {
 
 struct BatchFidSeq {
   std::vector<uint32_t> h_fidseq;
-  std::vector<std::shared_ptr<memory::Allocation>> d_fidseqs; // fidseq for different devices
+  std::vector<uint32_t*> d_fidseqs; // fidseq for different devices
 
   int max_bucket_size = 0;
   std::vector<uint32_t> h_bucket_sizes;
   std::vector<uint32_t> h_fidseq_bucket;
-  std::vector<std::shared_ptr<memory::Allocation>> d_bucket_sizes;
-  std::vector<std::shared_ptr<memory::Allocation>> d_fidseq_buckets; // fidseq partition bucket for different devices
+  std::vector<uint32_t*> d_bucket_sizes;
+  std::vector<uint32_t*> d_fidseq_buckets; // fidseq partition bucket for different devices
 
   std::vector<uint32_t> h_cache_bfid_sizes;
   std::vector<std::vector<int>> debug_h_cache_bfids;
   std::vector<std::vector<int>> debug_h_cache_fids;
-  std::vector<std::shared_ptr<memory::Allocation>> d_cache_bfids; // cache bfids in pull/push for different devices
+  std::vector<int*> d_cache_bfids; // cache bfids in pull/push for different devices
 
   std::vector<std::vector<int>> h_cache_bfid_resort_indexes;
-  std::vector<std::shared_ptr<memory::Allocation>> d_cache_bfid_resort_indexes;
+  std::vector<int*> d_cache_bfid_resort_indexes;
   std::vector<std::vector<int>> h_cache_bfid_lods;
-  std::vector<std::shared_ptr<memory::Allocation>> d_cache_bfid_lods;
+  std::vector<int*> d_cache_bfid_lods;
+
+  std::vector<std::shared_ptr<xpu::ctx_guard>> RAII_GUARD;
 
   std::string to_string() {
     std::stringstream data_ss;

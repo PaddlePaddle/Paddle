@@ -402,6 +402,8 @@ void CacheManager::prepare_next_batch(int worker_id) {
     current_batch_fidseq_->h_cache_bfid_lods.resize(worker_num_);
     current_batch_fidseq_->d_cache_bfid_lods.resize(worker_num_, nullptr);
 
+    current_batch_fidseq_->RAII_GUARD.resize(worker_num_, nullptr);
+
     if (FLAGS_dump_cache_manager) {
       current_batch_fidseq_->debug_h_cache_bfids.resize(worker_num_);
       current_batch_fidseq_->debug_h_cache_fids.resize(worker_num_);
@@ -425,12 +427,16 @@ void CacheManager::prepare_next_batch(int worker_id) {
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
 
-  current_batch_fidseq_->d_fidseqs[worker_id] = memory::Alloc(place,
-          current_batch_fidseq_->h_fidseq.size() * sizeof(uint32_t));
-  current_batch_fidseq_->d_bucket_sizes[worker_id] = memory::Alloc(place,
-          current_batch_fidseq_->h_bucket_sizes.size() * sizeof(uint32_t));
-  current_batch_fidseq_->d_fidseq_buckets[worker_id] = memory::Alloc(place,
-          current_batch_fidseq_->h_fidseq_bucket.size() * sizeof(uint32_t));
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
+  current_batch_fidseq_->RAII_GUARD[worker_id].reset(new xpu::ctx_guard(ctx_xpu));
+
+  current_batch_fidseq_->d_fidseqs[worker_id] =
+      current_batch_fidseq_->RAII_GUARD[worker_id]->alloc_l3_or_gm<uint32_t>(current_batch_fidseq_->h_fidseq.size());
+  current_batch_fidseq_->d_bucket_sizes[worker_id] =
+      current_batch_fidseq_->RAII_GUARD[worker_id]->alloc_l3_or_gm<uint32_t>(current_batch_fidseq_->h_bucket_sizes.size());
+  current_batch_fidseq_->d_fidseq_buckets[worker_id] =
+      current_batch_fidseq_->RAII_GUARD[worker_id]->alloc_l3_or_gm<uint32_t>(current_batch_fidseq_->h_fidseq_bucket.size());
 
   //timeline.Pause();
   //total_time += timeline.ElapsedSec();
@@ -440,20 +446,17 @@ void CacheManager::prepare_next_batch(int worker_id) {
   auto cpu_place = platform::CPUPlace();
   //auto & stream = comm_streams_[worker_id];
   memory::Copy(place,
-              reinterpret_cast<uint32_t*>(
-                  current_batch_fidseq_->d_fidseqs[worker_id]->ptr()),
+              current_batch_fidseq_->d_fidseqs[worker_id],
               cpu_place,
               &(current_batch_fidseq_->h_fidseq[0]),
               current_batch_fidseq_->h_fidseq.size() * sizeof(uint32_t));
   memory::Copy(place,
-             reinterpret_cast<uint32_t*>(
-                  current_batch_fidseq_->d_bucket_sizes[worker_id]->ptr()),
+             current_batch_fidseq_->d_bucket_sizes[worker_id],
              cpu_place,
              &(current_batch_fidseq_->h_bucket_sizes[0]),
              current_batch_fidseq_->h_bucket_sizes.size() * sizeof(uint32_t));
   memory::Copy(place,
-             reinterpret_cast<uint32_t*>(
-                  current_batch_fidseq_->d_fidseq_buckets[worker_id]->ptr()),
+             current_batch_fidseq_->d_fidseq_buckets[worker_id],
              cpu_place,
              &(current_batch_fidseq_->h_fidseq_bucket[0]),
              current_batch_fidseq_->h_fidseq_bucket.size() * sizeof(uint32_t));
@@ -466,8 +469,8 @@ void CacheManager::prepare_next_batch(int worker_id) {
 }
 
 void CacheManager::convert_fid2bfid(int dev_id, uint32_t * fids, int fid_len) {
-  //platform::Timer timeline;
-  //timeline.Start();
+  // platform::Timer timeline;
+  // timeline.Start();
 
   PADDLE_ENFORCE_NOT_NULL(current_batch_fidseq_);
   DevPlace place = DevPlace(dev_id);
@@ -478,18 +481,17 @@ void CacheManager::convert_fid2bfid(int dev_id, uint32_t * fids, int fid_len) {
   sync_stream(stream);
 
   current_batch_fidseq_->h_cache_bfid_sizes[worker_id] = fid_len;
-  current_batch_fidseq_->d_cache_bfids[worker_id] = memory::Alloc(place, fid_len * sizeof(int));
+  current_batch_fidseq_->d_cache_bfids[worker_id] =
+      current_batch_fidseq_->RAII_GUARD[worker_id]->alloc_l3_or_gm<int>(fid_len);
+
   xpu_kernel_.convert_fid2bfid(
-      reinterpret_cast<uint32_t*>(
-              current_batch_fidseq_->d_fidseq_buckets[worker_id]->ptr()),
+      current_batch_fidseq_->d_fidseq_buckets[worker_id],
       current_batch_fidseq_->h_fidseq_bucket.size(),
-      reinterpret_cast<uint32_t*>(
-              current_batch_fidseq_->d_bucket_sizes[worker_id]->ptr()),
+      current_batch_fidseq_->d_bucket_sizes[worker_id],
       current_batch_fidseq_->h_bucket_sizes.size(),
       fids,
       fid_len,
-      reinterpret_cast<int*>(
-              current_batch_fidseq_->d_cache_bfids[worker_id]->ptr()),
+      current_batch_fidseq_->d_cache_bfids[worker_id],
       stream);
 
   if (FLAGS_dump_cache_manager) {
@@ -503,8 +505,9 @@ void CacheManager::convert_fid2bfid(int dev_id, uint32_t * fids, int fid_len) {
     xpu_wait(0);
   }
 
-  //timeline.Pause();
-  //VLOG(0) << "CacheManager::convert_fid2bfid:" << timeline.ElapsedSec() << "s";
+  // sync_stream(stream);
+  // timeline.Pause();
+  // VLOG(0) << "CacheManager::convert_fid2bfid:" << timeline.ElapsedSec() << "s";
 }
 
 void CacheManager::prepare_merge_grad(int dev_id) {
@@ -527,7 +530,7 @@ void CacheManager::prepare_merge_grad(int dev_id) {
     memory::Copy(cpu_place,
         &(h_cache_bfids[0]),
         place,
-        current_batch_fidseq_->d_cache_bfids[worker_id]->ptr(),
+        current_batch_fidseq_->d_cache_bfids[worker_id],
         cache_bfid_size * sizeof(int));
     xpu_wait(0);
 
@@ -606,18 +609,18 @@ void CacheManager::prepare_merge_grad(int dev_id) {
     //time_ss << ",sort-bfid-pairs-2:" << timeline.ElapsedSec();
     //timeline.Start();
 
-    current_batch_fidseq_->d_cache_bfid_resort_indexes[worker_id] = memory::Alloc(place,
-                                                              cache_bfid_size * sizeof(int));
+    current_batch_fidseq_->d_cache_bfid_resort_indexes[worker_id] =
+        current_batch_fidseq_->RAII_GUARD[worker_id]->alloc_l3_or_gm<int>(cache_bfid_size);
     memory::Copy(place,
-        current_batch_fidseq_->d_cache_bfid_resort_indexes[worker_id]->ptr(),
+        current_batch_fidseq_->d_cache_bfid_resort_indexes[worker_id],
         cpu_place,
         &(bfid_out_buffer[0]),
         cache_bfid_size * sizeof(int));
 
-    current_batch_fidseq_->d_cache_bfid_lods[worker_id] = memory::Alloc(place,
-                                                 bfid_uniq_lod.size() * sizeof(int));
+    current_batch_fidseq_->d_cache_bfid_lods[worker_id] =
+        current_batch_fidseq_->RAII_GUARD[worker_id]->alloc_l3_or_gm<int>(bfid_uniq_lod.size());
     memory::Copy(place,
-        current_batch_fidseq_->d_cache_bfid_lods[worker_id]->ptr(),
+        current_batch_fidseq_->d_cache_bfid_lods[worker_id],
         cpu_place,
         &(bfid_uniq_lod[0]),
         bfid_uniq_lod.size() * sizeof(int));
@@ -649,11 +652,9 @@ void CacheManager::get_merge_grad_params(int dev_id,
     prepare_merge_grad_threads_[worker_id].join();
   }
 
-  *key_resort_idxs = reinterpret_cast<int*>(
-     current_batch_fidseq_->d_cache_bfid_resort_indexes[worker_id]->ptr());
+  *key_resort_idxs = current_batch_fidseq_->d_cache_bfid_resort_indexes[worker_id];
   *out_key_resort_idx_len = current_batch_fidseq_->h_cache_bfid_resort_indexes[worker_id].size();
-  *fidseq_lods = reinterpret_cast<int*>(
-     current_batch_fidseq_->d_cache_bfid_lods[worker_id]->ptr());
+  *fidseq_lods = current_batch_fidseq_->d_cache_bfid_lods[worker_id];
   *fidseq_lod_len = current_batch_fidseq_->h_cache_bfid_lods[worker_id].size();
   if (current_batch_fidseq_->h_bucket_sizes[0] > 0) {
       *first_fidseq_elem = current_batch_fidseq_->h_fidseq_bucket[0];
@@ -663,8 +664,7 @@ void CacheManager::get_merge_grad_params(int dev_id,
 void CacheManager::get_device_fidseq_bucket(int dev_id, uint32_t ** out_keys, int * out_key_len) {
   PADDLE_ENFORCE_NOT_NULL(current_batch_fidseq_);
   int worker_id = resource_->get_index_by_devid(dev_id);
-  auto d_fidseq_bucket_ptr = reinterpret_cast<uint32_t*>(
-      current_batch_fidseq_->d_fidseq_buckets[worker_id]->ptr());
+  auto d_fidseq_bucket_ptr = current_batch_fidseq_->d_fidseq_buckets[worker_id];
   *out_keys = d_fidseq_bucket_ptr + worker_id * current_batch_fidseq_->max_bucket_size;
   *out_key_len = current_batch_fidseq_->h_bucket_sizes[worker_id];
 }
@@ -672,8 +672,7 @@ void CacheManager::get_device_fidseq_bucket(int dev_id, uint32_t ** out_keys, in
 void CacheManager::get_device_all_fidseq_bucket(int dev_id, uint32_t ** out_keys, int * out_key_len) {
   PADDLE_ENFORCE_NOT_NULL(current_batch_fidseq_);
   int worker_id = resource_->get_index_by_devid(dev_id);
-  *out_keys = reinterpret_cast<uint32_t*>(
-      current_batch_fidseq_->d_fidseq_buckets[worker_id]->ptr());
+  *out_keys = current_batch_fidseq_->d_fidseq_buckets[worker_id];
   *out_key_len = current_batch_fidseq_->h_fidseq_bucket.size();
 }
 
@@ -685,16 +684,14 @@ const std::vector<uint32_t> & CacheManager::get_host_all_fidseq_bucket_sizes() {
 void CacheManager::get_device_all_fidseq_bucket_sizes(int dev_id, uint32_t ** out_buffer, int * out_len) {
   PADDLE_ENFORCE_NOT_NULL(current_batch_fidseq_);
   int worker_id = resource_->get_index_by_devid(dev_id);
-  *out_buffer = reinterpret_cast<uint32_t*>(
-      current_batch_fidseq_->d_bucket_sizes[worker_id]->ptr());
+  *out_buffer = current_batch_fidseq_->d_bucket_sizes[worker_id];
   *out_len = current_batch_fidseq_->h_bucket_sizes.size();
 }
 
 void CacheManager::get_device_all_fidseq(int dev_id, uint32_t ** out_keys, int * out_key_len) {
   PADDLE_ENFORCE_NOT_NULL(current_batch_fidseq_);
   int worker_id = resource_->get_index_by_devid(dev_id);
-  *out_keys = reinterpret_cast<uint32_t*>(
-      current_batch_fidseq_->d_fidseqs[worker_id]->ptr());
+  *out_keys = current_batch_fidseq_->d_fidseqs[worker_id];
   *out_key_len = current_batch_fidseq_->h_fidseq.size();
 }
 
@@ -707,8 +704,7 @@ void CacheManager::get_bfidseq(int dev_id, int ** out_keys, int * out_key_len) {
   auto & stream = comm_streams_[worker_id];
   sync_stream(stream);
 
-  *out_keys = reinterpret_cast<int*>(
-      current_batch_fidseq_->d_cache_bfids[worker_id]->ptr());
+  *out_keys = current_batch_fidseq_->d_cache_bfids[worker_id];
   *out_key_len = current_batch_fidseq_->h_cache_bfid_sizes[worker_id];
 
   if (FLAGS_dump_cache_manager &&
