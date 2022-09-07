@@ -953,6 +953,13 @@ class Executor(object):
     def _add_scope_cache(self, scope_cache_key, scope):
         self.scope_caches[scope_cache_key] = scope
 
+    # just for testing, will be removed later
+    @lru_cache()
+    def _log_force_set_program_cache(self, use_program_cache):
+        logging.warning(
+            f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE"
+        )
+
     def _feed_data(self, program, feed, feed_var_name, scope):
         # feed var to framework
         global_block = program.global_block()
@@ -1427,9 +1434,7 @@ class Executor(object):
             use_program_cache = force_use_program_cache in [
                 1, '1', True, 'True', 'true'
             ]
-            warnings.warn(
-                f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE",
-                UserWarning)
+            self._log_force_set_program_cache(use_program_cache)
 
         try:
             res = self._run_impl(program=program,
@@ -1615,51 +1620,46 @@ class Executor(object):
         # use StandaloneExecutor to run the program.
         if return_merged and self._enable_interpreter_core and _can_use_interpreter_core(
                 program, self.place):
-            inner_program = program._program if isinstance(
-                program, compiler.CompiledProgram) else program
-            if not inner_program._is_start_up_program_:
-                if feed is None:
-                    feed = {}
-                elif isinstance(feed, (list, tuple)):
-                    assert len(feed) == 1, "Not compiled with data parallel"
-                    feed = feed[0]
-                if not isinstance(feed, dict):
-                    raise TypeError(
-                        "feed requires dict as its Parameter. But you passed in %s"
-                        % (type(feed)))
-                feed = self._update_feed(program, feed)
 
-                program, new_exe = self._executor_cache.get_program_and_executor(
-                    program, feed, fetch_list, feed_var_name, fetch_var_name,
-                    self.place, scope)
+            if feed is None:
+                feed = {}
+            elif isinstance(feed, (list, tuple)):
+                assert len(feed) == 1, "Not compiled with data parallel"
+                feed = feed[0]
+            if not isinstance(feed, dict):
+                raise TypeError(
+                    "feed requires dict as its Parameter. But you passed in %s"
+                    % (type(feed)))
+            feed = self._update_feed(program, feed)
 
-                self._feed_data(program, feed, feed_var_name, scope)
-                if hasattr(program, 'lr_sheduler'):
-                    from paddle.optimizer.lr import LRScheduler
-                    assert isinstance(program.lr_sheduler,
-                                      LRScheduler), "must be LRScheduler"
-                    lr_sheduler = program.lr_sheduler
-                    lr_value = lr_sheduler()
-                    lr_var = program.global_block().vars[lr_sheduler._var_name]
-                    data = np.array([lr_value
-                                     ]).astype(convert_dtype(lr_var.dtype))
-                    tensor = core.get_variable_tensor(scope,
-                                                      lr_sheduler._var_name)
-                    # NOTE(dev): `set` always call TensorCopySync that is a
-                    # blocking behavior. So we use `_copy_from` to replace it.
-                    cpu_tensor = _as_lodtensor(data, core.CPUPlace())
-                    # for ipu, tensor is allocated on cpu
-                    if core.is_compiled_with_ipu():
-                        tensor._copy_from(cpu_tensor, tensor._place())
-                    else:
-                        tensor._copy_from(cpu_tensor, self.place)
+            program, new_exe = self._executor_cache.get_program_and_executor(
+                program, feed, fetch_list, feed_var_name, fetch_var_name,
+                self.place, scope)
 
-                warnings.warn(
-                    "FLAGS_USE_STANDALONE_EXECUTOR is set to 1. New executor is used to execute Program."
-                )
+            self._feed_data(program, feed, feed_var_name, scope)
+            if hasattr(program, 'lr_sheduler'):
+                from paddle.optimizer.lr import LRScheduler
+                assert isinstance(program.lr_sheduler,
+                                  LRScheduler), "must be LRScheduler"
+                lr_sheduler = program.lr_sheduler
+                lr_value = lr_sheduler()
+                lr_var = program.global_block().vars[lr_sheduler._var_name]
+                data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+                tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+                # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
+                cpu_tensor = _as_lodtensor(data, core.CPUPlace())
+                # for ipu, tensor is allocated on cpu
+                if core.is_compiled_with_ipu():
+                    tensor._copy_from(cpu_tensor, tensor._place())
+                else:
+                    tensor._copy_from(cpu_tensor, self.place)
 
-                return new_exe.run(scope, list(feed.keys()), fetch_list,
-                                   return_numpy)
+            warnings.warn(
+                "FLAGS_USE_STANDALONE_EXECUTOR is set to 1. New executor is used to execute Program."
+            )
+
+            return new_exe.run(scope, list(feed.keys()), fetch_list,
+                               return_numpy)
 
         compiled = isinstance(program, compiler.CompiledProgram)
 

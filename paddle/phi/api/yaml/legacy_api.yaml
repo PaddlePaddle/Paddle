@@ -1978,25 +1978,16 @@
   backward : pixel_shuffle_grad
 
 - api : pool2d
-  args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, bool use_gpudnn)
   output : Tensor(out)
   infer_meta :
     func : Pool2DInferMeta
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   kernel :
     func : pool2d
-    use_gpudnn : true
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+    use_gpudnn : use_gpudnn
   backward : pool2d_grad
-
-# Used in adaptive_avg_pool2d API
-- api : pool2d_gpudnn_unused
-  args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
-  output : Tensor(out)
-  infer_meta :
-    func : Pool2DInferMeta
-  kernel :
-    func : pool2d
-    use_gpudnn : false
-  backward : pool2d_grad_gpudnn_unused
 
 - api : pool3d
   args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, bool use_gpudnn)
@@ -2201,15 +2192,6 @@
   kernel :
     func : reverse
   backward : reverse_grad
-
-- api : reverse_array
-  args : (Tensor[] x, IntArray axis)
-  output : Tensor[]{x.size()}
-  infer_meta :
-    func : ReverseArrayInferMeta
-  kernel :
-    func : reverse_array
-  backward : reverse_array_grad
 
 - api : rmsprop_
   args : (Tensor param, Tensor mean_square, Tensor grad, Tensor moment, Tensor learning_rate, Tensor mean_grad, float epsilon, float decay, float momentum, bool centered)

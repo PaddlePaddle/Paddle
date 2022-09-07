@@ -89,6 +89,11 @@ class ProcessGroup {
   int GetSize() const { return size_; }
 
   virtual const std::string GetBackendName() const = 0;
+  virtual phi::DeviceContext* GetDeviceContext(const Place& place) const {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Does not support to get device_context from ProcessGroup%s.",
+        GetBackendName()));
+  }
 
   // TODO(liyurui): This API will be moved later
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(

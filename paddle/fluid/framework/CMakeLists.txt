@@ -190,7 +190,7 @@ cc_test(
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS framework_proto scope)
+  DEPS framework_proto scope tensor_array)
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
