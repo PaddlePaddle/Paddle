@@ -55,6 +55,13 @@ class Controller {
   paddle::imperative::AmpLevel GetAMPLevel() const {
     return tracer_->GetAmpLevel();
   }
+
+  bool UseLayoutAutoTune() { return tracer_->UseLayoutAutoTune(); }
+
+  void DisableLayoutAutoTune() { tracer_->DisableLayoutAutoTune(); }
+
+  void EnableLayoutAutoTune() { tracer_->EnableLayoutAutoTune(); }
+
   bool HasGrad() const { return tracer_->HasGrad(); }
   void SetHasGrad(bool has_grad) { tracer_->SetHasGrad(has_grad); }
   std::string GenerateUniqueName(std::string key = "eager_in_tmp") {
