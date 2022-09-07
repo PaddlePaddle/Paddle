@@ -661,7 +661,7 @@ class PipelineLayer(Layer):
             if self._num_virtual_pipeline_stages == 1:
                 pos_offset = self._start_pos
             else:
-                assert hasattr(self, 'start_poss')
+                assert hasattr(self, '_start_poss')
                 assert local_chunk_id < len(self._start_poss)
                 pos_offset = self._start_poss[local_chunk_id]
             idx = local_layer_idx + pos_offset
@@ -706,7 +706,7 @@ class PipelineLayer(Layer):
                 if self._num_virtual_pipeline_stages == 1:
                     pos_offset = self._start_pos
                 else:
-                    assert hasattr(self, 'start_poss')
+                    assert hasattr(self, '_start_poss')
                     assert local_chunk_id < len(self._start_poss)
                     pos_offset = self._start_poss[local_chunk_id]
                 layer_idx = idx + pos_offset
