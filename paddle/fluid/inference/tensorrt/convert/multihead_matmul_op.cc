@@ -557,10 +557,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
           cudaGetDevice(&device_id);
           const auto device_prop = platform::GetDeviceProperties(device_id);
           const int sm = device_prop.major * 10 + device_prop.minor; 
+          
           if(input_dims.d[1] <= 384 && window_number!=-1 
                                     && (sm == 75 || sm == 80 || sm == 86) 
                                     && head_size == 32 && with_fp16){
-            with_fastertransformer_window_mha = true;
+            with_fastertransformer_window_mha = true; 
           }
 
           bool is_BiasQK_directInput = false;
@@ -640,7 +641,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
                 engine_->GetITensor(op_desc.Input("BiasQK_mask").front());
             }
           }
-
           nvinfer1::ILayer* biasQK_constLayer = nullptr;
           nvinfer1::Weights biasqk_const_nvWeight;
           if (is_BiasQK_directInput) {
@@ -660,9 +660,9 @@ class MultiheadMatMulOpConverter : public OpConverter {
               std::unique_ptr<framework::Tensor> folded_biasqk_t(
                 new framework::Tensor());
               folded_biasqk_t->Resize(phi::make_ddim({biasqk_mask_dims[0],
-                                                                biasqk_dims[1],
-                                                                biasqk_dims[2],
-                                                                biasqk_dims[3]}));
+                                                      biasqk_dims[1],
+                                                      biasqk_dims[2],
+                                                      biasqk_dims[3]}));
               nvinfer1::Dims folded_biasqk_dims_nv1;
               folded_biasqk_dims_nv1.nbDims = 0;
               for (int i=0;i<folded_biasqk_t->dims().size();++i){
@@ -701,6 +701,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
                     }
                   }
                 }
+                engine_->SetWeights(biasqk_constlayer_outputname + "_fp16",
+                                      std::move(folded_biasqk_t));
 
                 biasqk_const_nvWeight.values = folded_biasqk_d;
                 biasQK_constLayer = TRT_ENGINE_ADD_LAYER(
@@ -730,15 +732,17 @@ class MultiheadMatMulOpConverter : public OpConverter {
                         int bias_mask_index = w*biasqk_mask_dims[1]*biasqk_mask_dims[2]
                                              +i*biasqk_mask_dims[2]
                                              +j;
-                        auto biask_value = 
+                        auto biasqk_value = 
                           static_cast<const float*>(biasqk_const_weight.get().values)[bias_index];
-                        auto biask_mask_value = 
+                        auto biasqk_mask_value = 
                           static_cast<const float*>(biasqk_mask_const_weight.get().values)[bias_mask_index];
-                        folded_biasqk_d[foldedIndex]=static_cast<float>(biask_value+biask_mask_value);
+                        folded_biasqk_d[foldedIndex]=static_cast<float>(biasqk_value+biasqk_mask_value);
                       }
                     }
                   }
                 }
+                engine_->SetWeights(biasqk_constlayer_outputname + "_fp32",
+                                      std::move(folded_biasqk_t));
                 biasqk_const_nvWeight.values = folded_biasqk_d;
                 biasQK_constLayer = TRT_ENGINE_ADD_LAYER(
                     engine_, Constant, folded_biasqk_dims_nv1, biasqk_const_nvWeight);

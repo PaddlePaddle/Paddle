@@ -1,4 +1,5 @@
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,7 +35,6 @@
 #include "paddle/phi/core/allocator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 namespace fastertransformer {
-
 /*******************  invokeTransformMask  ***********************/
 
 // transform mask [B, S, S](half) into [B, S2*S2/64, 64](half), S2 is the actural  seqlen used in fmha row-major
@@ -181,7 +181,6 @@ void invokeTransformMask(
         transform_mask_kernel<<<grid, block, 0, stream>>>(tranformed_mask, mask, warps_m, warps_n, B, S, S2);
     }
 }
-
 }  // namespace fastertransformer
 
 #endif
@@ -473,14 +472,14 @@ void QkvToContextPluginDynamic::configurePlugin(
     } else if (in[0].desc.type == nvinfer1::DataType::kFLOAT) {
       fake_qk_bias_ = reinterpret_cast<float *>(
           tensor_.mutable_data<int32_t>(platform::CUDAPlace(device_id)));
-//       long size = sizeof(int32_t) * batch * seq_len * seq_len * head_number_;
-// #ifdef PADDLE_WITH_HIP
-//       PADDLE_ENFORCE_GPU_SUCCESS(
-//           hipMemsetAsync(fake_qk_bias_, 0, size, dev_ctx.stream()));
-// #else
-//       PADDLE_ENFORCE_GPU_SUCCESS(
-//           cudaMemsetAsync(fake_qk_bias_, 0, size, dev_ctx.stream()));
-// #endif
+      long size = sizeof(int32_t) * batch * seq_len * seq_len * head_number_;
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          hipMemsetAsync(fake_qk_bias_, 0, size, dev_ctx.stream()));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemsetAsync(fake_qk_bias_, 0, size, dev_ctx.stream()));
+#endif
     } else {
       PADDLE_THROW(platform::errors::Fatal(
           "The QKV TRT Plugin's input type should be float or half."));
@@ -576,10 +575,10 @@ __global__ void broadcast_batch(const T *src,
                                 const int head_num,
                                 const int original_batch) {
   int WindownumHeadSeqlen_id = blockIdx.x % (original_batch * head_num * seq_len);
+  int src_offset =  WindownumHeadSeqlen_id * seq_len;
   int dst_offset = blockIdx.x * seq_len;
   if (threadIdx.x < seq_len) {
-    dst[threadIdx.x + dst_offset] =
-        src[threadIdx.x + WindownumHeadSeqlen_id * seq_len];
+    dst[threadIdx.x + dst_offset] = src[threadIdx.x + src_offset];
   }
 }
 
@@ -589,9 +588,9 @@ template<typename T>
 __global__ void print_float(const T *src, int start_index, int end_index, int numPerRow=49, int stride=1){
   printf("start print float \r\n");
   for (int i=start_index;i<end_index;i+=stride){
-    printf("%.5e, ",static_cast<double>(src[i]));
+    // printf("%.5e, ",static_cast<double>(src[i]));
     if((i-start_index)/stride%numPerRow==numPerRow-1){
-      printf("\r\n");
+      // printf("\r\n");
     }
   }
 }
@@ -735,17 +734,16 @@ int QkvToContextPluginDynamic::enqueue(
       qk_bias = fake_qk_bias_;
     }
  
-    if(head_number_ == 3){
-      printf("@@@ inputs 1 for qk bias before boardcast \r\n");
-      print_float<float><<<1,1>>>(
-        static_cast<const float *>(inputs[1]),
-        0,
-        input_desc[1].dims.d[0]*head_number_*seq_len*seq_len,
-        seq_len*seq_len,
-        1);
-      cudaDeviceSynchronize();
-      printf("\r\n");
-    }
+    printf("@@@ inputs 1 for qk bias before boardcast \r\n");
+    print_float<float><<<1,1>>>(
+      static_cast<const float *>(inputs[1]),
+      0,
+      input_desc[1].dims.d[0]*head_number_*seq_len*seq_len,
+      head_number_*seq_len*seq_len,
+      1);
+    cudaDeviceSynchronize();
+    printf("\r\n");
+
     // if bias_qk is [?,head_number,seq_len,seq_len]
     // in swin SW-MSA block dim[0] of input is batch_number*windows_number
     // therefore, we broadcast bias_qk to [Batch_num*window_num, head_number,
@@ -765,11 +763,21 @@ int QkvToContextPluginDynamic::enqueue(
                                          seq_len,
                                          head_number_,
                                          input_desc[1].dims.d[0]);
+        qk_bias = temp_qk_bias;
       }
-      qk_bias = temp_qk_bias;
     }
     const float *input1_data = static_cast<const float *>(qk_bias);
+    printf("@@@ batch:%d, seq_len:%d, head_number_:%d,head_size_:%d, scale:%f\r\n",
+            batch,seq_len,head_number_,head_size_,scale_);
+    printf("@@@ inputs 1 for qk bias after boardcast \r\n");
+    cudaDeviceSynchronize();
 
+    print_float<float><<<1,1>>>(input1_data,0,
+      batch*head_number_*seq_len*seq_len,
+      seq_len,
+      1);
+    cudaDeviceSynchronize();
+    printf("\r\n");
     // BxSx3xNxH => tptr: 3xBxNxSxH.
     TransposeQKV(
         batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
@@ -779,25 +787,8 @@ int QkvToContextPluginDynamic::enqueue(
             platform::CUDAPlace(device_id)));
 
     const phi::GPUContext &dev_ctx = *device_ctx;
-    if(head_number_ == 3){
-      printf("@@@ inputs 1 for qk bias after boardcast \r\n");
-      print_float<float><<<1,1>>>(input1_data,0,
-        batch*head_number_*seq_len*seq_len,
-        seq_len*seq_len,
-        1);
-      cudaDeviceSynchronize();
-      printf("\r\n");
-      printf("@@@ inputs 0 \r\n");
-      print_float<float><<<1,1>>>(tptr,
-        0,
-        batch * 3 * head_number_ * seq_len * head_size_,
-        seq_len*head_size_,
-        1);
-      cudaDeviceSynchronize();
-      printf("\r\n");
-      printf("@@@ batch:%d, seq_len:%d, head_number_:%d,head_size_:%d, scale:%f\r\n",
-            batch,seq_len,head_number_,head_size_,scale_);
-    }
+
+    
     multihead_compute_func(dev_ctx,
                            batch,
                            seq_len,
@@ -808,32 +799,32 @@ int QkvToContextPluginDynamic::enqueue(
                            tptr,
                            scale_,
                            static_cast<float>(0.0));
-    if(head_number_ == 3){
-      printf("@@@ output multihead_compute_func : \r\n");
-      print_float<float><<<1,1>>>(tptr,
-        0,
-        batch * head_number_ * seq_len * head_size_,
-        seq_len*head_size_,
-        1);
-      cudaDeviceSynchronize();
-      printf("\r\n");
-    }
+    // if(head_number_ == 3){
+    //   printf("@@@ output multihead_compute_func : \r\n");
+    //   print_float<float><<<1,1>>>(tptr,
+    //     0,
+    //     batch * head_number_ * seq_len * head_size_,
+    //     seq_len*head_size_,
+    //     1);
+    //   cudaDeviceSynchronize();
+    //   printf("\r\n");
+    // }
     int grid = batch * head_number_ * seq_len;
     int block = head_size_;
     float *output = static_cast<float *>(outputs[0]);
 
     transpose<float><<<grid, block, 0, stream>>>(
         tptr, output, batch, seq_len, head_number_, head_size_);
-    if(head_number_ == 3){
-      printf("@@@ qkv to context output : \r\n");
-      print_float<float><<<1,1>>>(output,
-        0,
-        batch * head_number_ * seq_len * head_size_,
-        seq_len*head_size_,
-        1);
-      cudaDeviceSynchronize();
-      printf("qkv to context output end \r\n");
-    }
+    // if(head_number_ == 3){
+    //   printf("@@@ qkv to context output : \r\n");
+    //   print_float<float><<<1,1>>>(output,
+    //     0,
+    //     batch * head_number_ * seq_len * head_size_,
+    //     seq_len*head_size_,
+    //     1);
+    //   cudaDeviceSynchronize();
+    //   printf("qkv to context output end \r\n");
+    // }
   } else if (input_type == nvinfer1::DataType::kHALF) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
     const auto device_prop = platform::GetDeviceProperties(device_id);
@@ -878,13 +869,13 @@ int QkvToContextPluginDynamic::enqueue(
             head_number_);
         qk_bias = temp_qk_bias;
       }
-    // padding:    mask_half_ = [0,0,...-1e20f,-1e20f]
-    // no_padding: mask_half_ = [0,.....0,.........,0]
-    if (ProductDim(input_desc[1].dims) == ProductDim(input_desc[0].dims)) {
-      qk_bias = mask_half_;
-    }
+      // padding:    mask_half_ = [0,0,...-1e20f,-1e20f]
+      // no_padding: mask_half_ = [0,.....0,.........,0]
+      if (ProductDim(input_desc[1].dims) == ProductDim(input_desc[0].dims)) {
+        qk_bias = mask_half_;
+      }
 
-      // if bias_qk is [window_num,head_number,seq_len,seq_len]
+      // if bias_qk is [?,head_number,seq_len,seq_len]
       // in swin SW-MSA block dim[0] of input is batch_number*windows_number
       // therefore, we broadcast bias_qk to [Batch_num*window_num, head_number,
       // seq_len, seq_len]
@@ -904,8 +895,8 @@ int QkvToContextPluginDynamic::enqueue(
                                           seq_len,
                                           head_number_,
                                           input_desc[1].dims.d[0]);
+          qk_bias = temp_qk_bias;
         }
-        qk_bias = temp_qk_bias;
       }
 
       const half *input1_data = static_cast<const half *>(qk_bias);
@@ -929,13 +920,6 @@ int QkvToContextPluginDynamic::enqueue(
       auto *device_ctx = static_cast<phi::GPUContext *>(
           platform::DeviceContextPool::Instance().Get(
               platform::CUDAPlace(device_id)));
-
-      // int n_q = seq_len * head_number_ * head_size_ * batch;
-      // constexpr int threads = 128;
-      // int blocks = (n_q + threads - 1) / threads;
-
-      // apply_scale<<<blocks, threads, 0, stream>>>(
-      //     tptr, static_cast<half>(scale_), n_q);
 
       const phi::GPUContext &dev_ctx = *device_ctx;
       operators::math::MultiHeadGPUComputeFunctor<half> multihead_compute_func;
@@ -964,8 +948,7 @@ int QkvToContextPluginDynamic::enqueue(
       }
     } else {        
     //use fastertransformer_window_mha
-    VLOG(1)<<"@@@ use faster transformer trt fused multihead matmul kernel";
-    // printf("@@@ use faster transformer trt fused multihead matmul kernel\r\n");
+    VLOG(1)<<"use faster transformer trt fused multihead matmul kernel";
     auto *device_ctx = static_cast<phi::GPUContext *>(
     platform::DeviceContextPool::Instance().Get(
         platform::CUDAPlace(device_id)));
