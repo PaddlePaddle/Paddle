@@ -677,7 +677,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
                     engine_->GetTrtWeight(biasqk_name, *biasqk_t);
                 auto biasqk_mask_const_weight =
                     engine_->GetTrtWeight(biasqk_mask_name, *biasqk_mask_t);
-
+                // do biasqk_mask folding
                 for(int w=0;w<biasqk_mask_dims[0];++w){
                   for(int h=0;h<biasqk_dims[1];++h){
                     for (int i=0;i<biasqk_dims[2];++i){
@@ -718,6 +718,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
                     engine_->GetFp32TrtWeight(biasqk_name, *biasqk_t);
                 auto biasqk_mask_const_weight =
                     engine_->GetFp32TrtWeight(biasqk_mask_name, *biasqk_mask_t);
+                // do biasqk_mask folding
                 for(int w=0;w<biasqk_mask_dims[0];++w){
                   for(int h=0;h<biasqk_dims[1];++h){
                     for (int i=0;i<biasqk_dims[2];++i){
@@ -811,7 +812,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
           }
 
           // transpose weight_data from m * n to  n * m
-
           TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                         static_cast<void*>(weight_data),
                                         static_cast<size_t>(weight_t->numel())};
@@ -820,6 +820,54 @@ class MultiheadMatMulOpConverter : public OpConverter {
           TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
                                       static_cast<void*>(bias_data),
                                       static_cast<size_t>(bias_t->numel())};
+
+          if(with_fastertransformer_window_mha){
+            // [3, head_number, head_size, hidden_in] -> [head_number, 3,
+            // head_size, hidden_in]
+            auto transpose_weight_v2 = [](const float* src,
+                                          float* dst,
+                                          int three,
+                                          int head_number,
+                                          int head_size,
+                                          int hidden_in) {
+              const int HH = head_size * hidden_in;
+              for (int i = 0; i < three; ++i) {
+                for (int n = 0; n < head_number; ++n) {
+                  for (int hh = 0; hh < HH; ++hh) {
+                    dst[n * three * HH + i * HH + hh] =
+                        src[i * head_number * HH + n * HH + hh];
+                  }
+                }
+              }
+            };
+            // [3, head_number, head_size] -> [head_number, 3, head_size]
+            auto transpose_bias_v2 =
+                [](const float* src, float* dst, int N, int H) {
+                  for (int i = 0; i < 3; ++i) {
+                    for (int n = 0; n < N; ++n) {
+                      for (int h = 0; h < H; ++h) {
+                        dst[n * 3 * H + i * H + h] = src[i * N * H + n * H + h];
+                      }
+                    }
+                  }
+                };
+            memcpy(weight_data_tmp.data(),
+                  weight_data,
+                  weight_t->numel() * sizeof(float));
+            transpose_weight_v2(weight_data_tmp.data(),
+                                weight_data,
+                                three,
+                                head_number,
+                                head_size,
+                                hidden_in);
+            std::vector<float> bias_data_tmp;
+            bias_data_tmp.reserve(bias_t->numel());
+            memcpy(
+                bias_data_tmp.data(), bias_data, bias_t->numel() * sizeof(float));
+            transpose_bias_v2(
+                bias_data_tmp.data(), bias_data, head_number, head_size);
+          }
+
 
           // add shuffle before fc
           std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;

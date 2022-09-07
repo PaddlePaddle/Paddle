@@ -906,19 +906,8 @@ int QkvToContextPluginDynamic::enqueue(
         platform::CUDAPlace(device_id)));
 
     const phi::GPUContext &dev_ctx = *device_ctx;
-    framework::Tensor input_transpose_tensor;
-    input_transpose_tensor.Resize(phi::make_ddim({batch,seq_len,head_number_,3,head_size_}));
-    auto * input_transpose_data = reinterpret_cast<float16 *>(
-                                    input_transpose_tensor.mutable_data<float16>(
-                                      platform::CUDAPlace(device_id)));
 
     const float16 *input0_data = static_cast<const float16 *>(inputs[0]); //qkv
-    std::shared_ptr<phi::Allocation> input_0_allo_ptr=std::make_shared<phi::Allocation>(
-      const_cast<float16 *>(input0_data),
-      (size_t) input_num * sizeof(float16), platform::CUDAPlace(device_id));
-    phi::DenseTensorMeta input_0_meta(::phi::DataType::FLOAT16,::phi::make_ddim({batch,seq_len,3,head_number_,head_size_}));
-    framework::Tensor input_tensor(input_0_allo_ptr, input_0_meta);
-
 
     if (ft_dispatcher_fp16_.get() && head_number_ == ft_dispatcher_fp16_num_head_) {}
     else {
@@ -932,43 +921,6 @@ int QkvToContextPluginDynamic::enqueue(
     auto * temp_qk_bias_data = reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
                                                               platform::CUDAPlace(device_id)));
     framework::Tensor temp_qk_bias_mask_tensor;
-    //    0,1,2,3,4
-    //    BxSx3xNxH, transpose to fit ftmha
-    // -> 0,1,3,2,4
-    //    BxSxNx3xH
-    std::vector<int32_t> transPerm = {0,1,3,2,4};
-    paddle::operators::TransposeGPUKernelDriver<paddle::platform::float16>(dev_ctx,
-      input_tensor,
-      transPerm,
-      &input_transpose_tensor);
-
-    // const dim3 grid_t_ftmha(seq_len, batch, 3);
-    // const dim3 block_t_ftmha(head_size_, head_number_, 1);
-    // transpose_qkv_for_ftmha<half><<<grid_t_ftmha,block_t_ftmha,0,stream>>>(
-    //   input0_data,
-    //   tptr,
-    //   batch,
-    //   seq_len,
-    //   head_number_,
-    //   head_size_
-    // );
-
-    // shared transpose
-    // int head_num_in_block=std::min(head_number_, static_cast<int>(std::floor(1024.0/head_size_/3)));
-    // int head_num_in_grid = static_cast<int>(std::ceil((float)head_number_/(float)head_num_in_block));
-    // head_num_in_block=std::ceil((float)head_number_/head_num_in_grid);
-    // const dim3 grid_t_ftmha_shared(seq_len, batch, head_num_in_grid);
-    // const dim3 block_t_ftmha_shared(head_size_, head_num_in_block, 3);
-
-    // transpose_qkv_for_ftmha_shared<half><<<grid_t_ftmha_shared, block_t_ftmha_shared, 0 , stream>>>(
-    //   input0_data,
-    //   tptr,
-    //   batch,
-    //   seq_len,
-    //   head_number_,
-    //   head_size_
-    // );
-    // cudaDeviceSynchronize();
 
     const half *input1_data = static_cast<const half *>(inputs[1]); //relative pos
     VLOG(1)<<"@@@ invokeTransformMask(temp_qk_bias_data,input1_data ";
@@ -988,7 +940,7 @@ int QkvToContextPluginDynamic::enqueue(
     half *output = static_cast<half *>(outputs[0]);
 
     ft_dispatcher_fp16_->run(
-      input_transpose_data, 
+      input0_data, 
       temp_qk_bias_mask_data,
       temp_qk_bias_data,
       seq_len,
