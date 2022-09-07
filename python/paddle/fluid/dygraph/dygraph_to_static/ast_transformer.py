@@ -18,6 +18,7 @@ from __future__ import print_function
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
+
 import os
 from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
