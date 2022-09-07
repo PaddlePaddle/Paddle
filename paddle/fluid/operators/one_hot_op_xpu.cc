@@ -73,5 +73,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     one_hot,
     ops::OneHotXPUKernel<paddle::platform::XPUDeviceContext, int>,
-    ops::OneHotXPUKernel<paddle::platform::XPUDeviceContext, int64_t>);
+    ops::OneHotXPUKernel<paddle::platform::XPUDeviceContext, int64_t>,
+    ops::OneHotXPUKernel<paddle::platform::XPUDeviceContext, int16_t>);
 #endif
