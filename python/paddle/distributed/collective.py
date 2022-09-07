@@ -1140,12 +1140,13 @@ def all_gather_object(object_list, obj, group=None):
     ), "all_gather_object doesn't support static graph mode."
 
     tensor, len_of_tensor = _convert_object_to_tensor(obj)
+    if paddle.get_device() != "cpu":
+        len_of_tensor = len_of_tensor._copy_to(
+            paddle.framework._current_expected_place(), False)
 
     # gather len_of_tensor from all ranks
     list_len_of_tensor = []
-    all_gather(list_len_of_tensor,
-               len_of_tensor.cuda(paddle.distributed.ParallelEnv().device_id),
-               group)
+    all_gather(list_len_of_tensor, len_of_tensor, group)
     # get the max length from list
     max_len_of_tensor = int(max(list_len_of_tensor).item())
     # resize the input tensor to max length avoid hang in all gather
