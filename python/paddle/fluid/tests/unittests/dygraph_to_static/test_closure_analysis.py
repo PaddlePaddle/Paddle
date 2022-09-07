@@ -257,5 +257,45 @@ class TestClosureAnalysis_PushPop(TestClosureAnalysis):
         }]
 
 
+class TestPushPopTrans(unittest.TestCase):
+
+    def test(self):
+
+        def vlist_of_dict(x):
+            ma = {'a': []}
+            for i in range(3):
+                ma['a'].append(1)
+            return ma
+
+        x = paddle.to_tensor([3])
+        print(paddle.jit.to_static(vlist_of_dict)(x))
+
+    def test2(self):
+        import numpy as np
+
+        def vlist_of_dict(x):
+            a = np.array([1, 2, 3])
+            for i in range(3):
+                np.append(a, 4)
+            return a
+
+        x = paddle.to_tensor([3])
+        print(paddle.jit.to_static(vlist_of_dict).code)
+        print(paddle.jit.to_static(vlist_of_dict)(x))
+
+    def test3(self):
+        import numpy as np
+
+        def vlist_of_dict(x):
+            a = np.array([1, 2, 3])
+            if True:
+                pass
+            return a
+
+        x = paddle.to_tensor([3])
+        print(paddle.jit.to_static(vlist_of_dict).code)
+        print(paddle.jit.to_static(vlist_of_dict)(x))
+
+
 if __name__ == '__main__':
     unittest.main()

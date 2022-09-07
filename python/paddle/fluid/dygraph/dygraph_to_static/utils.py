@@ -1257,7 +1257,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
         return names
 
 
-def create_get_args_node(names):
+def create_get_args_node(nonlocal_names, names):
     """
     Create get_args function as follows:
 
@@ -1274,16 +1274,14 @@ def create_get_args_node(names):
         return gast.parse(textwrap.dedent(func_def)).body[0]
 
     assert isinstance(names, (list, tuple))
-    mapped = list(filter(lambda n: '.' not in n, names))
-    nonlocal_names = sorted(
-        mapped,
-        key=mapped.index)  # to keep the order, we can't use set() to unique
+    assert isinstance(nonlocal_names, (list, tuple))
+    node = create_nonlocal_stmt_nodes(nonlocal_names)
     if not names:
         return empty_node()
-    if not nonlocal_names:
+    if nonlocal_names == []:
         nonlocal_vars = "\n"
     else:
-        nonlocal_vars = "nonlocal " + ",".join(nonlocal_names)
+        nonlocal_vars = ast_to_source_code(node[0])
     template = """
     def {func_name}():
         {nonlocal_vars}
@@ -1296,7 +1294,7 @@ def create_get_args_node(names):
     return gast.parse(textwrap.dedent(func_def)).body[0]
 
 
-def create_set_args_node(names):
+def create_set_args_node(nonlocal_names, names):
     """
     Create set_args function as follows:
 
@@ -1314,16 +1312,14 @@ def create_set_args_node(names):
         return gast.parse(textwrap.dedent(func_def)).body[0]
 
     assert isinstance(names, (list, tuple))
-    mapped = list(filter(lambda n: '.' not in n, names))
-    nonlocal_names = sorted(
-        mapped,
-        key=mapped.index)  # to keep the order, we can't use set() to unique
+    assert isinstance(nonlocal_names, (list, tuple))
+    node = create_nonlocal_stmt_nodes(nonlocal_names)
     if not names:
         return empty_node()
-    if not nonlocal_names:
+    if nonlocal_names == []:
         nonlocal_vars = "\n"
     else:
-        nonlocal_vars = "nonlocal " + ",".join(nonlocal_names)
+        nonlocal_vars = ast_to_source_code(node[0])
     template = """
     def {func_name}({args}):
         {nonlocal_vars}
@@ -1400,5 +1396,5 @@ def create_name_str(name_ids):
     if not name_ids:
         return 'None'
 
-    names_str = ["'%s'" % name for name in name_ids]
+    names_str = ["'%s'" % (name.replace("'", "\\'")) for name in name_ids]
     return "(%s, )" % ','.join(names_str)
