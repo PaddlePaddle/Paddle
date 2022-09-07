@@ -22,6 +22,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+class Scope;
 namespace ir {
 class Graph;
 }  // namespace ir

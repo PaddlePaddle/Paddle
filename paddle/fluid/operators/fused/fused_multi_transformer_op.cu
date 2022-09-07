@@ -480,6 +480,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         std::swap(buf0, buf1);
       }
     }
+    LOG(ERROR) << "FusedMultiTransformerOpKernel Compute finish";
   }
 };
 

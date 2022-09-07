@@ -250,13 +250,13 @@ GraphPatternDetector::DetectPatterns() {
         }
       }
     }
-    VLOG(4) << "step " << step << " get records: " << cur_groups.size();
-    // for (auto &group : cur_groups) {
-    //   for (auto &item : group.roles) {
-    //     // VLOG(4) << "node " << item.second->id() << " as " << item.first->name();
-    //   }
-    //   // LOG(ERROR) << "=========================================================";
-    // }
+    LOG(ERROR) << "step " << step << " get records: " << cur_groups.size();
+    for (auto &group : cur_groups) {
+      for (auto &item : group.roles) {
+        LOG(ERROR) << "node " << item.second->id() << " as " << item.first->name();
+      }
+      LOG(ERROR) << "=========================================================";
+    }
   }
 
   for (auto &group : bi_records[step % 2]) {
