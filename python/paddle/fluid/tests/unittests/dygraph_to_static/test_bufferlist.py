@@ -29,39 +29,57 @@ class SimpleNet(paddle.nn.Layer):
         self.linear1 = paddle.nn.Linear(10, 3)
         self.linear2 = paddle.nn.Linear(3, 1)
         self.hidden = BufferList([
-            paddle.to_tensor([1.0]),
-            paddle.to_tensor([2.0]),
+            paddle.randn([1]),
+            paddle.randn([1]),
         ])
-        #self.hidden  = paddle.to_tensor([1.0])
 
     def forward(self, x):
         out1 = self.linear1(x)
         out2 = self.linear2(out1) + self.hidden[0]
-        self.hidden.assign([paddle.to_tensor([3.0]), paddle.to_tensor([4.0])])
+        self.hidden.assign([paddle.randn([1]), paddle.randn([1])])
         return [out1, out2]
 
 
-def run_graph(inp, to_static):
+class SimpleNet2(paddle.nn.Layer):
+
+    def __init__(self):
+        super(SimpleNet2, self).__init__()
+        self.linear1 = paddle.nn.Linear(10, 3)
+        self.linear2 = paddle.nn.Linear(3, 1)
+        self.hidden = BufferList([
+            paddle.randn([1]),
+            paddle.randn([1]),
+        ])
+
+    def forward(self, x):
+        out1 = self.linear1(x)
+        out2 = self.linear2(out1) + self.hidden[0]
+        self.hidden[0] = paddle.randn([1])
+        return [out1, out2]
+
+
+def run_graph(cls, inp, to_static):
     paddle.seed(2021)
     np.random.seed(2021)
     random.seed(2021)
-    net = SimpleNet()
+    net = cls()
     if to_static:
         net = paddle.jit.to_static(net)
-    loss = net(inp)
+    for i in range(3):
+        loss = net(inp)
     return loss
 
 
 class TestBufferList(unittest.TestCase):
 
     def test_bufferlist(self):
-        inp = paddle.rand((10, ))
-        assert_array_equal(
-            run_graph(inp, True)[0].numpy(),
-            run_graph(inp, False)[0].numpy(),
-            "Not Equal in dygraph and static graph", True)
+        inp = paddle.randn((10, ))
+        for cls in [SimpleNet, SimpleNet2]:
+            assert_array_equal(
+                run_graph(cls, inp, True)[0].numpy(),
+                run_graph(cls, inp, False)[0].numpy(),
+                "Not Equal in dygraph and static graph", True)
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()
