@@ -38,6 +38,13 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#if defined(_WIN32)
+#define UNUSED
+#define __builtin_expect(EXP, C) (EXP)
+#else
+#define UNUSED __attribute__((unused))
+#endif
+
 class PluginTensorRT;
 
 typedef std::function<PluginTensorRT*(const void*, size_t)>
@@ -409,7 +416,7 @@ class TrtPluginRegistrarV2 {
 #define REGISTER_TRT_PLUGIN_V2(name) REGISTER_TRT_PLUGIN_V2_HELPER(name)
 
 #define REGISTER_TRT_PLUGIN_V2_HELPER(name)                                    \
-  __attribute__((unused)) static bool REGISTER_TRT_PLUGIN_V2_HELPER##name =    \
+  UNUSED static bool REGISTER_TRT_PLUGIN_V2_HELPER##name =                     \
       TrtPluginRegistry::Global()->Regist(#name, []() -> void {                \
         static paddle::inference::tensorrt::plugin::TrtPluginRegistrarV2<name> \
             plugin_registrar_##name{};                                         \
