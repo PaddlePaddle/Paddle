@@ -817,12 +817,14 @@ class MSRAInitializer(Initializer):
             if self._uniform:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 limit = gain * math.sqrt(3.0 / float(fan_in))
-
-                out_var = _legacy_C_ops.uniform_random('shape', out_var.shape,
-                                                       'min', -limit, 'max',
-                                                       limit, 'seed',
-                                                       self._seed, 'dtype',
-                                                       int(out_dtype))
+                if in_dygraph_mode():
+                    out_var = _C_ops.uniform_random(var.shape, out_dtype,
+                                                    -limit, limit, self._seed,
+                                                    _current_expected_place())
+                else:
+                    out_var = _legacy_C_ops.uniform_random(
+                        'shape', out_var.shape, 'min', -limit, 'max', limit,
+                        'seed', self._seed, 'dtype', int(out_dtype))
             else:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 std = gain / math.sqrt(float(fan_in))
