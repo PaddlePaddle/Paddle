@@ -492,11 +492,12 @@ template <typename T, int VecSize>
 HOSTDEVICE static void ReadVecDataWithInt64Index(
     const T *in,
     int64_t idx,
+    bool no_broadcast,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &src_strides,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &dst_strides,
     int rank,
     phi::AlignedVector<T, VecSize> *out) {
-  if (src_strides[0] == dst_strides[0]) {
+  if (no_broadcast) {
     phi::Load<T, VecSize>(in + idx, out);
   } else {
 #pragma unroll
@@ -516,6 +517,8 @@ __global__ void BinaryBroadcastKernelWithInt64Index(
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> y_strides,
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> z_strides,
     int rank,
+    bool x_no_broadcast,
+    bool y_no_broadcast,
     Functor functor) {
   int64_t numel = z_strides[0];
   int64_t idx =
@@ -527,9 +530,9 @@ __global__ void BinaryBroadcastKernelWithInt64Index(
     phi::AlignedVector<InT, VecSize> x_vec, y_vec;
     phi::AlignedVector<OutT, VecSize> z_vec;
     ReadVecDataWithInt64Index<InT, VecSize>(
-        x, idx, z_strides, x_strides, rank, &x_vec);
+        x, idx, x_no_broadcast, z_strides, x_strides, rank, &x_vec);
     ReadVecDataWithInt64Index<InT, VecSize>(
-        y, idx, z_strides, y_strides, rank, &y_vec);
+        y, idx, y_no_broadcast, z_strides, y_strides, rank, &y_vec);
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
       z_vec[i] = functor(x_vec[i], y_vec[i]);
@@ -587,6 +590,8 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
                            &y_out_dims,
                            &broadcast_out_dims,
                            &rank);
+    bool x_no_broadcast = IsSame(x_out_dims, broadcast_out_dims, rank);
+    bool y_no_broadcast = IsSame(y_out_dims, broadcast_out_dims, rank);
 
     auto x_strides = ShapeToStride(x_out_dims, rank);
     auto y_strides = ShapeToStride(y_out_dims, rank);
@@ -606,6 +611,8 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
                            y_strides,
                            z_strides,
                            rank,
+                           x_no_broadcast,
+                           y_no_broadcast,
                            func);
   }
 
@@ -682,6 +689,15 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
                              broadcast_out_dims,
                              length);
     }
+  }
+
+  static bool IsSame(const phi::Array<int64_t, phi::DDim::kMaxRank> &x,
+                     const phi::Array<int64_t, phi::DDim::kMaxRank> &y,
+                     int rank) {
+    for (int i = 0; i < rank; ++i) {
+      if (x[i] != y[i]) return false;
+    }
+    return true;
   }
 
   static phi::Array<int64_t, phi::DDim::kMaxRank + 1> ShapeToStride(
