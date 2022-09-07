@@ -2045,6 +2045,16 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
   }
   x->predictor_stream_ = stream;
   x->Init(scope_, inference_program_);
+
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.trt_engine_memory_sharing()) {
+    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+        x->predictor_id_;
+    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+  }
+#endif
+
   x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
   return std::unique_ptr<PaddlePredictor>(x);
 }

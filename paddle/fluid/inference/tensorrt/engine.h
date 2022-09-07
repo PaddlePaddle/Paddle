@@ -753,7 +753,7 @@ class TRTEngineManager {
   }
 
   void DeleteAll() {
-    // std::unique_lock<std::mutex> lock(mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     for (auto& item : engines_) {
       item.second.reset(nullptr);
     }
