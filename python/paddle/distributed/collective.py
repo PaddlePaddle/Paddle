@@ -1143,7 +1143,9 @@ def all_gather_object(object_list, obj, group=None):
 
     # gather len_of_tensor from all ranks
     list_len_of_tensor = []
-    all_gather(list_len_of_tensor, len_of_tensor, group)
+    all_gather(list_len_of_tensor,
+               len_of_tensor.cuda(paddle.distributed.ParallelEnv().device_id),
+               group)
     # get the max length from list
     max_len_of_tensor = int(max(list_len_of_tensor).item())
     # resize the input tensor to max length avoid hang in all gather
