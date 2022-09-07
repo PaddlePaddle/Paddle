@@ -16,7 +16,7 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
-#include <curand_kernel.h>:float16
+#include <curand_kernel.h>
 #endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
