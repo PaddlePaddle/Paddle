@@ -174,14 +174,14 @@ class GradNodeBase {
   virtual ~GradNodeBase() { VLOG(6) << "Destruct GradNodeBase"; }
 
   /**
-   * operator() designed to contian the real backward execution logic, it should
+   * operator() designed to contain the real backward execution logic, it should
    * be overrided by derived class defined for each operator. It accepts a
    * vector of Tensor which contains grads input of current operator
    *
-   * Note: why we need backward inputs and outputs construct as vector of vector
-   * of paddle::experimental::Tensor?
-   * Since all of paddle op composite in form of {"Slot name ", vector<Var>},
-   * so, vector of vector is better choice to fit this format.
+   * Note: why we need backward inputs and outputs to be constructed as vector 
+   * of vector of paddle::experimental::Tensor?
+   * Since all of paddle ops are made in the form of {"Slot name ", vector<Var>},
+   * so, vector of vector is a better choice to fit this format.
    * **/
   virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>
@@ -227,8 +227,8 @@ class GradNodeBase {
   void SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
                       size_t slot_rank);
   /**
-   * Default setters for Grad in/out meta this should be used for same special
-   * Node which will not create by user
+   * Default setters for Grad in/out meta, this should be used for the same
+   * special Node which will not be created by user
    * **/
   void SetDefaultGradInOutMeta();
   /**
@@ -254,14 +254,14 @@ class GradNodeBase {
    * **/
   inline bool GradientHooksRegistered() { return !gradient_hooks_.empty(); }
 
-  std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
+  std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>&
   GetGradientHookFuntions() {
     VLOG(6) << "GetGradientHookFuntions ";
     return gradient_hooks_;
   }
 
   void SetGradientHookFuntions(
-      std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
+      std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>&
           hooks) {
     VLOG(6) << "SetGradientHookFuntions ";
     gradient_hooks_ = hooks;
@@ -305,7 +305,7 @@ class GradNodeBase {
   // backward
   // Each entry consists of one pair of
   // <hook_id, <slot_id, out_rank, std::shared_ptr<TensorHook>>>
-  std::map<int64_t,
+  std::map</* hook id */ int64_t,
            std::tuple<
                /* slot id */ size_t,
                /* rank */ size_t,
