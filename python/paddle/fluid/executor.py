@@ -1549,9 +1549,10 @@ class Executor(object):
                     place, core.CustomPlace):
                 return False
 
-            use_standalone_executor_for_compiled_program = os.environ.get(
-                'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
-                None) in [1, '1', True, 'True', 'true']
+            # use_standalone_executor_for_compiled_program = os.environ.get(
+            #     'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
+            #     None) in [1, '1', True, 'True', 'true']
+            use_standalone_executor_for_compiled_program = True
 
             # Only support fleet when 'FLAGS_CONVERT_GRAPH_TO_PROGRAM' is set to true
             from paddle.distributed.fleet import fleet
@@ -1567,10 +1568,10 @@ class Executor(object):
                 compiled_program = program if isinstance(
                     program, compiler.CompiledProgram) else program._graph
                 # Unsupported case 1 : the CompiledProgram is constructed by Graph
-                if compiled_program._program is None:
-                    warnings.warn("Standalone executor is not used for Graph",
-                                  UserWarning)
-                    return False
+                # if compiled_program._program is None:
+                #     warnings.warn("Standalone executor is not used for Graph",
+                #                   UserWarning)
+                #     return False
 
                 # Unsupported case 2: data parallel
                 if compiled_program._is_data_parallel and len(
