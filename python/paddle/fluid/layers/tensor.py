@@ -1680,10 +1680,9 @@ def zeros_like(x, out=None):
           data = fluid.layers.zeros_like(x) # [0.0, 0.0, 0.0]
 
     """
-
     check_variable_and_dtype(x, "x",
                              ['bool', 'float32', 'float64', 'int32', 'int64'],
-                             'ones_like')
+                             'zeros_like')
     helper = LayerHelper("zeros_like", **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1691,9 +1690,12 @@ def zeros_like(x, out=None):
         check_variable_and_dtype(
             out, "out", ['bool', 'float32', 'float64', 'int32', 'int64'],
             'zeros_like')
-
-    helper.append_op(type='fill_zeros_like',
+    helper.append_op(type='fill_any_like',
                      inputs={'X': [x]},
+                     attrs={
+                         'value': 0,
+                         "dtype": x.dtype
+                     },
                      outputs={'Out': [out]})
     out.stop_gradient = True
     return out
