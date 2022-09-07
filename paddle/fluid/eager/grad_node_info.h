@@ -274,7 +274,7 @@ class GradNodeBase {
                                  kSlotSmallVectorSize>& tensors);
 
   /**
-   * Handle Complex - Real Type Promotion
+   * Handle Complex - Real Type Conversion
    * **/
   void HandleComplexGradToRealGrad(
       paddle::small_vector<std::vector<paddle::experimental::Tensor>,
