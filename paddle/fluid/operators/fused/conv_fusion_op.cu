@@ -349,17 +349,6 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
               &perf_count,
               perf_results.get()));
       algo = (perf_results.get())[best_algo_idx].algo;
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
-              handle,
-              cudnn_input_desc,
-              cudnn_filter_desc,
-              cudnn_conv_desc,
-              cudnn_output_desc,
-              algo,
-              &workspace_size_in_bytes));
-      if (workspace_size_in_bytes > workspace_size_limit)
-        workspace_size_limit = workspace_size_in_bytes;
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnGetConvolutionForwardAlgorithm(
@@ -371,8 +360,19 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
               CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
               workspace_size_limit,
               &algo));
-      VLOG(3) << "cuDNN forward algo " << algo;
 #endif
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
+              handle,
+              cudnn_input_desc,
+              cudnn_filter_desc,
+              cudnn_conv_desc,
+              cudnn_output_desc,
+              algo,
+              &workspace_size_in_bytes));
+      if (workspace_size_in_bytes > workspace_size_limit)
+        workspace_size_limit = workspace_size_in_bytes;
+      VLOG(3) << "cuDNN forward algo " << algo;
     } else {
       std::function<SearchFuseResult<cudnnConvolutionFwdAlgo_t>()> search_func =
           [&]() -> SearchFuseResult<cudnnConvolutionFwdAlgo_t> {
