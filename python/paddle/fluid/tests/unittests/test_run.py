@@ -46,16 +46,16 @@ assert "PADDLE_ROLE" in env
 
 apipyfile = '''# train.py for unitest
 from paddle.distributed.launch import api as launch_api
-assert launch_api.job_id() == "utest"
-assert len(launch_api.pod_name()) == 6
-assert launch_api.active()
-assert launch_api.global_size() == 4
-assert launch_api.size() == 4
-assert launch_api.local_size() == 2
-assert launch_api.global_rank() in [0, 1, 2, 3]
-assert launch_api.rank() in [0, 1, 2, 3]
-assert launch_api.local_rank() in [0, 1]
-assert launch_api.nnodes() == 2
+assert launch_api.job_id() == "utest", launch_api.job_id() 
+assert len(launch_api.pod_name()) == 6, launch_api.pod_name()
+assert launch_api.active(), launch_api.active()
+assert launch_api.global_size() == 4, launch_api.global_size() 
+assert launch_api.size() == 4, launch_api.size() 
+assert launch_api.local_size() == 2, launch_api.local_size() 
+assert launch_api.global_rank() in [0, 1, 2, 3], launch_api.global_rank() 
+assert launch_api.rank() in [0, 1, 2, 3], launch_api.rank() 
+assert launch_api.local_rank() in [0, 1], launch_api.local_rank() 
+assert launch_api.nnodes() == 2, launch_api.nnodes() 
 '''
 
 
@@ -217,14 +217,12 @@ class API_Test(unittest.TestCase):
             cmd.extend(args.split(" "))
         cmd.extend([self.path])
         env = os.environ.copy()
-        # virtual devies for testing
-        env.update({'CUDA_VISIBLE_DEVICES': '0,1'})
         proc = subprocess.Popen(cmd, env=env)
         return proc
 
     def test_api(self):
         port = random.randrange(6000, 8000)
-        args = "--job_id utest --log_dir {} --master 127.0.0.1:{} --nnodes 2"
+        args = "--job_id utest --nproc_per_node=2 --log_dir {} --master 127.0.0.1:{} --nnodes 2"
         p1 = self.pdrun(args.format(self.temp_dir.name + "/1", port))
         p2 = self.pdrun(args.format(self.temp_dir.name + "/2", port))
         p1.wait()
