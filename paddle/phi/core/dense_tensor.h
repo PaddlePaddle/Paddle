@@ -85,6 +85,10 @@ class DenseTensor : public TensorBase,
   /// \return The dims of the tensor.
   const DDim& dims() const noexcept override { return meta_.dims; }
 
+  /// \brief Returns the strides of the tensor.
+  /// \return The strides of the tensor.
+  const Strides& strides() const noexcept { return meta_.strides; }
+
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.
   const LoD& lod() const noexcept { return meta_.lod; }
@@ -142,6 +146,14 @@ class DenseTensor : public TensorBase,
   /// \brief Change the lod information in the metadata.
   /// \param lod The new lod of the dense tensor.
   void ResetLoD(const LoD& lod);
+
+  void InitStrides();
+
+  Strides* GetMutableStrides() { return &meta_.strides; }
+
+  bool IsStridesValiable() { return meta_.strides.IsValiable(); }
+
+  bool IsContiguous() { return meta_.strides.IsContiguous(); }
 
   /// \brief Returns the actual allocation size occupied by tensor, may be
   /// larger

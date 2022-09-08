@@ -62,8 +62,8 @@ Tensor embedding_impl(const Tensor& x,
     const auto& kernel = kernel_result.kernel;
     VLOG(6) << "embedding API kernel: " << kernel;
 
-    auto input_x = PrepareData(x, kernel.InputAt(0), {});
-    auto input_weight = PrepareData(weight, kernel.InputAt(1), {});
+    auto input_x = PrepareData(x, kernel.InputAt(0), {}, "embedding");
+    auto input_weight = PrepareData(weight, kernel.InputAt(1), {}, "embedding");
 
     auto* kernel_out = SetKernelOutput(&api_output);
     phi::MetaTensor meta_out(kernel_out);
@@ -91,7 +91,7 @@ Tensor embedding_impl(const Tensor& x,
     const auto& kernel = kernel_result.kernel;
     VLOG(6) << "sparse_weight_embedding API kernel: " << kernel;
 
-    auto input_x = PrepareData(x, kernel.InputAt(0), {});
+    auto input_x = PrepareData(x, kernel.InputAt(0), {}, "embedding");
     auto input_weight = TensorToSelectedRows(weight);
 
     auto* kernel_out = SetKernelOutput(&api_output);
@@ -135,7 +135,7 @@ std::vector<Tensor> split_impl(const Tensor& x,
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
 
-  auto dense_x = PrepareData(x, kernel.InputAt(0), {});
+  auto dense_x = PrepareData(x, kernel.InputAt(0), {}, "split");
 
   // Calculate the number of out tensors
   size_t out_number;
@@ -224,11 +224,12 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
 
-  auto input_x = PrepareData(x, kernel.InputAt(0), {});
-  auto input_scale = PrepareData(scale, kernel.InputAt(1), {});
-  auto input_bias = PrepareData(bias, kernel.InputAt(2), {});
-  auto input_mean = PrepareData(mean, kernel.InputAt(3), {});
-  auto input_variance = PrepareData(variance, kernel.InputAt(4), {});
+  auto input_x = PrepareData(x, kernel.InputAt(0), {}, "batch_norm");
+  auto input_scale = PrepareData(scale, kernel.InputAt(1), {}, "batch_norm");
+  auto input_bias = PrepareData(bias, kernel.InputAt(2), {}, "batch_norm");
+  auto input_mean = PrepareData(mean, kernel.InputAt(3), {}, "batch_norm");
+  auto input_variance =
+      PrepareData(variance, kernel.InputAt(4), {}, "batch_norm");
 
   std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> api_output;
   auto kernel_out_0 = SetKernelOutput(&std::get<0>(api_output));
@@ -360,9 +361,10 @@ void embedding_grad_impl(const Tensor& x,
     const auto& kernel = kernel_result.kernel;
     VLOG(6) << kernel_name << " API kernel: " << kernel;
 
-    auto input_x = PrepareData(x, kernel.InputAt(0), {});
-    auto input_weight = PrepareData(weight, kernel.InputAt(1), {});
-    auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {});
+    auto input_x = PrepareData(x, kernel.InputAt(0), {}, kernel_name);
+    auto input_weight = PrepareData(weight, kernel.InputAt(1), {}, kernel_name);
+    auto input_out_grad =
+        PrepareData(out_grad, kernel.InputAt(2), {}, kernel_name);
 
     if (sparse) {
       auto* kernel_out = SetSelectedRowsKernelOutput(weight_grad);
@@ -412,9 +414,10 @@ void embedding_grad_impl(const Tensor& x,
     const auto& kernel = kernel_result.kernel;
     VLOG(6) << kernel_name << " API kernel: " << kernel;
 
-    auto input_x = PrepareData(x, kernel.InputAt(0), {});
+    auto input_x = PrepareData(x, kernel.InputAt(0), {}, kernel_name);
     auto input_weight = TensorToSelectedRows(weight);
-    auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {});
+    auto input_out_grad =
+        PrepareData(out_grad, kernel.InputAt(2), {}, kernel_name);
 
     if (sparse) {
       auto* kernel_out = SetSelectedRowsKernelOutput(weight_grad);

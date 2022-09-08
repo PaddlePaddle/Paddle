@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/strides.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/optional.h"
 
@@ -67,6 +68,7 @@ struct DenseTensorMeta {
 
   bool is_scalar{false};
   DDim dims;
+  Strides strides;
   DataType dtype{DataType::UNDEFINED};
   DataLayout layout{DataLayout::NCHW};
   LoD lod;

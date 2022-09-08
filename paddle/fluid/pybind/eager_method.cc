@@ -117,9 +117,22 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
   Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
   size_t numel = 1;
+  int64_t* tensor_strides = nullptr;
+  if (self->tensor.is_dense_tensor() &&
+      std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl())
+          ->IsStridesValiable()) {
+    tensor_strides =
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl())
+            ->GetMutableStrides()
+            ->GetMutable();
+  }
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {
     py_dims[i] = static_cast<size_t>(tensor_dims[i]);
-    py_strides[i] = sizeof_dtype * numel;
+    if (tensor_strides) {
+      py_strides[i] = sizeof_dtype * tensor_strides[i];
+    } else {
+      py_strides[i] = sizeof_dtype * numel;
+    }
     numel *= py_dims[i];
   }
 
@@ -1769,6 +1782,41 @@ static PyObject* tensor__unset_fake_empty(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_contiguous(TensorObject* self,
+                                   PyObject* args,
+                                   PyObject* kwargs) {
+  EAGER_TRY
+  if (self->tensor.is_dense_tensor()) {
+    auto dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+    if (dense_tensor->IsContiguous()) {
+      Py_INCREF(self);
+      return reinterpret_cast<PyObject*>(self);
+    } else {
+      return ToPyObject(contiguous_dygraph_function(self->tensor));
+    }
+
+  } else {
+    Py_INCREF(self);
+    return reinterpret_cast<PyObject*>(self);
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_is_contiguous(TensorObject* self,
+                                      PyObject* args,
+                                      PyObject* kwargs) {
+  EAGER_TRY
+  if (self->tensor.is_dense_tensor()) {
+    auto dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+    return ToPyObject(dense_tensor->IsContiguous());
+  } else {
+    return ToPyObject(true);
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self,
                                     PyObject* args,
@@ -2015,6 +2063,14 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"_unset_fake_empty",
      (PyCFunction)(void (*)(void))tensor__unset_fake_empty,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"contiguous",
+     (PyCFunction)(void (*)(void))tensor_contiguous,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"is_contiguous",
+     (PyCFunction)(void (*)(void))tensor_is_contiguous,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
 #if defined(PADDLE_WITH_CUDA)

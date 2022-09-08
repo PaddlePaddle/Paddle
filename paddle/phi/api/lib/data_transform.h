@@ -65,22 +65,26 @@ class TransformFlag {
 std::shared_ptr<phi::DenseTensor> PrepareData(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag);
+    const TransformFlag& transform_flag,
+    const std::string& kernel_name);
 
 paddle::optional<phi::DenseTensor> PrepareData(
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag);
+    const TransformFlag& transform_flag,
+    const std::string& kernel_name);
 
 std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
     const std::vector<Tensor>& inputs,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag);
+    const TransformFlag& transform_flag,
+    const std::string& kernel_name);
 
 paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
     const paddle::optional<std::vector<Tensor>>& inputs,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag);
+    const TransformFlag& transform_flag,
+    const std::string& kernel_name);
 
 void TransDataBackend(const phi::DenseTensor* tensor,
                       Backend target_backend,

@@ -33,6 +33,14 @@
     func : cholesky_solve
   backward : cholesky_solve_grad
 
+- api : contiguous
+  args : (Tensor input)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : contiguous
+
 - api : cross
   args : (Tensor x, Tensor y, int axis = 9)
   output : Tensor

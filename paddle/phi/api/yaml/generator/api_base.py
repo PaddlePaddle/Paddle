@@ -550,7 +550,10 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  phi::{infer_meta['func']}({param_code});
 """
 
-    def get_kernel_args(self, kernel_tensor_type=None, code_indent=''):
+    def get_kernel_args(self,
+                        kernel_tensor_type=None,
+                        code_indent='',
+                        kernel_name=''):
         dense_input_trans_map = {
             'const Tensor&':
             'const phi::DenseTensor&',
@@ -610,7 +613,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                                     (f"{PREFIX_TENSOR_NAME}{input_name}_vec",
                                      True))
                                 input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, \"{kernel_name}\");
 {code_indent}  paddle::optional<std::vector<const phi::DenseTensor*>> {PREFIX_TENSOR_NAME}{input_name};
 {code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_vec){{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::optional<std::vector<const phi::DenseTensor*>>({PREFIX_TENSOR_NAME}{input_name}_vec->size());
@@ -622,7 +625,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                             input_name_tensor_map[input_name].append(
                                 (f"{PREFIX_TENSOR_NAME}{input_name}", False))
                             input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, \"{kernel_name}\");"""
 
                     else:
                         if self.inputs['input_info'][
@@ -630,7 +633,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                             input_name_tensor_map[input_name].append(
                                 (f"{PREFIX_TENSOR_NAME}{input_name}", False))
                             input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, \"{kernel_name}\");"""
 
                         elif self.inputs['input_info'][
                                 input_name] == "const std::vector<Tensor>&":
@@ -644,7 +647,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                                     (f"{PREFIX_TENSOR_NAME}{input_name}_vec",
                                      True))
                                 input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag}, \"{kernel_name}\");
 {code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name}({PREFIX_TENSOR_NAME}{input_name}_vec->size());
 {code_indent}  for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
@@ -835,7 +838,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
     def gen_kernel_code(self, kernel_name, code_indent, inplace_flag=False):
         kernel_dispatch = self.kernel['dispatch'][kernel_name]
         input_tensors, kernel_args, kernel_signature = self.get_kernel_args(
-            kernel_dispatch, code_indent)
+            kernel_dispatch, code_indent, kernel_name)
         out_tensor_type_list = kernel_dispatch[1] if kernel_dispatch else None
         outputs_args, kernel_output_names, output_create = self.gene_output(
             self.outputs['types'], out_tensor_type_list, code_indent,
