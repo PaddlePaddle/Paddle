@@ -23,15 +23,9 @@ class TestPlace(unittest.TestCase):
 
     def test_place(self):
 
-        def func(x):
-            x = paddle.to_tensor([1, 2, 3, 4])
-            p = x.place()
-            print(p)
-            return x
-
-        x = paddle.to_tensor([3])
-        print(paddle.jit.to_static(func).code)
-        print(paddle.jit.to_static(func)(x))
+        paddle.enable_static()
+        x = paddle.to_tensor([1, 2, 3, 4])
+        self.assertTrue(x.place() == None)
 
 
 if __name__ == '__main__':
