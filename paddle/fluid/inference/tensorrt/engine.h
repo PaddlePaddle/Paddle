@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <NvInfer.h>
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -37,6 +38,8 @@ limitations under the License. */
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/stream.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {
@@ -705,6 +708,7 @@ class TensorRTEngine {
 
 class TRTEngineManager {
   using PredictorID = int;
+  using AllocationPtr = phi::Allocator::AllocationPtr;
 
  public:
   bool Empty() const {
@@ -753,7 +757,7 @@ class TRTEngineManager {
   }
 
   void DeleteAll() {
-    // std::unique_lock<std::mutex> lock(mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     for (auto& item : engines_) {
       item.second.reset(nullptr);
     }
@@ -785,37 +789,41 @@ class TRTEngineManager {
     }
   }
 
-  void* getContextMemory(TensorRTEngine* trt_engine) {
+  void* getContextMemory(PredictorID predictor_id,
+                         const phi::GPUPlace& place,
+                         const phi::Stream& stream) {
     std::unique_lock<std::mutex> lock(mutex_);
-    auto predictor_id = trt_engine->predictor_id_per_thread;
+    auto alignment = getAlignmentSize(place);
     if (context_memorys_.count(predictor_id) == 0) {
-      void* context_memory{nullptr};
-      cudaMalloc(&context_memory, max_ctx_mem_size_);
-      if (context_memory == nullptr) {
-        PADDLE_ENFORCE_EQ(
-            max_ctx_mem_size_,
-            0,
-            platform::errors::InvalidArgument(
-                "The context memory size is non-zero, but the "
-                "memory address we applied for is NULL, we failed to set it."));
-      }
-      context_memorys_[predictor_id] = context_memory;
+      auto context_memory =
+          memory::Alloc(place, max_ctx_mem_size_ + alignment, stream);
+      // context_memory_[predictor_id].reset(context_memory.release());
+      context_memorys_[predictor_id] = std::move(context_memory);
     }
-    return context_memorys_[predictor_id];
+    return getAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);
   }
 
   void releaseContextMemory(PredictorID predictor_id) {
     std::unique_lock<std::mutex> lock(mutex_);
     if (context_memorys_.count(predictor_id)) {
-      cudaFree(context_memorys_[predictor_id]);
+      context_memorys_[predictor_id].reset(nullptr);
       context_memorys_.erase(predictor_id);
     }
   }
 
  private:
+  size_t getAlignmentSize(const phi::GPUPlace& place) {
+    const auto& prop = platform::GetDeviceProperties(place.GetDeviceId());
+    return prop.textureAlignment;
+  }
+
+  void* getAlignedMemory(void* addr, size_t alignment) {
+    return reinterpret_cast<void*>(uintptr_t(addr) & (~(alignment - 1)));
+  }
+
   mutable std::mutex mutex_;
   size_t max_ctx_mem_size_{0};
-  std::unordered_map<PredictorID, void*> context_memorys_;
+  std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
 };
 

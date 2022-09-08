@@ -547,17 +547,18 @@ void AnalysisConfig::EnableTensorRtEngine(
   }
 
   use_tensorrt_ = true;
-
+#if PADDLE_WITH_TENSORRT
   // https://forums.developer.nvidia.com/t/nvinfer1-createexecutioncontextwithoutdevicememory-returns-nullptr/111878/2
   // when trt version less than 7.2,
-  // createExecutionContextWithoutDeviceMemory() has bug
-  // so, we cannot enable engine context memory sharing
+  // createExecutionContextWithoutDeviceMemory() has bug.
+  // so, we cannot enable engine context memory sharing.
 #if IS_TRT_VERSION_GE(7200)
   trt_engine_memory_sharing_ = true;
 #else
   LOG(WARNING)
       << "TensorRT engine context memory sharing needs version 7.2 and after.";
   trt_engine_memory_sharing_ = false;
+#endif
 #endif
   tensorrt_workspace_size_ = workspace_size;
   tensorrt_max_batchsize_ = max_batch_size;
