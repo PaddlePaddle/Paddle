@@ -28,7 +28,8 @@ typedef struct {
 } TensorObject;
 
 typedef struct {
-  PyObject_HEAD PyObject* container;
+  PyObject_HEAD 
+  PyObject* container;
   PyObject* non_differentiable;
   PyObject* not_inplace_tensors;
   bool materialize_grads;
