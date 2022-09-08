@@ -30,6 +30,8 @@ set(PRIM_OP_SRCS
     log_p_op.cc
     select_p_op.cc
     eq_p_op.cc
+    gt_p_op.cc
+    ne_p_op.cc
     pow_p_op.cc
     max_p_op.cc
     erf_p_op.cc)

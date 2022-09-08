@@ -99,6 +99,8 @@ paddle.enable_static()
         ('select', primops.select,
          (randn(2, 3) > 0, randn(2, 3), randn(2, 3)), {}, (2, 3), 'float64'),
         ('eq', primops.eq, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'bool'),
+        ('ne', primops.ne, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'bool'),
+        ('gt', primops.gt, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'bool'),
         ('pow', primops.pow, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'float64'),
         ('max', primops.max, (randn(2, 3), randn(2, 3)), {}, (2, 3), 'float64'),
     ))

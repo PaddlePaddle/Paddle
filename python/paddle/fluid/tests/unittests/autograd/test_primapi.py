@@ -292,7 +292,11 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
         ('mean_with_axis', lambda x: paddle.mean(x, axis=1),
          (np.random.rand(200, 345), ), None, 'float32'),
         ('mean_with_keepdim', lambda x: paddle.mean(x, keepdim=True),
-         (np.random.rand(200, 345), ), None, 'float32')))
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean_with_axis_keepdim',
+         lambda x: paddle.mean(x, axis=0, keepdim=True),
+         (np.random.rand(200, 345), ), None, 'float32'),
+    ))
 class TestGrad(unittest.TestCase):
 
     def setUp(self):

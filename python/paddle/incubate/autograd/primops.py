@@ -350,6 +350,16 @@ def eq(x, y, out=None):
     return _simple_binop(LayerHelper('eq_p', **locals()))
 
 
+@REGISTER_FN('gt_p', 'X', 'Y', 'Z')
+def ge(x, y, out=None):
+    return _simple_binop(LayerHelper('gt_p', **locals()))
+
+
+@REGISTER_FN('ne_p', 'X', 'Y', 'Z')
+def ne(x, y, out=None):
+    return _simple_binop(LayerHelper('ne_p', **locals()))
+
+
 @REGISTER_FN('pow_p', 'X', 'Y', 'Z')
 def pow(x, y, out=None):
     return _simple_binop(LayerHelper('pow_p', **locals()))

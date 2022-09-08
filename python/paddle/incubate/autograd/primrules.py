@@ -317,6 +317,20 @@ def equal_orig2prim(op, x, y):
     return eq(x, y)
 
 
+@REGISTER_ORIG2PRIM('not_equal')
+def ne_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    return ne(x, y)
+
+
+@REGISTER_ORIG2PRIM('greater_than')
+def gt_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    return gt(x, y)
+
+
 @REGISTER_ORIG2PRIM('elementwise_pow')
 def elementwise_pow_orig2prim(op, x, y):
     if x.shape != y.shape:
@@ -521,6 +535,16 @@ def select_prim2orig(op, condition, x, y):
 @REGISTER_PRIM2ORIG('eq_p')
 def eq_prim2orig(op, x, y):
     return paddle.equal(x, y)
+
+
+@REGISTER_PRIM2ORIG('gt_p')
+def gt_prim2orig(op, x, y):
+    return paddle.greater_than(x, y)
+
+
+@REGISTER_PRIM2ORIG('ne_p')
+def ne_prim2orig(op, x, y):
+    return paddle.not_equal(x, y)
 
 
 @REGISTER_PRIM2ORIG('pow_p')
@@ -780,6 +804,24 @@ def select_jvp(op, cond_dot, x_dot, y_dot):
 
 @REGISTER_JVP('eq_p')
 def eq_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
+    x, _ = op_position_inputs(op)
+    z_dot = fill_const(value=0., shape=x.shape, dtype=x.dtype)
+    return z_dot
+
+
+@REGISTER_JVP('gt_p')
+def gt_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
+    x, _ = op_position_inputs(op)
+    z_dot = fill_const(value=0., shape=x.shape, dtype=x.dtype)
+    return z_dot
+
+
+@REGISTER_JVP('ne_p')
+def ne_jvp(op, x_dot, y_dot):
     if x_dot is None and y_dot is None:
         return None
     x, _ = op_position_inputs(op)

@@ -555,6 +555,44 @@ class TestEqPPrim2Orig(TestAddPPrim2Orig):
         self.out_map = {self.output['Z']: 0}
 
 
+class TestNePPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'ne_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+        Y = paddle.static.data(name='Y', shape=[7, 8], dtype='float64')
+
+        self.input = {'X': X, 'Y': Y}
+        self.output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype='bool')
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, Y)
+        self.all_ops = ['ne_p', 'not_equal']
+        self.out_map = {self.output['Z']: 0}
+
+
+class TestGtPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'gt_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+        Y = paddle.static.data(name='Y', shape=[7, 8], dtype='float64')
+
+        self.input = {'X': X, 'Y': Y}
+        self.output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype='bool')
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, Y)
+        self.all_ops = ['gt_p', 'greater_than']
+        self.out_map = {self.output['Z']: 0}
+
+
 class TestPowPPrim2Orig(TestAddPPrim2Orig):
 
     def init_data(self):
