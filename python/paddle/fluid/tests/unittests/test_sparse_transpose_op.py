@@ -66,25 +66,33 @@ class TestTranspose(unittest.TestCase):
                                        rtol=1e-05)
 
     @unittest.skipIf(not paddle.is_compiled_with_cuda()
-                     or get_cuda_version() < 11000, "only support cuda>=11.0")
-    def test_transpose_case1(self):
-        self.check_result([16, 12, 3], [2, 1, 0], 'coo')
-        self.check_result([16, 12, 3], [2, 1, 0], 'csr')
-
-    @unittest.skipIf(not paddle.is_compiled_with_cuda()
                      or get_cuda_version() < 11070, "only support cuda>=11.7")
-    def test_transpose_case2(self):
+    def test_transpose_2d(self):
+        self.check_result([12, 5], [0, 1], 'coo')
+        self.check_result([12, 5], [0, 1], 'csr')
         self.check_result([12, 5], [1, 0], 'coo')
         self.check_result([12, 5], [1, 0], 'csr')
 
     @unittest.skipIf(not paddle.is_compiled_with_cuda()
-                     or get_cuda_version() < 11070, "only support cuda>=11.7")
-    def test_transpose_case3(self):
-        self.check_result([8, 16, 12, 4, 2, 12], [2, 3, 4, 1, 0, 2], 'coo')
+                     or get_cuda_version() < 11000, "only support cuda>=11.0")
+    def test_transpose_3d(self):
+        self.check_result([16, 12, 3], [0, 1, 2], 'coo')
+        self.check_result([16, 12, 3], [0, 1, 2], 'csr')
+        self.check_result([16, 12, 3], [0, 2, 1], 'coo')
+        self.check_result([16, 12, 3], [0, 2, 1], 'csr')
+        self.check_result([16, 12, 3], [2, 1, 0], 'coo')
+        self.check_result([16, 12, 3], [2, 1, 0], 'csr')
+        self.check_result([16, 12, 3], [2, 0, 1], 'coo')
+        self.check_result([16, 12, 3], [2, 0, 1], 'csr')
+        self.check_result([16, 12, 3], [1, 2, 0], 'coo')
+        self.check_result([16, 12, 3], [1, 2, 0], 'csr')
+        self.check_result([16, 12, 3], [1, 0, 2], 'coo')
+        self.check_result([16, 12, 3], [1, 0, 2], 'csr')
 
     @unittest.skipIf(not paddle.is_compiled_with_cuda()
                      or get_cuda_version() < 11070, "only support cuda>=11.7")
-    def test_transpose_case3(self):
+    def test_transpose_nd(self):
+        self.check_result([8, 16, 12, 4, 2, 12], [2, 3, 4, 1, 0, 2], 'coo')
         self.check_result([i + 2 for i in range(10)],
                           [(i + 2) % 10 for i in range(10)], 'coo')
 
