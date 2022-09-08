@@ -454,7 +454,7 @@ void build_op_func_list(const platform::Place& place,
     // Print new executor log if grad op is used.
     // It's only for test and will be removed later.
     if (!flag_log_is_printed && op->Type().find("_grad") != std::string::npos) {
-      VLOG(1) << "Standalone Executor is Used.";
+      LOG_FIRST_N(INFO, 1) << "Standalone Executor is Used.";
       flag_log_is_printed = true;
     }
 

@@ -183,10 +183,7 @@ void Executor::Run(const ProgramDesc& pdesc,
                    const std::vector<std::string>& skip_ref_cnt_vars,
                    bool force_disable_gc,
                    bool keep_kid_scopes) {
-  if (!is_run_) {
-    VLOG(1) << "Old Executor is Running.";
-    is_run_ = true;
-  }
+  LOG_FIRST_N(INFO, 1) << "Old Executor is Running.";
   platform::RecordEvent record_run(
       "Executor::Run", platform::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(block_id);
