@@ -24,15 +24,10 @@ core_suffix = 'so'
 if os.name == 'nt':
     core_suffix = 'pyd'
 
-has_avx_core = False
-has_noavx_core = False
-
+has_core_lib_file = False
 current_path = os.path.abspath(os.path.dirname(__file__))
-if os.path.exists(current_path + os.sep + 'core_avx.' + core_suffix):
-    has_avx_core = True
-
-if os.path.exists(current_path + os.sep + 'core_noavx.' + core_suffix):
-    has_noavx_core = True
+if os.path.exists(current_path + os.sep + 'paddle_core.' + core_suffix):
+    has_core_lib_file = True
 
 try:
     if os.name == 'nt':
@@ -198,10 +193,8 @@ def load_dso(dso_absolute_path):
 
 
 def pre_load(dso_name):
-    if has_avx_core:
-        core_so = current_path + os.sep + 'core_avx.' + core_suffix
-    elif has_noavx_core:
-        core_so = current_path + os.sep + 'core_noavx.' + core_suffix
+    if has_core_lib_file:
+        core_so = current_path + os.sep + 'paddle_core.' + core_suffix
     else:
         core_so = None
     dso_path = get_dso_path(core_so, dso_name)
@@ -239,7 +232,7 @@ def less_than_ver(a, b):
 # (1) the number of dynamic shared librarys (DSO) loaded > 14,
 # (2) after that, load a dynamic shared library (DSO) with static TLS.
 # For paddle, the problem is that 'libgomp' is a DSO with static TLS, and it is loaded after 14 DSOs.
-# So, here is a tricky way to solve the problem by pre load 'libgomp' before 'core_avx.so'.
+# So, here is a tricky way to solve the problem by pre load 'libgomp' before 'paddle_core.so'.
 # The final solution is to upgrade glibc to > 2.22 on the target system.
 if platform.system().lower() == 'linux':
     libc_type, libc_ver = get_libc_ver()
@@ -247,57 +240,13 @@ if platform.system().lower() == 'linux':
         try:
             pre_load('libgomp')
         except Exception as e:
-            # NOTE(zhiqiu): do not abort if failed, since it may success when import core_avx.so
+            # NOTE(zhiqiu): do not abort if failed, since it may success when import paddle_core.so
             sys.stderr.write('Error: Can not preload libgomp.so')
-
-load_noavx = False
 
 if avx_supported():
     try:
-        from . import core_avx
-        core_avx.LoDTensor = core_avx.Tensor
-
-        from .core_avx import *
-        from .core_avx import __doc__, __file__, __name__, __package__
-        from .core_avx import __unittest_throw_exception__
-        from .core_avx import _append_python_callable_object_and_return_id
-        from .core_avx import _cleanup, _Scope
-        from .core_avx import _get_use_default_grad_op_desc_maker_ops
-        from .core_avx import _get_all_register_op_kernels
-        from .core_avx import _is_program_version_supported
-        from .core_avx import _set_eager_deletion_mode
-        from .core_avx import _get_eager_deletion_vars
-        from .core_avx import _set_fuse_parameter_group_size
-        from .core_avx import _set_fuse_parameter_memory_size
-        from .core_avx import _is_dygraph_debug_enabled
-        from .core_avx import _dygraph_debug_level
-        from .core_avx import _switch_tracer
-        from .core_avx import _set_paddle_lib_path
-        from .core_avx import _create_loaded_parameter
-        from .core_avx import _cuda_synchronize
-        from .core_avx import _is_compiled_with_heterps
-        from .core_avx import _promote_types_if_complex_exists
-        from .core_avx import _set_cached_executor_build_strategy
-        from .core_avx import _device_synchronize
-        from .core_avx import _get_current_stream
-        from .core_avx import _Profiler, _ProfilerResult, _RecordEvent
-        from .core_avx import _set_current_stream
-        if sys.platform != 'win32':
-            from .core_avx import _set_process_pids
-            from .core_avx import _erase_process_pids
-            from .core_avx import _set_process_signal_handler
-            from .core_avx import _throw_error_if_process_failed
-            from .core_avx import _convert_to_tensor_list
-            from .core_avx import _array_to_share_memory_tensor
-            from .core_avx import _cleanup_mmap_fds
-            from .core_avx import _remove_tensor_list_mmap_fds
-    except Exception as e:
-        if has_avx_core:
-            sys.stderr.write(
-                'Error: Can not import avx core while this file exists: ' +
-                current_path + os.sep + 'core_avx.' + core_suffix + '\n')
-            raise e
-        else:
+        from . import paddle_core
+        if not paddle_core.is_compiled_with_avx():
             from .. import compat as cpt
             sys.stderr.write(
                 "Hint: Your machine support AVX, but the installed paddlepaddle doesn't have avx core. "
@@ -305,64 +254,49 @@ if avx_supported():
                 "reinstall paddlepaddle by 'python -m pip install --force-reinstall paddlepaddle-gpu[==version]' "
                 "to get better performance.\nThe original error is: %s\n" %
                 cpt.get_exception_message(e))
-            load_noavx = True
-else:
-    load_noavx = True
 
-if load_noavx:
-    try:
-        from . import core_noavx
-        core_noavx.LoDTensor = core_noavx.Tensor
+        # assign tensor alias
+        paddle_core.LoDTensor = paddle_core.Tensor
 
-        from .core_noavx import *
-        from .core_noavx import __doc__, __file__, __name__, __package__
-        from .core_noavx import __unittest_throw_exception__
-        from .core_noavx import _append_python_callable_object_and_return_id
-        from .core_noavx import _cleanup, _Scope
-        from .core_noavx import _get_use_default_grad_op_desc_maker_ops
-        from .core_noavx import _get_all_register_op_kernels
-        from .core_noavx import _is_program_version_supported
-        from .core_noavx import _set_eager_deletion_mode
-        from .core_noavx import _get_eager_deletion_vars
-        from .core_noavx import _set_fuse_parameter_group_size
-        from .core_noavx import _set_fuse_parameter_memory_size
-        from .core_noavx import _is_dygraph_debug_enabled
-        from .core_noavx import _dygraph_debug_level
-        from .core_noavx import _switch_tracer
-        from .core_noavx import _set_paddle_lib_path
-        from .core_noavx import _create_loaded_parameter
-        from .core_noavx import _cuda_synchronize
-        from .core_noavx import _is_compiled_with_heterps
-        from .core_noavx import _promote_types_if_complex_exists
-        from .core_noavx import _set_cached_executor_build_strategy
-        from .core_noavx import _device_synchronize
-        from .core_noavx import _get_current_stream
-        from .core_noavx import _set_current_stream
-        from .core_noavx import _Profiler, _ProfilerResult, _RecordEvent
+        from .paddle_core import *
+        from .paddle_core import __doc__, __file__, __name__, __package__
+        from .paddle_core import __unittest_throw_exception__
+        from .paddle_core import _append_python_callable_object_and_return_id
+        from .paddle_core import _cleanup, _Scope
+        from .paddle_core import _get_use_default_grad_op_desc_maker_ops
+        from .paddle_core import _get_all_register_op_kernels
+        from .paddle_core import _is_program_version_supported
+        from .paddle_core import _set_eager_deletion_mode
+        from .paddle_core import _get_eager_deletion_vars
+        from .paddle_core import _set_fuse_parameter_group_size
+        from .paddle_core import _set_fuse_parameter_memory_size
+        from .paddle_core import _is_dygraph_debug_enabled
+        from .paddle_core import _dygraph_debug_level
+        from .paddle_core import _switch_tracer
+        from .paddle_core import _set_paddle_lib_path
+        from .paddle_core import _create_loaded_parameter
+        from .paddle_core import _cuda_synchronize
+        from .paddle_core import _is_compiled_with_heterps
+        from .paddle_core import _promote_types_if_complex_exists
+        from .paddle_core import _set_cached_executor_build_strategy
+        from .paddle_core import _device_synchronize
+        from .paddle_core import _get_current_stream
+        from .paddle_core import _Profiler, _ProfilerResult, _RecordEvent
+        from .paddle_core import _set_current_stream
         if sys.platform != 'win32':
-            from .core_noavx import _set_process_pids
-            from .core_noavx import _erase_process_pids
-            from .core_noavx import _set_process_signal_handler
-            from .core_noavx import _throw_error_if_process_failed
-            from .core_noavx import _convert_to_tensor_list
-            from .core_noavx import _array_to_share_memory_tensor
-            from .core_noavx import _cleanup_mmap_fds
-            from .core_noavx import _remove_tensor_list_mmap_fds
+            from .paddle_core import _set_process_pids
+            from .paddle_core import _erase_process_pids
+            from .paddle_core import _set_process_signal_handler
+            from .paddle_core import _throw_error_if_process_failed
+            from .paddle_core import _convert_to_tensor_list
+            from .paddle_core import _array_to_share_memory_tensor
+            from .paddle_core import _cleanup_mmap_fds
+            from .paddle_core import _remove_tensor_list_mmap_fds
     except Exception as e:
-        if has_noavx_core:
+        if has_core_lib_file:
             sys.stderr.write(
-                'Error: Can not import noavx core while this file exists: ' +
-                current_path + os.sep + 'core_noavx.' + core_suffix + '\n')
-        elif avx_supported():
-            sys.stderr.write(
-                "Error: The installed PaddlePaddle is incorrect. You should reinstall it by "
-                "'python -m pip install --force-reinstall paddlepaddle-gpu[==version]'\n"
-            )
-        else:
-            sys.stderr.write(
-                "Error: Your machine doesn't support AVX, but the installed PaddlePaddle is avx core, "
-                "you should reinstall paddlepaddle with no-avx core.\n")
-
+                'Error: Can not import paddle core while this file exists: ' +
+                current_path + os.sep + 'paddle_core.' + core_suffix + '\n')
         raise e
 
 
