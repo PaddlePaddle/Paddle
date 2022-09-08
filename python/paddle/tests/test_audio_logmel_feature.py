@@ -95,9 +95,9 @@ class TestFeatures(unittest.TestCase):
                   ['float32', 'float64'])
     def test_mfcc(self, sr: int, n_fft: int, n_mfcc: int, n_mels: int,
                   dtype: str):
-        if paddle.version.cuda() != False and float(
-                paddle.version.cuda()) >= 11.0:
-            return
+        if paddle.version.cuda() != 'False':
+            if float(paddle.version.cuda()) >= 11.0:
+                return
 
         if len(self.waveform.shape) == 2:  # (C, T)
             self.waveform = self.waveform.squeeze(
