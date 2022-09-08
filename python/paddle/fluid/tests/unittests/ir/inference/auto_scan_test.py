@@ -179,8 +179,8 @@ class AutoScanTest(unittest.TestCase):
                                 use_mkldnn: bool = False,
                                 ir_optim: Optional[bool] = None):
         config = paddle_infer.Config()
-        config.set_optim_cache_dir(self.cache_dir)
         config.switch_ir_debug(True)
+        config.set_optim_cache_dir(self.cache_dir)
         config.disable_glog_info()
         if ir_optim is not None:
             config.switch_ir_optim(ir_optim)
