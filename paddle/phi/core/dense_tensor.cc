@@ -194,6 +194,7 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.layout = meta.layout;
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
+  meta_.strides = meta.strides;
 }
 
 /* @jim19930609: This interface will be further modified util we finalized the

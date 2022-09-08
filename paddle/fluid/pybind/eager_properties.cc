@@ -188,6 +188,33 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
+  EAGER_TRY
+  std::vector<int64_t> value;
+  if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
+    return ToPyObject(value);
+  }
+
+  auto dense_tensor =
+      std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+  if (!dense_tensor->IsStridesValiable()) {
+    dense_tensor->InitStrides();
+  }
+
+  auto ddim = self->tensor.shape();
+  size_t rank = static_cast<size_t>(ddim.size());
+  value.resize(rank);
+
+  const int64_t* strides = dense_tensor->strides().Get();
+
+  for (size_t i = 0; i < rank; i++) {
+    value[i] = strides[i];
+  }
+
+  return ToPyObject(value);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
   EAGER_TRY
   std::string layout = "";
@@ -268,6 +295,11 @@ struct PyGetSetDef variable_properties[] = {
      nullptr,
      nullptr},
     {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
+    {"strides",
+     (getter)tensor_properties_get_strides,
+     nullptr,
+     nullptr,
+     nullptr},
     {"layout", (getter)tensor_properties_get_layout, nullptr, nullptr, nullptr},
     // {"is_leaf", (getter)tensor_properties_get_is_leaf, nullptr,
     // nullptr,

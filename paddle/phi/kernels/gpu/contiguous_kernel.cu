@@ -29,7 +29,7 @@ __global__ void ContiguousFunc(const T* input_data,
   for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
     int64_t input_offset = 0;
     int64_t index_tmp = i;
-    for (int dim = 0; dim < rank; ++dim) {
+    for (int dim = rank - 1; dim >= 0; --dim) {
       int64_t mod = index_tmp % dims[dim];
       index_tmp = index_tmp / dims[dim];
       input_offset += mod * input_stride[dim];
@@ -67,8 +67,7 @@ void ContiguousKernel(const Context& dev_ctx,
       reinterpret_cast<int64_t*>(dev_ctx.Alloc(&dims_strides, DataType::INT64));
 
   std::memcpy(tmp_data, dims, sizeof(int64_t) * rank);
-  std::memcpy(
-      tmp_data + sizeof(int64_t) * rank, strides, sizeof(int64_t) * rank);
+  std::memcpy(tmp_data + rank, strides, sizeof(int64_t) * rank);
 
   cudaMemcpyAsync(dims_strides_data,
                   tmp_data,

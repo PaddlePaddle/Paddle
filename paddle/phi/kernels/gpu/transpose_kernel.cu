@@ -35,6 +35,26 @@ void TransposeKernel(const Context& ctx,
   if (out->numel() == 0) {
     return;
   }
+
+  out->set_meta(x.meta());
+  out->ResetHolder(x.Holder());
+
+  int64_t* out_strides = out->GetMutableStrides()->GetMutable();
+  const int64_t* in_strides = x.strides().Get();
+
+  DDim out_dims = out->dims();
+  DDim in_dims = x.dims();
+
+  for (size_t i = 0; i < axis.size(); i++) {
+    out_strides[i] = in_strides[axis[i]];
+    out_dims[i] = in_dims[axis[i]];
+  }
+  out->GetMutableStrides()->SetContiguous(false);
+
+  out->Resize(out_dims);
+
+  return;
+
   paddle::operators::TransposeGPUKernelDriver<T>(ctx, x, axis, out);
 }
 
