@@ -8,7 +8,7 @@ register_operators()
 set(PRIM_OP_SRCS
     reshape_p_op.cc
     broadcast_p_op.cc
-    reduce_p_op.cc
+    reduce_sum_p_op.cc
     transpose_p_op.cc
     split_p_op.cc
     concat_p_op.cc

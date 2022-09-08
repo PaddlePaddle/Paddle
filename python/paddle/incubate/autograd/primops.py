@@ -193,15 +193,18 @@ def concat(xs, axis=0, out=None):
     return out
 
 
-@REGISTER_FN('reduce_p', 'X', 'Y')
-def reduce(x, axis, keepdim=False, out=None):
+@REGISTER_FN('reduce_sum_p', 'X', 'Y')
+def reduce_sum(x, axis=None, keepdim=False, out=None):
+    axes = axis or tuple(range(0, len(x.shape)))
+    axes = (axes, ) if isinstance(axes, int) else axes
     if not isinstance(axis, (tuple, list)):
         raise TypeError(f'axis must be tuple or list, but got {type(axis)}')
     if not isinstance(keepdim, bool):
         raise TypeError(f'keepdim must be bool, but got {type(keepdim)}')
-    attrs = {'axis': axis, 'keepdim': keepdim}
 
-    helper = LayerHelper('reduce_p', **locals())
+    attrs = {'axis': axis, 'keepdim': keepdim}
+    attrs = {'axis': axis, 'keepdim': keepdim}
+    helper = LayerHelper('reduce_sum_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 

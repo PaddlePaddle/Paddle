@@ -283,7 +283,16 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
          (np.random.rand(200, 189), ), None, 'float32'),
         ('gelu_approximate', lambda x: paddle.nn.functional.gelu(x, True),
          (np.random.rand(200, 189), ), None, 'float32'),
-    ))
+        ('sum', paddle.sum, (np.random.rand(200, 345), ), None, 'float32'),
+        ('sum_with_axis', lambda x: paddle.sum(x, axis=1),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('sum_with_keepdim', lambda x: paddle.sum(x, keepdim=True),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean', paddle.mean, (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean_with_axis', lambda x: paddle.mean(x, axis=1),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean_with_keepdim', lambda x: paddle.mean(x, keepdim=True),
+         (np.random.rand(200, 345), ), None, 'float32')))
 class TestGrad(unittest.TestCase):
 
     def setUp(self):
