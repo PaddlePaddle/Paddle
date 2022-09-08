@@ -16,6 +16,7 @@ from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import dygraph_only, core
 from paddle import in_dynamic_mode
 from paddle.fluid.layer_helper import LayerHelper
+from .unary import cast
 
 __all__ = []
 
@@ -255,8 +256,23 @@ def add(x, y, name=None):
 
     """
     if y.dtype != x.dtype:
-        y = _C_ops.sparse_cast(y, None, x.dtype)
-    return _C_ops.sparse_add(x, y)
+        y = cast(y, None, x.dtype)
+
+    if in_dynamic_mode():
+        return _C_ops.sparse_add(x, y)
+    else:
+        if x.type == core.VarDesc.VarType.SPARSE_COO:
+            op_type = 'add_coo_coo'
+        else:
+            op_type = 'add_csr_csr'
+        inputs = {'X': x, 'Y': y}
+        helper = LayerHelper(op_type)
+        out = helper.create_sparse_variable_for_type_inference(x.dtype)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs={'Out': out},
+                         attrs={})
+        return out
 
 
 @dygraph_only

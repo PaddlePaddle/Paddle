@@ -19,6 +19,20 @@ limitations under the License. */
 
 namespace phi {
 namespace sparse {
+
+template <typename T, typename Context>
+void ElementWiseAddCooKernel(const Context& dev_ctx,
+                             const SparseCooTensor& x,
+                             const SparseCooTensor& y,
+                             SparseCooTensor* out) {
+  // TODO(zkh2016): assert(x.indices() == y.indices())
+  EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
+  phi::AddKernel<T, Context>(dev_ctx,
+                             x.non_zero_elements(),
+                             y.non_zero_elements(),
+                             out->mutable_non_zero_elements());
+}
+
 /*
  * out.values() = x.values() + y.values()
  */
@@ -70,4 +84,18 @@ PD_REGISTER_KERNEL(values_add_coo_dense,
                    double,
                    phi::dtype::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(add_coo_coo,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::ElementWiseAddCooKernel,
+                   float,
+                   double,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

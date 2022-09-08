@@ -40,5 +40,11 @@ void ValuesInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void IndicesInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims({-1});
+  out->set_dtype(DataType::INT32);
+  out->set_layout(DataLayout::NCHW);
+}
+
 }  // namespace sparse
 }  // namespace phi

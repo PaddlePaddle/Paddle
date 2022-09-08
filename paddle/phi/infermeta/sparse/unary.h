@@ -29,5 +29,8 @@ void SparseCooTensorInferMeta(const MetaTensor& x,
                               MetaTensor* out);
 
 void ValuesInferMeta(const MetaTensor& x, MetaTensor* out);
+
+void IndicesInferMeta(const MetaTensor& x, MetaTensor* out);
+
 }  // namespace sparse
 }  // namespace phi

@@ -224,6 +224,49 @@ DECLARE_INFER_SHAPE_FUNCTOR(values_add_coo_dense,
                             ValuesAddCooDenseInferShapeFunctor,
                             PD_INFER_META(phi::sparse::UnchangedInferMeta));
 
+class CastCooOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of cast_coo op.");
+    AddOutput("Out", "(Tensor), output 0 of cast_coo op.");
+    AddAttr<int>("index_dtype", "(int), attribute 0 for cholesky op.");
+    AddAttr<int>("value_dtype", "(int), attribute 0 for cholesky op.");
+    AddComment(R"DOC(
+TODO: Documentation of cast_coo op.
+)DOC");
+  }
+};
+
+class CastCooOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(cast_coo,
+                            CastCooInferShapeFunctor,
+                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+
+class AddCooCooOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), input 0 of add_coo_coo op.");
+    AddInput("Y", "(Tensor), input 1 of add_coo_coo op.");
+    AddOutput("Out", "(Tensor), output 0 of add_coo_coo op.");
+    AddComment(R"DOC(
+TODO: Documentation of add_coo_coo op.
+)DOC");
+  }
+};
+
+class AddCooCooOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(add_coo_coo,
+                            AddCooCooInferShapeFunctor,
+                            PD_INFER_META(phi::sparse::UnchangedInferMeta));
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -283,3 +326,13 @@ REGISTER_OPERATOR(values_add_coo_dense,
                   ops::ValuesAddCooDenseOp,
                   ops::ValuesAddCooDenseOpMaker,
                   ops::ValuesAddCooDenseInferShapeFunctor);
+
+REGISTER_OPERATOR(cast_coo,
+                  ops::CastCooOp,
+                  ops::CastCooOpMaker,
+                  ops::CastCooInferShapeFunctor);
+
+REGISTER_OPERATOR(add_coo_coo,
+                  ops::AddCooCooOp,
+                  ops::AddCooCooOpMaker,
+                  ops::AddCooCooInferShapeFunctor);
