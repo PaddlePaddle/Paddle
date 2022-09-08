@@ -180,6 +180,7 @@ class AutoScanTest(unittest.TestCase):
                                 ir_optim: Optional[bool] = None):
         config = paddle_infer.Config()
         config.set_optim_cache_dir(self.cache_dir)
+        config.switch_ir_debug(True)
         config.disable_glog_info()
         if ir_optim is not None:
             config.switch_ir_optim(ir_optim)
@@ -548,8 +549,6 @@ class TrtLayerAutoScanTest(AutoScanTest):
         config = paddle_infer.Config()
         config.disable_glog_info()
         config.enable_use_gpu(100, 0)
-        # todo for debug
-        config.switch_ir_debug(True)
         config.set_optim_cache_dir(self.cache_dir)
         if use_trt:
             config.switch_ir_debug()
