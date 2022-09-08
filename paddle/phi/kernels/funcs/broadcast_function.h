@@ -487,62 +487,161 @@ HOSTDEVICE static int64_t ConvertSrcIdxToDstIdx(
   return dst_idx;
 }
 
-template <typename T, int VecSize>
+template <typename T, int VecSize, bool IsBoundary>
 HOSTDEVICE static void ReadVecDataWithInt64Index(
     const T *in,
     int64_t idx,
-    bool no_broadcast,
+    bool need_broadcast,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &src_strides,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &dst_strides,
     int rank,
+    int n,
     phi::AlignedVector<T, VecSize> *out) {
-  if (no_broadcast) {
-    phi::Load<T, VecSize>(in + idx, out);
-  } else {
-#pragma unroll
-    for (int i = 0; i < VecSize; ++i) {
+  if (IsBoundary) {
+    for (int i = 0; i < n; ++i) {
       (*out)[i] =
           in[ConvertSrcIdxToDstIdx(idx + i, src_strides, dst_strides, rank)];
+    }
+  } else {
+    if (!need_broadcast) {
+      phi::Load<T, VecSize>(in + idx, out);
+    } else {
+#pragma unroll
+      for (int i = 0; i < VecSize; ++i) {
+        (*out)[i] =
+            in[ConvertSrcIdxToDstIdx(idx + i, src_strides, dst_strides, rank)];
+      }
     }
   }
 }
 
+template <typename InT,
+          typename OutT,
+          typename Functor,
+          int VecSize,
+          int NumIns>
+struct ApplyFunctorWithInt64IndexHelper {
+  HOSTDEVICE static OutT Run(const phi::AlignedVector<InT, VecSize> *ins_vec,
+                             Functor functor,
+                             int i);
+};
+
 template <typename InT, typename OutT, typename Functor, int VecSize>
-__global__ void BinaryBroadcastKernelWithInt64Index(
-    const InT *x,
-    const InT *y,
-    OutT *z,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> x_strides,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> y_strides,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> z_strides,
+struct ApplyFunctorWithInt64IndexHelper<InT, OutT, Functor, VecSize, 0> {
+  HOSTDEVICE static OutT Run(const phi::AlignedVector<InT, VecSize> *ins_vec,
+                             Functor functor,
+                             int i) {
+    return static_cast<OutT>(functor());
+  }
+};
+
+template <typename InT, typename OutT, typename Functor, int VecSize>
+struct ApplyFunctorWithInt64IndexHelper<InT, OutT, Functor, VecSize, 1> {
+  HOSTDEVICE static OutT Run(const phi::AlignedVector<InT, VecSize> *ins_vec,
+                             Functor functor,
+                             int i) {
+    return static_cast<OutT>(functor(ins_vec[0][i]));
+  }
+};
+
+template <typename InT, typename OutT, typename Functor, int VecSize>
+struct ApplyFunctorWithInt64IndexHelper<InT, OutT, Functor, VecSize, 2> {
+  HOSTDEVICE static OutT Run(const phi::AlignedVector<InT, VecSize> *ins_vec,
+                             Functor functor,
+                             int i) {
+    return static_cast<OutT>(functor(ins_vec[0][i], ins_vec[1][i]));
+  }
+};
+
+template <typename InT, typename OutT, typename Functor, int VecSize>
+struct ApplyFunctorWithInt64IndexHelper<InT, OutT, Functor, VecSize, 3> {
+  HOSTDEVICE static OutT Run(const phi::AlignedVector<InT, VecSize> *ins_vec,
+                             Functor functor,
+                             int i) {
+    return static_cast<OutT>(
+        functor(ins_vec[0][i], ins_vec[1][i], ins_vec[2][i]));
+  }
+};
+
+template <int N>
+struct MaxWithOne {
+  static constexpr auto kValue = (N >= 1 ? N : 1);
+};
+
+template <typename InT,
+          typename OutT,
+          typename Functor,
+          int VecSize,
+          int NumIns>
+__global__ void BroadcastKernelWithInt64Index(
+    phi::Array<const InT *, MaxWithOne<NumIns>::kValue> ins,
+    OutT *out,
+    phi::Array<phi::Array<int64_t, phi::DDim::kMaxRank + 1>,
+               MaxWithOne<NumIns>::kValue> ins_strides,
+    phi::Array<int64_t, phi::DDim::kMaxRank + 1> out_strides,
+    phi::Array<bool, MaxWithOne<NumIns>::kValue> need_broadcasts,
     int rank,
-    bool x_no_broadcast,
-    bool y_no_broadcast,
     Functor functor) {
-  int64_t numel = z_strides[0];
+  int64_t numel = out_strides[0];
   int64_t idx =
       (static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x) * VecSize;
   int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x * VecSize;
   int64_t limit = numel - VecSize;
 
+  phi::Array<phi::AlignedVector<InT, VecSize>, MaxWithOne<NumIns>::kValue>
+      ins_vec;
+  phi::AlignedVector<OutT, VecSize> out_vec;
   for (; idx <= limit; idx += stride) {
-    phi::AlignedVector<InT, VecSize> x_vec, y_vec;
-    phi::AlignedVector<OutT, VecSize> z_vec;
-    ReadVecDataWithInt64Index<InT, VecSize>(
-        x, idx, x_no_broadcast, z_strides, x_strides, rank, &x_vec);
-    ReadVecDataWithInt64Index<InT, VecSize>(
-        y, idx, y_no_broadcast, z_strides, y_strides, rank, &y_vec);
+#pragma unroll
+    for (int i = 0; i < NumIns; ++i) {
+      ReadVecDataWithInt64Index<InT, VecSize, false>(ins[i],
+                                                     idx,
+                                                     need_broadcasts[i],
+                                                     out_strides,
+                                                     ins_strides[i],
+                                                     rank,
+                                                     VecSize,
+                                                     &ins_vec[i]);
+    }
+
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
-      z_vec[i] = functor(x_vec[i], y_vec[i]);
+      out_vec[i] = ApplyFunctorWithInt64IndexHelper<InT,
+                                                    OutT,
+                                                    Functor,
+                                                    VecSize,
+                                                    NumIns>::Run(ins_vec.Get(),
+                                                                 functor,
+                                                                 i);
     }
-    phi::Store<OutT, VecSize>(z_vec, z + idx);
+
+    phi::Store<OutT, VecSize>(out_vec, out + idx);
   }
 
-  for (; idx < numel; ++idx) {
-    int64_t x_idx = ConvertSrcIdxToDstIdx(idx, z_strides, x_strides, rank);
-    int64_t y_idx = ConvertSrcIdxToDstIdx(idx, z_strides, y_strides, rank);
-    z[idx] = functor(x[x_idx], y[y_idx]);
+  if (idx < numel) {
+    int remain = numel - idx;  // remain is always less than VecSize, therefore
+                               // `int` is enough here
+#pragma unroll
+    for (int i = 0; i < NumIns; ++i) {
+      ReadVecDataWithInt64Index<InT, VecSize, true>(ins[i],
+                                                    idx,
+                                                    need_broadcasts[i],
+                                                    out_strides,
+                                                    ins_strides[i],
+                                                    rank,
+                                                    remain,
+                                                    &ins_vec[i]);
+    }
+
+    for (int i = 0; i < remain; ++i) {
+      out[idx] = ApplyFunctorWithInt64IndexHelper<InT,
+                                                  OutT,
+                                                  Functor,
+                                                  VecSize,
+                                                  NumIns>::Run(ins_vec.Get(),
+                                                               functor,
+                                                               i);
+    }
   }
 }
 
@@ -557,76 +656,117 @@ struct LaunchBroadcastKernelWithInt64IndexHelper {
                   const std::vector<const DenseTensor *> &ins,
                   std::vector<DenseTensor *> *outs,
                   int axis,
-                  Functor func) {
+                  Functor functor) {
     PADDLE_THROW(phi::errors::PermissionDenied(
         "Unreachable code branch. This may be a bug."));
   }
 };
 
-template <typename InT, typename OutT, typename Functor, int VecSize>
+template <typename InT, typename OutT, typename Functor, int Arity, int VecSize>
 struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
                                                  OutT,
                                                  Functor,
-                                                 /*Arity=*/2,
+                                                 Arity,
                                                  /*NumOuts=*/1,
                                                  VecSize> {
   static void Run(const KPDevice &ctx,
                   const std::vector<const DenseTensor *> &ins,
                   std::vector<DenseTensor *> *outs,
                   int axis,
-                  Functor func) {
-    const auto *x = ins[0], *y = ins[1];
-    auto *z = (*outs)[0];
-    const auto *x_data = x->data<InT>();
-    const auto *y_data = y->data<InT>();
-    auto *z_data = ctx.template Alloc<OutT>(z);
+                  Functor functor) {
+    phi::Array<const InT *, MaxWithOne<Arity>::kValue> ins_ptrs;
+    for (int i = 0; i < Arity; ++i) {
+      ins_ptrs[i] = ins[i]->data<InT>();
+    }
+    auto *out_tensor = (*outs)[0];
+    auto *out_ptr = ctx.Alloc<OutT>(out_tensor);
 
-    phi::Array<int64_t, phi::DDim::kMaxRank> x_out_dims, y_out_dims,
-        broadcast_out_dims;
+    phi::Array<phi::Array<int64_t, phi::DDim::kMaxRank>, phi::DDim::kMaxRank>
+        ins_expand_dims;
+    phi::Array<int64_t, phi::DDim::kMaxRank> broadcast_out_dims;
     int rank;
-    CalculateBroadcastDims(x->dims(),
-                           y->dims(),
-                           axis,
-                           &x_out_dims,
-                           &y_out_dims,
-                           &broadcast_out_dims,
-                           &rank);
-    bool x_no_broadcast = IsSame(x_out_dims, broadcast_out_dims, rank);
-    bool y_no_broadcast = IsSame(y_out_dims, broadcast_out_dims, rank);
+    if (Arity == 1) {
+      rank = ins[0]->dims().size();
+      for (int i = 0; i < rank; ++i) {
+        broadcast_out_dims[i] = ins[0]->dims()[i];
+      }
+      ins_expand_dims[0] = broadcast_out_dims;
+    } else if (Arity >= 2) {
+      phi::Array<int64_t, phi::DDim::kMaxRank>
+          ins_expand_dims[MaxWithOne<Arity>::kValue];
+      CalculateBroadcastDims(ins[0]->dims().Get(),
+                             ins[1]->dims().Get(),
+                             ins[0]->dims().size(),
+                             ins[1]->dims().size(),
+                             axis,
+                             ins_expand_dims[0].GetMutable(),
+                             ins_expand_dims[1].GetMutable(),
+                             broadcast_out_dims.GetMutable(),
+                             &rank);
+      for (int i = 2; i < Arity; ++i) {
+        auto tmp_dims = broadcast_out_dims;
+        phi::Array<int64_t, phi::DDim::kMaxRank> tmp_expand_dims;
+        int tmp_rank;
+        PADDLE_ENFORCE_GE(rank,
+                          ins[i]->dims().size(),
+                          phi::errors::InvalidArgument(
+                              "Unsupported reverse broadcast when the input "
+                              "tensor number is larger than 2."));
+        CalculateBroadcastDims(tmp_dims.Get(),
+                               ins[i]->dims().Get(),
+                               rank,
+                               ins[i]->dims().size(),
+                               axis,
+                               tmp_expand_dims.GetMutable(),
+                               ins_expand_dims[i].GetMutable(),
+                               broadcast_out_dims.GetMutable(),
+                               &tmp_rank);
+        PADDLE_ENFORCE_EQ(rank,
+                          tmp_rank,
+                          phi::errors::InvalidArgument(
+                              "Wrong broadcast algorithm. This may be a bug."));
+      }
+    }
 
-    auto x_strides = ShapeToStride(x_out_dims, rank);
-    auto y_strides = ShapeToStride(y_out_dims, rank);
-    auto z_strides = ShapeToStride(broadcast_out_dims, rank);
-    int64_t numel = z_strides[0];
+    phi::Array<phi::Array<int64_t, phi::DDim::kMaxRank + 1>,
+               MaxWithOne<Arity>::kValue>
+        ins_strides;
+    phi::Array<bool, MaxWithOne<Arity>::kValue> need_broadcasts;
+
+    auto out_strides = ShapeToStride(broadcast_out_dims.Get(), rank);
+    for (int i = 0; i < Arity; ++i) {
+      ins_strides[i] = ShapeToStride(ins_expand_dims[i].Get(), rank);
+      need_broadcasts[i] =
+          !IsSameShape(out_strides.Get(), ins_strides[i].Get(), rank + 1);
+    }
+
+    int64_t numel = out_strides[0];
     auto gpu_config =
         phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
 
-    BinaryBroadcastKernelWithInt64Index<InT, OutT, Functor, VecSize>
+    BroadcastKernelWithInt64Index<InT, OutT, Functor, VecSize, Arity>
         <<<gpu_config.block_per_grid,
            gpu_config.thread_per_block,
            0,
-           ctx.stream()>>>(x_data,
-                           y_data,
-                           z_data,
-                           x_strides,
-                           y_strides,
-                           z_strides,
+           ctx.stream()>>>(ins_ptrs,
+                           out_ptr,
+                           ins_strides,
+                           out_strides,
+                           need_broadcasts,
                            rank,
-                           x_no_broadcast,
-                           y_no_broadcast,
-                           func);
+                           functor);
   }
 
  private:
-  static void CalculateBroadcastDims(
-      const phi::DDim &x_dims,
-      const phi::DDim &y_dims,
-      int axis,
-      phi::Array<int64_t, phi::DDim::kMaxRank> *x_out_dims,
-      phi::Array<int64_t, phi::DDim::kMaxRank> *y_out_dims,
-      phi::Array<int64_t, phi::DDim::kMaxRank> *broadcast_out_dims,
-      int *length) {
-    int nx = x_dims.size(), ny = y_dims.size();
+  static void CalculateBroadcastDims(const int64_t *x_dims,
+                                     const int64_t *y_dims,
+                                     int nx,
+                                     int ny,
+                                     int axis,
+                                     int64_t *x_out_dims,
+                                     int64_t *y_out_dims,
+                                     int64_t *broadcast_out_dims,
+                                     int *length) {
     PADDLE_ENFORCE_GE(
         axis, 0, phi::errors::InvalidArgument("Invalid axis value: %d", axis));
     if (nx == ny) {
@@ -643,9 +783,9 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
                                            i,
                                            y_dims[i]));
         }
-        (*broadcast_out_dims)[i] = std::max(x_dims[i], y_dims[i]);
-        (*x_out_dims)[i] = x_dims[i];
-        (*y_out_dims)[i] = y_dims[i];
+        broadcast_out_dims[i] = std::max(x_dims[i], y_dims[i]);
+        x_out_dims[i] = x_dims[i];
+        y_out_dims[i] = y_dims[i];
       }
     } else if (nx > ny) {
       *length = nx;
@@ -672,18 +812,20 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
                                   i - axis,
                                   y_dims[i - axis]));
           }
-          (*broadcast_out_dims)[i] = std::max(x_dims[i], y_dims[i - axis]);
-          (*x_out_dims)[i] = x_dims[i];
-          (*y_out_dims)[i] = y_dims[i - axis];
+          broadcast_out_dims[i] = std::max(x_dims[i], y_dims[i - axis]);
+          x_out_dims[i] = x_dims[i];
+          y_out_dims[i] = y_dims[i - axis];
         } else {
-          (*broadcast_out_dims)[i] = x_dims[i];
-          (*x_out_dims)[i] = x_dims[i];
-          (*y_out_dims)[i] = 1;
+          broadcast_out_dims[i] = x_dims[i];
+          x_out_dims[i] = x_dims[i];
+          y_out_dims[i] = 1;
         }
       }
     } else {
       CalculateBroadcastDims(y_dims,
                              x_dims,
+                             ny,
+                             nx,
                              axis,
                              y_out_dims,
                              x_out_dims,
@@ -692,9 +834,7 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
     }
   }
 
-  static bool IsSame(const phi::Array<int64_t, phi::DDim::kMaxRank> &x,
-                     const phi::Array<int64_t, phi::DDim::kMaxRank> &y,
-                     int rank) {
+  static bool IsSameShape(const int64_t *x, const int64_t *y, int rank) {
     for (int i = 0; i < rank; ++i) {
       if (x[i] != y[i]) return false;
     }
@@ -702,7 +842,7 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
   }
 
   static phi::Array<int64_t, phi::DDim::kMaxRank + 1> ShapeToStride(
-      const phi::Array<int64_t, phi::DDim::kMaxRank> &arr, int rank) {
+      const int64_t *arr, int rank) {
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> strides;
     strides[rank] = 1;
     for (int i = rank - 1; i >= 0; --i) {
@@ -755,7 +895,7 @@ void BroadcastKernelForDifferentVecSize(
                                    NumOuts));
 
 #ifndef PADDLE_WITH_XPU_KP
-  constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && kArity == 2);
+  constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && kArity <= 3);
   bool use_int64_index_kernel =
       kEnabledInt64IndexKernel &&
       (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
