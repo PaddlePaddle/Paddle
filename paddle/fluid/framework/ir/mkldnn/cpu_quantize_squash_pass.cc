@@ -280,10 +280,8 @@ void CPUQuantizeSquashPass::OpRequantSquash(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(requant_out, requant_out, op_requant_pattern);
 
     if (requant_in->outputs.size() == 1) {
-      std::string any_op_output_name;
-      for (auto name : any_op->Op()->OutputNames())
-        for (auto output_name : any_op->Op()->Output(name))
-          if (output_name == requant_in->Name()) any_op_output_name = name;
+      std::string any_op_output_name =
+          FindOutputNameByVarName(any_op->Op(), requant_in->Name());
 
       PADDLE_ENFORCE_NE(
           any_op_output_name.empty(),
@@ -326,10 +324,8 @@ void CPUQuantizeSquashPass::RequantOpSquash(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(any_op, any_op, requant_op_pattern);
 
     if (requant_out->outputs.size() == 1) {
-      std::string any_op_input_name;
-      for (auto name : any_op->Op()->InputNames())
-        for (auto input_name : any_op->Op()->Input(name))
-          if (input_name == requant_out->Name()) any_op_input_name = name;
+      std::string any_op_input_name =
+          FindInputNameByVarName(any_op->Op(), requant_out->Name());
 
       PADDLE_ENFORCE_NE(any_op_input_name.empty(),
                         true,
