@@ -708,6 +708,11 @@ class _ExecutorCache(object):
             # NOTE(Ruibiao): Not all changeable item is considered for key at present,
             # ONLY: program, feed, and fetch_list
             if isinstance(self.program, compiler.CompiledProgram):
+                if not self.program._program:
+                    # The program holds no _program, maybe it is constructed by graph.
+                    # Convert graph to program in order to generate key.
+                    self.program._program = framework.IrGraph(
+                        self.program._graph).to_program()
                 self.key = hash(
                     _get_strong_program_cache_key_for_new_exe(
                         self.program._program, feed, fetch_list))
@@ -1125,6 +1130,7 @@ class Executor(object):
                 warnings.warn(
                     "The program holds no _program, maybe it is constructed by graph."
                 )
+                return feed
         else:
             global_block = program.global_block()
 
@@ -1567,13 +1573,7 @@ class Executor(object):
             if compiled:
                 compiled_program = program if isinstance(
                     program, compiler.CompiledProgram) else program._graph
-                # Unsupported case 1 : the CompiledProgram is constructed by Graph
-                if compiled_program._program is None:
-                    warnings.warn("Standalone executor is not used for Graph",
-                                  UserWarning)
-                    return False
-
-                # Unsupported case 2: data parallel
+                # Unsupported case 1: data parallel
                 if compiled_program._is_data_parallel and len(
                         compiled_program._get_places(
                             place, compiled_program._places)) != 1:
@@ -1582,7 +1582,7 @@ class Executor(object):
                         UserWarning)
                     return False
 
-                # Unsupported case 3 : parallel graph
+                # Unsupported case 2: parallel graph
                 if core.globals()['FLAGS_enable_parallel_graph'] in [
                         1, '1', True, 'True', 'true'
                 ]:
@@ -1591,21 +1591,21 @@ class Executor(object):
                         UserWarning)
                     return False
 
-                # Unsupported case 4: inference
+                # Unsupported case 3: inference
                 if compiled_program._is_inference:
                     warnings.warn(
                         "Standalone executor is not used for inference",
                         UserWarning)
                     return False
 
-                # Unsupported case 5: CUDA Graph
+                # Unsupported case 4: CUDA Graph
                 if compiled_program._build_strategy is not None and compiled_program._build_strategy.allow_cuda_graph_capture:
                     warnings.warn(
                         "Standalone executor is not used for CUDA Graph",
                         UserWarning)
                     return False
 
-                # Unsupported case 6: async mode
+                # Unsupported case 5: async mode
                 if compiled_program._build_strategy is not None and compiled_program._build_strategy.async_mode:
                     warnings.warn(
                         "Standalone executor is not used for async mode",

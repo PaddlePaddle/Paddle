@@ -45,6 +45,7 @@ class FusedBatchNormActKernel<phi::GPUContext, T>
         platform::is_gpu_place(ctx.GetPlace()),
         true,
         platform::errors::PreconditionNotMet("It must use CUDAPlace."));
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     float momentum = ctx.Attr<float>("momentum");
     std::string act_type = ctx.Attr<std::string>("act_type");
@@ -73,22 +74,26 @@ class FusedBatchNormActKernel<phi::GPUContext, T>
     // initialize them.
     auto *mean_out = ctx.Output<Tensor>("MeanOut");
     auto *variance_out = ctx.Output<Tensor>("VarianceOut");
-    mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    variance_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    dev_ctx.Alloc<BatchNormParamType<T>>(
+        mean_out, mean_out->numel() * sizeof(BatchNormParamType<T>));
+    dev_ctx.Alloc<BatchNormParamType<T>>(
+        variance_out, variance_out->numel() * sizeof(BatchNormParamType<T>));
 
     auto *saved_mean = ctx.Output<Tensor>("SavedMean");
     auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
-    saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    dev_ctx.Alloc<BatchNormParamType<T>>(
+        saved_mean, saved_mean->numel() * sizeof(BatchNormParamType<T>));
+    dev_ctx.Alloc<BatchNormParamType<T>>(
+        saved_variance,
+        saved_variance->numel() * sizeof(BatchNormParamType<T>));
 
     auto *y = ctx.Output<Tensor>("Y");
-    y->mutable_data<T>(ctx.GetPlace());
+    dev_ctx.Alloc<T>(y, y->numel() * sizeof(T));
 
     int N, C, H, W, D;
     const DataLayout data_layout = DataLayout::kNHWC;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
-    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     if ((N * H * W * D) == 1) {
       // Only 1 element in normalization dimension,
       // skip the batch norm calculation, let y = act(x).
@@ -172,10 +177,17 @@ class FusedBatchNormActKernel<phi::GPUContext, T>
             /*xDesc=*/data_desc_,
             /*sizeInBytes=*/&reserve_space_size));
 
-    reserve_space_ptr = reserve_space->mutable_data(
-        ctx.GetPlace(), x->dtype(), reserve_space_size);
-    workspace_ptr = workspace_tensor.mutable_data(
-        ctx.GetPlace(), x->dtype(), workspace_size);
+    reserve_space->Resize({static_cast<int64_t>(
+        (reserve_space_size + experimental::SizeOf(x->dtype()) - 1) /
+        experimental::SizeOf(x->dtype()))});
+    reserve_space_ptr =
+        dev_ctx.Alloc<T>(reserve_space, reserve_space->numel() * sizeof(T));
+    workspace_tensor.Resize({static_cast<int64_t>(
+        (workspace_size + experimental::SizeOf(x->dtype()) - 1) /
+        experimental::SizeOf(x->dtype()))});
+    workspace_ptr = dev_ctx.Alloc<T>(&workspace_tensor,
+                                     workspace_tensor.numel() * sizeof(T));
+
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
             handle,
@@ -193,15 +205,18 @@ class FusedBatchNormActKernel<phi::GPUContext, T>
             scale->template data<BatchNormParamType<T>>(),
             bias->template data<BatchNormParamType<T>>(),
             this_factor,
-            mean_out->template mutable_data<BatchNormParamType<T>>(
-                ctx.GetPlace()),
-            variance_out->template mutable_data<BatchNormParamType<T>>(
-                ctx.GetPlace()),
+            dev_ctx.template Alloc<BatchNormParamType<T>>(
+                mean_out, mean_out->numel() * sizeof(BatchNormParamType<T>)),
+            dev_ctx.template Alloc<BatchNormParamType<T>>(
+                variance_out,
+                variance_out->numel() * sizeof(BatchNormParamType<T>)),
             epsilon,
-            saved_mean->template mutable_data<BatchNormParamType<T>>(
-                ctx.GetPlace()),
-            saved_variance->template mutable_data<BatchNormParamType<T>>(
-                ctx.GetPlace()),
+            dev_ctx.template Alloc<BatchNormParamType<T>>(
+                saved_mean,
+                saved_mean->numel() * sizeof(BatchNormParamType<T>)),
+            dev_ctx.template Alloc<BatchNormParamType<T>>(
+                saved_variance,
+                saved_variance->numel() * sizeof(BatchNormParamType<T>)),
             activation_desc_,
             workspace_ptr,
             workspace_size,
@@ -227,7 +242,7 @@ class FusedBatchNormActGradKernel<phi::GPUContext, T>
         platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     std::string act_type = ctx.Attr<std::string>("act_type");
-
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     const auto *x = ctx.Input<Tensor>("X");
     const auto *y = ctx.Input<Tensor>("Y");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
@@ -250,14 +265,16 @@ class FusedBatchNormActGradKernel<phi::GPUContext, T>
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
-    d_x->mutable_data<T>(ctx.GetPlace());
+    dev_ctx.Alloc<T>(d_x, d_x->numel() * sizeof(T));
     PADDLE_ENFORCE_EQ(
         d_scale && d_bias,
         true,
         platform::errors::PreconditionNotMet(
             "Both the scale grad and the bias grad must not be null."));
-    d_scale->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    d_bias->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    dev_ctx.Alloc<BatchNormParamType<T>>(
+        d_scale, d_scale->numel() * sizeof(BatchNormParamType<T>));
+    dev_ctx.Alloc<BatchNormParamType<T>>(
+        d_bias, d_bias->numel() * sizeof(BatchNormParamType<T>));
     PADDLE_ENFORCE_EQ(scale->dims().size(),
                       1UL,
                       platform::errors::PreconditionNotMet(
@@ -268,7 +285,6 @@ class FusedBatchNormActGradKernel<phi::GPUContext, T>
         platform::errors::PreconditionNotMet(
             "The size of scale is equal to the channel of Input(X)."));
 
-    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     if ((N * H * W * D) == 1) {
       if (act_type == "relu") {
         auto x_v = framework::EigenVector<T>::Flatten(*x);
@@ -344,8 +360,11 @@ class FusedBatchNormActGradKernel<phi::GPUContext, T>
             /*activationDesc=*/activation_desc_,
             /*sizeInBytes=*/&workspace_size));
 
-    workspace_ptr = workspace_tensor.mutable_data(
-        ctx.GetPlace(), x->type(), workspace_size);
+    workspace_tensor.Resize({static_cast<int64_t>(
+        (workspace_size + experimental::SizeOf(x->dtype()) - 1) /
+        experimental::SizeOf(x->dtype()))});
+    workspace_ptr = dev_ctx.Alloc<T>(&workspace_tensor,
+                                     workspace_tensor.numel() * sizeof(T));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnBatchNormalizationBackwardEx(
@@ -365,16 +384,17 @@ class FusedBatchNormActGradKernel<phi::GPUContext, T>
             /*dzDesc=*/nullptr,
             /*dzData=*/nullptr,
             /*dxDesc=*/data_desc_,
-            /*dxData=*/d_x->template mutable_data<T>(ctx.GetPlace()),
+            /*dxData=*/
+            dev_ctx.template Alloc<T>(d_x, d_x->numel() * sizeof(T)),
             /*dBnScaleBiasDesc=*/bn_param_desc_,
             /*bnScaleData=*/scale->template data<BatchNormParamType<T>>(),
             /*bnBiasData=*/bias->template data<BatchNormParamType<T>>(),
             /*dBnScaleData=*/
-            d_scale->template mutable_data<BatchNormParamType<T>>(
-                ctx.GetPlace()),
+            dev_ctx.template Alloc<BatchNormParamType<T>>(
+                d_scale, d_scale->numel() * sizeof(BatchNormParamType<T>)),
             /*dBnBiasData=*/
-            d_bias->template mutable_data<BatchNormParamType<T>>(
-                ctx.GetPlace()),
+            dev_ctx.template Alloc<BatchNormParamType<T>>(
+                d_bias, d_bias->numel() * sizeof(BatchNormParamType<T>)),
             /*epsilon=*/epsilon,
             /*savedMean=*/saved_mean_data,
             /*savedInvVariance=*/saved_var_data,
