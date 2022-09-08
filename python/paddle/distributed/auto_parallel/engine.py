@@ -15,6 +15,7 @@
 import time
 import copy
 import logging
+import numpy as np
 from collections import defaultdict
 
 import paddle
@@ -26,6 +27,7 @@ from paddle.jit import to_static
 from paddle.metric import Metric
 from paddle.static import InputSpec
 from paddle.fluid import core
+from paddle.fluid import Variable
 from paddle.fluid import program_guard
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.executor import global_scope, _to_name_str
@@ -48,27 +50,30 @@ from .utils import make_data_unshard, set_grad_var_shape
 from .utils import print_program_with_dist_attr, to_list
 from .process_group import new_process_group, get_all_process_groups, get_world_process_group
 from .dist_context import DistributedContext, get_default_distributed_context
+from .strategy import Strategy
+from .interface import _get_fetches
 
 
 class Engine:
 
     def __init__(self,
                  model=None,
-                 inputs_spec=None,
-                 labels_spec=None,
+                 loss=None,
+                 optimizer=None,
+                 metrics=None,
                  cluster=None,
-                 strategy=None,
-                 user_tuning_config=None):
+                 strategy=None):
         self.model = model
-        self.inputs_spec = self._validate_spec(inputs_spec)
-        self.labels_spec = self._validate_spec(labels_spec)
+        self.loss = loss
+        self.optimizer = optimizer
+        self.metrics = metrics
         self.cluster = cluster
         if self.cluster is None:
             self.cluster = get_default_cluster()
         self.strategy = strategy
         if self.strategy is None:
             self.strategy = fleet.DistributedStrategy()
-        self._user_tuning_config = user_tuning_config
+        fleet.init(is_collective=True, strategy=self.strategy)
 
         self._executor = None
         self._cur_rank = paddle.distributed.get_rank()
@@ -105,36 +110,35 @@ class Engine:
         }
         self._dygraph_mode = False
 
-    def prepare(self,
-                optimizer=None,
-                loss=None,
-                gradient_scale=True,
-                metrics=None,
-                all_ranks=False):
-        if optimizer and not isinstance(
-                optimizer,
+        # TODO: move the following configuration to the strategy
+        self._gradient_scale = True
+        self._user_tuning_config = None
+        self._all_ranks = False
+        self._use_cache = False
+        self._return_numpy = True
+
+    def _prepare(self):
+        if self.optimizer and not isinstance(
+                self.optimizer,
             (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
             raise TypeError(
-                    "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
-                        " or `paddle.fluid.optimizer.Optimizer`."
-                )
-        self._optimizer = optimizer
-        self._all_ranks = all_ranks
+                "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
+                " or `paddle.fluid.optimizer.Optimizer`.")
+        self._optimizer = self.optimizer
 
-        if loss and not isinstance(loss,
-                                   paddle.nn.Layer) and not callable(loss):
+        if self.loss and not isinstance(
+                self.loss, paddle.nn.Layer) and not callable(self.loss):
             raise TypeError(
                 "'loss' must be sub classes of `paddle.nn.Layer` or any callable function."
             )
-        self._loss = loss
+        self._loss = self.loss
 
-        metrics = metrics or []
+        metrics = self.metrics or []
         for metric in to_list(metrics):
             assert isinstance(metric, Metric), \
                 "{} is not sub class of Metric".format(
                     metric.__class__.__name__)
         self._metrics = to_list(metrics)
-        self._gradient_scale = gradient_scale
         self._planned_mode = None
         self._prepare_single_mode("train")
 
@@ -149,7 +153,7 @@ class Engine:
             self._optimization_tuning(mode)
 
         # Do the parallel process
-        self._parallel(mode, self._all_ranks)
+        self._parallel(mode)
 
         # Init comm and startup program
         self._initialize(mode)
@@ -275,7 +279,7 @@ class Engine:
         self._input_split_size, self._input_split_rank = self._get_input_split_info(
             feed_list[0], self._dist_contexts[mode])
 
-    def _parallel(self, mode, all_ranks):
+    def _parallel(self, mode, all_ranks=False):
         # Parallelize program based on the planner's results
         # For now, the completer has to be passed to the planner,
         # because we may use it to complete the annotation of the backwarkward and update.
@@ -408,30 +412,70 @@ class Engine:
 
                 cast_parameters_to_fp16(self._place, prune_startup_prog)
 
+    def _infer_data_spec(self, data, batch_size):
+        if isinstance(data, paddle.io.Dataset):
+            input, label = data[0]
+        elif isinstance(data, paddle.io.IterableDataset):
+            input, label = next(iter(data))
+        else:
+            raise ValueError(
+                "Data should be a Dataset or IterableDatset, but received {}.".
+                format(type(data).__name__))
+        self.inputs_spec = []
+        self.labels_spec = []
+        input_list = to_list(input)
+        label_list = to_list(label)
+
+        def _infer_item_spec(item, name, batch_size, specs):
+            if isinstance(item, np.ndarray):
+                spec = InputSpec.from_numpy(item, name)
+                if batch_size is None:
+                    specs.append(spec)
+                else:
+                    specs.append(spec.batch(batch_size))
+            elif isinstance(item, (Variable, core.VarBase, core.eager.Tensor)):
+                spec = InputSpec.from_tensor(item, name)
+                if batch_size is None:
+                    specs.append(spec)
+                else:
+                    specs.append(spec.batch(batch_size))
+            else:
+                specs.append(InputSpec([batch_size], type(item), name))
+
+        if input_list is not None:
+            for i, item in enumerate(input_list):
+                assert item is not None, "Receive None input."
+                name = "input" + str(i)
+                _infer_item_spec(item, name, batch_size, self.inputs_spec)
+        if label_list is not None:
+            for item in label_list:
+                assert item is not None, "Receive None input."
+                name = "label" + str(i)
+                _infer_item_spec(item, name, batch_size, self.labels_spec)
+
     def fit(self,
             train_data,
             batch_size=1,
             epochs=1,
-            fetches=None,
             steps_per_epoch=None,
+            valid_data=None,
+            valid_freq=1,
+            valid_batch_size=1,
             collate_fn=None,
-            use_cache=False,
-            return_numpy=True):
-        # TODO: callbacks
-        # TODO: evaluate after training
-
-        if not self._mode_init_states['train']:
-            raise Exception(
-                "train program is not initialized yet, please call engine.prepare() before calling fit() funtion."
-            )
-
+            callbacks=None):
+        assert valid_data is None, "No support for validation for now"
         self.mode = 'train'
+        self._infer_data_spec(train_data, batch_size)
+        if not self._mode_init_states['train']:
+            self._prepare()
+
         assert self.mode in self._dist_main_progs, \
             "train model is not ready, please call `engine.prepare()` first."
         train_dataloader = self._create_dataloader(train_data, batch_size,
                                                    epochs, steps_per_epoch,
                                                    collate_fn)
 
+        fetches = _get_fetches()
         usr_fetch = self._validate_fetches(fetches)
         fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
         fetch_list, fetch_map = self._fetch_map(fetch_loss, usr_fetch)
@@ -443,8 +487,8 @@ class Engine:
 
                 outs = self._executor.run(self.main_program,
                                           fetch_list=fetch_list,
-                                          use_program_cache=use_cache,
-                                          return_numpy=return_numpy)
+                                          use_program_cache=self._use_cache,
+                                          return_numpy=self._return_numpy)
                 train_logs["step: {:d} "] = step
                 if lr_scheduler is not None:
                     lr_scheduler.step()
@@ -464,11 +508,10 @@ class Engine:
     def evaluate(self,
                  eval_data,
                  batch_size=1,
-                 fetches=None,
                  collate_fn=None,
-                 use_cache=False,
-                 return_numpy=True):
+                 callbacks=None):
         self.mode = 'eval'
+        self._infer_data_spec(eval_data, batch_size)
         if not self._mode_init_states[self.mode]:
             self._prepare_single_mode(self.mode)
 
@@ -478,6 +521,7 @@ class Engine:
                                                   batch_size,
                                                   collate_fn=collate_fn)
 
+        fetches = _get_fetches()
         usr_fetch = self._validate_fetches(fetches)
         fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
         fetch_metrics = self._validate_fetches(self.fetch_vars["metrics"])
@@ -488,8 +532,8 @@ class Engine:
             eval_logs = {"step: {:d} ": step}
             outs = self._executor.run(self.main_program,
                                       fetch_list=fetch_list,
-                                      use_program_cache=use_cache,
-                                      return_numpy=return_numpy)
+                                      use_program_cache=self._use_cache,
+                                      return_numpy=self._return_numpy)
             # inner fetches
             if fetch_loss:
                 eval_logs["loss: {:9f} "] = outs[0][0]
@@ -510,14 +554,9 @@ class Engine:
             string = '[eval] ' + ''.join(list(eval_logs.keys()))
             self._logger.info(string.format(*list(eval_logs.values())))
 
-    def predict(self,
-                test_data,
-                batch_size=1,
-                fetches=None,
-                collate_fn=None,
-                use_cache=False,
-                return_numpy=True):
+    def predict(self, test_data, batch_size=1, collate_fn=None, callbacks=None):
         self.mode = 'predict'
+        self._infer_data_spec(test_data, batch_size)
         if not self._mode_init_states[self.mode]:
             self._prepare_single_mode(self.mode)
 
@@ -527,6 +566,7 @@ class Engine:
                                                   batch_size,
                                                   collate_fn=collate_fn)
 
+        fetches = _get_fetches()
         usr_fetch = self._validate_fetches(fetches)
         fetch_outputs = self._validate_fetches(self.fetch_vars["outputs"])
         fetch_list, fetch_map = self._fetch_map(fetch_outputs, usr_fetch)
@@ -536,8 +576,8 @@ class Engine:
             predict_logs = {"step: {:d} ": step}
             outs = self._executor.run(self.main_program,
                                       fetch_list=fetch_list,
-                                      use_program_cache=use_cache,
-                                      return_numpy=return_numpy)
+                                      use_program_cache=self._use_cache,
+                                      return_numpy=self._return_numpy)
             outputs.append(outs[:len(fetch_outputs)])
             for i, out in enumerate(outs):
                 predict_logs[fetch_map[fetch_list[i]] + ": {}"] = out
@@ -695,10 +735,7 @@ class Engine:
             }
             self._logger.info(logs)
 
-    def save(self, path, training=True, mode=None):
-        if not mode:
-            mode = self.mode
-
+    def save(self, path, training=True):
         if training:
             assert 'train' in self._serial_main_progs, \
                 "training model is not ready, please call `engine.prepare()` first."
@@ -710,7 +747,7 @@ class Engine:
                              dist_main_program=dist_main_prog,
                              dist_context=dist_context)
         else:
-            assert mode, "Please set the 'mode' you want to save."
+            mode = "predict"
             feed_vars = self._feed_vars[mode]['inputs']
             fetch_vars = self._fetch_vars[mode]['outputs']
             dist_main_prog = self._dist_main_progs[mode][self._cur_rank]
@@ -720,10 +757,13 @@ class Engine:
                                              self._executor,
                                              program=dist_main_prog)
 
-    def load(self, path, strict=True, load_optimizer=True, mode=None):
-        if not mode:
-            mode = self.mode
-        assert mode, "Please set the 'mode' you want to load."
+    def load(self, path, strict=True, load_optimizer=True):
+        if load_optimizer:
+            if not self._mode_init_states['train']:
+                self._prepare()
+            mode = "train"
+        else:
+            mode = "predict"
 
         dist_main_prog = self._dist_main_progs[mode][self._cur_rank]
         dist_context = self._dist_contexts[mode]
@@ -770,3 +810,6 @@ class Engine:
     @property
     def fetch_vars(self):
         return self._fetch_vars[self.mode]
+
+
+_g_engine_fetches = defaultdict(dict)

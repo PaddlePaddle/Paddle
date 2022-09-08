@@ -160,3 +160,40 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
     op = DistributedOperatorHelper(op, process_mesh, in_dims_mappings,
                                    out_dims_mappings)
     return op
+
+
+def recompute(op):
+
+    class RecomputeOperator:
+
+        def __init__(self, op):
+            self._op = op
+
+        def __call__(self, *args, **kwargs):
+            default_prog = paddle.fluid.default_main_program()
+            cur_block = default_prog.current_block()
+            op_size = len(cur_block.ops)
+            output = self._op(*args, **kwargs)
+            new_op_size = len(cur_block.ops)
+
+            for idx in range(op_size, new_op_size):
+                op = cur_block.ops[idx]
+                op._set_attr("is_recompute@auto_parallel", True)
+
+            return output
+
+    return RecomputeOperator(op)
+
+
+_g_fetched_tensors = {}
+
+
+def fetch(tensor, name=None):
+    if name is None:
+        _g_fetched_tensors[tensor.name] = tensor
+    else:
+        _g_fetched_tensors[name] = tensor
+
+
+def _get_fetches():
+    return _g_fetched_tensors
