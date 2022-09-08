@@ -681,7 +681,8 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
     auto *out_tensor = (*outs)[0];
     auto *out_ptr = ctx.Alloc<OutT>(out_tensor);
 
-    phi::Array<phi::Array<int64_t, phi::DDim::kMaxRank>, phi::DDim::kMaxRank>
+    phi::Array<phi::Array<int64_t, phi::DDim::kMaxRank>,
+               MaxWithOne<Arity>::kValue>
         ins_expand_dims;
     phi::Array<int64_t, phi::DDim::kMaxRank> broadcast_out_dims;
     int rank;
@@ -692,8 +693,6 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
       }
       ins_expand_dims[0] = broadcast_out_dims;
     } else if (Arity >= 2) {
-      phi::Array<int64_t, phi::DDim::kMaxRank>
-          ins_expand_dims[MaxWithOne<Arity>::kValue];
       CalculateBroadcastDims(ins[0]->dims().Get(),
                              ins[1]->dims().Get(),
                              ins[0]->dims().size(),
