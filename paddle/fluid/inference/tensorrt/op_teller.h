@@ -73,6 +73,14 @@ class OpTeller {
  private:
   OpTeller();
 
+  /*
+   * Some OpDescs Attribute support both constant value and dynamic
+   * runtime value (which is a Variable(s) type). But TensorRT maybe
+   * only support constant value Attribute, so we shall distinguish
+   * this case in time and return False in OpTeller.Tell().
+   */
+  bool HasUnsupportAttrVar(const framework::OpDesc& desc) const;
+
  private:
   std::vector<std::unique_ptr<Teller>> tellers_;
 };
