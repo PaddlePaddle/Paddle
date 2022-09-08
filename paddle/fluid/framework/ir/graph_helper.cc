@@ -512,7 +512,7 @@ static void ReplaceAllReduceOp(const Node &node,
   ops->emplace_back();
   auto &desc1 = ops->back();
   std::string name = "fake_coalesce_" + std::to_string(ops->size());
-  desc1.SetType("fake_coalesce");
+  desc1.SetType("check_memory_continue");
 
   ops->emplace_back();
   auto &desc2 = ops->back();
@@ -531,15 +531,15 @@ static void ReplaceAllReduceOp(const Node &node,
       }
       in_names.emplace_back(in->Name());
     }
-    desc1.SetInput("x", in_names);
+    desc1.SetInput("X", in_names);
 
     proto::VarDesc var_desc;
     var_desc.set_name(name);
     var_desc.mutable_type()->set_type(proto::VarType::LOD_TENSOR);
     block->mutable_vars()->Add()->CopyFrom(var_desc);
-    desc1.SetOutput("out", {name});
-    desc1.SetOutput("xout", in_names);
-    VLOG(4) << "add variable for fake_coalesce: " << name;
+    desc1.SetOutput("Out", {name});
+    desc1.SetOutput("XOut", in_names);
+    VLOG(4) << "add variable for check_memory_continue: " << name;
 
     desc2.SetInput("X", {name});
     // set outputs
@@ -564,8 +564,9 @@ static void ReplaceAllReduceOp(const Node &node,
   desc2.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 (static_cast<int>(OpRole::kBackward)));
 #else
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "ReplaceAllReduceOp is only implemented for paddle compiled with GPU."));
+  PADDLE_THROW(
+      platform::errors::Unimplemented("ReplaceAllReduceOp is only implemented "
+                                      "for paddle compiled with NCCL/RCCL."));
 #endif
 }
 

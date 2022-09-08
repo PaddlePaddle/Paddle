@@ -835,10 +835,10 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
   }
 }
 
-void FakeCoalesceInferMeta(const std::vector<const MetaTensor*>& input,
-                           MetaTensor* output,
-                           std::vector<MetaTensor*> xout,
-                           MetaConfig config) {
+void CheckMemoryContinueInferMeta(const std::vector<const MetaTensor*>& input,
+                                  MetaTensor* output,
+                                  std::vector<MetaTensor*> xout,
+                                  MetaConfig config) {
   if (config.is_runtime) {
     return;
   }
