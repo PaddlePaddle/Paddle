@@ -556,9 +556,10 @@ class Engine:
         dist_context = self._dist_contexts[self.mode]
         dist_main_block = dist_main_prog.global_block()
 
-        # NOTE: Get feed_list from dist_program, then insert dataloader op
-        # with sharded var shape. Because predict_program does not contain
-        # labels var, so we will filter dataset's value with length of feed_list.
+        # NOTE: Get feed_list, then insert dataloader op with sharded var shape.
+        # Cause predict_program does not contain labels var,
+        # then we will add labels var from serial_program to dist_program,
+        # that maintains the length of feed_list equal to the length of dataset's values.
         inputs_var = self._feed_vars[self.mode]["inputs"]
         labels_var = self._feed_vars[self.mode]["labels"]
         feed_list = []
