@@ -349,6 +349,7 @@ def gt_orig2prim(op, x, y):
     return gt(x, y)
 
 
+<<<<<<< 7036dbc3b81d1b4fffdf106835abdb2f40ee09d2
 @REGISTER_ORIG2PRIM('greater_equal')
 def ge_orig2prim(op, x, y):
     if x.shape != y.shape:
@@ -356,6 +357,8 @@ def ge_orig2prim(op, x, y):
     return ge(x, y)
 
 
+=======
+>>>>>>> add ne_p gt_p primitive operators
 @REGISTER_ORIG2PRIM('elementwise_pow')
 def elementwise_pow_orig2prim(op, x, y):
     if x.shape != y.shape:
@@ -572,11 +575,14 @@ def gt_prim2orig(op, x, y):
     return paddle.greater_than(x, y)
 
 
+<<<<<<< 7036dbc3b81d1b4fffdf106835abdb2f40ee09d2
 @REGISTER_PRIM2ORIG('ge_p')
 def ge_prim2orig(op, x, y):
     return paddle.greater_equal(x, y)
 
 
+=======
+>>>>>>> add ne_p gt_p primitive operators
 @REGISTER_PRIM2ORIG('ne_p')
 def ne_prim2orig(op, x, y):
     return paddle.not_equal(x, y)
@@ -863,6 +869,7 @@ def gt_jvp(op, x_dot, y_dot):
     return z_dot
 
 
+<<<<<<< 7036dbc3b81d1b4fffdf106835abdb2f40ee09d2
 @REGISTER_JVP('ge_p')
 def ge_jvp(op, x_dot, y_dot):
     if x_dot is None and y_dot is None:
@@ -872,6 +879,8 @@ def ge_jvp(op, x_dot, y_dot):
     return z_dot
 
 
+=======
+>>>>>>> add ne_p gt_p primitive operators
 @REGISTER_JVP('ne_p')
 def ne_jvp(op, x_dot, y_dot):
     if x_dot is None and y_dot is None:

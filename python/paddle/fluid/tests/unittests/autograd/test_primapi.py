@@ -302,7 +302,6 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
                                                (200, 345)), ), None, 'float32'),
     ))
 
-
 class TestGrad(unittest.TestCase):
 
     def setUp(self):

@@ -1040,7 +1040,6 @@ class TestGtPJVPAndTranspose(TestAddPJVPAndTranspose):
             # transpose op:
         ]
 
-
 class TestGePJVPAndTranspose(TestAddPJVPAndTranspose):
 
     def init_data(self):
@@ -1069,7 +1068,6 @@ class TestGePJVPAndTranspose(TestAddPJVPAndTranspose):
             'fill_constant_p',
             # transpose op:
         ]
-
 
 class TestNePJVPAndTranspose(TestAddPJVPAndTranspose):
 

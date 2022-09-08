@@ -366,6 +366,7 @@ def ge(x, y, out=None):
     return _simple_binop(LayerHelper('ge_p', **locals()))
 
 
+
 @REGISTER_FN('ne_p', 'X', 'Y', 'Z')
 def ne(x, y, out=None):
     return _simple_binop(LayerHelper('ne_p', **locals()))
