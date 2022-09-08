@@ -103,6 +103,9 @@ class XPUTestReduce(XPUOpTestWrapper):
         # def test_check_grad(self):
         #     self.check_output_with_place(self.place, ['X'], 'Out')
 
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
+
     class Test2DReduce0(Test1DReduce):
 
         def setUp(self):
@@ -157,6 +160,18 @@ class XPUTestReduce(XPUOpTestWrapper):
             super().setUp()
             self.attrs = {'dim': [1, 2], 'use_xpu': True}
             self.inputs = {'X': np.random.random((5, 6, 7)).astype(self.dtype)}
+            self.outputs = {
+                'Out': self.inputs['X'].mean(axis=tuple(self.attrs['dim']))
+            }
+
+    class Test6DReduce(Test1DReduce):
+
+        def setUp(self):
+            super().setUp()
+            self.attrs = {'dim': [1, -1], 'use_xpu': True}
+            self.inputs = {
+                'X': np.random.random((5, 6, 7, 8, 9, 10)).astype(self.dtype)
+            }
             self.outputs = {
                 'Out': self.inputs['X'].mean(axis=tuple(self.attrs['dim']))
             }

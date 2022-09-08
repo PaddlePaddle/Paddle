@@ -205,7 +205,9 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
                                    strides,
                                    padding_common,
                                    dilations_,
-                                   dtype};
+                                   dtype,
+                                   groups,
+                                   data_layout};
   args.handle = handle;
   args.idesc.set(transformed_out, iwo_groups);
   args.wdesc.set(filter, layout_tensor, iwo_groups);
@@ -306,7 +308,7 @@ void Conv2dTransposeGPUDNNKernel(const Context& ctx,
                                  const std::vector<int>& strides,
                                  const std::vector<int>& paddings,
                                  const std::vector<int>& output_padding,
-                                 const std::vector<int>& output_size,
+                                 const IntArray& output_size,
                                  const std::string& padding_algorithm,
                                  int groups,
                                  const std::vector<int>& dilations,

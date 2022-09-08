@@ -45,10 +45,10 @@ void AssignRawKernel(const Context& dev_ctx,
 // as input if needed
 template <typename Context>
 void AssignArrayKernel(const Context& dev_ctx,
-                       const std::vector<const DenseTensor*>& x,
-                       std::vector<DenseTensor*> out) {
+                       const TensorArray& x,
+                       TensorArray* out) {
   for (size_t i = 0; i < x.size(); ++i) {
-    AssignKernel<Context>(dev_ctx, *x[i], out.at(i));
+    AssignKernel<Context>(dev_ctx, x[i], &out->at(i));
   }
 }
 
@@ -157,4 +157,21 @@ PD_REGISTER_KERNEL(assign_value,
                    int,
                    float,
                    int64_t) {}
+#endif
+
+#ifdef PADDLE_WITH_XPU
+PD_REGISTER_GENERAL_KERNEL(
+    assign, XPU, ALL_LAYOUT, phi::AssignKernel<phi::XPUContext>, ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(assign_raw,
+                           XPU,
+                           ALL_LAYOUT,
+                           phi::AssignRawKernel<phi::XPUContext>,
+                           ALL_DTYPE) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+PD_REGISTER_GENERAL_KERNEL(assign_array,
+                           XPU,
+                           ALL_LAYOUT,
+                           phi::AssignArrayKernel<phi::XPUContext>,
+                           ALL_DTYPE) {}
 #endif

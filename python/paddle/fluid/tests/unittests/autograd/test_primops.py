@@ -41,6 +41,7 @@ paddle.enable_static()
         ('sin', primops.sin, randn(2, 3), {}, (2, 3), 'float64'),
         ('cos', primops.cos, randn(2, 3), {}, (2, 3), 'float64'),
         ('exp', primops.exp, randn(2, 3), {}, (2, 3), 'float64'),
+        ('erf', primops.erf, randn(2, 3), {}, (2, 3), 'float64'),
         ('log', primops.log, randn(2, 3), {}, (2, 3), 'float64'),
         ('reshape', primops.reshape, randn(2, 3), {
             'shape': (3, 2)

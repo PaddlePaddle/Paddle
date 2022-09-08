@@ -119,6 +119,17 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int64_t>("cuda_graph_pool_id",
                      "(int64_t, default 0) The CUDA Graph memory pool ID.")
         .SetDefault(0);
+    AddAttr<bool>("use_interpretorcore",
+                  "(bool, default false) Set to true for use interpretercore.")
+        .SetDefault(false);
+    AddAttr<BlockDesc*>("forward_global_block",
+                        "(BlockDesc *)"
+                        "The global block of executed forward program desc.")
+        .SetDefault(nullptr);
+    AddAttr<BlockDesc*>("backward_global_block",
+                        "(BlockDesc *)"
+                        "The global block of executed backward program desc.")
+        .SetDefault(nullptr);
     AddComment(R"DOC(
 RunProgram operator.
 

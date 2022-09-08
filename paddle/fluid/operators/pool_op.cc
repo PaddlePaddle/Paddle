@@ -151,9 +151,8 @@ void Pool2dOpMaker::Make() {
                             "(vector<int>) The pooling window "
                             "size(height, width) of the pooling operator. "
                             "If global_pooling = true, ksize and paddings will "
-                            "be ignored.");  // TODO(Chengduo): Add checker.
-                                             // (Currently,
-  // TypedAttrChecker don't support vector type.)
+                            "be ignored.")
+      .SupportTensor();
   AddAttr<bool>(
       "global_pooling",
       "(bool) Whether to use the global pooling. "
@@ -371,9 +370,7 @@ void Pool3dOpMaker::Make() {
       "(vector<int>) The pooling window size(depth, height, "
       "width) of pooling operator. "
       "If global_pooling = true, ksize and paddings will "
-      "be ignored.");  // TODO(Chengduo): Add checker.
-                       // (Currently,
-  // TypedAttrChecker don't support vector type.)
+      "be ignored.");
   AddAttr<bool>(
       "global_pooling",
       "(bool) Whether to use the global pooling. "
@@ -554,13 +551,13 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(pool2d,
                             Pool2dInferShapeFunctor,
-                            PD_INFER_META(phi::PoolInferMeta));
+                            PD_INFER_META(phi::Pool2DInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(pool2d_grad,
                             Pool2dGradInferShapeFunctor,
-                            PD_INFER_META(phi::PoolGradInferMeta));
+                            PD_INFER_META(phi::UnchangedInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(pool2d_double_grad,
                             Pool2dDoubleGradInferShapeFunctor,
-                            PD_INFER_META(phi::PoolInferMeta));
+                            PD_INFER_META(phi::Pool2DInferMeta));
 
 REGISTER_OPERATOR(
     pool2d,
@@ -584,7 +581,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(pool3d,
                             PD_INFER_META(phi::PoolInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(pool3d_grad,
                             Pool3dGradInferShapeFunctor,
-                            PD_INFER_META(phi::PoolGradInferMeta));
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 REGISTER_OPERATOR(
     pool3d,
