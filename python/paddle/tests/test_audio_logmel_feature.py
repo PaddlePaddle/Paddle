@@ -57,8 +57,6 @@ class TestFeatures(unittest.TestCase):
                   [0.0, 50.0])
     def test_log_melspect(self, sr: int, window_str: str, n_fft: int,
                           hop_length: int, n_mels: int, fmin: float):
-        if float(paddle.version.cuda()) >= 11.0:
-            return
         if len(self.waveform.shape) == 2:  # (C, T)
             self.waveform = self.waveform.squeeze(
                 0)  # 1D input for librosa.feature.melspectrogram
@@ -74,7 +72,7 @@ class TestFeatures(unittest.TestCase):
                                                          fmin=fmin,
                                                          pad_mode='reflect')
         feature_librosa = librosa.power_to_db(feature_librosa, top_db=None)
-        x = paddle.to_tensor(self.waveform, dtype=paddle.float32).unsqueeze(
+        x = paddle.to_tensor(self.waveform, dtype=paddle.float64).unsqueeze(
             0)  # Add batch dim.
         feature_extractor = paddle.audio.features.LogMelSpectrogram(
             sr=sr,
@@ -97,8 +95,10 @@ class TestFeatures(unittest.TestCase):
                   ['float32', 'float64'])
     def test_mfcc(self, sr: int, n_fft: int, n_mfcc: int, n_mels: int,
                   dtype: str):
-        if float(paddle.version.cuda()) >= 11.0:
+        if paddle.version.cuda() != False and float(
+                paddle.version.cuda()) >= 11.0:
             return
+
         if len(self.waveform.shape) == 2:  # (C, T)
             self.waveform = self.waveform.squeeze(
                 0)  # 1D input for librosa.feature.melspectrogram
