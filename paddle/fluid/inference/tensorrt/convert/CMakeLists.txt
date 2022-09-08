@@ -75,7 +75,8 @@ list(
   sum_op.cc
   shape_op.cc
   fill_constant_op.cc
-  fused_token_prune_op.cc)
+  fused_token_prune_op.cc
+  celu_op.cc)
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)
