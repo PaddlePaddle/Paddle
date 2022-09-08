@@ -110,10 +110,10 @@ class TestInplaceAddto(unittest.TestCase):
 
         np.testing.assert_array_equal(res1, res2)
 
-    def test_nchw(self):
+    def _test_nchw(self):
         self.check_result()
 
-    def test_nhwc(self):
+    def _test_nhwc(self):
         self.check_result("NHWC")
 
 
