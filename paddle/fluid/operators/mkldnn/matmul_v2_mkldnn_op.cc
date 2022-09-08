@@ -649,9 +649,8 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
   matmul_p->execute(astream, matmul_args);
   astream.wait();
 
-  auto axis = ctx.Attr<std::vector<int>>("fused_transpose_Out");
-  if (ctx.HasAttr("fused_transpose_Out") && (axis.empty() == false)) {
-    auto reshape_out = ctx.Attr<std::vector<int>>("fused_reshape_Out");
+  if (IsOutputFused(ctx)) {
+    auto axis = ctx.Attr<std::vector<int>>("fused_transpose_Out");
     out->set_mem_desc(dst_memory_p->get_desc().permute_axes(axis).reshape(
         phi::vectorize<int64_t>(out->dims())));
   } else {
