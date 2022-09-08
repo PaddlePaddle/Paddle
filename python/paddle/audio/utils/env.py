@@ -19,8 +19,8 @@ def _get_user_home():
 
 
 def _get_paddleaudio_home():
-    if 'PPAUDIO_HOME' in os.environ:
-        home_path = os.environ['PPAUDIO_HOME']
+    if 'PPAUDIO_DATA' in os.environ:
+        home_path = os.environ['PPAUDIO_DATA']
         if os.path.exists(home_path):
             if os.path.isdir(home_path):
                 return home_path
@@ -30,7 +30,7 @@ def _get_paddleaudio_home():
                     .format(home_path))
         else:
             return home_path
-    return os.path.join(_get_user_home(), '.paddleaudio')
+    return os.path.join(_get_user_home(), '.paddle_audiodata')
 
 
 def _get_sub_home(directory):
