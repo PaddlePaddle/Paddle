@@ -207,8 +207,6 @@ def reduce_sum(x, axis=None, keepdim=False, out=None):
     if not isinstance(keepdim, bool):
         raise TypeError(f'keepdim must be bool, but got {type(keepdim)}')
 
-
-
     attrs = {'axis': axis, 'keepdim': keepdim}
     helper = LayerHelper('reduce_sum_p', **locals())
     if out is None:
@@ -364,7 +362,6 @@ def gt(x, y, out=None):
 @REGISTER_FN('ge_p', 'X', 'Y', 'Z')
 def ge(x, y, out=None):
     return _simple_binop(LayerHelper('ge_p', **locals()))
-
 
 
 @REGISTER_FN('ne_p', 'X', 'Y', 'Z')
