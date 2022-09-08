@@ -63,7 +63,8 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     auto ln_scales = ctx.MultiInput<Tensor>("LnScale");
     auto ln_biases = ctx.MultiInput<Tensor>("LnBias");
 
-    auto ln_compute = AttnLayerNorm<T>(dev_ctx, epsilon, bsz_seq, dim_embed);
+    auto ln_compute =
+        AttnLayerNorm<T, T, int8_t>(dev_ctx, epsilon, bsz_seq, dim_embed);
     Tensor ln_mean, ln_var;
     auto *ln_mean_data = ln_mean.mutable_data<U>({bsz_seq}, place);
     auto *ln_var_data = ln_var.mutable_data<U>({bsz_seq}, place);
@@ -153,8 +154,12 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
     // 5. ln(residual + bias)
     DropoutParam dropout_param2(true, 0, true, true, 0.0, nullptr, 0);
-    FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
-        dev_ctx, bsz_seq, dim_embed, dropout_param2, epsilon);
+    FusedDropoutLayerNormHelper<T, uint8_t, int32_t, int8_t>
+        fused_dropout_layernorm_helper(
+            dev_ctx, bsz_seq, dim_embed, dropout_param2, epsilon);
+    FusedDropoutLayerNormHelper<T, uint8_t>
+        fused_dropout_layernorm_helper_for_post_layernorm(
+            dev_ctx, bsz_seq, dim_embed, dropout_param2, epsilon);
     auto ffn_ln_scales = ctx.MultiInput<Tensor>("FFNLnScale");
     auto ffn_ln_biases = ctx.MultiInput<Tensor>("FFNLnBias");
     Tensor bias_dropout_residual_out, dropout_mask_out;
@@ -180,7 +185,9 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
     // 7. ffn act + bias
     DropoutParam ffn1_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
-    FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper(
+    FusedDropoutHelper<T, uint8_t, int32_t, int8_t> fused_act_dropout_helper(
+        dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
+    FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper_for_post_layernorm(
         dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
     Tensor ffn1_dropout_out, ffn1_dropout_mask;
     auto *ffn1_dropout_out_data =
@@ -196,8 +203,15 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
     // 9. ffn2 residual bias
     DropoutParam ffn2_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
-    FusedDropoutLayerNormHelper<T, uint8_t> ffn2_fused_dropout_helper(
-        dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
+    FusedDropoutLayerNormHelper<T, uint8_t, int32_t, int8_t>
+        ffn2_fused_dropout_helper(
+            dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
+    FusedDropoutLayerNormHelper<T, uint8_t, int32_t, T>
+        ffn2_fused_dropout_dequant_helper(
+            dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
+    FusedDropoutLayerNormHelper<T, uint8_t>
+        ffn2_fused_dropout_helper_for_post_layernorm(
+            dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
 
     // []. init workspace for cublasLt transform
     Tensor input_workspace, output_workspace;
@@ -239,14 +253,15 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         auto *ln_scale_data = ln_scales[i]->data<U>();
         auto *ln_bias_data = ln_biases[i]->data<U>();
         // TODO(wangxi): can remove mean var in inference
-
-        ln_compute.ComputeForwardQ(x_data,
-                                   ln_scale_data,
-                                   ln_bias_data,
-                                   input_workspace.data<int8_t>(),
-                                   ln_mean_data,
-                                   ln_var_data,
-                                   qkv_in_scale[i]);
+        ln_compute.ComputeForward(x_data,
+                                  ln_scale_data,
+                                  ln_bias_data,
+                                  input_workspace.data<int8_t>(),
+                                  ln_mean_data,
+                                  ln_var_data,
+                                  nullptr,
+                                  0,
+                                  qkv_in_scale[i]);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step1";
@@ -407,7 +422,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
         // inplace
         // non-inplace: buf1 -> input_workspace
-        fused_dropout_layernorm_helper.LayernormResidualDropoutBiasQDQ(
+        fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
             dev_ctx,
             output_workspace.data<int32_t>(),
             x_data,
@@ -427,18 +442,18 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         auto *ln_bias_data = ln_biases[i]->data<U>();
         auto *out_linear_bias_data = out_linear_biases[i]->data<T>();
         auto *residual_data = (i == 0 ? x_data : buf1->data<T>());
-        fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
-            dev_ctx,
-            buf0->data<T>(),
-            residual_data,
-            out_linear_bias_data,
-            ln_scale_data,
-            ln_bias_data,
-            buf0->data<T>(),
-            dropout_mask_out_data,
-            buf1->data<T>(),
-            ln_mean_data,
-            ln_var_data);
+        fused_dropout_layernorm_helper_for_post_layernorm
+            .LayernormResidualDropoutBias(dev_ctx,
+                                          buf0->data<T>(),
+                                          residual_data,
+                                          out_linear_bias_data,
+                                          ln_scale_data,
+                                          ln_bias_data,
+                                          buf0->data<T>(),
+                                          dropout_mask_out_data,
+                                          buf1->data<T>(),
+                                          ln_mean_data,
+                                          ln_var_data);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step5";
@@ -471,7 +486,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
       // step7. act bias
       // TODO(wangxi): remove dropout mask in inference
       if (pre_layer_norm) {
-        fused_act_dropout_helper.DropoutActBiasQDQ(
+        fused_act_dropout_helper.DropoutActBias(
             dev_ctx,
             output_workspace.data<int32_t>(),
             ffn1_biases[i]->data<T>(),
@@ -482,12 +497,13 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
             i * ffn1_out_scale_n,
             ffn2_in_scale[i]);
       } else {
-        fused_act_dropout_helper.DropoutActBias(dev_ctx,
-                                                ffn1_out_data,
-                                                ffn1_biases[i]->data<T>(),
-                                                "gelu",
-                                                ffn1_dropout_out_data,
-                                                ffn1_dropout_mask_data);
+        fused_act_dropout_helper_for_post_layernorm.DropoutActBias(
+            dev_ctx,
+            ffn1_out_data,
+            ffn1_biases[i]->data<T>(),
+            "gelu",
+            ffn1_dropout_out_data,
+            ffn1_dropout_mask_data);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step7";
@@ -534,47 +550,49 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
         if (i < layers - 1) {
           auto *ln_scale_data = ln_scales[i + 1]->data<U>();
           auto *ln_bias_data = ln_biases[i + 1]->data<U>();
-          ffn2_fused_dropout_helper.LayernormResidualDropoutBiasQDQ(
+
+          ffn2_fused_dropout_helper.LayernormResidualDropoutBias(
               dev_ctx,
               output_workspace.data<int32_t>(),
               bias_dropout_residual_out_data,
               ffn2_biases[i]->data<T>(),
               ln_scale_data,
               ln_bias_data,
-              buf1->data<T>(),  // dropout out <T> -> x_data, buf1
+              buf1->data<T>(),
               dropout_mask_out_data,
-              input_workspace.data<int8_t>(),  // out   <int8_t>     -> buf1
+              input_workspace.data<int8_t>(),
               ln_mean_data,
               ln_var_data,
               ffn2_out_scale->data<float>(),
               i * ffn2_out_scale_n,
               qkv_in_scale[i + 1]);
         } else {
-          ffn2_fused_dropout_helper.ResidualDropoutBiasDQ(
+          ffn2_fused_dropout_dequant_helper.ResidualDropoutBias(
               dev_ctx,
-              output_workspace.data<int32_t>(),  // input
+              output_workspace.data<int32_t>(),
               bias_dropout_residual_out_data,
               ffn2_biases[i]->data<T>(),
-              buf1->data<T>(),  // out
+              buf1->data<T>(),
               dropout_mask_out_data,
               ffn2_out_scale->data<float>(),
-              i * ffn2_out_scale_n);
+              i * ffn2_out_scale_n,
+              1.0);
         }
       } else {
         auto *ln_scale_data = ffn_ln_scales[i]->data<U>();
         auto *ln_bias_data = ffn_ln_biases[i]->data<U>();
-        ffn2_fused_dropout_helper.LayernormResidualDropoutBias(
-            dev_ctx,
-            buf0->data<T>(),
-            buf1->data<T>(),
-            ffn2_biases[i]->data<T>(),
-            ln_scale_data,
-            ln_bias_data,
-            buf0->data<T>(),
-            dropout_mask_out_data,
-            buf1->data<T>(),
-            ln_mean_data,
-            ln_var_data);
+        ffn2_fused_dropout_helper_for_post_layernorm
+            .LayernormResidualDropoutBias(dev_ctx,
+                                          buf0->data<T>(),
+                                          buf1->data<T>(),
+                                          ffn2_biases[i]->data<T>(),
+                                          ln_scale_data,
+                                          ln_bias_data,
+                                          buf0->data<T>(),
+                                          dropout_mask_out_data,
+                                          buf1->data<T>(),
+                                          ln_mean_data,
+                                          ln_var_data);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step9";

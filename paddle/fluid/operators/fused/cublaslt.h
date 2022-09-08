@@ -105,6 +105,12 @@ class CublasLtHelper {
     int stages = 23;
 #endif
 
+#if CUBLAS_VER_MAJOR < 11
+    cudaDataType_t cudaComputeType = CUDA_R_32I;
+#else
+    cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32I;
+#endif
+
     dyl::cublasLtMatmulAlgoInit(handle_,
                                 cudaComputeType,
                                 CUDA_R_32I,
