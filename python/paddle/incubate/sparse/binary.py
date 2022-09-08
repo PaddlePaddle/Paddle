@@ -404,7 +404,8 @@ def divide(x, y, name=None):
 @dygraph_only
 def is_same_shape(x, y):
     """
-    Check whether x.shape equal to y.shape.
+    Return the results of shape comparison between two Tensors, check whether x.shape equal to y.shape.
+    Any two type Tensor among DenseTensor/SparseCooTensor/SparseCsrTensor are supported.
 
     Args:
         x (Tensor): The input tensor. It can be DenseTensor/SparseCooTensor/SparseCsrTensor.
