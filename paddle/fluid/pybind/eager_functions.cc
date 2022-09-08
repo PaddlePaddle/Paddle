@@ -591,6 +591,7 @@ static PyObject* eager_api_sparse_csr_tensor(PyObject* self,
   return ToPyObject(tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* eager_api_async_read(PyObject* self,
                                       PyObject* args,
@@ -958,11 +959,11 @@ PyMethodDef variable_functions[] = {
      NULL},
     /**sparse functions**/
     {"sparse_coo_tensor",
-     (PyCFunction)(void (*)(void))eager_api_sparse_coo_tensor,
+     (PyCFunctionWithKeywords)(void (*)(void))eager_api_sparse_coo_tensor,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"sparse_csr_tensor",
-     (PyCFunction)(void (*)(void))eager_api_sparse_csr_tensor,
+     (PyCFunctionWithKeywords)(void (*)(void))eager_api_sparse_csr_tensor,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
 /**sparse functions**/

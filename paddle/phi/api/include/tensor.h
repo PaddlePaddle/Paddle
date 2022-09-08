@@ -483,7 +483,7 @@ class PADDLE_API Tensor final {
   /* Part 7: Operator overloading */
 
   /**
-   * @brief Assignment operator
+   * @brief Copy Assignment operator
    *
    * @param x
    * @return Tensor&
