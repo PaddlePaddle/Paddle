@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#include <unordered_set>
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -219,22 +219,19 @@ void TransposeCooKernel(const Context& dev_ctx,
   DenseTensor* out_indices = out->mutable_indices();
   DenseTensor* out_values = out->mutable_non_zero_elements();
 
-  int64_t* x_indices_data = x_indices.data<int64_t>();
+  const int64_t* x_indices_data = x_indices.data<int64_t>();
   int64_t* out_indices_data = out_indices->data<int64_t>();
   int64_t x_nnz = x.nnz();
-  std::vector<int> shape;
   for (int64_t i = 0; i < dims.size(); ++i) {
     for (int64_t j = 0; j < x_nnz; ++j) {
       out_indices_data[j + i * x_nnz] = x_indices_data[j + dims[i] * x_nnz];
     }
-    shape.push_back()
   }
 
-  DDim out_ddim(x.dims());
-  out_ddim.transpose(dims);
-
+  DDim out_dims(x.dims());
+  out_dims.transpose(dims);
   phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, out_values);
-  out->Resize(out_ddim, x.sparse_dim(), x_nnz);
+  out->Resize(out_dims, x.sparse_dim(), x_nnz);
 }
 
 template <typename T, typename Context>
@@ -242,8 +239,11 @@ void TransposeCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
                         const std::vector<int>& dims,
                         SparseCsrTensor* out) {
-  out->set_dims(x.dims());
-
+  int n_dim = dims.size();
+  DDim out_dims(x.dims());
+  out_dims.transpose(dims);
+  out->set_dims(out_dims);
+  out->Resize(out_dims, x.nnz());
   const DenseTensor& x_crows = x.crows();
   const DenseTensor& x_cols = x.cols();
   const DenseTensor& x_values = x.non_zero_elements();
@@ -251,14 +251,122 @@ void TransposeCsrKernel(const Context& dev_ctx,
   DenseTensor* out_cols = out->mutable_cols();
   DenseTensor* out_values = out->mutable_non_zero_elements();
 
-  *out_crows = x_crows;
-  *out_cols = x_cols;
+  // return a copy of x
+  if (dims[0] == 0 && dims[1] == 1 && (n_dim == 2 || dims[2] == 2)) {
+    *out_crows = x_crows;
+    *out_cols = x_cols;
+    phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, out_values);
+    return;
+  }
 
   int* out_crows_data = out_crows->data<int>();
   int* out_cols_data = out_cols->data<int>();
+  T* out_values_data = out_values->data<T>();
+  const int* x_crows_data = x_crows.data<int>();
+  const int* x_cols_data = x_cols.data<int>();
+  const T* x_values_data = x_values.data<T>();
 
-  phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, out_values);
-  out->Resize(phi::make_ddim(shape), x_values.dims()[0]);
+  if (n_dim == 2) {  // dims == {1, 0}
+    // compute out_crows_data by x_cols_data
+    for (int i = 0; i < out_dims[0]; ++i) {
+      out_crows_data[i] = 0;
+    }
+    out_crows_data[out_dims[0]] = x.nnz();
+    for (int i = 0; i < x.nnz(); ++i) {
+      int j = x_cols_data[i];
+      out_crows_data[j + 1]++;
+    }
+    for (int i = 1; i < out_dims[0]; ++i) {
+      out_crows_data[i] += out_crows_data[i - 1];
+    }
+    // compute out_cols_data and out_values_data by out_crows_data and x
+    std::unordered_set<int> cols_ptr;
+    for (int i = 0; i < x.dims()[0]; ++i) {
+      int start = x_crows_data[i];
+      int end = x_crows_data[i + 1];
+      for (int j = start; j < end; ++j) {
+        int jj = x_cols_data[j];
+        int jjj = out_crows_data[jj];
+        int jjj_ptr = jjj + cols_ptr.count();
+        out_cols_data[jjj_ptr] = i;
+        out_values_data[jjj_ptr] = x_values_data[j];
+        cols_ptr.insert(jjj);
+      }
+    }
+  } else {  // n_dim == 3
+    for (int k = 0; k < out_dims[0]; ++k) {
+      if (dims[0] == 0) {  // dims == {0, 2, 1}
+        int out_n_rows = out_dims[1];
+        // compute out_crows_data by x_cols_data
+        for (int i = 0; i < out_n_rows; ++i) {
+          out_crows_data[i] = 0;
+        }
+        out_crows_data[out_n_rows] = x_crows_data[x.dims()[1]];
+        for (int i = 0; i < out_crows_data[out_n_rows]; ++i) {
+          int j = x_cols_data[i];
+          out_crows_data[j + 1]++;
+        }
+        for (int i = 1; i < out_n_rows; ++i) {
+          out_crows_data[i] += out_crows_data[i - 1];
+        }
+        // compute out_cols_data and out_values_data by out_crows_data and x
+        std::unordered_set<int> cols_ptr;
+        for (int i = 0; i < x.dims()[1]; ++i) {
+          int start = x_crows_data[i];
+          int end = x_crows_data[i + 1];
+          for (int j = start; j < end; ++j) {
+            int jj = x_cols_data[j];
+            int jjj = out_crows_data[jj];
+            int jjj_ptr = jjj + cols_ptr.count();
+            out_cols_data[jjj_ptr] = i;
+            out_values_data[jjj_ptr] = x_values_data[j];
+            cols_ptr.insert(jjj);
+          }
+        }
+        // x offset
+        x_crows_data += x.dims()[1] + 1;
+        x_cols_data += x_crows_data[x.dims()[1]];
+        x_values_data += x_crows_data[x.dims()[1]];
+      } else if (dims[0] == 1) {
+        int out_n_rows = out_dims[1];
+        // compute out_crows_data by x_cols_data
+        for (int i = 0; i < out_n_rows; ++i) {
+          out_crows_data[i] = 0;
+        }
+        // out_crows_data[out_n_rows] = x_crows_data[x.dims()[1]];
+        int x_cols_offset = 0;
+        int out_cols_offset = 0;
+        for (int i = 0; i < x.dims()[0]; ++i) {
+          int x_crows_index = i * (x.dims()[1] + 1);
+          int start = x_crows_data[x_crows_index];
+          int end = x_crows_data[x_crows_index + 1];
+          out_crows_data[i] = end - start;
+          for (int j = start; j < end; ++j) {
+            out_cols_data[j - start] = x_cols_data[x_cols_offset + j];
+            out_values_data[j - start] = x_values_data[x_cols_offset + j];
+            x_cols_offset += x_crows_data[x_crows_index + x.dims()[1]];
+            out_cols_offset += out_crows_data[... + out_dims[1]];
+          }
+        }
+
+        for (int i = 0; i < out_crows_data[out_n_rows]; ++i) {
+          int j = x_cols_data[i];
+          out_crows_data[j + 1]++;
+        }
+        for (int i = 1; i < out_n_rows; ++i) {
+          out_crows_data[i] += out_crows_data[i - 1];
+        }
+
+        // x offset
+        x_crows_data += 1;
+      } else {
+      }
+      // out offset
+      out_crows_data += out_dims[1] + 1;
+      out_cols_data += x_crows_data[out_dims[1]];
+      out_values_data += x_crows_data[out_dims[1]];
+    }
+  }
 }
 
 }  // namespace sparse
