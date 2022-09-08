@@ -371,7 +371,6 @@ class TestUnsqueezeTripleGradCheck(unittest.TestCase):
                                            place=place,
                                            eps=eps)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        print("check static finished")
         gradient_checker.triple_grad_check_for_dygraph(self.unsqueeze_wrapper,
                                                        [data],
                                                        out,
