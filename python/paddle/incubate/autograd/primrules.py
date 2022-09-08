@@ -20,9 +20,9 @@ import paddle
 
 from . import primops
 from .primops import (add, broadcast, concat, cos, div, eq, erf, exp,
-                      fill_const, gather, log, matmul, max, mul, neg,
-                      reduce_sum, reshape, scatter_add, select, set_value, sin,
-                      slice_assign, slice_select, split, sqrt, sub, tanh,
+                      fill_const, gather, ge, gt, log, matmul, max, mul, ne,
+                      neg, reduce_sum, reshape, scatter_add, select, set_value,
+                      sin, slice_assign, slice_select, split, sqrt, sub, tanh,
                       transpose)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
@@ -180,6 +180,11 @@ def erf_orig2prim(op, x):
     return erf(x)
 
 
+@REGISTER_ORIG2PRIM('abs')
+def abs_orig2prim(op, x):
+    return primops.abs(x)
+
+
 @REGISTER_ORIG2PRIM('log')
 def log_orig2prim(op, x):
     return log(x)
@@ -331,6 +336,13 @@ def gt_orig2prim(op, x, y):
     return gt(x, y)
 
 
+@REGISTER_ORIG2PRIM('greater_equal')
+def ge_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    return ge(x, y)
+
+
 @REGISTER_ORIG2PRIM('elementwise_pow')
 def elementwise_pow_orig2prim(op, x, y):
     if x.shape != y.shape:
@@ -441,6 +453,11 @@ def erf_prim2orig(op, x):
     return paddle.erf(x)
 
 
+@REGISTER_PRIM2ORIG('abs_p')
+def abs_prim2orig(op, x):
+    return paddle.abs(x)
+
+
 @REGISTER_PRIM2ORIG('log_p')
 def log_prim2orig(op, x):
     return paddle.log(x)
@@ -540,6 +557,11 @@ def eq_prim2orig(op, x, y):
 @REGISTER_PRIM2ORIG('gt_p')
 def gt_prim2orig(op, x, y):
     return paddle.greater_than(x, y)
+
+
+@REGISTER_PRIM2ORIG('ge_p')
+def ge_prim2orig(op, x, y):
+    return paddle.greater_equal(x, y)
 
 
 @REGISTER_PRIM2ORIG('ne_p')
@@ -660,6 +682,14 @@ def erf_jvp(op, x_dot):
     return mul(
         fill_const(2. / math.sqrt(math.pi), x.shape, x.dtype),
         mul(x_dot, exp(neg(primops.pow(x, fill_const(2., x.shape, x.dtype))))))
+
+
+@REGISTER_JVP('abs_p')
+def abs_jvp(op, x_dot):
+    if x_dot is None:
+        return None
+    x, = op_position_inputs(op)
+    return select(ge(x, fill_const(0., x.shape, x.dtype)), x_dot, neg(x_dot))
 
 
 @REGISTER_JVP('log_p')
@@ -813,6 +843,15 @@ def eq_jvp(op, x_dot, y_dot):
 
 @REGISTER_JVP('gt_p')
 def gt_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
+    x, _ = op_position_inputs(op)
+    z_dot = fill_const(value=0., shape=x.shape, dtype=x.dtype)
+    return z_dot
+
+
+@REGISTER_JVP('ge_p')
+def ge_jvp(op, x_dot, y_dot):
     if x_dot is None and y_dot is None:
         return None
     x, _ = op_position_inputs(op)

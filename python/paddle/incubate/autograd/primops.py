@@ -137,6 +137,11 @@ def exp(x, out=None):
     return _simple_unop(LayerHelper('exp_p', **locals()))
 
 
+@REGISTER_FN('abs_p', 'X', 'Y')
+def abs(x, out=None):
+    return _simple_unop(LayerHelper('abs_p', **locals()))
+
+
 @REGISTER_FN('reshape_p', 'X', 'Y')
 def reshape(x, shape, out=None):
     return _manipulation_unop(LayerHelper('reshape_p', **locals()))
@@ -202,7 +207,6 @@ def reduce_sum(x, axis=None, keepdim=False, out=None):
     if not isinstance(keepdim, bool):
         raise TypeError(f'keepdim must be bool, but got {type(keepdim)}')
 
-    attrs = {'axis': axis, 'keepdim': keepdim}
     attrs = {'axis': axis, 'keepdim': keepdim}
     helper = LayerHelper('reduce_sum_p', **locals())
     if out is None:
@@ -351,8 +355,13 @@ def eq(x, y, out=None):
 
 
 @REGISTER_FN('gt_p', 'X', 'Y', 'Z')
-def ge(x, y, out=None):
+def gt(x, y, out=None):
     return _simple_binop(LayerHelper('gt_p', **locals()))
+
+
+@REGISTER_FN('ge_p', 'X', 'Y', 'Z')
+def ge(x, y, out=None):
+    return _simple_binop(LayerHelper('ge_p', **locals()))
 
 
 @REGISTER_FN('ne_p', 'X', 'Y', 'Z')
