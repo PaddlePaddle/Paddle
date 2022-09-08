@@ -1023,22 +1023,8 @@ void BroadcastKernel(const KPDevice &ctx,
                      Functor func) {
   std::vector<int> dims_size;
   dims_size.reserve(ins.size());
-
-  bool no_broadcast_flag = true;
   for (auto *in : ins) {
-    no_broadcast_flag &= (in->dims() == ins[0]->dims());
     dims_size.emplace_back(in->dims().size());
-  }
-
-  if (!ins.empty()) {
-    for (auto *out : *outs) {
-      no_broadcast_flag &= (out->dims() == ins[0]->dims());
-    }
-  }
-
-  if (no_broadcast_flag) {
-    phi::funcs::ElementwiseKernel<OutT, Functor, NumOuts>(ctx, ins, outs, func);
-    return;
   }
 
   axis = axis == -1 ? *std::max_element(dims_size.begin(), dims_size.end()) -
