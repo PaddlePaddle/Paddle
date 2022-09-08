@@ -298,14 +298,14 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
         if isinstance(recv_shape_msg, tuple):
             tensor_recv_prev = []
             for idx, shape in enumerate(recv_shape_msg):
-                tmp = paddle.zeros(shape=shape,
+                tmp = paddle.empty(shape=shape,
                                    dtype=number_2_dtype(recv_dtype_msg[idx]))
                 tmp.stop_gradient = recv_stop_gradient[idx]
                 tensor_recv_prev.append(tmp)
             tensor_recv_prev = tuple(tensor_recv_prev)
         else:
 
-            tensor_recv_prev = paddle.zeros(
+            tensor_recv_prev = paddle.empty(
                 shape=recv_shape_msg, dtype=number_2_dtype(recv_dtype_msg))
             tensor_recv_prev.stop_gradient = recv_stop_gradient
 
@@ -314,11 +314,11 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
             tensor_recv_next = []
             for idx, shape in enumerate(send_shape_msg):
                 tensor_recv_next.append(
-                    paddle.zeros(shape=shape,
+                    paddle.empty(shape=shape,
                                  dtype=number_2_dtype(send_dtype_msg[idx])))
             tensor_recv_next = tuple(tensor_recv_next)
         else:
-            tensor_recv_next = paddle.zeros(
+            tensor_recv_next = paddle.empty(
                 shape=send_shape_msg, dtype=number_2_dtype(send_dtype_msg))
 
     # TODO(Yuang Liu): use batch_isend_irecv replace all these comm ops
