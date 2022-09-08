@@ -27,6 +27,15 @@ KernelSignature MemcpyD2HOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("memcpy_d2h", {"X"}, {"dst_place_type"}, {"Out"});
 }
 
+KernelSignature MemcpyOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorInput("X")) {
+    return KernelSignature("memcpy", {"X"}, {"dst_place_type"}, {"Out"});
+  }
+
+  return KernelSignature("unregistered", {}, {}, {});
+}
+
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(memcpy_d2h, phi::MemcpyD2HOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(memcpy, phi::MemcpyOpArgumentMapping);
