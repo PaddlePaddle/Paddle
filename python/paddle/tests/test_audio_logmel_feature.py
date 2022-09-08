@@ -19,6 +19,7 @@ import os
 import paddle
 
 import paddle.audio
+import scipy
 from scipy import signal
 import itertools
 from parameterized import parameterized
@@ -81,19 +82,29 @@ class TestFeatures(unittest.TestCase):
             center=True,
             n_mels=n_mels,
             f_min=fmin,
+            top_db=None,
             dtype=x.dtype)
         feature_layer = feature_extractor(x).squeeze(0).numpy()
         np.testing.assert_array_almost_equal(feature_librosa,
                                              feature_layer,
-                                             decimal=3)
+                                             decimal=2)
+        # relative difference
+        np.testing.assert_allclose(feature_librosa, feature_layer, rtol=1e-4)
 
-    @parameterize([16000, 8000], [256, 128], [40, 64], [64, 128])
-    def test_mfcc(self, sr: int, n_fft: int, n_mfcc: int, n_mels: int):
+    @parameterize([16000], [256, 128], [40, 64], [64, 128],
+                  ['float32', 'float64'])
+    def test_mfcc(self, sr: int, n_fft: int, n_mfcc: int, n_mels: int,
+                  dtype: str):
+        if paddle.version.cuda() != 'False':
+            if float(paddle.version.cuda()) >= 11.0:
+                return
+
         if len(self.waveform.shape) == 2:  # (C, T)
             self.waveform = self.waveform.squeeze(
                 0)  # 1D input for librosa.feature.melspectrogram
 
         # librosa:
+        np_dtype = getattr(np, dtype)
         feature_librosa = librosa.feature.mfcc(y=self.waveform,
                                                sr=sr,
                                                S=None,
@@ -103,10 +114,11 @@ class TestFeatures(unittest.TestCase):
                                                n_fft=n_fft,
                                                hop_length=64,
                                                n_mels=n_mels,
-                                               fmin=50.0)
+                                               fmin=50.0,
+                                               dtype=np_dtype)
         # paddlespeech.audio.features.layer
         x = paddle.to_tensor(self.waveform,
-                             dtype='float32').unsqueeze(0)  # Add batch dim.
+                             dtype=dtype).unsqueeze(0)  # Add batch dim.
         feature_extractor = paddle.audio.features.MFCC(sr=sr,
                                                        n_mfcc=n_mfcc,
                                                        n_fft=n_fft,
@@ -117,7 +129,33 @@ class TestFeatures(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(feature_librosa,
                                              feature_layer,
-                                             decimal=2)
+                                             decimal=3)
+
+        np.testing.assert_allclose(feature_librosa, feature_layer, rtol=1e-1)
+
+        # split mffcc: logmel-->dct --> mfcc, which prove the difference.
+        # the dct module is correct.
+        feature_extractor = paddle.audio.features.LogMelSpectrogram(
+            sr=sr,
+            n_fft=n_fft,
+            hop_length=64,
+            n_mels=n_mels,
+            center=True,
+            pad_mode='reflect',
+            top_db=self.top_db,
+            dtype=x.dtype)
+        feature_layer_logmel = feature_extractor(x).squeeze(0).numpy()
+
+        feature_layer_mfcc = scipy.fftpack.dct(feature_layer_logmel,
+                                               axis=0,
+                                               type=2,
+                                               norm="ortho")[:n_mfcc]
+        np.testing.assert_array_almost_equal(feature_layer_mfcc,
+                                             feature_librosa,
+                                             decimal=3)
+        np.testing.assert_allclose(feature_layer_mfcc,
+                                   feature_librosa,
+                                   rtol=1e-1)
 
 
 if __name__ == '__main__':

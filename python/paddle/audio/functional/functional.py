@@ -210,7 +210,7 @@ def compute_fbank_matrix(sr: int,
 def power_to_db(spect: Tensor,
                 ref_value: float = 1.0,
                 amin: float = 1e-10,
-                top_db: Optional[float] = None) -> Tensor:
+                top_db: Optional[float] = 80.0) -> Tensor:
     """Convert a power spectrogram (amplitude squared) to decibel (dB) units. The function computes the scaling `10 * log10(x / ref)` in a numerically stable way.
 
     Args:

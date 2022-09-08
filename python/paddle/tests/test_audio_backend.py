@@ -17,12 +17,6 @@ import soundfile
 import numpy as np
 import os
 import paddle.audio
-import itertools
-from parameterized import parameterized
-
-
-def parameterize(*params):
-    return parameterized.expand(list(itertools.product(*params)))
 
 
 class TestAudioDatasets(unittest.TestCase):
@@ -73,37 +67,6 @@ class TestAudioDatasets(unittest.TestCase):
             np.testing.assert_array_almost_equal(wav_data, waveform)
         if os.path.exists(wave_wav_path):
             os.remove(wave_wav_path)
-
-    @parameterize(["dev", "train"], [40, 64])
-    def test_tess_dataset(self, mode: str, params: int):
-        tess_dataset = paddle.audio.datasets.TESS(mode=mode,
-                                                  feat_type='mfcc',
-                                                  n_mfcc=params)
-        idx = np.random.randint(0, 500)
-        elem = tess_dataset[idx]
-        self.assertTrue(elem[0].shape[1] == params)
-        self.assertTrue(0 <= elem[1] <= 6)
-
-        tess_dataset = paddle.audio.datasets.TESS(mode=mode,
-                                                  feat_type='spectrogram',
-                                                  n_fft=params)
-        elem = tess_dataset[idx]
-        self.assertTrue(elem[0].shape[1] == (params // 2 + 1))
-        self.assertTrue(0 <= elem[1] <= 6)
-
-        tess_dataset = paddle.audio.datasets.TESS(mode="dev",
-                                                  feat_type='logmelspectrogram',
-                                                  n_mels=params)
-        elem = tess_dataset[idx]
-        self.assertTrue(elem[0].shape[1] == params)
-        self.assertTrue(0 <= elem[1] <= 6)
-
-        tess_dataset = paddle.audio.datasets.TESS(mode="dev",
-                                                  feat_type='melspectrogram',
-                                                  n_mels=params)
-        elem = tess_dataset[idx]
-        self.assertTrue(elem[0].shape[1] == params)
-        self.assertTrue(0 <= elem[1] <= 6)
 
 
 if __name__ == '__main__':
