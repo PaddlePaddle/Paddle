@@ -24,9 +24,23 @@ class Laplace(distribution.Distribution):
     r"""
     Creates a Laplace distribution parameterized by :attr:`loc` and :attr:`scale`.
 
+    Mathematical details
+
+    The probability density function (pdf) is
+
+    .. math::
+
+        pdf(x; \mu, \sigma) = \frac{1}{2 * \sigma} * e^{\frac {-|x - \mu|}{\sigma}}
+
+    In the above equation:
+
+    * :math:`loc = \mu`: is the location parameter.
+    * :math:`scale = \sigma`: is the scale parameter.
+
     Args:
         loc (scalar|Tensor): The mean of the distribution.
         scale (scalar|Tensor): The scale of the distribution.
+        name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     
     Examples:
         .. code-block:: python
@@ -75,6 +89,17 @@ class Laplace(distribution.Distribution):
     @property
     def stddev(self):
         """Standard deviation.
+
+        The stddev is 
+
+        .. math::
+
+            stddev = \sqrt{2} * \sigma
+
+        In the above equation:
+
+        * :math:`scale = \sigma`: is the scale parameter.
+        
         Returns:
             Tensor: The std value.
         """
@@ -83,6 +108,17 @@ class Laplace(distribution.Distribution):
     @property
     def variance(self):
         """Variance of distribution.
+
+        The variance is 
+
+        .. math::
+
+            variance = 2 * \sigma^2
+        
+        In the above equation:
+
+        * :math:`scale = \sigma`: is the scale parameter.
+
         Returns:
             Tensor: The variance value.
         """
@@ -114,6 +150,17 @@ class Laplace(distribution.Distribution):
     def log_prob(self, value):
         """Log probability density/mass function.
 
+        The log_prob is
+
+        .. math::
+
+            log\_prob(value) = \frac{-log(2 * \sigma) - |value - \mu|}{\sigma}
+        
+        In the above equation:
+
+        * :math:`loc = \mu`: is the location parameter.
+        * :math:`scale = \sigma`: is the scale parameter.
+
         Args:
           value (Tensor|Scalar): The input value, can be a scalar or a tensor.
 
@@ -139,6 +186,16 @@ class Laplace(distribution.Distribution):
     def entropy(self):
         """Entropy of Laplace distribution.
 
+        The entropy is:
+
+        .. math::
+
+            entropy() = 1 + log(2 * \sigma)
+
+        In the above equation:
+
+        * :math:`scale = \sigma`: is the scale parameter.
+
         Returns:
             The entropy of distribution.
 
@@ -155,6 +212,18 @@ class Laplace(distribution.Distribution):
 
     def cdf(self, value):
         """Cumulative distribution function.
+
+        The cdf is
+
+        .. math::
+
+            cdf(value) = 0.5 - 0.5 * sign(value - \mu) * e^\frac{-|(\mu - \sigma)|}{\sigma}
+
+        In the above equation:
+
+        * :math:`loc = \mu`: is the location parameter.
+        * :math:`scale = \sigma`: is the scale parameter.
+
         Args:
             value (Tensor): The value to be evaluated.
 
@@ -179,6 +248,18 @@ class Laplace(distribution.Distribution):
 
     def icdf(self, value):
         """Inverse Cumulative distribution function.
+
+        The icdf is 
+
+        .. math::
+
+            cdf^{-1}(value)= \mu - \sigma * sign(value - 0.5) * ln(1 - 2 * |value-0.5|)
+
+        In the above equation:
+
+        * :math:`loc = \mu`: is the location parameter.
+        * :math:`scale = \sigma`: is the scale parameter.
+
         Args:
             value (Tensor): The value to be evaluated.
 
@@ -279,6 +360,29 @@ class Laplace(distribution.Distribution):
 
     def kl_divergence(self, other):
         """Calculate the KL divergence KL(self || other) with two Laplace instances.
+
+        The kl_divergence between two Laplace distribution is
+
+        .. math::
+
+            KL\_divergence(\mu_0, \sigma_0; \mu_1, \sigma_1) = 0.5 (ratio^2 + (\frac{diff}{\sigma_1})^2 - 1 - 2 \ln {ratio})
+
+        .. math::
+
+            ratio = \frac{\sigma_0}{\sigma_1}
+
+        .. math::
+
+            diff = \mu_1 - \mu_0
+
+        In the above equation:
+
+        * :math:`loc = \mu`: is the location parameter of self.
+        * :math:`scale = \sigma`: is the scale parameter of self.
+        * :math:`loc = \mu_1`: is the location parameter of the reference Laplace distribution.
+        * :math:`scale = \sigma_1`: is the scale parameter of the reference Laplace distribution.
+        * :math:`ratio`: is the ratio between the two distribution.
+        * :math:`diff`: is the difference between the two distribution.
 
         Args:
             other (Laplace): An instance of Laplace.
