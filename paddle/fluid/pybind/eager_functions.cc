@@ -959,11 +959,11 @@ PyMethodDef variable_functions[] = {
      NULL},
     /**sparse functions**/
     {"sparse_coo_tensor",
-     (PyCFunctionWithKeywords)(void (*)(void))eager_api_sparse_coo_tensor,
+     (PyCFunction)(void (*)(void))eager_api_sparse_coo_tensor,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"sparse_csr_tensor",
-     (PyCFunctionWithKeywords)(void (*)(void))eager_api_sparse_csr_tensor,
+     (PyCFunction)(void (*)(void))eager_api_sparse_csr_tensor,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
 /**sparse functions**/
