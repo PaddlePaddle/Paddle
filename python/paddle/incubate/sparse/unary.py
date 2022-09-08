@@ -395,6 +395,20 @@ def cast(x, index_dtype=None, value_dtype=None, name=None):
 
     if in_dynamic_mode():
         return _C_ops.sparse_cast(x, index_dtype, value_dtype)
+    else:
+        if x.type == core.VarDesc.VarType.SPARSE_COO:
+            op_type = 'cast_coo'
+        else:
+            op_type = 'cast_csr'
+        helper = LayerHelper(op_type)
+        out = helper.create_sparse_variable_for_type_inference(x.dtype)
+        inputs = {'X': x}
+        attrs = {'index_dtype': index_dtype, 'value_dtype': value_dtype}
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs={'Out': out},
+                         attrs=attrs)
+        return out
 
 
 @dygraph_only
