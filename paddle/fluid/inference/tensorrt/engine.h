@@ -909,7 +909,6 @@ class TRTEngineManager {
     }
   }
 
->>>>>>> 6052b9ecd0... lock_guard
  private:
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
 };

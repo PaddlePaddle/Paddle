@@ -86,6 +86,16 @@ void TensorRTEngine::Execute(int batch_size,
                              cudaStream_t stream) {
   freshDeviceId();
   auto infer_context = context();
+  if (context_memory_sharing_) {
+    void *context_memory{nullptr};
+    context_memory =
+        inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+            .getContextMemory(
+                predictor_id_per_thread,
+                phi::GPUPlace(device_id_),
+                phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+    infer_context->setDeviceMemory(context_memory);
+  }
   if (!with_dynamic_shape()) {
     infer_context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
