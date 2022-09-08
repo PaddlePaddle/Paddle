@@ -875,7 +875,7 @@ class TRTEngineManager {
     bool size_updated{false};
 
     {
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::unique_lock<std::mutex> lock(mutex_);
       if (max_ctx_mem_size_ < mem_size) {
         max_ctx_mem_size_ = mem_size;
         size_updated = true;
@@ -893,10 +893,17 @@ class TRTEngineManager {
     std::unique_lock<std::mutex> lock(mutex_);
     static auto alignment = getAlignmentSize(place);
     if (context_memorys_.count(predictor_id) == 0) {
-      auto context_memory =
-          memory::Alloc(place, max_ctx_mem_size_ + alignment, stream);
-      // context_memory_[predictor_id].reset(context_memory.release());
-      context_memorys_[predictor_id] = std::move(context_memory);
+      void* context_memory{nullptr};
+      cudaMalloc(&context_memory, max_ctx_mem_size_);
+      if (context_memory == nullptr) {
+        PADDLE_ENFORCE_EQ(
+            max_ctx_mem_size_,
+            0,
+            platform::errors::InvalidArgument(
+                "The context memory size is non-zero, but the "
+                "memory address we applied for is NULL, we failed to set it."));
+      }
+      context_memorys_[predictor_id] = context_memory;
     }
     return getAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);
   }
