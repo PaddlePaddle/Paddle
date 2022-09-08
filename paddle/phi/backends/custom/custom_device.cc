@@ -23,9 +23,6 @@
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
 
-#include "paddle/fluid/operators/run_program_op.h"
-#include "paddle/fluid/operators/save_combine_op.h"
-
 static bool operator==(const C_Device_st& d1, const C_Device_st& d2) {
   return d1.id == d2.id;
 }
@@ -39,14 +36,6 @@ namespace phi {
   if (x == nullptr) {      \
     INTERFACE_UNIMPLEMENT; \
   }
-
-#define REGISTER_OP_CUSTOM_DEVICE_KERNEL(op_type, dev_type, ...)             \
-  static paddle::framework::OpKernelRegistrar<phi::CustomPlace, __VA_ARGS__> \
-      __op_custom_device_kernel_registrar_##op_type##_##__acosf##__(         \
-          #op_type,                                                          \
-          dev_type,                                                          \
-          paddle::framework::OpKernelType::kDefaultCustomizedTypeValue);     \
-  __op_custom_device_kernel_registrar_##op_type##_##__acosf##__.Touch();
 
 class CustomDevice : public DeviceInterface {
  public:
@@ -1044,32 +1033,8 @@ void LoadCustomRuntimeLib(const std::string& dso_lib_path, void* dso_handle) {
   LoadCustomRuntimeLib(
       runtime_params, std::move(device_interface), dso_lib_path, dso_handle);
   LOG(INFO) << "Successed in loading custom runtime in lib: " << dso_lib_path;
-
-  /* see [Why use single type kernel] */
-  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
-      run_program,
-      runtime_params.device_type,
-      paddle::operators::
-          RunProgramOpKernel<paddle::platform::CustomDeviceContext, float>);
-  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
-      run_program_grad,
-      runtime_params.device_type,
-      paddle::operators ::
-          RunProgramGradOpKernel<paddle::platform::CustomDeviceContext, float>);
-  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
-      save_combine,
-      runtime_params.device_type,
-      paddle::operators ::
-          SaveCombineOpKernel<paddle::platform::CustomDeviceContext, float>,
-      paddle::operators ::
-          SaveCombineOpKernel<paddle::platform::CustomDeviceContext, double>,
-      paddle::operators ::
-          SaveCombineOpKernel<paddle::platform::CustomDeviceContext, int>,
-      paddle::operators ::
-          SaveCombineOpKernel<paddle::platform::CustomDeviceContext, int64_t>);
 }
 
-#undef REGISTER_OP_CUSTOM_DEVICE_KERNEL
 #undef INTERFACE_UNIMPLEMENT
 
 }  // namespace phi
