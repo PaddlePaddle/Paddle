@@ -570,15 +570,15 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         grad_api_contents = self.grad_api_contents
 
         assert 'api' in forward_api_contents.keys(
-        ), "Unable to find \"api\" in api.yaml"
+        ), "Unable to find \"api\" in ops.yaml"
         assert 'args' in forward_api_contents.keys(
-        ), "Unable to find \"args\" in api.yaml"
+        ), "Unable to find \"args\" in ops.yaml"
         assert 'output' in forward_api_contents.keys(
-        ), "Unable to find \"output\" in api.yaml"
+        ), "Unable to find \"output\" in ops.yaml"
 
         if grad_api_contents is not None:
             assert 'backward' in forward_api_contents.keys(
-            ), "Unable to find \"backward\" in api.yaml"
+            ), "Unable to find \"backward\" in ops.yaml"
             assert 'args' in grad_api_contents.keys(
             ), "Unable to find \"args\" in backward.yaml"
             assert 'output' in grad_api_contents.keys(
@@ -2043,7 +2043,7 @@ if __name__ == "__main__":
         api_yaml_path = api_yaml_paths[i]
 
         # string api is forwrad only
-        if not api_yaml_path.endswith('strings_api.yaml'):
+        if not api_yaml_path.endswith('strings_ops.yaml'):
             backward_yaml_path = backward_yaml_paths[i]
         else:
             backward_yaml_path = None
