@@ -207,6 +207,8 @@ def reduce_sum(x, axis=None, keepdim=False, out=None):
     if not isinstance(keepdim, bool):
         raise TypeError(f'keepdim must be bool, but got {type(keepdim)}')
 
+
+
     attrs = {'axis': axis, 'keepdim': keepdim}
     helper = LayerHelper('reduce_sum_p', **locals())
     if out is None:
