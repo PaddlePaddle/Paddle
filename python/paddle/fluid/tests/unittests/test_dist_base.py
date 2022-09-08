@@ -552,6 +552,9 @@ class TestParallelDyGraphRunnerBase(object):
         elif fluid.core.is_compiled_with_npu():
             device_id = int(os.getenv("FLAGS_selected_npus", "0"))
             place = fluid.NPUPlace(device_id)
+        elif fluid.core.is_compiled_with_mlu():
+            device_id = int(os.getenv("FLAGS_selected_mlus", "0"))
+            place = fluid.MLUPlace(device_id)
         else:
             assert ("Only support CUDAPlace or XPUPlace or CPU(Gloo) for now.")
 
@@ -565,7 +568,7 @@ class TestParallelDyGraphRunnerBase(object):
             nranks = len(args.endpoints.split(",")) if args.endpoints else 1
 
             #if args.update_method == "nccl2":
-            if args.update_method == "nccl2" or args.update_method == "bkcl" or args.update_method == "hccl":
+            if args.update_method == "nccl2" or args.update_method == "bkcl" or args.update_method == "hccl" or args.update_method == "cncl":
                 strategy = dygraph.parallel.ParallelStrategy()
                 strategy.nranks = nranks
                 strategy.local_rank = args.trainer_id
@@ -624,7 +627,8 @@ class TestParallelDyGraphRunnerBase(object):
         np.random.seed(seed)
         random.seed(seed)
         # get trainer id
-        args.trainer_id = paddle.distributed.get_rank()
+        paddle.distributed.parallel._get_global_parallel_env()
+        args.trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
 
         # 3. init parallel env
         if args.update_method in ["nccl2", "gloo"]:
@@ -663,7 +667,8 @@ class TestParallelDyGraphRunnerBase(object):
         np.random.seed(seed)
         random.seed(seed)
         # get trainer id
-        args.trainer_id = paddle.distributed.get_rank()
+        paddle.distributed.parallel._get_global_parallel_env()
+        args.trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
 
         # set strategy
         strategy = fleet.DistributedStrategy()
@@ -708,7 +713,7 @@ def runtime_main(test_class):
                         default="local",
                         choices=[
                             "pserver", "nccl2", "bkcl", "local",
-                            "nccl2_reduce_layer", "gloo", "hccl"
+                            "nccl2_reduce_layer", "gloo", "hccl", "cncl"
                         ])
     parser.add_argument('--trainer_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
@@ -735,6 +740,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_xpu', action='store_true')
     parser.add_argument('--use_dgc', action='store_true')
     parser.add_argument('--use_npu', action='store_true')
+    parser.add_argument('--use_mlu', action='store_true')
     parser.add_argument('--accumulate_gradient', action='store_true')
     parser.add_argument('--find_unused_parameters', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
@@ -794,20 +800,30 @@ class TestDistBase(unittest.TestCase):
             self.__use_xpu = False
             self._use_dgc = False
             self.__use_npu = False
+            self._use_mlu = False
         elif self._enforce_place == "GPU":
             self.__use_cuda = True
             self.__use_xpu = False
             self.__use_npu = False
+            self._use_mlu = False
         elif self._enforce_place == "XPU":
             self.__use_cuda = False
             self.__use_xpu = True
             self._use_dgc = False
             self.__use_npu = False
+            self._use_mlu = False
         elif self._enforce_place == "NPU":
             self.__use_cuda = False
             self.__use_xpu = False
             self._use_dgc = False
             self.__use_npu = True
+            self._use_mlu = False
+        elif self._enforce_place == "MLU":
+            self.__use_cuda = False
+            self.__use_xpu = False
+            self._use_dgc = False
+            self.__use_npu = False
+            self._use_mlu = True
         else:
             if fluid.core.is_compiled_with_cuda():
                 self.__use_cuda = True
@@ -833,6 +849,7 @@ class TestDistBase(unittest.TestCase):
         self._bkcl_mode = False
         self._gloo_mode = False  # now, support gloo backend
         self._hccl_mode = False
+        self._cncl_mode = False
         self._pipeline_mode = False
         self._mp_mode = False
         self._diff_batch = False
@@ -1243,6 +1260,16 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_CURRENT_ENDPOINT": ep,
                 "GLOG_v": "2",
             })
+        elif self._use_mlu:
+            tr_cmd += " --use_mlu"
+            env.update({
+                "FLAGS_selected_mlus": "{}".format(trainer_id),
+                "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
+                "PADDLE_TRAINER_ID": "{}".format(trainer_id),
+                "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+                "PADDLE_CURRENT_ENDPOINT": ep,
+                "GLOG_v": "4",
+            })
         else:
             env.update({'CPU_NUM': '1'})
 
@@ -1556,7 +1583,13 @@ class TestDistBase(unittest.TestCase):
                 update_method='hccl',
                 check_error_log=check_error_log,
                 log_name=log_name)
-
+        elif self._cncl_mode:
+            tr0_losses, tr1_losses = self._run_cluster_nccl2(
+                model_file,
+                required_envs,
+                update_method='cncl',
+                check_error_log=check_error_log,
+                log_name=log_name)
         elif self._pipeline_mode:
             tr0_losses, tr1_losses = self._run_pipeline(model_file,
                                                         required_envs,
