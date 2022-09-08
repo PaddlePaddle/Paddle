@@ -90,7 +90,7 @@ struct ArgsIterator {
 
 struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   KernelKeySet key_set;
-  // this dtype_set is used for cache multi-inputs dtype and used for
+  // this dtype_set is used to cache multi-inputs dtype and used for
   // data_promote
   DataTypeSet dtype_set{DataType::UNDEFINED};
 

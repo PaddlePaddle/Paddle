@@ -21,15 +21,13 @@ namespace paddle {
 namespace pybind {
 
 typedef struct {
-  PyObject_HEAD 
-  paddle::experimental::Tensor tensor;
+  PyObject_HEAD paddle::experimental::Tensor tensor;
   // Weak references
   PyObject* weakrefs;
 } TensorObject;
 
 typedef struct {
-  PyObject_HEAD 
-  PyObject* container;
+  PyObject_HEAD PyObject* container;
   PyObject* non_differentiable;
   PyObject* not_inplace_tensors;
   bool materialize_grads;
