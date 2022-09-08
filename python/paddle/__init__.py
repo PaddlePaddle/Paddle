@@ -38,6 +38,7 @@ from .framework import in_dynamic_mode  # noqa: F401
 from .fluid.dataset import *  # noqa: F401
 from .fluid.lazy_init import LazyGuard  # noqa: F401
 
+from .framework.dtype import iinfo  # noqa: F401
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
 from .framework.dtype import int8  # noqa: F401
@@ -186,6 +187,8 @@ from .tensor.manipulation import as_complex  # noqa: F401
 from .tensor.manipulation import as_real  # noqa: F401
 from .tensor.manipulation import moveaxis  # noqa: F401
 from .tensor.manipulation import repeat_interleave  # noqa: F401
+from .tensor.manipulation import index_add  # noqa: F401
+from .tensor.manipulation import index_add_  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -237,6 +240,7 @@ from .tensor.math import mm  # noqa: F401
 from .tensor.math import divide  # noqa: F401
 from .tensor.math import floor_divide  # noqa: F401
 from .tensor.math import remainder  # noqa: F401
+from .tensor.math import remainder_  # noqa: F401
 from .tensor.math import mod  # noqa: F401
 from .tensor.math import floor_mod  # noqa: F401
 from .tensor.math import multiply  # noqa: F401
@@ -383,6 +387,7 @@ if is_compiled_with_cinn():
 disable_static()
 
 __all__ = [  # noqa
+    'iinfo',
     'dtype',
     'uint8',
     'int8',
@@ -655,6 +660,8 @@ __all__ = [  # noqa
     'put_along_axis',
     'heaviside',
     'tril_indices',
+    'index_add',
+    "index_add_",
     'sgn',
     'triu_indices',
     'take',

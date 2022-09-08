@@ -354,6 +354,20 @@ void PoolInferMeta(const MetaTensor& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
+void Pool2DInferMeta(const MetaTensor& x,
+                     const IntArray& kernel_size,
+                     const std::vector<int>& strides,
+                     const std::vector<int>& paddings,
+                     bool ceil_mode,
+                     bool exclusive,
+                     const std::string& data_format,
+                     const std::string& pooling_type,
+                     bool global_pooling,
+                     bool adaptive,
+                     const std::string& padding_algorithm,
+                     MetaTensor* out,
+                     MetaConfig config = MetaConfig());
+
 void QrInferMeta(const MetaTensor& x,
                  const std::string& mode,
                  MetaTensor* q,
@@ -452,11 +466,26 @@ void SliceRawInferMeta(const MetaTensor& input,
 
 void SoftmaxInferMeta(const MetaTensor& x, int axis, MetaTensor* out);
 
+int GetSplitAxisValue(const MetaTensor& x,
+                      const Scalar& axis,
+                      MetaConfig config);
+
+void FillSplitOutDims(const MetaTensor& x,
+                      const int axis_value,
+                      const std::vector<int64_t>& sections_vec,
+                      std::vector<MetaTensor*>* out);
+
 void SplitInferMeta(const MetaTensor& x_meta,
-                    const IntArray& num_or_sections,
+                    const IntArray& sections,
                     const Scalar& axis,
                     std::vector<MetaTensor*> out,
                     MetaConfig config = MetaConfig());
+
+void SplitWithNumInferMeta(const MetaTensor& x_meta,
+                           int num,
+                           const Scalar& axis,
+                           std::vector<MetaTensor*> out,
+                           MetaConfig config = MetaConfig());
 
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out);
 
