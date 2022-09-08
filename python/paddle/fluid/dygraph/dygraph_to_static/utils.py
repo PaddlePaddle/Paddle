@@ -1086,8 +1086,8 @@ class NameScope:
             name), "is_global_var accept a simple name, but get `{name}`."
         ancestor = self
         while ancestor is not None:
-            if name in self.globals: return True
-            if name in (self.nonlocals | self.w_vars): return False
+            if name in ancestor.globals: return True
+            if name in (ancestor.nonlocals | ancestor.w_vars): return False
             ancestor = ancestor.father
         return True
 
