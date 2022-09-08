@@ -35,23 +35,24 @@
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
-//for test wangbojun
-#define TRT_FT_WINDOWS_ATTENTION 
-
-#ifdef TRT_FT_WINDOWS_ATTENTION
 #include "3rdparty/trt_fused_multihead_attention/qkvToContext.h"
-#endif  
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#if IS_TRT_VERSION_GE(6000) 
+#if IS_TRT_VERSION_GE(6000)
 class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit QkvToContextPluginDynamic(
-      int hidden, int head_number, int head_size, float scale, bool with_fp16, bool has_biasqk_mask,int window_number, bool with_fastertransformer_window_mha)
+  explicit QkvToContextPluginDynamic(int hidden,
+                                     int head_number,
+                                     int head_size,
+                                     float scale,
+                                     bool with_fp16,
+                                     bool has_biasqk_mask,
+                                     int window_number,
+                                     bool with_fastertransformer_window_mha)
       : hidden_(hidden),
         head_number_(head_number),
         head_size_(head_size),
@@ -69,15 +70,22 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
     DeserializeValue(&serial_data, &serial_length, &has_biasqk_mask_);
     DeserializeValue(&serial_data, &serial_length, &window_number_);
-    DeserializeValue(&serial_data, &serial_length, &with_fastertransformer_window_mha_);
-
+    DeserializeValue(
+        &serial_data, &serial_length, &with_fastertransformer_window_mha_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    auto * ptr = new QkvToContextPluginDynamic(
-        hidden_, head_number_, head_size_, scale_, with_fp16_, has_biasqk_mask_, window_number_,with_fastertransformer_window_mha_);
-    ptr->ft_dispatcher_fp16_num_head_=ft_dispatcher_fp16_num_head_;
-    ptr->mask_half_=mask_half_;
-    ptr->fake_qk_bias_=fake_qk_bias_;
+    auto* ptr =
+        new QkvToContextPluginDynamic(hidden_,
+                                      head_number_,
+                                      head_size_,
+                                      scale_,
+                                      with_fp16_,
+                                      has_biasqk_mask_,
+                                      window_number_,
+                                      with_fastertransformer_window_mha_);
+    ptr->ft_dispatcher_fp16_num_head_ = ft_dispatcher_fp16_num_head_;
+    ptr->mask_half_ = mask_half_;
+    ptr->fake_qk_bias_ = fake_qk_bias_;
     return ptr;
   }
 
@@ -91,7 +99,8 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     return SerializedSize(hidden_) + SerializedSize(head_number_) +
            SerializedSize(head_size_) + SerializedSize(scale_) +
            SerializedSize(with_fp16_) + SerializedSize(has_biasqk_mask_) +
-           SerializedSize(window_number_) + SerializedSize(with_fastertransformer_window_mha_);  
+           SerializedSize(window_number_) +
+           SerializedSize(with_fastertransformer_window_mha_);
   }
   void serialize(void* buffer) const TRT_NOEXCEPT override {
     SerializeValue(&buffer, hidden_);
@@ -148,9 +157,9 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   framework::Tensor tensor_;
   half* mask_half_;
   float* fake_qk_bias_;
-  bool has_biasqk_mask_=false;
+  bool has_biasqk_mask_ = false;
   std::unique_ptr<fastertransformer::MHARunner> ft_dispatcher_fp16_;
-  int ft_dispatcher_fp16_num_head_=-1;
+  int ft_dispatcher_fp16_num_head_ = -1;
   int window_number_;
   bool with_fastertransformer_window_mha_;
 };
