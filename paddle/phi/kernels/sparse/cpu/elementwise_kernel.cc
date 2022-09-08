@@ -270,15 +270,15 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                        const SparseCsrTensor& y,         \
                                        SparseCsrTensor* out) {           \
     funcs::name##Functor<T> functor;                                     \
-    auto coo_x = SparseCsrToCoo<T>(dev_ctx, x);                          \
-    auto coo_y = SparseCsrToCoo<T>(dev_ctx, y);                          \
+    auto coo_x = CsrToCoo<T>(dev_ctx, x);                                \
+    auto coo_y = CsrToCoo<T>(dev_ctx, y);                                \
     DenseTensor indeces;                                                 \
     DenseTensor values;                                                  \
     SparseCooTensor coo_out;                                             \
     coo_out.SetMember(indeces, values, x.dims());                        \
     ElementWiseCooKernelImpl<T, IntT, Context, funcs::name##Functor<T>>( \
         dev_ctx, coo_x, coo_y, &coo_out, functor);                       \
-    *out = SparseCooToCsr<T>(dev_ctx, coo_out);                          \
+    *out = CooToCsr<T>(dev_ctx, coo_out);                                \
   }
 
 #define DEFINE_CSR_ELEMENTWISE_KERNEL(name)                               \

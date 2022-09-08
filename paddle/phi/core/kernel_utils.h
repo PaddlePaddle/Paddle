@@ -350,8 +350,6 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
     static void Compute(KernelContext* ctx, DevCtx dev_ctx, Args&... args) {
       static_assert(dev_ctx_idx > 0,
                     "Kernel should pass DeviceContext as argument.");
-      static_assert(out_idx > 0, "Kernel should have output argument.");
-      // TODO(chenweihang): check dev_ctx, in, attr, out number
       return kernel_fn(dev_ctx, args...);
     }
   };
