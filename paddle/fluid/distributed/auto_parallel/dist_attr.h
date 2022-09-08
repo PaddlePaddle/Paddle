@@ -56,8 +56,6 @@ class TensorDistAttr {
 
   TensorDistAttr& operator=(const TensorDistAttr& dist_attr);
 
-  void copy_from(const TensorDistAttr& dist_attr);
-
   const VarDesc* tensor() const { return tensor_; }
 
   const ProcessMesh& process_mesh() const { return process_mesh_; }
@@ -103,21 +101,16 @@ class TensorDistAttr {
   // TensorDistAttr from_string(const std::string& dist_str);
   std::string to_string() const;
 
-  void from_proto(const TensorDistAttrProto& proto);
+  static TensorDistAttr from_proto(const TensorDistAttrProto& proto);
 
   TensorDistAttrProto to_proto() const;
-
-  std::string serialize_to_string();
-
-  void parse_from_string(const std::string& data);
 
  private:
   static std::vector<std::string> fields_;
   const VarDesc* tensor_{nullptr};
-  std::vector<int64_t> tensor_shape_;
   ProcessMesh process_mesh_;
   std::vector<int64_t> dims_mapping_;
-  int64_t batch_dim_{0};
+  int64_t batch_dim_;
   std::vector<bool> dynamic_dims_;
   std::map<std::string, bool> annotated_;
 };
@@ -143,10 +136,6 @@ class OperatorDistAttr {
 
   OperatorDistAttr& operator=(const OperatorDistAttr& dist_attr);
 
-  void initialize();
-
-  void copy_from(const OperatorDistAttr& dist_attr);
-
   const OpDesc* op() const { return op_; }
 
   const VarDesc& input(const std::string& name) const {
@@ -161,15 +150,9 @@ class OperatorDistAttr {
     return input_dist_attrs_;
   }
 
-  void set_input_dist_attrs(
-      const std::map<std::string, TensorDistAttr>& dist_attrs);
-
   const std::map<std::string, TensorDistAttr>& output_dist_attrs() const {
     return output_dist_attrs_;
   }
-
-  void set_output_dist_attrs(
-      const std::map<std::string, TensorDistAttr>& dist_attrs);
 
   const TensorDistAttr& input_dist_attr(const std::string& name) const {
     return input_dist_attrs_.at(name);
@@ -215,16 +198,6 @@ class OperatorDistAttr {
 
   void annotate(const std::string& name);
 
-  const std::vector<int64_t>& input_dims_mapping(const std::string& name) const;
-
-  void set_input_dims_mapping(const std::string& name,
-                              const std::vector<int64_t>& dims_mapping);
-
-  const std::vector<int64_t>& output_dims_mapping(const std::string& name);
-
-  void set_output_dims_mapping(const std::string& name,
-                               const std::vector<int64_t>& dims_mapping);
-
   bool verify_input_dist_attr(const std::string& name,
                               const TensorDistAttr& dist_attr) const;
 
@@ -237,20 +210,12 @@ class OperatorDistAttr {
 
   bool verify() const;
 
-  void rename_input(const std::string& old_name, const std::string& new_name);
-
-  void rename_output(const std::string& old_name, const std::string& new_name);
-
   // OperatorDistAttr from_string(const std::string& dist_str);
   std::string to_string() const;
 
-  void from_proto(const OperatorDistAttrProto& proto);
+  static OperatorDistAttr from_proto(const OperatorDistAttrProto& proto);
 
   OperatorDistAttrProto to_proto() const;
-
-  std::string serialize_to_string();
-
-  void parse_from_string(const std::string& data);
 
  private:
   static std::vector<std::string> fields_;

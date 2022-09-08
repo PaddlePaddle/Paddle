@@ -71,7 +71,9 @@ class VarDesc {
     need_updated_ = true;
   }
 
-  explicit VarDesc(const proto::VarDesc &desc);
+  explicit VarDesc(const proto::VarDesc &desc) : desc_(desc) {
+    // need_updated_ = true;
+  }
 
   // Explicitly implement the copy constructor for auto parallel
   VarDesc(const VarDesc &other);
@@ -88,7 +90,7 @@ class VarDesc {
   }
 
   proto::VarDesc *Proto() {
-    Flush();  // Only flush attrs for auto parallel
+    need_updated_ = true;
     return &desc_;
   }
 
@@ -191,8 +193,6 @@ class VarDesc {
 
   bool NeedUpdate() const { return need_updated_; }
   void SetNeedUpdate(bool need) { need_updated_ = need; }
-
-  void Flush();
 
   // The following methods are only used for auto parallel.
   uint64_t Id() const { return id_; }
