@@ -417,8 +417,8 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
 
     tensors_for_all_gather = []
     if tensor_recv_prev is not None:
-        if isinstance(tensor_recv_next, tuple):
-            for d in tensor_recv_next:
+        if isinstance(tensor_recv_prev, tuple):
+            for d in tensor_recv_prev:
                 tensors_for_all_gather.append(d)
         else:
             tensors_for_all_gather.append(tensor_recv_prev)
