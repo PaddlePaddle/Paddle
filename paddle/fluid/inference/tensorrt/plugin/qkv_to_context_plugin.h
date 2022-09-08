@@ -35,7 +35,9 @@
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
+#ifdef FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
 #include "3rdparty/trt_fused_multihead_attention/qkvToContext.h"
+#endif
 
 namespace paddle {
 namespace inference {

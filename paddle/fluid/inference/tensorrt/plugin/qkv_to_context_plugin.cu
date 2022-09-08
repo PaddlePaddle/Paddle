@@ -31,8 +31,7 @@
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
-#include "3rdparty/trt_fused_multihead_attention/qkvToContext.h"
-
+#ifdef FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
 namespace fastertransformer {
 /*******************  invokeTransformMask  ***********************/
 
@@ -193,6 +192,7 @@ void invokeTransformMask(half *tranformed_mask,
   }
 }
 }  // namespace fastertransformer
+#endif
 
 namespace paddle {
 namespace inference {
@@ -833,6 +833,7 @@ int QkvToContextPluginDynamic::enqueue(
       }
     } else {
       // use fastertransformer_window_mha
+#ifdef FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
       VLOG(1) << "use faster transformer trt fused multihead matmul kernel";
       auto *device_ctx = static_cast<phi::GPUContext *>(
           platform::DeviceContextPool::Instance().Get(
@@ -892,6 +893,11 @@ int QkvToContextPluginDynamic::enqueue(
                                stream);
       int grid = batch * head_number_ * seq_len;
       int block = head_size_;
+#else   // FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
+      PADDLE_THROW(platform::errors::Fatal(
+          "Call fastertransformer trt fused mha, but corresponding lib is not "
+          "involved properly"));
+#endif  // FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
     }
 #else
     PADDLE_THROW(platform::errors::Fatal(
