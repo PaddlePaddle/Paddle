@@ -65,3 +65,6 @@ PD_REGISTER_KERNEL(load, CPU, ALL_LAYOUT, phi::LoadKernel, float) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(load, GPU, ALL_LAYOUT, phi::LoadKernel, float) {}
 #endif
+#ifdef PADDLE_WITH_XPU
+PD_REGISTER_KERNEL(load, XPU, ALL_LAYOUT, phi::LoadKernel, float) {}
+#endif
