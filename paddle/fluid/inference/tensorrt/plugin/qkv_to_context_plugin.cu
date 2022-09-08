@@ -170,8 +170,10 @@ void invokeTransformMask(half *tranformed_mask,
     warps_m = 1;
     warps_n = 8;
   } else {
-    printf("[ERROR][invokeTransformMask]unsupported seq_len %d\n", S);
-    exit(-1);
+    PADDLE_THROW(::paddle::platform::errors::Fatal(
+        "[ERROR][fastertransformer][invokeTransformMask]unsupported seq_len "
+        "%d\n",
+        S));
   }
   assert(S2 * S2 % 64 == 0);
   dim3 grid(B, S2 * S2 / 64);

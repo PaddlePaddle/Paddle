@@ -18,20 +18,22 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
-namespace framework{
-namespace ir{
+namespace framework {
+namespace ir {
 
 // fold of swin_attention Biasqk structures
 
 class Graph;
 
 class SwinAttentionBiasqkFoldPass : public FusePassBase {
-    public:
-        virtual ~SwinAttentionBiasqkFoldPass(){}
-    protected:
-        void ApplyImpl(ir::Graph* graph) const override;
+ public:
+  SwinAttentionBiasqkFoldPass();
+  virtual ~SwinAttentionBiasqkFoldPass() {}
+
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
-} // namespace ir
-} // namespace framework
-} // namespace paddle
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle

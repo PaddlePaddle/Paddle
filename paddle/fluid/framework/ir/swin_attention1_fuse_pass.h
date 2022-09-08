@@ -18,20 +18,22 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
-namespace framework{
-namespace ir{
+namespace framework {
+namespace ir {
 
 // Fusing of swin_attention structures
 
 class Graph;
 
 class SwinAttention1FusePass : public FusePassBase {
-    public:
-        virtual ~SwinAttention1FusePass(){}
-    protected:
-        void ApplyImpl(ir::Graph* graph) const override;
+ public:
+  SwinAttention1FusePass();
+  virtual ~SwinAttention1FusePass() {}
+
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
-} // namespace ir
-} // namespace framework
-} // namespace paddle
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle

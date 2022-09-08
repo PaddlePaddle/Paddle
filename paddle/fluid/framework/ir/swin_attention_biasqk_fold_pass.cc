@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
+
 #include "paddle/fluid/framework/ir/swin_attention_biasqk_fold_pass.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-
-#include <string>
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES                   \
@@ -40,6 +40,85 @@
 namespace paddle {
 namespace framework {
 namespace ir {
+
+// example for swin attention biasqk fold pass
+//
+//    input               BiasQK          BiasQK_mask
+//      | ?x3x49x49       | 1x3x49x49     | 64x49x49
+// elementwise_add--------|             unsqueeze2
+//      | ?x3x49x49                       | 64x1x49x49
+//    reshape2                          unsqueeze2
+//      | ?x64x3x49x49                    | 1x64x1x49x49 (X)input (Y)BiasQK
+//      (BiasQK_mask)BiasQK_mask
+//       \                               /                   fuse | ?x3x49x49 |
+//       1x3x49x49    |
+//        |-------elementwise_add-------|                     ->
+//        elementwise_add-------|--------------|
+//                      | ?x64x3x49x49 | ?x3x49x49
+//                   reshape2 output
+//                      | ?x3x49x49
+//                    output
+//
+// note that the elementwise_add with three inputs (X, biasqk(Y), biasqk_mask)
+// need to be handled by swin_attention_fuse_pass
+SwinAttentionBiasqkFoldPass::SwinAttentionBiasqkFoldPass() {
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsIntIn({-1, 0})
+      .End();
+  AddOpCompat(OpCompat("reshape2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Shape")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ShapeTensor")
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddAttr("shape")
+      .IsType<std::vector<int>>()
+      .End();
+  AddOpCompat(OpCompat("unsqueeze2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("AxesTensor")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddInput("AxesTensorList")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axes")
+      .IsType<std::vector<int>>()
+      .End();
+}
 void SwinAttentionBiasqkFoldPass::ApplyImpl(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   const std::string pattern_name = "swin_attention_bisqk_fold";
@@ -55,12 +134,18 @@ void SwinAttentionBiasqkFoldPass::ApplyImpl(ir::Graph* graph) const {
   int fusion_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
+    VLOG(3) << "swin attention biasqk/biasqk_mask folding";
     GET_NODES;
     auto* elementwise_00_op_desc = elementwise_00_op->Op();
 
-    elementwise_00_op_desc->SetInput("BiasQK_mask",{unsqueeze_01_op_x->Name()});
+    elementwise_00_op_desc->SetInput("BiasQK_mask",
+                                     {unsqueeze_01_op_x->Name()});
     elementwise_00_op_desc->SetOutput("Out", {reshape_30_out->Name()});
-    IR_NODE_LINK_TO(unsqueeze_01_op_x,elementwise_00_op);
+    IR_NODE_LINK_TO(unsqueeze_01_op_x, elementwise_00_op);
     IR_NODE_LINK_TO(elementwise_00_op, reshape_30_out);
 
     std::unordered_set<const Node*> marked_nodes({// unsqueeze_01_op_x,
@@ -91,5 +176,7 @@ REGISTER_PASS(swin_attention_biasqk_fold_pass,
 
 REGISTER_PASS_CAPABILITY(swin_attention_biasqk_fold_pass)
     .AddCombination(
-        paddle::framework::compatible::OpVersionComparatorCombination().GE(
-            "reshape2", 0));
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("reshape2", 0)
+            .EQ("unsqueeze2", 0)
+            .LE("elementwise_add", 1));
