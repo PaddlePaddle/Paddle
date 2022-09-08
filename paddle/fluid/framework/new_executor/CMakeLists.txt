@@ -60,8 +60,9 @@ if(WITH_GPU
    AND NOT WIN32)
   add_custom_target(
     download_program
-    COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program
-    COMMAND wget -nc
+    COMMAND wget -nc --no-check-certificate
+            https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program
+    COMMAND wget -nc --no-check-certificate
             https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program)
 
   # all operators used in the program

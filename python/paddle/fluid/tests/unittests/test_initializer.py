@@ -23,6 +23,7 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.initializer as initializer
 from paddle.fluid.core import VarDesc
+from paddle.regularizer import L2Decay
 
 DELTA = 0.00001
 
@@ -561,6 +562,55 @@ class TestBilinearInitializer(unittest.TestCase):
 
     def test_type_error(self):
         self.assertRaises(TypeError, self.test_bilinear_initializer, 'int32')
+
+
+class TestBilinearInitializerDygraphAPI(unittest.TestCase):
+
+    def func_test_case(self):
+        factor = 2
+        C = 2
+        B = 8
+        H = W = 32
+        w_attr = paddle.ParamAttr(learning_rate=0.,
+                                  regularizer=L2Decay(0.),
+                                  initializer=initializer.BilinearInitializer())
+        data = paddle.rand([B, 3, H, W], dtype='float32')
+        conv_up = paddle.nn.Conv2DTranspose(3,
+                                            out_channels=C,
+                                            kernel_size=2 * factor - factor % 2,
+                                            padding=int(
+                                                math.ceil((factor - 1) / 2.)),
+                                            stride=factor,
+                                            weight_attr=w_attr,
+                                            bias_attr=False)
+        x = conv_up(data)
+        return x
+
+    def func_test_case_fp16(self):
+        paddle.set_default_dtype("float16")
+        paddle.seed(1234)
+        w_attr = paddle.ParamAttr(learning_rate=0.,
+                                  regularizer=L2Decay(0.),
+                                  initializer=initializer.BilinearInitializer())
+        conv2d = paddle.nn.Conv2D(1, 2, 3, weight_attr=w_attr)
+        paddle.set_default_dtype("float32")
+        return conv2d.weight
+
+    def test_bilinear_initializer(self):
+        paddle.disable_static()
+        with framework._test_eager_guard():
+            eager_x = self.func_test_case()
+        legacy_x = self.func_test_case()
+        self.assertEqual(eager_x.numpy().all(), legacy_x.numpy().all())
+        paddle.enable_static()
+
+    def test_bilinear_initializer_fp16(self):
+        paddle.disable_static()
+        with framework._test_eager_guard():
+            eager_x = self.func_test_case_fp16()
+        legacy_x = self.func_test_case_fp16()
+        self.assertEqual(eager_x.numpy().all(), legacy_x.numpy().all())
+        paddle.enable_static()
 
 
 class TestNumpyArrayInitializer(unittest.TestCase):

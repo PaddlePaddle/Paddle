@@ -193,7 +193,6 @@ class CudnnNormConvolution {
                Tensor *sum,
                Tensor *sum_of_squares) {
     auto cudnn_handle = ctx.cudnn_handle();
-    auto place = ctx.GetPlace();
 
     CudnnFusionOp *fwd_op = GetForwardOp(ctx);
     size_t workspace_size = RoundUp(
@@ -210,9 +209,11 @@ class CudnnNormConvolution {
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &workspace_size);
 
     // output ptr
-    T *output_ptr = output->mutable_data<T>(place);
-    float *sum_ptr = sum->mutable_data<float>(place);
-    float *sum_of_squares_ptr = sum_of_squares->mutable_data<float>(place);
+    T *output_ptr = ctx.template Alloc<T>(output, output->numel() * sizeof(T));
+    float *sum_ptr =
+        ctx.template Alloc<float>(sum, sum->numel() * sizeof(float));
+    float *sum_of_squares_ptr = ctx.template Alloc<float>(
+        sum_of_squares, sum_of_squares->numel() * sizeof(float));
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_YDATA, output_ptr);
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_YSUM, sum_ptr);
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_YSQSUM, sum_of_squares_ptr);
@@ -311,17 +312,18 @@ class CudnnNormConvolutionGrad {
                 Tensor *input_grad,
                 Tensor *filter_grad,
                 bool use_addto = false) {
-    auto place = ctx.GetPlace();
     T *input_ptr = const_cast<T *>(input.data<T>());
     T *filter_ptr = const_cast<T *>(filter.data<T>());
     T *output_grad_ptr = const_cast<T *>(output_grad.data<T>());
 
     if (filter_grad) {
-      T *filter_grad_ptr = filter_grad->mutable_data<T>(place);
+      T *filter_grad_ptr =
+          ctx.template Alloc<T>(filter_grad, filter_grad->numel() * sizeof(T));
       BackwardFilter(ctx, output_grad_ptr, input_ptr, filter_grad_ptr);
     }
     if (input_grad) {
-      T *input_grad_ptr = input_grad->mutable_data<T>(place);
+      T *input_grad_ptr =
+          ctx.template Alloc<T>(input_grad, input_grad->numel() * sizeof(T));
       BackwardData(ctx, output_grad_ptr, filter_ptr, input_grad_ptr, use_addto);
     }
   }

@@ -183,13 +183,8 @@ void BatchNormGradKernel(const Context &dev_ctx,
                                C,
                                epsilon_data,
                                global_inv_std_data);
-      PADDLE_ENFORCE_EQ(r1,
-                        XPU_SUCCESS,
-                        phi::errors::External("XPU API(batch_norm_grad "
-                                              "CalculateInvVar function) "
-                                              "return wrong value[%d %s]",
-                                              r1,
-                                              XPUAPIErrorMsg[r1]));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r1,
+                                  "batch_norm_grad CalculateInvVar function");
     }
 
     // Here is a trick, x is a const input,
@@ -209,13 +204,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
                              C,
                              H * W,
                              x.data<T>());
-    PADDLE_ENFORCE_EQ(r2,
-                      XPU_SUCCESS,
-                      phi::errors::External("XPU API(batch_norm_grad "
-                                            "CalculateInvBNY function) "
-                                            "return wrong value[%d %s]",
-                                            r2,
-                                            XPUAPIErrorMsg[r2]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r2, "batch_norm_grad CalculateInvBNY function");
   }
 
   int r3;
@@ -263,12 +252,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
                                  bias_grad_data,
                                  is_nchw);
   }
-  PADDLE_ENFORCE_EQ(r3,
-                    XPU_SUCCESS,
-                    phi::errors::External("XPU API(batch_norm_grad) return "
-                                          "wrong value[%d %s]",
-                                          r3,
-                                          XPUAPIErrorMsg[r3]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r3, "batch_norm_grad");
 }
 
 }  // namespace phi

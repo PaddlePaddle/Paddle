@@ -24,7 +24,12 @@ class TestCustomCPUPlugin(unittest.TestCase):
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
-        cmd = 'rm -rf PaddleCustomDevice && git clone https://github.com/PaddlePaddle/PaddleCustomDevice.git && cd PaddleCustomDevice/backends/custom_cpu && mkdir build && cd build && cmake .. && make -j8'
+        cmd = 'rm -rf PaddleCustomDevice \
+            && git clone {} \
+            && cd PaddleCustomDevice/backends/custom_cpu \
+            && git checkout {} -b dev \
+            && mkdir build && cd build && cmake .. && make -j8'.format(
+            os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG'))
         os.system(cmd)
 
         # set environment for loading and registering compiled custom kernels

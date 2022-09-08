@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
@@ -28,7 +29,6 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
                             false,
@@ -104,7 +104,7 @@ InterpreterCore::~InterpreterCore() {
 interpreter::CostInfo InterpreterCore::DryRun(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place_)) {
     platform::SetDeviceId(place_.device);
   }
@@ -138,14 +138,16 @@ interpreter::CostInfo InterpreterCore::DryRun(
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place_)) {
     platform::SetDeviceId(place_.device);
   }
 #endif
+
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
+
   bool is_build = is_build_;
   Prepare(feed_names, feed_tensors, is_build);
 
@@ -180,14 +182,16 @@ paddle::framework::FetchList InterpreterCore::Run(
 
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names) {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place_)) {
     platform::SetDeviceId(place_.device);
   }
 #endif
+
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
+
   if (!is_build_) {
     paddle::framework::interpreter::build_variable_scope(
         block_, &var_scope_, create_local_scope_);
