@@ -26,55 +26,213 @@ class TestCollectiveAllgatherAPI(TestDistBase):
         pass
 
     def test_allgather_nccl(self):
-        dtypes_to_test = [
-            "float16", "float32", "float64", "int32", "int64", "int8", "uint8",
-            "bool", "complex64", "complex128"
-        ]
-        for dtype in dtypes_to_test:
-            self.check_with_place("collective_allgather_api.py",
-                                  "allgather",
-                                  "nccl",
-                                  dtype=dtype)
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "nccl",
+                              dtype="float16")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "nccl",
+                              dtype="float32")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "nccl",
+                              dtype="float64")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "nccl",
+                              dtype="bool")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "nccl",
+                              dtype="uint8")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "nccl",
+                              dtype="int8")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "nccl",
+                              dtype="int32")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "nccl",
+                              dtype="int64")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "nccl",
+                              dtype="complex64")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "nccl",
+                              dtype="complex128")
 
     def test_allgather_gloo(self):
-        dtypes_to_test = [
-            "float16", "float32", "float64", "int32", "int64", "int8", "uint8",
-            "bool", "complex64", "complex128"
-        ]
-        for dtype in dtypes_to_test:
-            self.check_with_place("collective_allgather_api.py",
-                                  "allgather",
-                                  "gloo",
-                                  "3",
-                                  dtype=dtype)
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              dtype="float16")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              dtype="float32")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              dtype="float64")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              dtype="bool")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              dtype="uint8")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              dtype="int8")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              dtype="int32")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              dtype="int64")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              dtype="complex64")
+        self.check_with_place("collective_allgather_api.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              dtype="complex128")
 
     def test_allgatther_nccl_dygraph(self):
-        dtypes_to_test = [
-            "float16", "float32", "float64", "int32", "int64", "int8", "uint8",
-            "bool", "complex64", "complex128"
-        ]
-        if self._nccl_version >= 2100:
-            dtypes_to_test.append("bfloat16")
-        for dtype in dtypes_to_test:
-            self.check_with_place("collective_allgather_api_dygraph.py",
-                                  "allgather",
-                                  "nccl",
-                                  static_mode="0",
-                                  dtype=dtype)
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "nccl",
+                              static_mode="0",
+                              dtype="float16")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "nccl",
+                              static_mode="0",
+                              dtype="float32")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "nccl",
+                              static_mode="0",
+                              dtype="float64")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "nccl",
+                              static_mode="0",
+                              dtype="bool")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "nccl",
+                              static_mode="0",
+                              dtype="uint8")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "nccl",
+                              static_mode="0",
+                              dtype="int8")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "nccl",
+                              static_mode="0",
+                              dtype="int32")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "nccl",
+                              static_mode="0",
+                              dtype="int64")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "nccl",
+                              static_mode="0",
+                              dtype="complex64")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "nccl",
+                              static_mode="0",
+                              dtype="complex128")
 
     def test_allgather_gloo_dygraph(self):
-        dtypes_to_test = [
-            "float16", "float32", "float64", "int32", "int64", "int8", "uint8",
-            "bool", "bfloat16", "complex64", "complex128"
-        ]
-        for dtype in dtypes_to_test:
-            self.check_with_place("collective_allgather_api_dygraph.py",
-                                  "allgather",
-                                  "gloo",
-                                  "3",
-                                  static_mode="0",
-                                  dtype=dtype)
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              static_mode="0",
+                              dtype="float16")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              static_mode="0",
+                              dtype="float32")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              static_mode="0",
+                              dtype="float64")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              static_mode="0",
+                              dtype="bool")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              static_mode="0",
+                              dtype="uint8")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              static_mode="0",
+                              dtype="int8")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              static_mode="0",
+                              dtype="int32")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              static_mode="0",
+                              dtype="int64")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              static_mode="0",
+                              dtype="complex64")
+        self.check_with_place("collective_allgather_api_dygraph.py",
+                              "allgather",
+                              "gloo",
+                              "3",
+                              static_mode="0",
+                              dtype="complex128")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

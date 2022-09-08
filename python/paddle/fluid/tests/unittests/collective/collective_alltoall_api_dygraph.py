@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-import paddle.distributed as dist
 import paddle.fluid as fluid
+import unittest
 import test_collective_api_base as test_base
 
 
@@ -25,18 +25,11 @@ class TestCollectiveAllToAllAPI(test_base.TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank, indata=None):
         with fluid.program_guard(main_prog, startup_program):
+            tindata = paddle.to_tensor(indata)
+            tindata = paddle.split(tindata, 2, axis=0)
             toutdata = []
-            # NOTE: this is a hack relying on an undocumented behavior that `to_tensor` uses uint16 to replace bfloat16
-            if indata.dtype == "bfloat16":
-                tindata = paddle.to_tensor(indata, "float32").cast("uint16")
-                tindata = paddle.split(tindata, 2, axis=0)
-                dist.alltoall(tindata, toutdata)
-                return [data.cast("float32").numpy() for data in toutdata]
-            else:
-                tindata = paddle.to_tensor(indata)
-                tindata = paddle.split(tindata, 2, axis=0)
-                dist.alltoall(tindata, toutdata)
-                return [data.numpy() for data in toutdata]
+            paddle.distributed.alltoall(tindata, toutdata)
+            return [data.numpy() for data in toutdata]
 
 
 if __name__ == "__main__":
