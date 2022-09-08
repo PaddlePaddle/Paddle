@@ -200,7 +200,6 @@ def fill_constant_orig2prim(op):
 @REGISTER_ORIG2PRIM('sum')
 def sum_orig2prim(op, xs):
     x0 = xs[0]
-
     for x in xs[1:]:
         x0 = add(x0, x)
     return x0
