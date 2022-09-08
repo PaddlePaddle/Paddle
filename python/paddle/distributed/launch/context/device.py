@@ -29,7 +29,7 @@ class DeviceType:
 
 class Device(object):
 
-    def __init__(self, dtype=None, memory="", labels=""):
+    def __init__(self, dtype=None, memory="", labels=[]):
         self._dtype = dtype
         self._memory = memory
         self._labels = labels
@@ -119,7 +119,7 @@ class Device(object):
             visible_devices = os.getenv("MLU_VISIBLE_DEVICES")
 
         if visible_devices is not None and visible_devices != 'all':
-            dev._labels = visible_devices.split(',')
+            dev._labels = visible_devices.split(',') if visible_devices else []
         else:
             return self.detect_device()
 
