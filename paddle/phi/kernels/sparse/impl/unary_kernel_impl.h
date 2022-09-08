@@ -222,7 +222,7 @@ void TransposeCooKernel(const Context& dev_ctx,
   const int64_t* x_indices_data = x_indices.data<int64_t>();
   int64_t* out_indices_data = out_indices->data<int64_t>();
   int64_t x_nnz = x.nnz();
-  for (int64_t i = 0; i < dims.size(); ++i) {
+  for (unsigned int i = 0; i < dims.size(); ++i) {
     for (int64_t j = 0; j < x_nnz; ++j) {
       out_indices_data[j + i * x_nnz] = x_indices_data[j + dims[i] * x_nnz];
     }
@@ -239,7 +239,7 @@ void TransposeCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
                         const std::vector<int>& dims,
                         SparseCsrTensor* out) {
-  int n_dim = dims.size();
+  unsigned int n_dim = dims.size();
   DDim out_dims(x.dims());
   out_dims.transpose(dims);
   out->set_dims(out_dims);
@@ -287,7 +287,7 @@ void TransposeCsrKernel(const Context& dev_ctx,
       for (int j = start; j < end; ++j) {
         int jj = x_cols_data[j];
         int jjj = out_crows_data[jj];
-        int jjj_ptr = jjj + cols_ptr.count();
+        int jjj_ptr = jjj + cols_ptr.count(jjj);
         out_cols_data[jjj_ptr] = i;
         out_values_data[jjj_ptr] = x_values_data[j];
         cols_ptr.insert(jjj);
@@ -317,7 +317,7 @@ void TransposeCsrKernel(const Context& dev_ctx,
           for (int j = start; j < end; ++j) {
             int jj = x_cols_data[j];
             int jjj = out_crows_data[jj];
-            int jjj_ptr = jjj + cols_ptr.count();
+            int jjj_ptr = jjj + cols_ptr.count(jjj);
             out_cols_data[jjj_ptr] = i;
             out_values_data[jjj_ptr] = x_values_data[j];
             cols_ptr.insert(jjj);
@@ -327,38 +327,27 @@ void TransposeCsrKernel(const Context& dev_ctx,
         x_crows_data += x.dims()[1] + 1;
         x_cols_data += x_crows_data[x.dims()[1]];
         x_values_data += x_crows_data[x.dims()[1]];
-      } else if (dims[0] == 1) {
+      } else if (dims[0] == 1 && dims[1] == 0) {
         int out_n_rows = out_dims[1];
-        // compute out_crows_data by x_cols_data
-        for (int i = 0; i < out_n_rows; ++i) {
-          out_crows_data[i] = 0;
-        }
-        // out_crows_data[out_n_rows] = x_crows_data[x.dims()[1]];
         int x_cols_offset = 0;
-        int out_cols_offset = 0;
         for (int i = 0; i < x.dims()[0]; ++i) {
           int x_crows_index = i * (x.dims()[1] + 1);
           int start = x_crows_data[x_crows_index];
           int end = x_crows_data[x_crows_index + 1];
-          out_crows_data[i] = end - start;
+          out_crows_data[i + 1] = end - start;
           for (int j = start; j < end; ++j) {
             out_cols_data[j - start] = x_cols_data[x_cols_offset + j];
             out_values_data[j - start] = x_values_data[x_cols_offset + j];
-            x_cols_offset += x_crows_data[x_crows_index + x.dims()[1]];
-            out_cols_offset += out_crows_data[... + out_dims[1]];
           }
+          x_cols_offset += x_crows_data[x_crows_index + x.dims()[1]];
         }
-
-        for (int i = 0; i < out_crows_data[out_n_rows]; ++i) {
-          int j = x_cols_data[i];
-          out_crows_data[j + 1]++;
-        }
-        for (int i = 1; i < out_n_rows; ++i) {
+        for (int i = 1; i <= out_n_rows; ++i) {
           out_crows_data[i] += out_crows_data[i - 1];
         }
-
         // x offset
         x_crows_data += 1;
+      } else if (dims[0] == 1 && dims[1] == 2) {
+      } else if (dims[0] == 2 && dims[1] == 0) {
       } else {
       }
       // out offset
