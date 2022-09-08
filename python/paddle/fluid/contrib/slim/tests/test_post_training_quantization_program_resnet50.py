@@ -183,7 +183,15 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
         val_reader = val()
         same_scale_tensor_list = [[
             'batch_norm_3.tmp_2#/#1', 'batch_norm_4.tmp_2#*#1'
-        ], ['batch_norm_27.tmp_2', 'batch_norm_26.tmp_2']]
+        ], ['batch_norm_27.tmp_2', 'batch_norm_26.tmp_2'],
+                                  [
+                                      'test_scale_name_not_in_scale_dict1',
+                                      'test_scale_name_not_in_scale_dict2'
+                                  ],
+                                  [
+                                      'test_scale_name_not_in_scale_dict1#/#1',
+                                      'test_scale_name_not_in_scale_dict2#/#1'
+                                  ]]
         ptq = PostTrainingQuantizationProgram(
             executor=exe,
             program=program,

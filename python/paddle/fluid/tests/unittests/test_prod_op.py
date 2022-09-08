@@ -17,6 +17,7 @@ from __future__ import print_function
 import paddle
 import unittest
 import numpy as np
+from test_sum_op import TestReduceOPTensorAxisBase
 
 
 class TestProdOp(unittest.TestCase):
@@ -166,6 +167,30 @@ class TestProdOpError(unittest.TestCase):
 
             # The argument dtype of prod_op should be float32, float64, int32 or int64.
             self.assertRaises(TypeError, paddle.prod, x, 'bool')
+
+
+class TestProdWithTensorAxis1(TestReduceOPTensorAxisBase):
+
+    def init_data(self):
+        self.pd_api = paddle.prod
+        self.np_api = np.prod
+        self.x = paddle.randn([10, 5, 9, 9], dtype='float64')
+        self.np_axis = np.array([1, 2], dtype='int64')
+        self.tensor_axis = paddle.to_tensor([1, 2], dtype='int64')
+
+
+class TestProdWithTensorAxis2(TestReduceOPTensorAxisBase):
+
+    def init_data(self):
+        self.pd_api = paddle.prod
+        self.np_api = np.prod
+        self.x = paddle.randn([10, 10, 9, 9], dtype='float64')
+        self.np_axis = np.array([0, 1, 2], dtype='int64')
+        self.tensor_axis = [
+            0,
+            paddle.to_tensor([1], 'int64'),
+            paddle.to_tensor([2], 'int64')
+        ]
 
 
 if __name__ == "__main__":

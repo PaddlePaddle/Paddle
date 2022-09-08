@@ -42,7 +42,7 @@ void DeserializeFromStream(std::istream& is,
 void SerializeToStream(std::ostream& os,
                        const phi::SelectedRows& selected_rows);
 
-void DeserializeFromStream(std::istream& os, phi::SelectedRows* selected_rows);
+void DeserializeFromStream(std::istream& is, phi::SelectedRows* selected_rows);
 
 }  // namespace framework
 }  // namespace paddle

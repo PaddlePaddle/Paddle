@@ -73,7 +73,7 @@ void CalculateXGrad(const Context& ctx,
         DenseTensor x_grad_out = phi::Sum<T, Context>(
             ctx,
             x_grad_v2,
-            reduce_idx,
+            phi::IntArray(reduce_idx),
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
@@ -131,7 +131,7 @@ void CalculateXGrad(const Context& ctx,
         DenseTensor x_grad_out = phi::Sum<T, Context>(
             ctx,
             x_grad_v2,
-            reduce_idx,
+            phi::IntArray(reduce_idx),
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
@@ -166,7 +166,7 @@ void CalculateXGrad(const Context& ctx,
         DenseTensor x_grad_out = phi::Sum<T, Context>(
             ctx,
             x_grad_v2,
-            reduce_idx,
+            phi::IntArray(reduce_idx),
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
@@ -220,7 +220,7 @@ void CalculateXGrad(const Context& ctx,
         DenseTensor x_grad_out = phi::Sum<T, Context>(
             ctx,
             x_grad_v2,
-            reduce_idx,
+            phi::IntArray(reduce_idx),
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));

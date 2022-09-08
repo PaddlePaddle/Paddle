@@ -25,8 +25,8 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/phi/kernels/funcs/onednn/mkldnn_helper.h"
-#include "paddle/phi/kernels/funcs/onednn/mkldnn_reuse.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 #endif
 
 namespace phi {
@@ -52,7 +52,7 @@ void* GetDataFromTensor(const DenseTensor& tensor,
   }
 }
 
-void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
+void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
                                     DataLayout out_layout,
                                     const DenseTensor& in,
                                     DenseTensor* out,
@@ -68,15 +68,15 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
   auto in_tz = vectorize<int64_t>(in.dims());
   auto out_tz = in_tz;
 
-  auto in_type = ToMKLDNNDataType(in.dtype());
+  auto in_type = ToOneDNNDataType(in.dtype());
   PADDLE_ENFORCE_NE(
       in_type,
-      MKLDNNDataType::undef,
+      OneDNNDataType::undef,
       errors::InvalidArgument("Input tensor type (%s) is not supported.",
                               in.dtype()));
 
   auto out_format =
-      MKLDNNFormatForSize(in_tz.size(), ToMKLDNNFormat(out_layout));
+      OneDNNFormatForSize(in_tz.size(), ToOneDNNFormat(out_layout));
   dnnl::memory::desc out_mem_desc(out_tz, in_type, out_format);
 
   // output tensor has the same dims as input. Reorder don't change dims
@@ -86,7 +86,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
   if ((in.mem_desc() != out->mem_desc()) || always_copy) {
     void* in_data = GetDataFromTensor(in, in_type);
 
-    ReorderMKLDNNHandler handler(in_tz, in.dtype(), in_type, cpu_engine);
+    ReorderOneDNNHandler handler(in_tz, in.dtype(), in_type, cpu_engine);
 
     auto reorder_src_memory_p =
         handler.AcquireSrcMemory(in.mem_desc(), in_data);
@@ -114,7 +114,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
   VLOG(10) << "out->layout: " << out->layout() << " in->dims: " << in.dims()
            << " out->dims: " << out->dims();
   // reset format since the out tensor will be feed to non-MKLDNN OPkernel
-  out->set_format(MKLDNNMemoryFormat::undef);
+  out->set_format(OneDNNMemoryFormat::undef);
 }
 
 #endif
