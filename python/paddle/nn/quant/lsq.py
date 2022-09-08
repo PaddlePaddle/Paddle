@@ -13,10 +13,17 @@
 # limitations under the License.
 
 import paddle
+from paddle.framework import core
+from paddle.fluid import dygraph_utils
 from paddle.utils import unique_name
 from paddle.framework import ParamAttr
+from paddle.fluid.framework import _varbase_creator
 from paddle.nn.initializer import Constant
+from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.nn import functional as F
+import logging
+from paddle.fluid.log_helper import get_logger
+from paddle import in_dynamic_mode
 from paddle.nn import Layer
 from paddle.autograd import PyLayer
 import math
@@ -32,17 +39,17 @@ def round(x):
 class LsqFunc(PyLayer):
 
     @staticmethod
-    def forward(ctx, weight, alpha, g, Qn, Qp, per_channel=False):
+    def forward(ctx, weight, alpha, g, Qn, Qp, per_channel=False, quant_axis=0):
         ctx.save_for_backward(weight, alpha)
-        ctx.other = g, Qn, Qp, per_channel
+        ctx.other = g, Qn, Qp, per_channel, quant_axis
         if per_channel:
             sizes = weight.shape
-            weight = weight.reshape((weight.shape[0], -1))
-            weight = paddle.transpose(weight, 0, 1)
+            weight = weight.reshape((weight.shape[quant_axis], -1))
+            weight = weight.transpose((1, 0))
             alpha = paddle.broadcast_to(alpha, weight.shape)
             quant_w = round(paddle.divide(weight, alpha)).clip(Qn, Qp)
             quant_w = quant_w * alpha
-            quant_w = paddle.transpose(quant_w, 0, 1)
+            quant_w = quant_w.transpose((1, 0))
             quant_w = quant_w.reshape(sizes)
         else:
             quant_w = round(paddle.divide(weight, alpha)).clip(Qn, Qp)
@@ -52,14 +59,14 @@ class LsqFunc(PyLayer):
     @staticmethod
     def backward(ctx, grad_weight):
         weight, alpha = ctx.saved_tensor()
-        g, Qn, Qp, per_channel = ctx.other
+        g, Qn, Qp, per_channel, quant_axis = ctx.other
         if per_channel:
             sizes = weight.shape
-            weight = weight.reshape((weight.shape[0], -1))
-            weight = paddle.transpose(weight, 0, 1)
+            weight = weight.reshape((weight.shape[quant_axis], -1))
+            weight = weight.transpose((1, 0))
             alpha = paddle.broadcast_to(alpha, weight.shape)
             q_w = paddle.divide(weight, alpha)
-            q_w = paddle.transpose(q_w, 0, 1)
+            q_w = q_w.transpose((1, 0))
             q_w = q_w.reshape(sizes)
         else:
             q_w = paddle.divide(weight, alpha)
@@ -71,7 +78,7 @@ class LsqFunc(PyLayer):
                            middle_flag * round(q_w) - middle_flag * q_w) *
                           grad_weight * g)
             grad_alpha = grad_alpha.reshape(
-                (grad_alpha.shape[0], -1)).sum(axis=1)
+                (grad_alpha.shape[quant_axis], -1)).sum(axis=1)
         else:
             grad_alpha = ((lower_flag * Qn + upper_flag * Qp +
                            middle_flag * round(q_w) - middle_flag * q_w) *
@@ -198,15 +205,22 @@ class FakeQuantWeightLSQPlus(Layer):
                  all_postive=False,
                  per_channel=False,
                  batch_init=20,
+                 channel_num=None,
+                 quant_linear=False,
                  dtype='float32',
                  name=None,
                  reduce_type=None):
         super(FakeQuantWeightLSQPlus, self).__init__()
+
         self.bits = quant_bits
         self.all_positive = all_postive
         self.per_channel = per_channel
+        self.quant_linear = quant_linear
         self.batch_init = batch_init
         self.name = name
+        self.quant_axis = 1 if quant_linear else 0
+        self.collect_axis = 0 if quant_linear else 1
+        print(self.per_channel)
         if self.all_positive:
             # unsigned weight
             self.Qn = 0
@@ -223,7 +237,9 @@ class FakeQuantWeightLSQPlus(Layer):
         s_attr = ParamAttr(name=self._scale_name,
                            initializer=Constant(1.0),
                            trainable=True)
-        self.s = self.create_parameter(shape=[1], attr=s_attr, dtype='float32')
+        self.s = self.create_parameter(shape=[channel_num],
+                                       attr=s_attr,
+                                       dtype=dtype)
         self.s.stop_gradient = False
 
     def forward(self, weight):
@@ -232,12 +248,12 @@ class FakeQuantWeightLSQPlus(Layer):
             self.div = 2**self.bits - 1
             if self.per_channel:
                 weight_tmp = weight.detach().reshape((weight.shape[0], -1))
-                mean = paddle.mean(weight_tmp, axis=1)
-                std = paddle.std(weight_tmp, axis=1)
-                s, _ = paddle.max(paddle.stack(
+                mean = paddle.mean(weight_tmp, axis=self.collect_axis)
+                std = paddle.std(weight_tmp, axis=self.collect_axis)
+                s = paddle.max(paddle.stack(
                     [paddle.abs(mean - 3 * std),
                      paddle.abs(mean + 3 * std)]),
-                                  axis=0)
+                               axis=0)
                 self.s.set_value(s / self.div)
             else:
                 mean = paddle.mean(weight.detach())
@@ -252,12 +268,12 @@ class FakeQuantWeightLSQPlus(Layer):
             self.div = 2**self.bits - 1
             if self.per_channel:
                 weight_tmp = weight.detach().reshape((weight.shape[0], -1))
-                mean = paddle.mean(weight_tmp, axis=1)
-                std = paddle.std(weight_tmp, axis=1)
-                s, _ = paddle.max(paddle.stack(
+                mean = paddle.mean(weight_tmp, axis=self.collect_axis)
+                std = paddle.std(weight_tmp, axis=self.collect_axis)
+                s = paddle.max(paddle.stack(
                     [paddle.abs(mean - 3 * std),
                      paddle.abs(mean + 3 * std)]),
-                                  axis=0)
+                               axis=0)
                 self.s.set_value(s * 0.9 + 0.1 * s / self.div)
             else:
                 mean = paddle.mean(weight.detach())
@@ -271,5 +287,5 @@ class FakeQuantWeightLSQPlus(Layer):
 
         weight.stop_gradient = False
         w_q = LsqFunc.apply(weight, self.s, self.g, self.Qn, self.Qp,
-                            self.per_channel)
+                            self.per_channel, self.quant_axis)
         return w_q

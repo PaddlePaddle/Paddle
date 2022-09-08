@@ -26,7 +26,7 @@ from paddle.fluid.log_helper import get_logger
 from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
 from paddle.nn import Layer
-from paddle.nn.quant.lsq import FakeQuantActLSQPlus, FakeQuantWeightLSQPlus
+from .lsq import FakeQuantActLSQPlus, FakeQuantWeightLSQPlus
 
 __all__ = [
     'FakeQuantAbsMax',
@@ -456,6 +456,8 @@ class QuantizedConv2D(Layer):
         self.weight = getattr(layer, 'weight')
         self.bias = getattr(layer, 'bias')
 
+        # self._fake_quant_weight = FakeQuantWeightLSQPlus(bits=weight_bits, all_postive=False, batch_init=20)
+        # self._fake_quant_input = FakeQuantActLSQPlus(bits=activation_bits, all_postive=False, batch_init=20)
         # For FakeQuant
         self._conv2d_quant_axis = 0
         if weight_quant_layer is not None:
@@ -470,6 +472,7 @@ class QuantizedConv2D(Layer):
                 quant_on_weight=True,
                 channel_num=self.weight.shape[self._conv2d_quant_axis],
                 quant_axis=self._conv2d_quant_axis)
+
         if act_quant_layer is not None:
             self._fake_quant_input = act_quant_layer()
         else:
@@ -496,21 +499,30 @@ class QuantizedConv2D(Layer):
             weight = self._weight_preprocess(self.weight)
         quant_weight = self._fake_quant_weight(weight)
 
+        # print('========================conv2d========================')
         if self._padding_mode != 'zeros':
             quant_input = F.pad(quant_input,
                                 self._reversed_padding_repeated_twice,
                                 mode=self._padding_mode,
                                 data_format=self._data_format)
             self._padding = 0
+        # print('quant_input {}, quant_weight {}'.format(quant_input.abs().sum().numpy(), quant_weight.abs().sum().numpy()))
+        # print(self.bias, self._stride, self._padding, self._dilation,
+        #                   self._groups)
+        # print(quant_weight[0][0])
 
-        return F.conv2d(quant_input,
-                        quant_weight,
-                        bias=self.bias,
-                        padding=self._padding,
-                        stride=self._stride,
-                        dilation=self._dilation,
-                        groups=self._groups,
-                        data_format=self._data_format)
+        out = F.conv2d(quant_input,
+                       quant_weight,
+                       bias=self.bias,
+                       padding=self._padding,
+                       stride=self._stride,
+                       dilation=self._dilation,
+                       groups=self._groups,
+                       data_format=self._data_format)
+        # print(out.abs().sum().numpy())
+        # print('========================conv2d========================')
+        # print()
+        return out
 
 
 class QuantizedConv2DTranspose(Layer):
@@ -606,16 +618,19 @@ class QuantizedConv2DTranspose(Layer):
         else:
             output_padding = 0
 
-        return F.conv2d_transpose(quant_input,
-                                  quant_weight,
-                                  bias=self.bias,
-                                  padding=self._padding,
-                                  output_padding=output_padding,
-                                  stride=self._stride,
-                                  dilation=self._dilation,
-                                  groups=self._groups,
-                                  output_size=output_size,
-                                  data_format=self._data_format)
+        out = F.conv2d_transpose(quant_input,
+                                 quant_weight,
+                                 bias=self.bias,
+                                 padding=self._padding,
+                                 output_padding=output_padding,
+                                 stride=self._stride,
+                                 dilation=self._dilation,
+                                 groups=self._groups,
+                                 output_size=output_size,
+                                 data_format=self._data_format)
+
+        # print(out.abs().sum().numpy())
+        return out
 
 
 class QuantizedLinear(Layer):
@@ -654,7 +669,8 @@ class QuantizedLinear(Layer):
                 dtype=self._dtype,
                 quant_on_weight=True,
                 channel_num=self.weight.shape[self._linear_quant_axis],
-                quant_axis=self._linear_quant_axis)
+                quant_axis=self._linear_quant_axis,
+                quant_linear=True)
 
         if act_quant_layer is not None:
             self._fake_quant_input = act_quant_layer()
@@ -673,6 +689,7 @@ class QuantizedLinear(Layer):
         ) if weight_pre_layer is not None else None
 
     def forward(self, input):
+        # print('in weight ', self.weight.abs().sum().numpy())
         if self._act_preprocess is not None:
             input = self._act_preprocess(input)
         quant_input = self._fake_quant_input(input)
@@ -680,12 +697,25 @@ class QuantizedLinear(Layer):
         weight = self.weight
         if self._weight_preprocess is not None:
             weight = self._weight_preprocess(self.weight)
-        quant_weight = self._fake_quant_weight(weight)
 
+        quant_weight = self._fake_quant_weight(weight)
+        # print('========================linear========================')
+
+        # if self._padding_mode != 'zeros':
+        #     quant_input = F.pad(quant_input,
+        #                         self._reversed_padding_repeated_twice,
+        #                         mode=self._padding_mode,
+        #                         data_format=self._data_format)
+        #     self._padding = 0
+        # print('quant_input {}, quant_weight {}'.format(quant_input.abs().sum().numpy(), quant_weight.abs().sum().numpy()))
         out = F.linear(x=quant_input,
                        weight=quant_weight,
                        bias=self.bias,
                        name=self.name)
+        # print(out.abs().sum().numpy())
+        # print('========================linear========================')
+        # print()
+
         return out
 
 
@@ -935,7 +965,6 @@ def _get_fake_quant_type(quant_type, **kwargs):
         "dtype": kwargs.get("dtype", "float32"),
         "reduce_type": kwargs.get("reduce_type", None)
     }
-
     if quant_type == 'abs_max':
         call_args["quant_on_weight"] = kwargs.get("quant_on_weight", False)
     elif quant_type == 'moving_average_abs_max':
@@ -949,10 +978,22 @@ def _get_fake_quant_type(quant_type, **kwargs):
             "when you use channel_wise_abs_max strategy.")
     elif quant_type == 'lsq_weight':
         call_args["all_postive"] = kwargs.get("all_postive", False)
-        call_args["per_channel"] = kwargs.get("per_channel", False)
+        call_args["per_channel"] = False
+        call_args["channel_num"] = 1
+        call_args["quant_linear"] = kwargs.get("quant_linear", False)
+    elif quant_type == 'channel_wise_lsq_weight':
+        quant_type = 'lsq_weight'
+        call_args["all_postive"] = kwargs.get("all_postive", False)
+        call_args["per_channel"] = True
+        call_args["channel_num"] = kwargs.get("channel_num", None)
+        call_args["quant_linear"] = kwargs.get("quant_linear", False)
+        assert call_args["channel_num"] is not None, (
+            "You need to input channel_num"
+            "when you use channel_wise_abs_max strategy.")
     elif quant_type == 'lsq_act':
         call_args["all_postive"] = kwargs.get("all_postive", False)
         call_args["symmetric"] = kwargs.get("symmetric", False)
+
     fake_quant_map = {
         'abs_max': FakeQuantAbsMax,
         'moving_average_abs_max': FakeQuantMovingAverageAbsMax,
