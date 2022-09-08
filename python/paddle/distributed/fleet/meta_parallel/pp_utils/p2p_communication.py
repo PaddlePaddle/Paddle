@@ -416,14 +416,14 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
         if isinstance(tensor_recv_next, tuple):
             for d in tensor_recv_next:
                 tensors_for_all_gather.append(d)
-            else:
-                tensors_for_all_gather.append(tensor_recv_prev)
+        else:
+            tensors_for_all_gather.append(tensor_recv_prev)
     if tensor_recv_next is not None:
         if isinstance(tensor_recv_next, tuple):
             for d in tensor_recv_next:
                 tensors_for_all_gather.append(d)
-            else:
-                tensors_for_all_gather.append(tensor_recv_next)
+        else:
+            tensors_for_all_gather.append(tensor_recv_next)
 
     for tensor in tensors_for_all_gather:
         allgather_partial(tensor,
