@@ -129,6 +129,7 @@ class TestSplitsFloat32(TestFrexpAPI):
 
     def set_input(self):
         self.x_np_1 = np.random.uniform(-3, 3, [10, 12]).astype('float64')
+        self.x_np_2 = np.random.uniform(-1, 1, [4, 5, 2]).astype('float64')
 
 
 if __name__ == "__main__":
