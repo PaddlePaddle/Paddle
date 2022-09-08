@@ -60,8 +60,7 @@ class GradNodeAccumulation : public GradNodeBase {
   void ApplyReduceHooks();
 
   std::shared_ptr<GradNodeBase> Copy() const override {
-    return std::shared_ptr<GradNodeAccumulation>(
-        new GradNodeAccumulation(nullptr));
+    return std::shared_ptr<GradNodeAccumulation>(nullptr);
   }
 
   void SetFakeEmpty(bool is_fake_empty) { is_fake_empty_ = is_fake_empty; }
