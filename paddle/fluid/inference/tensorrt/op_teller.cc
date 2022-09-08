@@ -176,7 +176,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "sum",
       "shape",
       "squeeze2",
-      "unsqueeze2"};
+      "unsqueeze2",
+      "layernorm_shift_partition"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -286,7 +287,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shape",
       "squeeze2",
       "unsqueeze2",
-      "fused_token_prune"};
+      "fused_token_prune",
+      "layernorm_shift_partition"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node,
@@ -300,6 +302,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
            "/skip_quant_2/") ||
       desc.HasAttr("skip_quant"))
     return false;
+
+  // do not support Attribute with Variable(s) Type
+  if (HasUnsupportAttrVar(desc)) return false;
 
   for (auto& teller : tellers_) {
     std::unordered_set<std::string> act_op_list = {
@@ -2246,11 +2251,48 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 #endif
     }
 
+    if (op_type == "layernorm_shift_partition") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the layernorm_shift_partition does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
 
   return false;
 }
+
+bool OpTeller::HasUnsupportAttrVar(const framework::OpDesc& desc) const {
+  const std::string op_type = desc.Type();
+  auto has_attr_var = [&](const std::string& attr_name) -> bool {
+    // If Attribute is Variable(s), HasAttr() will return False
+    return !desc.HasAttr(attr_name, /*with_attr_var=*/false);
+  };
+  std::unordered_map<std::string, std::vector<std::string>> attrs_info = {
+      {"dropout", {"dropout_prob"}},
+      {"pool2d", {"ksize"}},
+      {"arg_max", {"axis"}},
+      {"reduce_mean", {"dim"}},
+      {"reduce_sum", {"dim"}},
+      {"squeeze2", {"axes"}},
+  };
+
+  bool flag = false;
+  auto iter = attrs_info.find(op_type);
+  if (iter != attrs_info.end()) {
+    for (auto& attr_name : iter->second) {
+      if (has_attr_var(attr_name)) {
+        flag = true;
+        break;
+      }
+    }
+  }
+  return flag;
+}
+
 OpTeller::OpTeller() { tellers_.emplace_back(new SimpleOpTypeSetTeller); }
 }  // namespace tensorrt
 }  // namespace inference

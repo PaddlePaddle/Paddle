@@ -23,26 +23,26 @@
 
 namespace egr {
 /**
- * GradNodeBase is base class of all grad nodes, which is what should be used by
+ * GradNodeBase is base class of all grad node, which is what should be used by
  * eager execution, we define most of backward autograd members here, and for
- * each Operator, they should hold their own forward Inputs as TensorWrapper.
+ * each Operator, they should hold their onw forward Inputs as TensorWrapper.
  *
  * The GradNodeBase will be held in autograd_meta, and it is also a member of
  * Edge, which indicates the edge of backward graph.
  *
- * TODO(yangzhanlue): GradNodeBase will also be in charge of getting the correct
- * input from GradOpDescMaker to GradNodeBase.
+ * TODO(yangzhanlue): GradNodeBase will also in charge of get the correct input
+ * from GradOpDescMaker to GradNodeBase.
  *
  * NOTE: GradNodeBase has a method named run, this method should be overrided by
  * the specific derived class, it will prepare backward inputs and double
  * backward's depends. Then, it will call C++ API of backward kernel functions
  * to finish backward computation.
  *
- * NOTE: GradNodeBase holds its own inputs and outputs
+ * NOTE: GradNodeBase holds its own inputs and Outputs
  *
- * Edge is defined to describe dependence of backward, an Edge is what links
- * two nodes, it should contain a Node and rank of this Node (this is
- * used to indicate which input of grad this edge belongs to).
+ * Edge is defined to descripe depend of backward, an Edge is what linked
+ * between two node, it should contain a Node and rank of this Node (this is
+ * used to indicate which input of grad this edge belong).
  **/
 class AutogradMeta;
 class GradNodeBase;
@@ -53,7 +53,7 @@ class Edge {
   Edge() : in_slot_id_(0), in_rank_(0), grad_node_(nullptr) {}
 
   // In real use cases we should create Edge from grad node and input rank which
-  // indicates which edge it is.
+  // indicate which edge it is.
   // Since we have slot design in operators we will have to locate an edge with
   // slot and rank.
   Edge(const std::shared_ptr<GradNodeBase>& grad_node,
@@ -74,12 +74,11 @@ class Edge {
   }
 
   void SetGradNode(const std::shared_ptr<GradNodeBase>& node) {
-    VLOG(6) << "Resetting Edge's Grad Node";
+    VLOG(6) << "Reseting Edge's Grad Node";
     grad_node_ = node;
   }
 
-  std::pair</* slot_id */ size_t, /* rank */ size_t> 
-  GetEdgeRankInfo() const {
+  std::pair<size_t, size_t> GetEdgeRankInfo() const {
     return std::make_pair(in_slot_id_, in_rank_);
   }
 
@@ -94,7 +93,7 @@ class Edge {
     in_rank_ = edge_rank.second;
   }
 
-  // Currently we use grad_node_ to identify if an edge is initialized.
+  // Currently we use grad_node_ to identify if a edge is initialized.
   bool IsInitialized() const {
     if (!grad_node_) {
       return false;
@@ -121,8 +120,8 @@ class Edge {
 
 /**
  * GradSlotMeta is used to Record Forward Tensor info to backward, since paddle
- * has lots of operators whose backward logic depends on if it has some
- * specific inputs or outputs. So, we need a meta info to record its needs.
+ * has lots of operators whose backward logic is depends on if it has some
+ * specific inputs or outputs. So, we need a meta info to record it's needs.
  **/
 class GradSlotMeta {
  public:
@@ -143,7 +142,7 @@ class GradSlotMeta {
           "You're expected to check Edge availability with HasTensorMeta()"
           "before calling GetTensorMeta() interface."));
     }
-    return *meta_;
+    return *meta_.get();
   }
 
   void SetPlace(const phi::Place& place) { place_ = place; }
@@ -174,14 +173,14 @@ class GradNodeBase {
   virtual ~GradNodeBase() { VLOG(6) << "Destruct GradNodeBase"; }
 
   /**
-   * operator() designed to contain the real backward execution logic, it should
+   * operator() designed to contian the real backward execution logic, it should
    * be overrided by derived class defined for each operator. It accepts a
    * vector of Tensor which contains grads input of current operator
    *
-   * Note: why we need backward inputs and outputs to be constructed as vector 
-   * of vector of paddle::experimental::Tensor?
-   * Since all of paddle ops are made in the form of {"Slot name ", vector<Var>},
-   * so, vector of vector is a better choice to fit this format.
+   * Note: why we need backward inputs and outputs construct as vector of vector
+   * of paddle::experimental::Tensor?
+   * Since all of paddle op composite in form of {"Slot name ", vector<Var>},
+   * so, vector of vector is better choice to fit this format.
    * **/
   virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>
@@ -227,8 +226,8 @@ class GradNodeBase {
   void SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
                       size_t slot_rank);
   /**
-   * Default setters for Grad in/out meta, this should be used for the same
-   * special Node which will not be created by user
+   * Default setters for Grad in/out meta this should be used for same special
+   * Node which will not create by user
    * **/
   void SetDefaultGradInOutMeta();
   /**
@@ -254,14 +253,14 @@ class GradNodeBase {
    * **/
   inline bool GradientHooksRegistered() { return !gradient_hooks_.empty(); }
 
-  std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>&
+  std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
   GetGradientHookFuntions() {
     VLOG(6) << "GetGradientHookFuntions ";
     return gradient_hooks_;
   }
 
   void SetGradientHookFuntions(
-      std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>&
+      std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
           hooks) {
     VLOG(6) << "SetGradientHookFuntions ";
     gradient_hooks_ = hooks;
@@ -274,7 +273,7 @@ class GradNodeBase {
                                  kSlotSmallVectorSize>& tensors);
 
   /**
-   * Handle Complex - Real Type Conversion
+   * Handle Complex - Real Type Promotion
    * **/
   void HandleComplexGradToRealGrad(
       paddle::small_vector<std::vector<paddle::experimental::Tensor>,
@@ -297,15 +296,15 @@ class GradNodeBase {
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
       bwd_out_meta_;
 
-  // bwd_in_meta_ is used to record Grad input info for backward
+  // bwd_in_meta_ used to record Grad input info for backward
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
       bwd_in_meta_;
   // Gradient Hooks
   // Customer may register a list of hooks which will be called in order during
   // backward
   // Each entry consists of one pair of
-  // <hook_id, <slot_id, out_rank, std::shared_ptr<TensorHook>>>
-  std::map</* hook id */ int64_t,
+  // <hook_id, <out_rank, std::shared_ptr<TensorHook>>>
+  std::map<int64_t,
            std::tuple<
                /* slot id */ size_t,
                /* rank */ size_t,
@@ -313,7 +312,7 @@ class GradNodeBase {
       gradient_hooks_;
   int64_t next_hook_id_{0};
 
-  // We handle complex-to-real conversion only if any complex GradIn is involved
+  // We handle complex to real conversion only if any complex GradIn is involved
   bool need_complex_to_real_ = false;
 
   bool is_tensor_wrappers_cleared_ = false;
