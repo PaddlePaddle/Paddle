@@ -58,6 +58,25 @@ class SimpleNet2(paddle.nn.Layer):
         return [out1, out2]
 
 
+class SimpleNet3(paddle.nn.Layer):
+
+    def __init__(self):
+        super(SimpleNet3, self).__init__()
+        self.linear1 = paddle.nn.Linear(10, 3)
+        self.linear2 = paddle.nn.Linear(3, 1)
+        self.hidden = BufferList([
+            paddle.randn([1]),
+            paddle.randn([1]),
+        ])
+
+    def forward(self, x):
+        self.hidden.assign([paddle.randn([1]), paddle.rand([2])])
+        s = 0
+        for l in self.hidden:
+            s += l.sum()
+        return x + s
+
+
 def run_graph(cls, inp, to_static):
     paddle.seed(2021)
     np.random.seed(2021)
@@ -74,7 +93,7 @@ class TestBufferList(unittest.TestCase):
 
     def test_bufferlist(self):
         inp = paddle.randn((10, ))
-        for cls in [SimpleNet, SimpleNet2]:
+        for cls in [SimpleNet, SimpleNet2, SimpleNet3]:
             assert_array_equal(
                 run_graph(cls, inp, True)[0].numpy(),
                 run_graph(cls, inp, False)[0].numpy(),

@@ -190,8 +190,43 @@ class ParameterList(Layer):
 
 class BufferList(Layer):
     """BufferList Container.
-        
-    The same as ParameterList.
+
+    This container acts like a Python list, but tensors it contains will be properly added to buffers.
+    BufferList is a fix-length structure. It plays a important role in @jit.to_static .    
+    Usage is the same as ParameterList except it's a fix-length structure.
+
+    Parameters:
+        parameters (iterable, optional): Iterable Tensors to be added
+
+    Examples:
+        .. code-block:: python
+
+           import paddle
+           import numpy as np
+
+           class SimpleNet(paddle.nn.Layer):
+
+               def __init__(self):
+                   super(SimpleNet, self).__init__()
+                   self.linear1 = paddle.nn.Linear(10, 3)
+                   self.linear2 = paddle.nn.Linear(3, 1)
+                   self.hidden = paddle.fluid.dygraph.BufferList([
+                       paddle.randn([1]),
+                       paddle.randn([1]),
+                   ])
+
+               def forward(self, x):
+                   out1 = self.linear1(x)
+                   out2 = self.linear2(out1) + self.hidden[0]                                                                                                                                                      
+                   self.hidden.assign([paddle.randn([1]), paddle.randn([1])])
+                   return [out1, out2]
+
+           net = SimpleNet()
+           net = paddle.jit.to_static(net)
+           for i in range(3):
+               loss = net(paddle.randn([10]))                                                                                                                                                                                  
+           print (loss)
+
     """
 
     def __init__(self, buffers=None, persistable=False):
@@ -223,19 +258,11 @@ class BufferList(Layer):
             return iter(self._buffers.values())
 
     def append(self, buf):
-        """Appends a given bufffer at the end of the list.
-
-        Parameters:
-            buffer (Buffer): buffer to append
-        """
-        assert isinstance(buf,
-                          (core.VarBase, core.eager.Tensor, framework.Variable))
-        idx = len(self._buffers)
-        setattr(self, str(idx), buf)
-        return self
+        raise RuntimeError("BufferList don't support Length changes.")
 
     def assign(self, values):
-        assert len(values) == len(self)
+        assert len(values) == len(
+            self), "BufferList don't support Length changes."
         for idx, val in enumerate(values):
             assert isinstance(
                 val, (core.VarBase, core.eager.Tensor, framework.Variable))
