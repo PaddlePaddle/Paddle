@@ -93,7 +93,7 @@ GradNodeAccumulation::operator()(
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(
                      "GradNodeAccumulation should take exactly 1 grad tensor"
-                     "However received: %d slot.",
+                     "However received: %d slots.",
                      grads.size()));
   PADDLE_ENFORCE(grads[0].size() == 1,
                  paddle::platform::errors::Fatal(
