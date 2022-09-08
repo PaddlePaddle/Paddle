@@ -91,6 +91,7 @@ class MLPLayer(nn.Layer):
         out = self.linear1(out)
         out = self.dropout(out)
         out = self.linear2(out)
+        auto.fetch(out, "out")
         self.out = out
         return out
 
@@ -107,49 +108,38 @@ def train(fetch):
                                                      epsilon=1e-08,
                                                      grad_clip=None)
 
-    inputs_spec = InputSpec([batch_size, hidden_size], 'float32', 'x')
-    labels_spec = InputSpec([batch_size], 'int64', 'label')
-
     dist_strategy = fleet.DistributedStrategy()
     dist_strategy.amp = False
     dist_strategy.pipeline = False
     dist_strategy.recompute = False
     # init parallel optimizer
     dist_strategy.semi_auto = True
-    fleet.init(is_collective=True, strategy=dist_strategy)
 
     # init engine
     engine = Engine(mlp,
-                    inputs_spec=inputs_spec,
-                    labels_spec=labels_spec,
+                    loss,
+                    optimizer,
+                    paddle.metric.Accuracy(),
                     strategy=dist_strategy)
-    engine.prepare(optimizer, loss, metrics=paddle.metric.Accuracy())
-
-    # fetch
-    if fetch:
-        fetches = {'out': mlp.out}
-    else:
-        fetches = None
 
     # train
     train_dataset = MyDataset(batch_num * batch_size)
     engine.fit(train_dataset,
                batch_size=batch_size,
-               steps_per_epoch=batch_num * batch_size,
-               fetches=fetches)
+               steps_per_epoch=batch_num * batch_size)
 
     # eval
     eval_dataset = MyDataset(batch_size)
-    engine.evaluate(eval_dataset, batch_size, fetches=fetches)
+    engine.evaluate(eval_dataset, batch_size)
 
     # predict
     test_dataset = MyDataset(batch_size)
-    engine.predict(test_dataset, batch_size, fetches=fetches)
+    engine.predict(test_dataset, batch_size)
 
     # save
     temp_dir = tempfile.TemporaryDirectory()
     model_filename = os.path.join(temp_dir.name, 'mlp_inf')
-    engine.save(model_filename, training=False, mode='predict')
+    engine.save(model_filename, training=False)
     temp_dir.cleanup()
 
 

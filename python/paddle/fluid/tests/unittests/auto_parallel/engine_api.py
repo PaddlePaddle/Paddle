@@ -47,6 +47,8 @@ class_num = 10
 
 paddle.seed(44)
 
+is_fetch = True
+
 
 class MyDataset(Dataset):
 
@@ -96,11 +98,14 @@ class MLPLayer(nn.Layer):
         out = auto.shard_op(self.linear1, PP_MESH_1)(out)
         out = self.dropout(out)
         out = self.linear2(out)
-        auto.fetch(out, "out")
+        if is_fetch:
+            auto.fetch(out, "out")
         return out
 
 
 def train(fetch):
+    global is_fetch
+    is_fetch = fetch
     mlp = MLPLayer(hidden_size=hidden_size,
                    intermediate_size=4 * hidden_size,
                    dropout_ratio=0.1,
@@ -113,25 +118,10 @@ def train(fetch):
                                       grad_clip=None)
     metric = paddle.metric.Accuracy()
 
-    # inputs_spec = InputSpec([batch_size, hidden_size], 'float32', 'x')
-    # labels_spec = InputSpec([batch_size], 'int64', 'label')
-
     strategy = fleet.DistributedStrategy()
     strategy.semi_auto = True
-    # fleet.init(is_collective=True, strategy=dist_strategy)
 
-    # init engine
-    # engine = Engine(mlp,
-    #                 inputs_spec=inputs_spec,
-    #                 labels_spec=labels_spec,
-    #                 strategy=dist_strategy)
     engine = Engine(mlp, loss, optimizer, metric, strategy)
-
-    # # fetch
-    # if fetch:
-    #     fetches = {'out': mlp.out}
-    # else:
-    #     fetches = None
 
     # train
     train_dataset = MyDataset(batch_num * batch_size)
