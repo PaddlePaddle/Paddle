@@ -181,6 +181,7 @@ class GradOpDescMakerBase {
   }
 
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }
+  const BlockDesc* GetForwardOpBlock() const { return fwd_op_.Block(); }
 
  protected:
   bool HasInput(const std::string& name) const {
