@@ -586,7 +586,7 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value,
   }
   PyObject* obj = nullptr;
   if (value.initialized() && value.is_string_tensor()) {
-    // In order to return the core.eager.StringTensor, there is need
+    // In order to return the core.eager.StringTensor, there is a need
     // to use p_string_tensor_type to create a python obj.
     obj = p_string_tensor_type->tp_alloc(p_string_tensor_type, 0);
   } else {
