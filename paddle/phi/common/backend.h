@@ -61,7 +61,7 @@ enum class Backend : uint8_t {
   NUM_BACKENDS,
 
   /**
-   * [ Why we need ALL in baisc kernel key member? ]
+   * [ Why we need ALL in basic kernel key member? ]
    *
    * For Tensor, ALL represents an illegal Backend, but for Kernel, some
    * kernels may be device-independent by nature, such as reshape; and when
