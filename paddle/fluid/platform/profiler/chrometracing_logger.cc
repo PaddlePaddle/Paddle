@@ -546,10 +546,10 @@ void ChromeTracingLogger::HandleTypeMemset(
 }
 
 void ChromeTracingLogger::StartLog() {
-  output_file_stream_ << string_format(std::string(
+  output_file_stream_ << std::string(
       R"JSON(
   { 
-    "displayTimeUnit": "ms",)JSON"));
+    "displayTimeUnit": "ms",)JSON");
 }
 
 void ChromeTracingLogger::LogMetaInfo(const std::string& version,
