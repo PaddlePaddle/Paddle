@@ -102,6 +102,8 @@ class ShardingPass(PassBase):
         for op in main_block.ops:
             if not _is_forward_op(op) or op.type in _skip_ops:
                 continue
+            # NOTE: there aren't dist_attr in the ops which reshard insert,
+            # and should be skip in sharding.
             if _is_reshard_op(op):
                 continue
             group = _inference_data_parallel_group_for_operator(
@@ -191,6 +193,9 @@ class ShardingPass(PassBase):
 
                     if self._is_parameter_in_local_shard(param_name):
                         reversed_x.append(input_name)
+
+                # NOTE: When `reversed_x` is [], check_finite_and_unscale will be replaced by `fill_constant` op.
+                # The output of check_finite_and_unscale is be set False
                 if reversed_x:
                     op.desc.set_input('X', reversed_x)
                     op.desc.set_output('Out', reversed_x)
@@ -379,6 +384,17 @@ class ShardingPass(PassBase):
                     main_block._remove_op(idx + 1, sync=False)
                 else:
                     op._set_attr("ring_id", self.outer_dp_group.id)
+
+            # NOTE:
+            # var@GRAD = sum(var@GRAD@RENAME@0, var@GRAD@RENAME@1)
+            # If the var is not in local rank and it is output of many ops, or the var is renamed in another words,
+            # the sum op should be removed.
+            if _is_param_grad_sum_op(op, main_block):
+                out_name = op.output_arg_names[0]
+                base_name = _get_base_name_from_grad_name(out_name)
+                sharding_info = self.varname_to_sharding_info[base_name]
+                if not sharding_info.is_in_local_shard(base_name):
+                    main_block._remove_op(idx, sync=False)
 
         main_block._sync_with_cpp()
 
@@ -616,6 +632,22 @@ def _is_param_grad_allreduce_op(op, block, dp_ring_ids):
     if op.type != "c_allreduce_sum":
         return False
     if op.attr('ring_id') not in dp_ring_ids:
+        return False
+
+    output_name = op.output_arg_names[0]
+    base_name = _get_base_name_from_grad_name(output_name)
+
+    if not block.has_var(base_name):
+        return False
+
+    return block.var(base_name).is_parameter
+
+
+def _is_param_grad_sum_op(op, block):
+
+    if not is_backward_op(op):
+        return False
+    if op.type != "sum":
         return False
 
     output_name = op.output_arg_names[0]
