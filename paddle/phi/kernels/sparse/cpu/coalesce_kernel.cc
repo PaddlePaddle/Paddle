@@ -25,17 +25,17 @@ template <typename T, typename IntT>
 void CoalesceCPUKernel(const CPUContext& dev_ctx,
                        const SparseCooTensor& x,
                        SparseCooTensor* out) {
-  const DenseTensor& x_indices = x.non_zero_indices();
-  const DenseTensor& x_values = x.non_zero_elements();
+  const DenseTensor& x_indices = x.indices();
+  const DenseTensor& x_values = x.values();
   DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x_indices);
   DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x_values);
 
-  const int64_t sparse_dim = x.non_zero_indices().dims()[0];
+  const int64_t sparse_dim = x.indices().dims()[0];
   std::vector<IntT> sparse_offsets(sparse_dim), x_indexs(x.nnz());
   phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
       x.dims(), sparse_dim, sparse_offsets.data());
 
-  phi::funcs::sparse::FlattenIndices(x.non_zero_indices().data<IntT>(),
+  phi::funcs::sparse::FlattenIndices(x.indices().data<IntT>(),
                                      sparse_offsets.data(),
                                      x.nnz(),
                                      sparse_dim,
@@ -45,7 +45,7 @@ void CoalesceCPUKernel(const CPUContext& dev_ctx,
 
   const T* x_values_ptr = x_values.data<T>();
   const int64_t stride =
-      x.dims().size() == sparse_dim ? 1 : x.non_zero_elements().dims()[1];
+      x.dims().size() == sparse_dim ? 1 : x.values().dims()[1];
 
   std::map<IntT, std::vector<int64_t>> indices_to_index;
   for (uint64_t i = 0; i < x_indexs.size(); i++) {
@@ -98,10 +98,9 @@ template <typename T, typename Context>
 void CoalesceKernel(const Context& dev_ctx,
                     const SparseCooTensor& x,
                     SparseCooTensor* out) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "CoalesceCPUKernel", ([&] {
-        CoalesceCPUKernel<T, data_t>(dev_ctx, x, out);
-      }));
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "CoalesceCPUKernel", ([&] {
+                                 CoalesceCPUKernel<T, data_t>(dev_ctx, x, out);
+                               }));
 }
 
 }  // namespace sparse

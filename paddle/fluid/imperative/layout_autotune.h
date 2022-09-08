@@ -53,9 +53,13 @@ class LayoutAutoTune {
     return layout_agnostic_ops_.count(op_type) != 0;
   }
 
-  DataLayout GetDesiredLayout() const { return layout_; }
+  DataLayout GetDesiredLayout() const { return desired_layout_; }
 
-  void SetDesiredLayout(const DataLayout& layout) { layout_ = layout; }
+  DataLayout GetDefaultLayout() const { return default_layout_; }
+
+  void SetDesiredLayout(const DataLayout& layout) { desired_layout_ = layout; }
+
+  void SetDefaultLayout(const DataLayout& layout) { default_layout_ = layout; }
 
  private:
   LayoutAutoTune();
@@ -69,7 +73,9 @@ class LayoutAutoTune {
   std::unordered_set<std::string> lightly_layout_sensitive_ops_{
       "instance_norm", "softmax", "transpose", "transpose2", "reshape2"};
 
-  DataLayout layout_{DataLayout::UNDEFINED};
+  DataLayout desired_layout_{DataLayout::UNDEFINED};
+
+  DataLayout default_layout_{DataLayout::UNDEFINED};
 };
 
 template <typename VarType>

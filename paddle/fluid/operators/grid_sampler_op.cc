@@ -68,12 +68,6 @@ class GridSampleOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor) Output tensor with shape [N, C, H, W] or shape [N,C, "
               "D, H ,W]");
     AddAttr<bool>(
-        "use_cudnn",
-        "(bool, default true) Only used in cudnn kernel, need install cudnn")
-        .SetDefault(true)
-        .AsExtra();
-
-    AddAttr<bool>(
         "align_corners",
         "(bool, default true) If align_corners is true, it will project"
         "-1 and 1 to the centers of the corner pixels. Otherwise, it will "

@@ -1816,10 +1816,14 @@ static void LayerNormBackward(
         constexpr int part_size = BDIMY2 * VPT;
         const dim3 blocks2((feature_size + BDIMX2 - 1) / BDIMX2, part_size, 1);
 
-        auto part_grad_gamma_ptr =
-            memory::Alloc(dev_ctx, part_size * feature_size * sizeof(U));
-        auto part_grad_beta_ptr =
-            memory::Alloc(dev_ctx, part_size * feature_size * sizeof(U));
+        auto part_grad_gamma_ptr = memory::Alloc(
+            dev_ctx.GetPlace(),
+            part_size * feature_size * sizeof(U),
+            phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+        auto part_grad_beta_ptr = memory::Alloc(
+            dev_ctx.GetPlace(),
+            part_size * feature_size * sizeof(U),
+            phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
         U *part_grad_gamma = reinterpret_cast<U *>(part_grad_gamma_ptr->ptr());
         U *part_grad_beta = reinterpret_cast<U *>(part_grad_beta_ptr->ptr());
 

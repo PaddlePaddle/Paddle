@@ -132,6 +132,11 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                               default_tensor_layout,
                               default_key.dtype(),
                               arg_type);
+      } else if (arg_type == std::type_index(typeid(const TensorArray&))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
       } else if (arg_type == std::type_index(typeid(DenseTensor*))) {
         args_def->AppendOutput(default_key.backend(),
                                default_tensor_layout,
@@ -144,6 +149,11 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                                default_key.dtype(),
                                arg_type);
       } else if (arg_type == std::type_index(typeid(SelectedRows*))) {
+        args_def->AppendOutput(default_key.backend(),
+                               default_tensor_layout,
+                               default_key.dtype(),
+                               arg_type);
+      } else if (arg_type == std::type_index(typeid(TensorArray*))) {
         args_def->AppendOutput(default_key.backend(),
                                default_tensor_layout,
                                default_key.dtype(),
@@ -205,6 +215,8 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
         args_def->AppendAttribute(AttributeType::DATA_LAYOUT);
       } else if (arg_type == std::type_index(typeid(Place))) {
         args_def->AppendAttribute(AttributeType::PLACE);
+      } else if (arg_type == std::type_index(typeid(RuntimeAttrs))) {
+        // do nothing
       } else {
         PADDLE_THROW(phi::errors::Unavailable(
             "Unsupported kernel argument type `%s`.", arg_type.name()));

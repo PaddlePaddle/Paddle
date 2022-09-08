@@ -138,6 +138,8 @@ class KernelContext {
   template <typename AttrType>
   const AttrType& AttrAt(size_t idx) const;
 
+  const RuntimeAttrs& GetRuntimeAttrs() const { return runtime_attrs_; }
+
   size_t InputsSize() const { return inputs_.size(); }
   size_t OutputsSize() const { return outputs_.size(); }
   size_t AttrsSize() const { return attrs_.size(); }
@@ -152,6 +154,8 @@ class KernelContext {
   paddle::small_vector<std::pair<int, int>, kInputSmallVectorSize> input_range_;
   paddle::small_vector<std::pair<int, int>, kOutputSmallVectorSize>
       output_range_;
+
+  RuntimeAttrs runtime_attrs_;
 };
 
 }  // namespace phi

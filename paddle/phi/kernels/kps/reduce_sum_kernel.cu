@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
-#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void SumRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
+                  const IntArray& dims,
                   bool keep_dim,
                   bool reduce_all,
                   DataType out_dtype,
@@ -30,7 +30,7 @@ void SumRawKernel(const Context& dev_ctx,
     out_dtype = out->dtype();
   }
   phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
-      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 }
 
 }  // namespace phi

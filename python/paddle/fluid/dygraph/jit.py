@@ -634,6 +634,7 @@ def _remove_save_pre_hook(hook):
     _save_pre_hooks_lock.release()
 
 
+@wrap_decorator
 def _run_save_pre_hooks(func):
 
     def wrapper(layer, path, input_spec=None, **configs):
