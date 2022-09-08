@@ -161,6 +161,10 @@ class GradOpDescMakerBase {
     return fwd_op_.GetAttrMap();
   }
 
+  const std::unordered_map<std::string, Attribute>& RuntimeAttrs() const {
+    return fwd_op_.GetRuntimeAttrMap();
+  }
+
   const Attribute& GetAttr(const std::string& name) const {
     auto& map = fwd_op_.GetAttrMap();
     auto it = map.find(name);
@@ -177,6 +181,7 @@ class GradOpDescMakerBase {
   }
 
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }
+  const BlockDesc* GetForwardOpBlock() const { return fwd_op_.Block(); }
 
  protected:
   bool HasInput(const std::string& name) const {
@@ -209,6 +214,7 @@ class SingleGradOpMaker<OpDesc> : public GradOpDescMakerBase {
     retv.emplace_back(new OpDesc());
     try {
       this->Apply(retv.front().get());
+      retv.front()->SetRuntimeAttrMap(this->RuntimeAttrs());
     } catch (platform::EnforceNotMet& exception) {
       framework::AppendErrorOpHint(retv.front().get()->Type(), &exception);
       throw std::move(exception);

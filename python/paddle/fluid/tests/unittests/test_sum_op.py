@@ -14,7 +14,9 @@
 
 from __future__ import print_function
 
+import os
 import unittest
+import tempfile
 import numpy as np
 from op_test import OpTest
 import paddle
@@ -27,6 +29,7 @@ from paddle.fluid.tests.unittests.op_test import (OpTest,
                                                   convert_uint16_to_float)
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard
+import paddle.inference as paddle_infer
 
 
 class TestSumOp(OpTest):
@@ -482,6 +485,100 @@ class TestSumOpError(unittest.TestCase):
 
 create_test_sum_fp16_class(TestSelectedRowsSumOp)
 create_test_sum_fp16_class(TestLoDTensorAndSelectedRowsOp)
+
+
+class TestReduceOPTensorAxisBase(unittest.TestCase):
+
+    def setUp(self):
+        paddle.disable_static()
+        paddle.seed(2022)
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.save_path = os.path.join(self.temp_dir.name, 'reduce_tensor_axis')
+        self.place = paddle.CUDAPlace(
+            0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+        self.keepdim = False
+        self.init_data()
+
+    def tearDwon(self):
+        self.temp_dir.cleanup()
+
+    def init_data(self):
+        self.pd_api = paddle.sum
+        self.np_api = np.sum
+        self.x = paddle.randn([10, 5, 9, 9], dtype='float64')
+        self.np_axis = np.array((1, 2), dtype='int64')
+        self.tensor_axis = paddle.to_tensor(self.np_axis, dtype='int64')
+
+    def test_dygraph(self):
+        self.x.stop_gradient = False
+        pd_out = self.pd_api(self.x, self.tensor_axis)
+        np_out = self.np_api(self.x.numpy(), tuple(self.np_axis))
+        np.testing.assert_allclose(
+            pd_out.numpy() if pd_out.size > 1 else pd_out.item(), np_out)
+        pd_out.backward()
+        self.assertEqual(self.x.gradient().shape, tuple(self.x.shape))
+
+    def test_static_and_infer(self):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        starup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, starup_prog):
+            # run static
+            x = paddle.static.data(shape=self.x.shape,
+                                   name='x',
+                                   dtype='float32')
+            if isinstance(self.tensor_axis, paddle.Tensor):
+                axis = paddle.assign(self.np_axis)
+            else:
+                axis = []
+                for i, item in enumerate(self.tensor_axis):
+                    if isinstance(item, int):
+                        axis.append(item)
+                    else:
+                        axis.append(paddle.full([1], self.np_axis[i], 'int64'))
+
+            linear = paddle.nn.Linear(x.shape[-1], 5)
+            linear_out = linear(x)
+            out = self.pd_api(linear_out, axis, keepdim=self.keepdim)
+            exe = paddle.static.Executor(self.place)
+            exe.run(starup_prog)
+            static_out = exe.run(feed={'x': self.x.numpy().astype('float32')},
+                                 fetch_list=[out])
+
+            # run infer
+            paddle.static.save_inference_model(self.save_path, [x], [out], exe)
+            config = paddle_infer.Config(self.save_path + '.pdmodel',
+                                         self.save_path + '.pdiparams')
+            if paddle.is_compiled_with_cuda():
+                config.enable_use_gpu(100, 0)
+            else:
+                config.disable_gpu()
+            predictor = paddle_infer.create_predictor(config)
+            input_names = predictor.get_input_names()
+            input_handle = predictor.get_input_handle(input_names[0])
+            fake_input = self.x.numpy().astype('float32')
+            input_handle.reshape(self.x.shape)
+            input_handle.copy_from_cpu(fake_input)
+            predictor.run()
+            output_names = predictor.get_output_names()
+            output_handle = predictor.get_output_handle(output_names[0])
+            infer_out = output_handle.copy_to_cpu()
+            np.testing.assert_allclose(static_out[0], infer_out)
+
+
+class TestSumWithTensorAxis1(TestReduceOPTensorAxisBase):
+
+    def init_data(self):
+        self.pd_api = paddle.sum
+        self.np_api = np.sum
+        self.x = paddle.randn([10, 5, 9, 9], dtype='float64')
+        self.np_axis = np.array([0, 1, 2], dtype='int64')
+        self.tensor_axis = [
+            0,
+            paddle.to_tensor([1], 'int64'),
+            paddle.to_tensor([2], 'int64')
+        ]
+
 
 if __name__ == "__main__":
     enable_static()

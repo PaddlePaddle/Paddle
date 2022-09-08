@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -21,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void ArgMinKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  int64_t axis,
+                  const Scalar& axis,
                   bool keepdims,
                   bool flatten,
                   int dtype,
@@ -30,7 +31,7 @@ void ArgMinKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void ArgMaxKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  int64_t axis,
+                  const Scalar& axis,
                   bool keepdims,
                   bool flatten,
                   int dtype,

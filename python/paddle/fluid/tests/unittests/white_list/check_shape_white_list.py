@@ -13,20 +13,8 @@
 # limitations under the License.
 
 NEED_TO_FIX_OP_LIST = [
-    'fused_elemwise_activation',
-    'bilinear_tensor_product',
-    'conv2d_transpose',
-    'depthwise_conv2d_transpose',
-    'grid_sampler',
-    'lstmp',
-    'margin_rank_loss',
-    'matmul',
-    'scatter',
-    'soft_relu',
-    'squared_l2_distance',
-    'tree_conv',
-    'cvm',
-    'cudnn_lstm',
-    'rnn',
-    'multi_dot',
+    'fused_elemwise_activation', 'bilinear_tensor_product', 'conv2d_transpose',
+    'depthwise_conv2d_transpose', 'grid_sampler', 'lstmp', 'margin_rank_loss',
+    'matmul', 'scatter', 'soft_relu', 'squared_l2_distance', 'tree_conv', 'cvm',
+    'cudnn_lstm', 'rnn', 'multi_dot', 'index_add'
 ]

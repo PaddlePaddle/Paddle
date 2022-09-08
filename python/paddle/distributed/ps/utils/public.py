@@ -208,6 +208,15 @@ def get_optimize_ops(_program, remote_sparse=[]):
     return opt_ops
 
 
+def get_datanorm_ops(_program):
+    block = _program.global_block()
+    opt_ops = []
+    for op in block.ops:
+        if op.type == 'data_norm':
+            opt_ops.append(op)
+    return opt_ops
+
+
 def get_dist_env():
     trainer_id = int(os.getenv('PADDLE_TRAINER_ID', '0'))
     trainer_endpoints = ''

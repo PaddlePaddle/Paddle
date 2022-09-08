@@ -162,9 +162,9 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
             print(out4)
             # [[2, 2, 0, 1]]
     """
-    if axis is not None and not isinstance(axis, int):
+    if axis is not None and not isinstance(axis, (int, Variable)):
         raise TypeError(
-            "The type of 'axis'  must be int or None in argmax, but received %s."
+            "The type of 'axis'  must be int or Tensor or None in argmax, but received %s."
             % (type(axis)))
 
     if dtype is None:
@@ -244,9 +244,9 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             print(out4)
             # [[1, 1, 1, 2]]
     """
-    if axis is not None and not isinstance(axis, int):
+    if axis is not None and not isinstance(axis, (int, Variable)):
         raise TypeError(
-            "The type of 'axis'  must be int or None in argmin, but received %s."
+            "The type of 'axis'  must be int or Tensor or None in argmin, but received %s."
             % (type(axis)))
 
     if dtype is None:
@@ -638,14 +638,6 @@ def where(condition, x=None, y=None, name=None):
         broadcast_x = x
         broadcast_y = y
     else:
-        if core.is_compiled_with_xpu():
-            cond_int = paddle.cast(condition, x.dtype)
-            cond_not_int = paddle.cast(logical_not(condition), x.dtype)
-            out1 = paddle.multiply(x, cond_int)
-            out2 = paddle.multiply(y, cond_not_int)
-            out = paddle.add(out1, out2)
-            return out
-
         zeros_like_x = paddle.zeros_like(x)
         zeros_like_y = paddle.zeros_like(y)
         zeros_like_condition = paddle.zeros_like(condition)

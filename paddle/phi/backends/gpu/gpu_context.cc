@@ -575,7 +575,7 @@ struct GPUContext::Impl {
         if (!blas_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
         } else {
-          phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
+          blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
         }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));

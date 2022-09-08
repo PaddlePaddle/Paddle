@@ -52,7 +52,7 @@ if(WITH_TESTING AND NOT WIN32)
   add_custom_target(
     jit_download_program
     COMMAND
-      wget -nc -q
+      wget -nc -q --no-check-certificate
       https://paddle-ci.gz.bcebos.com/dy2st/multi_program_load_with_property.tar.gz
     COMMAND tar zxf multi_program_load_with_property.tar.gz)
   set(JIT_DEPS
