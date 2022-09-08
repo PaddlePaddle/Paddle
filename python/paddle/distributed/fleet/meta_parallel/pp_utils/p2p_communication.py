@@ -327,7 +327,6 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
     if tensor_send_prev is not None:
         if isinstance(tensor_send_prev, tuple):
             for d in tensor_send_prev:
-                paddle.distributed.wait(d, use_calc_stream=True)
                 tasks.append(
                     send_partial(d,
                                  dst=0,
@@ -336,7 +335,6 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
                                  group=_hcg.send_prev_group,
                                  use_calc_stream=False))
         else:
-            paddle.distributed.wait(tensor_send_prev, use_calc_stream=True)
             tasks.append(
                 send_partial(tensor_send_prev,
                              dst=0,
@@ -367,7 +365,6 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
     if tensor_send_next is not None:
         if isinstance(tensor_send_next, tuple):
             for d in tensor_send_next:
-                paddle.distributed.wait(d, use_calc_stream=True)
                 tasks.append(
                     send_partial(d,
                                  dst=1,
@@ -376,7 +373,6 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
                                  group=_hcg.send_next_group,
                                  use_calc_stream=False))
         else:
-            paddle.distributed.wait(tensor_send_next, use_calc_stream=True)
             tasks.append(
                 send_partial(tensor_send_next,
                              dst=1,
