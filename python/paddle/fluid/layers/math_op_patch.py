@@ -147,6 +147,16 @@ def monkey_patch_variable():
         """
         return self
 
+    @static_only
+    def place(self):
+        """
+            Varaibel should not have place() interface.
+            But this interface can greatly facilitate dy2static.
+            We give a warnning here.
+        """
+        warnings.warn("Variable dont have 'place' attribute!")
+        return None
+
     def astype(self, dtype):
         """
         **Notes**:
@@ -409,6 +419,7 @@ def monkey_patch_variable():
         ('astype', astype),
         ('cpu', cpu),
         ('cuda', cuda),
+        ('place', place),
         ('append', append),
         ('pop', pop),
         ('dim', lambda x: len(x.shape)),
