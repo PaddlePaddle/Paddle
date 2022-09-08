@@ -242,9 +242,8 @@ def monkey_patch_variable():
     @static_only
     def pop(self, *args):
         """
-         **Notes**:
-            **The type variable must be LoD Tensor Array.
-        When self is lodtensorarray, calling pop is similar to Python's pop on list. 
+        The type variable must be LoD Tensor Array.
+        When self is LoDTensorArray, calling pop is similar to Python's pop on list. 
         This interface is used to simplify dygraph to static graph operations.
 
         Args:
