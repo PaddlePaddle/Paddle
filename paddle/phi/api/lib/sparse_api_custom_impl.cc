@@ -124,7 +124,7 @@ Tensor to_sparse_csr_impl(const Tensor& x) {
   auto elements_meta = phi::DenseTensorMeta(x.dtype(), {1}, x.layout());
 
   // 5. Prepare outputs
-  // create empty SparseCooTensor
+  // create empty SparseCsrTensor
   phi::DenseTensor non_zero_crows(std::make_shared<phi::Allocation>(),
                                   std::move(crows_meta));
   phi::DenseTensor non_zero_cols(std::make_shared<phi::Allocation>(),
