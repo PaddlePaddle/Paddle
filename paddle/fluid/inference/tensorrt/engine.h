@@ -770,18 +770,28 @@ class TRTEngineManager {
   }
 
   void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
-    releaseContextMemory(predictor_id);
-    std::unique_lock<std::mutex> lock(mutex_);
-    max_ctx_mem_size_ = std::max(max_ctx_mem_size_, mem_size);
+    bool size_updated{false};
+
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      if (max_ctx_mem_size_ < mem_size) {
+        max_ctx_mem_size_ = mem_size;
+        size_updated = true;
+      }
+    }
+
+    if (size_updated) {
+      releaseContextMemory(predictor_id);
+    }
   }
 
   void* getContextMemory(TensorRTEngine* trt_engine) {
     std::unique_lock<std::mutex> lock(mutex_);
     auto predictor_id = trt_engine->predictor_id_per_thread;
     if (context_memorys_.count(predictor_id) == 0) {
-      void* context_memory_{nullptr};
-      cudaMalloc(&context_memory_, max_ctx_mem_size_);
-      if (context_memory_ == nullptr) {
+      void* context_memory{nullptr};
+      cudaMalloc(&context_memory, max_ctx_mem_size_);
+      if (context_memory == nullptr) {
         PADDLE_ENFORCE_EQ(
             max_ctx_mem_size_,
             0,
@@ -789,7 +799,7 @@ class TRTEngineManager {
                 "The context memory size is non-zero, but the "
                 "memory address we applied for is NULL, we failed to set it."));
       }
-      context_memorys_[predictor_id] = context_memory_;
+      context_memorys_[predictor_id] = context_memory;
     }
     return context_memorys_[predictor_id];
   }
