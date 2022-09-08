@@ -170,12 +170,12 @@ def monkey_patch_varbase():
         else:
             base_tensor = core.VarBase
         assert isinstance(value, (np.ndarray, base_tensor, dict, str)), \
-            "Variable set_value function, arguments type only support Variable, numpy, VarBase, dict, string."
+            "Variable set_value function, argument types only support Variable, numpy, VarBase, dict, string."
 
         if isinstance(value, (dict, str)):
             assert len(self) == len(
                 value
-            ), "Variable length not match, Variable [ {} ] need tensor with length {} but load set tensor with length {}".format(
+            ), "Variable length not match, Variable [ {} ] needs tensor with length {} but loads tensor with length {}".format(
                 self.name, len(self), len(value))
             if isinstance(value, dict):
                 self.value().set_vocab(value)
@@ -183,7 +183,7 @@ def monkey_patch_varbase():
                 self.value().set_string_list(value)
         else:
             assert self.shape == list(value.shape),  \
-                "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format(
+                "Variable Shape not match, Variable [ {} ] needs tensor with shape {} but loads tensor with shape {}".format(
                     self.name, self.shape, value.shape)
 
             if isinstance(value, base_tensor):
@@ -192,12 +192,12 @@ def monkey_patch_varbase():
                 dtype = convert_np_dtype_to_dtype_(value.dtype)
 
             assert self.dtype == dtype, \
-                "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
+                "Variable dtype not match, Variable [ {} ] needs tensor with dtype {}  but loads tensor with dtype {}".format(
                     self.name, self.dtype, dtype)
 
             # NOTE(wuweilong): self could be VarBase or Tensor, the subsequent behavior are defined in different files
-            # if self is VarBase, method value() return Variable that bindded in imperative.cc, get_tensor() bindded in pybind.cc
-            # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
+            # if self is VarBase, method value() return Variable that is bound in imperative.cc, get_tensor() bound in pybind.cc
+            # if self is Tensor, method value() return self that is defined in this file, get_tensor() defined in eager_method.cc
             # this Interface behavior will be unifed in the future.
             self.value().get_tensor().set(value,
                                           framework._current_expected_place())
