@@ -20,6 +20,9 @@ import paddle
 from paddle.fluid.dygraph.dygraph_to_static.utils import FunctionNameLivenessAnalysis
 from paddle.utils import gast
 import inspect
+from numpy import append
+
+global_a = []
 
 
 class JudgeVisitor(gast.NodeVisitor):
@@ -321,9 +324,6 @@ class TestPushPopTrans(unittest.TestCase):
         print(paddle.jit.to_static(vlist_of_dict).code)
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
-
-global_a = []
-from numpy import append
 
 if __name__ == '__main__':
     unittest.main()

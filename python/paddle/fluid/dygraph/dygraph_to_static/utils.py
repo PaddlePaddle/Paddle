@@ -1047,21 +1047,22 @@ class NameScope:
         return self.w_vars
 
     def variadic_length_vars(self):
-        """ At present, we do not support global append, such as
-            
-            import numpy as np
-            a = []
-            def func():
-                a.append() # global names `a`, we will raise a warning.
-                p.append(a, 1) # global names `np`, we will raise a warning.
+        """ 
+        At present, we do not support global append, such as
+        
+        import numpy as np
+        a = []
+        def func():
+            a.append() # global names `a`, we will raise a warning.
+            p.append(a, 1) # global names `np`, we will raise a warning.
         """
         non_global_push_pop_names = []
         for var in self.push_pop_vars:
             if self._is_simple_name(var) and self.is_global_var(var):
                 warnings.warn(
-                    f"find variable `{var}` defined in global scope"
+                    f"Find variable `{var}` defined in global scope"
                     f" and call `{var}.append() or {var}.pop()`"
-                    f" ,which will be ignored and never be transfered into"
+                    f", which will be ignored and never be transfered into"
                     f" tensor array.")
             else:
                 non_global_push_pop_names.append(var)
@@ -1077,10 +1078,11 @@ class NameScope:
         return True
 
     def is_global_var(self, name):
-        """ Return whether the name is a var created in global scope.
-            Search from bottom to top. If it is not created or modified, 
-            it means global vars; otherwise, it means local vars.
-            Only valid after FunctionNameLivenessAnalysis visitor.
+        """ 
+        Return whether the name is a var created in global scope.
+        Search from bottom to top. If it is not created or modified, 
+        it means global vars; otherwise, it means local vars.
+        Only valid after FunctionNameLivenessAnalysis visitor.
         """
         assert self._is_simple_name(
             name), "is_global_var accept a simple name, but get `{name}`."
