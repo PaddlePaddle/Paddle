@@ -220,7 +220,6 @@ class FakeQuantWeightLSQPlus(Layer):
         self.name = name
         self.quant_axis = 1 if quant_linear else 0
         self.collect_axis = 0 if quant_linear else 1
-        print(self.per_channel)
         if self.all_positive:
             # unsigned weight
             self.Qn = 0

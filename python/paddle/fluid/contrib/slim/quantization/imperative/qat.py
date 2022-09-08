@@ -324,7 +324,7 @@ class ImperativeQuantizeInputs(object):
 
         quantize_type = {
             'abs_max', 'moving_average_abs_max', 'channel_wise_abs_max',
-            'lsq_weight'
+            'lsq_weight', 'channel_wise_lsq_weight'
         }
         act_quantize_type = {'moving_average_abs_max', 'lsq_act'}
         assert weight_quantize_type != 'moving_average_abs_max' \
