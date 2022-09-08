@@ -328,7 +328,10 @@ class AMPState(object):
                             grad_op)
                         fwd_cast_name = self._var_name_dict[fwd_op_id][
                             out_var_name_prefix]
-                        cast_name = fwd_cast_name + "@GRAD"
+                        suffix = ""
+                        if "@RENAME" in out_var_name:
+                            suffix = out_var_name[out_var_name.find("@RENAME"):]
+                        cast_name = fwd_cast_name + "@GRAD" + suffix
                         cast_var = self._block.vars.get(cast_name)
                         if cast_var is None or cast_var.dtype != dst_dtype:
                             grad_op.desc._rename_output(out_var_name, cast_name)

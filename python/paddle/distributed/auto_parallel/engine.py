@@ -161,9 +161,11 @@ class Engine:
             self._dygraph_mode = True
             self._logger.info("Building model with 'to_static' method.")
 
+            inputs_spec = self.inputs_spec
+            labels_spec = self.labels_spec if self.labels_spec else []
             self.program_helper = ProgramHelper(self.model, self._loss,
-                                                self._metrics, self.inputs_spec,
-                                                self.labels_spec)
+                                                self._metrics, inputs_spec,
+                                                labels_spec)
             # build forward main program
             self.program_helper.build_program(mode)
 

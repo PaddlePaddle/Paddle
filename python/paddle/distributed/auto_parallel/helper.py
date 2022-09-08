@@ -26,6 +26,7 @@ from paddle.fluid.executor import global_scope
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 
 from .utils import to_list
+from .converter import Converter
 
 
 class ProxyLayer(Layer):
@@ -92,13 +93,14 @@ class ProxyLayer(Layer):
         # step 4. calculate metrics if needed
         self._metric_vars[mode] = self.call_metrics(new_inputs)
 
-    def _predict(self, inputs):
+    def _predict(self, inputs, labels):
         """
         Predict process of inner_layer with forward logic.
         """
         # step 1. save feed variables of Program
         mode = 'predict'
         self._input_vars[mode] = inputs
+        self._label_vars[mode] = labels
 
         # step 2. call inner_layer.forward
         self._output_vars[mode] = self.inner_layer(*inputs)
@@ -229,8 +231,7 @@ class ProgramHelper(object):
             return
 
         self._logger.info("start to build program for mode = %s." % mode)
-        input_spec = [self.inputs_spec, self.labels_spec
-                      ] if mode != 'predict' else [self.inputs_spec]
+        input_spec = [self.inputs_spec, self.labels_spec]
         static_func = to_static(self.static_func(), input_spec=input_spec)
 
         func_name = '_' + mode
@@ -322,7 +323,6 @@ class ProgramHelper(object):
             }
             # slice param_value with dist_attr
             # share sliced_param_value with param_tensor in global_scope
-            from .converter import Converter
             param_tensor = global_scope().var(param.name).get_tensor()
             sliced_param = Converter.slice_with_dist_attr(
                 param.numpy(), dist_attr)
@@ -340,8 +340,10 @@ class ProgramHelper(object):
     def startup_program(self):
         try:
             return self.proxy_layer.startup_program
-        except:
-            return self.concrete_program.startup_program
+        except Exception as err:
+            if isinstance(err, AssertionError):
+                return self.concrete_program.startup_program
+            raise err
 
     @property
     def input_vars(self):
