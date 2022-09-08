@@ -35,6 +35,16 @@
   outputs :
     out : Out
 
+- api : bicubic_interp (bicubic_interp_v2)
+  backward : bicubic_interp_grad (bicubic_interp_v2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : bilinear_interp (bilinear_interp_v2)
+  backward : bilinear_interp_grad (bilinear_interp_v2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - api : cholesky
   inputs :
     x : X
@@ -105,6 +115,11 @@
   outputs :
     out : Out
 
+- api : data_norm
+  backward : data_norm_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - api : depthwise_conv2d
   backward : depthwise_conv2d_grad
   extra :
@@ -154,6 +169,16 @@
   outputs :
     out : Out
 
+- api : dropout
+  backward : dropout_grad
+  extra :
+    attrs : [bool fix_seed = false, int seed = 0]
+
+- api : dropout_nd
+  backward : dropout_nd_grad
+  extra :
+    attrs : [bool fix_seed = false, int seed = 0]
+
 - api : erf
   inputs :
     x : X
@@ -166,10 +191,47 @@
   outputs :
     out : Out
 
+- api : fft_c2c
+  inputs: {x: X}
+  outputs: {out: Out}
+
+- api : fft_c2r
+  inputs: {x: X}
+  outputs: {out: Out}
+
+- api : fft_r2c
+  inputs: {x: X}
+  outputs: {out: Out}
+
+- api : frobenius_norm
+  backward : frobenius_norm_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : gelu
+  backward : gelu_grad
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_cudnn = false]
+
+- api : grid_sampler
+  backward : grid_sampler_grad
+  extra :
+    attrs : [bool use_cudnn = true]
+
+- api : gru
+  backward : gru_grad
+  extra :
+    attrs : [bool is_test = false]
+
 - api : inplace_abn
   backward : inplace_abn_grad
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
+
+- api : layer_norm
+  backward : layer_norm_grad
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - api : lgamma
   inputs :
@@ -177,11 +239,53 @@
   outputs :
     out : Out
 
+- api : linear_interp (linear_interp_v2)
+  backward : linear_interp_grad (linear_interp_v2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : log_softmax
+  backward : log_softmax_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : lrn
+  backward : lrn_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool is_test = false]
+
+- api : matmul (matmul_v2)
+  backward : matmul_grad (matmul_v2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, 'int[] fused_reshape_Out = {}', 'int[] fused_transpose_Out = {}',
+             str mkldnn_data_type = "float32", 'int[] fused_reshape_X = {}', 'int[] fused_reshape_Y = {}',
+             'int[] fused_transpose_X = {}', 'int[] fused_transpose_Y = {}',]
+
 - api : mv
   inputs :
     {x : X, vec : Vec}
   outputs :
     out : Out
+
+- api : nearest_interp (nearest_interp_v2)
+  backward : nearest_interp_grad (nearest_interp_v2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : pad2d
+  backward : pad2d_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : pad3d
+  backward : pad3d_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : partial_sum
+  backward : partial_sum_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - api : poisson
   inputs :
@@ -189,11 +293,101 @@
   outputs :
     out : Out
 
+- api : reduce_all
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_amax
+  backward : reduce_amax_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_amin
+  backward : reduce_amin_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_any
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_max
+  backward : reduce_max_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_mean
+  backward : reduce_mean_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_min
+  backward : reduce_min_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_prod
+  backward : reduce_prod_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : reduce_sum
+  backward : reduce_sum_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : renorm
+  backward : renorm_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- api : rnn
+  backward : rnn_grad
+  extra :
+    attrs : [bool is_test = false]
+
+- api : seed
+  extra :
+    attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
+
+- api : shape
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- api : shuffle_channel
+  backward : shuffle_channel_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- api : slice
+  backward : slice_grad
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- api : softmax
+  backward : softmax_grad
+  extra :
+    attrs : [bool use_cudnn = false, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+- api : prelu
+  backward : prelu_grad
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
 - api : solve
   inputs :
     {x : X, y : Y}
   outputs :
     out : Out
+
+- api : squeeze (squeeze2)
+  backward : squeeze_grad (squeeze2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- api : stack
+  backward : stack_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - api : sync_batch_norm
   backward : sync_batch_norm_grad
@@ -206,20 +400,13 @@
   outputs :
     out : Out
 
+- api : trilinear_interp (trilinear_interp_v2)
+  backward : trilinear_interp_grad (trilinear_interp_v2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - api : trunc
   inputs :
     x : X
   outputs :
     out : Out
-
-- api: fft_c2c
-  inputs: {x: X}
-  outputs: {out: Out}
-
-- api: fft_c2r
-  inputs: {x: X}
-  outputs: {out: Out}
-
-- api: fft_r2c
-  inputs: {x: X}
-  outputs: {out: Out}

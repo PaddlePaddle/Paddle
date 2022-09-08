@@ -182,11 +182,12 @@ class TestMemcpyOPError(unittest.TestCase):
                                                   "value": 1.0,
                                                   "place_type": 1
                                               })
-        main_program.global_block().append_op(type='memcpy',
-                                              inputs={'X': selected_row_var},
-                                              outputs={'Out': pinned_var},
-                                              attrs={'dst_place_type': 2})
-        with self.assertRaises(NotImplementedError):
+        with self.assertRaises(RuntimeError):
+            main_program.global_block().append_op(
+                type='memcpy',
+                inputs={'X': selected_row_var},
+                outputs={'Out': pinned_var},
+                attrs={'dst_place_type': 2})
             place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
             selected_row_var_, pinned_ = exe.run(
