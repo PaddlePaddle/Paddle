@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include <unordered_set>
+#include <unordered_map>
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -26,7 +26,6 @@
 #include "paddle/phi/kernels/scale_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/trunc_kernel.h"
-
 namespace phi {
 namespace sparse {
 
@@ -212,25 +211,26 @@ void TransposeCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         const std::vector<int>& dims,
                         SparseCooTensor* out) {
-  EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
-  const DenseTensor& x_indices = x.indices();
-  const DenseTensor& x_values = x.non_zero_elements();
-  DenseTensor* out_indices = out->mutable_indices();
-  DenseTensor* out_values = out->mutable_non_zero_elements();
-
-  const int64_t* x_indices_data = x_indices.data<int64_t>();
-  int64_t* out_indices_data = out_indices->data<int64_t>();
+  PADDLE_ENFORCE_EQ(x.sparse_dim(),
+                    dims.size(),
+                    phi::errors::InvalidArgument(
+                        "size of dims must be equal than the x.sparse_dim()"));
+  // create out sparse tensor
   int64_t x_nnz = x.nnz();
+  DDim out_dims = x.dims().transpose(dims);
+  DenseTensor out_indices = EmptyLike<int64_t, Context>(dev_ctx, x.indices());
+  DenseTensor out_values(x.values());
+  out->SetMember(out_indices, out_values, out_dims, x.coalesced());
+
+  // compute values of indices
+  const DenseTensor& x_indices = x.indices();
+  const auto* x_indices_data = x_indices.data<int64_t>();
+  auto* out_indices_data = out_indices.data<int64_t>();
   for (unsigned int i = 0; i < dims.size(); ++i) {
     for (int64_t j = 0; j < x_nnz; ++j) {
       out_indices_data[j + i * x_nnz] = x_indices_data[j + dims[i] * x_nnz];
     }
   }
-
-  DDim out_dims(x.dims());
-  out_dims.transpose(dims);
-  phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, out_values);
-  out->Resize(out_dims, x.sparse_dim(), x_nnz);
 }
 
 template <typename T, typename Context>
@@ -238,53 +238,74 @@ void TransposeCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
                         const std::vector<int>& dims,
                         SparseCsrTensor* out) {
+  PADDLE_ENFORCE_LE(
+      2,
+      dims.size(),
+      phi::errors::InvalidArgument("size of dims must be equal to 2 or 3"));
+  PADDLE_ENFORCE_GE(
+      3,
+      dims.size(),
+      phi::errors::InvalidArgument("size of dims must be equal to 2 or 3"));
   unsigned int n_dim = dims.size();
-  DDim out_dims(x.dims());
-  EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
-  out->Resize(out_dims, x.nnz());
+  // create out sparse tensor
+  DDim out_dims = x.dims().transpose(dims);
+  DenseTensor out_crows;
+  if (n_dim == 2) {
+    out_crows = Empty<int64_t, Context>(dev_ctx, {out_dims[0] + 1});
+  } else {
+    out_crows =
+        Empty<int64_t, Context>(dev_ctx, {out_dims[0] * (out_dims[1] + 1)});
+  }
+  DenseTensor out_cols = EmptyLike<int64_t, Context>(dev_ctx, x.cols());
+  DenseTensor out_values = EmptyLike<T, Context>(dev_ctx, x.values());
+  out->SetMember(out_crows, out_cols, out_values, out_dims);
+
   const DenseTensor& x_crows = x.crows();
   const DenseTensor& x_cols = x.cols();
   const DenseTensor& x_values = x.non_zero_elements();
-  DenseTensor* out_crows = out->mutable_crows();
-  DenseTensor* out_cols = out->mutable_cols();
-  DenseTensor* out_values = out->mutable_non_zero_elements();
 
   // return a copy of x
   if (dims[0] == 0 && dims[1] == 1 && (n_dim == 2 || dims[2] == 2)) {
-    *out_crows = x_crows;
-    *out_cols = x_cols;
-    phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, out_values);
+    phi::Copy(dev_ctx, x_crows, dev_ctx.GetPlace(), false, &out_crows);
+    phi::Copy(dev_ctx, x_cols, dev_ctx.GetPlace(), false, &out_cols);
+    phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, &out_values);
     return;
   }
   // transpose by two stages
   if (dims[0] == 1 && dims[1] == 2) {  // dims == {1, 2, 0}
-    SparseCsrTensor* temp;
-    TransposeCsrKernel<T, Context>(dev_ctx, x, {1, 0, 2}, temp);
-    TransposeCsrKernel<T, Context>(dev_ctx, *temp, {0, 2, 1}, out);
-    //  SparseCsrTensor(const DenseTensor& non_zero_crows,
-    //                  const DenseTensor& non_zero_cols,
-    //                  const DenseTensor& non_zero_elements,
-    //                  const DDim& dims);
-    //  DenseTensor temp_crows;
-    //  DenseTensor temp_cols;
-    //  DenseTensor temp_elements;
+    PADDLE_ENFORCE_EQ(
+        dims[2],
+        0,
+        phi::errors::InvalidArgument("Values of dims must avoid repeating."));
+    SparseCsrTensor temp;
+    TransposeCsrKernel<T, Context>(dev_ctx, x, {1, 0, 2}, &temp);
+    TransposeCsrKernel<T, Context>(dev_ctx, temp, {0, 2, 1}, out);
     return;
   } else if (dims[0] == 2 && dims[1] == 0) {  // dims == {2, 0, 1}
-    SparseCsrTensor* temp;
-    TransposeCsrKernel<T, Context>(dev_ctx, x, {0, 2, 1}, temp);
-    TransposeCsrKernel<T, Context>(dev_ctx, *temp, {1, 0, 2}, out);
+    PADDLE_ENFORCE_EQ(
+        dims[2],
+        1,
+        phi::errors::InvalidArgument("Values of dims must avoid repeating."));
+    SparseCsrTensor temp;
+    TransposeCsrKernel<T, Context>(dev_ctx, x, {0, 2, 1}, &temp);
+    TransposeCsrKernel<T, Context>(dev_ctx, temp, {1, 0, 2}, out);
     return;
   } else if (dims[0] == 2 && dims[1] == 1) {  // dims == {2, 1, 0}
-    SparseCsrTensor* temp;
-    TransposeCsrKernel<T, Context>(dev_ctx, x, {1, 0, 2}, temp);
-    TransposeCsrKernel<T, Context>(dev_ctx, *temp, {2, 0, 1}, out);
+    PADDLE_ENFORCE_EQ(
+        dims[2],
+        0,
+        phi::errors::InvalidArgument("Values of dims must avoid repeating."));
+    SparseCsrTensor temp;
+    TransposeCsrKernel<T, Context>(dev_ctx, x, {1, 0, 2}, &temp);
+    TransposeCsrKernel<T, Context>(dev_ctx, temp, {2, 0, 1}, out);
     return;
   }
-  int* out_crows_data = out_crows->data<int>();
-  int* out_cols_data = out_cols->data<int>();
-  T* out_values_data = out_values->data<T>();
-  const int* x_crows_data = x_crows.data<int>();
-  const int* x_cols_data = x_cols.data<int>();
+
+  int64_t* out_crows_data = out_crows.data<int64_t>();
+  int64_t* out_cols_data = out_cols.data<int64_t>();
+  T* out_values_data = out_values.data<T>();
+  const int64_t* x_crows_data = x_crows.data<int64_t>();
+  const int64_t* x_cols_data = x_cols.data<int64_t>();
   const T* x_values_data = x_values.data<T>();
 
   if (n_dim == 2) {  // dims == {1, 0}
@@ -292,86 +313,97 @@ void TransposeCsrKernel(const Context& dev_ctx,
     for (int i = 0; i < out_dims[0]; ++i) {
       out_crows_data[i] = 0;
     }
-    out_crows_data[out_dims[0]] = x.nnz();
     for (int i = 0; i < x.nnz(); ++i) {
       int j = x_cols_data[i];
       out_crows_data[j + 1]++;
     }
+    out_crows_data[out_dims[0]] = x.nnz();
     for (int i = 1; i < out_dims[0]; ++i) {
       out_crows_data[i] += out_crows_data[i - 1];
     }
     // compute out_cols_data and out_values_data by out_crows_data and x
-    std::unordered_set<int> cols_ptr;
+    std::unordered_map<int64_t, int> cols_offset;
     for (int i = 0; i < x.dims()[0]; ++i) {
-      int start = x_crows_data[i];
-      int end = x_crows_data[i + 1];
-      for (int j = start; j < end; ++j) {
-        int jj = x_cols_data[j];
-        int jjj = out_crows_data[jj];
-        int jjj_ptr = jjj + cols_ptr.count(jjj);
-        out_cols_data[jjj_ptr] = i;
-        out_values_data[jjj_ptr] = x_values_data[j];
-        cols_ptr.insert(jjj);
+      int64_t start = x_crows_data[i];
+      int64_t end = x_crows_data[i + 1];
+      for (int64_t j = start; j < end; ++j) {
+        int64_t x_cols_j = x_cols_data[j];
+        int64_t jjj = out_crows_data[x_cols_j];
+        if (cols_offset.count(jjj)) {
+          cols_offset[jjj]++;
+        } else {
+          cols_offset[jjj] = 0;
+        }
+        int64_t jjj_offset = jjj + cols_offset[jjj];
+        out_cols_data[jjj_offset] = i;
+        out_values_data[jjj_offset] = x_values_data[j];
       }
     }
   } else {  // n_dim == 3
+    int out_n_rows = out_dims[1];
+    int x_n_rows = x.dims()[1];
     for (int k = 0; k < out_dims[0]; ++k) {
       if (dims[0] == 0) {  // dims == {0, 2, 1}
-        int out_n_rows = out_dims[1];
         // compute out_crows_data by x_cols_data
         for (int i = 0; i < out_n_rows; ++i) {
           out_crows_data[i] = 0;
         }
-        out_crows_data[out_n_rows] = x_crows_data[x.dims()[1]];
-        for (int i = 0; i < out_crows_data[out_n_rows]; ++i) {
+        for (int i = 0; i < x_crows_data[x_n_rows]; ++i) {
           int j = x_cols_data[i];
           out_crows_data[j + 1]++;
         }
+        out_crows_data[out_n_rows] = x_crows_data[x_n_rows];
         for (int i = 1; i < out_n_rows; ++i) {
           out_crows_data[i] += out_crows_data[i - 1];
         }
         // compute out_cols_data and out_values_data by out_crows_data and x
-        std::unordered_set<int> cols_ptr;
-        for (int i = 0; i < x.dims()[1]; ++i) {
-          int start = x_crows_data[i];
-          int end = x_crows_data[i + 1];
-          for (int j = start; j < end; ++j) {
-            int jj = x_cols_data[j];
-            int jjj = out_crows_data[jj];
-            int jjj_ptr = jjj + cols_ptr.count(jjj);
-            out_cols_data[jjj_ptr] = i;
-            out_values_data[jjj_ptr] = x_values_data[j];
-            cols_ptr.insert(jjj);
+        std::unordered_map<int64_t, int> cols_offset;
+        for (int i = 0; i < x_n_rows; ++i) {
+          int64_t start = x_crows_data[i];
+          int64_t end = x_crows_data[i + 1];
+          for (int64_t j = start; j < end; ++j) {
+            int64_t x_cols_j = x_cols_data[j];
+            int64_t jjj = out_crows_data[x_cols_j];
+            if (cols_offset.count(jjj)) {
+              cols_offset[jjj]++;
+            } else {
+              cols_offset[jjj] = 0;
+            }
+            int64_t jjj_offset = jjj + cols_offset[jjj];
+            out_cols_data[jjj_offset] = i;
+            out_values_data[jjj_offset] = x_values_data[j];
           }
         }
         // x offset
-        x_crows_data += x.dims()[1] + 1;
-        x_cols_data += x_crows_data[x.dims()[1]];
-        x_values_data += x_crows_data[x.dims()[1]];
+        x_cols_data += x_crows_data[x_n_rows];
+        x_values_data += x_crows_data[x_n_rows];
+        x_crows_data += x_n_rows + 1;
       } else if (dims[0] == 1 && dims[1] == 0) {  // dims == {1, 0, 2}
-        int out_n_rows = out_dims[1];
+        for (int i = 0; i < out_n_rows; ++i) {
+          out_crows_data[i] = 0;
+        }
         int x_cols_offset = 0;
+        int out_cols_index = 0;
         for (int i = 0; i < x.dims()[0]; ++i) {
-          int x_crows_index = i * (x.dims()[1] + 1);
-          int start = x_crows_data[x_crows_index];
-          int end = x_crows_data[x_crows_index + 1];
+          int x_crows_index = i * (x_n_rows + 1);
+          int start = x_crows_data[x_crows_index + k];
+          int end = x_crows_data[x_crows_index + 1 + k];
           out_crows_data[i + 1] = end - start;
           for (int j = start; j < end; ++j) {
-            out_cols_data[j - start] = x_cols_data[x_cols_offset + j];
-            out_values_data[j - start] = x_values_data[x_cols_offset + j];
+            out_cols_data[out_cols_index] = x_cols_data[x_cols_offset + j];
+            out_values_data[out_cols_index] = x_values_data[x_cols_offset + j];
+            out_cols_index++;
           }
-          x_cols_offset += x_crows_data[x_crows_index + x.dims()[1]];
+          x_cols_offset += x_crows_data[x_crows_index + x_n_rows];
         }
         for (int i = 1; i <= out_n_rows; ++i) {
           out_crows_data[i] += out_crows_data[i - 1];
         }
-        // x offset
-        x_crows_data += 1;
       }
       // out offset
-      out_crows_data += out_dims[1] + 1;
-      out_cols_data += x_crows_data[out_dims[1]];
-      out_values_data += x_crows_data[out_dims[1]];
+      out_cols_data += out_crows_data[out_n_rows];
+      out_values_data += out_crows_data[out_n_rows];
+      out_crows_data += out_n_rows + 1;
     }
   }
 }

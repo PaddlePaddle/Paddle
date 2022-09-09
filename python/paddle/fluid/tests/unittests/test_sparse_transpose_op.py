@@ -16,16 +16,16 @@ import paddle
 import numpy as np
 import unittest
 
-paddle.set_default_dtype('float64')
-
 
 class TestTranspose(unittest.TestCase):
     # x: sparse, out: sparse
     def check_result(self, x_shape, dims, format):
+        print(x_shape, dims, format)
         if len(x_shape) == 3:
-            mask = paddle.randint(0, 2, [x_shape[-2], x_shape[-1]])
+            mask = paddle.randint(0, 2,
+                                  [x_shape[-2], x_shape[-1]]).astype("float32")
         else:
-            mask = paddle.randint(0, 2, x_shape)
+            mask = paddle.randint(0, 2, x_shape).astype("float32")
         origin_x = paddle.rand(x_shape) * mask
 
         dense_x = origin_x.detach()
@@ -38,7 +38,7 @@ class TestTranspose(unittest.TestCase):
             sp_x = origin_x.detach().to_sparse_csr()
         sp_x.stop_gradient = False
         sp_out = paddle.incubate.sparse.transpose(sp_x, dims)
-        np.testing.assert_allclose(sp_out.numpy(),
+        np.testing.assert_allclose(sp_out.to_dense().numpy(),
                                    dense_out.numpy(),
                                    rtol=1e-05)
 
@@ -59,19 +59,20 @@ class TestTranspose(unittest.TestCase):
         self.check_result([16, 12, 3], [0, 1, 2], 'csr')
         self.check_result([16, 12, 3], [0, 2, 1], 'coo')
         self.check_result([16, 12, 3], [0, 2, 1], 'csr')
-        self.check_result([16, 12, 3], [2, 1, 0], 'coo')
-        self.check_result([16, 12, 3], [2, 1, 0], 'csr')
-        self.check_result([16, 12, 3], [2, 0, 1], 'coo')
-        self.check_result([16, 12, 3], [2, 0, 1], 'csr')
-        self.check_result([16, 12, 3], [1, 2, 0], 'coo')
-        self.check_result([16, 12, 3], [1, 2, 0], 'csr')
         self.check_result([16, 12, 3], [1, 0, 2], 'coo')
         self.check_result([16, 12, 3], [1, 0, 2], 'csr')
+        self.check_result([16, 12, 3], [2, 0, 1], 'coo')
+        self.check_result([16, 12, 3], [2, 0, 1], 'csr')
+        self.check_result([16, 12, 3], [2, 1, 0], 'coo')
+        self.check_result([16, 12, 3], [2, 1, 0], 'csr')
+        self.check_result([16, 12, 3], [1, 2, 0], 'coo')
+        self.check_result([16, 12, 3], [1, 2, 0], 'csr')
 
     def test_transpose_nd(self):
         self.check_result([8, 16, 12, 4, 2, 12], [5, 3, 4, 1, 0, 2], 'coo')
-        self.check_result([i + 2 for i in range(10)],
-                          [(i + 2) % 10 for i in range(10)], 'coo')
+        # Randint now only supports access to dimension 0 to 9.
+        self.check_result([i + 2 for i in range(9)],
+                          [(i + 2) % 9 for i in range(9)], 'coo')
 
 
 if __name__ == "__main__":
