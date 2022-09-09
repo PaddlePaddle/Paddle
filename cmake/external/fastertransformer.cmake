@@ -80,3 +80,6 @@ set_property(
   TARGET fastertransformer_trt_fused_mha
   PROPERTY IMPORTED_LOCATION ${FASTER_TRANSFORMER_TRT_FUSED_MHA_LIBRARIES})
 add_dependencies(fastertransformer_trt_fused_mha extern_fastertransformer)
+set(WITH_FASTERTRANSFORMER_MHA
+    ON
+    CACHE STRING "Enable fastertransformer mha." FORCE)

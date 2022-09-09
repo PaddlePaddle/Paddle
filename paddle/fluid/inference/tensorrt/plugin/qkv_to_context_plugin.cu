@@ -833,7 +833,7 @@ int QkvToContextPluginDynamic::enqueue(
     } else {
       // use fastertransformer_window_mha
 #ifdef FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
-      VLOG(1) << "use faster transformer trt fused multihead matmul kernel";
+      VLOG(3) << "use faster transformer trt fused multihead matmul kernel";
       auto *device_ctx = static_cast<phi::GPUContext *>(
           platform::DeviceContextPool::Instance().Get(
               platform::CUDAPlace(device_id)));
@@ -861,14 +861,12 @@ int QkvToContextPluginDynamic::enqueue(
 
       const half *input1_data =
           static_cast<const half *>(inputs[1]);  // relative pos
-      VLOG(1) << "invokeTransformMask(temp_qk_bias_data,input1_data ";
       fastertransformer::invokeTransformMask(
           temp_qk_bias_data, input1_data, head_number_, seq_len, stream);
 
       const half *input2_data = nullptr;
       half *temp_qk_bias_mask_data = nullptr;
       if (has_biasqk_mask_) {
-        VLOG(1) << "invokeTransformMask(temp_qk_bias_data,input2_data";
         input2_data = static_cast<const half *>(inputs[2]);  // mask
         temp_qk_bias_mask_tensor.Resize({window_number_, S * S / 64, 64});
         temp_qk_bias_mask_data = reinterpret_cast<half *>(

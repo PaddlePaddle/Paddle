@@ -33,6 +33,18 @@ list(
   preln_residual_bias_plugin.cu
   fused_token_prune_op_plugin.cu)
 
+list(
+  APPEND
+  TRT_DEPS
+  enforce
+  tensorrt_engine
+  prelu
+  tensor
+  bert_encoder_functor)
+if(WITH_FASTERTRANSFORMER_MHA)
+  list(APPEND TRT_DEPS fastertransformer_trt_fused_mha)
+endif()
+
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND TRT_FILES spmm_plugin.cu)
 endif()
@@ -40,7 +52,7 @@ endif()
 nv_library(
   tensorrt_plugin
   SRCS ${TRT_FILES}
-  DEPS enforce tensorrt_engine prelu tensor bert_encoder_functor fastertransformer_trt_fused_mha)
+  DEPS ${TRT_DEPS})
 
 nv_test(
   test_split_plugin
