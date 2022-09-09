@@ -16,9 +16,6 @@ import sys
 import warnings
 try:
     import paddleaudio
-    from paddleaudio.backends import get_audio_backend
-    from paddleaudio.backends import list_audio_backends
-    from paddleaudio.backends import set_audio_backend
 except ImportError:
     package = "paddleaudio"
     warn_msg = ("Failed importing {}. so wave_banckend supportted only"
