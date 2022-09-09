@@ -258,7 +258,30 @@ void TransposeCsrKernel(const Context& dev_ctx,
     phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, out_values);
     return;
   }
-
+  // transpose by two stages
+  if (dims[0] == 1 && dims[1] == 2) {  // dims == {1, 2, 0}
+    SparseCsrTensor* temp;
+    TransposeCsrKernel<T>(dev_ctx, x, {1, 0, 2}, temp);
+    TransposeCsrKernel<T>(dev_ctx, temp, {0, 2, 1}, out);
+    //  SparseCsrTensor(const DenseTensor& non_zero_crows,
+    //                  const DenseTensor& non_zero_cols,
+    //                  const DenseTensor& non_zero_elements,
+    //                  const DDim& dims);
+    //  DenseTensor temp_crows;
+    //  DenseTensor temp_cols;
+    //  DenseTensor temp_elements;
+    return;
+  } else if (dims[0] == 2 && dims[1] == 0) {  // dims == {2, 0, 1}
+    SparseCsrTensor* temp;
+    TransposeCsrKernel<T>(dev_ctx, x, {0, 2, 1}, temp);
+    TransposeCsrKernel<T>(dev_ctx, temp, {1, 0, 2}, out);
+    return;
+  } else if (dims[0] == 2 && dims[1] == 1) {  // dims == {2, 1, 0}
+    SparseCsrTensor* temp;
+    TransposeCsrKernel<T>(dev_ctx, x, {1, 0, 2}, temp);
+    TransposeCsrKernel<T>(dev_ctx, temp, {2, 0, 1}, out);
+    return;
+  }
   int* out_crows_data = out_crows->data<int>();
   int* out_cols_data = out_cols->data<int>();
   T* out_values_data = out_values->data<T>();
@@ -327,7 +350,7 @@ void TransposeCsrKernel(const Context& dev_ctx,
         x_crows_data += x.dims()[1] + 1;
         x_cols_data += x_crows_data[x.dims()[1]];
         x_values_data += x_crows_data[x.dims()[1]];
-      } else if (dims[0] == 1 && dims[1] == 0) {
+      } else if (dims[0] == 1 && dims[1] == 0) {  // dims == {1, 0, 2}
         int out_n_rows = out_dims[1];
         int x_cols_offset = 0;
         for (int i = 0; i < x.dims()[0]; ++i) {
@@ -346,9 +369,6 @@ void TransposeCsrKernel(const Context& dev_ctx,
         }
         // x offset
         x_crows_data += 1;
-      } else if (dims[0] == 1 && dims[1] == 2) {
-      } else if (dims[0] == 2 && dims[1] == 0) {
-      } else {
       }
       // out offset
       out_crows_data += out_dims[1] + 1;
