@@ -212,8 +212,7 @@ void TransposeCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         const std::vector<int>& dims,
                         SparseCooTensor* out) {
-  out->set_dims(x.dims());
-
+  EmptyLikeCooKernel(dev_ctx, x, out);
   const DenseTensor& x_indices = x.indices();
   const DenseTensor& x_values = x.non_zero_elements();
   DenseTensor* out_indices = out->mutable_indices();
@@ -241,8 +240,7 @@ void TransposeCsrKernel(const Context& dev_ctx,
                         SparseCsrTensor* out) {
   unsigned int n_dim = dims.size();
   DDim out_dims(x.dims());
-  out_dims.transpose(dims);
-  out->set_dims(out_dims);
+  EmptyLikeCooKernel(dev_ctx, x, out);
   out->Resize(out_dims, x.nnz());
   const DenseTensor& x_crows = x.crows();
   const DenseTensor& x_cols = x.cols();
@@ -262,7 +260,7 @@ void TransposeCsrKernel(const Context& dev_ctx,
   if (dims[0] == 1 && dims[1] == 2) {  // dims == {1, 2, 0}
     SparseCsrTensor* temp;
     TransposeCsrKernel<T>(dev_ctx, x, {1, 0, 2}, temp);
-    TransposeCsrKernel<T>(dev_ctx, temp, {0, 2, 1}, out);
+    TransposeCsrKernel<T>(dev_ctx, *temp, {0, 2, 1}, out);
     //  SparseCsrTensor(const DenseTensor& non_zero_crows,
     //                  const DenseTensor& non_zero_cols,
     //                  const DenseTensor& non_zero_elements,
@@ -274,12 +272,12 @@ void TransposeCsrKernel(const Context& dev_ctx,
   } else if (dims[0] == 2 && dims[1] == 0) {  // dims == {2, 0, 1}
     SparseCsrTensor* temp;
     TransposeCsrKernel<T>(dev_ctx, x, {0, 2, 1}, temp);
-    TransposeCsrKernel<T>(dev_ctx, temp, {1, 0, 2}, out);
+    TransposeCsrKernel<T>(dev_ctx, *temp, {1, 0, 2}, out);
     return;
   } else if (dims[0] == 2 && dims[1] == 1) {  // dims == {2, 1, 0}
     SparseCsrTensor* temp;
     TransposeCsrKernel<T>(dev_ctx, x, {1, 0, 2}, temp);
-    TransposeCsrKernel<T>(dev_ctx, temp, {2, 0, 1}, out);
+    TransposeCsrKernel<T>(dev_ctx, *temp, {2, 0, 1}, out);
     return;
   }
   int* out_crows_data = out_crows->data<int>();
