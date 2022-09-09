@@ -597,11 +597,11 @@ void QuantDequantMkldnnPass::DequantizeOpWeightsFromONNXFormat(
   auto iter = weight_thresholds.find(weight_var_name);
   if (iter != weight_thresholds.end()) {
     scales = iter->second;
-    auto name_iter = std::find(dequantized_weights_names.begin(),
-                               dequantized_weights_names.end(),
+    auto name_iter = std::find(dequantized_weights_names->begin(),
+                               dequantized_weights_names->end(),
                                weight_var_name);
     // Has been dequantized
-    if (name_iter != dequantized_weights_names.end()) {
+    if (name_iter != dequantized_weights_names->end()) {
       return;
     }
   } else {
@@ -613,7 +613,7 @@ void QuantDequantMkldnnPass::DequantizeOpWeightsFromONNXFormat(
         "the model is correct.",
         weight_var_name));
   }
-  dequantized_weights_names.push_back(weight_var_name);
+  dequantized_weights_names->push_back(weight_var_name);
   auto* var = scope->FindVar(weight_var_name);
   PADDLE_ENFORCE_NOT_NULL(
       var,
