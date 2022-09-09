@@ -32,7 +32,10 @@ list(
   c_allreduce_op_plugin.cu
   preln_residual_bias_plugin.cu
   fused_token_prune_op_plugin.cu
-  layernorm_shift_partition_op.cu)
+  layernorm_shift_partition_op.cu
+  many_emb_layernorm_varseqlen_plugin
+  many_emb_Layernorm_varseqlen_kernelMTron
+  many_emb_Layernorm_varseqlen_kernelHFace)
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND TRT_FILES spmm_plugin.cu)
