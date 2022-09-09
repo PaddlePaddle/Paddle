@@ -841,7 +841,7 @@ int QkvToContextPluginDynamic::enqueue(
 
       const float16 *input0_data =
           static_cast<const float16 *>(inputs[0]);  // qkv
-
+      // set trt_fused_mha
       if (ft_dispatcher_fp16_.get() &&
           head_number_ == ft_dispatcher_fp16_num_head_) {
       } else {
@@ -858,11 +858,13 @@ int QkvToContextPluginDynamic::enqueue(
               platform::CUDAPlace(device_id)));
       framework::Tensor temp_qk_bias_mask_tensor;
 
+      // input 1 is relative pos (biasqk)
       const half *input1_data =
-          static_cast<const half *>(inputs[1]);  // relative pos
+          static_cast<const half *>(inputs[1]);  
       fastertransformer::invokeTransformMask(
           temp_qk_bias_data, input1_data, head_number_, seq_len, stream);
 
+      // input 2 is mask (biasqk_mask)
       const half *input2_data = nullptr;
       half *temp_qk_bias_mask_data = nullptr;
       if (has_biasqk_mask_) {
@@ -877,6 +879,7 @@ int QkvToContextPluginDynamic::enqueue(
                                                seq_len,
                                                stream);
       }
+
       ft_dispatcher_fp16_->setup(S, batch, window_number_);
       half *output = static_cast<half *>(outputs[0]);
 
@@ -887,8 +890,7 @@ int QkvToContextPluginDynamic::enqueue(
                                nullptr,
                                output,
                                stream);
-      int grid = batch * head_number_ * seq_len;
-      int block = head_size_;
+
 #else   // FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
       PADDLE_THROW(platform::errors::Fatal(
           "Call fastertransformer trt fused mha, but corresponding lib is not "
