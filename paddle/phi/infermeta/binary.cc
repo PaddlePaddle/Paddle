@@ -800,6 +800,34 @@ void ConvTransposeInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void Conv2dTransposeInferMeta(const MetaTensor& x,
+                              const MetaTensor& filter,
+                              const std::vector<int>& strides,
+                              const std::vector<int>& paddings,
+                              const std::vector<int>& output_padding,
+                              const IntArray& output_size,
+                              const std::string& padding_algorithm,
+                              int groups,
+                              const std::vector<int>& dilations,
+                              const std::string& data_format,
+                              MetaTensor* out,
+                              MetaConfig config) {
+  std::vector<int32_t> vec_output_size(output_size.GetData().begin(),
+                                       output_size.GetData().end());
+  ConvTransposeInferMeta(x,
+                         filter,
+                         strides,
+                         paddings,
+                         output_padding,
+                         vec_output_size,
+                         padding_algorithm,
+                         groups,
+                         dilations,
+                         data_format,
+                         out,
+                         config);
+}
+
 void CrossInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
                     int axis,

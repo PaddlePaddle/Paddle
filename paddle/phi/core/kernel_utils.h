@@ -30,6 +30,7 @@
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/string_tensor.h"
+#include "paddle/phi/core/tensor_array.h"
 #include "paddle/phi/core/type_defs.h"
 
 namespace phi {
@@ -284,6 +285,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(StringTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(StringTensor);
 
+  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(TensorArray);
+  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(TensorArray);
+
   /* Attribute Helpers */
 
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(bool);
@@ -322,6 +326,8 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(StringTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(StringTensor);
 
+  PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(TensorArray);
+
   template <typename... Tail>
   struct KernelCallHelper<const RuntimeAttrs&, Tail...> {
     template <int dev_ctx_idx,
@@ -344,8 +350,6 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
     static void Compute(KernelContext* ctx, DevCtx dev_ctx, Args&... args) {
       static_assert(dev_ctx_idx > 0,
                     "Kernel should pass DeviceContext as argument.");
-      static_assert(out_idx > 0, "Kernel should have output argument.");
-      // TODO(chenweihang): check dev_ctx, in, attr, out number
       return kernel_fn(dev_ctx, args...);
     }
   };

@@ -673,7 +673,7 @@ def _remove_no_grad_branch_(op_descs,
         op_desc for op_desc in op_descs
         if not _op_can_be_removed_(op_desc, no_grad_set)
     ]
-    # Insert fill_zeros_like_op
+    # Insert fill_any_like_op with value 0
     to_insert = []
     for idx, op_desc in enumerate(op_descs):
         for arg in op_desc.input_arg_names():
@@ -682,8 +682,11 @@ def _remove_no_grad_branch_(op_descs,
                 x_in = _strip_grad_suffix_(arg)
                 # the reason should be: arg can be input of another grad op
                 # and the op is a not-to-remove op
-                new_op_desc = _create_op_desc_("fill_zeros_like", {"X": [x_in]},
-                                               {"Out": [arg]}, {})
+                new_op_desc = _create_op_desc_("fill_any_like", {"X": [x_in]},
+                                               {"Out": [arg]}, {
+                                                   'value': 0,
+                                                   'dtype': -1
+                                               })
                 # update the mapping between fwd and bwd
                 if grad_op_id_to_fwd_op is not None and grad_op_id_to_fwd_op.get(
                         op_desc.original_id(), None) is not None:

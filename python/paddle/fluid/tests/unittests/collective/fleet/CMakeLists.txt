@@ -216,7 +216,7 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
   )
   set_tests_properties(
     test_parallel_dygraph_pipeline_parallel_with_virtual_stage
-    PROPERTIES TIMEOUT "500" RUN_SERIAL 1)
+    PROPERTIES TIMEOUT "500")
 endif()
 if((WITH_GPU
     OR WITH_XPU

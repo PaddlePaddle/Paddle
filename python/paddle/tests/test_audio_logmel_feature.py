@@ -124,7 +124,8 @@ class TestFeatures(unittest.TestCase):
                                                        n_fft=n_fft,
                                                        hop_length=64,
                                                        n_mels=n_mels,
-                                                       top_db=self.top_db)
+                                                       top_db=self.top_db,
+                                                       dtype=x.dtype)
         feature_layer = feature_extractor(x).squeeze(0).numpy()
 
         np.testing.assert_array_almost_equal(feature_librosa,
