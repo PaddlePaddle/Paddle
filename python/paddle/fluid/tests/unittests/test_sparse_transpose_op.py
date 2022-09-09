@@ -14,25 +14,9 @@
 
 import paddle
 import numpy as np
-import scipy
-import scipy.sparse as sp
 import unittest
-import os
-import re
 
 paddle.set_default_dtype('float64')
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
 
 
 class TestTranspose(unittest.TestCase):
@@ -54,27 +38,22 @@ class TestTranspose(unittest.TestCase):
             sp_x = origin_x.detach().to_sparse_csr()
         sp_x.stop_gradient = False
         sp_out = paddle.incubate.sparse.transpose(sp_x, dims)
-
         np.testing.assert_allclose(sp_out.numpy(),
                                    dense_out.numpy(),
                                    rtol=1e-05)
-        if get_cuda_version() >= 11030:
-            dense_out.backward()
-            sp_out.backward()
-            np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
-                                       (dense_x.grad * mask).numpy(),
-                                       rtol=1e-05)
 
-    @unittest.skipIf(not paddle.is_compiled_with_cuda()
-                     or get_cuda_version() < 11070, "only support cuda>=11.7")
+        dense_out.backward()
+        sp_out.backward()
+        np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
+                                   (dense_x.grad * mask).numpy(),
+                                   rtol=1e-05)
+
     def test_transpose_2d(self):
         self.check_result([12, 5], [0, 1], 'coo')
         self.check_result([12, 5], [0, 1], 'csr')
         self.check_result([12, 5], [1, 0], 'coo')
         self.check_result([12, 5], [1, 0], 'csr')
 
-    @unittest.skipIf(not paddle.is_compiled_with_cuda()
-                     or get_cuda_version() < 11000, "only support cuda>=11.0")
     def test_transpose_3d(self):
         self.check_result([16, 12, 3], [0, 1, 2], 'coo')
         self.check_result([16, 12, 3], [0, 1, 2], 'csr')
@@ -89,10 +68,8 @@ class TestTranspose(unittest.TestCase):
         self.check_result([16, 12, 3], [1, 0, 2], 'coo')
         self.check_result([16, 12, 3], [1, 0, 2], 'csr')
 
-    @unittest.skipIf(not paddle.is_compiled_with_cuda()
-                     or get_cuda_version() < 11070, "only support cuda>=11.7")
     def test_transpose_nd(self):
-        self.check_result([8, 16, 12, 4, 2, 12], [2, 3, 4, 1, 0, 2], 'coo')
+        self.check_result([8, 16, 12, 4, 2, 12], [5, 3, 4, 1, 0, 2], 'coo')
         self.check_result([i + 2 for i in range(10)],
                           [(i + 2) % 10 for i in range(10)], 'coo')
 
