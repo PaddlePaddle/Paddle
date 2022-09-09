@@ -24,6 +24,16 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+template <typename AlgoT>
+struct SearchFuseResult {
+  SearchFuseResult() {}
+  explicit SearchFuseResult(AlgoT a) : algo(a) {}
+
+  AlgoT algo = static_cast<AlgoT>(0);
+  float time = -1.f;
+  size_t workspace_size = 0;
+};
+
 // thread-safe.
 template <typename TAlgorithm>
 class AlgorithmsCache {

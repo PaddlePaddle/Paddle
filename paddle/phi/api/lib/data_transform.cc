@@ -40,7 +40,7 @@ inline bool NeedTransformPlace(const paddle::platform::Place& input,
                                const TransformFlag& transform_flag) {
   // NOTE(dev): The default value of TransformFlag is True, if it is set with
   // False
-  // somewhere such as api.yaml or backward.yaml that means we should skip data
+  // somewhere such as ops.yaml or backward.yaml that means we should skip data
   // transform. Because "stop_transform_" has highest priority.
   if (!transform_flag.need_trans_backend()) {
     return false;
