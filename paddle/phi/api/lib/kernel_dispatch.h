@@ -117,7 +117,7 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   }
 
   void operator()(const std::vector<Tensor>& x) {
-    const phi::TensorBase& tensor = *x.at(0).impl();
+    const phi::TensorBase& tensor = *(x.at(0).impl());
     key_set.backend_set =
         key_set.backend_set | detail::GetTensorBackendSet(tensor);
     // TODO(chenweihang): select multi layout and dtype
@@ -132,7 +132,7 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     }
   }
 
-  // skip other type args, these args don't used in kernel selection
+  // skip other-type args, these args are not used in kernel selection
   template <typename T>
   void operator()(const T& x) {
     // do nothing
