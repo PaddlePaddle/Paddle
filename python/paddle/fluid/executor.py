@@ -1566,9 +1566,19 @@ class Executor(object):
                 compiled_program = program if isinstance(
                     program, compiler.CompiledProgram) else program._graph
 
+                # delete this code after supporting compiled_program._graph
+                if compiled_program._program is None:
+                    warnings.warn("Standalone executor is not used for Graph",
+                                  UserWarning)
+                    return use_standalone_executor_for_distribution
+
+                # delete this code after supporting distribution
                 if program._build_strategy is not None and (
                         program._build_strategy.is_distribution
                         or program._build_strategy.num_trainers > 1):
+                    warnings.warn(
+                        "Standalone executor is not used for distribution",
+                        UserWarning)
                     return use_standalone_executor_for_distribution
 
                 # Unsupported case 1: data parallel
@@ -1610,6 +1620,7 @@ class Executor(object):
                         UserWarning)
                     return False
 
+            # delete this code after supporting fleet
             from paddle.distributed.fleet import fleet
             if fleet._role_maker is not None:
                 warnings.warn("Standalone executor is not used for fleet",
