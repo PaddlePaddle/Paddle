@@ -23,6 +23,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/dynload/tensorrt.h"
 
 namespace paddle {
 namespace platform {
