@@ -1113,28 +1113,19 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   return 1;
 }
 
-void AddPyMethodDefs(std::vector<PyMethodDef>& vector, PyMethodDef* methods) {
-  if (!vector.empty()) {
+void AddPyMethodDefs(std::vector<PyMethodDef>* vector, PyMethodDef* methods) {
+  if (!vector->empty()) {
     // remove nullptr terminator
-    vector.pop_back();
+    vector->pop_back();
   }
   while (true) {
-    vector.push_back(*methods);
+    vector->push_back(*methods);
     if (!methods->ml_name) {
       break;
     }
     methods++;
   }
 }
-// void AddPyMethodDefs(PyMethodDef[] &methods_all, PyMethodDef* methods) {
-//   while (true) {
-//     methods_all.push_back(*methods);
-//     if (!methods->ml_name) {
-//       break;
-//     }
-//     methods++;
-//   }
-// }
 
 static void TensorDealloc(TensorObject* self) {
   if (self->weakrefs != NULL)
@@ -1158,11 +1149,8 @@ void BindEager(pybind11::module* module) {
   auto m = module->def_submodule("eager");
 
   static std::vector<PyMethodDef> methods;
-  AddPyMethodDefs(methods, variable_methods);
-  AddPyMethodDefs(methods, math_op_patch_methods);
-  // PyMethodDef methods_all[];
-  // AddPyMethodDefs(methods_all, variable_methods);
-  // AddPyMethodDefs(methods_all, math_op_patch_methods);
+  AddPyMethodDefs(&methods, variable_methods);
+  AddPyMethodDefs(&methods, math_op_patch_methods);
 
   auto heap_type = reinterpret_cast<PyHeapTypeObject*>(
       PyType_Type.tp_alloc(&PyType_Type, 0));

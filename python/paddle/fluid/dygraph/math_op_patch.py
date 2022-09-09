@@ -376,7 +376,6 @@ def monkey_patch_math_varbase():
         ('__array_ufunc__', None)
     ]
 
-    # These methods will be migrated to eager_math_op_patch.cc gradualy.
     eager_methods = [
         ('__neg__', _neg_),
         ('__float__', _float_),
@@ -390,18 +389,8 @@ def monkey_patch_math_varbase():
         ('ndim', _ndim_),
         ('size', _size_),
         ('T', _T_),
-        # ('__add__', _binary_creator_('__add__', 'add', False, _scalar_add_,
-        #                              True)),
-        #  a+b == b+a. Do not need to reverse explicitly
-        # ('__radd__',
-        #  _binary_creator_('__radd__', 'add', False, _scalar_add_, True)),
-        # ('__sub__',
-        #  _binary_creator_('__sub__', 'subtract', False, _scalar_sub_, True)),
-        # ('__rsub__',
-        #  _binary_creator_('__rsub__', 'subtract', True, _scalar_rsub_, True)),
         ('__mul__',
          _binary_creator_('__mul__', 'multiply', False, _scalar_mul_, True)),
-        ## a*b == b*a. Do not need to reverse explicitly
         ('__rmul__',
          _binary_creator_('__rmul__', 'multiply', False, _scalar_mul_, True)),
         ('__div__',
@@ -421,7 +410,7 @@ def monkey_patch_math_varbase():
                                      True)),
         ('__matmul__',
          _binary_creator_('__matmul__', "matmul", False, None, True)),
-        ## for logical compare
+        # for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None, True)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None, True)),
         ('__lt__', _binary_creator_('__lt__', 'less_than', False, None, True)),
@@ -429,6 +418,13 @@ def monkey_patch_math_varbase():
         ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
         ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
         ('__array_ufunc__', None)
+    ]
+
+    eager_cpp_level_patch = [
+        "__add__",
+        "__radd__",
+        '__sub__',
+        '__rsub__',
     ]
 
     global _already_patch_varbase
@@ -444,10 +440,22 @@ def monkey_patch_math_varbase():
         local_tensor = core.VarBase
 
     if not local_already_patch:
-        for method in eager_methods if framework._in_eager_mode_ else varbase_methods:
-            method_name = method[0]
-            method_impl = method[1]
-            setattr(local_tensor, method_name, method_impl)
+        if framework._in_eager_mode_:
+            for method_name in eager_cpp_level_patch:
+                method_impl = getattr(local_tensor, method_name, None)
+                if method_impl:
+                    setattr(local_tensor, method_name, method_impl)
+
+            for method in eager_methods:
+                method_name = method[0]
+                method_impl = method[1]
+                setattr(local_tensor, method_name, method_impl)
+
+        else:
+            for method in varbase_methods:
+                method_name = method[0]
+                method_impl = method[1]
+                setattr(local_tensor, method_name, method_impl)
     else:
         import paddle.tensor
         # Tensor method from module paddle.tensor

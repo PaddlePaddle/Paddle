@@ -19,6 +19,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestElementwiseOp(OpTest):
@@ -392,6 +393,49 @@ class TestSubtractInplaceBroadcastError3(TestSubtractInplaceBroadcastError):
     def init_data(self):
         self.x_numpy = np.random.rand(5, 2, 1, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
+
+
+class TestFloatElementwiseSubop(unittest.TestCase):
+
+    def func_dygraph_sub(self):
+        paddle.disable_static()
+
+        np_a = np.random.random((2, 3, 4)).astype(np.float64)
+        np_b = np.random.random((2, 3, 4)).astype(np.float64)
+
+        tensor_a = paddle.to_tensor(np_a, dtype="float32")
+        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+
+        # normal case: tensor - tensor
+        expect_out = np_a - np_b
+        actual_out = tensor_a - tensor_b
+        np.testing.assert_allclose(actual_out,
+                                   expect_out,
+                                   rtol=1e-07,
+                                   atol=1e-07)
+
+        # normal case: tensor - scalar
+        expect_out = np_a - 1
+        actual_out = tensor_a - 1
+        np.testing.assert_allclose(actual_out,
+                                   expect_out,
+                                   rtol=1e-07,
+                                   atol=1e-07)
+
+        # normal case: scalar - tenor
+        expect_out = 1 - np_a
+        actual_out = 1 - tensor_a
+        np.testing.assert_allclose(actual_out,
+                                   expect_out,
+                                   rtol=1e-07,
+                                   atol=1e-07)
+
+        paddle.enable_static()
+
+    def test_dygraph_sub(self):
+        with _test_eager_guard():
+            self.func_dygraph_sub()
+        self.func_dygraph_sub()
 
 
 if __name__ == '__main__':

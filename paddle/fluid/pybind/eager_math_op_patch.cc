@@ -57,28 +57,12 @@ bool PyCheckTensor(PyObject* obj) {
   return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
 }
 
-// std::set<phi::DataType> _supported_int_dtype_{
-//   DataType::UINT8, DataType::INT8, DataType::INT16, DataType::INT32,
-//   DataType::INT64, DataType::BOOL
-// }
-
-// std::set<std::string> _supported_promote_complex_types_{
-//     '__add__',
-//     '__radd__',
-//     '__sub__',
-//     '__rsub__',
-//     '__mul__',
-//     '__rmul__',
-//     '__div__',
-//     '__truediv__',
-//     '__rdiv__',
-//     '__rtruediv__',
-//     '__matmul__'
-// }
-
-// some utils
-// 1. scalar check
-// 2.
+std::set<phi::DataType> _supported_int_dtype_{DataType::UINT8,
+                                              DataType::INT8,
+                                              DataType::INT16,
+                                              DataType::INT32,
+                                              DataType::INT64,
+                                              DataType::BOOL};
 
 static PyObject* tensor__add__method(TensorObject* self,
                                      PyObject* args,
@@ -98,7 +82,7 @@ static PyObject* tensor__add__method(TensorObject* self,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::backends::gpu::SetDeviceId(place.device);
       VLOG(1) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
-              << " from " << (int)place.device;
+              << " from " << static_cast<int>(place.device);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU if use CUDAPlace."));
@@ -109,7 +93,7 @@ static PyObject* tensor__add__method(TensorObject* self,
       phi::DeviceManager::SetDevice(place);
       VLOG(1) << "CurrentDeviceId: "
               << phi::DeviceManager::GetDevice(place.GetDeviceType())
-              << " from " << (int)place.device;
+              << " from " << static_cast<int>(place.device);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with CUSTOM_DEVICE if use "
@@ -117,23 +101,28 @@ static PyObject* tensor__add__method(TensorObject* self,
 #endif
     }
     paddle::experimental::Tensor ret;
+
+    paddle::experimental::Tensor self_tensor = self->tensor;
+    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+        _supported_int_dtype_.end()) {
+      self_tensor = cast_dygraph_function(self_tensor, DataType::FLOAT32);
+    }
     if (!PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-      VLOG(1) << "==== calling scalar func ====";
+      VLOG(1) << "Calling scale_dygraph_function in tensor__add__method";
       ret = scale_dygraph_function(
-          self->tensor,
+          self_tensor,
           phi::Scalar(1.0),
           CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 0), 0),
           true);
 
     } else if (PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-      VLOG(1) << "==== calling tensor func ====";
+      VLOG(1) << "Calling add_dygraph_function in tensor__add__method";
       ret = add_dygraph_function(
-          self->tensor, CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0));
+          self_tensor, CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0));
     }
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     return ToPyObject(ret);
-
   } catch (...) {
     if (tstate) {
       PyEval_RestoreThread(tstate);
@@ -152,7 +141,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
       1);
   PyThreadState* tstate = nullptr;
   try {
-    VLOG(1) << "Running Eager tensor__sub__method: add";
+    VLOG(6) << "Running Eager tensor__sub__method: add";
     tstate = PyEval_SaveThread();
 
     // Set Device ID
@@ -161,7 +150,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::backends::gpu::SetDeviceId(place.device);
       VLOG(1) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
-              << " from " << (int)place.device;
+              << " from " << static_cast<int>(place.device);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU if use CUDAPlace."));
@@ -172,7 +161,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
       phi::DeviceManager::SetDevice(place);
       VLOG(1) << "CurrentDeviceId: "
               << phi::DeviceManager::GetDevice(place.GetDeviceType())
-              << " from " << (int)place.device;
+              << " from " << static_cast<int>(place.device);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with CUSTOM_DEVICE if use "
@@ -180,23 +169,94 @@ static PyObject* tensor__sub__method(TensorObject* self,
 #endif
     }
     paddle::experimental::Tensor ret;
+    paddle::experimental::Tensor self_tensor = self->tensor;
+    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+        _supported_int_dtype_.end()) {
+      self_tensor = cast_dygraph_function(self_tensor, DataType::FLOAT32);
+    }
     if (!PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-      VLOG(1) << "==== calling scalar func ====";
+      VLOG(1) << "Calling scale_dygraph_function in tensor__sub__method";
       ret = scale_dygraph_function(
-          self->tensor,
+          self_tensor,
           phi::Scalar(1.0),
           -CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 0), 0),
           true);
 
     } else if (PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-      VLOG(1) << "==== calling tensor func ====";
+      VLOG(1) << "Calling subtract_dygraph_function in tensor__sub__method";
       ret = subtract_dygraph_function(
-          self->tensor, CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0));
+          self_tensor, CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0));
     }
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     return ToPyObject(ret);
+  } catch (...) {
+    if (tstate) {
+      PyEval_RestoreThread(tstate);
+    }
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
 
+static PyObject* tensor__rsub__method(TensorObject* self,
+                                      PyObject* args,
+                                      PyObject* kwargs) {
+  paddle::platform::RecordEvent pythonc_record_event(
+      "rsub pybind_patch_func",
+      paddle::platform::TracerEventType::UserDefined,
+      1);
+  PyThreadState* tstate = nullptr;
+  try {
+    VLOG(6) << "Running Eager tensor__rsub__method: add";
+    tstate = PyEval_SaveThread();
+
+    // Set Device ID
+    auto place = egr::Controller::Instance().GetExpectedPlace();
+    if (paddle::platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      phi::backends::gpu::SetDeviceId(place.device);
+      VLOG(1) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
+              << " from " << static_cast<int>(place.device);
+#else
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with GPU if use CUDAPlace."));
+#endif
+    }
+    if (paddle::platform::is_custom_place(place)) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+      phi::DeviceManager::SetDevice(place);
+      VLOG(1) << "CurrentDeviceId: "
+              << phi::DeviceManager::GetDevice(place.GetDeviceType())
+              << " from " << static_cast<int>(place.device);
+#else
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with CUSTOM_DEVICE if use "
+          "CustomPlace."));
+#endif
+    }
+    paddle::experimental::Tensor ret;
+    paddle::experimental::Tensor self_tensor = self->tensor;
+    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+        _supported_int_dtype_.end()) {
+      self_tensor = cast_dygraph_function(self_tensor, DataType::FLOAT32);
+    }
+    if (!PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
+      VLOG(1) << "Calling scale_dygraph_function in tensor__rsub__method";
+      ret = scale_dygraph_function(
+          self_tensor,
+          phi::Scalar(-1.0),
+          CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 0), 0),
+          true);
+
+    } else if (PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
+      VLOG(1) << "Calling subtract_dygraph_function in tensor__rsub__method";
+      ret = subtract_dygraph_function(
+          CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0), self_tensor);
+    }
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
+    return ToPyObject(ret);
   } catch (...) {
     if (tstate) {
       PyEval_RestoreThread(tstate);
@@ -217,6 +277,10 @@ PyMethodDef math_op_patch_methods[] = {
      NULL},
     {"__sub__",
      (PyCFunction)(void (*)(void))tensor__sub__method,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"__rsub__",
+     (PyCFunction)(void (*)(void))tensor__rsub__method,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {NULL, NULL, 0, NULL}};
