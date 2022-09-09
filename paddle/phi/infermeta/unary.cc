@@ -3537,7 +3537,7 @@ void StridedSliceInferMeta(const MetaTensor& x,
 
 /*  Why not use SumRawInferMeta directly?
     Because we need make InferMetaFunction's args follow the design of
-   api.yaml
+   ops.yaml
 */
 void SumInferMeta(const MetaTensor& x,
                   const IntArray& axis,
