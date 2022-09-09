@@ -1,14 +1,14 @@
-// This file copy from boost/optional/optional.hpp and boost version: 1.41.0
+// This file is copied from boost/optional/optional.hpp and boost version: 1.41.0
 // Modified the following points:
 // 1. modify namespace from boost::optional to paddle::optional
 // 2. remove the depending boost header files
-// 3. remove/modify some macro
+// 3. remove/modify some macros
 // 4. copy some necessary data structures which are the depended by optional
 // 5. replace type_with_alignment with std::aligned_storage
 
 // Copyright (C) 2003, Fernando Luis Cacciola Carballal.
 //
-// Use, modification, and distribution is subject to the Boost Software
+// Usage, modification, and distribution is subject to the Boost Software
 // License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 //
@@ -528,7 +528,7 @@ class optional : public optional_detail::optional_base<T> {
 
   // Assigns from another optional<T> (deep-copies the rhs value)
   // Basic Guarantee: If T::T( T const& ) throws, this is left UNINITIALIZED
-  //  (NOTE: On BCB, this operator is not actually called and left is left
+  //  (NOTE: On BCB, this operator is not actually called and is left
   //  UNMODIFIED in case of a throw)
   optional& operator=(optional const& rhs) {
     this->assign(rhs);
@@ -536,7 +536,7 @@ class optional : public optional_detail::optional_base<T> {
   }
 
   // Assigns from a T (deep-copies the rhs value)
-  // Basic Guarantee: If T::( T const& ) throws, this is left UNINITIALIZED
+  // Basic Guarantee: If T::T( T const& ) throws, this is left UNINITIALIZED
   optional& operator=(argument_type val) {
     this->assign(val);
     return *this;
