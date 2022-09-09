@@ -759,8 +759,10 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
       decrease_axis, none_axes, infer_flags, list_select_idxs;
   // if index is a list, list_select_flag will be true
   bool list_select_flag = false;
+  // Note(0x45f): Using defined() instead of initialized()
+  // to support slice tensor which shape like [0, 0, 0].
   PADDLE_ENFORCE_EQ(
-      self->tensor.initialized(),
+      self->tensor.defined(),
       true,
       platform::errors::InvalidArgument(
           "tensor %s has not been initialized, we can only slice initialized "
