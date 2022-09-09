@@ -23,7 +23,6 @@ cd "$TMP_DIR"
 ./bootstrap.sh
 ./configure
 make
-make check 
 make install
 
 cd ..
