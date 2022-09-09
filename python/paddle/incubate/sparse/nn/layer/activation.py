@@ -63,10 +63,10 @@ class Softmax(Layer):
     Sparse Softmax Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     Note:
-        Only support axis=-1 for SparseCsrTensor, which is faster when read data 
+        Only support axis=-1 for SparseCsrTensor, which is faster when read data
         by row (axis=-1).
 
-    From the point of view of dense matrix, for each row :math:`i` and each column :math:`j` 
+    From the point of view of dense matrix, for each row :math:`i` and each column :math:`j`
     in the matrix, we have:
 
     .. math::
@@ -96,17 +96,17 @@ class Softmax(Layer):
             #  [0.         0.         0.         0.98275049]]
 
             csr = paddle.to_tensor(np_x).to_sparse_csr()
-            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True, 
-            #        crows=[0, 2, 5, 6], 
-            #        cols=[2, 3, 0, 2, 3, 3], 
+            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0, 2, 5, 6],
+            #        cols=[2, 3, 0, 2, 3, 3],
             #        values=[0.96823406, 0.19722934, 0.94373937, 0.02060066, 0.71456372,
             #                0.98275049])
 
             softmax = paddle.incubate.sparse.nn.Softmax()
             out = softmax(csr)
-            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True, 
-            #        crows=[0, 2, 5, 6], 
-            #        cols=[2, 3, 0, 2, 3, 3], 
+            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0, 2, 5, 6],
+            #        cols=[2, 3, 0, 2, 3, 3],
             #        values=[0.68373820, 0.31626180, 0.45610887, 0.18119845, 0.36269269,
             #                1.        ])
     """
@@ -165,7 +165,7 @@ class ReLU6(Layer):
 
 class LeakyReLU(Layer):
     """
-    Sparse Leaky ReLU Activation, requiring x to be a SparseCooTensor or SparseCsrTensor. 
+    Sparse Leaky ReLU Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::
 

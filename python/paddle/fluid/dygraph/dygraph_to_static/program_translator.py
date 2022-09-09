@@ -308,12 +308,12 @@ class StaticFunction(object):
         Overrides this method to parse the class instance and call bound method correctly.
 
         For example:
-            
+
             '''
             class Net(Layer):
                 def __init__(self):
                     pass
-                
+
                 @paddle.jit.to_static
                 def forward(self, x, y):
                     return x + y
@@ -321,7 +321,7 @@ class StaticFunction(object):
             net = Net()
             out = net(x, y)
             '''
-        
+
         In above case, `net(x, y)` will call `net.forward(x, y)` firstly that is a bound method
         of `Net` instance. After decorated by `@paddle.jit.to_static`, it will firstly to call `__get__`
         to parse the class instance correctly instead of the `StaticFunction` instance.
@@ -347,7 +347,7 @@ class StaticFunction(object):
 
         Args:
             *args(tuple): tuple of all input arguments from original decorated function.
-            **kwargs(dict): dict of all input keyward arguments from original decorated function. 
+            **kwargs(dict): dict of all input keyward arguments from original decorated function.
 
         Return:
             Outputs of decorated function.
@@ -423,7 +423,7 @@ class StaticFunction(object):
 
         Args:
             *args(tuple): tuple of all input arguments from original decorated function.
-            **kwargs(dict): dict of all input keyward arguments from original decorated function. 
+            **kwargs(dict): dict of all input keyward arguments from original decorated function.
 
         Return:
             Outputs of dygraph function.
@@ -521,7 +521,7 @@ class StaticFunction(object):
                 def foo(x, y):
                     z = x + y
                     return z
-                
+
                 # usage 1:
                 decorated_foo = to_static(foo, input_spec=[InputSpec([10], name='x'), InputSpec([10], name='y')])
                 print(decorated_foo.concrete_program)
@@ -599,7 +599,7 @@ class StaticFunction(object):
     def rollback(self):
         """
         Rollback into original dygraph functions for current class instance.
-        
+
         Returns:
             Function or Method
 
@@ -622,7 +622,7 @@ class StaticFunction(object):
                 x = paddle.randn([10, 1], 'float32')
                 net = paddle.jit.to_static(Net())  # convert into static mode
                 out = net(x)
-                
+
                 net.forward.rollback()  # rollback into dygraph mode
                 out = net(x)
         """
@@ -679,7 +679,7 @@ class StaticFunction(object):
                 net = paddle.jit.to_static(Net())  # convert into static mode
 
                 copy_net = copy.deepcopy(net)      # deepcopy a new net without @to_static
-        
+
         Please attention that original 'net' will unwrap @to_static and rollback into simple Layer.
         """
         if self._class_instance is not None:
@@ -835,7 +835,7 @@ class ConcreteProgram(object):
 
         Args:
             func_spec(FunctionSpec): A FunctionSpec instance for decorated function.
-            input_spec(list[InputSpec]): 
+            input_spec(list[InputSpec]):
         """
         # verify the instance is initialized in imperative mode.
         _verify_init_in_dynamic_mode(class_instance)
@@ -1250,7 +1250,7 @@ class ProgramTranslator(object):
                 print([i.name for i in inputs])
                 # [u'generated_tensor_0'] the feed input Tensor name representing x
                 print([o.name for o in outputs])
-                # [u'_generated_var_4'] the fetch output Tensor name representing x_v        
+                # [u'_generated_var_4'] the fetch output Tensor name representing x_v
 
         """
         assert callable(

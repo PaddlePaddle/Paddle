@@ -35,7 +35,7 @@ __max_stream_num_allow__ = 16
 class DataParallelOptimizationPass(PassBase):
     """
     Apply Optimizations that specialized for data parallelism in Auto Parallel.
-    1. prune grad scaling 
+    1. prune grad scaling
     2. overlap comm and calc
     3. fuse allreduce
     """
