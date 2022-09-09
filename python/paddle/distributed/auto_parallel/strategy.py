@@ -23,6 +23,7 @@ class BaseConfig(object):
 
     def __init__(self, category, config_dict=None):
         self._category = category
+        self._config_dict = None
         if config_dict is not None:
             if isinstance(config_dict, dict):
                 self._config_dict = config_dict
@@ -119,6 +120,9 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.SHARDING, None)
         self.sharding = ShardingConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.GRADIENT_MERGE, None)
+        self.gradient_merge = GradientMergeConfig(config_dict)
 
         config_dict = self._config_dict.get(constants.GRADIENT_MERGE, None)
         self.gradient_merge = GradientMergeConfig(config_dict)

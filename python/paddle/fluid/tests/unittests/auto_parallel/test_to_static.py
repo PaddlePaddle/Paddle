@@ -139,23 +139,19 @@ class TestToStatic(unittest.TestCase):
 
         dataset = MyDataset(batch_num * batch_size)
 
-        inputs = InputSpec([batch_size, hidden_size], 'float32', 'x')
-        labels = InputSpec([batch_size], 'int64', 'label')
+        # inputs = InputSpec([batch_size, hidden_size], 'float32', 'x')
+        # labels = InputSpec([batch_size], 'int64', 'label')
 
-        engine = Engine(model=mlp,
-                        inputs_spec=inputs,
-                        labels_spec=labels,
-                        strategy=None)
         assert _non_static_mode() == True
-
-        engine.prepare(optimizer=optimizer,
-                       loss=loss,
-                       metrics=paddle.metric.Accuracy())
-
-        assert _non_static_mode() == False
+        engine = Engine(model=mlp,
+                        loss=loss,
+                        optimizer=optimizer,
+                        metrics=paddle.metric.Accuracy(),
+                        strategy=None)
         engine.fit(dataset, batch_size=batch_size)
         engine.evaluate(dataset, batch_size=batch_size)
         engine.predict(dataset, batch_size=batch_size)
+        assert _non_static_mode() == False
 
 
 if __name__ == "__main__":
