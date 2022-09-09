@@ -155,6 +155,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/phi/capi/capi.h"
 #endif
 
@@ -1694,7 +1695,14 @@ All parameter, weight, gradient are variables in Paddle.
     egr::Controller::Instance().MergeOpMetaInfoMap(
         framework::LoadOpMetaInfoAndRegisterOp(dso_name));
   });
-  m.def("init_devices", []() { framework::InitDevices(); });
+  m.def("init_devices", []() {
+    framework::InitDevices();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    for (auto &dev_type : phi::DeviceManager::GetAllCustomDeviceTypes()) {
+      paddle::operators::RegisterCustomDeviceCommonKernel(dev_type);
+    }
+#endif
+  });
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
