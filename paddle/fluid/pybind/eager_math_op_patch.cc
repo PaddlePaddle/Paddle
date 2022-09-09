@@ -81,130 +81,145 @@ bool PyCheckTensor(PyObject* obj) {
 // 2.
 
 static PyObject* tensor__add__method(TensorObject* self,
-                                   PyObject* args,
-                                   PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event("add pybind_patch_func", paddle::platform::TracerEventType::UserDefined, 1);
-  PyThreadState *tstate = nullptr;
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  paddle::platform::RecordEvent pythonc_record_event(
+      "add pybind_patch_func",
+      paddle::platform::TracerEventType::UserDefined,
+      1);
+  PyThreadState* tstate = nullptr;
   try {
-      VLOG(6) << "Running Eager tensor__add__method: add";
-      tstate = PyEval_SaveThread();
+    VLOG(6) << "Running Eager tensor__add__method: add";
+    tstate = PyEval_SaveThread();
 
-      // Set Device ID
-      auto place = egr::Controller::Instance().GetExpectedPlace();
-      if (paddle::platform::is_gpu_place(place)) {
-        #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-              phi::backends::gpu::SetDeviceId(place.device);
-              VLOG(1) <<"CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId() << " from " << (int)place.device;
-        #else
-              PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-                "PaddlePaddle should compile with GPU if use CUDAPlace."));
-        #endif
-      }
-      if (paddle::platform::is_custom_place(place)) {
-        #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-              phi::DeviceManager::SetDevice(place);
-              VLOG(1) <<"CurrentDeviceId: " << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from " << (int)place.device;
-        #else
-              PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-                "PaddlePaddle should compile with CUSTOM_DEVICE if use CustomPlace."));
-        #endif
-      }
-      paddle::experimental::Tensor ret;
-      if (!PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-        VLOG(1) << "==== calling scalar func ====";
-        ret = scale_dygraph_function(
-            self->tensor,
-            phi::Scalar(1.0),
-            CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 0), 0),
-            true);
-       
-      } else if (PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-        VLOG(1) << "==== calling tensor func ====";
-        ret = add_dygraph_function(
-            self->tensor, CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0));
-      }
-      PyEval_RestoreThread(tstate);
-      tstate = nullptr;
-      return ToPyObject(ret);
-    
-    } catch(...) {
-      if (tstate) {
-        PyEval_RestoreThread(tstate);
-      }
-      ThrowExceptionToPython(std::current_exception());
-      return nullptr;
+    // Set Device ID
+    auto place = egr::Controller::Instance().GetExpectedPlace();
+    if (paddle::platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      phi::backends::gpu::SetDeviceId(place.device);
+      VLOG(1) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
+              << " from " << (int)place.device;
+#else
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with GPU if use CUDAPlace."));
+#endif
     }
+    if (paddle::platform::is_custom_place(place)) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+      phi::DeviceManager::SetDevice(place);
+      VLOG(1) << "CurrentDeviceId: "
+              << phi::DeviceManager::GetDevice(place.GetDeviceType())
+              << " from " << (int)place.device;
+#else
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with CUSTOM_DEVICE if use "
+          "CustomPlace."));
+#endif
+    }
+    paddle::experimental::Tensor ret;
+    if (!PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
+      VLOG(1) << "==== calling scalar func ====";
+      ret = scale_dygraph_function(
+          self->tensor,
+          phi::Scalar(1.0),
+          CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 0), 0),
+          true);
+
+    } else if (PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
+      VLOG(1) << "==== calling tensor func ====";
+      ret = add_dygraph_function(
+          self->tensor, CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0));
+    }
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
+    return ToPyObject(ret);
+
+  } catch (...) {
+    if (tstate) {
+      PyEval_RestoreThread(tstate);
+    }
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
 }
 
 static PyObject* tensor__sub__method(TensorObject* self,
-                                   PyObject* args,
-                                   PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event("sub pybind_patch_func", paddle::platform::TracerEventType::UserDefined, 1);
-  PyThreadState *tstate = nullptr;
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  paddle::platform::RecordEvent pythonc_record_event(
+      "sub pybind_patch_func",
+      paddle::platform::TracerEventType::UserDefined,
+      1);
+  PyThreadState* tstate = nullptr;
   try {
-      VLOG(1) << "Running Eager tensor__sub__method: add";
-      tstate = PyEval_SaveThread();
+    VLOG(1) << "Running Eager tensor__sub__method: add";
+    tstate = PyEval_SaveThread();
 
-      // Set Device ID
-      auto place = egr::Controller::Instance().GetExpectedPlace();
-      if (paddle::platform::is_gpu_place(place)) {
-        #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-              phi::backends::gpu::SetDeviceId(place.device);
-              VLOG(1) <<"CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId() << " from " << (int)place.device;
-        #else
-              PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-                "PaddlePaddle should compile with GPU if use CUDAPlace."));
-        #endif
-      }
-      if (paddle::platform::is_custom_place(place)) {
-        #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-              phi::DeviceManager::SetDevice(place);
-              VLOG(1) <<"CurrentDeviceId: " << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from " << (int)place.device;
-        #else
-              PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-                "PaddlePaddle should compile with CUSTOM_DEVICE if use CustomPlace."));
-        #endif
-      }
-      paddle::experimental::Tensor ret;
-      if (!PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-        VLOG(1) << "==== calling scalar func ====";
-        ret = scale_dygraph_function(
-            self->tensor,
-            phi::Scalar(1.0),
-            -CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 0), 0),
-            true);
-       
-      } else if (PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-        VLOG(1) << "==== calling tensor func ====";
-        ret = subtract_dygraph_function(
-            self->tensor, CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0));
-      }
-      PyEval_RestoreThread(tstate);
-      tstate = nullptr;
-      return ToPyObject(ret);
-    
-    } catch(...) {
-      if (tstate) {
-        PyEval_RestoreThread(tstate);
-      }
-      ThrowExceptionToPython(std::current_exception());
-      return nullptr;
+    // Set Device ID
+    auto place = egr::Controller::Instance().GetExpectedPlace();
+    if (paddle::platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      phi::backends::gpu::SetDeviceId(place.device);
+      VLOG(1) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
+              << " from " << (int)place.device;
+#else
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with GPU if use CUDAPlace."));
+#endif
     }
-}
+    if (paddle::platform::is_custom_place(place)) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+      phi::DeviceManager::SetDevice(place);
+      VLOG(1) << "CurrentDeviceId: "
+              << phi::DeviceManager::GetDevice(place.GetDeviceType())
+              << " from " << (int)place.device;
+#else
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with CUSTOM_DEVICE if use "
+          "CustomPlace."));
+#endif
+    }
+    paddle::experimental::Tensor ret;
+    if (!PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
+      VLOG(1) << "==== calling scalar func ====";
+      ret = scale_dygraph_function(
+          self->tensor,
+          phi::Scalar(1.0),
+          -CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 0), 0),
+          true);
 
+    } else if (PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
+      VLOG(1) << "==== calling tensor func ====";
+      ret = subtract_dygraph_function(
+          self->tensor, CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0));
+    }
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
+    return ToPyObject(ret);
+
+  } catch (...) {
+    if (tstate) {
+      PyEval_RestoreThread(tstate);
+    }
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
 
 PyMethodDef math_op_patch_methods[] = {
     {"__add__",
      (PyCFunction)(void (*)(void))tensor__add__method,
-     METH_VARARGS | METH_KEYWORDS, NULL},
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
     {"__radd__",
      (PyCFunction)(void (*)(void))tensor__add__method,
-     METH_VARARGS | METH_KEYWORDS, NULL},
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
     {"__sub__",
      (PyCFunction)(void (*)(void))tensor__sub__method,
-     METH_VARARGS | METH_KEYWORDS, NULL},
-     {NULL, NULL, 0, NULL}
-};
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {NULL, NULL, 0, NULL}};
 
 }  // namespace pybind
 }  // namespace paddle
