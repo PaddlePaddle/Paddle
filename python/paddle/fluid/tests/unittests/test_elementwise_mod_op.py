@@ -89,6 +89,23 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
             self.check_output(check_eager=False)
 
 
+class TestElementwiseModOpFp16(TestElementwiseModOp):
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def init_input_output(self):
+        self.x = np.random.uniform(-1000, 1000, [10, 10]).astype(self.dtype)
+        self.y = np.random.uniform(-100, 100, [10, 10]).astype(self.dtype)
+        self.out = np.mod(self.x, self.y)
+
+    def test_check_output(self):
+        if self.attrs['axis'] == -1:
+            self.check_output(check_eager=True)
+        else:
+            self.check_output(check_eager=False)
+
+
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
 
     def init_dtype(self):

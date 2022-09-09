@@ -139,7 +139,13 @@ endif()
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
-  DEPS ddim mixed_vector place tensor framework_proto version)
+  DEPS ddim
+       mixed_vector
+       place
+       tensor
+       framework_proto
+       version
+       serialization)
 
 cc_test(
   lod_tensor_test
@@ -184,7 +190,7 @@ cc_test(
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS framework_proto scope)
+  DEPS framework_proto scope tensor_array)
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
@@ -503,12 +509,8 @@ cc_library(
        operator
        glog
        version
+       xxhash
        dist_attr)
-
-if(WITH_CRYPTO)
-  add_dependencies(proto_desc cryptopp)
-  target_link_libraries(proto_desc cryptopp)
-endif()
 
 cc_library(
   op_registry
@@ -1078,7 +1080,7 @@ cc_test(
 cc_library(
   selected_rows_utils
   SRCS selected_rows_utils.cc
-  DEPS selected_rows)
+  DEPS selected_rows serialization)
 cc_test(
   selected_rows_utils_test
   SRCS selected_rows_utils_test.cc
