@@ -22,6 +22,7 @@ from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import Fo
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
 
 __all__ = [
     'RETURN_NO_VALUE_MAGIC_NUM', 'RETURN_NO_VALUE_VAR_NAME', 'ReturnTransformer'
@@ -105,10 +106,7 @@ class ReturnAnalysisVisitor(gast.NodeVisitor):
         """
         don't analysis closure, just analyze current func def level.
         """
-        if hasattr(self, "first_func_def"):
-            pass
-        else:
-            self.first_func_def = True
+        if node == self.root:
             self.generic_visit(node)
 
     def visit_Return(self, node):
@@ -133,6 +131,8 @@ class ReturnTransformer(BaseTransformer):
     variable to store the early return statements and boolean states with
     if-else to skip the statements after the return.
 
+    Go through all the function definition and call SingleReturnTransformer for each function.
+    SingleReturnTransformer don't care the nested function def.
     """
 
     def __init__(self, wrapper_root):
@@ -183,6 +183,13 @@ class SingleReturnTransformer(BaseTransformer):
 
         self.pre_analysis = None
 
+    def assert_parent_is_not_while(self, parent_node_of_return):
+        if isinstance(parent_node_of_return, (gast.While, gast.For)):
+            raise Dygraph2StaticException(
+                "Found return statement in While or For body and loop "
+                "is meaningless, please check you code and remove return in while/for."
+            )
+
     def generic_visit(self, node):
         # Because we change ancestor nodes during visit_Return, not current
         # node, original generic_visit of NodeTransformer will visit node
@@ -209,18 +216,30 @@ class SingleReturnTransformer(BaseTransformer):
         """
         don't analysis closure, just analyze current func def level.
         """
-        if hasattr(self, "first_func_def"):
-            pass
-        else:
-            self.first_func_def = True
+        if node == self.root:
             self.generic_visit(node)
+
+    def append_assign_to_return_node(self, value, parent_node_of_return,
+                                     return_name, assign_nodes):
+        self.assert_parent_is_not_while(parent_node_of_return)
+        assert value in [True, False], "value must be True or False."
+        if isinstance(parent_node_of_return, gast.If):
+            # Prepend control flow boolean nodes such as '__return@1 = True'
+            node_str = "{} = _jst.create_bool_as_type({}, {})".format(
+                return_name,
+                ast_to_source_code(parent_node_of_return.test).strip(), value)
+
+            assign_node = gast.parse(node_str).body[0]
+            assign_nodes.append(assign_node)
 
     def transform(self):
         node = self.root
         self.pre_analysis = ReturnAnalysisVisitor(node)
         max_return_length = self.pre_analysis.get_func_max_return_length()
-        while self.pre_analysis.get_func_return_count() > 1:
-            self.generic_visit(node)
+        while self.pre_analysis.get_func_return_count() > 0:
+            # every visit will decrease the number of returns.
+            # so we need a while.
+            self.visit(node)
             self.pre_analysis = ReturnAnalysisVisitor(node)
 
         if max_return_length == 0:
@@ -311,15 +330,8 @@ class SingleReturnTransformer(BaseTransformer):
             return False
 
         assign_nodes = []
-        # Here assume that the parent node of return is gast.If
-        if isinstance(parent_node_of_return, gast.If):
-            # Prepend control flow boolean nodes such as '__return@1 = True'
-            node_str = "{} = _jst.create_bool_as_type({}, True)".format(
-                return_name,
-                ast_to_source_code(parent_node_of_return.test).strip())
-
-            assign_true_node = gast.parse(node_str).body[0]
-            assign_nodes.append(assign_true_node)
+        self.append_assign_to_return_node(True, parent_node_of_return,
+                                          return_name, assign_nodes)
 
         return_length = get_return_size(return_node)
         # In this case we should NOT append RETURN_NO_VALUE placeholder
@@ -364,12 +376,8 @@ class SingleReturnTransformer(BaseTransformer):
         stmt_list[i + 1:] = [if_stmt]
 
         # Here assume that the parent node of return is gast.If
-        if isinstance(parent_node_of_return, gast.If):
-            # Prepend control flow boolean nodes such as '__return@1 = False'
-            node_str = "{} = _jst.create_bool_as_type({}, False)".format(
-                return_name,
-                ast_to_source_code(parent_node_of_return.test).strip())
-            assign_false_node = gast.parse(node_str).body[0]
-
-            stmt_list[i:i] = [assign_false_node]
+        assign_nodes = []
+        self.append_assign_to_return_node(False, parent_node_of_return,
+                                          return_name, assign_nodes)
+        stmt_list[i:i] = assign_nodes
         return True
