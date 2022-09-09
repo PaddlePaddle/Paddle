@@ -216,8 +216,6 @@ void DenseTensor::ResizeAndAllocate(const DDim& dims) {
 
 void DenseTensor::ResetLoD(const LoD& lod) { meta_.lod = lod; }
 
-void DenseTensor::InitStrides() { meta_.strides.InitStrides(meta_.dims); }
-
 #define DATA_MEMBER_FUNC_INSTANTIATION(dtype)      \
   template const dtype* DenseTensor::data() const; \
   template dtype* DenseTensor::data();

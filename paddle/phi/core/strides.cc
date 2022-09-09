@@ -23,13 +23,4 @@ bool Strides::IsOpSupportStrides(const std::string& op_type) {
   return op_support_strides_list.count(op_type) != 0;
 }
 
-void Strides::InitStrides(const DDim& ddim) {
-  rank_ = ddim.size();
-  strides_[ddim.size() - 1] = 1;
-  for (int i = ddim.size() - 2; i >= 0; --i) {
-    strides_[i] = strides_[i + 1] * ddim[i + 1];
-  }
-  is_valiable_ = true;
-}
-
 }  // namespace phi

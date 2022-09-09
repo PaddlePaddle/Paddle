@@ -275,7 +275,7 @@ phi::DenseTensor TensorContiguous(const phi::GPUContext& dev_ctx,
 }
 #endif
 
-inline phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
+phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
 
   VLOG(3) << "Trans2Contiguous...";
@@ -300,6 +300,18 @@ inline phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
     return TensorContiguous(*dev_ctx, tensor);
   }
   return tensor;
+}
+
+void InitTensorStrides(phi::DenseTensor* tensor) {
+  phi::DenseTensorMeta meta = tensor->meta();
+  meta.strides.set_rank(meta.dims.size());
+  auto strides = meta.strides.GetMutable();
+  strides[meta.dims.size() - 1] = 1;
+  for (int i = meta.dims.size() - 2; i >= 0; --i) {
+    strides[i] = strides[i + 1] * meta.dims[i + 1];
+  }
+  meta.strides.set_valiable(true);
+  tensor->set_meta(meta);
 }
 
 phi::DenseTensor TransformData(phi::DenseTensor* tensor,
@@ -333,12 +345,13 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
     }
   }
 
-  if (NeedTransform2Contiguous(next_op_support_stride, out.IsContiguous())) {
+  if (NeedTransform2Contiguous(next_op_support_stride,
+                               out.strides().IsContiguous())) {
     out = Trans2Contiguous(out);
   }
 
-  if (NeedPrepareStrides(next_op_support_stride, out.IsStridesValiable())) {
-    out.InitStrides();
+  if (NeedPrepareStrides(next_op_support_stride, out.strides().IsValiable())) {
+    InitTensorStrides(&out);
   }
 
   return out;
@@ -364,10 +377,10 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
                               target_args_def.layout,
                               transform_flag) &&
          !NeedTransform2Contiguous(next_op_support_stride,
-                                   dense_tensor.IsContiguous()))) {
+                                   dense_tensor.strides().IsContiguous()))) {
       if (NeedPrepareStrides(next_op_support_stride,
-                             dense_tensor.IsStridesValiable())) {
-        dense_tensor.InitStrides();
+                             dense_tensor.strides().IsValiable())) {
+        InitTensorStrides(&dense_tensor);
       }
       return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
     }
@@ -413,10 +426,10 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
                               target_args_def.layout,
                               transform_flag) &&
          !NeedTransform2Contiguous(next_op_support_stride,
-                                   dense_tensor.IsContiguous()))) {
+                                   dense_tensor.strides().IsContiguous()))) {
       if (NeedPrepareStrides(next_op_support_stride,
-                             dense_tensor.IsStridesValiable())) {
-        dense_tensor.InitStrides();
+                             dense_tensor.strides().IsValiable())) {
+        InitTensorStrides(&dense_tensor);
       }
       pt_tensors->emplace_back(dense_tensor);
     } else {

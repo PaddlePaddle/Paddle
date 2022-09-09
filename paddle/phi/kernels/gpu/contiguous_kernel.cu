@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/contiguous_kernel.h"
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -43,43 +45,45 @@ template <typename T, typename Context>
 void ContiguousKernel(const Context& dev_ctx,
                       const DenseTensor& input,
                       DenseTensor* out) {
+  phi::DenseTensorMeta meta = out->meta();
+  meta.strides.set_rank(meta.dims.size());
+  auto out_strides = meta.strides.GetMutable();
+  out_strides[meta.dims.size() - 1] = 1;
+  for (int i = meta.dims.size() - 2; i >= 0; --i) {
+    out_strides[i] = out_strides[i + 1] * meta.dims[i + 1];
+  }
+  meta.strides.set_valiable(true);
+  out->set_meta(meta);
+
   const T* input_data = input.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out);
   int rank = input.dims().size();
   const int64_t* dims = input.dims().Get();
   const int64_t* strides = input.strides().Get();
-  out->InitStrides();
   auto numel = input.numel();
   int64_t block = 512;
   int64_t grid = (numel + block - 1) / block;
-  DenseTensor tmp;
-  DenseTensor dims_strides;
-  DenseTensorMeta meta;
-  meta.dims = make_ddim({2, rank});
-  meta.dtype = DataType::INT64;
-  tmp.set_meta(meta);
-  dims_strides.set_meta(meta);
 
-  int64_t* tmp_data;
-  cudaHostAlloc(&tmp_data, sizeof(int64_t) * rank * 2, cudaHostAllocPortable);
-
-  int64_t* dims_strides_data =
-      reinterpret_cast<int64_t*>(dev_ctx.Alloc(&dims_strides, DataType::INT64));
-
+  int64_t* tmp_data =
+      reinterpret_cast<int64_t*>(malloc(sizeof(int64_t) * rank * 2));
   std::memcpy(tmp_data, dims, sizeof(int64_t) * rank);
   std::memcpy(tmp_data + rank, strides, sizeof(int64_t) * rank);
 
-  cudaMemcpyAsync(dims_strides_data,
-                  tmp_data,
-                  sizeof(int64_t) * rank * 2,
-                  cudaMemcpyHostToDevice,
-                  dev_ctx.stream());
+  auto dims_strides = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      sizeof(int64_t) * rank * 2,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  int64_t* dims_strides_data = reinterpret_cast<int64_t*>(dims_strides->ptr());
+  paddle::memory::Copy(dev_ctx.GetPlace(),
+                       dims_strides_data,
+                       phi::CPUPlace(),
+                       tmp_data,
+                       sizeof(int64_t) * rank * 2,
+                       dev_ctx.stream());
 
-  cudaStreamCallback_t free_when_cb =
-      [](cudaStream_t stream, cudaError_t status, void* userData) {
-        cudaFreeHost(userData);
-      };
-
+  cudaStreamCallback_t free_when_cb = [](cudaStream_t stream,
+                                         cudaError_t status,
+                                         void* userData) { free(userData); };
   cudaStreamAddCallback(dev_ctx.stream(), free_when_cb, tmp_data, 0);
 
   ContiguousFunc<<<grid, block, 0, dev_ctx.stream()>>>(input_data,

@@ -51,6 +51,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -117,23 +118,26 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
   Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
   size_t numel = 1;
-  int64_t* tensor_strides = nullptr;
   if (self->tensor.is_dense_tensor() &&
       std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl())
-          ->IsStridesValiable()) {
-    tensor_strides =
+          ->strides()
+          .IsValiable()) {
+    const int64_t* tensor_strides =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl())
-            ->GetMutableStrides()
-            ->GetMutable();
-  }
-  for (int i = tensor_dims.size() - 1; i >= 0; --i) {
-    py_dims[i] = static_cast<size_t>(tensor_dims[i]);
-    if (tensor_strides) {
+            ->strides()
+            .Get();
+
+    for (int i = tensor_dims.size() - 1; i >= 0; --i) {
+      py_dims[i] = static_cast<size_t>(tensor_dims[i]);
       py_strides[i] = sizeof_dtype * tensor_strides[i];
-    } else {
-      py_strides[i] = sizeof_dtype * numel;
+      numel *= py_dims[i];
     }
-    numel *= py_dims[i];
+  } else {
+    for (int i = tensor_dims.size() - 1; i >= 0; --i) {
+      py_dims[i] = static_cast<size_t>(tensor_dims[i]);
+      py_strides[i] = sizeof_dtype * numel;
+      numel *= py_dims[i];
+    }
   }
 
   PyObject* array = api.PyArray_NewFromDescr_(
@@ -1789,11 +1793,13 @@ static PyObject* tensor_contiguous(TensorObject* self,
   if (self->tensor.is_dense_tensor()) {
     auto dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-    if (dense_tensor->IsContiguous()) {
+    if (dense_tensor->strides().IsContiguous()) {
       Py_INCREF(self);
       return reinterpret_cast<PyObject*>(self);
     } else {
-      return ToPyObject(contiguous_dygraph_function(self->tensor));
+      return ToPyObject(paddle::experimental::Tensor(
+          std::make_shared<phi::DenseTensor>(std::move(
+              paddle::experimental::Trans2Contiguous(*(dense_tensor.get()))))));
     }
 
   } else {
@@ -1810,7 +1816,7 @@ static PyObject* tensor_is_contiguous(TensorObject* self,
   if (self->tensor.is_dense_tensor()) {
     auto dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-    return ToPyObject(dense_tensor->IsContiguous());
+    return ToPyObject(dense_tensor->strides().IsContiguous());
   } else {
     return ToPyObject(true);
   }

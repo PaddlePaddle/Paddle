@@ -147,14 +147,6 @@ class DenseTensor : public TensorBase,
   /// \param lod The new lod of the dense tensor.
   void ResetLoD(const LoD& lod);
 
-  void InitStrides();
-
-  Strides* GetMutableStrides() { return &meta_.strides; }
-
-  bool IsStridesValiable() { return meta_.strides.IsValiable(); }
-
-  bool IsContiguous() { return meta_.strides.IsContiguous(); }
-
   /// \brief Returns the actual allocation size occupied by tensor, may be
   /// larger
   /// than its shape dims.

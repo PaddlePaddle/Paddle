@@ -30,25 +30,27 @@ class Strides {
 
   static bool IsOpSupportStrides(const std::string& op_type);
 
-  void InitStrides(const DDim& ddim);
+  inline bool IsValiable() const { return valiable_; }
 
-  inline bool IsValiable() const { return is_valiable_; }
-
-  inline bool IsContiguous() const { return is_contiguous_; }
+  inline bool IsContiguous() const { return contiguous_; }
 
   inline int64_t* GetMutable() { return strides_; }
 
   inline const int64_t* Get() const { return strides_; }
 
-  inline void SetContiguous(bool contiguous) { is_contiguous_ = contiguous; }
+  inline void set_valiable(bool valiable) { valiable_ = valiable; }
 
-  inline void SetRank(int rank) { rank_ = rank; }
+  inline void set_contiguous(bool contiguous) { contiguous_ = contiguous; }
+
+  inline void set_rank(int rank) { rank_ = rank; }
+
+  inline int get_rank() const { return rank_; }
 
  private:
   int64_t strides_[DDim::kMaxRank];
   int rank_{0};
-  bool is_valiable_{false};
-  bool is_contiguous_{true};
+  bool valiable_{false};
+  bool contiguous_{true};
 };
 
 }  // namespace phi

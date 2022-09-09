@@ -98,5 +98,9 @@ void TransDataBackend(const phi::SelectedRows* tensor,
                       Backend target_backend,
                       phi::SelectedRows* out);
 
+phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor);
+
+void InitTensorStrides(phi::DenseTensor* tensor);
+
 }  // namespace experimental
 }  // namespace paddle

@@ -18,9 +18,9 @@ import numpy as np
 import paddle
 
 
-class TestPyLayer(unittest.TestCase):
+class TestStrides(unittest.TestCase):
 
-    def test_simple_pylayer_multiple_output(self):
+    def test_strides(self):
 
         x_np = np.random.random(size=[2, 3, 4]).astype('float32')
         x = paddle.to_tensor(x_np)

@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -197,17 +198,14 @@ PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
 
   auto dense_tensor =
       std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-  if (!dense_tensor->IsStridesValiable()) {
-    dense_tensor->InitStrides();
+  if (!dense_tensor->strides().IsValiable()) {
+    paddle::experimental::InitTensorStrides(dense_tensor.get());
   }
 
-  auto ddim = self->tensor.shape();
-  size_t rank = static_cast<size_t>(ddim.size());
-  value.resize(rank);
-
+  value.resize(dense_tensor->strides().get_rank());
   const int64_t* strides = dense_tensor->strides().Get();
 
-  for (size_t i = 0; i < rank; i++) {
+  for (size_t i = 0; i < value.size(); i++) {
     value[i] = strides[i];
   }
 
