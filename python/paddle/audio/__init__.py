@@ -15,7 +15,6 @@
 from . import features
 from . import functional
 from . import utils
-from . import datasets
 from . import backends
 
-__all__ = ["functional", "features", "utils", "datasets", "backends"]
+__all__ = ["functional", "features", "utils", "backends"]
