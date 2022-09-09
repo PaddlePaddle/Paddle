@@ -41,7 +41,7 @@ class MemcpyFunctor {
     XPU = 3,
     NPU = 4,
     NPU_PINNED = 5,
-    CUSTOM_DEVICE = 6
+    CUSTOM_DEVICE = 6,
   };
 
  public:
@@ -73,7 +73,6 @@ class MemcpyFunctor {
     } else if (dst_place_type_ == DeviceType::CUSTOM_DEVICE) {
       framework::TensorCopy(
           lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
-    }
 #endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
