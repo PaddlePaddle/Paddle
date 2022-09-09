@@ -186,16 +186,15 @@ class TestGridSamplerOp(OpTest):
         self.mode = "bilinear"
 
 
-# TODO(fwg): Test this case when cnnl support align_corners = True.
-# class Case1(TestGridSamplerOp):
-#
-#     def initTestCase(self):
-#         self.x_shape = (2, 3, 5, 6)
-#         self.grid_shape = (2, 8, 9, 2)
-#         self.theta_shape = (2, 2, 3)
-#         self.align_corners = True
-#         self.padding_mode = "zeros"
-#         self.mode = "bilinear"
+class Case1(TestGridSamplerOp):
+
+    def initTestCase(self):
+        self.x_shape = (2, 3, 5, 6)
+        self.grid_shape = (2, 8, 9, 2)
+        self.theta_shape = (2, 2, 3)
+        self.align_corners = True
+        self.padding_mode = "zeros"
+        self.mode = "bilinear"
 
 
 class LargeInputCase(TestGridSamplerOp):
@@ -209,16 +208,16 @@ class LargeInputCase(TestGridSamplerOp):
         self.mode = "bilinear"
 
 
-# TODO(fwg): Test this case when cnnl support align_corners = True.
-# class Case2(LargeInputCase):
-#
-#     def initTestCase(self):
-#         self.x_shape = (2, 3, 128, 128)
-#         self.grid_shape = (2, 130, 130, 2)
-#         self.theta_shape = (2, 2, 3)
-#         self.align_corners = True
-#         self.padding_mode = "zeros"
-#         self.mode = "bilinear"
+class Case2(LargeInputCase):
+
+    def initTestCase(self):
+        self.x_shape = (2, 3, 128, 128)
+        self.grid_shape = (2, 130, 130, 2)
+        self.theta_shape = (2, 2, 3)
+        self.align_corners = True
+        self.padding_mode = "zeros"
+        self.mode = "bilinear"
+
 
 if __name__ == "__main__":
     unittest.main()

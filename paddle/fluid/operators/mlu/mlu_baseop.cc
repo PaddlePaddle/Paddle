@@ -1563,17 +1563,35 @@ MLURNNDesc::~MLURNNDesc() {
     void* indices_out) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlTopKTensor(handle,
-                                            input_desc,
-                                            input,
-                                            k,
-                                            dim,
-                                            largest,
-                                            sorted,
-                                            values_output_desc,
-                                            values_out,
-                                            indices_output_desc,
-                                            indices_out));
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetTopKTensorWorkspaceSize(handle,
+                                                            input_desc,
+                                                            k,
+                                                            dim,
+                                                            largest,
+                                                            values_output_desc,
+                                                            indices_output_desc,
+                                                            &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlTopKTensor_v3(handle,
+                                               input_desc,
+                                               input,
+                                               k,
+                                               dim,
+                                               largest,
+                                               sorted,
+                                               false /*lower_index_first*/,
+                                               workspace_ptr,
+                                               workspace_size,
+                                               values_output_desc,
+                                               values_out,
+                                               indices_output_desc,
+                                               indices_out));
 }
 
 /* static */ void MLUCnnl::StridedSlice(
