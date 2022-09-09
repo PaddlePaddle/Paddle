@@ -686,6 +686,14 @@ class TestRealComplexElementwiseAddOp(TestComplexElementwiseAddOp):
 
 class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
 
+    def test_static_add(self):
+        paddle.enable_static()
+        a = 1.5
+        b = paddle.full([4, 5, 6], True, dtype='bool')
+        c = a + b
+        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
+        paddle.enable_static()
+
     def func_dygraph_add(self):
         paddle.disable_static()
         a = 1.5
