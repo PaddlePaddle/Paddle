@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 namespace paddle {
 namespace operators {
@@ -46,24 +47,44 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
+    // Scale using float32 dtype
+    using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+
     // step1: inverse scale
-    Tensor const_tensor;
-    const_tensor.mutable_data<T>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<T>(&const_tensor, static_cast<T>(1.0));
+    Tensor const_tensor(scale->type());
+    const_tensor.mutable_data<MPDType>({1}, ctx.GetPlace());
+    FillNpuTensorWithConstant<MPDType>(&const_tensor,
+                                       static_cast<MPDType>(1.0));
 
     // Inverse(1.0/scale)
     Tensor* tmp_inverse_out = const_cast<Tensor*>(scale);
     Tensor inverse_out(scale->type());
     inverse_out.Resize(scale->dims());
-    inverse_out.mutable_data<T>(ctx.GetPlace());
+    inverse_out.mutable_data<MPDType>(ctx.GetPlace());
     const auto& runner_inverse =
         NpuOpRunner("Div", {const_tensor, *scale}, {inverse_out}, {});
     runner_inverse.Run(stream);
     tmp_inverse_out = &inverse_out;
 
+    // cast back to fp16 in AMPO2
+    Tensor cast_inverse_out(xs[0]->type());
+    if (xs[0]->type() != scale->type()) {
+      cast_inverse_out.Resize(scale->dims());
+      cast_inverse_out.mutable_data<T>(ctx.GetPlace());
+      auto dst_acl_dtype =
+          ConvertToNpuDtype(framework::TransToProtoVarType(xs[0]->type()));
+      NpuOpRunner runner_cast;
+      runner_cast.SetType("Cast");
+      runner_cast.AddInput(inverse_out);
+      runner_cast.AddOutput(cast_inverse_out);
+      runner_cast.AddAttr("dst_type", static_cast<int>(dst_acl_dtype));
+      runner_cast.Run(stream);
+      tmp_inverse_out = &cast_inverse_out;
+    }
+
     // NOTE(zhiqiu):
     Tensor tmp;
-    tmp.mutable_data<float>({8}, ctx.GetPlace());
+    tmp.mutable_data<MPDType>({8}, ctx.GetPlace());
     // NOTE(zhiqiu): NPUGetFloatStatus updates data on input in-place.
     // tmp is only placeholder.
     const auto& runner_float_status =
@@ -74,12 +95,13 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     runner_float_status.Run(stream);
 
     Tensor sum;
-    sum.mutable_data<float>({1}, ctx.GetPlace());
-    const auto& runner_reduce_sum =
-        NpuOpRunner("ReduceSumD",
-                    {*float_status},
-                    {sum},
-                    {{"axes", std::vector<int>{0}}, {"keep_dims", true}});
+    sum.mutable_data<MPDType>({1}, ctx.GetPlace());
+    NpuOpRunner runner_reduce_sum;
+    runner_reduce_sum.SetType("ReduceSum");
+    runner_reduce_sum.AddInput(*float_status);
+    runner_reduce_sum.AddInput(std::vector<int32_t>({0}));
+    runner_reduce_sum.AddOutput(sum);
+    runner_reduce_sum.AddAttr("keep_dims", true);
     runner_reduce_sum.Run(stream);
 
     const auto& runner_greater =
