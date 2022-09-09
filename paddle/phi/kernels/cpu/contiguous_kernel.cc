@@ -54,13 +54,13 @@ void ContiguousKernel(const Context& dev_ctx,
       input_offset += mod * input_stride[dim];
     }
 
-    out_data[i] = input_data[input_offset];
+    output_data[i] = input_data[input_offset];
   }
 }
 }  // namespace phi
 
 PD_REGISTER_KERNEL(contiguous,
-                   GPU,
+                   CPU,
                    ALL_LAYOUT,
                    phi::ContiguousKernel,
                    bool,

@@ -20,8 +20,7 @@ import paddle
 
 class TestStrides(unittest.TestCase):
 
-    def test_strides(self):
-
+    def call_strides(self):
         x_np = np.random.random(size=[2, 3, 4]).astype('float32')
         x = paddle.to_tensor(x_np)
         self.assertTrue(np.allclose(x.numpy(), x_np))
@@ -47,6 +46,14 @@ class TestStrides(unittest.TestCase):
         self.assertTrue(np.allclose(y.numpy(), y_np))
         self.assertTrue(y.is_contiguous())
         self.assertTrue(x._is_shared_buffer_with(y) == False)
+
+    def test_strides_cpu(self):
+        paddle.set_device('cpu')
+        self.call_strides()
+
+    def test_strides_gpu(self):
+        paddle.set_device('gpu')
+        self.call_strides()
 
 
 if __name__ == '__main__':

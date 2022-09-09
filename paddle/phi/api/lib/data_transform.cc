@@ -290,25 +290,19 @@ phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
 
   VLOG(3) << "Trans2Contiguous...";
 
-  //   if (platform::is_cpu_place(tensor.place())) {
-  //     auto* dev_ctx =
-  //     static_cast<phi::CPUContext*>(pool.Get(tensor.place())); return
-  //     TensorContiguous(*dev_ctx, tensor);
-  // #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  //   } else if (platform::is_gpu_place(tensor.place())) {
-  //     auto* dev_ctx =
-  //     static_cast<phi::GPUContext*>(pool.Get(tensor.place())); return
-  //     TensorContiguous(*dev_ctx, tensor);
-  // #endif
-  //   } else {
-  //     PADDLE_THROW(phi::errors::Unimplemented(
-  //         "Place type is not supported when casting data type."));
-  //   }
-
-  if (platform::is_gpu_place(tensor.place())) {
+  if (platform::is_cpu_place(tensor.place())) {
+    auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
+    return TensorContiguous(*dev_ctx, tensor);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  } else if (platform::is_gpu_place(tensor.place())) {
     auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(tensor.place()));
     return TensorContiguous(*dev_ctx, tensor);
+#endif
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Place type is not supported when casting data type."));
   }
+
   return tensor;
 }
 
