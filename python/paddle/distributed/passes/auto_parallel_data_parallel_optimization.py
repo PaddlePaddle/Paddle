@@ -45,6 +45,7 @@ class DataParallelOptimizationPass(PassBase):
         # NOTE not use depence on loss and param_grads
         self.set_attr("dist_context", None)
         self.set_attr("global_rank", -1)
+        self.set_attr("use_sharding", False)
         # {grad1: group1, grad2: group1, grad3: group2}
         # record the order for fuse grad data memory
         self._grad_name_to_group_map = OrderedDict()
@@ -71,6 +72,7 @@ class DataParallelOptimizationPass(PassBase):
 
         self.dist_context = self.get_attr("dist_context")
         self.global_rank = int(self.get_attr("global_rank"))
+        self.use_sharding = self.get_attr("use_sharding")
 
         with paddle.static.program_guard(main_program, startup_program):
             self._analyze_program()
@@ -224,7 +226,8 @@ class DataParallelOptimizationPass(PassBase):
         num_dp_comm_stream = len(set(self._group_to_grad_name_map.keys()))
         if num_dp_comm_stream > __max_stream_num_allow__:
             return False
-
+        if self.use_sharding:
+            return False
         return True
 
     def _comms_overlap_calc(self):
