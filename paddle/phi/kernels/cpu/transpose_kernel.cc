@@ -33,6 +33,25 @@ void TransposeKernel(const Context& ctx,
   if (out->numel() == 0) {
     return;
   }
+
+  if (x.strides().IsValiable()) {
+    auto meta = x.meta();
+    int64_t* out_strides = meta.strides.GetMutable();
+    const int64_t* in_strides = x.strides().Get();
+    DDim in_dims = x.dims();
+    for (size_t i = 0; i < axis.size(); i++) {
+      out_strides[i] = in_strides[axis[i]];
+      meta.dims[i] = in_dims[axis[i]];
+    }
+    meta.strides.set_valiable(true);
+    meta.strides.set_contiguous(false);
+    meta.strides.set_rank(in_dims.size());
+
+    out->set_meta(meta);
+    out->ResetHolder(x.Holder());
+    return;
+  }
+
   int rank = axis.size();
   switch (rank) {
     case 1:

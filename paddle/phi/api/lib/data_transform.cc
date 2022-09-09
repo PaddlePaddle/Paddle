@@ -209,6 +209,16 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
 template <typename Context>
 phi::DenseTensor TensorContiguous(const Context& dev_ctx,
                                   const phi::DenseTensor& tensor) {
+  // phi::DenseTensor dense_out;
+  // phi::MetaTensor meta_input(tensor);
+  // phi::MetaTensor meta_out(&dense_out);
+  // UnchangedInferMeta(meta_input, &meta_out);
+
+  // PD_VISIT_ALL_TYPES(tensor.dtype(), "TensorContiguous", ([&] {
+  //                      phi::ContiguousKernel<data_t, Context>(dev_ctx,
+  //                      tensor, &dense_out);
+  //                    }));
+  // return dense_out;
   switch (tensor.dtype()) {
     case DataType::FLOAT32:
       return phi::Contiguous<float>(dev_ctx, tensor);
