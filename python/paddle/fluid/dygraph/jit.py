@@ -1050,10 +1050,6 @@ def save(layer, path, input_spec=None, **configs):
             model_filename = file_prefix + '.' + attr_func + INFER_MODEL_SUFFIX
             params_filename = file_prefix + '.' + attr_func + INFER_PARAMS_SUFFIX
 
-        if configs.skip_forward:
-            # skip save forward
-            continue
-
         with scope_guard(scope):
             save_inference_model(
                 dirname=model_path,
