@@ -560,14 +560,14 @@ def cast_startup_program():
     for op in startup_program.global_block().ops:
         if is_initialization_op(op):
             output_name = op.output_arg_names[0]
-            if param_to_dtype.get(output_name, None) == 'float16':
+            if param_to_dtype.get(output_name,
+                                  None) == core.VarDesc.VarType.FP16:
                 assert op.has_attr(
                     'dtype'
                 ), "initialization op is supported to has dtype attribute but got {}.".format(
                     str(op))
                 if op.attr('dtype') == core.VarDesc.VarType.FP32:
                     op._set_attr('dtype', core.VarDesc.VarType.FP16)
-        print("cast {} into fp16.".format(output_name))
 
 
 @register_pass("auto_parallel_fp16")
