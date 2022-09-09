@@ -22,7 +22,10 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node, as
 
 import re
 
-IGNORE_NAMES = ['declarative', 'to_static', 'dygraph_to_static_func', 'wraps']
+IGNORE_NAMES = [
+    'declarative', 'to_static', 'dygraph_to_static_func', 'wraps',
+    'staticmethod', 'classmethod'
+]
 
 
 class DecoratorTransformer(BaseTransformer):

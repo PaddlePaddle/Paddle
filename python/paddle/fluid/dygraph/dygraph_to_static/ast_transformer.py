@@ -95,7 +95,7 @@ class DygraphToStaticAst(BaseTransformer):
             EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
             TensorShapeTransformer,  # Tensor.shape -> layers.shape(Tensor)
-            ListTransformer,  # List used in control flow
+            #ListTransformer,  # List used in control flow
             BreakContinueTransformer,  # break/continue in loops
             ReturnTransformer,  # return in functions
             LogicalTransformer,  # logical and/or/not
@@ -123,7 +123,6 @@ class DygraphToStaticAst(BaseTransformer):
             self.decorate_func_name = node.name
 
         self.generic_visit(node)
-
         return node
 
     def get_module_name(self):

@@ -22,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void Pool2dKernel(const Context& ctx,
                   const DenseTensor& x,
-                  const std::vector<int>& kernel_size_t,
+                  const IntArray& kernel_size_t,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings_t,
                   bool ceil_mode,
@@ -36,7 +36,8 @@ void Pool2dKernel(const Context& ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   std::vector<int> paddings(paddings_t);
-  std::vector<int> kernel_size(kernel_size_t);
+  std::vector<int> kernel_size(kernel_size_t.GetData().begin(),
+                               kernel_size_t.GetData().end());
 
   PADDLE_ENFORCE_EQ(kernel_size.size(),
                     2,

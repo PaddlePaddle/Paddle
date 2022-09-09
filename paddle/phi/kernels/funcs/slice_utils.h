@@ -117,6 +117,10 @@ inline phi::DDim GetSliceDims(const phi::DDim in_dims,
       continue;
     }
 
+    if (in_dims[axis] == -1) {
+      continue;
+    }
+
     T start = starts[i];
     T end = ends[i];
     T step = steps == nullptr ? 1 : (*steps)[i];
