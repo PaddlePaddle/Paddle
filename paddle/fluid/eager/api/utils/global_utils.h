@@ -62,6 +62,7 @@ class Controller {
       return tracer_->UseLayoutAutoTune();
     }
 #endif
+    tracer_->DisableLayoutAutoTune();
     return false;
   }
 
