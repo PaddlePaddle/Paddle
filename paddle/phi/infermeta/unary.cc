@@ -3207,10 +3207,11 @@ void SplitInferMeta(const MetaTensor& x,
       (axis_value >= 0 && x.dims().at(axis_value) <= 0)) {
     std::vector<phi::DDim> out_dims;
     if ((sections.FromTensor() && !config.is_runtime) || axis_value == -1) {
-      out_dims = std::vector<phi::DDim> (sections_data.size(),phi::make_ddim(std::vector<int>(x.dims().size(), -1)));
-    }
-    else {
-      out_dims = std::vector<phi::DDim> (sections_data.size(), x.dims());
+      out_dims = std::vector<phi::DDim>(
+          sections_data.size(),
+          phi::make_ddim(std::vector<int>(x.dims().size(), -1)));
+    } else {
+      out_dims = std::vector<phi::DDim>(sections_data.size(), x.dims());
     }
     for (size_t i = 0; i < sections_data.size(); ++i) {
       if (axis_value != 0) {
@@ -3298,10 +3299,10 @@ void SplitWithNumInferMeta(const MetaTensor& x,
   if (axis_value == -1 || (axis_value >= 0 && x.dims().at(axis_value) <= 0)) {
     std::vector<phi::DDim> out_dims;
     if (axis_value == -1) {
-      out_dims = std::vector<phi::DDim> (num,phi::make_ddim(std::vector<int>(x.dims().size(), -1)));
-    }
-    else {
-      out_dims = std::vector<phi::DDim> (num, x.dims());
+      out_dims = std::vector<phi::DDim>(
+          num, phi::make_ddim(std::vector<int>(x.dims().size(), -1)));
+    } else {
+      out_dims = std::vector<phi::DDim>(num, x.dims());
     }
     for (int i = 0; i < num; ++i) {
       if (axis_value != 0) {
