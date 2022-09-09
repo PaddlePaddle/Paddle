@@ -51,7 +51,7 @@ __device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
   typedef cub::WarpReduce<T> WarpReduce;
   typename WarpReduce::TempStorage temp_storage;
   value = WarpReduce(temp_storage).Sum(value);
-  if (cub::LaneId() == 0) platform::CudaAtomicAdd(sum, value);
+  if (cub::LaneId() == 0) paddle::platform::CudaAtomicAdd(sum, value);
 }
 
 template <typename T>
@@ -430,14 +430,14 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
 
   if (flags & kHasScale) {
 #if CUDA_VERSION >= 11070
-    platform::CudaAtomicAdd(&(d_scale[ccid]), d_scale_data);
+    paddle::platform::CudaAtomicAdd(&(d_scale[ccid]), d_scale_data);
 #else
     CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
 #endif
   }
   if (flags & kHasBias) {
 #if CUDA_VERSION >= 11070
-    platform::CudaAtomicAdd(&(d_bias[ccid]), d_bias_data);
+    paddle::platform::CudaAtomicAdd(&(d_bias[ccid]), d_bias_data);
 #else
     CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
 #endif
