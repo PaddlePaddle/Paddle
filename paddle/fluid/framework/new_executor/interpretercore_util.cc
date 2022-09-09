@@ -464,6 +464,7 @@ void build_op_func_list(const platform::Place& place,
     const std::set<std::string> ops_with_var_not_in_scope = {
         "conditional_block",
         "conditional_block_grad",
+        "recurrent_grad",
         "rnn_memory_helper",
         "rnn_memory_helper_grad",
         "while",
