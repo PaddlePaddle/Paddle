@@ -70,6 +70,22 @@ def select_output(input, outputs, mask):
     return outputs
 
 
+def _select_input_infer_shape(first_shape, second_shape):
+    """
+    This function infer the output shape by following algorithm:
+    1. if the dims is different, raise a error.
+    2. compare axis one by one:
+        if a == b: we set axis to a
+        if a != b: we set axis to -1
+    """
+    assert len(first_shape) == len(
+        second_shape
+    ), f"the input shapes of select_input should have the same rank, but get {first_shape}, {second_shape}"
+    out_shape = list(
+        map(lambda a, b: a if a == b else -1, first_shape, second_shape))
+    return out_shape
+
+
 def select_input(inputs, mask):
     """
     **select_input**
@@ -89,13 +105,15 @@ def select_input(inputs, mask):
     check_type(inputs, 'inputs', (list, tuple), 'select_input')
     check_variable_and_dtype(mask, 'mask', ['int32'], 'select_input')
 
-    input_dtype = inputs[1].dtype
-    input_shape = inputs[1].shape
-    input_type = inputs[1].type
+    # Select input should expand the shape. If it is - 1 and valid number, use - 1 first. If the dim is different, an error will be reported directly
+    #assert inputs[0].dtype == inputs[1].dtype, f"Expect the inputs should have the same dtype, but get {inputs[0].dtype} and {inputs[1].dtype}"
+    output_shape = _select_input_infer_shape(inputs[0].shape, inputs[1].shape)
+    output_dtype = inputs[1].dtype
+    output_type = inputs[1].type
 
-    out = helper.create_variable(dtype=input_dtype,
-                                 shape=input_shape,
-                                 type=input_type)
+    out = helper.create_variable(dtype=output_dtype,
+                                 shape=output_shape,
+                                 type=output_type)
     helper.append_op(type='select_input',
                      inputs={
                          'X': inputs,
@@ -105,9 +123,9 @@ def select_input(inputs, mask):
     return out
 
 
-def select_input_with_buildin_type(inputs, mask):
+def select_input_with_buildin_type(inputs, mask, name):
     from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
-    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, create_undefined_var_like
+    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
     false_var, true_var = inputs
 
     if isinstance(false_var, UndefinedVar) and isinstance(
@@ -148,24 +166,31 @@ def select_input_with_buildin_type(inputs, mask):
             if isinstance(a, UndefinedVar): return a
             return to_static_variable(a)
 
-        def create_like_if_undefined_var(a, b):
-            if isinstance(a, UndefinedVar): return create_undefined_var_like(b)
-            return a
-
-        # TODO(xiongkun): add warning here.
         true_var, false_var = create_var_if_not_undefined_var(
             true_var), create_var_if_not_undefined_var(false_var)
-        inputs = [
-            create_like_if_undefined_var(false_var, true_var),
-            create_like_if_undefined_var(true_var, false_var)
-        ]
+        if isinstance(true_var, UndefinedVar):
+            warnings.warn(
+                "Return results from different branches in cond contains undefined var:"
+                f"true_var with name `{name}` returned by true_fn is undefined var. we omit select input here."
+            )
+            return false_var
+        if isinstance(false_var, UndefinedVar):
+            warnings.warn(
+                "Return results from different branches in cond contains undefined var:"
+                f"false_var with name `{name}` returned by false_fn is undefined var. we omit select input here."
+            )
+            return true_var
     else:
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "
             "returned by fasle_fn is '{}' and true_var of true_fn is '{}'".
             format(type(false_var), type(true_var)))
-
-    return select_input(inputs, mask)
+    try:
+        ret = select_input(inputs, mask)
+    except Exception as e:
+        raise RuntimeError(
+            f"Exceptions throwed while do select_input on {name}:\n{e}")
+    return ret
 
 
 def split_lod_tensor(input, mask, level=0):
@@ -2658,9 +2683,10 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                 .format(return_name, e))
 
     mask = cast(pred, dtype='int32')
-    merge_func = lambda false_var, true_var: select_input_with_buildin_type(
-        [false_var, true_var], mask)
-    merged_output = map_structure(merge_func, false_output, true_output)
+    merge_func = lambda false_var, true_var, name: select_input_with_buildin_type(
+        [false_var, true_var], mask, name)
+    merged_output = map_structure(merge_func, false_output, true_output,
+                                  return_names)
     return merged_output
 
 
