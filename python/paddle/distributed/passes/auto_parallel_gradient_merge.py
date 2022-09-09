@@ -55,13 +55,6 @@ def _remove_and_get_optimizer_op(main_program, dist_context):
     return optimize_ops_desc
 
 
-def _remove_op_role_var(param, grad):
-    op_maker = core.op_proto_and_checker_maker
-    op = grad.op
-    if op and op.has_attr(op_maker.kOpRoleVarAttrName()):
-        op._remove_attr(op_maker.kOpRoleVarAttrName())
-
-
 def _get_gm_cond_var(main_program, k_steps, dist_context):
     main_block = main_program.global_block()
     # Add const var
@@ -146,8 +139,6 @@ def _append_gradient_merge_backward_op(
         assert (
             param.type != core.VarDesc.VarType.SELECTED_ROWS
         ), "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
-
-        _remove_op_role_var(param, grad)
 
     # {grad.name: gradient_merge_var.name} to rename opt inputs
     grad_to_gradient_merge = {}

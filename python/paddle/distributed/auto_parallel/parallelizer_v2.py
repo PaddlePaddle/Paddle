@@ -230,9 +230,9 @@ class Parallelizer:
                                                    config)
             auto_parallel_sharding_pass.apply([main_program], [startup_program],
                                               self._pass_context)
+            params_grads = self._pass_context.get_attr("params_grads")
 
         # GradClip is train-only optimization
-
         if self._mode == "train":
             config = copy.deepcopy(self._strategy.sharding_configs)
             config["dist_context"] = self._dist_context
