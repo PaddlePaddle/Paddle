@@ -81,12 +81,14 @@ template <typename T, typename Context>
 void TransposeCooGradKernel(const Context& dev_ctx,
                             const SparseCooTensor& x,
                             const SparseCooTensor& dout,
+                            const std::vector<int>& dims,
                             SparseCooTensor* dx);
 
 template <typename T, typename Context>
 void TransposeCsrGradKernel(const Context& dev_ctx,
                             const SparseCsrTensor& x,
                             const SparseCsrTensor& dout,
+                            const std::vector<int>& dims,
                             SparseCsrTensor* dx);
 
 }  // namespace sparse

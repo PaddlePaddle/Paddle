@@ -259,8 +259,8 @@ void TransposeCsrKernel(const Context& dev_ctx,
   // transpose by two stages
   if (dims[0] == 1 && dims[1] == 2) {  // dims == {1, 2, 0}
     SparseCsrTensor* temp;
-    TransposeCsrKernel<T>(dev_ctx, x, {1, 0, 2}, temp);
-    TransposeCsrKernel<T>(dev_ctx, *temp, {0, 2, 1}, out);
+    TransposeCsrKernel<T, Context>(dev_ctx, x, {1, 0, 2}, temp);
+    TransposeCsrKernel<T, Context>(dev_ctx, *temp, {0, 2, 1}, out);
     //  SparseCsrTensor(const DenseTensor& non_zero_crows,
     //                  const DenseTensor& non_zero_cols,
     //                  const DenseTensor& non_zero_elements,
@@ -271,13 +271,13 @@ void TransposeCsrKernel(const Context& dev_ctx,
     return;
   } else if (dims[0] == 2 && dims[1] == 0) {  // dims == {2, 0, 1}
     SparseCsrTensor* temp;
-    TransposeCsrKernel<T>(dev_ctx, x, {0, 2, 1}, temp);
-    TransposeCsrKernel<T>(dev_ctx, *temp, {1, 0, 2}, out);
+    TransposeCsrKernel<T, Context>(dev_ctx, x, {0, 2, 1}, temp);
+    TransposeCsrKernel<T, Context>(dev_ctx, *temp, {1, 0, 2}, out);
     return;
   } else if (dims[0] == 2 && dims[1] == 1) {  // dims == {2, 1, 0}
     SparseCsrTensor* temp;
-    TransposeCsrKernel<T>(dev_ctx, x, {1, 0, 2}, temp);
-    TransposeCsrKernel<T>(dev_ctx, *temp, {2, 0, 1}, out);
+    TransposeCsrKernel<T, Context>(dev_ctx, x, {1, 0, 2}, temp);
+    TransposeCsrKernel<T, Context>(dev_ctx, *temp, {2, 0, 1}, out);
     return;
   }
   int* out_crows_data = out_crows->data<int>();
