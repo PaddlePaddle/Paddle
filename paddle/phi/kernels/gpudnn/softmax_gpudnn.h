@@ -765,13 +765,8 @@ template <typename T = int>
 static std::vector<T> GetSoftmaxTensorDims(const phi::DDim& dims,
                                            const int axis) {
   auto dim = static_cast<T>(dims[axis]);
-  T N = 1, D = 1;
-  for (int i = 0; i < axis; ++i) {
-    N *= dims[i];
-  }
-  for (int i = axis + 1; i < dims.size(); ++i) {
-    D *= dims[i];
-  }
+  auto N = phi::funcs::SizeToAxis<T>(axis, dims);
+  auto D = phi::funcs::SizeOutAxis<T>(axis, dims);
   return {N, dim, D, 1};
 }
 
