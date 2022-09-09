@@ -20,7 +20,6 @@ from paddle.utils import download
 
 __all__ = [
     'download_and_decompress',
-    'load_state_dict_from_url',
 ]
 
 
