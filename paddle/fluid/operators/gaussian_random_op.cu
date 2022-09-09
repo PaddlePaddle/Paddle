@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/fill_constant_op.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 
 namespace paddle {

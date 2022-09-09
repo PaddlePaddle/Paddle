@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <immintrin.h>
 #include <stdint.h>
 
 #include <cmath>
@@ -1027,6 +1028,10 @@ struct is_unsigned<phi::dtype::float16> {
 inline bool isnan(const phi::dtype::float16& a) { return phi::dtype::isnan(a); }
 
 inline bool isinf(const phi::dtype::float16& a) { return phi::dtype::isinf(a); }
+
+inline bool isfinite(const phi::dtype::float16& a) {
+  return phi::dtype::isfinite(a);
+}
 
 template <>
 struct numeric_limits<phi::dtype::float16> {
