@@ -589,7 +589,7 @@ void QuantDequantMkldnnPass::DequantizeOpWeightsFromONNXFormat(
     const std::string& weight_name,
     const std::unordered_map<std::string, std::vector<float>>&
         weight_thresholds,
-    std::vector<std::string>& dequantized_weights_names) const {
+    std::vector<std::string>* dequantized_weights_names) const {
   auto* op_desc = op_node->Op();
   std::string weight_var_name = op_desc->Input(weight_name)[0];
 
@@ -652,7 +652,7 @@ void QuantDequantMkldnnPass::DequantizeWeights(
                                           scope,
                                           "Filter",
                                           weight_thresholds,
-                                          dequantized_weights_names);
+                                          &dequantized_weights_names);
       } else if (IsInt8Weight(op_node, scope, "Filter")) {
         DequantizeOpWeights(
             op_node, scope, "Filter", "Output", weight_thresholds);
@@ -661,7 +661,7 @@ void QuantDequantMkldnnPass::DequantizeWeights(
                op_node->Name() == "matmul_v2") {
       if (onnx_format_quantize_model) {
         DequantizeOpWeightsFromONNXFormat(
-            op_node, scope, "Y", weight_thresholds, dequantized_weights_names);
+            op_node, scope, "Y", weight_thresholds, &dequantized_weights_names);
       } else if (IsInt8Weight(op_node, scope, "Y")) {
         DequantizeOpWeights(op_node, scope, "Y", "Out", weight_thresholds);
       }

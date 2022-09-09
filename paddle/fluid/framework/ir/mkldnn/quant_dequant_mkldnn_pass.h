@@ -125,7 +125,8 @@ class QuantDequantMkldnnPass : public FusePassBase {
       Scope* scope,
       const std::string& weight_name,
       const std::unordered_map<std::string, std::vector<float>>&
-          weight_thresholds) const;
+          weight_thresholds,
+      std::vector<std::string>* dequantized_weights_names) const;
 
   void DequantizeWeights(
       ir::Graph* graph,
