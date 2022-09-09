@@ -251,7 +251,8 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(
             platform::CUDAPlace(dev_id)));
     dev_ctx->set_nccl_comm(comm);
   }
-
+  VLOG(4) << "add mccl comm: " << comm_map_[ring_id][dev_id].get()
+          << ", ring_id:" << ring_id << ", dev_id:" << dev_id;
   return comm_map_[ring_id][dev_id].get();
 }
 
