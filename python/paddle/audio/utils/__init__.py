@@ -14,4 +14,3 @@
 from .error import ParameterError
 from .env import DATA_HOME
 from .download import download_and_decompress
-from .download import load_state_dict_from_url

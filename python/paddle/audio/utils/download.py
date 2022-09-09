@@ -40,14 +40,3 @@ def download_and_decompress(archives: List[Dict[str, str]],
                                    path,
                                    archive['md5'],
                                    decompress=decompress)
-
-
-def load_state_dict_from_url(url: str, path: str, md5: str = None):
-    """
-    Download and load a state dict from url
-    """
-    if not os.path.isdir(path):
-        os.makedirs(path)
-
-    download.get_path_from_url(url, path, md5)
-    return load_state_dict(os.path.join(path, os.path.basename(url)))
