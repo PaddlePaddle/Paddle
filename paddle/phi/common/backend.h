@@ -130,7 +130,8 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
       os << "IPU";
       break;
     default: {
-      size_t device_type_id_ = static_cast<size_t>(backend);
+      size_t device_type_id_ = static_cast<size_t>(backend) -
+                               static_cast<size_t>(Backend::NUM_BACKENDS);
       std::string device_type = phi::GetGlobalDeviceType(device_type_id_);
       if (!device_type.empty()) {
         os << device_type;
@@ -145,7 +146,7 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
 
 inline Backend StringToBackend(const char* backend_cstr) {
   std::string s(backend_cstr);
-  if (s == std::string("Undefined")) {
+  if (s == std::string("Undefined") || s == std::string("UNDEFINED")) {
     return Backend::UNDEFINED;
   }
   if (s == std::string("CPU")) {
@@ -158,7 +159,7 @@ inline Backend StringToBackend(const char* backend_cstr) {
     return Backend::NPU;
   } else if (s == std::string("MLU")) {
     return Backend::MLU;
-  } else if (s == std::string("OneDNN")) {
+  } else if (s == std::string("OneDNN") || s == std::string("ONEDNN")) {
     return Backend::ONEDNN;
   } else if (s == std::string("GPUDNN")) {
     return Backend::GPUDNN;
