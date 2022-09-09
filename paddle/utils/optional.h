@@ -1,5 +1,5 @@
-// This file is copied from boost/optional/optional.hpp and boost version: 1.41.0
-// Modified the following points:
+// This file is copied from boost/optional/optional.hpp and boost 
+// version: 1.41.0. We have modified the following points:
 // 1. modify namespace from boost::optional to paddle::optional
 // 2. remove the depending boost header files
 // 3. remove/modify some macros
@@ -435,10 +435,10 @@ class optional_base : public optional_tag {
   }
   pointer_type cast_ptr(internal_type* p, is_not_reference_tag) { return p; }
   pointer_const_type cast_ptr(internal_type const* p, is_reference_tag) const {
-    return &p->get();
+    return &(p->get());
   }
   pointer_type cast_ptr(internal_type* p, is_reference_tag) {
-    return &p->get();
+    return &(p->get());
   }
 
   bool m_initialized;

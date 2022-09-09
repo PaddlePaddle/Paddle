@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/common/backend.h"
+
 namespace paddle {
 namespace experimental {
 
@@ -25,7 +26,7 @@ namespace experimental {
  * We use the backend to form a bit set to assist the runtime kernel selection,
  * and the higher backend bit has a higher priority.
  *
- * A Tensor may belong to multiple backends at the same time, such CPU and
+ * A Tensor may belong to multiple backends at the same time, such as CPU and
  * MKLDNN. Only one backend value cannot
  */
 class BackendSet final {

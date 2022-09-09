@@ -29,12 +29,12 @@ namespace experimental {
  *
  * Place cannot indicate the difference in calculation methods on the device,
  * but in order to make the boundary of the kernel clearer and the function
- * more specific, we need to distinguish the calculation method.
+ * more specific, we need to distinguish the calculation methods.
  *
  * Such as the kernel for CPU device, it can be a native CPU kernel,
  * or a kernel implemented by oneDNN library.
  *
- * Note(chenweihang): HIP is not needed now, we can added it if needed
+ * Note(chenweihang): HIP is not needed now, we can add it if needed
  * in the future
  */
 enum class Backend : uint8_t {
@@ -50,7 +50,7 @@ enum class Backend : uint8_t {
   MLU,  // MLU currently does not exist at the same time as CUDA
   IPU,
 
-  // the third library backend
+  // the third library backends
   ONEDNN,
   GPUDNN,  // cuDNN and hipDNN
 
@@ -64,13 +64,13 @@ enum class Backend : uint8_t {
    * [ Why we need ALL in baisc kernel key member? ]
    *
    * For Tensor, ALL represents an illegal Backend, but for Kernel, some
-   * kernels may be device-independent by nature, such as reshape; and when
-   * and some kernels are also device-independent when implemented based on
+   * kernels may be device-independent by nature, such as reshape; and
+   * some kernels are also device-independent when implemented based on
    * primitive API.
    *
    * In this case, we need to provide a more concise registration method,
    * instead of registering the kernels for each device with almost
-   * repetitive code, we need one registration covers all situations,
+   * repetitive code, we need one registration that covers all situations,
    * so if we provide the ALL field with Register the kernel in this statement.
    *
    * Of course, we have also considered solving this problem through different
@@ -79,7 +79,7 @@ enum class Backend : uint8_t {
    * PD_REGISTER_KERNEL_FOR_ALL_BACKEND
    *
    * Based on this design pattern, the dtype and layout also have the same
-   * requirements, this cause we need to define a series of macros
+   * requirements, as a result we need to define a series of macros:
    *
    * PD_REGISTER_KERNEL_FOR_ALL_DTYPE
    * PD_REGISTER_KERNEL_FOR_ALL_LAYOUT
@@ -88,7 +88,7 @@ enum class Backend : uint8_t {
    * PD_REGISTER_KERNEL_FOR_ALL_LAYOUT_AND_DTYPE
    * PD_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_LAYOUT_AND_DTYPE
    *
-   * It makes the system of registering macros more complicated, we think
+   * It makes the system of registration macros more complicated, we think
    * this is not a simple design, so we still adopt the design of providing
    * the ALL field.
    *
@@ -130,6 +130,9 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
       os << "IPU";
       break;
     default: {
+      // As backend is of enum class type, backend can only takes
+      // the enumerated values, so what's the point of the default
+      // clause ???
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);
       std::string device_type = phi::GetGlobalDeviceType(device_type_id_);
