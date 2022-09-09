@@ -21,7 +21,7 @@ if(WITH_ARM OR WIN32)
   return()
 endif()
 message(STATUS "CUDA detected: " ${CMAKE_CUDA_COMPILER_VERSION})
-if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0) # CUDA 11.0
+if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
   message(
     STATUS "The current FasterTransformer support CUDA>=11.0 only, return.")
   return()
@@ -82,4 +82,4 @@ set_property(
 add_dependencies(fastertransformer_trt_fused_mha extern_fastertransformer)
 set(WITH_FASTERTRANSFORMER_MHA
     ON
-    CACHE STRING "Enable fastertransformer mha." FORCE)
+    CACHE BOOL "Enable fastertransformer mha." FORCE)

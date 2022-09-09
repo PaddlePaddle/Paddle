@@ -41,6 +41,7 @@ list(
   prelu
   tensor
   bert_encoder_functor)
+
 if(WITH_FASTERTRANSFORMER_MHA)
   list(APPEND TRT_DEPS fastertransformer_trt_fused_mha)
 endif()

@@ -567,17 +567,15 @@ class MultiheadMatMulOpConverter : public OpConverter {
             with_fastertransformer_window_mha = true;
           }
 #endif
-          bool is_BiasQK_directInput = false;
-          if (op_desc.HasAttr("BiasQK_directInput")) {
-            is_BiasQK_directInput =
-                PADDLE_GET_CONST(bool, op_desc.GetAttr("BiasQK_directInput"));
-          }
-
-          bool has_BiasQK_mask = false;
-          if (op_desc.HasAttr("has_BiasQK_mask")) {
-            has_BiasQK_mask =
-                PADDLE_GET_CONST(bool, op_desc.GetAttr("has_BiasQK_mask"));
-          }
+          bool is_BiasQK_directInput =
+              op_desc.HasAttr("BiasQK_directInput")
+                  ? PADDLE_GET_CONST(bool,
+                                     op_desc.GetAttr("BiasQK_directInput"))
+                  : false;
+          bool has_BiasQK_mask =
+              (op_desc.Inputs().find("BiasQK_mask") == op_desc.Inputs().end())
+                  ? false
+                  : true;
           nvinfer1::Weights biasqk_mask_const_nvWeight;
           nvinfer1::ILayer* biasQK_mask_constLayer = nullptr;
           nvinfer1::ITensor* input_bias_qk_mask = nullptr;
@@ -982,6 +980,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           if (with_fastertransformer_window_mha == false &&
               has_BiasQK_mask == true) {
+            PADDLE_THROW(platform::errors::Fatal(
+                "When fastertransformer_window_mha is not available, the "
+                "BiasQK_mask need to be folded into BiasQk, but got "
+                "has_BiasQK_mask = true."));
           }
 
           if (has_BiasQK_mask && with_fastertransformer_window_mha) {

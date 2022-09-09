@@ -747,7 +747,6 @@ int QkvToContextPluginDynamic::enqueue(
       if (ProductDim(input_desc[1].dims) == ProductDim(input_desc[0].dims)) {
         qk_bias = mask_half_;
       }
-
       // if bias_qk is [?,head_number,seq_len,seq_len]
       // in swin SW-MSA block dim[0] of input is batch_number*windows_number
       // therefore, we broadcast bias_qk to [Batch_num*window_num, head_number,

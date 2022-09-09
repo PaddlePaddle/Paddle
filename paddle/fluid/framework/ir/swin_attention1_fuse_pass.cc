@@ -283,7 +283,6 @@ void SwinAttention1FusePass::ApplyImpl(ir::Graph* graph) const {
     Node* biaskQK_mask_node = nullptr;
     if (has_biasQK_mask) {
       desc.SetInput("BiasQK_mask", {biasQK_mask_name});
-      desc.SetAttr("has_BiasQK_mask", true);
       for (auto inputNode : elementwise_70_op->inputs) {
         if (inputNode->Name() == biasQK_mask_name) {
           biaskQK_mask_node = inputNode;

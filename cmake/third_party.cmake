@@ -491,8 +491,11 @@ if(WITH_CUSPARSELT)
   include(external/cusparselt) # download, build, install cusparselt
   list(APPEND third_party_deps extern_cusparselt)
 endif()
-
-if(WITH_TENSORRT)
+if(WITH_GPU
+   AND WITH_TENSORRT
+   AND NOT WIN32
+   AND NOT WITH_ARM
+   AND NOT APPLE)
   include(external/fastertransformer)
   list(APPEND third_party_deps extern_fastertransformer)
 endif()
