@@ -389,7 +389,8 @@ void CPUQuantizeSquashPass::OpDequantSquash(Graph* graph) const {
           return;
       }
       // Find the name of the output linking any_op to dequant_in
-      std::string output_name = FindOutputNameByVarName(dequant_in->Name());
+      std::string output_name =
+          FindOutputNameByVarName(any_op->Op(), dequant_in->Name());
 
       if (output_name.empty()) return;
 
