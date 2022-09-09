@@ -81,7 +81,7 @@ static PyObject* tensor__add__method(TensorObject* self,
     if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::backends::gpu::SetDeviceId(place.device);
-      VLOG(1) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
+      VLOG(6) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
               << " from " << static_cast<int>(place.device);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
@@ -91,7 +91,7 @@ static PyObject* tensor__add__method(TensorObject* self,
     if (paddle::platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DeviceManager::SetDevice(place);
-      VLOG(1) << "CurrentDeviceId: "
+      VLOG(6) << "CurrentDeviceId: "
               << phi::DeviceManager::GetDevice(place.GetDeviceType())
               << " from " << static_cast<int>(place.device);
 #else
@@ -107,8 +107,9 @@ static PyObject* tensor__add__method(TensorObject* self,
         _supported_int_dtype_.end()) {
       self_tensor = cast_dygraph_function(self_tensor, DataType::FLOAT32);
     }
+
     if (!PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-      VLOG(1) << "Calling scale_dygraph_function in tensor__add__method";
+      VLOG(6) << "Calling scale_dygraph_function in tensor__add__method";
       ret = scale_dygraph_function(
           self_tensor,
           phi::Scalar(1.0),
@@ -116,9 +117,18 @@ static PyObject* tensor__add__method(TensorObject* self,
           true);
 
     } else if (PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-      VLOG(1) << "Calling add_dygraph_function in tensor__add__method";
-      ret = add_dygraph_function(
-          self_tensor, CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0));
+      paddle::experimental::Tensor other_tensor =
+          CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+      if (self_tensor.dtype() != other_tensor.dtype()) {
+        VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+                   "dtype is "
+                << self_tensor.dtype() << ", but right dtype is "
+                << other_tensor.dtype() << ", the right dtype will convert to "
+                << self_tensor.dtype();
+        other_tensor = cast_dygraph_function(other_tensor, self_tensor.dtype());
+      }
+      VLOG(6) << "Calling add_dygraph_function in tensor__add__method";
+      ret = add_dygraph_function(self_tensor, other_tensor);
     }
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
@@ -149,7 +159,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
     if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::backends::gpu::SetDeviceId(place.device);
-      VLOG(1) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
+      VLOG(6) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
               << " from " << static_cast<int>(place.device);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
@@ -159,7 +169,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
     if (paddle::platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DeviceManager::SetDevice(place);
-      VLOG(1) << "CurrentDeviceId: "
+      VLOG(6) << "CurrentDeviceId: "
               << phi::DeviceManager::GetDevice(place.GetDeviceType())
               << " from " << static_cast<int>(place.device);
 #else
@@ -175,7 +185,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
       self_tensor = cast_dygraph_function(self_tensor, DataType::FLOAT32);
     }
     if (!PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-      VLOG(1) << "Calling scale_dygraph_function in tensor__sub__method";
+      VLOG(6) << "Calling scale_dygraph_function in tensor__sub__method";
       ret = scale_dygraph_function(
           self_tensor,
           phi::Scalar(1.0),
@@ -183,9 +193,18 @@ static PyObject* tensor__sub__method(TensorObject* self,
           true);
 
     } else if (PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-      VLOG(1) << "Calling subtract_dygraph_function in tensor__sub__method";
-      ret = subtract_dygraph_function(
-          self_tensor, CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0));
+      paddle::experimental::Tensor other_tensor =
+          CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+      if (self_tensor.dtype() != other_tensor.dtype()) {
+        VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+                   "dtype is "
+                << self_tensor.dtype() << ", but right dtype is "
+                << other_tensor.dtype() << ", the right dtype will convert to "
+                << self_tensor.dtype();
+        other_tensor = cast_dygraph_function(other_tensor, self_tensor.dtype());
+      }
+      VLOG(6) << "Calling subtract_dygraph_function in tensor__sub__method";
+      ret = subtract_dygraph_function(self_tensor, other_tensor);
     }
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
@@ -216,7 +235,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::backends::gpu::SetDeviceId(place.device);
-      VLOG(1) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
+      VLOG(6) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
               << " from " << static_cast<int>(place.device);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
@@ -226,7 +245,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     if (paddle::platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DeviceManager::SetDevice(place);
-      VLOG(1) << "CurrentDeviceId: "
+      VLOG(6) << "CurrentDeviceId: "
               << phi::DeviceManager::GetDevice(place.GetDeviceType())
               << " from " << static_cast<int>(place.device);
 #else
@@ -242,7 +261,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       self_tensor = cast_dygraph_function(self_tensor, DataType::FLOAT32);
     }
     if (!PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-      VLOG(1) << "Calling scale_dygraph_function in tensor__rsub__method";
+      VLOG(6) << "Calling scale_dygraph_function in tensor__rsub__method";
       ret = scale_dygraph_function(
           self_tensor,
           phi::Scalar(-1.0),
@@ -250,9 +269,18 @@ static PyObject* tensor__rsub__method(TensorObject* self,
           true);
 
     } else if (PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-      VLOG(1) << "Calling subtract_dygraph_function in tensor__rsub__method";
-      ret = subtract_dygraph_function(
-          CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0), self_tensor);
+      paddle::experimental::Tensor other_tensor =
+          CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+      if (self_tensor.dtype() != other_tensor.dtype()) {
+        VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+                   "dtype is "
+                << self_tensor.dtype() << ", but right dtype is "
+                << other_tensor.dtype() << ", the right dtype will convert to "
+                << self_tensor.dtype();
+        other_tensor = cast_dygraph_function(other_tensor, self_tensor.dtype());
+      }
+      VLOG(6) << "Calling subtract_dygraph_function in tensor__rsub__method";
+      ret = subtract_dygraph_function(other_tensor, self_tensor);
     }
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
