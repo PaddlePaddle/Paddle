@@ -201,6 +201,7 @@ class ShardingPass(PassBase):
                     op.desc.set_output('Out', reversed_x)
                 else:
                     if op.type == "check_finite_and_unscale":
+                        op_role = op.attr('op_role')
                         out_name = op.output_arg_names[0]
                         out_var = main_block.vars[out_name]
                         main_block._remove_op(idx, sync=False)
@@ -212,6 +213,7 @@ class ShardingPass(PassBase):
                                 "shape": out_var.shape,
                                 "dtype": out_var.dtype,
                                 "value": 0,
+                                OP_ROLE_KEY: op_role,
                             })
                     else:
                         main_block._remove_op(idx, sync=False)
