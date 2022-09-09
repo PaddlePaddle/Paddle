@@ -592,9 +592,6 @@
 
 - backward_api : cumsum_grad
   forward : cumsum(Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
   args : (Tensor out_grad, Scalar axis, bool flatten, bool exclusive, bool reverse)
   output : Tensor(x_grad)
   invoke : cumsum(out_grad, axis, flatten, exclusive, !reverse)
@@ -884,11 +881,7 @@
   forward : flip (Tensor x, int[] axis) -> Tensor(out)
   args : (Tensor out_grad, int[] axis)
   output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [out_grad]
-  kernel :
-    func : flip
+  invoke : flip(out_grad, axis)
 
 - backward_api : floor_grad
   forward : floor(Tensor x) -> Tensor(out)
@@ -1971,8 +1964,6 @@
   forward : reverse (Tensor x, IntArray axis) -> Tensor(out)
   args : (Tensor out_grad, IntArray axis)
   output : Tensor(x_grad)
-  infer_meta :
-    func : ReverseInferMeta
   invoke : reverse(out_grad, axis)
 
 - backward_api : roi_align_grad

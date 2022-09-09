@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,21 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/op_registry.h"
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+
+#include <string>
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
-class SoftmaxMaskFuseCPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
-                      true,
-                      platform::errors::Unimplemented(
-                          "Softmax mask fuse op only supports GPU now."));
-  }
-};
+void RegisterCustomDeviceCommonKernel(const std::string& device_type);
+
 }  // namespace operators
 }  // namespace paddle
+
+#endif
