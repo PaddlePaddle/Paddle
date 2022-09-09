@@ -337,6 +337,7 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(out_dtype);
   out->set_layout(x.layout());
+  out->share_lod(x);
 }
 
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
@@ -3536,7 +3537,7 @@ void StridedSliceInferMeta(const MetaTensor& x,
 
 /*  Why not use SumRawInferMeta directly?
     Because we need make InferMetaFunction's args follow the design of
-   api.yaml
+   ops.yaml
 */
 void SumInferMeta(const MetaTensor& x,
                   const IntArray& axis,

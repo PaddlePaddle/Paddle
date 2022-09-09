@@ -14,26 +14,14 @@
 
 #pragma once
 
-#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void SizeKernel(const Context& ctx,
-                const DenseTensor& input,
-                DenseTensor* out) {
-  auto place = ctx.GetPlace();
-  auto out_data = ctx.template Alloc<int64_t>(out);
-  auto cpu_place = phi::CPUPlace();
-  if (place == cpu_place) {
-    out_data[0] = input.numel();
-  } else {
-    DenseTensor cpu_tensor;
-    cpu_tensor.Resize(out->dims());
-    auto cpu_data = ctx.template HostAlloc<int64_t>(&cpu_tensor);
-    cpu_data[0] = input.numel();
-    phi::Copy(ctx, cpu_tensor, place, false, out);
-  }
-}
+void SoftmaxMaskFuseGradKernel(const Context& dev_ctx,
+                               const DenseTensor& out,
+                               const DenseTensor& out_grad,
+                               DenseTensor* x_grad);
 
 }  // namespace phi

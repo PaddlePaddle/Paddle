@@ -9,7 +9,7 @@ cc_test(
 cc_library(
   mlu_info
   SRCS mlu_info.cc
-  DEPS enforce glog monitor neuware_lib)
+  DEPS enforce glog malloc monitor neuware_lib)
 cc_library(
   mlu_stream
   SRCS mlu_stream.cc
