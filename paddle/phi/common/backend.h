@@ -130,11 +130,7 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
       os << "IPU";
       break;
     default: {
-      // As backend is of enum class type, backend can only takes
-      // the enumerated values, so what's the point of the default
-      // clause ???
-      size_t device_type_id_ = static_cast<size_t>(backend) -
-                               static_cast<size_t>(Backend::NUM_BACKENDS);
+      size_t device_type_id_ = static_cast<size_t>(backend);
       std::string device_type = phi::GetGlobalDeviceType(device_type_id_);
       if (!device_type.empty()) {
         os << device_type;
