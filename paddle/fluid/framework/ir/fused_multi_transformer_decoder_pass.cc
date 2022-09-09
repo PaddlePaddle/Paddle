@@ -492,7 +492,7 @@ PDNode* FusedMultiTransformerDecoderFuseQKVPattern::operator()() {
                               ->assert_is_op_input("concat");
 
   auto* concat_k_in_var = pattern->NewNode(concat_k_in_repr())
-                                  ->AsInput()
+                                  // ->AsInput()
                                   ->assert_is_op_input("concat");
   auto* concat_k = pattern->NewNode(concat_k_repr())->assert_is_op("concat");
   auto* concat_k_out_var = pattern->NewNode(concat_k_out_repr())
@@ -501,7 +501,7 @@ PDNode* FusedMultiTransformerDecoderFuseQKVPattern::operator()() {
                                   ->assert_is_op_input("matmul")
                                   ->assert_is_op_input("assign");
   auto* concat_v_in_var = pattern->NewNode(concat_v_in_repr())
-                                  ->AsInput()
+                                  // ->AsInput()
                                   ->assert_is_op_input("concat");
   auto* concat_v = pattern->NewNode(concat_v_repr())->assert_is_op("concat");
   auto* concat_v_out_var = pattern->NewNode(concat_v_out_repr())
@@ -512,13 +512,7 @@ PDNode* FusedMultiTransformerDecoderFuseQKVPattern::operator()() {
 
   auto* assign_k = pattern->NewNode(assign_k_repr())->assert_is_op("assign");
   auto* assign_v = pattern->NewNode(assign_v_repr())->assert_is_op("assign");
-  auto* assign_k_out_var = pattern->NewNode(assign_k_out_repr())
-                              ->assert_is_op_output("assign")
-                              ->AsOutput();
-  auto* assign_v_out_var = pattern->NewNode(assign_v_out_repr())
-                              ->assert_is_op_output("assign")
-                              ->AsOutput();
-  
+
   // QKV fused path Links
   matmul0->LinksFrom({layer_norm_out_var, matmul0_w_var}).LinksTo({matmul0_out_var});
   eltadd0->LinksFrom({matmul0_out_var, eltadd0_b_var}).LinksTo({eltadd0_out_var});
@@ -527,8 +521,8 @@ PDNode* FusedMultiTransformerDecoderFuseQKVPattern::operator()() {
   split0->LinksFrom({transpose2_0_out_var}).LinksTo({split0_q_out_var, split0_k_out_var, split0_v_out_var});
   concat_k->LinksFrom({concat_k_in_var, split0_k_out_var}).LinksTo({concat_k_out_var});
   concat_v->LinksFrom({concat_v_in_var, split0_v_out_var}).LinksTo({concat_v_out_var});
-  assign_k->LinksFrom({concat_k_out_var}).LinksTo({assign_k_out_var});
-  assign_v->LinksFrom({concat_v_out_var}).LinksTo({assign_v_out_var});
+  assign_k->LinksFrom({concat_k_out_var});
+  assign_v->LinksFrom({concat_v_out_var});
 
   // QK path Nodes
   auto* matmul_qk = pattern->NewNode(matmul_qk_repr())->assert_is_op("matmul");
@@ -1423,9 +1417,9 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(Graph* graph, const std
     GET_IR_NODE_FROM_SUBGRAPH(concat_v, concat_v, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(concat_v_out, concat_v_out, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(assign_k, assign_k, fused_multi_transformer_fuse_qkv_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(assign_k_out, assign_k_out, fused_multi_transformer_fuse_qkv_pattern);
+    // GET_IR_NODE_FROM_SUBGRAPH(assign_k_out, assign_k_out, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(assign_v, assign_v, fused_multi_transformer_fuse_qkv_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(assign_v_out, assign_v_out, fused_multi_transformer_fuse_qkv_pattern);
+    // GET_IR_NODE_FROM_SUBGRAPH(assign_v_out, assign_v_out, fused_multi_transformer_fuse_qkv_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm, ffn_layer_norm, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm_scale, ffn_layer_norm_scale, fused_multi_transformer_fuse_qkv_pattern);
@@ -1550,9 +1544,9 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(Graph* graph, const std
          concat_v,
          concat_v_out,
          assign_k,
-         assign_k_out,
+         // assign_k_out,
          assign_v,
-         assign_v_out,
+         // assign_v_out,
          matmul_qk,
          matmul_qk_out,
          eltadd_qk,

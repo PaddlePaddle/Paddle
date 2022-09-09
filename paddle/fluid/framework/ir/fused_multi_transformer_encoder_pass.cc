@@ -484,32 +484,26 @@ PDNode* FusedMultiTransformerEncoderFuseQKVPattern::operator()() {
                               ->assert_is_op_input("matmul", "X");
   auto* split0_k_out_var = pattern->NewNode(split0_k_out_repr())
                               ->assert_is_op_output("split")
-                              ->AsIntermediate()
+                              ->AsOutput()
                               ->assert_is_op_input("matmul", "Y")
-                              ->assert_is_op_input("assign", "X");
+                              ->assert_is_op_input("while");
   auto* split0_v_out_var = pattern->NewNode(split0_v_out_repr())
                               ->assert_is_op_output("split")
-                              ->AsIntermediate()
+                              ->AsOutput()
                               ->assert_is_op_input("matmul_v2", "Y")
-                              ->assert_is_op_input("assign", "X");
+                              ->assert_is_op_input("while");
 
-  auto* assign_k = pattern->NewNode(assign_k_repr())->assert_is_op("assign");
-  auto* assign_v = pattern->NewNode(assign_v_repr())->assert_is_op("assign");
-  auto* assign_k_out_var = pattern->NewNode(assign_k_out_repr())
-                              ->assert_is_op_output("assign")
-                              ->AsOutput();
-  auto* assign_v_out_var = pattern->NewNode(assign_v_out_repr())
-                              ->assert_is_op_output("assign")
-                              ->AsOutput();
-  
   // QKV fused path Links
   matmul0->LinksFrom({layer_norm_out_var, matmul0_w_var}).LinksTo({matmul0_out_var});
   eltadd0->LinksFrom({matmul0_out_var, eltadd0_b_var}).LinksTo({eltadd0_out_var});
   reshape2_0->LinksFrom({eltadd0_out_var}).LinksTo({reshape2_0_out_var});
   transpose2_0->LinksFrom({reshape2_0_out_var}).LinksTo({transpose2_0_out_var});
   split0->LinksFrom({transpose2_0_out_var}).LinksTo({split0_q_out_var, split0_k_out_var, split0_v_out_var});
-  assign_k->LinksFrom({split0_k_out_var}).LinksTo({assign_k_out_var});
-  assign_v->LinksFrom({split0_v_out_var}).LinksTo({assign_v_out_var});
+
+  // while loop
+  auto* while0 =
+      pattern->NewNode(while0_repr())->assert_is_op("while");
+  while0->LinksFrom({split0_k_out_var, split0_v_out_var});
 
   // QK path Nodes
   auto* matmul_qk = pattern->NewNode(matmul_qk_repr())->assert_is_op("matmul");
@@ -1340,12 +1334,15 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(Graph* graph, const std
                           Node* layer_norm_variance,
                           Node* matmul0_w,
                           Node* eltadd0_b,
+                          Node* split0_k_out,
+                          Node* split0_v_out,
                           Node* eltadd_qk_b,
                           Node* dropout_qk,
                           Node* reshape2_0,
                           Node* matmul_linear_w,
                           Node* eltadd_linear_b,
                           Node* dropout_linear,
+                          Node* while0,
                           Node* ffn_layer_norm,
                           Node* ffn_layer_norm_scale,
                           Node* ffn_layer_norm_bias,
@@ -1485,6 +1482,33 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(Graph* graph, const std
     IR_NODE_LINK_TO(eltadd_qk_b, fused_multi_transformer);
 
     IR_NODE_LINK_TO(fused_multi_transformer, ffn_output);
+    
+    // rewrite while OP input
+    //  1. delete k, v
+    //  2. delete matmul1/2_w eltadd1/2_w
+    //  3. add cache_kv
+    auto while_Xs = while0->Op()->Input("X");
+    while_Xs.erase(std::remove(std::begin(while_Xs), std::end(while_Xs), split0_k_out->Name()), std::end(while_Xs));
+    while_Xs.erase(std::remove(std::begin(while_Xs), std::end(while_Xs), split0_v_out->Name()), std::end(while_Xs));
+    while_Xs.emplace_back(cache_kv->Name());
+    while0->Op()->SetInput("X", while_Xs);
+    
+    // rewrite while OP output
+    //  1. delete k, v
+    //  2. add cache_kv
+    auto while_Outs = while0->Op()->Output("Out");
+    while_Outs.erase(std::remove(std::begin(while_Outs), std::end(while_Outs), split0_k_out->Name()), std::end(while_Outs));
+    while_Outs.erase(std::remove(std::begin(while_Outs), std::end(while_Outs), split0_v_out->Name()), std::end(while_Outs));
+    while_Outs.emplace_back(cache_kv->Name());
+    while0->Op()->SetOutput("Out", while_Outs);
+
+    // link CacheKV to while
+    IR_NODE_LINK_TO(cache_kv, while0)
+    // unlink origin KV output to while
+    IR_NODE_UNLINK(split0_k_out, while0);
+    IR_NODE_UNLINK(split0_v_out, while0);
+    IR_NODE_UNLINK(while0, split0_k_out);
+    IR_NODE_UNLINK(while0, split0_v_out);
   };
 
   int fusion_count{0};
@@ -1513,10 +1537,6 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(Graph* graph, const std
     GET_IR_NODE_FROM_SUBGRAPH(split0_q_out, split0_q_out, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(split0_k_out, split0_k_out, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(split0_v_out, split0_v_out, fused_multi_transformer_fuse_qkv_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(assign_k, assign_k, fused_multi_transformer_fuse_qkv_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(assign_k_out, assign_k_out, fused_multi_transformer_fuse_qkv_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(assign_v, assign_v, fused_multi_transformer_fuse_qkv_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(assign_v_out, assign_v_out, fused_multi_transformer_fuse_qkv_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm, ffn_layer_norm, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ffn_layer_norm_scale, ffn_layer_norm_scale, fused_multi_transformer_fuse_qkv_pattern);
@@ -1589,6 +1609,8 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(Graph* graph, const std
 
     GET_IR_NODE_FROM_SUBGRAPH(eltadd_out, eltadd_out, fused_multi_transformer_fuse_qkv_pattern)
 
+    GET_IR_NODE_FROM_SUBGRAPH(while0, while0, fused_multi_transformer_fuse_qkv_pattern)
+
   fuse_creater(input0,
                layer_norm,
                layer_norm_scale,
@@ -1597,12 +1619,15 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(Graph* graph, const std
                layer_norm_variance,
                matmul0_w,
                eltadd0_b,
+               split0_k_out,
+               split0_v_out,
                eltadd_qk_b,
                dropout_qk,
                reshape2_0,
                matmul_linear_w,
                eltadd_linear_b,
                dropout_linear,
+               while0,
                ffn_layer_norm,
                ffn_layer_norm_scale,
                ffn_layer_norm_bias,
@@ -1634,10 +1659,6 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(Graph* graph, const std
          split0_q_out,
          split0_k_out,
          split0_v_out,
-         assign_k,
-         assign_k_out,
-         assign_v,
-         assign_v_out,
          matmul_qk,
          matmul_qk_out,
          eltadd_qk,

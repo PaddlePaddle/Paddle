@@ -164,10 +164,6 @@ struct FusedMultiTransformerEncoderFuseQKVPattern : public PatternBase {
   PATTERN_DECL_NODE(split0_q_out)
   PATTERN_DECL_NODE(split0_k_out)
   PATTERN_DECL_NODE(split0_v_out)
-  PATTERN_DECL_NODE(assign_k)
-  PATTERN_DECL_NODE(assign_v)
-  PATTERN_DECL_NODE(assign_k_out)
-  PATTERN_DECL_NODE(assign_v_out)
 
   // Q, K matmul
   PATTERN_DECL_NODE(matmul_qk);
@@ -187,6 +183,9 @@ struct FusedMultiTransformerEncoderFuseQKVPattern : public PatternBase {
   PATTERN_DECL_NODE(reshape2_qkv_out);
   PATTERN_DECL_NODE(transpose2_qkv);
   PATTERN_DECL_NODE(transpose2_qkv_out);
+
+  // while loop
+  PATTERN_DECL_NODE(while0);
 
   // out linear
   PATTERN_DECL_NODE(matmul_linear);
