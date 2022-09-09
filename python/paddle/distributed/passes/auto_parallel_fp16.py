@@ -15,7 +15,8 @@
 from collections import defaultdict
 
 import paddle
-from paddle.framework import core, default_main_program, default_startup_program
+from paddle.framework import core
+from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.fluid import unique_name
 from .pass_base import register_pass
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
