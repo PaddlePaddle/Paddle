@@ -977,6 +977,7 @@ class GraphDataGenerator {
   std::shared_ptr<phi::Allocation> d_reindex_table_key_;
   std::shared_ptr<phi::Allocation> d_reindex_table_value_;
   std::shared_ptr<phi::Allocation> d_reindex_table_index_;
+  std::vector<std::shared_ptr<phi::Allocation>> edge_type_graph_;
   int64_t reindex_table_size_;
   int ins_buf_pair_len_;
   // size of a d_walk buf

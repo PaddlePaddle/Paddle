@@ -66,6 +66,7 @@ class GpuPsGraphTable
         gpu_graph_fea_list_.push_back(GpuPsCommGraphFea());
       }
     }
+
     cpu_table_status = -1;
     if (topo_aware) {
       int total_gpu = resource_->total_device();
@@ -139,6 +140,10 @@ class GpuPsGraphTable
                                                 int len,
                                                 bool cpu_query_switch,
                                                 bool compress);
+  NeighborSampleResultV2 graph_neighbor_sample_all_edge_type(
+      int gpu_id, int edge_type_len, uint64_t* key, int sample_size, int len,
+      std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs);
+  std::vector<std::shared_ptr<phi::Allocation>> get_edge_type_graph(int gpu_id, int edge_type_len);
   int get_feature_of_nodes(
       int gpu_id, uint64_t *d_walk, uint64_t *d_offset, int size, int slot_num);
 
@@ -154,6 +159,15 @@ class GpuPsGraphTable
                                  int *h_right,
                                  uint64_t *src_sample_res,
                                  int *actual_sample_size);
+  void move_result_to_source_gpu_all_edge_type(int gpu_id,
+                                               int gpu_num,
+                                               int sample_size,
+                                               int* h_left,
+                                               int* h_right,
+                                               uint64_t* src_sample_res,
+                                               int* actual_sample_size,
+                                               int edge_type_len,
+                                               int len);
   int init_cpu_table(const paddle::distributed::GraphParameter &graph);
 
   int gpu_num;
