@@ -39,7 +39,7 @@ typedef struct {
 void BindEager(pybind11::module* m);
 void BindEagerStringTensor(pybind11::module* module);
 void BindFunctions(PyObject* module);
-void BindMathFunctions(PyObject* module);
+// void BindMathFunctions(PyObject* module);
 void BindEagerPyLayer(PyObject* module);
 void BindEagerOpFunctions(pybind11::module* module);
 void BindFinalStateEagerOpFunctions(pybind11::module* module);

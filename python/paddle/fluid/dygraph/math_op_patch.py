@@ -287,13 +287,7 @@ def monkey_patch_math_varbase():
                 self = astype(self, 'float32')
                 other_var = astype(other_var, 'float32')
 
-            # 4. invoke math func directly
-            if op_type == "add" and isinstance(
-                    self, core.eager.Tensor) and isinstance(
-                        other_var, core.eager.Tensor):
-                return core.eager.__add__(self, other_var)
-
-            # 5. _C_ops or _legacy_C_ops calculation
+            # 4. calculation
             axis = -1
             if in_dygraph_mode():
                 math_op = getattr(_C_ops, op_type)
@@ -339,95 +333,98 @@ def monkey_patch_math_varbase():
         ('ndim', _ndim_),
         ('size', _size_),
         ('T', _T_),
-        ('__add__', _binary_creator_('__add__', 'add', False, _scalar_add_,
-                                     True)) if framework._in_eager_mode_ else
         ('__add__',
          _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_)),
-        ##  a+b == b+a. Do not need to reverse explicitly
-        ('__radd__',
-         _binary_creator_('__radd__', 'add', False, _scalar_add_, True))
-        if framework._in_eager_mode_ else
+        #  a+b == b+a. Do not need to reverse explicitly
         ('__radd__',
          _binary_creator_('__radd__', 'elementwise_add', False, _scalar_add_)),
         ('__sub__',
-         _binary_creator_('__sub__', 'subtract', False, _scalar_sub_, True))
-        if framework._in_eager_mode_ else
-        ('__sub__',
          _binary_creator_('__sub__', 'elementwise_sub', False, _scalar_sub_)),
         ('__rsub__',
-         _binary_creator_('__rsub__', 'subtract', True, _scalar_rsub_, True))
-        if framework._in_eager_mode_ else
-        ('__rsub__',
          _binary_creator_('__rsub__', 'elementwise_sub', True, _scalar_rsub_)),
-        ('__mul__',
-         _binary_creator_('__mul__', 'multiply', False, _scalar_mul_, True))
-        if framework._in_eager_mode_ else
         ('__mul__',
          _binary_creator_('__mul__', 'elementwise_mul', False, _scalar_mul_)),
         ## a*b == b*a. Do not need to reverse explicitly
         ('__rmul__',
-         _binary_creator_('__rmul__', 'multiply', False, _scalar_mul_, True))
-        if framework._in_eager_mode_ else
-        ('__rmul__',
          _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
-        ('__div__',
-         _binary_creator_('__div__', 'divide', False, _scalar_div_, True))
-        if framework._in_eager_mode_ else
         ('__div__',
          _binary_creator_('__div__', 'elementwise_div', False, _scalar_div_)),
         ('__truediv__',
-         _binary_creator_('__truediv__', 'divide', False, _scalar_div_, True))
-        if framework._in_eager_mode_ else
-        ('__truediv__',
          _binary_creator_('__truediv__', 'elementwise_div', False,
                           _scalar_div_)),
-        ('__rdiv__', _binary_creator_('__rdiv__', 'divide', True, None, True))
-        if framework._in_eager_mode_ else
         ('__rdiv__',
          _binary_creator_('__rdiv__', 'elementwise_div', True, None)),
         ('__rtruediv__',
-         _binary_creator_('rtruediv__', 'divide', True, None, True))
-        if framework._in_eager_mode_ else
-        ('__rtruediv__',
          _binary_creator_('rtruediv__', 'elementwise_div', True, None)),
-        ('__pow__', _binary_creator_('__pow__', 'pow', False, _C_ops.pow, True))
-        if framework._in_eager_mode_ else
         ('__pow__',
          _binary_creator_('__pow__', 'elementwise_pow', False, None)),
         ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
                                       None)),
         ('__floordiv__',
-         _binary_creator_('__floordiv__', 'floor_divide', False, None, True))
-        if framework._in_eager_mode_ else
-        ('__floordiv__',
          _binary_creator_('__floordiv__', 'elementwise_floordiv', False, None)),
-        ('__mod__', _binary_creator_('__mod__', 'remainder', False, None, True))
-        if framework._in_eager_mode_ else
         ('__mod__',
          _binary_creator_('__mod__', 'elementwise_mod', False, None)),
         ('__matmul__',
-         _binary_creator_('__matmul__', "matmul", False, None, True))
-        if framework._in_eager_mode_ else
-        ('__matmul__',
          _binary_creator_('__matmul__', "matmul_v2", False, None)),
         ## for logical compare
-        ('__eq__', _binary_creator_('__eq__', 'equal', False, None, True))
-        if framework._in_eager_mode_ else
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
-        ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None, True))
-        if framework._in_eager_mode_ else
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),
-        ('__lt__', _binary_creator_('__lt__', 'less_than', False, None, True))
-        if framework._in_eager_mode_ else
         ('__lt__', _binary_creator_('__lt__', 'less_than', False, None)),
-        ('__le__', _binary_creator_('__le__', 'less_equal', False, None, True))
-        if framework._in_eager_mode_ else
         ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
-        ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None,
-                                    True)) if framework._in_eager_mode_ else
         ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
-        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None,
-                                    True)) if framework._in_eager_mode_ else
+        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
+        ('__array_ufunc__', None)
+    ]
+
+    # These methods will be migrated to eager_math_op_patch.cc gradualy.
+    eager_methods = [
+        ('__neg__', _neg_),
+        ('__float__', _float_),
+        ('__long__', _long_),
+        ('__int__', _int_),
+        ('__len__', _len_),
+        ('__index__', _index_),
+        ('astype', astype),
+        ('dim', lambda x: len(x.shape)),
+        ('ndimension', lambda x: len(x.shape)),
+        ('ndim', _ndim_),
+        ('size', _size_),
+        ('T', _T_),
+        # ('__add__', _binary_creator_('__add__', 'add', False, _scalar_add_,
+        #                              True)),
+        #  a+b == b+a. Do not need to reverse explicitly
+        # ('__radd__',
+        #  _binary_creator_('__radd__', 'add', False, _scalar_add_, True)),
+        # ('__sub__',
+        #  _binary_creator_('__sub__', 'subtract', False, _scalar_sub_, True)),
+        # ('__rsub__',
+        #  _binary_creator_('__rsub__', 'subtract', True, _scalar_rsub_, True)),
+        ('__mul__',
+         _binary_creator_('__mul__', 'multiply', False, _scalar_mul_, True)),
+        ## a*b == b*a. Do not need to reverse explicitly
+        ('__rmul__',
+         _binary_creator_('__rmul__', 'multiply', False, _scalar_mul_, True)),
+        ('__div__',
+         _binary_creator_('__div__', 'divide', False, _scalar_div_, True)),
+        ('__truediv__',
+         _binary_creator_('__truediv__', 'divide', False, _scalar_div_, True)),
+        ('__rdiv__', _binary_creator_('__rdiv__', 'divide', True, None, True)),
+        ('__rtruediv__',
+         _binary_creator_('rtruediv__', 'divide', True, None, True)),
+        ('__pow__', _binary_creator_('__pow__', 'pow', False, _C_ops.pow, True)),
+        ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
+                                      None)),
+        ('__floordiv__',
+         _binary_creator_('__floordiv__', 'floor_divide', False, None, True)),
+        ('__mod__', _binary_creator_('__mod__', 'remainder', False, None, True)),
+        ('__matmul__',
+         _binary_creator_('__matmul__', "matmul", False, None, True)),
+        ## for logical compare
+        ('__eq__', _binary_creator_('__eq__', 'equal', False, None, True)),
+        ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None, True)),
+        ('__lt__', _binary_creator_('__lt__', 'less_than', False, None, True)),
+        ('__le__', _binary_creator_('__le__', 'less_equal', False, None, True)),
+        ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
         ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
         ('__array_ufunc__', None)
     ]
@@ -445,7 +442,7 @@ def monkey_patch_math_varbase():
         local_tensor = core.VarBase
 
     if not local_already_patch:
-        for method in varbase_methods:
+        for method in eager_methods if framework._in_eager_mode_ else varbase_methods:
             method_name = method[0]
             method_impl = method[1]
             setattr(local_tensor, method_name, method_impl)
