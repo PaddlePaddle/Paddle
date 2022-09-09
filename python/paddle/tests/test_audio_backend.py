@@ -56,6 +56,12 @@ class TestAudioDatasets(unittest.TestCase):
         self.assertTrue(wav_info.num_channels, self.num_channels)
         self.assertTrue(wav_info.bits_per_sample, 16)
 
+        with open(wave_wav_path, 'rb') as file_:
+            wav_info = paddle.audio.backends.info(file_)
+            self.assertTrue(wav_info.sample_rate, self.sr)
+            self.assertTrue(wav_info.num_channels, self.num_channels)
+            self.assertTrue(wav_info.bits_per_sample, 16)
+
         # test backends(wave_backend) load & save
         wav_data, sr = paddle.audio.backends.load(wave_wav_path)
         np.testing.assert_array_almost_equal(wav_data, self.waveform, decimal=4)
@@ -65,6 +71,64 @@ class TestAudioDatasets(unittest.TestCase):
             waveform = file_.read(frames, dtype, always_2d=True)
             waveform = waveform.T
             np.testing.assert_array_almost_equal(wav_data, waveform)
+
+        with open(wave_wav_path, 'rb') as file_:
+            wav_data, sr = paddle.audio.backends.load(file_,
+                                                      normalize=False,
+                                                      num_frames=10000)
+        with soundfile.SoundFile(wave_wav_path, "r") as file_:
+            dtype = "int16"
+            frames = file_._prepare_read(0, None, -1)
+            waveform = file_.read(frames, dtype, always_2d=True)
+            waveform = waveform.T
+            np.testing.assert_array_almost_equal(wav_data, waveform)
+
+        current_backend = paddle.audio.backends.get_current_audio_backend()
+        self.assertTrue(
+            current_backend in ["wave_backend", "sox_io", "soundfile"])
+
+        # Test error
+        try:
+            paddle.audio.backends.set_backend("jfiji")
+        except NotImplementedError:
+            pass
+
+        try:
+            paddle.audio.backends.save(wave_wav_path,
+                                       paddle.to_tensor(self.waveform),
+                                       self.sr,
+                                       compression=2.9,
+                                       bits_per_sample=24,
+                                       channels_first=True)
+        except ValueError:
+            pass
+
+        try:
+            paddle.audio.backends.save(
+                wave_wav_path,
+                paddle.to_tensor(self.waveform).unsqueeze(0), self.sr)
+        except ValueError:
+            pass
+
+        try:
+            paddle.audio.backends.save("xx.mp3",
+                                       paddle.to_tensor(self.waveform),
+                                       self.sr,
+                                       format="mp3")
+        except RuntimeError:
+            pass
+
+        fake_data = np.array([0, 1, 2, 3, 4, 6], np.float32)
+        soundfile.write(wave_wav_path, fake_data, 1, subtype="DOUBLE")
+        try:
+            wav_info = paddle.audio.backends.info(wave_wav_path)
+        except NotImplementedError:
+            pass
+        try:
+            wav_info = paddle.audio.backends.load(wave_wav_path)
+        except NotImplementedError:
+            pass
+
         if os.path.exists(wave_wav_path):
             os.remove(wave_wav_path)
 

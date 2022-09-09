@@ -16,6 +16,7 @@ import os
 import paddle
 
 import wave
+import warnings
 import numpy as np
 from pathlib import Path
 
@@ -52,6 +53,7 @@ def info(filepath: str, format: Optional[str] = None) -> AudioInfo:
         file_ = wave.open(file_obj)
     except wave.Error:
         file_obj.seek(0)
+        file_obj.close()
         raise NotImplementedError(f"Unsupported wave type")
 
     channels = file_.getnchannels()
@@ -125,6 +127,7 @@ def load(filepath: Union[str, Path],
         file_ = wave.open(file_obj)
     except wave.Error:
         file_obj.seek(0)
+        file_obj.close()
         raise NotImplementedError(f"Unsupported wave type, only PCM16 support")
 
     channels = file_.getnchannels()
@@ -142,13 +145,13 @@ def load(filepath: Union[str, Path],
 
     #default_subtype = "PCM_16" # only support PCM16 WAV
     audio_as_np16 = np.frombuffer(audio_content, dtype=np.int16)
+    audio_as_np32 = audio_as_np16.astype(np.float32)
     if normalize:
         #dtype = "float32"
-        audio_as_np32 = audio_as_np16.astype(np.float32)
         audio_norm = audio_as_np32 / (2**15)
     else:
         #dtype = "int16"
-        audio_norm = audio_as_np16
+        audio_norm = audio_as_np32
 
     waveform = np.reshape(audio_norm, (frames, channels))
     waveform = paddle.to_tensor(waveform)
@@ -199,23 +202,24 @@ def save(
     # the src shape is (time, channels), not channel_first
     if src.ndim != 2:
         raise ValueError(f"Expected 2D Tensor, got {src.ndim}D.")
+
     if compression is not None:
         warnings.warn("The argument compression is silently ignored.")
-    if hasattr(filepath, "write"):
-        if format not in (None, "WAV", "wav"):
-            raise RuntimeError("`format` is only support WAV.")
 
-    # only support PCM16
-    if bits_per_sample not in (None, 16):
-        raise ValueError("Invalid bits_per_sample.")
-
-    sample_width = 2  #bits_per_sample / 8
+    if format not in (None, "WAV", "wav"):
+        raise RuntimeError("`format` is only support WAV.")
 
     audio_numpy = src.numpy()
     if channels_first:
         audio_numpy = np.transpose(audio_numpy)
 
     channels = audio_numpy.shape[0]
+
+    # only support PCM16
+    if bits_per_sample not in (None, 16):
+        raise ValueError("Invalid bits_per_sample.")
+
+    sample_width = 2  #bits_per_sample / 8
 
     if src.dtype == paddle.float32:
         audio_numpy = (audio_numpy * (2**15)).astype("<h")
