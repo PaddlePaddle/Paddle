@@ -165,7 +165,7 @@ void TransposeCsrGradKernel(const Context& dev_ctx,
   for (unsigned int i = 0; i < dims.size(); ++i) {
     grad_dims[dims[i]] = i;
   }
-  TransposeCooKernel<T, Context>(dev_ctx, dout, grad_dims, dx);
+  TransposeCsrKernel<T, Context>(dev_ctx, dout, grad_dims, dx);
 }
 
 }  // namespace sparse

@@ -212,7 +212,7 @@ void TransposeCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         const std::vector<int>& dims,
                         SparseCooTensor* out) {
-  EmptyLikeCooKernel(dev_ctx, x, out);
+  EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
   const DenseTensor& x_indices = x.indices();
   const DenseTensor& x_values = x.non_zero_elements();
   DenseTensor* out_indices = out->mutable_indices();
@@ -240,7 +240,7 @@ void TransposeCsrKernel(const Context& dev_ctx,
                         SparseCsrTensor* out) {
   unsigned int n_dim = dims.size();
   DDim out_dims(x.dims());
-  EmptyLikeCooKernel(dev_ctx, x, out);
+  EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
   out->Resize(out_dims, x.nnz());
   const DenseTensor& x_crows = x.crows();
   const DenseTensor& x_cols = x.cols();
