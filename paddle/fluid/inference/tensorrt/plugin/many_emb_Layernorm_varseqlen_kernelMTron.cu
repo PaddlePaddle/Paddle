@@ -18,7 +18,7 @@ limitations under the License. */
 #include "common/bertCommon.h"
 #include "common/common.cuh"
 #include "common/plugin.h"
-#include "common/serialize.hpp"
+#include "common/serialize.h"
 #include "many_emb_layernorm_varseqlen_plugin.h"
 
 #include <cuda.h>

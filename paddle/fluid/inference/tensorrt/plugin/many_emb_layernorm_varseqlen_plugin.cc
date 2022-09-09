@@ -19,7 +19,7 @@ limitations under the License. */
 #include <vector>
 
 #include "NvInfer.h"
-#include "common/serialize.hpp"
+#include "common/serialize.h"
 #include "many_emb_layernorm_varseqlen_plugin.h"
 
 namespace paddle {
