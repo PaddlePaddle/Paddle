@@ -45,25 +45,23 @@ namespace framework {
 
 struct BatchFidSeq {
   std::vector<uint32_t> h_fidseq;
-  std::vector<uint32_t*> d_fidseqs; // fidseq for different devices
+  std::vector<std::shared_ptr<uint32_t>> d_fidseqs; // fidseq for different devices
 
   int max_bucket_size = 0;
   std::vector<uint32_t> h_bucket_sizes;
   std::vector<uint32_t> h_fidseq_bucket;
-  std::vector<uint32_t*> d_bucket_sizes;
-  std::vector<uint32_t*> d_fidseq_buckets; // fidseq partition bucket for different devices
+  std::vector<std::shared_ptr<uint32_t>> d_bucket_sizes;
+  std::vector<std::shared_ptr<uint32_t>> d_fidseq_buckets; // fidseq partition bucket for different devices
 
   std::vector<uint32_t> h_cache_bfid_sizes;
   std::vector<std::vector<int>> debug_h_cache_bfids;
   std::vector<std::vector<int>> debug_h_cache_fids;
-  std::vector<int*> d_cache_bfids; // cache bfids in pull/push for different devices
+  std::vector<std::shared_ptr<int>> d_cache_bfids; // cache bfids in pull/push for different devices
 
   std::vector<std::vector<int>> h_cache_bfid_resort_indexes;
-  std::vector<int*> d_cache_bfid_resort_indexes;
+  std::vector<std::shared_ptr<int>> d_cache_bfid_resort_indexes;
   std::vector<std::vector<int>> h_cache_bfid_lods;
-  std::vector<int*> d_cache_bfid_lods;
-
-  std::vector<std::shared_ptr<xpu::ctx_guard>> RAII_GUARD;
+  std::vector<std::shared_ptr<int>> d_cache_bfid_lods;
 
   std::string to_string() {
     std::stringstream data_ss;
@@ -178,6 +176,34 @@ class CacheManager {
   void get_merge_grad_params(int dev_id,
       int ** key_resort_idxs, int * out_key_resort_idx_len,
                    int ** fidseq_lods, int * fidseq_lod_len, uint32_t * first_fidseq_elem);
+
+  template<typename T>
+  std::shared_ptr<T> malloc_l3_or_gm(int count, int dev_id) {
+      T* address;
+      int ret = xpu_malloc(
+            reinterpret_cast<void**>(&address),
+            count * sizeof(T),
+            XPU_MEM_L3);
+
+      if (XPU_SUCCESS != ret) {
+          ret = xpu_malloc(reinterpret_cast<void**>(&address),
+                  count * sizeof(T));
+      }
+
+      PADDLE_ENFORCE_EQ(
+          ret, XPU_SUCCESS,
+          platform::errors::External(
+              "XPU API return wrong value[%d], no enough memory", ret));
+
+      auto free_func = [dev_id](T* ptr) {
+          AnyDeviceGuard guard(dev_id);
+
+          VLOG(0) << "dev_id: " << dev_id << ", xpu_free: " << ptr;
+          xpu_free(ptr);
+      };
+
+      return std::shared_ptr<T>(address, free_func);
+  }
 #endif
 
   std::string dump_to_file();
