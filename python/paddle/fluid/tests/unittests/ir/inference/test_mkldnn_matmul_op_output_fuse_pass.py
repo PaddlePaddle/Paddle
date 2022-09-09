@@ -42,7 +42,7 @@ class TestMKLDNNMatmulFuseOp(InferencePassTest):
             out = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
             out = fluid.layers.reshape(
                 out, [0, 0, self.shape_y[0] * self.shape_y[2]])
-            out = fluid.layers.fc(out, size=1)
+            out = fluid.layers.relu(out)
         return out
 
     def setUp(self):
@@ -112,7 +112,7 @@ class TestMKLDNNMatmulOpNotFusedBreakPattern(TestMKLDNNMatmulFuseOp):
                                                     3])  # breaks pattern
             out = fluid.layers.reshape(
                 out, [0, 0, self.shape_y[0] * self.shape_y[2]])
-            out = fluid.layers.fc(out, size=1)
+            out = fluid.layers.relu(out)
         return out
 
 
