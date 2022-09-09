@@ -57,6 +57,14 @@ bool PyCheckTensor(PyObject* obj) {
   return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
 }
 
+// bool PyCheckFloat(PyObject* obj, std::string& op_type) {
+//   return PyObject_IsInstance(obj, static_cast<float>());
+// }
+
+// bool PyCheckInt(PyObject* obj, std::string& op_type) {
+//   return PyObject_IsInstance(obj, static_cast<int>());
+// }
+
 std::set<phi::DataType> _supported_int_dtype_{DataType::UINT8,
                                               DataType::INT8,
                                               DataType::INT16,
@@ -100,31 +108,52 @@ static PyObject* tensor__add__method(TensorObject* self,
           "CustomPlace."));
 #endif
     }
+
     paddle::experimental::Tensor ret;
-
     paddle::experimental::Tensor self_tensor = self->tensor;
-    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-        _supported_int_dtype_.end()) {
-      self_tensor = cast_dygraph_function(self_tensor, DataType::FLOAT32);
-    }
+    PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
-    if (!PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-      VLOG(6) << "Calling scale_dygraph_function in tensor__add__method";
+    if (PyFloat_Check(other_obj)) {
+      VLOG(1) << "================ other is float type ==================";
+      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+          _supported_int_dtype_.end()) {
+        self_tensor = cast_dygraph_function(self_tensor, DataType::FLOAT32);
+      }
+      VLOG(1) << "Calling scale_dygraph_function in tensor__add__method";
       ret = scale_dygraph_function(
           self_tensor,
           phi::Scalar(1.0),
           CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 0), 0),
           true);
 
-    } else if (PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
+    } else if (PyLong_Check(other_obj)) {
+      VLOG(1) << "================ other is int type ==================";
+      VLOG(1) << "Calling scale_dygraph_function in tensor__add__method";
+      ret = scale_dygraph_function(
+          self_tensor, phi::Scalar(1.0), CastPyArg2AttrInt(other_obj, 0), true);
+    }
+    // else if (!PyCheckTensor(other_obj)) {
+    //   if (PyComplex_Check(other_obj)) {
+
+    //   } else {
+
+    //   }
+
+    // }
+
+    if (PyCheckTensor(other_obj)) {
       paddle::experimental::Tensor other_tensor =
-          CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+          CastPyArg2Tensor(other_obj, 0);
       if (self_tensor.dtype() != other_tensor.dtype()) {
-        VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-                   "dtype is "
-                << self_tensor.dtype() << ", but right dtype is "
-                << other_tensor.dtype() << ", the right dtype will convert to "
-                << self_tensor.dtype();
+        printf(
+            "Warning: update_value will not used. Please use "
+            "dy_mf_update_value\n");
+        LOG(WARNING)
+            << "The dtype of left and right Tensor are not the same, left "
+               "dtype is "
+            << self_tensor.dtype() << ", but right dtype is "
+            << other_tensor.dtype() << ", the right dtype will convert to "
+            << self_tensor.dtype();
         other_tensor = cast_dygraph_function(other_tensor, self_tensor.dtype());
       }
       VLOG(6) << "Calling add_dygraph_function in tensor__add__method";
@@ -180,21 +209,31 @@ static PyObject* tensor__sub__method(TensorObject* self,
     }
     paddle::experimental::Tensor ret;
     paddle::experimental::Tensor self_tensor = self->tensor;
-    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-        _supported_int_dtype_.end()) {
-      self_tensor = cast_dygraph_function(self_tensor, DataType::FLOAT32);
-    }
-    if (!PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-      VLOG(6) << "Calling scale_dygraph_function in tensor__sub__method";
+
+    PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+
+    if (PyFloat_Check(other_obj)) {
+      VLOG(1) << "================ other is float type ==================";
+      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+          _supported_int_dtype_.end()) {
+        self_tensor = cast_dygraph_function(self_tensor, DataType::FLOAT32);
+      }
+      VLOG(1) << "Calling scale_dygraph_function in tensor__sub__method";
       ret = scale_dygraph_function(
           self_tensor,
           phi::Scalar(1.0),
           -CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 0), 0),
           true);
 
-    } else if (PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
+    } else if (PyLong_Check(other_obj)) {
+      VLOG(1) << "================ other is int type ==================";
+      ret = scale_dygraph_function(self_tensor,
+                                   phi::Scalar(1.0),
+                                   -CastPyArg2AttrInt(other_obj, 0),
+                                   true);
+    } else if (PyCheckTensor(other_obj)) {
       paddle::experimental::Tensor other_tensor =
-          CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+          CastPyArg2Tensor(other_obj, 0);
       if (self_tensor.dtype() != other_tensor.dtype()) {
         VLOG(6) << "The dtype of left and right Tensor are not the same, left "
                    "dtype is "
@@ -256,19 +295,27 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     }
     paddle::experimental::Tensor ret;
     paddle::experimental::Tensor self_tensor = self->tensor;
-    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-        _supported_int_dtype_.end()) {
-      self_tensor = cast_dygraph_function(self_tensor, DataType::FLOAT32);
-    }
-    if (!PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
-      VLOG(6) << "Calling scale_dygraph_function in tensor__rsub__method";
-      ret = scale_dygraph_function(
-          self_tensor,
-          phi::Scalar(-1.0),
-          CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 0), 0),
-          true);
 
-    } else if (PyCheckTensor(PyTuple_GET_ITEM(args, 0))) {
+    PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+
+    if (PyFloat_Check(other_obj)) {
+      VLOG(1) << "================ other is float type ==================";
+      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+          _supported_int_dtype_.end()) {
+        self_tensor = cast_dygraph_function(self_tensor, DataType::FLOAT32);
+      }
+      VLOG(1) << "Calling scale_dygraph_function in tensor__rsub__method";
+      ret = scale_dygraph_function(self_tensor,
+                                   phi::Scalar(-1.0),
+                                   CastPyArg2AttrFloat(other_obj, 0),
+                                   true);
+    } else if (PyLong_Check(other_obj)) {
+      VLOG(1) << "================ other is int type ==================";
+      ret = scale_dygraph_function(self_tensor,
+                                   phi::Scalar(-1.0),
+                                   CastPyArg2AttrInt(other_obj, 0),
+                                   true);
+    } else if (PyCheckTensor(other_obj)) {
       paddle::experimental::Tensor other_tensor =
           CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
       if (self_tensor.dtype() != other_tensor.dtype()) {

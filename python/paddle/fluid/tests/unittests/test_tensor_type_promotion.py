@@ -18,6 +18,9 @@ import unittest
 import numpy as np
 import warnings
 import paddle
+from paddle.fluid.framework import _enable_legacy_dygraph
+
+_enable_legacy_dygraph()
 
 
 class TestTensorTypePromotion(unittest.TestCase):
