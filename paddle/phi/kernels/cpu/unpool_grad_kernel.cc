@@ -33,7 +33,7 @@ void UnpoolGradKernel(const Context& dev_ctx,
                       const std::vector<int>& ksize,
                       const std::vector<int>& strides,
                       const std::vector<int>& paddings,
-                      const std::vector<int>& output_size,
+                      const IntArray& output_size,
                       const std::string& data_format,
                       DenseTensor* x_grad) {
   T* input_grad_data = dev_ctx.template Alloc<T>(x_grad);

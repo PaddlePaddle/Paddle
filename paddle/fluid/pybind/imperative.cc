@@ -2062,6 +2062,15 @@ void BindImperative(py::module *m_ptr) {
               return std::vector<int>();
             }
           })
+      .def_property_readonly(
+          "layout",
+          [](imperative::VarBase &self) {
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              auto layout = self.Var().Get<framework::LoDTensor>().layout();
+              return paddle::framework::DataLayoutToString(layout);
+            }
+            return std::string("");
+          })
       .def_property_readonly("is_leaf",
                              &imperative::VarBase::IsLeaf,
                              R"DOC(

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from functools import reduce
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import numpy as np
 
 import paddle
@@ -27,15 +27,17 @@ from paddle.distributed.auto_parallel.utils import _get_comm_group, naive_set_di
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-_skip_ops = [
-    'create_py_reader', 'create_double_buffer_reader', 'read', 'slice', 'split',
-    'assign'
-]
+_skip_ops = ['create_py_reader', 'create_double_buffer_reader', 'read']
 # update here to support new optimizers
 _supported_optimizer_type = [
     "adam", "adamax", "adamw", "decayed_adagrad", "momentum", "dgc_momentum",
     "lars_momentum", "merged_momentum", "lamb", "sgd"
 ]
+
+
+def _is_reshard_op(op):
+    return op.desc.has_attr("op_namescope") and \
+        "/auto_parallel/reshard" in op.desc.attr('op_namescope')
 
 
 # NOTE we add the "auto_parallel" prefix to the pass in order to
@@ -100,6 +102,10 @@ class ShardingPass(PassBase):
         for op in main_block.ops:
             if not _is_forward_op(op) or op.type in _skip_ops:
                 continue
+            # NOTE: there aren't dist_attr in the ops which reshard insert,
+            # and should be skip in sharding.
+            if _is_reshard_op(op):
+                continue
             group = _inference_data_parallel_group_for_operator(
                 self.global_rank, op, self._dist_context)
             if group is not None:
@@ -140,6 +146,7 @@ class ShardingPass(PassBase):
             else:
                 sharding_group = dp_group
 
+            self._dist_context._sharding_group = sharding_group
             # TODO(JZ-LIANG) when support multiple dp groups in future, should group param and bind them to corresponding dp group
             params_in_group = [p for p, g in params_grads]
             assert len(params_in_group) == len(
@@ -160,7 +167,7 @@ class ShardingPass(PassBase):
         """
         self._shard_amp_related_op_and_vars(main_block, pass_context)
         self._shard_weight_decay(main_block)
-        self._shard_gradient_clip(main_block)
+        # self._shard_gradient_clip(main_block)
         self._shard_optimizer_ops_and_states(main_block, startup_block)
         self._insert_optimizer_broadcasts(main_block, startup_block)
 
@@ -186,8 +193,28 @@ class ShardingPass(PassBase):
 
                     if self._is_parameter_in_local_shard(param_name):
                         reversed_x.append(input_name)
-                op.desc.set_input('X', reversed_x)
-                op.desc.set_output('Out', reversed_x)
+
+                # NOTE: When `reversed_x` is [], check_finite_and_unscale will be replaced by `fill_constant` op.
+                # The output of check_finite_and_unscale is be set False
+                if reversed_x:
+                    op.desc.set_input('X', reversed_x)
+                    op.desc.set_output('Out', reversed_x)
+                else:
+                    if op.type == "check_finite_and_unscale":
+                        out_name = op.output_arg_names[0]
+                        out_var = main_block.vars[out_name]
+                        main_block._remove_op(idx, sync=False)
+                        main_block._insert_op_without_sync(
+                            idx,
+                            type="fill_constant",
+                            outputs={"Out": out_var},
+                            attrs={
+                                "shape": out_var.shape,
+                                "dtype": out_var.dtype,
+                                "value": 0,
+                            })
+                    else:
+                        main_block._remove_op(idx, sync=False)
 
         main_block._sync_with_cpp()
 
@@ -357,6 +384,17 @@ class ShardingPass(PassBase):
                     main_block._remove_op(idx + 1, sync=False)
                 else:
                     op._set_attr("ring_id", self.outer_dp_group.id)
+
+            # NOTE:
+            # var@GRAD = sum(var@GRAD@RENAME@0, var@GRAD@RENAME@1)
+            # If the var is not in local rank and it is output of many ops, or the var is renamed in another words,
+            # the sum op should be removed.
+            if _is_param_grad_sum_op(op, main_block):
+                out_name = op.output_arg_names[0]
+                base_name = _get_base_name_from_grad_name(out_name)
+                sharding_info = self.varname_to_sharding_info[base_name]
+                if not sharding_info.is_in_local_shard(base_name):
+                    main_block._remove_op(idx, sync=False)
 
         main_block._sync_with_cpp()
 
@@ -594,6 +632,22 @@ def _is_param_grad_allreduce_op(op, block, dp_ring_ids):
     if op.type != "c_allreduce_sum":
         return False
     if op.attr('ring_id') not in dp_ring_ids:
+        return False
+
+    output_name = op.output_arg_names[0]
+    base_name = _get_base_name_from_grad_name(output_name)
+
+    if not block.has_var(base_name):
+        return False
+
+    return block.var(base_name).is_parameter
+
+
+def _is_param_grad_sum_op(op, block):
+
+    if not is_backward_op(op):
+        return False
+    if op.type != "sum":
         return False
 
     output_name = op.output_arg_names[0]
