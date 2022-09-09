@@ -60,14 +60,10 @@ class Engine:
                  strategy=None,
                  user_tuning_config=None):
         self.model = model
-        self.inputs_spec = self._validate_spec(inputs_spec, strategy)
-        self.labels_spec = self._validate_spec(labels_spec, strategy)
-        self.cluster = cluster
-        if self.cluster is None:
-            self.cluster = get_default_cluster()
-        self.strategy = strategy
-        if self.strategy is None:
-            self.strategy = fleet.DistributedStrategy()
+        self.strategy = strategy or fleet.DistributedStrategy()
+        self.inputs_spec = self._validate_spec(inputs_spec)
+        self.labels_spec = self._validate_spec(labels_spec)
+        self.cluster = cluster or get_default_cluster()
         self._user_tuning_config = user_tuning_config
 
         self._executor = None
@@ -616,11 +612,11 @@ class Engine:
         dist_main_block._sync_with_cpp()
         return dataloader
 
-    def _validate_spec(self, specs, strategy):
+    def _validate_spec(self, specs):
         specs = to_list(specs)
         self.k_steps = 1
-        if strategy.gradient_merge:
-            self.k_steps = strategy.gradient_merge_configs['k_steps']
+        if self.strategy.gradient_merge:
+            self.k_steps = self.strategy.gradient_merge_configs['k_steps']
         if specs is not None:
             for i, spec in enumerate(specs):
                 assert isinstance(spec, InputSpec)
