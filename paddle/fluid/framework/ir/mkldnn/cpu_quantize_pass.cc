@@ -699,6 +699,13 @@ void CPUQuantizePass::QuantizeImmutable(Graph* graph,
       return;
     }
 
+    // skip if the dtype of immutable_in is not float32
+    auto dtype = immutable_in->Var()->GetDataType();
+    if (dtype != proto::VarType::FP32) {
+      MarkAndLogCannotQuantizeOp(immutable_op, "The input dtype is not float.");
+      return;
+    }
+
     if (!AreScalesPresentForNodes({immutable_out})) {
       MarkAndLogCannotQuantizeOp(immutable_op,
                                  "No scale available for the operator");
@@ -1170,7 +1177,6 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeImmutable(graph, "reshape2", "X");
   QuantizeImmutable(graph, "transpose2", "X");
   QuantizeImmutable(graph, "slice", "Input");
-  QuantizeImmutable(graph, "shape", "Input");
   QuantizeImmutable(graph, "nearest_interp", "X");
   QuantizeImmutable(graph, "nearest_interp_v2", "X");
   QuantizeElementwise(graph, "elementwise_add");
