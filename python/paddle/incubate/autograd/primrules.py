@@ -190,7 +190,10 @@ def fill_zeros_like_orig2prim(op, x):
 
 
 @REGISTER_ORIG2PRIM('fill_constant')
-def fill_constant_orig2prim(op):
+def fill_constant_orig2prim(op,
+                            shape_tensor=[],
+                            shape_tensor_list=[],
+                            value_tensor=[]):
     return fill_const(value=op.attr('value'),
                       shape=op.attr('shape'),
                       dtype=convert_np_dtype_to_dtype_(
