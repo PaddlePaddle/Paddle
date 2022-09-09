@@ -56,7 +56,14 @@ class Controller {
     return tracer_->GetAmpLevel();
   }
 
-  bool UseLayoutAutoTune() { return tracer_->UseLayoutAutoTune(); }
+  bool UseLayoutAutoTune() {
+#if defined(PADDLE_WITH_CUDA)
+    if (paddle::platform::is_gpu_place(tracer_->ExpectedPlace())) {
+      return tracer_->UseLayoutAutoTune();
+    }
+#endif
+    return false;
+  }
 
   void DisableLayoutAutoTune() { tracer_->DisableLayoutAutoTune(); }
 

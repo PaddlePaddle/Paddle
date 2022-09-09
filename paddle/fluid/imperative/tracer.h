@@ -190,16 +190,12 @@ class Tracer {
 
   bool UseLayoutAutoTune() {
 #if defined(PADDLE_WITH_CUDA)
-    if (paddle::platform::is_gpu_place(expected_place_) &&
-        !phi::backends::gpu::TensorCoreAvailable()) {
-      DisableLayoutAutoTune();
-      return false;
-    } else {
+    if (phi::backends::gpu::TensorCoreAvailable()) {
       return use_layout_autotune_;
     }
-#else
-    return false;
 #endif
+    use_layout_autotune_ = false;
+    return false;
   }
 
   phi::KernelSignature GetExpectedKernelSignature(
