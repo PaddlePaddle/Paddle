@@ -252,8 +252,7 @@ if avx_supported():
                 "Hint: Your machine support AVX, but the installed paddlepaddle doesn't have avx core. "
                 "Hence, no-avx core with worse preformance will be imported.\nIf you like, you could "
                 "reinstall paddlepaddle by 'python -m pip install --force-reinstall paddlepaddle-gpu[==version]' "
-                "to get better performance.\nThe original error is: %s\n" %
-                cpt.get_exception_message(e))
+                "to get better performance.\n")
 
         # assign tensor alias
         paddle_core.LoDTensor = paddle_core.Tensor
