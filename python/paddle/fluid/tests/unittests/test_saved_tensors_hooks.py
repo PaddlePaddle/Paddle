@@ -32,7 +32,7 @@ class TestSavedTensorsHooks(unittest.TestCase):
         b = paddle.ones([3, 3]) * 2
         a.stop_gradient = False
         b.stop_gradient = False
-        with paddle.autograd.SavedTensorsHooks(pack_hook, unpack_hook):
+        with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
             y = paddle.multiply(a, b)
         y.sum().backward()
 
@@ -73,7 +73,7 @@ class TestSavedTensorsHooks(unittest.TestCase):
         b = paddle.ones([3, 3]) * 2
         a.stop_gradient = False
         b.stop_gradient = False
-        with paddle.autograd.SavedTensorsHooks(pack_hook, unpack_hook):
+        with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
             y = cus_multiply.apply(a, b)
         y.sum().backward()
 

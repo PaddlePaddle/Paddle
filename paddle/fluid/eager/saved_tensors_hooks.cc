@@ -75,7 +75,7 @@ paddle::experimental::Tensor UnPackHook::operator()(void* packed_value) {
   PADDLE_ENFORCE_EQ(paddle::pybind::IsEagerTensor(ret),
                     true,
                     paddle::platform::errors::InvalidArgument(
-                        "paddle.autograd.SavedTensorsHooks only one pair "
+                        "paddle.autograd.saved_tensors_hooks only one pair "
                         "of hooks is allowed at a time."));
 
   auto tensor = reinterpret_cast<paddle::pybind::TensorObject*>(ret)->tensor;
@@ -97,7 +97,7 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
   PADDLE_ENFORCE_EQ(paddle::pybind::IsEagerTensor(ret),
                     true,
                     paddle::platform::errors::InvalidArgument(
-                        "paddle.autograd.SavedTensorsHooks only one pair "
+                        "paddle.autograd.saved_tensors_hooks only one pair "
                         "of hooks is allowed at a time."));
 
   return reinterpret_cast<void*>(ret);

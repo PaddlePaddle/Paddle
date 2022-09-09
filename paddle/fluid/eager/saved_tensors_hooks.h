@@ -62,7 +62,7 @@ class SavedTensorsHooks {
     PADDLE_ENFORCE_EQ(pack_hook_ == nullptr && unpack_hook_ == nullptr,
                       true,
                       paddle::platform::errors::InvalidArgument(
-                          "paddle.autograd.SavedTensorsHooks only one pair "
+                          "paddle.autograd.saved_tensors_hooks only one pair "
                           "of hooks is allowed at a time."));
     pack_hook_ = std::make_shared<PackHook>(pack_hook);
     unpack_hook_ = std::make_shared<UnPackHook>(unpack_hook);
