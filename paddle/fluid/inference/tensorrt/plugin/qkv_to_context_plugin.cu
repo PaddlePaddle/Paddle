@@ -700,8 +700,7 @@ int QkvToContextPluginDynamic::enqueue(
         tptr, output, batch, seq_len, head_number_, head_size_);
   } else if (input_type == nvinfer1::DataType::kHALF) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
-    const auto device_prop = platform::GetDeviceProperties(device_id);
-    const int sm = device_prop.major * 10 + device_prop.minor;
+    const int sm = platform::GetGPUComputeCapability(device_id);
     // for now, faster transformer for swin only support seq_len<=384,
     // window_number!=-1, sm 75/80/86, head_size=32
     if (!with_fastertransformer_window_mha_) {
