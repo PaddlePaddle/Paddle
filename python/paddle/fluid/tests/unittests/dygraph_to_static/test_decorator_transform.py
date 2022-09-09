@@ -14,15 +14,10 @@
 
 from __future__ import print_function
 
-import numpy
 import paddle
 import unittest
-import os
-import tempfile
-import paddle.inference as paddle_infer
-from paddle.fluid.framework import program_guard, Program
 import numpy as np
-from paddle.fluid import core
+import decos
 from functools import wraps
 
 
@@ -126,9 +121,17 @@ def fun5(x, y=0):
     return a
 
 
+@decos.deco1
+@decos.deco2(2)
+def fun6(x, y=0):
+    a = paddle.to_tensor(y)
+    print('in fun6, x=%d' % (x))
+    return a
+
+
 @paddle.jit.to_static
 def forward():
-    funcs = [fun1, fun2, fun3, fun4, fun5]
+    funcs = [fun1, fun2, fun3, fun4, fun5, fun6]
     out = []
     for idx, fun in enumerate(funcs):
         out.append(fun(idx + 1, idx + 1))
@@ -144,6 +147,7 @@ class TestDecoratorTransform(unittest.TestCase):
         np.testing.assert_allclose(outs[2], np.array(6), rtol=1e-05)
         np.testing.assert_allclose(outs[3], np.array(8), rtol=1e-05)
         np.testing.assert_allclose(outs[4], np.array(12), rtol=1e-05)
+        np.testing.assert_allclose(outs[5], np.array(9), rtol=1e-05)
 
 
 if __name__ == '__main__':
