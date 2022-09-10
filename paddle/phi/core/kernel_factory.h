@@ -38,10 +38,10 @@ using DataLayout = paddle::experimental::DataLayout;
  * [ Naming considerations ]
  *
  * The tensor operation library contains many kernels, and the computation
- * in each specific scenario is represented by an kernel.
+ * in each specific scenario is represented by a kernel.
  *
  * We directly named it `Kernel` instead of `Kernel`, the tensor operation
- * library here and fluid are independent, avoiding developers from
+ * library here and fluid are independent, keeping developers from
  * misunderstanding the relationship between the two concepts.
  */
 
@@ -90,7 +90,7 @@ class KernelKey {
   DataType dtype_{DataType::UNDEFINED};
 };
 
-// TODO(chenweihang): how deal with vector<Param>?
+// TODO(chenweihang): how to deal with vector<Param>?
 struct TensorArgDef {
   Backend backend;
   DataLayout layout;
