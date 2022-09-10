@@ -47,7 +47,7 @@ template <typename T>
 void AllocWithDebugInfo(const phi::GPUContext& dev_ctx,
                         const std::string& info,
                         Tensor* t) {
-  t->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.Alloc<T>(t, t->numel() * sizeof(T));
   VLOG(4) << info << ": " << MemoryDebugString(*t);
 }
 
@@ -505,9 +505,12 @@ class FMHAGateRef {
       k_transpose_out_grad.Resize(config->kv_transpose_out_dims);
       v_transpose_out_grad.Resize(config->kv_transpose_out_dims);
 
-      q_grad_ptr = q_transpose_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
-      k_grad_ptr = k_transpose_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
-      v_grad_ptr = v_transpose_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
+      q_grad_ptr = dev_ctx_.Alloc<T>(&q_transpose_out_grad,
+                                     q_transpose_out_grad.numel() * sizeof(T));
+      k_grad_ptr = dev_ctx_.Alloc<T>(&k_transpose_out_grad,
+                                     k_transpose_out_grad.numel() * sizeof(T));
+      v_grad_ptr = dev_ctx_.Alloc<T>(&v_transpose_out_grad,
+                                     v_transpose_out_grad.numel() * sizeof(T));
     }
 
     Tensor softmax_out_grad;

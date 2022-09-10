@@ -39,8 +39,17 @@ class DropoutMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc out_desc(*out);
 
-    if (!is_test) {
-      // exec dropout op for training only.
+    if (is_test && is_upscale) {
+      // dropout op for inference: out = input.
+      framework::TensorCopy(
+          *x,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::MLUDeviceContext>(),
+          out);
+      return;
+    } else if (!is_test) {
+      // dropout op for training: out = input * mask / ( 1.0 - dropout_prob ) or
+      // out = input * mask.
       int seed_data = 0;
       if (seed_tensor) {
         if (platform::is_mlu_place(seed_tensor->place())) {
@@ -79,50 +88,44 @@ class DropoutMLUKernel : public framework::OpKernel<T> {
       const int device_id = ctx.GetPlace().GetDeviceId();
       auto mlu_gen_random = GetMLURandomGenerator(ctx, device_id, seed_data);
 
-      const float prob = is_upscale ? dropout_prob : 0.0f;
+      // compute out = input * mask / ( 1.0 - dropout_prob )
       MLUCnnl::FusedDropout(ctx,
                             mlu_gen_random->get(),
                             x_desc.get(),
                             GetBasePtr(x),
-                            prob,
+                            dropout_prob,
                             GetBasePtr(&(mlu_gen_random->get_state())),
                             mask_desc.get(),
                             GetBasePtr(mask),
                             out_desc.get(),
                             GetBasePtr(out));
-    } else {
-      // exec dropout op for inference only.
-      if (is_upscale) {
-        framework::TensorCopy(
-            *x,
-            ctx.GetPlace(),
-            ctx.template device_context<platform::MLUDeviceContext>(),
-            out);
-      } else {
-        auto scale = static_cast<T>(1.0f - dropout_prob);
-        Tensor scale_tensor(x->dtype());
-        scale_tensor.mutable_data<T>({1}, ctx.GetPlace());
-        MLUCnnlTensorDesc scale_desc(scale_tensor);
-        MLUCnnl::Fill(ctx,
-                      CNNL_POINTER_MODE_HOST,
-                      &scale,
-                      scale_desc.get(),
-                      GetBasePtr(&scale_tensor));
 
-        auto data_type = ToCnnlDataType<T>();
-        MLUCnnlOpTensorDesc op_tensor_desc(
-            CNNL_OP_TENSOR_MUL, data_type, CNNL_NOT_PROPAGATE_NAN);
-        MLUCnnl::OpTensor(ctx,
-                          op_tensor_desc.get(),
-                          x_desc.get(),
-                          GetBasePtr(x),
-                          scale_desc.get(),
-                          GetBasePtr(&scale_tensor),
-                          out_desc.get(),
-                          GetBasePtr(out),
-                          data_type);
+      if (is_upscale) {
+        return;
       }
     }
+
+    // In downgrade_in_infer mode, need to multiply (1.0f - dropout_prob).
+    Tensor scale_tensor(x->dtype());
+    Tensor bias_tensor(x->dtype());
+    scale_tensor.mutable_data<T>({1}, ctx.GetPlace());
+    bias_tensor.mutable_data<T>({1}, ctx.GetPlace());
+    MLUCnnlTensorDesc scale_desc(scale_tensor);
+    MLUCnnlTensorDesc bias_desc(bias_tensor);
+    FillMLUTensorWithHostValue(
+        ctx, static_cast<T>(1.0f - dropout_prob), &scale_tensor);
+    FillMLUTensorWithHostValue(ctx, static_cast<T>(0.0f), &bias_tensor);
+
+    MLUCnnl::Scale(ctx,
+                   0,
+                   is_test ? x_desc.get() : out_desc.get(),
+                   is_test ? GetBasePtr(x) : GetBasePtr(out),
+                   scale_desc.get(),
+                   GetBasePtr(&scale_tensor),
+                   bias_desc.get(),
+                   GetBasePtr(&bias_tensor),
+                   out_desc.get(),
+                   GetBasePtr(out));
   }
 };
 
