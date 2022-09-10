@@ -146,9 +146,9 @@ class TestSparseCreation(unittest.TestCase):
             assert [2, 2] == coo.shape
 
 
-class TestSparseConvert(unittest.TestCase):
+class TestSparseConversion(unittest.TestCase):
 
-    def test_to_sparse_coo(self):
+    def test_dense_to_coo(self):
         with _test_eager_guard():
             x = [[0, 1, 0, 2], [0, 0, 3, 0], [4, 5, 0, 0]]
             indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
