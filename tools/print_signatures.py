@@ -127,6 +127,7 @@ def get_all_api(root_path='paddle', attr="__all__"):
     walk through the paddle package to collect all the apis.
     """
     import paddle
+    import paddle.audio
     global api_info_dict
     api_counter = 0
     for filefinder, name, ispkg in pkgutil.walk_packages(
@@ -224,17 +225,48 @@ def process_module(m, attr="__all__"):
 def check_public_api():
     import paddle
     modulelist = [  #npqa
-        paddle, paddle.amp, paddle.nn, paddle.nn.functional,
-        paddle.nn.initializer, paddle.nn.utils, paddle.static, paddle.static.nn,
-        paddle.io, paddle.jit, paddle.metric, paddle.distribution,
-        paddle.optimizer, paddle.optimizer.lr, paddle.regularizer, paddle.text,
-        paddle.utils, paddle.utils.download, paddle.utils.profiler,
-        paddle.utils.cpp_extension, paddle.sysconfig, paddle.vision,
-        paddle.vision.datasets, paddle.vision.models, paddle.vision.transforms,
-        paddle.vision.ops, paddle.distributed, paddle.distributed.fleet,
-        paddle.distributed.fleet.utils, paddle.distributed.parallel,
-        paddle.distributed.utils, paddle.callbacks, paddle.hub, paddle.autograd,
-        paddle.incubate, paddle.inference, paddle.onnx, paddle.device
+        paddle,
+        paddle.amp,
+        paddle.nn,
+        paddle.nn.functional,
+        paddle.nn.initializer,
+        paddle.nn.utils,
+        paddle.static,
+        paddle.static.nn,
+        paddle.io,
+        paddle.jit,
+        paddle.metric,
+        paddle.distribution,
+        paddle.optimizer,
+        paddle.optimizer.lr,
+        paddle.regularizer,
+        paddle.text,
+        paddle.utils,
+        paddle.utils.download,
+        paddle.utils.profiler,
+        paddle.utils.cpp_extension,
+        paddle.sysconfig,
+        paddle.vision,
+        paddle.vision.datasets,
+        paddle.vision.models,
+        paddle.vision.transforms,
+        paddle.vision.ops,
+        paddle.distributed,
+        paddle.distributed.fleet,
+        paddle.distributed.fleet.utils,
+        paddle.distributed.parallel,
+        paddle.distributed.utils,
+        paddle.callbacks,
+        paddle.hub,
+        paddle.autograd,
+        paddle.incubate,
+        paddle.inference,
+        paddle.onnx,
+        paddle.device,
+        paddle.audio,
+        paddle.audio.backends,
+        paddle.audio.utils,
+        paddle.audio.datasets,
     ]
 
     apinum = 0
