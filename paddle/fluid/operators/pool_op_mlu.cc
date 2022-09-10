@@ -141,10 +141,9 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
           handle, pool_mode, out_w, out_h, &extra_input_size);
 
       if (extra_input_size > 0) {
-        phi::CPUContext cpu_ctx;
-        framework::Tensor extra_host_tensor =
-            ctx.AllocateTmpTensor<int8_t, phi::CPUContext>(
-                {static_cast<int64_t>(extra_input_size)}, cpu_ctx);
+        framework::Tensor extra_host_tensor;
+        extra_host_tensor.mutable_data<int8_t>(
+            {static_cast<int64_t>(extra_input_size)}, platform::CPUPlace());
         cnnlInitPoolingExtraInput(handle,
                                   pool_desc.get(),
                                   trans_in_x_desc.get(),
