@@ -69,7 +69,12 @@ class TestSparseCreation(unittest.TestCase):
                 dense_shape,
                 stop_gradient=stop_gradient)
 
-    def test_create_csr_by_np(self):
+            assert np.array_equal(5, csr.nnz())
+            assert np.array_equal(crows, csr.crows().numpy())
+            assert np.array_equal(cols, csr.cols().numpy())
+            assert np.array_equal(values, csr.values().numpy())
+
+    def test_create_csr_by_python_list(self):
         with _test_eager_guard():
             crows = [0, 2, 3, 5]
             cols = [1, 3, 2, 0, 1]
@@ -77,7 +82,7 @@ class TestSparseCreation(unittest.TestCase):
             dense_shape = [3, 4]
             csr = paddle.incubate.sparse.sparse_csr_tensor(
                 crows, cols, values, dense_shape)
-            # test the to_string.py
+
             assert np.array_equal(5, csr.nnz())
             assert np.array_equal(crows, csr.crows().numpy())
             assert np.array_equal(cols, csr.cols().numpy())
