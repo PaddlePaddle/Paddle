@@ -60,11 +60,11 @@ def get_current_audio_backend() -> str:
         str: The name of the current backend,
         the wave_backend or backend imported from paddleaudio
     """
-    current_backend = ""
+    current_backend = None
     if "paddleaudio" in sys.modules:
         current_backend = paddleaudio.backends.get_audio_backend()
-        if current_backend is not None:
-            return current_backend
+    if current_backend is not None:
+        return current_backend
     return "wave_backend"
 
 
