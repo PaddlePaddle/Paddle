@@ -118,7 +118,7 @@ class TestAudioDatasets(unittest.TestCase):
         except RuntimeError:
             pass
 
-        fake_data = np.array([0, 1, 2, 3, 4, 6], np.float32)
+        fake_data = np.array([0, 1, 2, 3, 4, 6, 7], np.float32)
         soundfile.write(wave_wav_path, fake_data, 1, subtype="DOUBLE")
         try:
             wav_info = paddle.audio.backends.info(wave_wav_path)
