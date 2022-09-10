@@ -153,6 +153,8 @@ PD_FOR_EACH_DATA_TYPE(PD_SPECIALIZE_CppTypeToDataType)
 
 #undef PD_SPECIALIZE_CppTypeToDataType
 
+#undef PD_FOR_EACH_DATA_TYPE
+
 inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
   switch (dtype) {
     case DataType::UNDEFINED:
