@@ -24,7 +24,7 @@ from paddle.fluid.framework import _test_eager_guard
 devices = ['cpu', 'gpu']
 
 
-class TestSparseCreate(unittest.TestCase):
+class TestSparseCreation(unittest.TestCase):
 
     def test_create_coo_by_tensor(self):
         with _test_eager_guard():
@@ -37,11 +37,11 @@ class TestSparseCreate(unittest.TestCase):
                                                            dense_elements,
                                                            dense_shape,
                                                            stop_gradient=False)
-            # test the to_string.py
+            
             assert np.array_equal(indices, coo.indices().numpy())
             assert np.array_equal(values, coo.values().numpy())
 
-    def test_create_coo_by_np(self):
+    def test_create_coo_by_python_list(self):
         with _test_eager_guard():
             indices = [[0, 1, 2], [1, 2, 0]]
             values = [1.0, 2.0, 3.0]
