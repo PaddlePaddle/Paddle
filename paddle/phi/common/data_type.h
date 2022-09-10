@@ -34,13 +34,13 @@ using float16 = ::phi::dtype::float16;
 using bfloat16 = ::phi::dtype::bfloat16;
 using pstring = ::phi::dtype::pstring;
 
-// The enum valuea are consistent with jit/property.proto
+// The enum values are consistent with jit/property.proto
 enum class DataType {
   UNDEFINED = 0,
 
   BOOL,
 
-  UINT8,  // BYte
+  UINT8,  // Byte
   INT8,   // Char
   UINT16,
   INT16,
@@ -57,7 +57,7 @@ enum class DataType {
 
   // In Paddle 2.3, we add a new type of Tensor, StringTensor, which is designed
   // for string data management. We design the dtype of StringTensor, pstring.
-  // In order to express a unique data dtype of StringTensor, we add
+  // In order to express a unique data type of StringTensor, we add
   // DataType::PSTRING.
   PSTRING,
 
