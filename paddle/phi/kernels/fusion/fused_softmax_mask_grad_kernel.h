@@ -12,21 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/size_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/size_kernel_impl.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-PD_REGISTER_KERNEL(size,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::SizeKernel,
-                   uint8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   float,
-                   double,
-                   bool) {}
+namespace phi {
+
+template <typename T, typename Context>
+void SoftmaxMaskFuseGradKernel(const Context& dev_ctx,
+                               const DenseTensor& out,
+                               const DenseTensor& out_grad,
+                               DenseTensor* x_grad);
+
+}  // namespace phi

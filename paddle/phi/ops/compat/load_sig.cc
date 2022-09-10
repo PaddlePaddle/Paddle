@@ -12,28 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
 
-template <typename T, typename Context>
-void SizeKernel(const Context& ctx,
-                const DenseTensor& input,
-                DenseTensor* out) {
-  auto place = ctx.GetPlace();
-  auto out_data = ctx.template Alloc<int64_t>(out);
-  auto cpu_place = phi::CPUPlace();
-  if (place == cpu_place) {
-    out_data[0] = input.numel();
+KernelSignature LoadOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorOutput("Out")) {
+    return KernelSignature(
+        "load", {}, {"file_path", "seek", "shape", "load_as_fp16"}, {"Out"});
+  } else if (ctx.IsSelectedRowsOutput("Out")) {
+    return KernelSignature(
+        "load_sr", {}, {"file_path", "seek", "shape", "load_as_fp16"}, {"Out"});
   } else {
-    DenseTensor cpu_tensor;
-    cpu_tensor.Resize(out->dims());
-    auto cpu_data = ctx.template HostAlloc<int64_t>(&cpu_tensor);
-    cpu_data[0] = input.numel();
-    phi::Copy(ctx, cpu_tensor, place, false, out);
+    return KernelSignature("unregistered", {}, {}, {});
   }
 }
 
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(load, phi::LoadOpArgumentMapping);

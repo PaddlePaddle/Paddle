@@ -210,7 +210,7 @@ class KernelArgsDef {
 
 class Kernel {
  public:
-  // for map element contruct
+  // for map element construct
   Kernel() = default;
 
   explicit Kernel(KernelFn fn, void* variadic_fn)
