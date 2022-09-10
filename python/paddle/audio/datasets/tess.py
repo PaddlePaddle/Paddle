@@ -63,6 +63,7 @@ class TESS(AudioClassificationDataset):
                  n_folds=5,
                  split=1,
                  feat_type='raw',
+                 archieves=None,
                  **kwargs):
         """
         Ags:
@@ -76,8 +77,12 @@ class TESS(AudioClassificationDataset):
                 It specify the fold of dev dataset.
             feat_type (:obj:`str`, `optional`, defaults to `raw`):
                 It identifies the feature type that user wants to extrace of an audio file.
+            archive(:obj, list, defaults to None):
+                it tells where to download the audio archive.
         """
         assert split <= n_folds, f'The selected split should not be larger than n_fold, but got {split} > {n_folds}'
+        if archieves is not None:
+            self.archieves = archieves
         files, labels = self._get_data(mode, seed, n_folds, split)
         super(TESS, self).__init__(files=files,
                                    labels=labels,

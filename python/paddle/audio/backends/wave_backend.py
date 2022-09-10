@@ -30,10 +30,6 @@ def info(filepath: str, format: Optional[str] = None) -> AudioInfo:
     """Get signal information of an audio file.
     only support WAV, PCM16 
 
-    Note:
-        ``filepath`` argument is intentionally annotated as ``str`` only, even though it accepts
-        ``pathlib.Path`` object as well. 
-
     Args:
         filepath (path-like object or file-like object):
             Source of audio data.
@@ -66,9 +62,6 @@ def info(filepath: str, format: Optional[str] = None) -> AudioInfo:
                      encoding)
 
 
-SUPPORTED_WIDTHS = (1, 2, 4)
-
-
 def load(filepath: Union[str, Path],
          frame_offset: int = 0,
          num_frames: int = -1,
@@ -89,24 +82,16 @@ def load(filepath: Union[str, Path],
     For these formats, this function always returns ``float32`` Tensor with values normalized to
     ``[-1.0, 1.0]``.
 
-    Note:
-        ``filepath`` argument is intentionally annotated as ``str`` only, even though it accepts
-        ``pathlib.Path`` object as well. 
-
     Args:
         filepath (path-like object or file-like object):
             Source of audio data.
         frame_offset (int, optional):
             Number of frames to skip before start reading data.
         num_frames (int, optional):
-            Maximum number of frames to read. ``-1`` reads all the remaining samples,
+            ``-1`` reads all the remaining samples,
             starting from ``frame_offset``.
-            This function may return the less number of frames if there is not enough
-            frames in the given file.
         normalize (bool, optional):
-            When ``True``, this function always return ``float32``, and sample values are
-            normalized to ``[-1.0, 1.0]``. else reutrn 'int16'
-            This argument has no effect for formats other than integer WAV type.
+            normalize to (-1, 1)
         channels_first (bool, optional):
             When True, the returned Tensor has dimension `[channel, time]`.
             Otherwise, the returned Tensor's dimension is `[time, channel]`.
@@ -134,12 +119,6 @@ def load(filepath: Union[str, Path],
     sample_rate = file_.getframerate()
     frames = file_.getnframes()  # audio frame
 
-    if file_.getsampwidth() not in SUPPORTED_WIDTHS:
-        raise NotImplementedError(f"Unsupported wave bit")
-
-    if num_frames != -1 and num_frames <= frames:
-        frames = num_frames
-
     audio_content = file_.readframes(frames)
     file_obj.close()
 
@@ -154,6 +133,8 @@ def load(filepath: Union[str, Path],
         audio_norm = audio_as_np32
 
     waveform = np.reshape(audio_norm, (frames, channels))
+    if num_frames != -1:
+        waveform = waveform[frame_offset:frame_offset + num_frames, :]
     waveform = paddle.to_tensor(waveform)
     if channels_first:
         waveform = paddle.transpose(waveform, perm=[1, 0])
@@ -193,7 +174,7 @@ def save(
         format (str or None, optional): wav only.
         encoding (str or None, optional): default PCM.
 
-        bits_per_sample (int or None, optional):Not used, 16bit only 
+        bits_per_sample (int or None, optional): 16bit only 
 
     Supported formats/encodings/bit depth/compression are:
     ``"wav"``

@@ -28,10 +28,18 @@ class TestAudioDatasets(unittest.TestCase):
 
     @parameterize(["dev", "train"], [40, 64])
     def test_tess_dataset(self, mode: str, params: int):
+        archieves = [
+            {
+                'url':
+                'https://bj.bcebos.com/paddleaudio/datasets/TESS_Toronto_emotional_speech_set_lite.zip',
+                'md5': '9ffb5e3adf28d4d6b787fa94bd59b975',
+            },
+        ]
         tess_dataset = paddle.audio.datasets.TESS(mode=mode,
                                                   feat_type='mfcc',
-                                                  n_mfcc=params)
-        idx = np.random.randint(0, 500)
+                                                  n_mfcc=params,
+                                                  archieves=archieves)
+        idx = np.random.randint(0, 30)
         elem = tess_dataset[idx]
         self.assertTrue(elem[0].shape[1] == params)
         self.assertTrue(0 <= elem[1] <= 6)
