@@ -35,5 +35,4 @@ paddle.audio.backends.wave_backend.save (ArgSpec(args=['filepath', 'src', 'sampl
 paddle.audio.datasets (ArgSpec(), ('document', 'd41d8cd98f00b204e9800998ecf8427e'))
 paddle.audio.datasets.TESS (ArgSpec(), ('document', '3605f3aa2191ede7ddbe594cd27bb067'))
 paddle.audio.datasets.TESS.meta_info (ArgSpec(), ('document', '60d548a6f71629c3b69bcda3a30d4819'))
-paddle.audio.features (ArgSpec(), ('document', 'd41d8cd98f00b204e9800998ecf8427e'))
 paddle.audio.utils.download.download_and_decompress (ArgSpec(args=['archives', 'path', 'decompress'], varargs=None, varkw=None, defaults=(True,), kwonlyargs=[], kwonlydefaults=None, annotations={'archives': typing.List[typing.Dict[str, str]], 'path': <class 'str'>, 'decompress': <class 'bool'>}), ('document', '1cc1b1b6cc832976504bde52678e3afd'))
