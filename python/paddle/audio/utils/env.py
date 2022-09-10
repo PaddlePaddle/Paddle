@@ -36,7 +36,7 @@ def _get_paddleaudio_home():
 def _get_sub_home(directory):
     home = os.path.join(_get_paddleaudio_home(), directory)
     if not os.path.exists(home):
-        os.makedirs(home, exist_ok=true)
+        os.makedirs(home, exist_ok=True)
     return home
 
 
