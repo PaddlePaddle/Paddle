@@ -27,8 +27,10 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace phi {
 
@@ -360,8 +362,37 @@ void CumsumKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   using Op = cub::Sum;
   auto op = Op();
-  ScanKernel<T, Context, Op>(
-      dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, op, out);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  if (std::is_same<T, MPType>::value) {
+    ScanKernel<MPType, Context, Op>(
+        dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, op, out);
+  } else {
+    DenseTensor input;
+    input.Resize(x.dims());
+    dev_ctx.template Alloc<MPType>(&input);
+    std::vector<const DenseTensor*> in_ins = {&x};
+    std::vector<DenseTensor*> in_outs = {&input};
+    phi::funcs::ElementwiseKernel<MPType>(
+        dev_ctx, in_ins, &in_outs, kps::IdentityFunctor<T, MPType>());
+
+    DenseTensor output;
+    output.Resize(out->dims());
+    ScanKernel<MPType, Context, Op>(dev_ctx,
+                                    input,
+                                    axis.to<int>(),
+                                    flatten,
+                                    exclusive,
+                                    reverse,
+                                    op,
+                                    &output);
+
+    std::vector<const DenseTensor*> out_ins = {&output};
+    dev_ctx.template Alloc<T>(out);
+    std::vector<DenseTensor*> out_outs = {out};
+    phi::funcs::ElementwiseKernel<T>(
+        dev_ctx, out_ins, &out_outs, kps::IdentityFunctor<MPType, T>());
+  }
 }
 
 template <typename T, typename Context>
@@ -386,6 +417,7 @@ PD_REGISTER_KERNEL(cumsum,
                    phi::CumsumKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    int16_t,
                    int,
                    int64_t) {}

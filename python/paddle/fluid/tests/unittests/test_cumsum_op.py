@@ -44,6 +44,11 @@ class TestCumsumOp(unittest.TestCase):
         z = np.cumsum(data_np, axis=-1)
         np.testing.assert_array_equal(z, y.numpy())
 
+        y = paddle.cumsum(data, dtype='float16')
+        z = np.cumsum(data_np)
+        self.assertTrue(y.dtype == core.VarDesc.VarType.FP16)
+        np.testing.assert_array_equal(z, y.numpy())
+
         y = paddle.cumsum(data, dtype='float64')
         self.assertTrue(y.dtype == core.VarDesc.VarType.FP64)
 
@@ -64,6 +69,7 @@ class TestCumsumOp(unittest.TestCase):
             y4 = paddle.cumsum(x, dtype='float64')
             y5 = paddle.cumsum(x, dtype=np.int32)
             y6 = paddle.cumsum(x, axis=-2)
+            y7 = paddle.cumsum(x, dtype='float16')
 
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -71,7 +77,7 @@ class TestCumsumOp(unittest.TestCase):
             out = exe.run(feed={'X': data_np},
                           fetch_list=[
                               y.name, y2.name, y3.name, y4.name, y5.name,
-                              y6.name
+                              y6.name, y7.name
                           ])
 
             z = np.cumsum(data_np)
@@ -84,6 +90,11 @@ class TestCumsumOp(unittest.TestCase):
             self.assertTrue(out[4].dtype == np.int32)
             z = np.cumsum(data_np, axis=-2)
             np.testing.assert_allclose(z, out[5], rtol=1e-05)
+            self.assertTrue(out[6].dtype == np.float16)
+            z = np.cumsum(data_np)
+            np.testing.assert_allclose(z,
+                                       out[6],
+                                       rtol=1e-03 if use_gpu else 5e-03)
 
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())
@@ -199,6 +210,21 @@ class TestSumOp7(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestSumOp8(OpTest):
+
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.inputs = {'X': np.random.random((100)).astype("float64")}
+        self.attrs = {'dtype': 'float16'}
+        self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestSumOpExclusive1(OpTest):
 
     def setUp(self):
@@ -276,6 +302,24 @@ class TestSumOpExclusive5(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((4, 5, 3096)).astype("float64")
+        self.inputs = {'X': a}
+        self.outputs = {
+            'Out':
+            np.concatenate((np.zeros(
+                (4, 5, 1), dtype=np.float64), a[:, :, :-1].cumsum(axis=2)),
+                           axis=2)
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestSumOpExclusive6(OpTest):
+
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.attrs = {'axis': 2, "exclusive": True, "dtype": "float16"}
         a = np.random.random((4, 5, 3096)).astype("float64")
         self.inputs = {'X': a}
         self.outputs = {

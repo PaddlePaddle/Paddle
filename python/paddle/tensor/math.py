@@ -3070,7 +3070,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
     Args:
         x (Tensor): The input tensor needed to be cumsumed.
         axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None. 
+        dtype (str, optional): The data type of the output tensor, can be float16, float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3096,6 +3096,10 @@ def cumsum(x, axis=None, dtype=None, name=None):
             # [[ 0  1  3  6]
             #  [ 4  9 15 22]
             #  [ 8 17 27 38]]
+
+            y = paddle.cumsum(data, dtype='float16')
+            print(y.dtype)
+            # paddle.float16
 
             y = paddle.cumsum(data, dtype='float64')
             print(y.dtype)
