@@ -2065,8 +2065,8 @@ __global__ void KernelMaxPool3DWithIdx(const int nthreads,
     for (int d = dstart; d < dend; ++d) {
       for (int h = hstart; h < hend; ++h) {
         for (int w = wstart; w < wend; ++w) {
-          if (ele < input_data[(d * input_height + h) * input_width + w]) {
-            max_index = (d * input_height + h) * input_width + w;
+          max_index = (d * input_height + h) * input_width + w;
+          if (ele < input_data[max_index]) {
             ele = input_data[max_index];
           }
         }

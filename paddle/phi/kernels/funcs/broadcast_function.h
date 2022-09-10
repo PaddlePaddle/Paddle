@@ -36,6 +36,7 @@ struct InputDataLoader {
  public:
   LoaderInto child[3];
   int type_num{0};
+  int64_t numel_{0};
 
   InputDataLoader() {}
   explicit InputDataLoader(int64_t out_numel) : numel_(out_numel) {}
@@ -53,9 +54,7 @@ struct InputDataLoader {
       type_num += 1;
     }
   }
-
- private:
-  int64_t numel_;
+  //  private:
 };
 
 struct DimensionsTransform {
@@ -319,7 +318,7 @@ __device__ __forceinline__ void LoadBatchBroadcast(
     uint32_t index_output = thread_offset + nx;
     phi::Array<int, Arity> index_src;
     if (IsBoundary) {
-      if (index_output >= numel) {
+      if (index_output == numel) {
         break;
       }
     }
@@ -330,8 +329,8 @@ __device__ __forceinline__ void LoadBatchBroadcast(
       }
 #pragma unroll
       for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
-        if (i >= configs[0].kDims) break;
-        auto fast_divmoder = configs[j].divmoders[i].Divmod(index_output);
+        if (i == configs[0].kDims) break;
+        auto fast_divmoder = configs[0].divmoders[i].Divmod(index_output);
         index_output = fast_divmoder.val[0];
         index_src[j] += fast_divmoder.val[1] * configs[j].strides[i];
       }
@@ -573,6 +572,20 @@ void LaunchBroadcastKernel(
     reader.set(ins[i]->numel(), i);
     use_broadcast[i] = (ins[i]->numel() != numel);
     ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
+  }
+
+  for (auto i = 0; i < Arity; ++i) {
+    std::cout << i << "_th config:  dim = " << configs[i].kDims << std::endl;
+  }
+  std::cout << "reader, numel_ = " << reader.numel_ << std::endl;
+  std::cout << "reader, type_num = " << reader.type_num << std::endl;
+  for (auto i = 0; i < Arity; ++i) {
+    std::cout << "reader.child[" << i
+              << "], child_num = " << reader.child[i].num << std::endl;
+    for (auto j = 0; j < reader.child[i].num; ++j) {
+      std::cout << "[id " << reader.child[i].id[j] << "], ";
+    }
+    std::cout << std::endl;
   }
 
 #ifdef PADDLE_WITH_XPU_KP
