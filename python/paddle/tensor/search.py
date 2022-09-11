@@ -638,14 +638,6 @@ def where(condition, x=None, y=None, name=None):
         broadcast_x = x
         broadcast_y = y
     else:
-        if core.is_compiled_with_xpu():
-            cond_int = paddle.cast(condition, x.dtype)
-            cond_not_int = paddle.cast(logical_not(condition), x.dtype)
-            out1 = paddle.multiply(x, cond_int)
-            out2 = paddle.multiply(y, cond_not_int)
-            out = paddle.add(out1, out2)
-            return out
-
         zeros_like_x = paddle.zeros_like(x)
         zeros_like_y = paddle.zeros_like(y)
         zeros_like_condition = paddle.zeros_like(condition)

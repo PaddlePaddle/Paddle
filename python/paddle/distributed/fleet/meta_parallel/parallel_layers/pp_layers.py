@@ -189,7 +189,7 @@ class PipelineLayerChunk(Layer):
         # Users shouldn't call PipelineLayerChunk directly, since all logics relating with recompute
         # are in the forward function of PipelineLayer. Any directly call will bring unexpected
         # behavior under recompute circumstance.
-        raise NotImplementedError(
+        raise PermissionError(
             "The forward function of PipelineLayerChunk cannot be called directly. "
             "Please call forward function of PipelineLayer.")
 
@@ -377,13 +377,16 @@ class PipelineLayer(Layer):
         for virtual_pp_rank in range(self._num_virtual_pipeline_stages):
             # Mapping the virtual pipeline stage to the real pipeline stage.
             # start_idx marks the start of a new virtual pp stage.
-            start_idx = virtual_pp_rank * self._num_virtual_pipeline_stages
+            start_idx = virtual_pp_rank * self._num_stages
             for stage in range(self._num_stages):
                 # stage mark the real pp stage
                 if self.segment_parts[start_idx +
                                       stage] <= layer_idx < self.segment_parts[
                                           start_idx + stage + 1]:
                     return stage
+
+    def get_num_virtual_stages(self):
+        return self._num_virtual_pipeline_stages
 
     def get_model_chunks(self):
         return None if self._num_virtual_pipeline_stages == 1 else self._model_chunks
@@ -480,7 +483,7 @@ class PipelineLayer(Layer):
                     ", ".join(str(arg) for arg in self.segment_parts))
 
         for i in range(self._stage_id, self._total_stages_with_virtual_stages,
-                       self._num_virtual_pipeline_stages):
+                       self._num_stages):
             # If there are 2 real pp stages and 2 virtual pp stages, and the model has 8 layers.
             # Layers [0, 1], [4, 5] will be assigned to the first real pp stage.
             # Layers [2, 3], [6, 7] will be assigned to the second real pp stage.
@@ -525,7 +528,7 @@ class PipelineLayer(Layer):
                 stage_to_virtual_stage_info = "stage {} contains virtual stages: ".format(
                     stage)
                 for i in range(stage, self._total_stages_with_virtual_stages,
-                               self._num_virtual_pipeline_stages):
+                               self._num_stages):
                     stage_to_virtual_stage_info += " {},".format(i)
                 logger.info(stage_to_virtual_stage_info)
 
@@ -654,21 +657,42 @@ class PipelineLayer(Layer):
         if self._topo.get_coord(self.global_rank).data != 0:
             return
 
-        def _offset_dirname(ckpt_dir, local_layer_idx):
-            idx = local_layer_idx + self._start_pos
+        def _offset_dirname(ckpt_dir, local_layer_idx, local_chunk_id=None):
+            if self._num_virtual_pipeline_stages == 1:
+                pos_offset = self._start_pos
+            else:
+                assert hasattr(self, '_start_poss')
+                assert local_chunk_id < len(self._start_poss)
+                pos_offset = self._start_poss[local_chunk_id]
+            idx = local_layer_idx + pos_offset
             model_rank = self._topo.get_coord(self.global_rank).model
             rank_message = "-tensor_" + "{:0>2d}".format(model_rank)
+            virtual_pipeline_stage_message = ""
+            if self._num_virtual_pipeline_stages > 1:
+                # add virtual pipeline info to the save path
+                assert local_chunk_id is not None
+                virtual_pipeline_stage_message = "-virtual_pp_stage_{:0>2d}".format(
+                    local_chunk_id)
             layer_save_path = os.path.join(ckpt_dir,
                                            'layer_{:0>2d}'.format(idx))
-            layer_save_path = layer_save_path + rank_message + '-model_states.pdparams'
+            layer_save_path = layer_save_path + virtual_pipeline_stage_message + rank_message + '-model_states.pdparams'
             return layer_save_path
 
+        def _save_model(run_functions, local_chunk_id=None):
+            for idx, layer in enumerate(run_functions):
+                model_save_path = _offset_dirname(path, idx, local_chunk_id)
+                if not hasattr(layer, 'state_dict'):
+                    continue
+                paddle.save(layer.state_dict(), model_save_path)
+
         os.makedirs(path, exist_ok=True)
-        for idx, layer in enumerate(self.run_function):
-            model_save_path = _offset_dirname(path, idx)
-            if not hasattr(layer, 'state_dict'):
-                continue
-            paddle.save(layer.state_dict(), model_save_path)
+        if self._num_virtual_pipeline_stages > 1:
+            logger.info("save model state for virtual pipeline stage...")
+            for chunk_id in range(len(self._model_chunks)):
+                run_function = self._model_chunks[chunk_id].get_run_function()
+                _save_model(run_function, chunk_id)
+        else:
+            _save_model(self.run_function)
 
         logger.info("save model state successfully...")
 
@@ -676,21 +700,43 @@ class PipelineLayer(Layer):
         assert os.path.exists(
             path), "{} not found, please check the path".format(path)
 
-        for idx, layer in enumerate(self.run_function):
-            if not hasattr(layer, 'set_state_dict'):
-                continue
-            layer_idx = idx + self._start_pos
-            layer_save_path = os.path.join(path,
-                                           'layer_{0:0>2d}'.format(layer_idx))
-            model_files = glob.glob(layer_save_path + "*model_states.pdparams")
-            model_files.sort()
-            mp_rank = self._topo.get_coord(self.global_rank).model
-            mp_world_size = self._topo.get_dim('model')
-            num_files = len(model_files)
+        def _load_model(run_functions, local_chunk_id=None):
+            for idx, layer in enumerate(run_functions):
+                if not hasattr(layer, 'set_state_dict'):
+                    continue
+                if self._num_virtual_pipeline_stages == 1:
+                    pos_offset = self._start_pos
+                else:
+                    assert hasattr(self, '_start_poss')
+                    assert local_chunk_id < len(self._start_poss)
+                    pos_offset = self._start_poss[local_chunk_id]
+                layer_idx = idx + pos_offset
+                layer_save_path = os.path.join(
+                    path, 'layer_{0:0>2d}'.format(layer_idx))
+                if self._num_virtual_pipeline_stages > 1:
+                    # add virtual pipeline info to the path
+                    assert local_chunk_id is not None
+                    layer_save_path = layer_save_path + "-virtual_pp_stage_{:0>2d}".format(
+                        local_chunk_id)
+                model_files = glob.glob(layer_save_path +
+                                        "*model_states.pdparams")
+                model_files.sort()
+                mp_rank = self._topo.get_coord(self.global_rank).model
+                mp_world_size = self._topo.get_dim('model')
+                num_files = len(model_files)
 
-            load_param_path = model_files[mp_rank * num_files // mp_world_size]
-            model_state_dict = paddle.load(load_param_path)
-            layer.set_state_dict(model_state_dict)
+                load_param_path = model_files[mp_rank * num_files //
+                                              mp_world_size]
+                model_state_dict = paddle.load(load_param_path)
+                layer.set_state_dict(model_state_dict)
+
+        if self._num_virtual_pipeline_stages > 1:
+            logger.info("load model state for virtual pipeline stage...")
+            for chunk_id in range(len(self._model_chunks)):
+                run_function = self._model_chunks[chunk_id].get_run_function()
+                _load_model(run_function, chunk_id)
+        else:
+            _load_model(self.run_function)
 
         self._synchronize_shared_weights()
         logger.info("load model state successfully...")
