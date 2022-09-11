@@ -32,6 +32,7 @@ void Conv3dCooKernel(const Context& dev_ctx,
                      const int groups,
                      const bool subm,
                      const std::string& key,
+                     bool cutlass,
                      SparseCooTensor* out,
                      DenseTensor* rulebook,
                      DenseTensor* counter);
@@ -46,6 +47,7 @@ SparseCooTensor Conv3dCoo(const Context& dev_ctx,
                           const int groups,
                           const bool subm,
                           const std::string& key,
+                          bool cutlass,
                           DenseTensor* rulebook,
                           DenseTensor* counter) {
   SparseCooTensor coo;
@@ -58,6 +60,7 @@ SparseCooTensor Conv3dCoo(const Context& dev_ctx,
                               groups,
                               subm,
                               key,
+                              cutlass,
                               &coo,
                               rulebook,
                               counter);

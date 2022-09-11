@@ -180,6 +180,7 @@ void Conv3dCooKernel(const Context& dev_ctx,
                      const int groups,
                      const bool subm,
                      const std::string& key,
+                     bool cutlass,
                      SparseCooTensor* out,
                      DenseTensor* rulebook,
                      DenseTensor* counter) {
@@ -203,6 +204,6 @@ void Conv3dCooKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    conv3d_coo, CPU, ALL_LAYOUT, phi::sparse::Conv3dCooKernel, float, double) {
+    conv3d_coo, CPU, ALL_LAYOUT, phi::sparse::Conv3dCooKernel, double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

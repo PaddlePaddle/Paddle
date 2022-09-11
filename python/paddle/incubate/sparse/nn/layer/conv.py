@@ -88,7 +88,7 @@ class _Conv3D(Layer):
                                           shape=[self._out_channels],
                                           is_bias=True)
 
-    def forward(self, x):
+    def forward(self, x, cutlass=False):
         out = F.conv._conv3d(x,
                              self.weight,
                              bias=self.bias,
@@ -98,7 +98,8 @@ class _Conv3D(Layer):
                              groups=self._groups,
                              subm=self._subm,
                              key=self._key,
-                             data_format=self._data_format)
+                             data_format=self._data_format,
+                             cutlass=cutlass)
         return out
 
     def extra_repr(self):

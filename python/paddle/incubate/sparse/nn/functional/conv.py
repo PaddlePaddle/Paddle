@@ -31,7 +31,8 @@ def _conv3d(x,
             subm=False,
             key=None,
             data_format="NDHWC",
-            name=None):
+            name=None,
+            cutlass=False):
     assert in_dynamic_mode(), "Currently, only support dynamic mode"
     assert groups == 1, "Currently, only support groups=1"
 
@@ -65,7 +66,7 @@ def _conv3d(x,
 
     pre_bias = _C_ops.sparse_conv3d(x, weight, padding, dilation, stride,
                                     groups, subm,
-                                    key if key is not None else "")
+                                    key if key is not None else "", cutlass)
     if bias is not None:
         values = pre_bias.values()
         add_bias = elementwise_add(values, bias, axis=1)
@@ -85,7 +86,8 @@ def conv3d(x,
            dilation=1,
            groups=1,
            data_format="NDHWC",
-           name=None):
+           name=None,
+           cutlass=False):
     r"""
 
     The sparse convolution3d functional calculates the output based on the input, filter
@@ -188,7 +190,7 @@ def conv3d(x,
               # (1, 1, 1, 2, 1)
     """
     return _conv3d(x, weight, bias, stride, padding, dilation, groups, False,
-                   None, data_format, name)
+                   None, data_format, name, cutlass)
 
 
 def subm_conv3d(x,

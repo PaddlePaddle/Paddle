@@ -28,6 +28,7 @@ limitations under the License. */
 
 namespace phi {
 namespace tests {
+#if 0
 
 std::vector<int> flatten(const std::vector<std::vector<int>>& in) {
   std::vector<int> out;
@@ -311,7 +312,6 @@ void TestConv3d(const std::vector<IntT>& indices,
                               features_grad,
                               kernel_grad,
                               subm);
-  #if 0
   // test double
   TestConv3dBase<double, IntT>(indices,
                                cast<float, double>(features),
@@ -330,7 +330,6 @@ void TestConv3d(const std::vector<IntT>& indices,
                                cast<float, double>(features_grad),
                                cast<float, double>(kernel_grad),
                                subm);
-    #endif
 }
 
 TEST(DEV_API, sparse_conv3d) {
@@ -831,6 +830,6 @@ TEST(DEV_API, sparse_conv3d_subm) {
              kernel_grad,
              true);
 }
-
+#endif
 }  // namespace tests
 }  // namespace phi

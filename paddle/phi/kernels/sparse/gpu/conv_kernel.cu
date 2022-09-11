@@ -118,6 +118,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                         const int groups,
                         const bool subm,
                         const std::string& key,
+                        bool cutlass,
                         SparseCooTensor* out,
                         DenseTensor* rulebook,
                         DenseTensor* counter) {
@@ -204,25 +205,51 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   // kernel.layout is x,y,z,c_in,c_out.
   // x.layout and out.layout are NDHWC.
 
-  int kernel_channel_in_idx = 3;
-  int kernel_channel_out_idx = 4;
-  int channel_idx = 4;
-  int align_num = 128 / cutlass::sizeof_bits<T>::value;
-  int channel_out_dim = kernel.dims()[kernel_channel_out_idx];
-  int64_t in_padding_num = 0;
-  int64_t out_padding_num = 0;
 
-  if (kernel.dims()[kernel_channel_in_idx] % align_num != 0) {
-    in_padding_num =
-        align_num - kernel.dims()[kernel_channel_in_idx] % align_num;
-  }
+  //if(in_padding_num==0 && out_padding_num==0) 
+  if(cutlass) {
+    int kernel_channel_in_idx = 3;
+    int kernel_channel_out_idx = 4;
+    int channel_idx = 4;
+    int align_num = 128 / cutlass::sizeof_bits<T>::value;
+    int channel_out_dim = kernel.dims()[kernel_channel_out_idx];
+    int64_t in_padding_num = 0;
+    int64_t out_padding_num = 0;
 
-  if (kernel.dims()[kernel_channel_out_idx] % align_num != 0) {
-    out_padding_num =
-        align_num - kernel.dims()[kernel_channel_out_idx] % align_num;
-  }
+    if (kernel.dims()[kernel_channel_in_idx] % align_num != 0) {
+      in_padding_num =
+          align_num - kernel.dims()[kernel_channel_in_idx] % align_num;
+    }
 
-  if(in_padding_num==0 && out_padding_num==0) {
+    if (kernel.dims()[kernel_channel_out_idx] % align_num != 0) {
+      out_padding_num =
+          align_num - kernel.dims()[kernel_channel_out_idx] % align_num;
+    }
+
+    using ElementInputA = cutlass::half_t;
+    using ElementInputB = cutlass::half_t;
+    using ElementAccumulator = float;
+    using ElementComputeEpilogue = float;
+    using ElementOutput = cutlass::half_t;
+
+    // This code section describes the tile size a thread block will compute
+    using ShapeMMAThreadBlock =
+        cutlass::gemm::GemmShape<128, 128, 32>;  // <- threadblock tile M = 128,
+                                                 // N = 128, K = 32
+    // This code section describes tile size a warp will compute
+    using ShapeMMAWarp =
+        cutlass::gemm::GemmShape<64, 64, 32>;  // <- warp tile M = 64, N = 64, K
+                                               // = 32
+    // This code section describes the size of MMA op
+    using ShapeMMAOp =
+        cutlass::gemm::GemmShape<16, 8, 16>;  // <- MMA Op tile M
+                                              // = 8, N = 8, K = 4
+    // 16, 8, 8 -> Turing
+    // 16, 8, 16 -> Ampere
+    using LayoutInputA = cutlass::layout::RowMajor;
+    using LayoutInputB = cutlass::layout::RowMajor;
+    using LayoutOutput = cutlass::layout::RowMajor;
+
     auto* out_values = out->mutable_non_zero_elements();
     T* out_values_ptr = out_values->data<T>();
     phi::funcs::SetConstant<GPUContext, T> set_zero;
@@ -242,133 +269,95 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       const IntT* scatter_indices =
           rulebook_ptr + rulebook_len + h_offsets_ptr[i];
 
-      gather_gemm_scatter<T, T, T, T, T>(x.non_zero_elements().data<T>(),
-                                         tmp_kernel_ptr,
-                                         out_values_ptr,
-                                         out_values_ptr,
-                                         M,
-                                         N,
-                                         K,
-                                         gather_indices,
-                                         scatter_indices,
-                                         h_counter_ptr[i],
-                                         static_cast<T>(1),
-                                         static_cast<T>(1));
+      gather_gemm_scatter<ElementInputA,
+                          ElementInputB,
+                          ElementAccumulator,
+                          ElementComputeEpilogue,
+                          ElementOutput,
+                          LayoutInputA,
+                          LayoutInputB,
+                          LayoutOutput,
+                          IntT,
+                          ShapeMMAThreadBlock,
+                          ShapeMMAWarp,
+                          ShapeMMAOp>(x.non_zero_elements().data<T>(),
+                                      tmp_kernel_ptr,
+                                      out_values_ptr,
+                                      out_values_ptr,
+                                      M,
+                                      N,
+                                      K,
+                                      gather_indices,
+                                      scatter_indices,
+                                      h_counter_ptr[i],
+                                      static_cast<ElementComputeEpilogue>(1),
+                                      static_cast<ElementComputeEpilogue>(1));
     }
   } else {
-    SparseCooTensor aligned_x;
-    DenseTensor aligned_features =
-        phi::Empty<T>(dev_ctx, {out->nnz(), channel_out_dim + out_padding_num});
-    DenseTensor aligned_kernel;
-    AlignFeaturesChannel<T>(dev_ctx, x, aligned_x, channel_idx, in_padding_num);
-    AlignKernelChannels<T>(dev_ctx,
-                           kernel,
-                           aligned_kernel,
-                           kernel_channel_in_idx,
-                           kernel_channel_out_idx,
-                           in_padding_num,
-                           out_padding_num);
+#endif
+    //#else
+    // 2. gather
+    phi::DenseTensor in_features =
+        phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
+    phi::DenseTensor out_features =
+        phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
+    T* in_features_ptr = in_features.data<T>();
+    T* out_features_ptr = out_features.data<T>();
+    phi::funcs::SetConstant<GPUContext, T> set_zero;
+    set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
 
-    T* aligned_out_values_ptr = aligned_features.data<T>();
+    Gather<T, IntT>(dev_ctx,
+                    x.values().data<T>(),
+                    rulebook_ptr,
+                    rulebook_len,
+                    in_channels,
+                    in_features_ptr);
 
-    const T* aligned_kernel_ptr = aligned_kernel.data<T>();
+    // 3. call gemm for every werght
+    auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
+    auto* out_values = out->mutable_values();
+    T* out_values_ptr = out_values->data<T>();
+    set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
+
+    const T* kernel_ptr = kernel.data<T>();
     for (int i = 0; i < kernel_size; i++) {
       if (h_counter_ptr[i] <= 0) {
         continue;
       }
 
+      // call gemm: (n, in_channels) * (in_channels, out_channels)
       const int M = h_counter_ptr[i];
-      const int K = in_channels + in_padding_num;
-      const int N = out_channels + out_padding_num;
-      const T* tmp_kernel_ptr = aligned_kernel_ptr + i * K * N;
-      const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
-      const IntT* scatter_indices =
-          rulebook_ptr + rulebook_len + h_offsets_ptr[i];
+      const int K = in_channels;
+      const int N = out_channels;
+      T* tmp_in_ptr = in_features_ptr + h_offsets_ptr[i] * in_channels;
+      const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
+      T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
 
-      gather_gemm_scatter<T, T, T, T, T>(
-          aligned_x.non_zero_elements().data<T>(),
-          tmp_kernel_ptr,
-          aligned_out_values_ptr,
-          aligned_out_values_ptr,
-          M,
-          N,
-          K,
-          gather_indices,
-          scatter_indices,
-          h_counter_ptr[i],
-          static_cast<T>(1),
-          static_cast<T>(1));
-    }
-    DenseTensor out_features =
-        phi::funcs::Slice<T, GPUContext>(dev_ctx,
-                                         aligned_features,
-                                         std::vector<int>{1},
-                                         std::vector<int>{0},
-                                         std::vector<int>{channel_out_dim});
-    out->SetMember(
-        out->non_zero_indices(), out_features, out->dims(), out->coalesced());
-  }
-#else
-  // 2. gather
-  phi::DenseTensor in_features =
-      phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
-  phi::DenseTensor out_features =
-      phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
-  T* in_features_ptr = in_features.data<T>();
-  T* out_features_ptr = out_features.data<T>();
-  phi::funcs::SetConstant<GPUContext, T> set_zero;
-  set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
-
-  Gather<T, IntT>(dev_ctx,
-                  x.values().data<T>(),
-                  rulebook_ptr,
-                  rulebook_len,
-                  in_channels,
-                  in_features_ptr);
-
-  // 3. call gemm for every werght
-  auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
-  auto* out_values = out->mutable_values();
-  T* out_values_ptr = out_values->data<T>();
-  set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
-
-  const T* kernel_ptr = kernel.data<T>();
-  for (int i = 0; i < kernel_size; i++) {
-    if (h_counter_ptr[i] <= 0) {
-      continue;
+      blas.GEMM(CblasNoTrans,
+                CblasNoTrans,
+                M,
+                N,
+                K,
+                static_cast<T>(1),
+                tmp_in_ptr,
+                tmp_kernel_ptr,
+                static_cast<T>(0),
+                tmp_out_ptr);
     }
 
-    // call gemm: (n, in_channels) * (in_channels, out_channels)
-    const int M = h_counter_ptr[i];
-    const int K = in_channels;
-    const int N = out_channels;
-    T* tmp_in_ptr = in_features_ptr + h_offsets_ptr[i] * in_channels;
-    const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
-    T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
-
-    blas.GEMM(CblasNoTrans,
-              CblasNoTrans,
-              M,
-              N,
-              K,
-              static_cast<T>(1),
-              tmp_in_ptr,
-              tmp_kernel_ptr,
-              static_cast<T>(0),
-              tmp_out_ptr);
+    // 4. scatter
+    phi::funcs::sparse::ScatterV2<T>(dev_ctx,
+                                     out_features_ptr,
+                                     out_index.data<int>(),
+                                     unique_value.data<int>(),
+                                     out->nnz(),
+                                     kernel_size,
+                                     h_counter_ptr[kernel_size],
+                                     out_channels,
+                                     1,
+                                     out_values_ptr);
+#ifdef PADDLE_WITH_CUTLASS
   }
-
-  // 4. scatter
-  phi::funcs::sparse::ScatterV2<T>(dev_ctx,
-                                   out_features_ptr,
-                                   out_index.data<int>(),
-                                   unique_value.data<int>(),
-                                   out->nnz(),
-                                   kernel_size,
-                                   h_counter_ptr[kernel_size],
-                                   out_channels,
-                                   1,
-                                   out_values_ptr);
 #endif
 }
 
@@ -389,6 +378,7 @@ void Conv3dCooKernel(const Context& dev_ctx,
                      const int groups,
                      const bool subm,
                      const std::string& key,
+                     bool cutlass,
                      SparseCooTensor* out,
                      DenseTensor* rulebook,
                      DenseTensor* counter) {
@@ -402,6 +392,7 @@ void Conv3dCooKernel(const Context& dev_ctx,
                                  groups,
                                  subm,
                                  key,
+                                 cutlass,
                                  out,
                                  rulebook,
                                  counter);
@@ -416,6 +407,7 @@ void Conv3dCooKernel(const Context& dev_ctx,
                                                                groups,
                                                                subm,
                                                                key,
+                                                               cutlass,
                                                                out,
                                                                rulebook,
                                                                counter);
@@ -431,7 +423,7 @@ PD_REGISTER_KERNEL(conv3d_coo,
                    ALL_LAYOUT,
                    phi::sparse::Conv3dCooKernel,
 #ifdef PADDLE_WITH_CUTLASS
-                   float) {
+                   phi::dtype::float16) {
 #else
                    float,
                    double,
