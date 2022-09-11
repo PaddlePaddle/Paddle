@@ -36,7 +36,7 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
   PADDLE_ENFORCE_EQ(
       x.dims(),
       mask.dims(),
-      phi::errors::InvalidArgument("the input x and mask must have the shape"));
+      phi::errors::InvalidArgument("the input x and mask must have the same shape"));
   const DenseTensor& indices = mask.indices();
   const DenseTensor& values = mask.values();
   const int sparse_dim = mask.sparse_dim();
