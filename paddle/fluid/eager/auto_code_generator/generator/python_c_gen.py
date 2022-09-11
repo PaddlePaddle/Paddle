@@ -124,7 +124,7 @@ FUNCTION_SET_DEVICE_TEMPLATE = \
       VLOG(1) <<"CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId() << " from " << (int)place.device;
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with GPU if use CUDAPlace."));
+        "PaddlePaddle should be compiled with GPU if using CUDAPlace."));
 #endif
     }}
     if (paddle::platform::is_custom_place(place)) {{
@@ -133,7 +133,7 @@ FUNCTION_SET_DEVICE_TEMPLATE = \
       VLOG(1) <<"CurrentDeviceId: " << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from " << (int)place.device;
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with CUSTOM_DEVICE if use CustomPlace."));
+        "PaddlePaddle should be compiled with CUSTOM_DEVICE if using CustomPlace."));
 #endif
     }}
 """
@@ -448,7 +448,7 @@ class PythonCGenerator(GeneratorBase):
         # self.namespace
         # self.api_yaml_path
         # self.forward_api_list
-        GeneratorBase.__init__(self, api_yaml_path)
+        GeneratorBase.__init__(self, path)
 
         # Generated Result
         self.python_c_functions_str = ""

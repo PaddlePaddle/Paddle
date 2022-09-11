@@ -41,7 +41,7 @@ from codegen_utils import AssertMessage, GetIndent
 # and this will be fixed in the futrue.
 inplace_check_blacklist = set(["assign_out_"])
 
-# Black Ops list that's NO NEED to apply code generation
+# Black Ops list that has NO NEED to apply code generation
 black_ops_list = [
     "conv2d", "conv2d_grad", "conv2d_grad_grad", "add_n", "add_n_grad"
 ]

@@ -376,7 +376,7 @@ class TestCooError(unittest.TestCase):
     def test_same_nnz(self):
         with _test_eager_guard():
             with self.assertRaises(ValueError):
-                # 2. test the nnz of indices must same as nnz of values
+                # 2. test the nnz of indices must be the same as nnz of values
                 indices = [[1, 2], [1, 0]]
                 values = [1, 2, 3]
                 sparse_x = paddle.incubate.sparse.sparse_coo_tensor(

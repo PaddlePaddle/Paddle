@@ -44,7 +44,7 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
   DenseTensor out_indices = phi::EmptyLike<T>(dev_ctx, indices);
   DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, values);
 
-  // the out_indices is same as indices of mask
+  // out_indices is the same as indices of mask
   phi::Copy(dev_ctx, indices, dev_ctx.GetPlace(), false, &out_indices);
 
   T* out_values_ptr = out_values.data<T>();
