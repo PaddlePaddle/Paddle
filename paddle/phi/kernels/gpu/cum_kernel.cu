@@ -27,12 +27,22 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace phi {
+
+template <typename T>
+class CumTypeTrait {
+ public:
+  using Type = T;
+};
+
+template <>
+class CumTypeTrait<phi::dtype::float16> {
+ public:
+  using Type = __half;
+};
 
 template <typename T, int BLOCK_SIZE>
 __device__ void BlockReverse(
@@ -41,7 +51,7 @@ __device__ void BlockReverse(
   int tx = threadIdx.x;
 
   int offset = tx;
-  T src_data = 0;
+  T src_data = static_cast<T>(0);
   int src_offset = BLOCK_SIZE - offset - 1;
   if (src_offset < valid_item) {
     src_data = idata[src_base + src_offset];
@@ -149,6 +159,11 @@ struct Identity<T, cub::Sum> {
   static constexpr T value = 0;
 };
 
+template <>
+struct Identity<phi::dtype::float16, cub::Sum> {
+  static constexpr float value = 0.0f;
+};
+
 template <typename T>
 struct Identity<T, LogAddExp> {
   static constexpr T value = std::numeric_limits<T>::lowest();
@@ -179,7 +194,8 @@ __global__ void BlockScanKernel(T* d_out,
 
   int bx = blockIdx.x;
 
-  BlockPrefixCallbackOp<T, Op> prefix_op(Identity<T, Op>::value, op);
+  BlockPrefixCallbackOp<T, Op> prefix_op(static_cast<T>(Identity<T, Op>::value),
+                                         op);
 
   // Obtain this block's segment of consecutive keys (blocked across threads)
   int item_per_block = BLOCK_THREADS * ITEMS_PER_THREAD;
@@ -249,11 +265,15 @@ void ScanKernel(const Context& dev_ctx,
 #else
     const auto& policy = thrust::cuda::par.on(dev_ctx.stream());
 #endif
+
+    using CumType = typename CumTypeTrait<T>::Type;
+    CumType* out_data_ptr = reinterpret_cast<CumType*>(out_data);
+    const CumType* in_data_ptr = reinterpret_cast<const CumType*>(in_data);
     if (reverse) {
-      thrust::reverse_iterator<thrust::device_ptr<const T>> reversed_in(
-          thrust::device_pointer_cast(in_data) + size);
-      thrust::reverse_iterator<thrust::device_ptr<T>> reversed_out(
-          thrust::device_pointer_cast(out_data) + size);
+      thrust::reverse_iterator<thrust::device_ptr<const CumType>> reversed_in(
+          thrust::device_pointer_cast(in_data_ptr) + size);
+      thrust::reverse_iterator<thrust::device_ptr<CumType>> reversed_out(
+          thrust::device_pointer_cast(out_data_ptr) + size);
       if (exclusive) {
         thrust::exclusive_scan(
             policy, reversed_in, reversed_in + size, reversed_out);
@@ -263,9 +283,11 @@ void ScanKernel(const Context& dev_ctx,
       }
     } else {
       if (exclusive) {
-        thrust::exclusive_scan(policy, in_data, in_data + size, out_data);
+        thrust::exclusive_scan(
+            policy, in_data_ptr, in_data_ptr + size, out_data_ptr);
       } else {
-        thrust::inclusive_scan(policy, in_data, in_data + size, out_data);
+        thrust::inclusive_scan(
+            policy, in_data_ptr, in_data_ptr + size, out_data_ptr);
       }
     }
     return;
@@ -307,7 +329,6 @@ void ScanKernel(const Context& dev_ctx,
   int outer_size = height / scan_size;
   int inner_size = width;
   // Consider the size of shared memory, here block size is 128
-
   dim3 scan_grid(outer_size, inner_size);
   dim3 reverse_grid = scan_grid;
   if (reverse) {
@@ -362,37 +383,8 @@ void CumsumKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   using Op = cub::Sum;
   auto op = Op();
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-
-  if (std::is_same<T, MPType>::value) {
-    ScanKernel<MPType, Context, Op>(
-        dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, op, out);
-  } else {
-    DenseTensor input;
-    input.Resize(x.dims());
-    dev_ctx.template Alloc<MPType>(&input);
-    std::vector<const DenseTensor*> in_ins = {&x};
-    std::vector<DenseTensor*> in_outs = {&input};
-    phi::funcs::ElementwiseKernel<MPType>(
-        dev_ctx, in_ins, &in_outs, kps::IdentityFunctor<T, MPType>());
-
-    DenseTensor output;
-    output.Resize(out->dims());
-    ScanKernel<MPType, Context, Op>(dev_ctx,
-                                    input,
-                                    axis.to<int>(),
-                                    flatten,
-                                    exclusive,
-                                    reverse,
-                                    op,
-                                    &output);
-
-    std::vector<const DenseTensor*> out_ins = {&output};
-    dev_ctx.template Alloc<T>(out);
-    std::vector<DenseTensor*> out_outs = {out};
-    phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, out_ins, &out_outs, kps::IdentityFunctor<MPType, T>());
-  }
+  ScanKernel<T, Context, Op>(
+      dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, op, out);
 }
 
 template <typename T, typename Context>

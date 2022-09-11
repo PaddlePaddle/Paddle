@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/cum_kernel.h"
 
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -75,6 +74,7 @@ void ScanKernel(const Context& dev_ctx,
   }
 
   dev_ctx.template Alloc<T>(out);
+  // using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   int pre = 1;
   int post = 1;
@@ -134,18 +134,6 @@ void ScanKernel(const Context& dev_ctx,
   }
 }
 
-template <typename InT, typename OutT>
-struct TransDataFunctor {
-  TransDataFunctor(const InT* input, OutT* output, int64_t numel)
-      : input_(input), output_(output), numel_(numel) {}
-  HOSTDEVICE void operator()(int64_t idx) const {
-    output_[idx] = static_cast<OutT>(input_[idx]);
-  }
-  const InT* input_;
-  OutT* output_;
-  int64_t numel_;
-};
-
 template <typename T, typename Context>
 void CumsumKernel(const Context& dev_ctx,
                   const DenseTensor& x,
@@ -157,39 +145,8 @@ void CumsumKernel(const Context& dev_ctx,
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   using Reducer = Eigen::internal::SumReducer<MPType>;
   auto reducer = Reducer();
-
-  if (std::is_same<T, MPType>::value) {
-    ScanKernel<MPType, Context, Reducer>(
-        dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, reducer, out);
-  } else {
-    const T* x_data = x.data<T>();
-    DenseTensor input;
-    input.Resize(x.dims());
-    MPType* input_data = dev_ctx.template Alloc<MPType>(&input);
-
-    phi::funcs::ForRange<Context> for_range_in(dev_ctx, x.numel());
-    TransDataFunctor<T, MPType> functor_in(x_data, input_data, x.numel());
-    for_range_in(functor_in);
-
-    DenseTensor output;
-    output.Resize(out->dims());
-
-    ScanKernel<MPType, Context, Reducer>(dev_ctx,
-                                         input,
-                                         axis.to<int>(),
-                                         flatten,
-                                         exclusive,
-                                         reverse,
-                                         reducer,
-                                         &output);
-
-    const MPType* output_data = output.data<MPType>();
-    T* out_data = dev_ctx.template Alloc<T>(out);
-    phi::funcs::ForRange<Context> for_range_out(dev_ctx, out->numel());
-    TransDataFunctor<MPType, T> functor_out(
-        output_data, out_data, out->numel());
-    for_range_out(functor_out);
-  }
+  ScanKernel<T, Context, Reducer>(
+      dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, reducer, out);
 }
 
 template <typename T>
@@ -309,7 +266,6 @@ PD_REGISTER_KERNEL(cumsum,
                    phi::CumsumKernel,
                    float,
                    double,
-                   phi::dtype::float16,
                    int16_t,
                    int,
                    int64_t) {}

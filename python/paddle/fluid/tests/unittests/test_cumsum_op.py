@@ -95,9 +95,7 @@ class TestCumsumOp(unittest.TestCase):
             np.testing.assert_allclose(z, out[5], rtol=1e-05)
             self.assertTrue(out[6].dtype == np.float16)
             z = np.cumsum(data_np)
-            np.testing.assert_allclose(z,
-                                       out[6],
-                                       rtol=1e-03 if use_gpu else 5e-03)
+            np.testing.assert_allclose(z, out[6], rtol=1e-03)
 
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())
