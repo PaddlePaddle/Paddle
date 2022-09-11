@@ -1573,9 +1573,9 @@ class Executor(object):
                     return use_standalone_executor_for_distribution
 
                 # delete this code after supporting distribution
-                if program._build_strategy is not None and (
-                        program._build_strategy.is_distribution
-                        or program._build_strategy.num_trainers > 1):
+                if compiled_program._build_strategy is not None and (
+                        compiled_program._build_strategy.is_distribution
+                        or compiled_program._build_strategy.num_trainers > 1):
                     warnings.warn(
                         "Standalone executor is not used for distribution",
                         UserWarning)
