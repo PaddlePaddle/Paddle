@@ -284,6 +284,7 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
 
 TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
 #if IS_TRT_VERSION_GE(8000)
+  tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
   auto *attn = engine_->DeclareInput(
       "attn", nvinfer1::DataType::kHALF, nvinfer1::Dims4{-1, 1, 4, 4});
   auto *x = engine_->DeclareInput(
