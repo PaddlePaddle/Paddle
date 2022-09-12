@@ -62,6 +62,7 @@ register_unity_group(cc
     cumsum_op.cc
     cvm_op.cc
     data_norm_op.cc
+    data_norm_op_xpu.cc
     deformable_conv_op.cc
     deformable_conv_v1_op.cc
     deformable_psroi_pooling_op.cc
