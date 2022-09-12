@@ -137,6 +137,7 @@ set(PYBIND_SRCS
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} phi_capi)
+  set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
 endif()
 
 if(NOT ON_INFER)

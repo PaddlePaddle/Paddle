@@ -2342,6 +2342,28 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
   }
 }
 
+void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
+                              const MetaTensor& mask,
+                              MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto mask_dims = mask.dims();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      4,
+      phi::errors::InvalidArgument("Input x must be in 4D dimension but "
+                                   "received the dimension of X is %d",
+                                   x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      mask_dims.size(),
+      4,
+      phi::errors::InvalidArgument("Input mask must be in 4D dimension but "
+                                   "received the dimension of mask is %d",
+                                   mask_dims.size()));
+
+  out->share_meta(x);
+}
+
 void SegmentPoolInferMeta(const MetaTensor& x,
                           const MetaTensor& segment_ids,
                           const std::string& pooltype,

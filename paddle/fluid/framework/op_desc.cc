@@ -799,7 +799,11 @@ Attribute OpDesc::GetAttr(const std::string &name, bool with_attr_var) const {
     PADDLE_ENFORCE_EQ(
         HasAttrVar(it->second),
         false,
-        platform::errors::NotFound("Attribute %s is not found.", name));
+        platform::errors::NotFound(
+            "Attribute %s with constant value is not found, but found it with "
+            "Variable(s) type, which maybe not supported in some scenarios "
+            "currently, such as TensorRT et.al",
+            name));
   }
   return it->second;
 }
