@@ -173,11 +173,11 @@ static PyMethodDef EagerFinalStateMethods[] = {{
 
 void BindFinalStateEagerOpFunctions(pybind11::module *module) {{
   if (PyModule_AddFunctions(module->ptr(), EagerFinalStateMethods) < 0) {{
-    PADDLE_THROW(platform::errors::Fatal ("Add functions to core.eager.ops failed!"));
+    PADDLE_THROW(platform::errors::Fatal("Add functions to core.eager.ops failed!"));
   }}
 
   if (PyModule_AddFunctions(module->ptr(), CustomEagerFinalStateMethods) < 0) {{
-    PADDLE_THROW(platform::errors::Fatal ("Add functions to core.eager.ops failed!"));
+    PADDLE_THROW(platform::errors::Fatal("Add functions to core.eager.ops failed!"));
   }}
 }}
 
@@ -510,8 +510,7 @@ def GenerateCoreOpsInfoMap():
 
 def GeneratePythonCWrappers(python_c_function_str, python_c_function_reg_str):
 
-    core_ops_infos_definition, core_ops_infos_registry = GenerateCoreOpsInfoMap(
-    )
+    core_ops_infos_definition, core_ops_infos_registry = GenerateCoreOpsInfoMap()
 
     python_c_function_str += core_ops_infos_definition
     python_c_function_reg_str += core_ops_infos_registry
