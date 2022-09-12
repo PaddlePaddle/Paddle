@@ -18,7 +18,10 @@ namespace phi {
 
 KernelSignature GumbelSoftmaxOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  bool is_test = paddle::any_cast<bool>(ctx.Attr("is_test"));
+  bool is_test = false;
+  if (ctx.HasAttr("is_test")) {
+    is_test = paddle::any_cast<bool>(ctx.Attr("is_test"));
+  }
   if (is_test) {
     return KernelSignature("gumbel_softmax_infer",
                            {"X"},
