@@ -69,9 +69,9 @@ class TestTranspose(unittest.TestCase):
         self.check_result([16, 12, 3], [1, 2, 0], 'csr')
 
     def test_transpose_nd(self):
-        self.check_result([8, 16, 12, 4, 2, 12], [5, 3, 4, 1, 0, 2], 'coo')
+        self.check_result([8, 1, 2, 4, 2, 2], [5, 3, 4, 1, 0, 2], 'coo')
         # Randint now only supports access to dimension 0 to 9.
-        self.check_result([i + 2 for i in range(9)],
+        self.check_result([i % 3 + 2 for i in range(9)],
                           [(i + 2) % 9 for i in range(9)], 'coo')
 
 

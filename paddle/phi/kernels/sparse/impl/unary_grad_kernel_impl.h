@@ -139,34 +139,5 @@ void CastCsrGradKernel(const Context& dev_ctx,
                                 dx->mutable_non_zero_elements());
   }
 }
-
-template <typename T, typename Context>
-void TransposeCooGradKernel(const Context& dev_ctx,
-                            const SparseCooTensor& x,
-                            const SparseCooTensor& dout,
-                            const std::vector<int>& dims,
-                            SparseCooTensor* dx) {
-  EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
-  std::vector<int> grad_dims(dims.size());
-  for (unsigned int i = 0; i < dims.size(); ++i) {
-    grad_dims[dims[i]] = i;
-  }
-  TransposeCooKernel<T, Context>(dev_ctx, dout, grad_dims, dx);
-}
-
-template <typename T, typename Context>
-void TransposeCsrGradKernel(const Context& dev_ctx,
-                            const SparseCsrTensor& x,
-                            const SparseCsrTensor& dout,
-                            const std::vector<int>& dims,
-                            SparseCsrTensor* dx) {
-  EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
-  std::vector<int> grad_dims(dims.size());
-  for (unsigned int i = 0; i < dims.size(); ++i) {
-    grad_dims[dims[i]] = i;
-  }
-  TransposeCsrKernel<T, Context>(dev_ctx, dout, grad_dims, dx);
-}
-
 }  // namespace sparse
 }  // namespace phi

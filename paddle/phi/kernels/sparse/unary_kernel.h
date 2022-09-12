@@ -115,6 +115,10 @@ template <typename T, typename Context>
 SparseCooTensor TransposeCoo(const Context& dev_ctx,
                              const SparseCooTensor& x,
                              const std::vector<int>& dims) {
+  PADDLE_ENFORCE_EQ(x.sparse_dim(),
+                    dims.size(),
+                    phi::errors::InvalidArgument(
+                        "size of dims must be equal than the x.sparse_dim()"));
   SparseCooTensor coo;
   TransposeCooKernel<T, Context>(dev_ctx, x, dims, &coo);
   return coo;
@@ -124,6 +128,14 @@ template <typename T, typename Context>
 SparseCsrTensor TransposeCsr(const Context& dev_ctx,
                              const SparseCsrTensor& x,
                              const std::vector<int>& dims) {
+  PADDLE_ENFORCE_LE(
+      2,
+      dims.size(),
+      phi::errors::InvalidArgument("size of dims must be equal to 2 or 3"));
+  PADDLE_ENFORCE_GE(
+      3,
+      dims.size(),
+      phi::errors::InvalidArgument("size of dims must be equal to 2 or 3"));
   SparseCsrTensor csr;
   TransposeCsrKernel<T, Context>(dev_ctx, x, dims, &csr);
   return csr;

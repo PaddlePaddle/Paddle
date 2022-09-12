@@ -13,10 +13,47 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/sparse/unary_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/unary_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/impl/unary_grad_kernel_impl.h"
+
+namespace phi {
+namespace sparse {
+
+std::vector<int> get_cpu_grad_dims(std::vector<int> dims) {
+  std::vector<int> grad_dims(dims.size());
+  for (unsigned int i = 0; i < dims.size(); ++i) {
+    grad_dims[dims[i]] = i;
+  }
+  return grad_dims;
+}
+
+template <typename T, typename Context>
+void TransposeCooGradKernel(const Context& dev_ctx,
+                            const SparseCooTensor& x,
+                            const SparseCooTensor& dout,
+                            const std::vector<int>& dims,
+                            SparseCooTensor* dx) {
+  EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
+  std::vector<int> grad_dims = get_cpu_grad_dims(dims);
+  TransposeCooKernel<T, Context>(dev_ctx, dout, grad_dims, dx);
+}
+
+template <typename T, typename Context>
+void TransposeCsrGradKernel(const Context& dev_ctx,
+                            const SparseCsrTensor& x,
+                            const SparseCsrTensor& dout,
+                            const std::vector<int>& dims,
+                            SparseCsrTensor* dx) {
+  EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
+  std::vector<int> grad_dims = get_cpu_grad_dims(dims);
+  TransposeCsrKernel<T, Context>(dev_ctx, dout, grad_dims, dx);
+}
+}  // namespace sparse
+}  // namespace phi
 
 #define PD_REGISTER_SPARSE_UNARY_CPU_GRAD_KERNEL(name, prefix)     \
   PD_REGISTER_KERNEL(name##_coo_grad,                              \
