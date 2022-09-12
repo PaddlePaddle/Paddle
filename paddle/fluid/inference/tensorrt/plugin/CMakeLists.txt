@@ -57,5 +57,3 @@ if(NOT WIN32)
     SRCS test_fused_token_prune_plugin.cc
     DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_plugin)
 endif()
-
-add_subdirectory(common)

@@ -65,22 +65,23 @@ EmbLayerNormVarSeqlenPluginBase::EmbLayerNormVarSeqlenPluginBase(
       mIdsEmb_(IdsEmb),
       nbLookupTables_(int(IdsEmb.size())) {
   // Assuming Weights.count is the number of elements and not bytes
-  PLUGIN_ASSERT(beta.count == gamma.count);
+  assert(beta.count == gamma.count);
   mBeta.convertAndCopy(beta, nvinfer1::DataType::kFLOAT);
   mGamma.convertAndCopy(gamma, nvinfer1::DataType::kFLOAT);
   copyToDevice(mGamma, sizeof(float) * mGamma.count, mGammaDev);
   copyToDevice(mBeta, sizeof(float) * mBeta.count, mBetaDev);
   for (size_t i = 0; i < mIdsEmb_.size(); ++i) {
-    PLUGIN_ASSERT(mIdsEmb_[i].count % mLd == 0);
+    assert(mIdsEmb_[i].count % mLd == 0);
     mIdsVocabSize.push_back(int32_t(mIdsEmb_[i].count / mLd));
     WeightsWithOwnership tem_weight;
     tem_weight.convertAndCopy(mIdsEmb_[i], mType);
     void* cudaMem{nullptr};
-    PLUGIN_CUASSERT(cudaMalloc(&cudaMem, getWeightsSize(tem_weight, mType)));
-    PLUGIN_CUASSERT(cudaMemcpy(cudaMem,
-                               tem_weight.values,
-                               getWeightsSize(tem_weight, mType),
-                               cudaMemcpyHostToDevice));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMalloc(&cudaMem, getWeightsSize(tem_weight, mType)));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(cudaMem,
+                                          tem_weight.values,
+                                          getWeightsSize(tem_weight, mType),
+                                          cudaMemcpyHostToDevice));
     mIdsEmbDev.push_back(cudaMem);
   }
 }
@@ -119,8 +120,9 @@ EmbLayerNormVarSeqlenPluginBase::EmbLayerNormVarSeqlenPluginBase(
     d += nbBytes;
     mIdsEmb_.push_back(pre_tem_weight);
     /*void* cudaMem{nullptr};
-    PLUGIN_CUASSERT(cudaMalloc(&cudaMem, getWeightsSize(pre_tem_weight,
-    mType))); PLUGIN_CUASSERT(cudaMemcpy(cudaMem, pre_tem_weight.values,
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&cudaMem,
+    getWeightsSize(pre_tem_weight, mType)));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(cudaMem, pre_tem_weight.values,
     getWeightsSize(pre_tem_weight, mType), cudaMemcpyHostToDevice));
     mIdsEmbDev.push_back(cudaMem); */
   }
@@ -183,15 +185,15 @@ nvinfer1::DimsExprs EmbLayerNormVarSeqlenPluginHFace::getOutputDimensions(
     nvinfer1::IExprBuilder& exprBuilder) noexcept {
   // Input should be input ids and token ids and cumulative seqlens
   // Output should be the embeddings tensor and mask indices
-  // PLUGIN_ASSERT(nbInputs == 4);
+  // assert(nbInputs == 4);
   for (int i = 1; i < nbInputs - 1; ++i) {
-    PLUGIN_ASSERT(inputs[i].nbDims == 1);                 // seq length
-    PLUGIN_ASSERT(inputs[i].nbDims == inputs[1].nbDims);  // same shape
+    assert(inputs[i].nbDims == 1);                 // seq length
+    assert(inputs[i].nbDims == inputs[1].nbDims);  // same shape
   }
 
-  PLUGIN_ASSERT(inputs[0].nbDims == 1);  // pos_id: B+1
+  assert(inputs[0].nbDims == 1);  // pos_id: B+1
 
-  PLUGIN_ASSERT(outputIndex == 0 || outputIndex == 1);
+  assert(outputIndex == 0 || outputIndex == 1);
 
   if (outputIndex == 0) {
     nvinfer1::DimsExprs ret;
@@ -233,13 +235,13 @@ nvinfer1::DimsExprs EmbLayerNormVarSeqlenPluginMTron::getOutputDimensions(
   // Input should be input ids and token ids and cumulative seqlens
   // Output should be the embeddings tensor and mask indices
   for (int i = 1; i < nbInputs - 1; ++i) {
-    PLUGIN_ASSERT(inputs[i].nbDims == 1);                 // seq length
-    PLUGIN_ASSERT(inputs[i].nbDims == inputs[1].nbDims);  // same shape
+    assert(inputs[i].nbDims == 1);                 // seq length
+    assert(inputs[i].nbDims == inputs[1].nbDims);  // same shape
   }
 
-  PLUGIN_ASSERT(inputs[0].nbDims == 1);  // pos_id: B+1
+  assert(inputs[0].nbDims == 1);  // pos_id: B+1
 
-  PLUGIN_ASSERT(outputIndex == 0 || outputIndex == 1);
+  assert(outputIndex == 0 || outputIndex == 1);
   nvinfer1::DimsExprs ret;
   ret.nbDims = 4;
   ret.d[0] = inputs[1].d[0];
@@ -258,7 +260,7 @@ bool EmbLayerNormVarSeqlenPluginBase::supportsFormatCombination(
   // dummy input with the size of the max seq length in that order
   // LUGIN_ASSERT(nbInputs == 4);
   // The two outputs of the plugin are embedding and the mask
-  PLUGIN_ASSERT(nbOutputs == 2);
+  assert(nbOutputs == 2);
 
   nvinfer1::PluginTensorDesc const& desc = inOut[pos];
   if (desc.format != nvinfer1::TensorFormat::kLINEAR) {
@@ -302,23 +304,23 @@ void checkConfigurationInputs(nvinfer1::DynamicPluginTensorDesc const* inputs,
                               nvinfer1::DynamicPluginTensorDesc const* outputs,
                               int32_t nbOutputs) noexcept {
   // Validate input arguments
-  // PLUGIN_ASSERT(nbInputs == 4);
-  PLUGIN_ASSERT(nbOutputs == 2);
+  // assert(nbInputs == 4);
+  assert(nbOutputs == 2);
 
-  PLUGIN_ASSERT(inputs[0].desc.dims.nbDims == 1);
-  PLUGIN_ASSERT(inputs[0].desc.type == nvinfer1::DataType::kINT32);
+  assert(inputs[0].desc.dims.nbDims == 1);
+  assert(inputs[0].desc.type == nvinfer1::DataType::kINT32);
 
   for (int i = 1; i < nbInputs - 1; ++i) {
-    PLUGIN_ASSERT(inputs[i].desc.dims.nbDims == 1);
-    PLUGIN_ASSERT(inputs[i].desc.dims.d[0] == inputs[1].desc.dims.d[0]);
-    PLUGIN_ASSERT(inputs[i].desc.type == nvinfer1::DataType::kINT32);
+    assert(inputs[i].desc.dims.nbDims == 1);
+    assert(inputs[i].desc.dims.d[0] == inputs[1].desc.dims.d[0]);
+    assert(inputs[i].desc.type == nvinfer1::DataType::kINT32);
   }
 
-  PLUGIN_ASSERT(outputs[0].desc.dims.nbDims == 4);
-  PLUGIN_ASSERT(static_cast<size_t>(outputs[0].desc.dims.d[0]) ==
-                static_cast<size_t>(inputs[1].desc.dims.d[0]));
-  PLUGIN_ASSERT(outputs[0].desc.dims.d[2] == 1);
-  PLUGIN_ASSERT(outputs[0].desc.dims.d[3] == 1);
+  assert(outputs[0].desc.dims.nbDims == 4);
+  assert(static_cast<size_t>(outputs[0].desc.dims.d[0]) ==
+         static_cast<size_t>(inputs[1].desc.dims.d[0]));
+  assert(outputs[0].desc.dims.d[2] == 1);
+  assert(outputs[0].desc.dims.d[3] == 1);
 }
 
 void EmbLayerNormVarSeqlenPluginHFace::configurePlugin(
@@ -328,22 +330,22 @@ void EmbLayerNormVarSeqlenPluginHFace::configurePlugin(
     int32_t nbOutputs) noexcept {
   TRANSFORMER_DEBUG_MSG("EmbLayerNormVarSeqlenPluginHFace configurePlugin");
   checkConfigurationInputs(inputs, nbInputs, outputs, nbOutputs);
-  PLUGIN_ASSERT(static_cast<size_t>(outputs[0].desc.dims.d[1]) ==
-                static_cast<size_t>(mLd));
+  assert(static_cast<size_t>(outputs[0].desc.dims.d[1]) ==
+         static_cast<size_t>(mLd));
 
   int32_t const B = inputs[0].desc.dims.d[0] - 1;
 
   // check mask
-  PLUGIN_ASSERT(outputs[1].desc.dims.nbDims == 2);
+  assert(outputs[1].desc.dims.nbDims == 2);
   if (B > 0) {
-    PLUGIN_ASSERT(outputs[1].desc.dims.d[0] == B);
+    assert(outputs[1].desc.dims.d[0] == B);
   }
-  PLUGIN_ASSERT((outputs[1].desc.dims.d[1] == 2 * packedMaskSize384) ||
-                (outputs[1].desc.dims.d[1] == 2 * packedMaskSize128) ||
-                (outputs[1].desc.dims.d[1] == 2 * packedMaskSize256));
+  assert((outputs[1].desc.dims.d[1] == 2 * packedMaskSize384) ||
+         (outputs[1].desc.dims.d[1] == 2 * packedMaskSize128) ||
+         (outputs[1].desc.dims.d[1] == 2 * packedMaskSize256));
 
-  PLUGIN_ASSERT(outputs[0].desc.type == mType);
-  PLUGIN_ASSERT(outputs[1].desc.type == nvinfer1::DataType::kHALF);
+  assert(outputs[0].desc.type == mType);
+  assert(outputs[1].desc.type == nvinfer1::DataType::kHALF);
 }
 
 void EmbLayerNormVarSeqlenPluginMTron::configurePlugin(
@@ -353,19 +355,19 @@ void EmbLayerNormVarSeqlenPluginMTron::configurePlugin(
     int32_t nbOutputs) noexcept {
   TRANSFORMER_DEBUG_MSG("EmbLayerNormVarSeqlenPluginMTron configurePlugin");
   checkConfigurationInputs(inputs, nbInputs, outputs, nbOutputs);
-  PLUGIN_ASSERT(static_cast<size_t>(outputs[0].desc.dims.d[1]) ==
-                static_cast<size_t>(mLd));
+  assert(static_cast<size_t>(outputs[0].desc.dims.d[1]) ==
+         static_cast<size_t>(mLd));
 
-  PLUGIN_ASSERT(outputs[1].desc.dims.nbDims == 4);
-  PLUGIN_ASSERT(static_cast<size_t>(outputs[1].desc.dims.d[0]) ==
-                static_cast<size_t>(inputs[1].desc.dims.d[0]));
-  PLUGIN_ASSERT(static_cast<size_t>(outputs[1].desc.dims.d[1]) ==
-                static_cast<size_t>(mLd));
-  PLUGIN_ASSERT(outputs[1].desc.dims.d[2] == 1);
-  PLUGIN_ASSERT(outputs[1].desc.dims.d[3] == 1);
+  assert(outputs[1].desc.dims.nbDims == 4);
+  assert(static_cast<size_t>(outputs[1].desc.dims.d[0]) ==
+         static_cast<size_t>(inputs[1].desc.dims.d[0]));
+  assert(static_cast<size_t>(outputs[1].desc.dims.d[1]) ==
+         static_cast<size_t>(mLd));
+  assert(outputs[1].desc.dims.d[2] == 1);
+  assert(outputs[1].desc.dims.d[3] == 1);
 
-  PLUGIN_ASSERT(outputs[0].desc.type == mType);
-  PLUGIN_ASSERT(outputs[1].desc.type == mType);
+  assert(outputs[0].desc.type == mType);
+  assert(outputs[1].desc.type == mType);
 }
 
 size_t EmbLayerNormVarSeqlenPluginBase::getWorkspaceSize(
@@ -563,10 +565,10 @@ nvinfer1::DataType EmbLayerNormVarSeqlenPluginBase::getOutputDataType(
     int32_t index,
     nvinfer1::DataType const* inputTypes,
     int32_t nbInputs) const noexcept {
-  PLUGIN_ASSERT(index == 0 || index == 1);
+  assert(index == 0 || index == 1);
   if (index == 0) {
-    PLUGIN_ASSERT(mType == nvinfer1::DataType::kHALF ||
-                  mType == nvinfer1::DataType::kFLOAT);
+    assert(mType == nvinfer1::DataType::kHALF ||
+           mType == nvinfer1::DataType::kFLOAT);
     return mType;
   }
   return nvinfer1::DataType::kHALF;
@@ -724,7 +726,7 @@ bool initializeFields(char const* name,
 
     if (field_name.compare("output_fp16") == 0) {
       TRANSFORMER_DEBUG_MSG("Building output_fp16...");
-      PLUGIN_VALIDATE(fc->fields[i].type == nvinfer1::PluginFieldType::kINT32);
+      assert(fc->fields[i].type == nvinfer1::PluginFieldType::kINT32);
       output_fp16 = static_cast<int32_t const*>(fc->fields[i].data)[0] != 0;
     }
     if (field_name.compare("bert_embeddings_word_embeddings_" +

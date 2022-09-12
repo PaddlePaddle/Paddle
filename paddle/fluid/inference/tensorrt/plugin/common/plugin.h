@@ -24,7 +24,6 @@ limitations under the License. */
 #include <string>
 #include "NvInfer.h"
 #include "NvInferPlugin.h"
-#include "checkMacrosPlugin.h"
 
 typedef enum {
   STATUS_SUCCESS = 0,
