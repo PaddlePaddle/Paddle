@@ -208,7 +208,9 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       std::vector<nvinfer1::ITensor*> plugin_inputs = input_ids;
       plugin_inputs.emplace_back(engine_->GetITensor(
           "max_seqlen_tensor"));  // max_seqlen, eval_placeholder_3
-      nvinfer1::IPluginRegistry *plugin_register = static_cast<nvinfer1::IPluginRegistry *>(dy::getPluginRegistry());
+
+      nvinfer1::IPluginRegistry* plugin_register =
+          static_cast<nvinfer1::IPluginRegistry*>(dy::getPluginRegistry());
       auto creator = plugin_register->getPluginCreator(
           "ManyEmbLayerNormPluginDynamic", "2");
       auto plugin_obj =
