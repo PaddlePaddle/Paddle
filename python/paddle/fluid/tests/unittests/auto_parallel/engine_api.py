@@ -30,7 +30,7 @@ from paddle.io import Dataset, IterableDataset, DataLoader
 from paddle.static import InputSpec
 from paddle.distributed import fleet
 import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.engine_v2 import Engine
+from paddle.distributed.auto_parallel.engine import Engine
 from paddle.optimizer.lr import CosineAnnealingDecay
 from paddle.fluid.dataloader.collate import default_collate_fn
 
@@ -131,11 +131,11 @@ def train(fetch):
 
     # eval
     eval_dataset = MyDataset(batch_size)
-    engine.evaluate(eval_dataset, batch_size)
+    engine.evaluate(eval_dataset, batch_size=batch_size)
 
     # predict
     test_dataset = MyDataset(batch_size)
-    engine.predict(test_dataset, batch_size)
+    engine.predict(test_dataset, batch_size=batch_size)
 
     # save
     temp_dir = tempfile.TemporaryDirectory()

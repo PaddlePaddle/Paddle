@@ -60,15 +60,13 @@ class TestEngineBase(unittest.TestCase):
         self.dataset = MyDataset(self.batch_num * self.batch_size)
 
     def init_engine(self):
-        inputs = InputSpec([self.batch_size, self.hidden_size], 'float32', 'x')
-        labels = InputSpec([self.batch_size], 'int64', 'label')
+        # inputs = InputSpec([self.batch_size, self.hidden_size], 'float32', 'x')
+        # labels = InputSpec([self.batch_size], 'int64', 'label')
 
         self.engine = Engine(model=self.mlp,
-                             inputs_spec=inputs,
-                             labels_spec=labels)
-        self.engine.prepare(optimizer=self.optimizer,
-                            loss=self.loss,
-                            metrics=paddle.metric.Accuracy())
+                             loss=self.loss,
+                             optimizer=self.optimizer,
+                             metrics=paddle.metric.Accuracy())
 
 
 class TestLRScheduler(TestEngineBase):
@@ -80,7 +78,7 @@ class TestLRScheduler(TestEngineBase):
 
     def test_lr_scheduler(self):
         self.init_engine()
-        lr = self.engine._optimizer._learning_rate
+        lr = self.engine.optimizer._learning_rate
         assert isinstance(lr, paddle.optimizer.lr.LRScheduler)
         self.engine.fit(self.dataset, batch_size=self.batch_size)
 
@@ -94,7 +92,6 @@ class TestGradClipByGlobalNorm(TestEngineBase):
 
     def test_grad_clip(self):
 
-        clip = self.engine._optimizer._grad_clip
         self.engine.fit(self.dataset, batch_size=self.batch_size)
         self.check_program()
 

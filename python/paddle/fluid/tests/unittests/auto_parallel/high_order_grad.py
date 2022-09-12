@@ -87,7 +87,7 @@ class LaplaceModel(paddle.nn.Layer):
         return eq_loss, bc_u
 
 
-class LaplaceDataset:
+class LaplaceDataset(paddle.io.Dataset):
 
     def __init__(self, num_sample):
         self.num_sample = num_sample
@@ -129,23 +129,14 @@ def main():
     # model
     laplace = LaplaceModel()
 
-    # spec
-    inputs_spec = [
-        InputSpec([100, 2], 'float32', 'x'),
-        InputSpec([36], 'int64', 'bc_idx')
-    ]
-    labels_spec = InputSpec([36, 1], 'float32', 'bc_v')
-
     dist_strategy = fleet.DistributedStrategy()
     dist_strategy.semi_auto = True
-    fleet.init(is_collective=True, strategy=dist_strategy)
 
     engine = Engine(laplace,
-                    inputs_spec=inputs_spec,
-                    labels_spec=labels_spec,
+                    loss=loss_func,
+                    optimizer=optimizer,
                     strategy=dist_strategy)
-    engine.prepare(optimizer=optimizer, loss=loss_func)
-    engine.fit(train_dataset, batch_size=None)
+    engine.fit(train_dataset, train_sample_split=2, batch_size=None)
 
     dist_context = engine.dist_context
     block = engine.main_program.global_block()

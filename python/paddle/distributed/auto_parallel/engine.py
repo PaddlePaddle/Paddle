@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import time
 import copy
 import logging
@@ -73,7 +74,10 @@ class Engine:
         self.strategy = strategy
         if self.strategy is None:
             self.strategy = fleet.DistributedStrategy()
-        fleet.init(is_collective=True, strategy=self.strategy)
+        if os.getenv("POD_NAME"):
+            print("Distribute training by paddle.distributed.launch",
+                  flush=True)
+            fleet.init(is_collective=True, strategy=self.strategy)
 
         self._executor = None
         self._cur_rank = paddle.distributed.get_rank()
@@ -397,11 +401,21 @@ class Engine:
 
                 cast_parameters_to_fp16(place, prune_startup_prog)
 
-    def _infer_data_spec(self, data, batch_size):
+    def _infer_sample_spec(self, data, batch_size, split):
         if isinstance(data, paddle.io.Dataset):
-            input, label = data[0]
+            if split is None:
+                input, label = data[0]
+            else:
+                sample = data[0]
+                input = sample[:split]
+                label = sample[split:]
         elif isinstance(data, paddle.io.IterableDataset):
-            input, label = next(iter(data))
+            if split is None:
+                input, label = next(iter(data))
+            else:
+                sample = next(iter(data))
+                input = sample[:split]
+                label = sample[split:]
         else:
             raise ValueError(
                 "Data should be a Dataset or IterableDatset, but received {}.".
@@ -437,20 +451,24 @@ class Engine:
                 assert item is not None, "Receive None input."
                 name = "label" + str(i)
                 _infer_item_spec(item, name, batch_size, self.labels_spec)
+        print("inputs: ", self.mode, self.inputs_spec, flush=True)
+        print("labels: ", self.mode, self.labels_spec, flush=True)
 
     def fit(self,
             train_data,
+            train_sample_split=None,
             batch_size=1,
             epochs=1,
             steps_per_epoch=None,
             valid_data=None,
             valid_freq=1,
             valid_batch_size=1,
+            valid_sample_split=None,
             collate_fn=None,
             callbacks=None):
         assert valid_data is None, "No support for validation for now"
         self.mode = 'train'
-        self._infer_data_spec(train_data, batch_size)
+        self._infer_sample_spec(train_data, batch_size, train_sample_split)
         if not self._mode_init_states['train']:
             self._prepare()
 
@@ -499,11 +517,12 @@ class Engine:
 
     def evaluate(self,
                  eval_data,
+                 eval_sample_split=None,
                  batch_size=1,
                  collate_fn=None,
                  callbacks=None):
         self.mode = 'eval'
-        self._infer_data_spec(eval_data, batch_size)
+        self._infer_sample_spec(eval_data, batch_size, eval_sample_split)
         if not self._mode_init_states[self.mode]:
             self._prepare_single_mode(self.mode)
 
@@ -549,9 +568,14 @@ class Engine:
             string = '[eval] ' + ''.join(list(eval_logs.keys()))
             self._logger.info(string.format(*list(eval_logs.values())))
 
-    def predict(self, test_data, batch_size=1, collate_fn=None, callbacks=None):
+    def predict(self,
+                test_data,
+                test_sample_split=None,
+                batch_size=1,
+                collate_fn=None,
+                callbacks=None):
         self.mode = 'predict'
-        self._infer_data_spec(test_data, batch_size)
+        self._infer_sample_spec(test_data, batch_size, test_sample_split)
         if not self._mode_init_states[self.mode]:
             self._prepare_single_mode(self.mode)
 
@@ -836,6 +860,3 @@ class Engine:
     @property
     def fetch_vars(self):
         return self._fetch_vars[self.mode]
-
-
-_g_engine_fetches = defaultdict(dict)
