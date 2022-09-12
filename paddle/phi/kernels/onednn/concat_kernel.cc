@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/concat_funcs.h"
 
 namespace phi {
 using memory = dnnl::memory;
@@ -68,7 +69,8 @@ class ConcatOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
     // formats are being set in inputs. In that scenario we are enforcing using
     // a dense format, because it is the most common one and should be the best
     // in terms of the performance
-    if (dst_dims[concat_axis] == static_cast<int64_t>(srcs_md.size())) {
+    const auto src0_tz = srcs_md[0].dims();
+    if (std::find(src0_tz.begin(), src0_tz.end(), 1) != src0_tz.end()) {
       dst_md =
           memory::desc(dst_dims, dt, GetPlainOneDNNFormat(dst_dims.size()));
     } else {
@@ -128,6 +130,15 @@ void ConcatKernel(const Context& dev_ctx,
   // actual size of the multi_input will change
   auto multi_input = ReduceMultiInput(x);
   EnforceLayouts(multi_input);
+
+  std::vector<phi::DDim> x_dims;
+  x_dims.reserve(x.size());
+  for (size_t i = 0; i < x.size(); ++i) {
+    x_dims.push_back(x[i]->dims());
+  }
+
+  DDim out_dims = funcs::ComputeAndCheckShape(true, x_dims, axis.to<size_t>());
+  out->Resize(out_dims);
 
   funcs::ConcatOneDNNHandler<T> handler(
       dev_ctx.GetPlace(), axis.to<int>(), onednn_engine, multi_input, out);
