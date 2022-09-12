@@ -41,6 +41,10 @@ NOT_FOUND = "not_found"
 #########################################
 BASE = "base"
 set_field_default_config(BASE, "auto_mode", "semi")
+set_field_default_config(BASE, "gradient_scale", True)
+set_field_default_config(BASE, "use_cache", True)
+set_field_default_config(BASE, "return_numpy", True)
+set_field_default_config(BASE, "all_ranks", False)
 
 #########################################
 # recompute configuration
@@ -76,6 +80,7 @@ set_field_default_config(SHARDING, "stage", 1)
 set_field_default_config(SHARDING, "sharding_degree", 8)
 set_field_default_config(SHARDING, "segment_broadcast_MB", 32.0)
 set_field_default_config(SHARDING, "enable_tuning", False)
+set_field_default_config(SHARDING, "sharding_range", [])
 
 #########################################
 # gradient merge configuration
@@ -84,3 +89,9 @@ GRADIENT_MERGE = "gradient_merge"
 set_field_default_config(GRADIENT_MERGE, "enabled", False)
 set_field_default_config(GRADIENT_MERGE, "k_steps", 1)
 set_field_default_config(GRADIENT_MERGE, "avg", True)
+
+# #########################################
+# # auto tuning configuration
+# #########################################
+# TUNING = "tuning"
+# set_field_default_config(TUNING, "batch_size")

@@ -120,14 +120,14 @@ class DistributedContext:
         self._backup_serial_main_program_stack = []
         self._backup_serial_startup_program_stack = []
 
-        # flag whether scale gradient with dp size
-        self._gradient_scale = True
+        # # flag whether scale gradient with dp size
+        # self._gradient_scale = True
 
         # A flag indicates whether the used parallelism is data parallel
         self._data_parallel = False
 
-        # flag whether using `to_static`
-        self._dygraph_mode = False
+        # # flag whether using `to_static`
+        # self._dygraph_mode = False
 
     @property
     def serial_main_program(self):
@@ -200,11 +200,11 @@ class DistributedContext:
 
     @property
     def gradient_scale(self):
-        return self._gradient_scale
+        return self.strategy.gradient_scale
 
     @gradient_scale.setter
     def gradient_scale(self, gs):
-        self._gradient_scale = gs
+        self.strategy.gradient_scale = gs
 
     @property
     def data_parallel(self):

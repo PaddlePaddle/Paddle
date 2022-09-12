@@ -21,6 +21,7 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT // for call_once
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -154,6 +155,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/phi/capi/capi.h"
 #endif
 
@@ -345,6 +347,52 @@ bool IsCompiledWithDIST() {
   return false;
 #endif
 }
+
+struct iinfo {
+  int64_t min, max;
+  int bits;
+  std::string dtype;
+
+  explicit iinfo(const framework::proto::VarType::Type &type) {
+    switch (type) {
+      case framework::proto::VarType::INT16:
+        min = std::numeric_limits<int16_t>::min();
+        max = std::numeric_limits<int16_t>::max();
+        bits = 16;
+        dtype = "int16";
+        break;
+      case framework::proto::VarType::INT32:
+        min = std::numeric_limits<int32_t>::min();
+        max = std::numeric_limits<int32_t>::max();
+        bits = 32;
+        dtype = "int32";
+        break;
+      case framework::proto::VarType::INT64:
+        min = std::numeric_limits<int64_t>::min();
+        max = std::numeric_limits<int64_t>::max();
+        bits = 64;
+        dtype = "int64";
+        break;
+      case framework::proto::VarType::INT8:
+        min = std::numeric_limits<int8_t>::min();
+        max = std::numeric_limits<int8_t>::max();
+        bits = 8;
+        dtype = "int8";
+        break;
+      case framework::proto::VarType::UINT8:
+        min = std::numeric_limits<uint8_t>::min();
+        max = std::numeric_limits<uint8_t>::max();
+        bits = 8;
+        dtype = "uint8";
+        break;
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "the argument of paddle.iinfo can only be paddle.int8, "
+            "paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"));
+        break;
+    }
+  }
+};
 
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
   // NOTE(zjl): PyObject_GetAttrString would return nullptr when attr_name
@@ -554,6 +602,21 @@ PYBIND11_MODULE(core_noavx, m) {
   using namespace paddle::framework;  // NOLINT
 
   BindException(&m);
+
+  py::class_<iinfo>(m, "iinfo")
+      .def(py::init<const framework::proto::VarType::Type &>())
+      .def_readonly("min", &iinfo::min)
+      .def_readonly("max", &iinfo::max)
+      .def_readonly("bits", &iinfo::bits)
+      .def_readonly("dtype", &iinfo::dtype)
+      .def("__repr__", [](const iinfo &a) {
+        std::ostringstream oss;
+        oss << "paddle.iinfo(min=" << a.min;
+        oss << ", max=" << a.max;
+        oss << ", bits=" << a.bits;
+        oss << ", dtype=" << a.dtype << ")";
+        return oss.str();
+      });
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
@@ -1014,7 +1077,8 @@ All parameter, weight, gradient are variables in Paddle.
            R"DOC(
            Delete all sub-scopes of the current scope.
            )DOC")
-      .def("_kids", &Scope::kids);
+      .def("_kids", &Scope::kids)
+      .def_property("_can_reuesd", &Scope::CanReuesd, &Scope::SetCanReuesd);
 
   m.def(
       "Scope",
@@ -1049,13 +1113,44 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
-  m.def("get_all_op_names", []() {
-    std::vector<std::string> op_names;
-    for (auto &iter : OpInfoMap::Instance().map()) {
-      op_names.emplace_back(iter.first);
-    }
-    return op_names;
-  });
+  m.def(
+      "get_all_op_names",
+      [](const std::string &lib) {
+        std::vector<std::string> op_names;
+        for (auto &iter : OpInfoMap::Instance().map()) {
+          op_names.emplace_back(iter.first);
+        }
+        if (lib == "phi") {
+          std::vector<std::string> ops_with_phi_kernel;
+          for (const auto &op_name : op_names) {
+            if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
+                    op_name)) {
+              ops_with_phi_kernel.emplace_back(op_name);
+            }
+          }
+          return ops_with_phi_kernel;
+        } else if (lib == "fluid") {
+          std::vector<std::string> ops_with_fluid_kernel;
+          auto all_fluid_op_kernels =
+              paddle::framework::OperatorWithKernel::AllOpKernels();
+          for (const auto &op_name : op_names) {
+            if (all_fluid_op_kernels.find(op_name) !=
+                all_fluid_op_kernels.end()) {
+              ops_with_fluid_kernel.emplace_back(op_name);
+            }
+          }
+          return ops_with_fluid_kernel;
+        } else {
+          return op_names;
+        }
+      },
+      py::arg("lib") = "all",
+      R"DOC(
+      Return the operator names in paddle.
+
+      Args:
+          lib[string]: the library contains corresponding OpKernel, could be 'phi', 'fluid' and 'all'. Default value is 'all'.
+  )DOC");
   m.def("get_op_attrs_default_value",
         [](py::bytes byte_name) -> paddle::framework::AttributeMap {
           std::string op_type = byte_name;
@@ -1601,7 +1696,14 @@ All parameter, weight, gradient are variables in Paddle.
     egr::Controller::Instance().MergeOpMetaInfoMap(
         framework::LoadOpMetaInfoAndRegisterOp(dso_name));
   });
-  m.def("init_devices", []() { framework::InitDevices(); });
+  m.def("init_devices", []() {
+    framework::InitDevices();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    for (auto &dev_type : phi::DeviceManager::GetAllCustomDeviceTypes()) {
+      paddle::operators::RegisterCustomDeviceCommonKernel(dev_type);
+    }
+#endif
+  });
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
@@ -2033,7 +2135,15 @@ All parameter, weight, gradient are variables in Paddle.
            &paddle::platform::ProfilerResult::GetData,
            py::return_value_policy::automatic_reference)
       .def("save", &paddle::platform::ProfilerResult::Save)
-      .def("get_extra_info", &paddle::platform::ProfilerResult::GetExtraInfo);
+      .def("get_extra_info", &paddle::platform::ProfilerResult::GetExtraInfo)
+      .def("get_version", &paddle::platform::ProfilerResult::GetVersion)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      .def("get_span_indx", &paddle::platform::ProfilerResult::GetSpanIndx)
+      .def("get_device_property",
+           &paddle::platform::ProfilerResult::GetDeviceProperty);
+#else
+      .def("get_span_indx", &paddle::platform::ProfilerResult::GetSpanIndx);
+#endif
 
   py::class_<paddle::platform::MemPythonNode>(m, "MemPythonNode")
       .def(py::init<>())
@@ -2066,7 +2176,28 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readwrite("context_id",
                      &paddle::platform::DevicePythonNode::context_id)
       .def_readwrite("stream_id",
-                     &paddle::platform::DevicePythonNode::stream_id);
+                     &paddle::platform::DevicePythonNode::stream_id)
+      .def_readwrite("correlation_id",
+                     &paddle::platform::DevicePythonNode::correlation_id)
+      .def_readwrite("block_x", &paddle::platform::DevicePythonNode::block_x)
+      .def_readwrite("block_y", &paddle::platform::DevicePythonNode::block_y)
+      .def_readwrite("block_z", &paddle::platform::DevicePythonNode::block_z)
+      .def_readwrite("grid_x", &paddle::platform::DevicePythonNode::grid_x)
+      .def_readwrite("grid_y", &paddle::platform::DevicePythonNode::grid_y)
+      .def_readwrite("grid_z", &paddle::platform::DevicePythonNode::grid_z)
+      .def_readwrite("shared_memory",
+                     &paddle::platform::DevicePythonNode::shared_memory)
+      .def_readwrite("registers_per_thread",
+                     &paddle::platform::DevicePythonNode::registers_per_thread)
+      .def_readwrite("blocks_per_sm",
+                     &paddle::platform::DevicePythonNode::blocks_per_sm)
+      .def_readwrite("warps_per_sm",
+                     &paddle::platform::DevicePythonNode::warps_per_sm)
+      .def_readwrite("occupancy",
+                     &paddle::platform::DevicePythonNode::occupancy)
+      .def_readwrite("num_bytes",
+                     &paddle::platform::DevicePythonNode::num_bytes)
+      .def_readwrite("value", &paddle::platform::DevicePythonNode::value);
 
   py::class_<paddle::platform::HostPythonNode>(m, "HostPythonNode")
       .def(py::init<>())
@@ -2077,6 +2208,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readwrite("process_id",
                      &paddle::platform::HostPythonNode::process_id)
       .def_readwrite("thread_id", &paddle::platform::HostPythonNode::thread_id)
+      .def_readwrite("correlation_id",
+                     &paddle::platform::HostPythonNode::correlation_id)
       .def_readwrite("input_shapes",
                      &paddle::platform::HostPythonNode::input_shapes)
       .def_readwrite("dtypes", &paddle::platform::HostPythonNode::dtypes)
