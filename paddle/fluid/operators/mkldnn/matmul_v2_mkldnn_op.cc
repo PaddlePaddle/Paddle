@@ -654,7 +654,7 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
     out->set_mem_desc(dst_memory_p->get_desc().permute_axes(axis).reshape(
         phi::vectorize<int64_t>(out->dims())));
   } else {
-    out->set_mem_desc(dst_memory_p->get_desc().reshape(out->dims()));
+    out->set_mem_desc(dst_memory_p->get_desc().reshape(phi::vectorize<int64_t>(out->dims())));
   }
 }
 
