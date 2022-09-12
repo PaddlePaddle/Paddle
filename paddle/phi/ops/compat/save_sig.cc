@@ -12,21 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/size_kernel.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/size_kernel_impl.h"
+namespace phi {
 
-PD_REGISTER_KERNEL(size,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::SizeKernel,
-                   uint8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   float,
-                   double,
-                   bool) {}
+KernelSignature SaveOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorInput("X")) {
+    return KernelSignature(
+        "save", {"X"}, {"file_path", "overwrite", "save_as_fp16"}, {});
+  } else if (ctx.IsSelectedRowsInput("X")) {
+    return KernelSignature(
+        "save_sr", {"X"}, {"file_path", "overwrite", "save_as_fp16"}, {});
+  } else {
+    return KernelSignature("unregistered", {}, {}, {});
+  }
+}
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(save, phi::SaveOpArgumentMapping);

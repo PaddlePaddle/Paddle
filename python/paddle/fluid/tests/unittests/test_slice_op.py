@@ -784,7 +784,7 @@ class TestInferShape(unittest.TestCase):
         self.assertEqual(x.shape, (3, -1, 5))
 
         out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
-        self.assertEqual(out0.shape, (3, 3, 5))
+        self.assertEqual(out0.shape, (3, -1, 5))
 
     def test_axis_less_than_zero(self):
         # Using paddle.disable_static will make other unittests fail.
