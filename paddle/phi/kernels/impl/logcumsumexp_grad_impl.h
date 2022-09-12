@@ -15,6 +15,7 @@
 #include <limits>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cum_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -23,17 +24,23 @@ namespace phi {
 
 template <typename T>
 struct LogGradPositiveFunctor {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   HOSTDEVICE T operator()(const T& x) const {
     const T kMin = std::numeric_limits<T>::lowest();
-    return x > 0 ? std::log(x) : kMin;
+    const MT mt_x = static_cast<MT>(x);
+    const T log_pos_x = static_cast<T>(std::log(mt_x));
+    return mt_x > 0 ? log_pos_x : kMin;
   }
 };
 
 template <typename T>
 struct LogGradNegativeFunctor {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   HOSTDEVICE T operator()(const T& x) const {
     const T kMin = std::numeric_limits<T>::lowest();
-    return x < 0 ? std::log(-x) : kMin;
+    const MT mt_x = static_cast<MT>(x);
+    const T log_neg_x = static_cast<T>(std::log(-mt_x));
+    return mt_x < 0 ? log_neg_x : kMin;
   }
 };
 
@@ -68,17 +75,20 @@ void LogcumsumexpGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(&tmp);
   auto eigen_tmp = EigenVector<T>::Flatten(tmp);
 
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   eigen_tmp.device(place) =
       eigen_d_out.unaryExpr(LogGradPositiveFunctor<T>()) - eigen_out;
   LogcumsumexpKernel<T, Context>(
       dev_ctx, tmp, axis, flatten, exclusive, reverse, &output_pos);
-  eigen_output_pos.device(place) = (eigen_output_pos + eigen_x).exp();
+  auto out_pos = (eigen_output_pos + eigen_x).template cast<MT>();
+  eigen_output_pos.device(place) = (out_pos.exp()).template cast<T>();
 
   eigen_tmp.device(place) =
       eigen_d_out.unaryExpr(LogGradNegativeFunctor<T>()) - eigen_out;
   LogcumsumexpKernel<T, Context>(
       dev_ctx, tmp, axis, flatten, exclusive, reverse, &output_neg);
-  eigen_output_neg.device(place) = (eigen_output_neg + eigen_x).exp();
+  auto out_neg = (eigen_output_neg + eigen_x).template cast<MT>();
+  eigen_output_neg.device(place) = (out_neg.exp()).template cast<T>();
 
   auto eigen_d_x = EigenVector<T>::Flatten(*d_x);
   eigen_d_x.device(place) = eigen_output_pos - eigen_output_neg;

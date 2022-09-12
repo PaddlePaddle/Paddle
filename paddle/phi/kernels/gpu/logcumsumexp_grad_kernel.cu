@@ -25,4 +25,5 @@ PD_REGISTER_KERNEL(logcumsumexp_grad,
                    ALL_LAYOUT,
                    phi::LogcumsumexpGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}

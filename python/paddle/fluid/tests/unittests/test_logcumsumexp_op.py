@@ -116,6 +116,9 @@ class TestLogcumsumexp(unittest.TestCase):
         y = paddle.logcumsumexp(data, dtype='float32')
         self.assertTrue(y.dtype == core.VarDesc.VarType.FP32)
 
+        y = paddle.logcumsumexp(data, dtype='float16')
+        self.assertTrue(y.dtype == core.VarDesc.VarType.FP16)
+
         y = paddle.logcumsumexp(data, axis=-2)
         z = np_logcumsumexp(data_np, axis=-2)
         np.testing.assert_allclose(z, y.numpy(), rtol=1e-05)
@@ -146,17 +149,15 @@ class TestLogcumsumexp(unittest.TestCase):
             y3 = paddle.logcumsumexp(x, axis=-1)
             y4 = paddle.logcumsumexp(x, dtype='float64')
             y5 = paddle.logcumsumexp(x, axis=-2)
+            y6 = paddle.logcumsumexp(x, dtype='float16')
 
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
             out = exe.run(feed={'X': data_np},
                           fetch_list=[
-                              y.name,
-                              y2.name,
-                              y3.name,
-                              y4.name,
-                              y5.name,
+                              y.name, y2.name, y3.name, y4.name, y5.name,
+                              y6.name
                           ])
 
             z = np_logcumsumexp(data_np)
@@ -168,6 +169,9 @@ class TestLogcumsumexp(unittest.TestCase):
             self.assertTrue(out[3].dtype == np.float64)
             z = np_logcumsumexp(data_np, axis=-2)
             np.testing.assert_allclose(z, out[4], rtol=1e-05)
+            self.assertTrue(out[5].dtype == np.float16)
+            z = np_logcumsumexp(data_np)
+            np.testing.assert_allclose(z, out[5], rtol=5e-03)
 
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())
@@ -214,6 +218,8 @@ class BaseTestCases:
             input, attrs = self.input_and_attrs()
             self.inputs = {'X': input}
             self.attrs = attrs
+            if "dtype" in attrs:
+                del attrs["dtype"]
             self.outputs = {'Out': np_logcumsumexp(input, **attrs)}
 
         def test_check_output(self):
@@ -265,6 +271,27 @@ class TestLogcumsumexpOp4(BaseTestCases.BaseOpTest):
             'flatten': True,
             'reverse': True,
             'exclusive': True
+        }
+
+
+class TestLogcumsumexpOp5(BaseTestCases.BaseOpTest):
+
+    def input_and_attrs(self):
+        return np.arange(100, dtype=np.float64).reshape(10, 10), {
+            'axis': 1,
+            'dtype': 'float16'
+        }
+
+
+class TestLogcumsumexpOp6(BaseTestCases.BaseOpTest):
+
+    def input_and_attrs(self):
+        return np.arange(100, dtype=np.float64).reshape(10, 10), {
+            'axis': 0,
+            'flatten': True,
+            'reverse': True,
+            'exclusive': True,
+            'dtype': 'float16'
         }
 
 

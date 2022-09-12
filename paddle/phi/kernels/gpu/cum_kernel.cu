@@ -27,6 +27,8 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -146,8 +148,9 @@ struct LogAddExp {
   template <typename T>
   __host__ __device__ __forceinline__ T operator()(const T& a,
                                                    const T& b) const {
-    return std::log(1 + std::exp(std::min(a, b) - std::max(a, b))) +
-           std::max(a, b);
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    MT exp_val = std::exp(static_cast<MT>(std::min(a, b) - std::max(a, b)));
+    return static_cast<T>(std::log(1 + exp_val)) + std::max(a, b);
   }
 };
 
@@ -156,17 +159,12 @@ struct Identity;
 
 template <typename T>
 struct Identity<T, cub::Sum> {
-  static constexpr T value = 0;
-};
-
-template <>
-struct Identity<phi::dtype::float16, cub::Sum> {
-  static constexpr float value = 0.0f;
+  T value = static_cast<T>(0);
 };
 
 template <typename T>
 struct Identity<T, LogAddExp> {
-  static constexpr T value = std::numeric_limits<T>::lowest();
+  T value = std::numeric_limits<T>::lowest();
 };
 
 template <typename T, int BLOCK_THREADS, int ITEMS_PER_THREAD, typename Op>
@@ -194,8 +192,7 @@ __global__ void BlockScanKernel(T* d_out,
 
   int bx = blockIdx.x;
 
-  BlockPrefixCallbackOp<T, Op> prefix_op(static_cast<T>(Identity<T, Op>::value),
-                                         op);
+  BlockPrefixCallbackOp<T, Op> prefix_op(Identity<T, Op>().value, op);
 
   // Obtain this block's segment of consecutive keys (blocked across threads)
   int item_per_block = BLOCK_THREADS * ITEMS_PER_THREAD;
@@ -290,6 +287,7 @@ void ScanKernel(const Context& dev_ctx,
             policy, in_data_ptr, in_data_ptr + size, out_data_ptr);
       }
     }
+
     return;
   }
 
@@ -414,5 +412,10 @@ PD_REGISTER_KERNEL(cumsum,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(
-    logcumsumexp, GPU, ALL_LAYOUT, phi::LogcumsumexpKernel, float, double) {}
+PD_REGISTER_KERNEL(logcumsumexp,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LogcumsumexpKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}

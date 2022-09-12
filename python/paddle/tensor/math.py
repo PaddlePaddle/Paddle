@@ -3147,7 +3147,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
     Args:
         x (Tensor): The input tensor.
         axis (int, optional): The dimension to do the operation along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None. 
+        dtype (str, optional): The data type of the output tensor, can be float16, float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3175,6 +3175,10 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
             #  [ 4.         5.3132615  6.407606   7.44019  ]
             #  [ 8.         9.313262  10.407606  11.440189 ]]
 
+            y = paddle.logcumsumexp(data, dtype='float16')
+            print(y.dtype)
+            # paddle.float16
+
             y = paddle.logcumsumexp(data, dtype='float64')
             print(y.dtype)
             # paddle.float64
@@ -3195,7 +3199,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
         else:
             return _legacy_C_ops.logcumsumexp(x, 'axis', axis, 'flatten', flatten)
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "logcumsumexp")
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "logcumsumexp")
 
     helper = LayerHelper('logcumsumexp', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
