@@ -28,7 +28,6 @@
 # endif()
 
 include(ExternalProject)
-
 set(FASTER_TRANSFORMER_PATH
     "${THIRD_PARTY_PATH}/fastertransformer"
     CACHE PATH "FASTER_TRANSFORMER_PATH" FORCE)
@@ -57,8 +56,7 @@ message("FASTER_TRANSFORMER_INCLUDE_DIR is ${FASTER_TRANSFORMER_INCLUDE_DIR}")
 
 include_directories(${FASTER_TRANSFORMER_INCLUDE_DIR})
 
-set(FASTER_TRANSFORMER_OPTIONAL_ARGS -DSM=${cuda_arch_bin}
-                                     -DCMAKE_BUILD_TYPE=Release -DBUILD_TRT=ON)
+set(FASTER_TRANSFORMER_OPTIONAL_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_TRT=ON)
 
 ExternalProject_Add(
   extern_fastertransformer
