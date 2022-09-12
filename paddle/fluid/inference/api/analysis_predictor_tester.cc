@@ -368,8 +368,10 @@ TEST(AnalysisPredictor, mkldnn_fc_passes_cpu_pass_strategy) {
 }
 #endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(AnalysisPredictor, mkldnn_fc_passes_gpu_pass_strategy) {
   AnalysisConfig config;
+  config.EnableUseGpu(100, 0);
   config.EnableMKLDNN();
   config.DisableMkldnnFcPasses();
 #ifdef PADDLE_WITH_MKLDNN
@@ -378,6 +380,7 @@ TEST(AnalysisPredictor, mkldnn_fc_passes_gpu_pass_strategy) {
   ASSERT_FALSE(config.mkldnn_fc_passes_disabled());
 #endif
 }
+#endif
 
 #ifdef PADDLE_WITH_XPU
 TEST(AnalysisPredictor, set_xpu_device_id) {
