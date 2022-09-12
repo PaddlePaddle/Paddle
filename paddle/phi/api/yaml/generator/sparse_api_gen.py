@@ -261,8 +261,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = "paddle/phi/api/include/sparse_api.h"
-    source_file.write(source_include(include_header_file))
+    source_file.write(source_include(header_file_path))
     source_file.write(namespace[0])
 
     for api in apis:
