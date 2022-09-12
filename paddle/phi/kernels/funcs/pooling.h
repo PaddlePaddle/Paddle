@@ -92,12 +92,12 @@ class AvgPoolGrad {
  */
 HOSTDEVICE inline int AdaptStartIndex(int ph, int input_size, int output_size) {
   return static_cast<int>(
-      floor(static_cast<double>(ph * input_size) / output_size));
+      floor(static_cast<float>(ph * input_size) / output_size));
 }
 
 HOSTDEVICE inline int AdaptEndIndex(int ph, int input_size, int output_size) {
   return static_cast<int>(
-      ceil(static_cast<double>((ph + 1) * input_size) / output_size));
+      ceil(static_cast<float>((ph + 1) * input_size) / output_size));
 }
 
 /*
