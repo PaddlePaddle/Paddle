@@ -48,14 +48,11 @@ namespace ir {
 // elementwise_add--------|             unsqueeze2
 //      | ?x3x49x49                       | 64x1x49x49
 //    reshape2                          unsqueeze2
-//      | ?x64x3x49x49                    | 1x64x1x49x49 (X)input (Y)BiasQK
-//      (BiasQK_mask)BiasQK_mask
-//       \                               /                   fuse | ?x3x49x49 |
-//       1x3x49x49    |
-//        |-------elementwise_add-------|                     ->
-//        elementwise_add-------|--------------|
-//                      | ?x64x3x49x49 | ?x3x49x49
-//                   reshape2 output
+//      | ?x64x3x49x49                    | 1x64x1x49x49              (X)input        (Y)BiasQK      (BiasQK_mask)BiasQK_mask
+//       \                               /                   fuse      | ?x3x49x49     | 1x3x49x49    |
+//        |-------elementwise_add-------|                     -> elementwise_add-------|--------------|
+//                      | ?x64x3x49x49                                 | ?x3x49x49
+//                   reshape2                                        output
 //                      | ?x3x49x49
 //                    output
 //

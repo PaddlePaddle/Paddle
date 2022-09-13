@@ -68,21 +68,15 @@ namespace ir {
 //                  input(x)                                      input(x)
 //                    | ?x8x7x8x96                                  | ?x8x7x8x96
 //                transpose2                                      transpose2
-//                    | ?x8x8x7x7x96                                |
-//                    ?x8x8x7x7x96
+//                    | ?x8x8x7x7x96                                | ?x8x8x7x7x96
 //                 reshape2                                       reshape2
 //                    | ?x7x7x96                                    | ?x7x7x96
 //                 reshape2            W                          reshape2
-//                    | ?x49x96        | 96x288                     | ?x49x96 W
-//                    Bias
-//                 matmul_v2 ----------|        Bias      fuse      | | 96x288
-//                 | 288
-//                    | ?x49x288                 | 288     ->
-//                    multihead_matmul---|-------------|
-//                 elementwise_add --------------|                  | |
-//                 1x3x49x49   | 64x49x49
-//                    | ?x49x288                                  output BiasQK
-//                    [BiasQK_mask](optional)
+//                    | ?x49x96        | 96x288                     | ?x49x96        W            Bias
+//                 matmul_v2 ----------|        Bias      fuse      |                | 96x288      | 288
+//                    | ?x49x288                 | 288     ->     multihead_matmul---|-------------|
+//                 elementwise_add --------------|                  |                |1x3x49x49    | 64x49x49
+//                    | ?x49x288                                  output            BiasQK        [BiasQK_mask](optional)
 //                 reshape2
 //                    | ?x49x3x3x32
 //                 transpose2
@@ -94,10 +88,12 @@ namespace ir {
 //    |              scale           transpose2
 //    |               | ?x3x49x32     | ?x3x32x49
 //    |                \             /
-//    |                 |-matmul_v2-|        BiasQK [BiasQK_mask](optional) | |
-//    ?x3x49x49     | 1x3x49x49  | 64x49x49 |                   elementwise_add
-//    ----|------------| |                       | ?x3x49x49 | softmax | |
-//    ?x3x49x49
+//    |                 |-matmul_v2-|        BiasQK       [BiasQK_mask](optional) 
+//    |                      | ?x3x49x49     | 1x3x49x49  | 64x49x49 
+//    |                   elementwise_add----|------------| 
+//    |                       | ?x3x49x49 
+//    |                    softmax 
+//    |                       | ?x3x49x49
 //     \                     /
 //      |----matmul_v2------|
 //               | ?x3x49x32
