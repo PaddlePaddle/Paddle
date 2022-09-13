@@ -92,9 +92,9 @@ def set_backend(backend_name: str):
 def _init_set_audio_backend():
     backends = list_available_backends()
 
-    if "wave_backend" in backends:
-        set_backend("wave_backend")
+    if "soundfile" in backends:
+        set_backend("soundfile")
     elif "sox_io" in backends:
         set_backend("sox_io")
     else:
-        set_backend("soundfile")
+        set_backend("wave_backend")
