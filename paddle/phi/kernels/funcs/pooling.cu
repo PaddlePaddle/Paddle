@@ -1995,10 +1995,10 @@ __global__ void AdaptiveKernelMaxPool2dWithIdx(const int nthreads,
     int max_index = -1;
     for (int h = hstart; h < hend; ++h) {
       for (int w = wstart; w < wend; ++w) {
-        int input_index = input_offset + h * input_width + w;
-        if (ele < input_data[input_index]) {
+        int input_index = h * input_width + w;
+        if (ele < input_data[input_offset + input_index]) {
           max_index = input_index;
-          ele = input_data[input_index];
+          ele = input_data[input_offset + input_index];
         }
       }
     }
