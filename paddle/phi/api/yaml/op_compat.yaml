@@ -410,3 +410,7 @@
     x : X
   outputs :
     out : Out
+
+- api : scale
+  extra :
+    attrs : [bool use_mkldnn = false]
