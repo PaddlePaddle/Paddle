@@ -26,6 +26,8 @@ from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
                       op_position_inputs, op_position_output)
 from .utils import INT_DTYPE_2_STRING, get_input_var_list, get_output_var_list
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.fluid.data_feeder import convert_dtype
 
 
 def _orig2prim(op, *args):
@@ -187,12 +189,28 @@ def fill_zeros_like_orig2prim(op, x):
     return fill_const(value=0.0, shape=x.shape, dtype=x.dtype)
 
 
+@REGISTER_ORIG2PRIM('fill_constant')
+def fill_constant_orig2prim(op,
+                            shape_tensor=[],
+                            shape_tensor_list=[],
+                            value_tensor=[]):
+    return fill_const(value=op.attr('value'),
+                      shape=op.attr('shape'),
+                      dtype=convert_np_dtype_to_dtype_(
+                          convert_dtype(INT_DTYPE_2_STRING[op.attr('dtype')])))
+
+
 @REGISTER_ORIG2PRIM('sum')
 def sum_orig2prim(op, xs):
     x0 = xs[0]
     for x in xs[1:]:
         x0 = add(x0, x)
     return x0
+
+
+@REGISTER_ORIG2PRIM('reduce_sum')
+def reduce_sum_orig2prim(op, xs):
+    return reduce(xs, [])
 
 
 @REGISTER_ORIG2PRIM('index_select')
