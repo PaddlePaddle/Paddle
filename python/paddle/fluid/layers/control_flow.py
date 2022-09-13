@@ -2689,16 +2689,33 @@ def expand_undefined_var(nest1, nest2, names):
         return pack_sequence_as(seq,
                                 [UndefinedVar("padding") for i in flatten(seq)])
 
-    def map_fn(n1, n2, name):
+    def map_fn(n1, n2, name, order):
         if not name.startswith(RETURN_VALUE_PREFIX) and (isinstance(
                 n1, UndefinedVar) or n1 is None):
+            if n1 == None and isinstance(n2, Variable):
+                if order == 0:
+                    warnings.warn(
+                        "Dynamic to Static : Var '{}' is set differently in ifelse branchs,"
+                        "<{}, {}> in true branch and <{}, {}> in false branch. Set var to"
+                        "'None' in ifelse block might lead to error.".format(
+                            name, type(n1), n1, type(n2), n2),
+                        DeprecationWarning)
+                else:
+                    warnings.warn(
+                        "Dynamic to Static : Var '{}' is set differently in ifelse branchs,"
+                        "<{}, {}> in true branch and <{}, {}> in false branch. Set var to"
+                        "'None' in ifelse block might lead to error.".format(
+                            name, type(n2), n2, type(n1), n1),
+                        DeprecationWarning)
             return pack_undefined_var_as(n2)
         return n1
 
     nest1_out = list(
-        map(map_fn, to_sequence(nest1), to_sequence(nest2), to_sequence(names)))
+        map(map_fn, to_sequence(nest1), to_sequence(nest2), to_sequence(names),
+            [0 for i in to_sequence(names)]))
     nest2_out = list(
-        map(map_fn, to_sequence(nest2), to_sequence(nest1), to_sequence(names)))
+        map(map_fn, to_sequence(nest2), to_sequence(nest1), to_sequence(names),
+            [1 for i in to_sequence(names)]))
     if not is_sequence(nest1): nest1_out = nest1_out[0]
     if not is_sequence(nest2): nest2_out = nest2_out[0]
     return nest1_out, nest2_out
