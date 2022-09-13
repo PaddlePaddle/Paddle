@@ -20,10 +20,19 @@ import unittest
 import paddle
 import paddle.distributed.fleet as fleet
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
-from test_auto_parallel_amp_pass import TestAMPPass
 
 
-class TestPF16Pass(TestAMPPass):
+class TestPF16Pass(AutoPallelPassTestBase):
+
+    def init(self):
+        if paddle.is_compiled_with_cuda():
+            paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
+        self.rtol = 1e-5
+        self.atol = 1e-8
+
+        paddle.seed(2021)
+        random.seed(2021)
+        np.random.seed(2021)
 
     def apply_passes(self):
         dist_strategy = fleet.DistributedStrategy()
@@ -34,13 +43,29 @@ class TestPF16Pass(TestAMPPass):
                 'layer_norm',
                 'gelu',
             ],
-            "custom_black_list": ['c_softmax_with_cross_entropy'],
-            "init_loss_scaling": 32768,
-            "use_dynamic_loss_scaling": True,
-            "use_pure_fp16": True
+            "custom_black_list":
+            ['c_softmax_with_cross_entropy', 'elementwise_div', 'reduce_sum'],
+            "init_loss_scaling":
+            32768,
+            "use_dynamic_loss_scaling":
+            True,
+            "use_pure_fp16":
+            True,
+            "use_fp16_guard":
+            False
         }
         dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
+
+    def test_bs_8(self):
+        self.check_main(gpus=[0, 1],
+                        batch_size=8,
+                        sequence_len=512,
+                        vocab_size=1000)
+
+    def get_model(self, place, batch_size, sequence_len, vocab_size):
+        return self.get_gpt_model("mp", place, batch_size, sequence_len,
+                                  vocab_size)
 
 
 if __name__ == "__main__":

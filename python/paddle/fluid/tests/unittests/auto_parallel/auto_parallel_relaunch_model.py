@@ -32,7 +32,7 @@ import paddle.distributed.auto_parallel as auto
 
 paddle.enable_static()
 _global_parallel_strategy = None
-_global_process_mesh = None
+_global_process_mesh = auto.ProcessMesh(mesh=[0, 1], dim_names=["x"])
 batch_size = 4
 hidden_size = 1024
 sequence_len = 512
@@ -122,9 +122,6 @@ def mlp_pretrain_forward(train_program, start_program):
 
 
 def train():
-    global _global_process_mesh
-    _global_process_mesh = auto.ProcessMesh(mesh=[0, 1], dim_names=["x"])
-
     dist_strategy = fleet.DistributedStrategy()
     dist_strategy.amp = False
     dist_strategy.pipeline = False

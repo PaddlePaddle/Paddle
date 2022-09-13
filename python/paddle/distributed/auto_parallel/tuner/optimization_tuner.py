@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import yaml
 import os
 import sys
 import copy
@@ -256,8 +257,8 @@ class OptimizationTuner:
         startup_program = dist_context.serial_startup_program
 
         # applying optimization pass
-        if new_strategy.amp:
-            config = copy.deepcopy(new_strategy.amp_configs)
+        if new_strategy.amp.enable:
+            config = copy.deepcopy(new_strategy.amp.to_dict())
             config["dist_context"] = dist_context
             config["params_grads"] = dist_context._params_grads
 
@@ -275,8 +276,8 @@ class OptimizationTuner:
                 auto_parallel_amp_pass.apply([main_program], [startup_program],
                                              pass_context)
 
-        if new_strategy.recompute:
-            config = copy.deepcopy(new_strategy.recompute_configs)
+        if new_strategy.recompute.enable:
+            config = copy.deepcopy(new_strategy.recompute.to_dict())
             config["dist_context"] = dist_context
             config["no_grad_set"] = None
             config["loss"] = dist_context.serial_loss
@@ -303,8 +304,8 @@ class OptimizationTuner:
                               dist_context, dist_params_grads)
         resharder.reshard()
 
-        if new_strategy.sharding:
-            config = copy.deepcopy(new_strategy.sharding_configs)
+        if new_strategy.sharding.enable:
+            config = copy.deepcopy(new_strategy.sharding.to_dict())
             config["dist_context"] = dist_context
             config["params_grads"] = dist_params_grads
             config["global_rank"] = self.rank
@@ -313,8 +314,8 @@ class OptimizationTuner:
             auto_parallel_sharding_pass.apply([dist_main_prog],
                                               [dist_startup_prog], pass_context)
 
-        if new_strategy.gradient_merge:
-            config = copy.deepcopy(new_strategy.gradient_merge_configs)
+        if new_strategy.gradient_merge.enable:
+            config = copy.deepcopy(new_strategy.gradient_merge.to_dict())
             config["dist_context"] = dist_context
             config["params_grads"] = dist_params_grads
             auto_parallel_gradient_merge_pass = new_pass(
@@ -493,8 +494,9 @@ The best trial is: [{}], whose configuration is following:
                 fw.write(line + "\n")
 
         full_strategy = self.get_best_config()
-        full_strategy.save_to_prototxt(
-            os.path.join(self.project_dir, "tuned_dist_strategy.prototxt"))
+        path = os.path.join(self.project_dir, "tuned_dist_strategy.yaml")
+        with open(path, 'w') as outfile:
+            yaml.dump(full_strategy, outfile, default_flow_style=False)
 
     def clear(self):
         """
