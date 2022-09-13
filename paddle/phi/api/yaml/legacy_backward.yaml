@@ -2503,10 +2503,7 @@
   forward : tile_grad (Tensor x, Tensor grad_out, IntArray repeat_times) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray repeat_times)
   output : Tensor(grad_out_grad)
-  infer_meta :
-    func : TileInferMeta
-  kernel :
-    func : tile
+  invoke : tile(grad_x_grad, repeat_times)
 
 - backward_op : tile_grad
   forward : tile (Tensor x, IntArray repeat_times) -> Tensor(out)
