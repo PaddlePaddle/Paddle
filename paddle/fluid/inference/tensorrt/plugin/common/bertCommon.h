@@ -14,20 +14,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <cuda.h>
-#include "paddle/fluid/inference/tensorrt/helper.h"
-
-#if CUDA_VERSION >= 10010
-#if IS_TRT_VERSION_GE(7000)
-
-#ifndef BERT_COMMON_H
-#define BERT_COMMON_H
-
-#include "NvInfer.h"
-#include "NvInferRuntimeCommon.h"
-#include "cublas_v2.h"
-#include "cuda_fp16.h"
-#include "plugin.h"
+#ifndef PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_
+#define PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_
 
 #include <cuda_runtime_api.h>
 #include <algorithm>
@@ -36,6 +24,12 @@ limitations under the License. */
 #include <numeric>
 #include <stdexcept>
 #include <vector>
+
+#include "NvInfer.h"
+#include "NvInferRuntimeCommon.h"
+#include "cublas_v2.h"
+#include "cuda_fp16.h"
+#include "plugin.h"
 
 #define TRT_UNUSED (void)
 
@@ -631,7 +625,5 @@ inline nvinfer1::DataType fieldTypeToDataType(
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
-#endif  // BERT_COMMON_H
 
-#endif  // TRT_VERSION >= 7
-#endif  // CUDA_VERSION >= 10010
+#endif  // PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_
