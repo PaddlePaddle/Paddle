@@ -19,6 +19,54 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+template<typename T, typename U> 
+void BiasqkMaskFolding(const U* biasqk_src,
+                       const U* biasqk_mask_src,
+                       T* dst,
+                       size_t window_num,
+                       size_t head_num,
+                       size_t seq_len){
+  for (size_t w = 0; w < window_num; ++w){
+    for (size_t h = 0; h < head_num; ++h){
+      for (size_t i = 0; i < seq_len; ++i){
+        for (size_t j = 0; j < seq_len; ++j){
+          size_t folded_index = w * head_num * seq_len * seq_len +
+                                h * seq_len * seq_len +
+                                i * seq_len +
+                                j;
+          size_t biasqk_index = h * seq_len * seq_len +
+                                i * seq_len + 
+                                j;
+          size_t biasqk_mask_index = w * seq_len * seq_len +
+                                     i * seq_len +
+                                     j;
+          auto biasqk_value = biasqk_src[biasqk_index];
+          auto biasqk_mask_value = biasqk_mask_src[biasqk_mask_index];
+          dst[folded_index] = static_cast<T>(biasqk_value + biasqk_mask_value);
+        }
+      }
+    }
+  }
+}
+
+template<typename T>
+void PrefcTranspose (const T* src,
+                     T* dst,
+                     int three,
+                     int head_number,
+                     int head_size,
+                     int hidden_in) {
+  const int HH = head_size * hidden_in;
+  for (auto i = 0; i< three; ++i){
+    for (auto n = 0; n< head_number; ++n){
+      for (auto hh = 0; hh<HH; ++hh){
+        dst[n * three * HH + i * HH + hh] =
+            src[i * head_number * HH + n * HH + hh];
+      }
+    }
+  }
+}
+
 class MultiheadMatMulOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
@@ -169,9 +217,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
           layer = plugin_layer;
         } else {
           int head_size = hidden_out / head_number;
-          // [3, head_number, head_size, hidden_in] -> [head_number, 3,
-          // head_size,
-          // hidden_in]
+          // [3, head_number, head_size, hidden_in] 
+          // -> [head_number, 3, head_size, hidden_in]
           auto transpose_weight_v2 = [](const float* src,
                                         float* dst,
                                         int three,
@@ -602,6 +649,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           bool with_fastertransformer_window_mha = false;
 #ifdef FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
+          // check the require of FASTERTRANSFORMER_TRT_FUSED_MHA
           int device_id;
           cudaGetDevice(&device_id);
           const auto device_prop = platform::GetDeviceProperties(device_id);
@@ -627,6 +675,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
           nvinfer1::ITensor* input_bias_qk_mask = nullptr;
           if (has_BiasQK_mask) {
             if (with_fastertransformer_window_mha) {
+              // with fastertransformer window mha,
+              // is the biasqk_mask is the third input of QkvToContextPlugin
+              // here we get biasqk_mask from op_desc
+              // and warp it by a constant layer just as the biasqk.
               auto biasqk_mask_name = op_desc.Input("BiasQK_mask").front();
               auto biasqk_mask_constlayer_outputname = biasqk_mask_name + "_cl";
               auto* biasqk_mask_v = scope.FindVar(biasqk_mask_name);
@@ -710,7 +762,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
             if (!with_fastertransformer_window_mha && has_BiasQK_mask) {
               // has biasqk mask and not with with_fastertransformer_window_mha
               // folding biasqk_mask into biasqk
-              VLOG(1) << "fold biasqk_mask into biasqk";
+              VLOG(3) << "fold biasqk_mask into biasqk";
               // get biasqk and biasqk_mask that direct link to multihead_matmul op
               auto biasqk_name = op_desc.Input("BiasQK").front();
               auto biasqk_constlayer_outputname = biasqk_name + "_folded_cl";
@@ -748,29 +800,23 @@ class MultiheadMatMulOpConverter : public OpConverter {
                 auto biasqk_mask_const_weight =
                     engine_->GetTrtWeight(biasqk_mask_name, *biasqk_mask_t);
                 // do biasqk_mask folding
-                for (int w = 0; w < biasqk_mask_dims[0]; ++w) {
-                  for (int h = 0; h < biasqk_dims[1]; ++h) {
-                    for (int i = 0; i < biasqk_dims[2]; ++i) {
-                      for (int j = 0; j < biasqk_dims[3]; ++j) {
-                        int foldedIndex = w * biasqk_dims[1] * biasqk_dims[2] *
-                                              biasqk_dims[3] +
-                                          h * biasqk_dims[2] * biasqk_dims[3] +
-                                          i * biasqk_dims[3] + j;
-                        int bias_index = h * biasqk_dims[2] * biasqk_dims[3] +
-                                         i * biasqk_dims[3] + j;
-                        int bias_mask_index =
-                            w * biasqk_mask_dims[1] * biasqk_mask_dims[2] +
-                            i * biasqk_mask_dims[2] + j;
-                        auto biask_value = static_cast<const float*>(
-                            biasqk_const_weight.get().values)[bias_index];
-                        auto biask_mask_value = static_cast<const float*>(
-                            biasqk_mask_const_weight.get()
-                                .values)[bias_mask_index];
-                        folded_biasqk_d[foldedIndex] =
-                            static_cast<half>(biask_value + biask_mask_value);
-                      }
-                    }
-                  }
+                // here we assmue the biasqk and biasqk_mask have same type(float or half)
+                if (biasqk_const_weight.get().type == nvinfer1::DataType::kFLOAT){
+                  BiasqkMaskFolding<half,float>(
+                    /* biasqk_src = */static_cast<const float *>(biasqk_const_weight.get().values),
+                    /* biasqk_mask_src = */static_cast<const float *>(biasqk_mask_const_weight.get().values),
+                    /* dst = */folded_biasqk_d,
+                    /* window_number = */biasqk_mask_dims[0],
+                    /* head_number = */biasqk_dims[1],
+                    /* seq_len = */biasqk_dims[2]);
+                } else if(biasqk_const_weight.get().type == nvinfer1::DataType::kHALF){
+                  BiasqkMaskFolding<half,half>(
+                    /* biasqk_src = */static_cast<const half *>(biasqk_const_weight.get().values),
+                    /* biasqk_mask_src = */static_cast<const half *>(biasqk_mask_const_weight.get().values),
+                    /* dst = */folded_biasqk_d,
+                    /* window_number = */biasqk_mask_dims[0],
+                    /* head_number = */biasqk_dims[1],
+                    /* seq_len = */biasqk_dims[2]);
                 }
                 engine_->SetWeights(biasqk_constlayer_outputname + "_fp16",
                                     std::move(folded_biasqk_t));
@@ -793,30 +839,13 @@ class MultiheadMatMulOpConverter : public OpConverter {
                 auto biasqk_mask_const_weight =
                     engine_->GetFp32TrtWeight(biasqk_mask_name, *biasqk_mask_t);
                 // do biasqk_mask folding
-                for (int w = 0; w < biasqk_mask_dims[0]; ++w) {
-                  for (int h = 0; h < biasqk_dims[1]; ++h) {
-                    for (int i = 0; i < biasqk_dims[2]; ++i) {
-                      for (int j = 0; j < biasqk_dims[3]; ++j) {
-                        int foldedIndex = w * biasqk_dims[1] * biasqk_dims[2] *
-                                              biasqk_dims[3] +
-                                          h * biasqk_dims[2] * biasqk_dims[3] +
-                                          i * biasqk_dims[3] + j;
-                        int bias_index = h * biasqk_dims[2] * biasqk_dims[3] +
-                                         i * biasqk_dims[3] + j;
-                        int bias_mask_index =
-                            w * biasqk_mask_dims[1] * biasqk_mask_dims[2] +
-                            i * biasqk_mask_dims[2] + j;
-                        auto biasqk_value = static_cast<const float*>(
-                            biasqk_const_weight.get().values)[bias_index];
-                        auto biasqk_mask_value = static_cast<const float*>(
-                            biasqk_mask_const_weight.get()
-                                .values)[bias_mask_index];
-                        folded_biasqk_d[foldedIndex] = static_cast<float>(
-                            biasqk_value + biasqk_mask_value);
-                      }
-                    }
-                  }
-                }
+                BiasqkMaskFolding<float,float>(
+                  /* biasqk_src = */static_cast<const float *>(biasqk_const_weight.get().values),
+                  /* biasqk_mask_src = */static_cast<const float *>(biasqk_mask_const_weight.get().values),
+                  /* dst = */folded_biasqk_d,
+                  /* window_number = */biasqk_mask_dims[0],
+                  /* head_number = */biasqk_dims[1],
+                  /* seq_len = */biasqk_dims[2]);
                 // configure constant layer
                 engine_->SetWeights(biasqk_constlayer_outputname + "_fp32",
                                     std::move(folded_biasqk_t));
@@ -834,11 +863,13 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                   biasQK_constLayer->getOutput(0));
               op_desc.SetInput("BiasQK",
                                {biasQK_constLayer->getOutput(0)->getName()});
-              // after folding, there is no BiasQK_mask
+              // after folding, there is no individual BiasQK_mask
+              // set has_BiasQK_mask to false
               has_BiasQK_mask = false;
             } else {
               // else for !with_fastertransformer_window_mha && has_BiasQK_mask
-              // link bias_qk to constant layer without folding
+              // 
+              // warp bias_qk as a constant layer without folding
               auto biasqk_name = op_desc.Input("BiasQK").front();
               auto biasqk_constlayer_outputname = biasqk_name + "_cl";
               auto* biasqk_v = scope.FindVar(biasqk_name);
@@ -909,53 +940,37 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                       static_cast<size_t>(bias_t->numel())};
 
           if (with_fastertransformer_window_mha) {
+            // transpose pre-mha fc weight and bias to fit fastertransformer_window_mha
+            // weight:
             // [3, head_number, head_size, hidden_in] 
             // -> [head_number, 3, head_size, hidden_in]
-            auto transpose_weight_v2 = [](const float* src,
-                                          float* dst,
-                                          int three,
-                                          int head_number,
-                                          int head_size,
-                                          int hidden_in) {
-              const int HH = head_size * hidden_in;
-              for (int i = 0; i < three; ++i) {
-                for (int n = 0; n < head_number; ++n) {
-                  for (int hh = 0; hh < HH; ++hh) {
-                    dst[n * three * HH + i * HH + hh] =
-                        src[i * head_number * HH + n * HH + hh];
-                  }
-                }
-              }
-            };
-            // [3, head_number, head_size] -> [head_number, 3, head_size]
-            auto transpose_bias_v2 =
-                [](const float* src, float* dst, int N, int H) {
-                  for (int i = 0; i < 3; ++i) {
-                    for (int n = 0; n < N; ++n) {
-                      for (int h = 0; h < H; ++h) {
-                        dst[n * 3 * H + i * H + h] = src[i * N * H + n * H + h];
-                      }
-                    }
-                  }
-                };
+            // bias:
+            // [3, head_number, head_size] 
+            // -> [head_number, 3, head_size]
+
+            VLOG(3)<<"Do weight and bais transpose in pre-mha fc for fastertransformer_window_mha";
             memcpy(weight_data_tmp.data(),
                    weight_data,
                    weight_t->numel() * sizeof(float));
-            transpose_weight_v2(weight_data_tmp.data(),
-                                weight_data,
-                                three,
-                                head_number,
-                                head_size,
-                                hidden_in);
+            PrefcTranspose(/* src = */weight_data_tmp.data(),
+                           /* dst = */weight_data,
+                           /* three = */three,
+                           /* head_number = */head_number,
+                           /* head_size = */head_size,
+                           /* hidden_in = */hidden_in);
+
             std::vector<float> bias_data_tmp;
             bias_data_tmp.reserve(bias_t->numel());
             memcpy(bias_data_tmp.data(),
                    bias_data,
                    bias_t->numel() * sizeof(float));
-            transpose_bias_v2(
-                bias_data_tmp.data(), bias_data, head_number, head_size);
+            PrefcTranspose(/* src = */bias_data_tmp.data(),
+                           /* dst = */bias_data,
+                           /* three = */three,
+                           /* head_number = */head_number,
+                           /* head_size = */head_size,
+                           /* hidden_in = */1);
           }
-
           // add shuffle before fc
           std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
           nvinfer1::ITensor* input_shape_tensor = Shape(input);
@@ -1018,7 +1033,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
           // QkvToContextPluginDynamic
 
           // add qkv to context
-
           std::vector<nvinfer1::ITensor*> plugin_inputs;
           plugin_inputs.push_back(fc_layer->getOutput(0));
           auto inputs = op_desc.Inputs();
