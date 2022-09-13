@@ -13,10 +13,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#ifndef TRT_EMB_LAYER_NORM_VARSEQ_PLUGIN_H
-#define TRT_EMB_LAYER_NORM_VARSEQ_PLUGIN_H
-
+#pragma once
 #include <cuda.h>
 
 #include "NvInferPlugin.h"
@@ -25,9 +22,7 @@ limitations under the License. */
 #include "common/bertCommon.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/platform/enforce.h"
-
-#include <string>
-#include <vector>
+#if IS_TRT_VERSION_GE(7000)
 
 namespace paddle {
 namespace inference {
@@ -253,4 +248,4 @@ REGISTER_TRT_PLUGIN_V2(EmbLayerNormVarSeqlenPluginMTronCreator);
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
-#endif  // TRT_EMB_LAYER_NORM_VARSEQ_PLUGIN_H
+#endif  // if IS_TRT_VERSION_GE(7000)

@@ -13,7 +13,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/utils.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
-#if IS_TRT_VERSION_GE(7000)
 #include "paddle/fluid/inference/tensorrt/plugin/emb_eltwise_layernorm_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/many_emb_layernorm_varseqlen_plugin.h"
 #include "paddle/phi/core/ddim.h"
@@ -308,4 +307,3 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
 
 REGISTER_TRT_OP_CONVERTER(fused_embedding_eltwise_layernorm,
                           EmbEltwiseLayerNormOpConverter);
-#endif
