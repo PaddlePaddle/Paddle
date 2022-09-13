@@ -41,18 +41,18 @@ from paddle import _C_ops, _legacy_C_ops
 import paddle.fluid.dygraph_utils as dygraph_utils
 import contextlib
 from .communication.comm_utils import ReduceOp
-from .fleet.layers.mpu import split
-from .fleet.layers.mpu import _c_identity
-from .fleet.layers.mpu import _c_concat
-from .fleet.layers.mpu import _c_split
-from .fleet.layers.mpu import _mp_allreduce
-from .fleet.layers.mpu import _c_lookup_table
-from .fleet.layers.mpu import _Linear
-from .fleet.layers.mpu import _set_var_distributed
-from .fleet.layers.mpu import _c_softmax_with_cross_entropy
-from .fleet.layers.mpu import _linear
-from .fleet.layers.mpu import _parallel_linear
-from .fleet.layers.mpu import _parallel_embedding
+from .fleet.layers.mpu.mp_ops import split
+from .fleet.layers.mpu.mp_ops import _c_identity
+from .fleet.layers.mpu.mp_ops import _c_concat
+from .fleet.layers.mpu.mp_ops import _c_split
+from .fleet.layers.mpu.mp_ops import _mp_allreduce
+from .fleet.layers.mpu.mp_ops import _c_lookup_table
+from .fleet.layers.mpu.mp_ops import _Linear
+from .fleet.layers.mpu.mp_ops import _set_var_distributed
+from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy
+from .fleet.layers.mpu.mp_ops import _linear
+from .fleet.layers.mpu.mp_ops import _parallel_linear
+from .fleet.layers.mpu.mp_ops import _parallel_embedding
 
 __all__ = []
 
