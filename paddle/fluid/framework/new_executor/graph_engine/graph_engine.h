@@ -197,7 +197,7 @@ class CustomGraphEngine final : public GraphEngine {
     }
 
     // fetch
-    std::vector<void*> fetch_tensor_name;
+    std::vector<char*> fetch_tensor_name;
     std::vector<void*> fetch_tensor_data;
     auto* fetch_var = local_scope_->FindVar(interpreter::kFetchVarName);
     if (fetch_var) {
@@ -234,7 +234,7 @@ class CustomGraphEngine final : public GraphEngine {
         feed_tensor_name.data(),
         feed_tensor_data.data(),
         feed_tensor_data.size(),
-        feed_tensor_name.data(),
+        fetch_tensor_name.data(),
         fetch_tensor_data.data(),
         fetch_tensor_data.size());
 

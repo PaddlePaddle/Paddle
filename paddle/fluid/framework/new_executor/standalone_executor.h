@@ -56,9 +56,9 @@ class StandaloneExecutor {
       const std::vector<std::string>& fetch_names,
       bool add_fetch_op);
 
-  std::shared_ptr<GraphEngine> CreateGraphEngine(Scope* scope,
-                                                 const ProgramDesc& prog,
-                                                 const platform::Place& place);
+  std::shared_ptr<GraphEngine> GetGraphEngine(Scope* scope,
+                                              const ProgramDesc& prog,
+                                              const platform::Place& place);
 
   platform::Place place_;
   const ProgramDesc& prog_;
@@ -66,7 +66,7 @@ class StandaloneExecutor {
   std::unordered_map<std::string, std::shared_ptr<InterpreterCore>>
       interpretercores_;
 
-  std::shared_ptr<GraphEngine> graph_engine_;
+  std::unordered_map<std::string, std::shared_ptr<GraphEngine>> graph_engines_;
 };
 
 }  // namespace framework

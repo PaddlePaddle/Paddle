@@ -31,9 +31,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
   if (FLAGS_use_graph_engine) {
-    if (!graph_engine_) {
-      graph_engine_ = CreateGraphEngine(scope, prog_, place_);
-    }
+    auto graph_engine_ = GetGraphEngine(scope, prog_, place_);
     VLOG(4) << "StandaloneExecutor: " << this
             << ", GraphEngine: " << graph_engine_.get() << " Run.";
 
@@ -101,9 +99,18 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
   }
 }
 
-std::shared_ptr<GraphEngine> StandaloneExecutor::CreateGraphEngine(
+std::shared_ptr<GraphEngine> StandaloneExecutor::GetGraphEngine(
     Scope* scope, const ProgramDesc& prog, const platform::Place& place) {
-  return std::make_shared<CustomGraphEngine>(scope, prog, place);
+  std::ostringstream oss;
+  oss << "scope:" << scope;
+
+  auto iter = graph_engines_.find(oss.str());
+
+  if (iter == graph_engines_.end()) {
+    graph_engines_[oss.str()] =
+        std::make_shared<CustomGraphEngine>(scope, prog, place);
+  }
+  return graph_engines_[oss.str()];
 }
 
 }  // namespace framework
