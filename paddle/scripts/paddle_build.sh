@@ -2511,14 +2511,12 @@ set -x
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         check_added_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_check_added_ut_Total_Time: $[ $check_added_ut_endTime_s - $check_added_ut_startTime_s ]s" 
-        echo "ipipe_log_param_check_added_ut_Total_Time: $[ $check_added_ut_endTime_s - $check_added_ut_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt
-        
+
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             get_pr_ut_startTime_s=`date +%s`
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
             get_pr_ut_endTime_s=`date +%s`
             echo "ipipe_log_param_get_pr_ut_Total_Time: $[ $get_pr_ut_startTime_s - $get_pr_ut_endTime_s ]s" 
-            echo "ipipe_log_param_get_pr_ut_Total_Time: $[ $get_pr_ut_startTime_s - $get_pr_ut_endTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         fi
 
         if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
@@ -2540,7 +2538,6 @@ set -x
             ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
             run_added_ut_endTime_s=`date +%s`
             echo "ipipe_log_param_run_added_ut_Total_Time: $[ $run_added_ut_endTime_s - $run_added_ut_startTime_s ]s" 
-            echo "ipipe_log_param_run_added_ut_Total_Time: $[ $run_added_ut_endTime_s - $run_added_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
             if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
                 echo "========================================"
                 echo "Added UT should not exceed 15 seconds"
@@ -2560,7 +2557,6 @@ set +x
         group_case_for_parallel_startTime_s=`date +%s`
         python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
         group_case_for_parallel_endTime_s=`date +%s`
-        echo "ipipe_log_param_group_case_for_parallel_Total_Time: $[ $group_case_for_parallel_endTime_s - $group_case_for_parallel_startTime_s ]s" 
         echo "ipipe_log_param_group_case_for_parallel_Total_Time: $[ $group_case_for_parallel_endTime_s - $group_case_for_parallel_startTime_s ]s" 
 
         single_ut_mem_0_startTime_s=`date +%s`
