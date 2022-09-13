@@ -51,6 +51,7 @@ void profile(bool use_mkldnn = false) {
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+    cfg.pass_builder()->AppendPass("fc_elementwise_add_mkldnn_fuse_pass");
     if (FLAGS_disable_mkldnn_fc) {
       cfg.DisableMkldnnFcPasses();
     }
@@ -87,6 +88,7 @@ void compare(bool use_mkldnn = false) {
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+    cfg.pass_builder()->AppendPass("fc_elementwise_add_mkldnn_fuse_pass");
     if (FLAGS_disable_mkldnn_fc) {
       cfg.DisableMkldnnFcPasses();
     }
