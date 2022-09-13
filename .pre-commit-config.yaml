@@ -32,7 +32,7 @@ repos:
         description: Format files with ClangFormat.
         entry: bash ./tools/codestyle/clang_format.hook -i
         language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
+        files: \.(c|cc|cxx|cpp|cu|cuh|h|hpp|hxx|xpu|kps)$
         exclude: |
             (?x)^(
                 paddle/fluid/distributed/ps/thirdparty/round_robin.h

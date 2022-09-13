@@ -18,8 +18,8 @@
  * in the root directory of this source tree.
  */
 
-#ifndef MANAGED_ALLOCATOR_CUH 
-#define MANAGED_ALLOCATOR_CUH
+#ifndef PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_MANAGED_ALLOCATOR_CUH_
+#define PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_MANAGED_ALLOCATOR_CUH_
 
 #include <new>
 
@@ -36,8 +36,9 @@ struct managed_allocator {
     T* ptr = 0;
     cudaError_t result = cudaMallocManaged(&ptr, n * sizeof(T));
     if (cudaSuccess != result || nullptr == ptr) {
-      std::cerr << "ERROR: CUDA Runtime call in line " << __LINE__ << "of file " << __FILE__
-                << " failed with " << cudaGetErrorString(result) << " (" << result << ") "
+      std::cerr << "ERROR: CUDA Runtime call in line " << __LINE__ << "of file "
+                << __FILE__ << " failed with " << cudaGetErrorString(result)
+                << " (" << result << ") "
                 << " Attempted to allocate: " << n * sizeof(T) << " bytes.\n";
       throw std::bad_alloc();
     }
@@ -55,4 +56,4 @@ bool operator!=(const managed_allocator<T>&, const managed_allocator<U>&) {
   return false;
 }
 
-#endif
+#endif  // PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_MANAGED_ALLOCATOR_CUH_

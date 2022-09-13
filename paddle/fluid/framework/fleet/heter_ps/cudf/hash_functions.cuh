@@ -18,8 +18,8 @@
  * in the root directory of this source tree.
  */
 
-#ifndef HASH_FUNCTIONS_CUH
-#define HASH_FUNCTIONS_CUH
+#ifndef PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_HASH_FUNCTIONS_CUH_
+#define PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_HASH_FUNCTIONS_CUH_
 
 using hash_value_type = uint32_t;
 
@@ -39,7 +39,8 @@ struct MurmurHash3_32 {
 
   __forceinline__ __host__ __device__ MurmurHash3_32() : m_seed(0) {}
 
-  __forceinline__ __host__ __device__ uint32_t rotl32(uint32_t x, int8_t r) const {
+  __forceinline__ __host__ __device__ uint32_t rotl32(uint32_t x,
+                                                      int8_t r) const {
     return (x << r) | (x >> (32 - r));
   }
 
@@ -52,7 +53,7 @@ struct MurmurHash3_32 {
     return h;
   }
 
-  /* --------------------------------------------------------------------------*/
+  /* ------------------------------------------------------------------------*/
   /**
    * @Synopsis  Combines two hash values into a new single hash value. Called
    * repeatedly to create a hash value from several variables.
@@ -62,18 +63,21 @@ struct MurmurHash3_32 {
    * @Param lhs The first hash value to combine
    * @Param rhs The second hash value to combine
    *
-   * @Returns A hash value that intelligently combines the lhs and rhs hash values
+   * @Returns A hash value that intelligently combines the lhs and rhs hash
+   * values
    */
-  /* ----------------------------------------------------------------------------*/
-  __host__ __device__ result_type hash_combine(result_type lhs, result_type rhs) {
+  /* ------------------------------------------------------------------------*/
+  __host__ __device__ result_type hash_combine(result_type lhs,
+                                               result_type rhs) {
     result_type combined{lhs};
 
     combined ^= rhs + 0x9e3779b9 + (combined << 6) + (combined >> 2);
 
-    return combined; 
+    return combined;
   }
 
-  __forceinline__ __host__ __device__ result_type operator()(const Key& key) const {
+  __forceinline__ __host__ __device__ result_type
+  operator()(const Key& key) const {
     constexpr int len = sizeof(argument_type);
     const uint8_t* const data = (const uint8_t*)&key;
     constexpr int nblocks = len / 4;
@@ -107,7 +111,7 @@ struct MurmurHash3_32 {
         k1 = rotl32(k1, 15);
         k1 *= c2;
         h1 ^= k1;
-    };
+    }
     //----------
     // finalization
     h1 ^= len;
@@ -122,4 +126,4 @@ struct MurmurHash3_32 {
 template <typename Key>
 using default_hash = MurmurHash3_32<Key>;
 
-#endif  // HASH_FUNCTIONS_CUH
+#endif  // PADDLE_FLUID_FRAMEWORK_FLEET_HETER_PS_CUDF_HASH_FUNCTIONS_CUH_

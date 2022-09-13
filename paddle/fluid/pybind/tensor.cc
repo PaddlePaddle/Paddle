@@ -430,7 +430,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("zero_copy") = false,
            R"DOC(
         Set the data of Tensor on place with given numpy array.
-        
+
         Args:
           lod (numpy.ndarray): The data to set.
           place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace|NPUPlace|MLUPlace): The place where the
@@ -613,7 +613,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
            Args:
                 recursive_sequence_lengths (list[list[int]]): The recursive sequence lengths.
-           
+
            Returns:
                 None.
 
@@ -644,7 +644,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
            Returns:
                list[list[int]]: The lod of the Tensor.
-           
+
            Examples:
                .. code-block:: python
 
@@ -668,7 +668,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             return new_lod;
           },
           R"DOC(
-           Return the recursive sequence lengths corresponding to of the LodD 
+           Return the recursive sequence lengths corresponding to of the LodD
            of the Tensor.
 
            Returns:
