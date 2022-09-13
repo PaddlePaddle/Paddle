@@ -1998,6 +1998,28 @@ class DistributedStrategy(object):
             print("WARNING: auto-search should have value of bool type")
 
     @property
+    def split_data(self):
+        """
+        Indicating whether we split the data. If True, we split the data.
+        Default Value: True
+        Examples:
+          .. code-block:: python
+            import paddle
+            paddle.enable_static()
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.split_data = True
+        """
+        return self.strategy.split_data
+
+    @split_data.setter
+    def split_data(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.split_data = flag
+        else:
+            print("WARNING: split_data should have value of bool type")
+
+    @property
     def qat(self):
         """
         Indicating whether we are using quantization training

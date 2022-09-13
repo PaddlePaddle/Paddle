@@ -110,25 +110,61 @@ void MemcpyD2HKernel(const Context& dev_ctx,
 
 template <typename Context>
 void MemcpyD2HMultiIOKernel(const Context& dev_ctx,
-                            const std::vector<const DenseTensor*>& array,
+                            const TensorArray& array,
                             int dst_place_type,
-                            std::vector<DenseTensor*> out_array) {
+                            TensorArray* out_array) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out_array,
+      errors::PreconditionNotMet("output tesnor_array should not be nullptr"));
   PADDLE_ENFORCE_EQ(
       array.size(),
-      out_array.size(),
+      out_array->size(),
       errors::PreconditionNotMet(
-          "input size %d != output size %d", array.size(), out_array.size()));
+          "input size %d != output size %d", array.size(), out_array->size()));
 
   for (size_t i = 0; i < array.size(); i++) {
-    PADDLE_ENFORCE_NOT_NULL(
-        array[i],
-        errors::PreconditionNotMet("input tesnor %d should not be nullptr", i));
-    PADDLE_ENFORCE_NOT_NULL(out_array[i],
-                            errors::PreconditionNotMet(
-                                "output tesnor %d should not be nullptr", i));
+    const auto& x = array[i];
+    MemcpyD2HKernel<Context>(dev_ctx, x, dst_place_type, &(out_array->at(i)));
+  }
+}
 
-    const auto& x = *(array[i]);
-    MemcpyD2HKernel<Context>(dev_ctx, x, dst_place_type, out_array[i]);
+template <typename Context>
+void MemcpyKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int dst_place_type,
+                  DenseTensor* out) {
+  if (!x.IsInitialized()) {
+    return;
+  }
+  PADDLE_ENFORCE_GE(
+      dst_place_type,
+      0,
+      errors::OutOfRange("dst_place_type only support 0-2, but got: %d",
+                         dst_place_type));
+  PADDLE_ENFORCE_LE(
+      dst_place_type,
+      2,
+      errors::OutOfRange("dst_place_type only support 0-2, but got: %d",
+                         dst_place_type));
+  switch (dst_place_type) {
+    case 0: /* CPUPlace */
+      dev_ctx.HostAlloc(out, out->dtype());
+      Copy(dev_ctx, x, CPUPlace(), true, out);
+      break;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    case 1: /* CUDAPlace */
+      dev_ctx.Alloc(out, x.dtype());
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      break;
+    case 2: /* CUDAPinnedPlace */
+      dev_ctx.Alloc(out, x.dtype(), 0, true);
+      Copy(dev_ctx, x, GPUPinnedPlace(), false, out);
+      break;
+#endif
+    default:
+      PADDLE_THROW(errors::Unimplemented(
+          "memcpy dst_place_type: %d is not supported yet.", dst_place_type));
+      break;
   }
 }
 
@@ -152,6 +188,11 @@ PD_REGISTER_GENERAL_KERNEL(memcpy_d2h_multi_io,
                            phi::MemcpyD2HMultiIOKernel<phi::CPUContext>,
                            ALL_DTYPE) {}
 
+PD_REGISTER_GENERAL_KERNEL(
+    memcpy, CPU, ALL_LAYOUT, phi::MemcpyKernel<phi::CPUContext>, ALL_DTYPE) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_GENERAL_KERNEL(memcpy_h2d,
                            GPU,
@@ -170,6 +211,11 @@ PD_REGISTER_GENERAL_KERNEL(memcpy_d2h_multi_io,
                            ALL_LAYOUT,
                            phi::MemcpyD2HMultiIOKernel<phi::GPUContext>,
                            ALL_DTYPE) {}
+
+PD_REGISTER_GENERAL_KERNEL(
+    memcpy, GPU, ALL_LAYOUT, phi::MemcpyKernel<phi::GPUContext>, ALL_DTYPE) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 
 #endif
 
