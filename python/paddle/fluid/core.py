@@ -243,60 +243,68 @@ if platform.system().lower() == 'linux':
             # NOTE(zhiqiu): do not abort if failed, since it may success when import paddle_core.so
             sys.stderr.write('Error: Can not preload libgomp.so')
 
-if avx_supported():
-    try:
-        from . import paddle_core
-        if not paddle_core.is_compiled_with_avx():
-            from .. import compat as cpt
-            sys.stderr.write(
-                "Hint: Your machine support AVX, but the installed paddlepaddle doesn't have avx core. "
-                "Hence, no-avx core with worse preformance will be imported.\nIf you like, you could "
-                "reinstall paddlepaddle by 'python -m pip install --force-reinstall paddlepaddle-gpu[==version]' "
-                "to get better performance.\n")
+# Since paddle currently retains the release form of compiling avx so and noavx so separately on mac,
+# and then packaging them together, we must keep the core_noavx package and releated logic at this stage
+# to be compatible with mac's package release work
+#
+# For mac:
+# 1. compile and use on mac support AVX, the whl contains paddle_core and core_noavx, and only use paddle_core.so
+# 2. compile and use on mac not support AVX, the whl also contains paddle_core and core_noavx, they are the same, also only use paddle_core.so
+# 3. compile on mac support AVX, use on mac not support AVX, only use core_noavx.so
 
-        # assign tensor alias
-        paddle_core.LoDTensor = paddle_core.Tensor
+try:
+    from . import paddle_core
+    if avx_supported() and not paddle_core.is_compiled_with_avx():
+        from .. import compat as cpt
+        sys.stderr.write(
+            "Hint: Your machine support AVX, but the installed paddlepaddle doesn't have avx core. "
+            "Hence, no-avx core with worse preformance will be imported.\nIf you like, you could "
+            "reinstall paddlepaddle by 'python -m pip install --force-reinstall paddlepaddle-gpu[==version]' "
+            "to get better performance.\n")
 
-        from .paddle_core import *
-        from .paddle_core import __doc__, __file__, __name__, __package__
-        from .paddle_core import __unittest_throw_exception__
-        from .paddle_core import _append_python_callable_object_and_return_id
-        from .paddle_core import _cleanup, _Scope
-        from .paddle_core import _get_use_default_grad_op_desc_maker_ops
-        from .paddle_core import _get_all_register_op_kernels
-        from .paddle_core import _is_program_version_supported
-        from .paddle_core import _set_eager_deletion_mode
-        from .paddle_core import _get_eager_deletion_vars
-        from .paddle_core import _set_fuse_parameter_group_size
-        from .paddle_core import _set_fuse_parameter_memory_size
-        from .paddle_core import _is_dygraph_debug_enabled
-        from .paddle_core import _dygraph_debug_level
-        from .paddle_core import _switch_tracer
-        from .paddle_core import _set_paddle_lib_path
-        from .paddle_core import _create_loaded_parameter
-        from .paddle_core import _cuda_synchronize
-        from .paddle_core import _is_compiled_with_heterps
-        from .paddle_core import _promote_types_if_complex_exists
-        from .paddle_core import _set_cached_executor_build_strategy
-        from .paddle_core import _device_synchronize
-        from .paddle_core import _get_current_stream
-        from .paddle_core import _Profiler, _ProfilerResult, _RecordEvent
-        from .paddle_core import _set_current_stream
-        if sys.platform != 'win32':
-            from .paddle_core import _set_process_pids
-            from .paddle_core import _erase_process_pids
-            from .paddle_core import _set_process_signal_handler
-            from .paddle_core import _throw_error_if_process_failed
-            from .paddle_core import _convert_to_tensor_list
-            from .paddle_core import _array_to_share_memory_tensor
-            from .paddle_core import _cleanup_mmap_fds
-            from .paddle_core import _remove_tensor_list_mmap_fds
-    except Exception as e:
-        if has_core_lib_file:
-            sys.stderr.write(
-                'Error: Can not import paddle core while this file exists: ' +
-                current_path + os.sep + 'paddle_core.' + core_suffix + '\n')
-        raise e
+    # assign tensor alias
+    paddle_core.LoDTensor = paddle_core.Tensor
+
+    from .paddle_core import *
+    from .paddle_core import __doc__, __file__, __name__, __package__
+    from .paddle_core import __unittest_throw_exception__
+    from .paddle_core import _append_python_callable_object_and_return_id
+    from .paddle_core import _cleanup, _Scope
+    from .paddle_core import _get_use_default_grad_op_desc_maker_ops
+    from .paddle_core import _get_all_register_op_kernels
+    from .paddle_core import _is_program_version_supported
+    from .paddle_core import _set_eager_deletion_mode
+    from .paddle_core import _get_eager_deletion_vars
+    from .paddle_core import _set_fuse_parameter_group_size
+    from .paddle_core import _set_fuse_parameter_memory_size
+    from .paddle_core import _is_dygraph_debug_enabled
+    from .paddle_core import _dygraph_debug_level
+    from .paddle_core import _switch_tracer
+    from .paddle_core import _set_paddle_lib_path
+    from .paddle_core import _create_loaded_parameter
+    from .paddle_core import _cuda_synchronize
+    from .paddle_core import _is_compiled_with_heterps
+    from .paddle_core import _promote_types_if_complex_exists
+    from .paddle_core import _set_cached_executor_build_strategy
+    from .paddle_core import _device_synchronize
+    from .paddle_core import _get_current_stream
+    from .paddle_core import _Profiler, _ProfilerResult, _RecordEvent
+    from .paddle_core import _set_current_stream
+    if sys.platform != 'win32':
+        from .paddle_core import _set_process_pids
+        from .paddle_core import _erase_process_pids
+        from .paddle_core import _set_process_signal_handler
+        from .paddle_core import _throw_error_if_process_failed
+        from .paddle_core import _convert_to_tensor_list
+        from .paddle_core import _array_to_share_memory_tensor
+        from .paddle_core import _cleanup_mmap_fds
+        from .paddle_core import _remove_tensor_list_mmap_fds
+except Exception as e:
+    if has_core_lib_file:
+        sys.stderr.write(
+            'Error: Can not import paddle core while this file exists: ' +
+            current_path + os.sep + 'paddle_core.' + core_suffix + '\n')
+    raise e
 
 
 def set_paddle_custom_device_lib_path(lib_path):
