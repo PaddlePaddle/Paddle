@@ -20,13 +20,7 @@
 constexpr int64_t kWaitBlockTImeout = 10;
 namespace paddle {
 namespace distributed {
-std::map<phi::DataType, MPI_Datatype> mpiDatatype = {
-    {phi::DataType::INT8, MPI_CHAR},
-    {phi::DataType::UINT8, MPI_UNSIGNED_CHAR},
-    {phi::DataType::FLOAT32, MPI_FLOAT},
-    {phi::DataType::FLOAT64, MPI_DOUBLE},
-    {phi::DataType::INT32, MPI_INT},
-    {phi::DataType::INT64, MPI_LONG}};
+using mpiDatatype = mpi::mpiDatatype;
 
 void ProcessGroupMPI::MPITask::FinishMPITaskError(std::exception_ptr eptr) {
   Finish(eptr);
@@ -142,7 +136,6 @@ std::shared_ptr<ProcessGroupMPI> ProcessGroupMPI::CreateProcessGroupMPI(
       bool create_success = false;
       MPI_Barrier(MPI_COMM_WORLD);
       for (auto i = 0; i < maxRetries; i++) {
-        (void)i;
         if (MPI_Comm_create(MPI_COMM_WORLD, ranksGroup, &groupComm)) {
           create_success = true;
           break;

@@ -20,6 +20,14 @@ namespace paddle {
 namespace distributed {
 namespace mpi {
 
+std::map<phi::DataType, MPI_Datatype> mpiDatatype = {
+    {phi::DataType::INT8, MPI_CHAR},
+    {phi::DataType::UINT8, MPI_UNSIGNED_CHAR},
+    {phi::DataType::FLOAT32, MPI_FLOAT},
+    {phi::DataType::FLOAT64, MPI_DOUBLE},
+    {phi::DataType::INT32, MPI_INT},
+    {phi::DataType::INT64, MPI_LONG}};
+
 MPI_Op ToMPIType(ReduceOp reduction) {
   static const std::map<ReduceOp, MPI_Op> red_type = {
       {ReduceOp::MIN, MPI_MIN},

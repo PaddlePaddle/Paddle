@@ -43,21 +43,21 @@ struct TaskEntry {
   explicit TaskEntry(std::vector<phi::DenseTensor>* src_ptr,
                      std::vector<phi::DenseTensor>* dst_ptr,
                      std::function<void(std::unique_ptr<TaskEntry>&)> run)
-      : dst(dst_ptr ? *dst_ptr : std::vector<phi::DenseTensor>()),
-        run(std::move(run)) {
+      : dst_(dst_ptr ? *dst_ptr : std::vector<phi::DenseTensor>()),
+        run_(std::move(run)) {
     if (src_ptr) {
-      src = *src_ptr;
+      src_ = *src_ptr;
     }
   }
 
   TaskEntry(const TaskEntry&) = delete;
   TaskEntry& operator=(const TaskEntry&) = delete;
 
-  std::vector<phi::DenseTensor> src;
-  std::vector<phi::DenseTensor> dst;
+  std::vector<phi::DenseTensor> src_;
+  std::vector<phi::DenseTensor> dst_;
 
-  int* srcRank = nullptr;
-  std::function<void(std::unique_ptr<TaskEntry>&)> run;
+  int* srcRank_ = nullptr;
+  std::function<void(std::unique_ptr<TaskEntry>&)> run_;
 };
 
 class ProcessGroupMPI : public ProcessGroup {
@@ -136,7 +136,7 @@ class ProcessGroupMPI : public ProcessGroup {
 
   ProcessGroupMPI(int rank, int size, MPI_Comm pgComm, int gid);
 
-  ~ProcessGroupMPI();
+  virtual ~ProcessGroupMPI();
 
   const std::string GetBackendName() const override {
     return std::string(MPI_BACKEND_NAME);
