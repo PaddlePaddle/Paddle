@@ -443,11 +443,15 @@ class Engine:
             start_time = time.time()
             for step, _ in enumerate(train_dataloader):
 
-                if len(profile_dir) and step == 30:
+                if len(profile_dir) and paddle.distributed.get_rank() in [
+                        0
+                ] and step == 30:
                     from paddle.fluid import core
                     core.nvprof_start()
                     core.nvprof_enable_record_event()
-                if len(profile_dir) and step >= 30 and step < 40:
+                if len(profile_dir) and paddle.distributed.get_rank() in [
+                        0
+                ] and step >= 30 and step < 40:
                     core.nvprof_nvtx_push(str(step))
                 outs = self._executor.run(self.main_program,
                                           fetch_list=fetch_list,
@@ -457,9 +461,13 @@ class Engine:
                 if lr_scheduler is not None:
                     lr_scheduler.step()
                     train_logs["lr: {:5e} "] = self._lr_optimizer.get_lr()
-                if len(profile_dir) and step >= 30 and step < 40:
+                if len(profile_dir) and paddle.distributed.get_rank() in [
+                        0
+                ] and step >= 30 and step < 40:
                     core.nvprof_nvtx_pop()
-                if len(profile_dir) and step == 40:
+                if len(profile_dir) and paddle.distributed.get_rank() in [
+                        0
+                ] and step == 40:
                     core.nvprof_stop()
                 if len(profile_dir) and step == 50:
                     import sys
