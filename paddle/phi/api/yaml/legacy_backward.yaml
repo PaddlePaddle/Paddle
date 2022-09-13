@@ -404,11 +404,7 @@
   forward : concat_grad (Tensor[] x, Tensor grad_out, Scalar axis) -> Tensor[](grad_x)
   args : (Tensor[] grad_x_grad, Scalar axis = 0)
   output : Tensor(grad_out_grad)
-  infer_meta :
-    func : ConcatInferMeta
-    param : [grad_x_grad, axis]
-  kernel :
-    func : concat
+  invoke : concat(grad_x_grad, axis)
 
 - backward_op : concat_grad
   forward : concat (Tensor[] x, Scalar axis) -> Tensor(out)
