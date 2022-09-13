@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,13 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/load_op.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace ops = paddle::operators;
+namespace phi {
 
-REGISTER_OP_CUDA_KERNEL(load,
-                        ops::LoadOpKernel<phi::GPUContext, float>,
-                        ops::LoadOpKernel<phi::GPUContext, double>,
-                        ops::LoadOpKernel<phi::GPUContext, int>,
-                        ops::LoadOpKernel<phi::GPUContext, int8_t>,
-                        ops::LoadOpKernel<phi::GPUContext, int64_t>);
+KernelSignature SoftmaxMaskFuseGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "fused_softmax_mask_grad", {"Softmax", "Out@GRAD"}, {}, {"X@GRAD"});
+}
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(fused_softmax_mask_grad,
+                           phi::SoftmaxMaskFuseGradOpArgumentMapping);

@@ -110,6 +110,10 @@ class Group():
     def process_group(self):
         return self.pg
 
+    @property
+    def world_size(self):
+        return self.nranks if self.rank >= 0 else -1
+
     def __repr__(self):
         debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
             self.rank, self.nranks, self.id)
@@ -1136,6 +1140,9 @@ def all_gather_object(object_list, obj, group=None):
     ), "all_gather_object doesn't support static graph mode."
 
     tensor, len_of_tensor = _convert_object_to_tensor(obj)
+    if paddle.get_device() != "cpu":
+        len_of_tensor = len_of_tensor._copy_to(
+            paddle.framework._current_expected_place(), False)
 
     # gather len_of_tensor from all ranks
     list_len_of_tensor = []

@@ -1,4 +1,5 @@
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019-2022, NVIDIA CORPORATION.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -386,7 +387,6 @@ void invokeLayernormShiftPartition(T *out,
   }
 }
 
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
 template <>
 void invokeLayernormShiftPartition(half *out,
                                    const half *input,
@@ -433,7 +433,6 @@ void invokeLayernormShiftPartition(half *out,
         eps);
   }
 }
-#endif
 
 template <typename T>
 static void convertAndCopy(const std::vector<float> &host, T *dev) {

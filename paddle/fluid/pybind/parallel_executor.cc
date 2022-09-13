@@ -987,6 +987,12 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
              new_bs.ClearFinalized();
              return new_bs;
            })
+      .def("__str__",
+           [](const BuildStrategy &self) {
+             std::stringstream ss;
+             ss << self;
+             return ss.str();
+           })
       .def(
           "_finalize_strategy_and_create_passes",
           [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
