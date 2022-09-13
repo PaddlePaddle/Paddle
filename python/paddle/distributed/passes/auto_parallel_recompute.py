@@ -151,12 +151,13 @@ class RecomputeState(ProgramStats):
             # modify dropout op's desc
             self._ops.insert(op_idx, seed_op)
             cur_op.desc.set_input("Seed", [var_unique_name])
-            cur_op.desc.remove_attr("fix_seed")
-            cur_op.desc.remove_attr("seed")
+            cur_op._remove_attr("fix_seed")
+            cur_op._remove_attr("seed")
             cur_op_dist_attr.set_input_dist_attr(seed_var.name,
                                                  seed_var_dist_attr)
-            self._block._sync_with_cpp()
             op_idx += 2
+
+        self._block._sync_with_cpp()
 
 
 def _find_op_index(block, cur_op):
@@ -339,12 +340,13 @@ class RecomputePass(PassBase):
             grad_op = ops[i]
             # remove some attrs of dropout_grad op's desc
             if grad_op.type == "dropout_grad":
-                grad_op.desc.remove_attr("fix_seed")
-                grad_op.desc.remove_attr("seed")
-                main_block._sync_with_cpp()
+                grad_op._remove_attr("fix_seed")
+                grad_op._remove_attr("seed")
 
             # rename grad op's var_name which is not in 'vars_in_memory'
             for key in var_name_dict:
+                if key not in grad_op.input_arg_names + grad_op.output_arg_names:
+                    continue
                 self.reset_op_dist_attr(grad_op, var_name_dict)
                 _rename_arg_([grad_op.desc], key, var_name_dict[key])
 
@@ -358,11 +360,11 @@ class RecomputePass(PassBase):
                         idx -= 1
                     segment_descs = ckpt_ops_dict[fwd_op_id][1]
                     for _, op_desc in reversed(list(enumerate(segment_descs))):
-                        rc_desc = main_block.desc._insert_op(idx)
+                        rc_op = main_block._insert_op_without_sync(idx,
+                                                                   type='nop')
+                        rc_desc = rc_op.desc
                         rc_desc.copy_from(op_desc)
                         rc_desc.set_original_id(rc_desc.id())
-                        rc_op = Operator(main_block, rc_desc)
-                        main_block.ops.insert(idx, rc_op)
                         # set recomputed ops' dist attr
                         fwd_op_dist_attr = self._dist_context.get_op_dist_attr_for_program_with_id(
                             op_desc.original_id())
@@ -371,7 +373,6 @@ class RecomputePass(PassBase):
                                               var_name_dict)
 
                     ckpt_ops_dict[fwd_op_id][0] = False
-                    main_block._sync_with_cpp()
 
         main_program._sync_with_cpp()
 
