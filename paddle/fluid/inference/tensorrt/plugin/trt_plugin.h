@@ -390,7 +390,7 @@ class TrtPluginRegistry {
     return true;
   }
   void RegistToTrt() {
-    for (const auto& it : map) {
+    for (auto& it : map) {
       it.second();
     }
   }
