@@ -127,7 +127,6 @@ def get_all_api(root_path='paddle', attr="__all__"):
     walk through the paddle package to collect all the apis.
     """
     import paddle
-    import paddle.audio
     global api_info_dict
     api_counter = 0
     for filefinder, name, ispkg in pkgutil.walk_packages(
