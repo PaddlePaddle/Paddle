@@ -21,24 +21,55 @@ namespace phi {
 namespace tests {
 
 TEST(DDim, Equality) {
+  // default construct ddim
+  phi::DDim default_ddim;
+  EXPECT_EQ(arity(default_ddim), 1);
+  EXPECT_EQ(default_ddim[0], 0);
+
+  // construct a zero-DDim
+  phi::DDim zero_ddim = phi::make_ddim({});
+  EXPECT_EQ(arity(zero_ddim), 0);
+  EXPECT_EQ(zero_ddim.size(), 0);
+  EXPECT_EQ(phi::product(zero_ddim), 1);
+
+  std::vector<int64_t> zero_vec;
+  phi::DDim zero_ddim1 = phi::make_ddim(zero_vec);
+  EXPECT_EQ(arity(zero_ddim1), 0);
+  EXPECT_EQ(zero_ddim1.size(), 0);
+  EXPECT_EQ(phi::product(zero_ddim1), 1);
+
+  // zero-DDim to vector
+  std::vector<int64_t> zero_ddim_vec = phi::vectorize(zero_ddim);
+  EXPECT_EQ(zero_ddim_vec.size(), size_t(0));
+
+  // reshape zero-DDim
+  phi::DDim reshape_ddim = zero_ddim.reshape({1});
+  EXPECT_EQ(arity(reshape_ddim), 1);
+  EXPECT_EQ(reshape_ddim.size(), 1);
+  EXPECT_EQ(phi::product(reshape_ddim), 1);
+
   // construct a DDim from an initialization list
   phi::DDim ddim = phi::make_ddim({9, 1, 5});
   EXPECT_EQ(ddim[0], 9);
   EXPECT_EQ(ddim[1], 1);
   EXPECT_EQ(ddim[2], 5);
 
-  // construct a DDim from a vector
-  std::vector<int64_t> vec({9, 1, 5});
-  phi::DDim vddim = phi::make_ddim(vec);
-  EXPECT_EQ(ddim[0], 9);
-  EXPECT_EQ(ddim[1], 1);
-  EXPECT_EQ(ddim[2], 5);
+  // arity of a DDim
+  EXPECT_EQ(phi::arity(ddim), 3);
+  EXPECT_EQ(ddim.size(), 3);
 
   // mutate a DDim
   ddim[1] = 2;
   EXPECT_EQ(ddim[1], 2);
   ddim[0] = 6;
   EXPECT_EQ(ddim[0], 6);
+
+  // construct a DDim from a vector
+  std::vector<int64_t> vec({9, 1, 5});
+  phi::DDim vddim = phi::make_ddim(vec);
+  EXPECT_EQ(vddim[0], 9);
+  EXPECT_EQ(vddim[1], 1);
+  EXPECT_EQ(vddim[2], 5);
 
   // vectorize a DDim
   std::vector<int64_t> res_vec = phi::vectorize(vddim);
@@ -51,37 +82,45 @@ TEST(DDim, Equality) {
   EXPECT_EQ(res_vec[1], 2);
   EXPECT_EQ(res_vec[2], 1);
 
-  // arity of a DDim
-  EXPECT_EQ(phi::arity(ddim), 3);
-  EXPECT_EQ(ddim.size(), 3);
-
   // product of a DDim
   EXPECT_EQ(phi::product(vddim), 45);
   EXPECT_EQ(phi::product(phi::make_ddim({3, 2, 5, 3})), 90);
 
   // slice a DDim
   phi::DDim ddim2 = phi::make_ddim({1, 2, 3, 4, 5, 6});
-  phi::DDim ss = phi::slice_ddim(ddim2, 2, 5);
-  EXPECT_EQ(arity(ss), 3);
-  EXPECT_EQ(ss[0], 3);
-  EXPECT_EQ(ss[1], 4);
-  EXPECT_EQ(ss[2], 5);
-  phi::DDim ss2 = phi::slice_ddim(ddim2, 0, 6);
-  EXPECT_EQ(arity(ss2), 6);
-  EXPECT_EQ(ss2[0], 1);
-  EXPECT_EQ(ss2[1], 2);
-  EXPECT_EQ(ss2[2], 3);
-  EXPECT_EQ(ss2[3], 4);
-  EXPECT_EQ(ss2[4], 5);
-  EXPECT_EQ(ss2[5], 6);
+  phi::DDim slice_dim1 = phi::slice_ddim(ddim2, 2, 5);
+  EXPECT_EQ(arity(slice_dim1), 3);
+  EXPECT_EQ(slice_dim1[0], 3);
+  EXPECT_EQ(slice_dim1[1], 4);
+  EXPECT_EQ(slice_dim1[2], 5);
+
+  phi::DDim slice_dim2 = phi::slice_ddim(ddim2, 0, 6);
+  EXPECT_EQ(arity(slice_dim2), 6);
+  EXPECT_EQ(slice_dim2[0], 1);
+  EXPECT_EQ(slice_dim2[1], 2);
+  EXPECT_EQ(slice_dim2[2], 3);
+  EXPECT_EQ(slice_dim2[3], 4);
+  EXPECT_EQ(slice_dim2[4], 5);
+  EXPECT_EQ(slice_dim2[5], 6);
+
+  phi::DDim slice_dim3 = phi::slice_ddim(ddim2, 1, 1);
+  EXPECT_EQ(arity(slice_dim3), 0);
+  EXPECT_EQ(slice_dim3.size(), 0);
+  EXPECT_EQ(phi::product(slice_dim3), 1);
 }
 
 TEST(DDim, Print) {
   // print a DDim
-  std::stringstream ss;
+  std::stringstream ss1;
   phi::DDim ddim = phi::make_ddim({2, 3, 4});
-  ss << ddim;
-  EXPECT_EQ("2, 3, 4", ss.str());
+  ss1 << ddim;
+  EXPECT_EQ("2, 3, 4", ss1.str());
+
+  // print a zero-DDim
+  std::stringstream ss2;
+  phi::DDim zero_ddim = phi::make_ddim({});
+  ss2 << zero_ddim;
+  EXPECT_EQ("", ss2.str());
 }
 
 }  // namespace tests

@@ -372,7 +372,8 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
 def _create_loss_op_desc_(loss):
     op_desc = _create_op_desc_(
         "fill_constant", {}, {"Out": [_append_grad_suffix_(loss.name)]}, {
-            "shape": [1],
+            "shape":
+            loss.shape,
             "value":
             1.0,
             "dtype":

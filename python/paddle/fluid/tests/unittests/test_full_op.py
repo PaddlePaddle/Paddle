@@ -180,12 +180,6 @@ class TestFullOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_shape_type)
 
-            # The argument shape's size of full_op must not be 0.
-            def test_shape_size():
-                paddle.full(shape=[], dtype="float32", fill_value=1)
-
-            self.assertRaises(AssertionError, test_shape_size)
-
             # The shape dtype of full op must be int32 or int64.
             def test_shape_tensor_dtype():
                 shape = fluid.data(name="shape_tensor",

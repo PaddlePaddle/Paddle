@@ -84,6 +84,7 @@ def len_with_selected_rows(place):
     # create selected_rows variable
     var = block.create_var(name="X",
                            dtype="float32",
+                           shape=[-1],
                            persistable=True,
                            type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
     # y is Variable(SelectedRows)

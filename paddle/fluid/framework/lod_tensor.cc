@@ -262,6 +262,16 @@ std::vector<LoDTensor> SplitLoDTensor(
                     platform::errors::InvalidArgument(
                         "Place number cannot be empty when splitting."));
   src.check_memory_size();
+  auto rank = src.dims().size();
+  // if rank is 0, just return #places.size() copys of src
+  if (rank == 0) {
+    LoDTensor dst;
+    framework::TensorCopy(src, src.place(), &dst);
+    std::vector<LoDTensor> ret;
+    ret.emplace_back(std::move(dst));
+    return ret;
+  }
+
   size_t batch_size = src.lod().empty() ? static_cast<size_t>(src.dims()[0])
                                         : src.lod()[0].size() - 1;
 
@@ -331,6 +341,8 @@ std::vector<LoDTensor> SplitLoDTensor(
 void MergeLoDTensor(LoDTensor *target,
                     const std::vector<const LoDTensor *> &lod_tensors,
                     platform::Place dst_place) {
+  // VLOG(0) << "run MergeLoDTensor==========>\n";
+  // VLOG(0) << "lod_tensors.size()==========> " << lod_tensors.size() << "\n";
   PADDLE_ENFORCE_EQ(lod_tensors.empty(),
                     false,
                     platform::errors::InvalidArgument(
@@ -349,6 +361,8 @@ void MergeLoDTensor(LoDTensor *target,
   }
 
   LoD new_lod = lod_tensors[0]->lod();
+  auto rank = lod_tensors[0]->dims().size();
+  // VLOG(0) << "rank:   " << rank << "\n";
 
   for (size_t i = 1; i < lod_tensors.size(); ++i) {
     auto *t = lod_tensors[i];
@@ -369,16 +383,24 @@ void MergeLoDTensor(LoDTensor *target,
               "actual layout is %s.",
               DataLayoutToString(new_layout),
               DataLayoutToString(t->layout())));
-      PADDLE_ENFORCE_EQ(
-          phi::product(new_dim) / new_dim[0],
-          phi::product(t->dims()) / t->dims()[0],
-          platform::errors::InvalidArgument(
-              "LoDTensor dimension does not match, all dimensions except the "
-              "first dimension need to be equal,"
-              "but expected dimension is %s, actual dimension is %s.",
-              new_dim,
-              t->dims()));
-      new_dim[0] += t->dims()[0];
+      auto tensor_dims = t->dims();
+      PADDLE_ENFORCE_EQ(tensor_dims.size(),
+                        new_dim.size(),
+                        platform::errors::InvalidArgument(
+                            "dimensions of LoDTensor does not match"));
+      for (int j = 1; j < t->dims().size(); j++) {
+        PADDLE_ENFORCE_EQ(
+            tensor_dims[j],
+            new_dim[j],
+            platform::errors::InvalidArgument(
+                "LoDTensor.ddim[%d] should eaqual to %d, but is %d",
+                j,
+                new_dim[j],
+                tensor_dims[j]));
+      }
+      if (rank > 0) {
+        new_dim[0] += t->dims()[0];
+      }
     }
 
     auto &lod = t->lod();

@@ -62,6 +62,7 @@ class DDim {
  public:
   constexpr static int kMaxRank = 9;
 
+  // Default is zero-sized Tensor [0]
   DDim() : rank_(1) { dim_[0] = 0; }
 
   DDim(const DDim& ddim) : dim_() { CopyFrom(ddim); }
@@ -155,7 +156,7 @@ class DDim {
 
   std::string to_str() const;
 
-  DDim reshape(std::vector<int>& shape) const;
+  DDim reshape(const std::vector<int>& shape) const;
 
   DDim transpose(const std::vector<int>& axis) const;
 

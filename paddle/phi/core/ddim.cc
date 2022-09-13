@@ -171,25 +171,34 @@ DDim stride_numel(const DDim& ddim) {
   return strides;
 }
 
-DDim DDim::reshape(std::vector<int>& shape) const {
+DDim DDim::reshape(const std::vector<int>& shape) const {
   const DDim& in_dims = *this;
+  std::vector<int> new_shape(shape);
 
-  for (uint64_t i = 0; i < shape.size(); ++i) {
-    if (shape[i] == 0) {
-      shape[i] = in_dims.at(i);
+  for (uint64_t i = 0; i < new_shape.size(); ++i) {
+    if (new_shape[i] == 0) {
+      new_shape[i] = in_dims.at(i);
     }
   }
 
   // Dim marked as "-1" must be inferred
-  auto it = std::find(shape.begin(), shape.end(), -1);
-  if (it != shape.end()) {
-    int index = std::distance(shape.begin(), it);
-    int reshape_out_product =
-        std::accumulate(shape.begin(), shape.end(), -1, std::multiplies<int>());
-    shape[index] = product(in_dims) / reshape_out_product;
+  auto it = std::find(new_shape.begin(), new_shape.end(), -1);
+  if (it != new_shape.end()) {
+    int index = std::distance(new_shape.begin(), it);
+    int reshape_out_product = std::accumulate(
+        new_shape.begin(), new_shape.end(), -1, std::multiplies<int>());
+    new_shape[index] = product(in_dims) / reshape_out_product;
+  } else {
+    int reshape_out_product = std::accumulate(
+        new_shape.begin(), new_shape.end(), 1, std::multiplies<int>());
+    PADDLE_ENFORCE_EQ(
+        product(in_dims),
+        reshape_out_product,
+        phi::errors::InvalidArgument(
+            "The numel after reshape must be same with the original"));
   }
 
-  return phi::make_ddim(shape);
+  return phi::make_ddim(new_shape);
 }
 
 DDim DDim::transpose(const std::vector<int>& axis) const {

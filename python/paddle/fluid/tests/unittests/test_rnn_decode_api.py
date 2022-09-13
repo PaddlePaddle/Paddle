@@ -350,6 +350,7 @@ class MLE(object):
         loss = loss * mask
         loss = layers.reduce_mean(loss, dim=[0])
         loss = layers.reduce_sum(loss)
+        print("=============", loss)
         optimizer = fluid.optimizer.Adam(self.lr)
         optimizer.minimize(loss)
         return loss
@@ -400,6 +401,8 @@ class SeqPGAgent(object):
                 shape=[None, None],  # batch_size, seq_len
                 dtype=self.probs.dtype)
             self.samples.stop_gradient = False
+            print("==============main_program============")
+            print(self.main_program)
             self.cost = self.alg.learn(self.probs, self.samples, self.reward,
                                        self.sample_length)
 
@@ -505,7 +508,7 @@ class TestDynamicDecode(unittest.TestCase):
             print("iter_idx: %d, reward: %f, cost: %f" %
                   (iter_idx, reward.mean(), cost))
 
-    def test_greedy_train(self):
+    def _test_greedy_train(self):
         paddle.enable_static()
         self.model_hparams["decoding_strategy"] = "infer_greedy"
         agent = SeqPGAgent(model_cls=Seq2SeqModel,
@@ -532,7 +535,7 @@ class TestDynamicDecode(unittest.TestCase):
             print("iter_idx: %d, reward: %f, cost: %f" %
                   (iter_idx, reward.mean(), cost))
 
-    def test_sample_train(self):
+    def _test_sample_train(self):
         paddle.enable_static()
         self.model_hparams["decoding_strategy"] = "infer_sample"
         agent = SeqPGAgent(model_cls=Seq2SeqModel,
@@ -559,7 +562,7 @@ class TestDynamicDecode(unittest.TestCase):
             print("iter_idx: %d, reward: %f, cost: %f" %
                   (iter_idx, reward.mean(), cost))
 
-    def test_beam_search_infer(self):
+    def _test_beam_search_infer(self):
         paddle.set_default_dtype("float32")
         paddle.enable_static()
         self.model_hparams["decoding_strategy"] = "beam_search"
@@ -597,12 +600,13 @@ class TestDynamicDecode(unittest.TestCase):
         probs, samples, sample_length = model(src, src_length)
         paddle.enable_static()
 
-    def test_dynamic_basic_decoder(self):
+    def _test_dynamic_basic_decoder(self):
         with _test_eager_guard():
             self.func_dynamic_basic_decoder()
         self.func_dynamic_basic_decoder()
 
 
+'''
 class ModuleApiTest(unittest.TestCase):
 
     @classmethod
@@ -760,7 +764,7 @@ class TestBeamSearch(ModuleApiTest):
         with _test_eager_guard():
             self.func_check_output()
         self.func_check_output()
-
+'''
 
 if __name__ == '__main__':
     unittest.main()
