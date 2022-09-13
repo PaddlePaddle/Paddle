@@ -140,7 +140,7 @@ if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
 endif()
 
-if(NOT ON_INFER)
+if(PYTHON)
   set(PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
   if(WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
