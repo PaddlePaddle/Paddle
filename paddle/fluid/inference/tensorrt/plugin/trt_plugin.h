@@ -385,12 +385,12 @@ class TrtPluginRegistry {
     static TrtPluginRegistry registry;
     return &registry;
   }
-  bool Regist(const std::string& name, std::function<void()> func) {
+  bool Regist(const std::string& name, const std::function<void()>& func) {
     map.emplace(name, func);
     return true;
   }
   void RegistToTrt() {
-    for (auto it : map) {
+    for (const auto& it : map) {
       it.second();
     }
   }
