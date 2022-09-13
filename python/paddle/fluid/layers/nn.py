@@ -13216,6 +13216,9 @@ def merge_selected_rows(x, name=None):
                 type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
             y = fluid.layers.merge_selected_rows(var)
     """
+    if in_dygraph_mode():
+        return _C_ops.merge_selected_rows(x)
+
     if _non_static_mode():
         return _legacy_C_ops.merge_selected_rows(x)
 
