@@ -649,13 +649,16 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
   matmul_p->execute(astream, matmul_args);
   astream.wait();
 
-  //TODO(jczaja): Explain why int8 format of dst is ABCD and do not need permute
+  // TODO(jczaja): Explain why int8 format of dst is ABCD and do not need
+  // permute
   if (IsOutputFused(ctx) && !IsInt8<T_out>()) {
     auto axis = ctx.Attr<std::vector<int>>("fused_transpose_Out");
     auto permuted_md = dst_memory_p->get_desc().permute_axes(axis);
-    out->set_mem_desc(permuted_md.reshape(phi::vectorize<int64_t>(out->dims())));
+    out->set_mem_desc(
+        permuted_md.reshape(phi::vectorize<int64_t>(out->dims())));
   } else {
-    out->set_mem_desc(dst_memory_p->get_desc().reshape(phi::vectorize<int64_t>(out->dims())));
+    out->set_mem_desc(
+        dst_memory_p->get_desc().reshape(phi::vectorize<int64_t>(out->dims())));
   }
 }
 
