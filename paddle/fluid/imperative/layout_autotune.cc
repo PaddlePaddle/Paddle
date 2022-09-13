@@ -25,12 +25,7 @@ namespace imperative {
 
 bool LayoutAutoTune::UseLayoutAutoTune() const {
 #if defined(PADDLE_WITH_CUDA)
-  if (!phi::backends::gpu::TensorCoreAvailable()) {
-    LayoutAutoTune::Instance().DisableLayoutAutoTune();
-    return false;
-  } else {
-    return use_layout_autotune_;
-  }
+  return use_layout_autotune_;
 #else
   return false;
 #endif
@@ -168,6 +163,12 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
     if (op_type != "conv2d") {
       return ins;
     } else {
+#if defined(PADDLE_WITH_CUDA)
+      if (!phi::backends::gpu::TensorCoreAvailable()) {
+        LayoutAutoTune::Instance().DisableLayoutAutoTune();
+        return ins;
+      }
+#endif
       auto conv_in_type = framework::proto::VarType::FP32;
       auto& in_vars = ins.at("Input")[0];
       if (GetDataType<VarType>(in_vars) == framework::proto::VarType::FP16) {
@@ -213,6 +214,7 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
     return transposer->Apply(ins, outs, attrs, tracer);
   }
 }
+
 template paddle::imperative::NameVarMap<VarBase> AutoTuneLayout<VarBase>(
     const std::string& op_type,
     const paddle::imperative::NameVarMap<VarBase>& ins,

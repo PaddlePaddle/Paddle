@@ -886,6 +886,13 @@ class Pool2D(layers.Layer):
 
     def forward(self, input):
         if _non_static_mode():
+            if not self._use_mkldnn and in_dygraph_mode():
+                return _C_ops.pool2d(input, self._pool_size, self._pool_stride,
+                                     self._pool_padding, self._ceil_mode,
+                                     self._exclusive, self._data_format,
+                                     self._pool_type, self._global_pooling,
+                                     False, "EXPLICIT", self._use_cudnn)
+
             attrs = ('pooling_type', self._pool_type, 'ksize', self._pool_size,
                      'global_pooling', self._global_pooling, 'strides',
                      self._pool_stride, 'paddings', self._pool_padding,
@@ -2418,6 +2425,9 @@ class PRelu(layers.Layer):
                                             default_initializer=Constant(1.0))
 
     def forward(self, input):
+        if in_dygraph_mode():
+            return _C_ops.prelu(input, self.weight, "NCHW", self._mode)
+
         check_variable_and_dtype(input, 'input', ['float32'], 'PRelu')
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(type="prelu",
@@ -2707,12 +2717,29 @@ class Conv2DTranspose(layers.Layer):
 
         if self._output_size is None:
             self._output_size = []
-        elif isinstance(self._output_size, list) or isinstance(
-                self._output_size, int):
+        elif isinstance(self._output_size, list):
+            if utils._contain_var(self._output_size):
+                self._output_size = utils._convert_to_tensor_list(
+                    self._output_size)
+            else:
+                self._output_size = utils.convert_to_list(
+                    self._output_size, 2, 'output_size')
+        elif isinstance(self._output_size, int):
             self._output_size = utils.convert_to_list(self._output_size, 2,
                                                       'output_size')
+        elif isinstance(self._output_size, Variable):
+            check_dtype(self._output_size.dtype, 'output_size',
+                        ['int32', 'int64'], 'Conv2DTranspose')
+            if len(self._output_size.shape) == 1 and (
+                    self._output_size.shape[0] == 1
+                    or self._output_size.shape[0] == 2):
+                if self._output_size.shape[0] == 1:
+                    self._output_size = [self._output_size, self._output_size]
+            else:
+                raise ValueError(
+                    "output_size must contain one or two integers.")
         else:
-            raise ValueError("output_size should be list or int")
+            raise ValueError("output_size should be list or int or Tensor")
         self._padding = utils.convert_to_list(self._padding, 2, 'padding')
         self._groups = 1 if self._groups is None else self._groups
         filter_shape = [self._num_channels, self._num_filters // self._groups
@@ -3163,6 +3190,10 @@ class SpectralNorm(layers.Layer):
         self.weight_v.stop_gradient = True
 
     def forward(self, weight):
+        if in_dygraph_mode():
+            return _C_ops.spectral_norm(weight, self.weight_u, self.weight_v,
+                                        self._dim, self._power_iters, self._eps)
+
         check_variable_and_dtype(weight, "weight", ['float32', 'float64'],
                                  'SpectralNorm')
         inputs = {'Weight': weight, 'U': self.weight_u, 'V': self.weight_v}

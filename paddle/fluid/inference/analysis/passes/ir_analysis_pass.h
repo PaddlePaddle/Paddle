@@ -33,6 +33,10 @@ class IrAnalysisPass : public AnalysisPass {
 
   void CollectFusionStatis(Argument* argument);
 
+  void ReadCalibrationInfo(
+      Argument* argument,
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales);
+
   std::string repr() const override;
 };
 

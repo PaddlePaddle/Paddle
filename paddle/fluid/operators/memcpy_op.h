@@ -41,6 +41,7 @@ class MemcpyFunctor {
     XPU = 3,
     NPU = 4,
     NPU_PINNED = 5,
+    CUSTOM_DEVICE = 6,
   };
 
  public:
@@ -68,6 +69,11 @@ class MemcpyFunctor {
       framework::TensorCopy(
           lod_tensor, platform::NPUPinnedPlace(), dev_ctx_, &out_tensor);
 #endif
+#ifdef PADDLE_WTIH_CUSTOM_DEVICE
+    } else if (dst_place_type_ == DeviceType::CUSTOM_DEVICE) {
+      framework::TensorCopy(
+          lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
+#endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
@@ -87,7 +93,7 @@ class MemcpyFunctor {
         true,
         false,
         platform::errors::PermissionDenied(
-            "Not support type for Memcpy  op with type %s", typeid(T).name()));
+            "Not support type for Memcpy op with type %s", typeid(T).name()));
   }
 
  private:
