@@ -25,7 +25,7 @@ from paddle.distributed import fleet
 from .recompute import check_recompute_necessary, detach_variable, swith_rng_state_tracker
 from ..meta_parallel.pp_utils import utils
 
-__all__ = ["recompute_hybrid"]
+__all__ = []
 
 
 def _split_activation(tensor, mp_group):
@@ -216,11 +216,10 @@ def recompute_hybrid(ctx, function, *args, **kwargs):
     # 3. Here, we only use float dtype to distinguish whether a gradient is needed in output tensor
 
     Parameters:
-        ctx(dict): include 'mp_group', 'offload', 'partition' and 'preserve_rng_state' keys. the key 'mp_group' (Group), represents the avtivations are splitted
+        ctx(dict): include 'mp_group', 'offload', and 'partition' keys. the key 'mp_group' (Group), represents the avtivations are splitted
                    in which group. the key 'offload' (bool, optional, default=False), represents whether to offload to cpu. the key 'partition' (bool, optional, default=False),
-                   represents whether to split activations in the mp_group. the key 'preserve_rng_state' (bool, optional, default=True) indicate whether to save the forward rng.
-                   If it is True, then the last forward rng value will be restored when the forward recalculation of backpropagation is performed. and some keys such as 'segments',
-                   are invalid here, they are useful in 'recompute_sequential' API.
+                   represents whether to split activations in the mp_group. and some keys such as 'segments' and 'preserve_rng_state' are invalid here, they are useful in 
+                   'recompute_sequential' API.
         function(paddle.nn.Layer): layer of sequence of layers that describes part of forward pass of the model
               whose intermediate activations will be released to save memory in forward stage and will be recomputed
               in backward stage for gradient calculation.
@@ -237,7 +236,6 @@ def recompute_hybrid(ctx, function, *args, **kwargs):
 
     offload = ctx.get('offload', False)
     partition = ctx.get('partition', False)
-    preserve_rng_state = ctx.get('preserve_rng_state', True)
 
     all_outputs = []
     _HPRecomputeFunction.apply(function, all_outputs, mp_group, offload,
