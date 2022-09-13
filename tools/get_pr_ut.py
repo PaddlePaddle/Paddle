@@ -355,14 +355,22 @@ class PRChecker(object):
                         if f_judge.find('test_') != -1 or f_judge.find(
                                 '_test') != -1:
                             check_added_ut = True
-                        if file_dict[f] not in ['removed']:
+                        if file_dict[f] in ['added']:
+                            if f_judge.find('test_') != -1 or f_judge.find(
+                                    '_test') != -1:
+                                print(
+                                    "Adding new unit tests not hit mapFiles: %s"
+                                    % f_judge)
+                            else:
+                                notHitMapFiles.append(f_judge)
+                        elif file_dict[f] in ['removed']:
+                            print("remove file not hit mapFiles: %s" % f_judge)
+                        else:
                             if self.is_only_comment(f):
                                 ut_list.append('comment_placeholder')
                                 onlyCommentsFilesOrXpu.append(f_judge)
                             else:
                                 notHitMapFiles.append(f_judge)
-                        else:
-                            print("remove file not hit mapFiles: %s" % f_judge)
                     else:
                         notHitMapFiles.append(
                             f_judge) if file_dict[f] != 'removed' else print(
