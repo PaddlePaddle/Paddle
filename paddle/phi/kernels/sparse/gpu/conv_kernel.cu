@@ -28,10 +28,33 @@ limitations under the License. */
 #endif
 
 #include "glog/logging.h"
+#include <inttypes.h>
 
 namespace phi {
 namespace sparse {
 
+__global__ void pi64(int64_t* p, int len, int group_num) {
+  printf("\n");
+  for(int i=0;i<len;i++) {
+    printf("%lld,",*(p+i));
+    if((i+1)%group_num == 0) {
+      printf("\n");
+    }
+  }
+  printf("\n");
+}
+
+template<typename T>
+__global__ void pp(T ** p, int len, int group_num) {
+  printf("\n");
+  for(int i=0;i<len;i++) {
+    printf("%p,",*(p+i));
+    if((i+1)%group_num == 0) {
+      printf("\n");
+    }
+  }
+  printf("\n");
+}
 #ifdef PADDLE_WITH_CUTLASS
 template <typename T>
 void AlignFeaturesChannel(const GPUContext& dev_ctx,
@@ -200,126 +223,106 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
     phi::funcs::sparse::SaveToTable(
         dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
   }
-#ifdef PADDLE_WITH_CUTLASS
-  // padding to make leading dimension of x, kernel and out 128 bits aligned.
-  // kernel.layout is x,y,z,c_in,c_out.
-  // x.layout and out.layout are NDHWC.
+  // 2. gather
+  phi::DenseTensor in_features =
+      phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
+  phi::DenseTensor out_features =
+      phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
+  T* in_features_ptr = in_features.data<T>();
+  T* out_features_ptr = out_features.data<T>();
+  phi::funcs::SetConstant<GPUContext, T> set_zero;
+  set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
 
+  Gather<T, IntT>(dev_ctx,
+                  x.values().data<T>(),
+                  rulebook_ptr,
+                  rulebook_len,
+                  in_channels,
+                  in_features_ptr);
 
-  //if(in_padding_num==0 && out_padding_num==0) 
-  if(cutlass) {
-    int kernel_channel_in_idx = 3;
-    int kernel_channel_out_idx = 4;
-    int channel_idx = 4;
-    int align_num = 128 / cutlass::sizeof_bits<T>::value;
-    int channel_out_dim = kernel.dims()[kernel_channel_out_idx];
-    int64_t in_padding_num = 0;
-    int64_t out_padding_num = 0;
+  // 3. call gemm for every werght
+  auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
+  auto* out_values = out->mutable_values();
+  T* out_values_ptr = out_values->data<T>();
+  set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
+  const T* kernel_ptr = kernel.data<T>();
 
-    if (kernel.dims()[kernel_channel_in_idx] % align_num != 0) {
-      in_padding_num =
-          align_num - kernel.dims()[kernel_channel_in_idx] % align_num;
-    }
+  if (cutlass) {
+    thrust::host_vector<cutlass::gemm::GemmCoord> h_shape(kernel_size);
+    thrust::host_vector<T*> h_ptr_A(kernel_size);
+    thrust::host_vector<const T*> h_ptr_B(kernel_size);
+    thrust::host_vector<T*> h_ptr_D(kernel_size);
 
-    if (kernel.dims()[kernel_channel_out_idx] % align_num != 0) {
-      out_padding_num =
-          align_num - kernel.dims()[kernel_channel_out_idx] % align_num;
-    }
+    int group_count = 0;
+    int group_idx = 0;
 
-    using ElementInputA = cutlass::half_t;
-    using ElementInputB = cutlass::half_t;
-    using ElementAccumulator = float;
-    using ElementComputeEpilogue = float;
-    using ElementOutput = cutlass::half_t;
-
-    // This code section describes the tile size a thread block will compute
-    using ShapeMMAThreadBlock =
-        cutlass::gemm::GemmShape<128, 128, 32>;  // <- threadblock tile M = 128,
-                                                 // N = 128, K = 32
-    // This code section describes tile size a warp will compute
-    using ShapeMMAWarp =
-        cutlass::gemm::GemmShape<64, 64, 32>;  // <- warp tile M = 64, N = 64, K
-                                               // = 32
-    // This code section describes the size of MMA op
-    using ShapeMMAOp =
-        cutlass::gemm::GemmShape<16, 8, 16>;  // <- MMA Op tile M
-                                              // = 8, N = 8, K = 4
-    // 16, 8, 8 -> Turing
-    // 16, 8, 16 -> Ampere
-    using LayoutInputA = cutlass::layout::RowMajor;
-    using LayoutInputB = cutlass::layout::RowMajor;
-    using LayoutOutput = cutlass::layout::RowMajor;
-
-    auto* out_values = out->mutable_non_zero_elements();
-    T* out_values_ptr = out_values->data<T>();
-    phi::funcs::SetConstant<GPUContext, T> set_zero;
-    set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
-
-    const T* kernel_ptr = kernel.data<T>();
     for (int i = 0; i < kernel_size; i++) {
       if (h_counter_ptr[i] <= 0) {
         continue;
       }
+      group_count++;
+      int M = h_counter_ptr[i];
+      int K = in_channels;
+      int N = out_channels;
+      h_shape[group_idx] = cutlass::gemm::GemmCoord(M,N,K);
 
-      const int M = h_counter_ptr[i];
-      const int K = in_channels;
-      const int N = out_channels;
+      T* tmp_in_ptr = in_features_ptr + h_offsets_ptr[i] * in_channels;
       const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
-      const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
-      const IntT* scatter_indices =
-          rulebook_ptr + rulebook_len + h_offsets_ptr[i];
-
-      gather_gemm_scatter<ElementInputA,
-                          ElementInputB,
-                          ElementAccumulator,
-                          ElementComputeEpilogue,
-                          ElementOutput,
-                          LayoutInputA,
-                          LayoutInputB,
-                          LayoutOutput,
-                          IntT,
-                          ShapeMMAThreadBlock,
-                          ShapeMMAWarp,
-                          ShapeMMAOp>(x.non_zero_elements().data<T>(),
-                                      tmp_kernel_ptr,
-                                      out_values_ptr,
-                                      out_values_ptr,
-                                      M,
-                                      N,
-                                      K,
-                                      gather_indices,
-                                      scatter_indices,
-                                      h_counter_ptr[i],
-                                      static_cast<ElementComputeEpilogue>(1),
-                                      static_cast<ElementComputeEpilogue>(1));
+      T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
+      h_ptr_A[group_idx] = tmp_in_ptr;
+      h_ptr_B[group_idx] = tmp_kernel_ptr;
+      h_ptr_D[group_idx] = tmp_out_ptr;
+      group_idx++;
     }
+
+    thrust::device_vector<cutlass::gemm::GemmCoord> shape = h_shape;
+    thrust::device_vector<T*> ptr_A = h_ptr_A;
+    thrust::device_vector<const T*> ptr_B = h_ptr_B;
+    thrust::device_vector<T*> ptr_D = h_ptr_D;
+    thrust::device_vector<int64_t> lda(kernel_size, (int64_t)in_channels);
+    thrust::device_vector<int64_t> ldb(kernel_size, (int64_t)out_channels);
+    thrust::device_vector<int64_t> ldd(kernel_size, (int64_t)out_channels);
+
+
+    using ElementA = T;
+    using ElementB = T;
+    using ElementAccumulator = T;
+    using ElementComputeEpilogue = T;
+    using ElementOutput = T;
+    using LayoutA = cutlass::layout::RowMajor;
+    using LayoutB = cutlass::layout::RowMajor;
+    using LayoutOutput = cutlass::layout::RowMajor;
+    // IntT = int,
+    using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<128, 128, 16>;
+    using ShapeMMAWarp = cutlass::gemm::GemmShape<64, 64, 16>;
+    using ShapeMMAOp = cutlass::gemm::GemmShape<16, 8, 8>;
+    constexpr int NumStages = 3;
+    group_gemm<ElementA,
+               ElementB,
+               ElementAccumulator,
+               ElementComputeEpilogue,
+               ElementOutput,
+               LayoutA,
+               LayoutB,
+               LayoutOutput,
+               IntT,
+               ShapeMMAThreadBlock,
+               ShapeMMAWarp,
+               ShapeMMAOp,
+               NumStages>(thrust::raw_pointer_cast(ptr_A.data()),
+                          const_cast<T**>(thrust::raw_pointer_cast(ptr_B.data())),
+                          nullptr,
+                          thrust::raw_pointer_cast(ptr_D.data()),
+                          thrust::raw_pointer_cast(shape.data()),
+                          thrust::raw_pointer_cast(lda.data()),
+                          thrust::raw_pointer_cast(ldb.data()),
+                          nullptr,
+                          thrust::raw_pointer_cast(ldd.data()),
+                          group_count,
+                          static_cast<T>(1),
+                          static_cast<T>(0));
+
   } else {
-#endif
-    //#else
-    // 2. gather
-    phi::DenseTensor in_features =
-        phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
-    phi::DenseTensor out_features =
-        phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
-    T* in_features_ptr = in_features.data<T>();
-    T* out_features_ptr = out_features.data<T>();
-    phi::funcs::SetConstant<GPUContext, T> set_zero;
-    set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
-
-    Gather<T, IntT>(dev_ctx,
-                    x.values().data<T>(),
-                    rulebook_ptr,
-                    rulebook_len,
-                    in_channels,
-                    in_features_ptr);
-
-    // 3. call gemm for every werght
-    auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
-    auto* out_values = out->mutable_values();
-    T* out_values_ptr = out_values->data<T>();
-    set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
-
-    const T* kernel_ptr = kernel.data<T>();
     for (int i = 0; i < kernel_size; i++) {
       if (h_counter_ptr[i] <= 0) {
         continue;
@@ -344,21 +347,19 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                 static_cast<T>(0),
                 tmp_out_ptr);
     }
-
-    // 4. scatter
-    phi::funcs::sparse::ScatterV2<T>(dev_ctx,
-                                     out_features_ptr,
-                                     out_index.data<int>(),
-                                     unique_value.data<int>(),
-                                     out->nnz(),
-                                     kernel_size,
-                                     h_counter_ptr[kernel_size],
-                                     out_channels,
-                                     1,
-                                     out_values_ptr);
-#ifdef PADDLE_WITH_CUTLASS
   }
-#endif
+
+  // 4. scatter
+  phi::funcs::sparse::ScatterV2<T>(dev_ctx,
+                                   out_features_ptr,
+                                   out_index.data<int>(),
+                                   unique_value.data<int>(),
+                                   out->nnz(),
+                                   kernel_size,
+                                   h_counter_ptr[kernel_size],
+                                   out_channels,
+                                   1,
+                                   out_values_ptr);
 }
 
 /**
@@ -423,7 +424,7 @@ PD_REGISTER_KERNEL(conv3d_coo,
                    ALL_LAYOUT,
                    phi::sparse::Conv3dCooKernel,
 #ifdef PADDLE_WITH_CUTLASS
-                   phi::dtype::float16) {
+                   float) {
 #else
                    float,
                    double,

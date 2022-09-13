@@ -55,6 +55,25 @@ limitations under the License. */
 #include "cutlass/util/reference/host/tensor_fill.h"
 #include "cutlass/util/tensor_view_io.h"
 #include "/paddle/cutlass/examples/common/helper.h"
+
+#include "cutlass/cutlass.h"
+#include "cutlass/gemm/gemm.h"
+#include "cutlass/gemm/kernel/gemm_grouped.h"
+#include "cutlass/gemm/kernel/default_gemm_grouped.h"
+#include "cutlass/gemm/device/gemm_grouped.h"
+#include "cutlass/gemm/device/gemm_universal.h"
+
+#include "cutlass/util/command_line.h"
+#include "cutlass/util/distribution.h"
+#include "cutlass/util/device_memory.h"
+#include "cutlass/util/tensor_view_io.h"
+#include "cutlass/util/host_tensor.h"
+#include "cutlass/util/reference/host/gemm_complex.h"
+#include "cutlass/util/reference/device/gemm_complex.h"
+#include "cutlass/util/reference/host/tensor_compare.h"
+#include "cutlass/util/reference/host/tensor_copy.h"
+#include "cutlass/util/reference/device/tensor_fill.h"
+#include "cutlass/util/reference/host/tensor_norm.h"
 #endif
 
 namespace phi {
@@ -1037,6 +1056,121 @@ void gather_gemm_scatter(const phi::dtype::float16* const a,
   status = gemm_op();
   cudaDeviceSynchronize();
   CUTLASS_CHECK(status);
+}
+
+template <typename ElementA = float,
+          typename ElementB = float,
+          typename ElementAccumulator = float,
+          typename ElementComputeEpilogue = float,
+          typename ElementOutput = float,
+          typename LayoutA = cutlass::layout::RowMajor,
+          typename LayoutB = cutlass::layout::RowMajor,
+          typename LayoutOutput = cutlass::layout::RowMajor,
+          typename IntT = int,
+          typename ShapeMMAThreadBlock,
+          typename ShapeMMAWarp,
+          typename ShapeMMAOp,
+          int NumStages>
+void group_gemm(ElementA** A,
+                ElementB** B,
+                ElementOutput** C,
+                ElementOutput** D,
+                cutlass::gemm::GemmCoord* shape,
+                int64_t* lda,
+                int64_t* ldb,
+                int64_t* ldc,
+                int64_t* ldd,
+                int group_count,
+                ElementComputeEpilogue alpha,
+                ElementComputeEpilogue beta) {
+  using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombination<
+      ElementOutput,
+      128 / cutlass::sizeof_bits<ElementOutput>::value,
+      ElementAccumulator,
+      ElementAccumulator>;
+
+  using GemmKernel = typename cutlass::gemm::kernel::DefaultGemmGrouped<
+      ElementA,
+      LayoutA,
+      cutlass::ComplexTransform::kNone,
+      // 8,  // kAlignmentA
+      128 / cutlass::sizeof_bits<ElementA>::value,
+      ElementB,
+      LayoutB,
+      cutlass::ComplexTransform::kNone,
+      // 8,  // kAlignmentB
+      128 / cutlass::sizeof_bits<ElementB>::value,
+      ElementOutput,
+      LayoutOutput,
+      ElementAccumulator,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm80,
+      ShapeMMAThreadBlock,
+      ShapeMMAWarp,
+      ShapeMMAOp,
+      EpilogueOutputOp,
+      cutlass::gemm::threadblock::GemmBatchedIdentityThreadblockSwizzle,
+      NumStages>::GemmKernel;
+
+  using GemmGrouped = cutlass::gemm::device::GemmGrouped<GemmKernel>;
+
+  // sufficient
+  cudaDeviceProp properties;
+  int device_idx;
+  cudaError_t result = cudaGetDevice(&device_idx);
+
+  if (result != cudaSuccess) {
+    throw std::runtime_error("cudaGetDevice() API call failed.");
+  }
+
+  result = cudaGetDeviceProperties(&properties, device_idx);
+
+  if (result != cudaSuccess) {
+    throw std::runtime_error("cudaGetDeviceProperties() failed");
+  }
+
+  int occupancy = GemmGrouped::maximum_active_blocks();
+
+  int threadblock_count = properties.multiProcessorCount * occupancy;
+
+  typename EpilogueOutputOp::Params epilogue_op(alpha, beta);
+
+  typename GemmGrouped::Arguments args(shape,
+                                       group_count,
+                                       threadblock_count,
+                                       epilogue_op,
+                                       A,
+                                       B,
+                                       C,
+                                       D,
+                                       lda,
+                                       ldb,
+                                       ldc,
+                                       ldd);
+  // Initialize the GEMM object
+  GemmGrouped gemm;
+
+  cutlass::Status status = gemm.initialize(args);
+
+  if (status != cutlass::Status::kSuccess) {
+    std::cerr << "Failed to initialize CUTLASS Grouped GEMM kernel."
+              << std::endl;
+    return;
+  }
+
+  // Run the grouped GEMM object
+  status = gemm.run();
+
+  if (status != cutlass::Status::kSuccess) {
+    std::cerr << "Failed to run CUTLASS Grouped GEMM kernel." << std::endl;
+  }
+
+  // Wait for completion
+  cudaError_t error = cudaDeviceSynchronize();
+
+  if (error != cudaSuccess) {
+    std::cerr << "Kernel execution error: " << cudaGetErrorString(error);
+  }
 }
 #endif
 
