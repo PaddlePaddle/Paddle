@@ -357,6 +357,14 @@ cc_test(
   SRCS multihead_matmul_fuse_pass_tester.cc
   DEPS multihead_matmul_fuse_pass)
 cc_test(
+  test_fused_multi_transformer_encoder_pass
+  SRCS fused_multi_transformer_encoder_pass_tester.cc
+  DEPS fused_multi_transformer_encoder_pass)
+cc_test(
+  test_fused_multi_transformer_decoder_pass
+  SRCS fused_multi_transformer_decoder_pass_tester.cc
+  DEPS fused_multi_transformer_decoder_pass)
+cc_test(
   test_conv_bn_fuse_pass_cc
   SRCS conv_bn_fuse_pass_tester.cc
   DEPS conv_bn_fuse_pass)

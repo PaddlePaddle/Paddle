@@ -46,10 +46,10 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
                                   ->assert_is_persistable_var()
                                   ->assert_is_op_input("layer_norm", "Bias");
   auto* layer_norm_mean_var = pattern->NewNode(layer_norm_mean_repr())
-                                  ->AsIntermediate()
+                                  ->AsOutput()
                                   ->assert_is_op_output("layer_norm", "Mean");
   auto* layer_norm_variance_var = pattern->NewNode(layer_norm_variance_repr())
-                                  ->AsIntermediate()
+                                  ->AsOutput()
                                   ->assert_is_op_output("layer_norm", "Variance");
   auto* layer_norm_out_var = pattern->NewNode(layer_norm_out_repr())
                                   ->AsIntermediate()
@@ -326,11 +326,11 @@ PDNode* FusedMultiTransformerEncoderPattern::operator()() {
                             ->assert_is_op_input("layer_norm", "Bias");
   auto* ffn_layer_norm_mean_var = \
                           pattern->NewNode(ffn_layer_norm_mean_repr())
-                            ->AsIntermediate()
+                            ->AsOutput()
                             ->assert_is_op_output("layer_norm", "Mean");
   auto* ffn_layer_norm_variance_var = \
                           pattern->NewNode(ffn_layer_norm_variance_repr())
-                            ->AsIntermediate()
+                            ->AsOutput()
                             ->assert_is_op_output("layer_norm", "Variance");
   auto* ffn_layer_norm_out_var = \
                           pattern->NewNode(ffn_layer_norm_out_repr())
@@ -718,6 +718,75 @@ PDNode* FusedMultiTransformerEncoderFuseQKVPattern::operator()() {
 
 } // namespace pattern
 
+inline void QKVWeightsProcess(Tensor* wq_tensor,
+                              Tensor* wk_tensor,
+                              Tensor* wv_tensor,
+                              Tensor* bq_tensor,
+                              Tensor* bk_tensor,
+                              Tensor* bv_tensor,
+                              const int num_head,
+                              const int dim_head,
+                              const int dim_embed) {
+  auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
+  auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
+  auto* wv_data = wv_tensor->mutable_data<float>(platform::CPUPlace());
+  auto* bq_data = bq_tensor->mutable_data<float>(platform::CPUPlace());
+  auto* bk_data = bk_tensor->mutable_data<float>(platform::CPUPlace());
+  auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
+
+  auto combined_w_dims =
+      phi::make_ddim({3, num_head, dim_head, dim_embed});
+  auto combined_bias_dims = phi::make_ddim({3, num_head, dim_head});
+
+  framework::LoDTensor tmp_combined_w_tensor;
+  tmp_combined_w_tensor.Resize(combined_w_dims);
+  auto* tmp_combined_w_data =
+      tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
+
+  std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
+  // Combine the three fc weights together.
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < num_head; j++) {
+      for (int k = 0; k < dim_head; k++) {
+        for (int l = 0; l < dim_embed; l++) {
+          int out_idx = i * num_head * dim_head * dim_embed \
+                        + j * dim_head * dim_embed \
+                        + k * dim_embed + l;
+          int in_idx = l * num_head * dim_head + j * dim_head + k;
+          tmp_combined_w_data[out_idx] = w_vec[i][in_idx];
+        }
+      }
+    }
+  }
+
+  wq_tensor->Resize(combined_w_dims);
+  auto* new_combined_w_data =
+      wq_tensor->mutable_data<float>(platform::CPUPlace());
+  memcpy(new_combined_w_data,
+         tmp_combined_w_data,
+         sizeof(float) * wq_tensor->numel());
+
+  framework::LoDTensor tmp_combined_bias_tensor;
+  tmp_combined_bias_tensor.Resize(combined_bias_dims);
+  auto* tmp_combined_bias_data =
+      tmp_combined_bias_tensor.mutable_data<float>(platform::CPUPlace());
+
+  size_t bias_size = bq_tensor->numel();
+  memcpy(tmp_combined_bias_data, bq_data, sizeof(float) * bias_size);
+  memcpy(
+      tmp_combined_bias_data + bias_size, bk_data, sizeof(float) * bias_size);
+  memcpy(tmp_combined_bias_data + 2 * bias_size,
+         bv_data,
+         sizeof(float) * bias_size);
+
+  bq_tensor->Resize(combined_bias_dims);
+  auto* new_combined_bias_data =
+      bq_tensor->mutable_data<float>(platform::CPUPlace());
+  memcpy(new_combined_bias_data,
+         tmp_combined_bias_data,
+         sizeof(float) * bq_tensor->numel());
+}
+
 int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
@@ -788,16 +857,9 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph, const std::strin
     auto* bv_tensor =
         scope->FindVar(eltadd2_b->Name())->GetMutable<LoDTensor>();
 
-    auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* wv_data = wv_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bq_data = bq_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bk_data = bk_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
-
-    auto combined_w_dims =
-        phi::make_ddim({3, num_head, dim_head, dim_embed});
-    auto combined_bias_dims = phi::make_ddim({3, num_head, dim_head});
+    QKVWeightsProcess(wq_tensor, wk_tensor, wv_tensor,
+                      bq_tensor, bk_tensor, bv_tensor,
+                      num_head, dim_head, dim_embed);
 
     // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
     auto* combined_w_desc = matmul0_w->Var();
@@ -808,56 +870,7 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph, const std::strin
     combined_bias_desc->SetShape({3, num_head, dim_head});
     combined_bias_desc->SetPersistable(true);
 
-    framework::LoDTensor tmp_combined_w_tensor;
-    tmp_combined_w_tensor.Resize(combined_w_dims);
-    auto* tmp_combined_w_data =
-        tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
-
-    std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
-    // Combine the three fc weights together.
-    for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < num_head; j++) {
-        for (int k = 0; k < dim_head; k++) {
-          for (int l = 0; l < dim_embed; l++) {
-            int out_idx = i * num_head * dim_head * dim_embed \
-                          + j * dim_head * dim_embed \
-                          + k * dim_embed + l;
-            int in_idx = l * num_head * dim_head + j * dim_head + k;
-            tmp_combined_w_data[out_idx] = w_vec[i][in_idx];
-          }
-        }
-      }
-    }
-
-    wq_tensor->Resize(combined_w_dims);
-    auto* new_combined_w_data =
-        wq_tensor->mutable_data<float>(platform::CPUPlace());
-    memcpy(new_combined_w_data,
-           tmp_combined_w_data,
-           sizeof(float) * wq_tensor->numel());
-
     scope->EraseVars({matmul1_w->Name(), matmul2_w->Name()});
-
-    framework::LoDTensor tmp_combined_bias_tensor;
-    tmp_combined_bias_tensor.Resize(combined_bias_dims);
-    auto* tmp_combined_bias_data =
-        tmp_combined_bias_tensor.mutable_data<float>(platform::CPUPlace());
-
-    size_t bias_size = bq_tensor->numel();
-    memcpy(tmp_combined_bias_data, bq_data, sizeof(float) * bias_size);
-    memcpy(
-        tmp_combined_bias_data + bias_size, bk_data, sizeof(float) * bias_size);
-    memcpy(tmp_combined_bias_data + 2 * bias_size,
-           bv_data,
-           sizeof(float) * bias_size);
-
-    bq_tensor->Resize(combined_bias_dims);
-    auto* new_combined_bias_data =
-        bq_tensor->mutable_data<float>(platform::CPUPlace());
-    memcpy(new_combined_bias_data,
-           tmp_combined_bias_data,
-           sizeof(float) * bq_tensor->numel());
-
     scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
 
     // create fused_multi_transformer
@@ -930,7 +943,7 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph, const std::strin
     IR_NODE_LINK_TO(eltadd_qk_b, fused_multi_transformer);
 
     IR_NODE_LINK_TO(fused_multi_transformer, ffn_output);
-    
+
     // rewrite while OP input
     //  1. delete k, v
     //  2. delete matmul1/2_w eltadd1/2_w
@@ -944,7 +957,7 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph, const std::strin
     while_Xs.erase(std::remove(std::begin(while_Xs), std::end(while_Xs), eltadd2_b->Name()), std::end(while_Xs));
     while_Xs.emplace_back(cache_kv->Name());
     while0->Op()->SetInput("X", while_Xs);
-    
+
     // rewrite while OP output
     //  1. delete k, v
     //  2. add cache_kv
@@ -1828,3 +1841,24 @@ REGISTER_PASS(fused_multi_transformer_encoder_pass,
               paddle::framework::ir::FusedMultiTransformerEncoderPass);
 REGISTER_PASS(fused_multi_transformer_encoder_fuse_qkv_pass,
               paddle::framework::ir::FusedMultiTransformerEncoderFuseQKVPass);
+
+REGISTER_PASS_CAPABILITY(fused_multi_transformer_encoder_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("elementwise_add", 1)
+            .EQ("reshape2", 0)
+            .EQ("transpose2", 0)
+            .EQ("scale", 0)
+            .LE("matmul", 1)
+            .EQ("matmul_v2", 0)
+            .EQ("softmax", 0));
+REGISTER_PASS_CAPABILITY(fused_multi_transformer_encoder_fuse_qkv_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("elementwise_add", 1)
+            .EQ("reshape2", 0)
+            .EQ("transpose2", 0)
+            .EQ("scale", 0)
+            .LE("matmul", 1)
+            .EQ("matmul_v2", 0)
+            .EQ("softmax", 0));

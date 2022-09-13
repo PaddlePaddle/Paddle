@@ -1715,3 +1715,24 @@ REGISTER_PASS(fused_multi_transformer_decoder_pass,
               paddle::framework::ir::FusedMultiTransformerDecoderPass);
 REGISTER_PASS(fused_multi_transformer_decoder_fuse_qkv_pass,
               paddle::framework::ir::FusedMultiTransformerDecoderFuseQKVPass);
+
+REGISTER_PASS_CAPABILITY(fused_multi_transformer_decoder_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("elementwise_add", 1)
+            .EQ("reshape2", 0)
+            .EQ("transpose2", 0)
+            .EQ("scale", 0)
+            .LE("matmul", 1)
+            .EQ("matmul_v2", 0)
+            .EQ("softmax", 0));
+REGISTER_PASS_CAPABILITY(fused_multi_transformer_decoder_fuse_qkv_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("elementwise_add", 1)
+            .EQ("reshape2", 0)
+            .EQ("transpose2", 0)
+            .EQ("scale", 0)
+            .LE("matmul", 1)
+            .EQ("matmul_v2", 0)
+            .EQ("softmax", 0));

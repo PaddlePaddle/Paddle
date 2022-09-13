@@ -146,6 +146,10 @@ struct Layers {
     return unary_op("relu", x, out);
   }
 
+  VarDesc* gelu(VarDesc* x, VarDesc* out = nullptr) {
+    return unary_op("gelu", x, out);
+  }
+
   VarDesc* sigmoid(VarDesc* x, VarDesc* out = nullptr) {
     return unary_op("sigmoid", x, out);
   }
@@ -332,6 +336,39 @@ struct Layers {
     return outs;
   }
 
+  std::vector<VarDesc*> split(VarDesc* x,
+                              int num_or_section,
+                              int axis = 0) {
+    std::vector<VarDesc*> outs(num_or_section);
+    for (int i = 0; i < num_or_section; i++) {
+      outs[i] = lod_tensor(unique_name());
+    }
+    std::vector<std::string> out_names(num_or_section);
+    for (int i = 0; i < num_or_section; i++) {
+      out_names[i] = outs[i]->Name();
+    }
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("split");
+    op->SetInput("X", {x->Name()});
+    op->SetOutput("Out", out_names);
+    op->SetAttr("num_or_section", num_or_section);
+    op->SetAttr("axis", axis);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return outs;
+  }
+
+  VarDesc* assign(VarDesc* x) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("assign");
+    op->SetInput("X", {x->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return out;
+  }
+
   VarDesc* matmul(VarDesc* x,
                   VarDesc* y,
                   VarDesc* alpha = nullptr,
@@ -456,6 +493,24 @@ struct Layers {
     op->SetInput("Ids", {x->Name()});
     op->SetInput("W", {weights->Name()});
     op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* while_loop(std::vector<VarDesc*> xs, VarDesc* cond = nullptr) {
+    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* step_scopes = lod_tensor(unique_name());
+    if (cond == nullptr) cond = lod_tensor(unique_name());
+
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("while");
+    std::vector<std::string> xs_names;
+    for (auto& x: xs) xs_names.emplace_back(x->Name());
+    op->SetInput("X", xs_names);
+    op->SetInput("Condition", {cond->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetOutput("StepScopes", {step_scopes->Name()});
+    // op->SetAttr("sub_block", {program_.MutableBlock(1)});
+    op->SetAttr("is_test", true);
     return out;
   }
 

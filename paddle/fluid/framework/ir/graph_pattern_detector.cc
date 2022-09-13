@@ -250,7 +250,7 @@ GraphPatternDetector::DetectPatterns() {
         }
       }
     }
-    // LOG(ERROR) << "step " << step << " get records: " << cur_groups.size();
+    VLOG(4) << "step " << step << " get records: " << cur_groups.size();
     // for (auto &group : cur_groups) {
     //   for (auto &item : group.roles) {
     //     LOG(ERROR) << "node " << item.second->id() << " as " << item.first->name();

@@ -62,7 +62,7 @@ Scope* CreateParamScope() {
   return param_scope;
 }
 
-TEST(FusedMultiTransformerEncoderPass, basic) {
+TEST(FusedMultiTransformerDecoderPass, basic) {
   // inputs                           operator            output
   // --------------------------------------------------------------------
   // (x, ln_scale, ln_bias)           layer_norm       -> layer_norm_out
@@ -78,6 +78,10 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
   // (reshape_0)                      transpose2       -> transpose_0
   // (reshape_1)                      transpose2       -> transpose_1
   // (reshape_2)                      transpose2       -> transpose_2
+  // (transpose_1)                    concat           -> concat_0 
+  // (transpose_2)                    concat           -> concat_2 
+  // (concat_0)                       assign           -> assign_0 
+  // (concat_1)                       assign           -> assign_2 
   // (transpose_0, transpose_1)       matmul           -> matmul_qk
   // (matmul_qk, bias_qk)             elementwise_add  -> eltadd_qk
   // (eltadd_qk)                      softmax          -> softmax_qk
@@ -98,8 +102,6 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
   // (ffn_matmul1, ffn_bias1)         elementwise_add  -> ffn_eltadd1
   // (ffn_eltadd1)                    dropout          -> ffn_dropout 
   // (attention_out, ffn_dropout)     elementwise_add  -> ffn_output
-  //
-  // (transpose_1, transpose_2)       while            -> decoder block
 
   Layers layers;
   // MHA: pre LayerNorm 
@@ -133,11 +135,15 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
   auto* transpose_1 = layers.transpose2(reshape_1, axis, true);
   auto* transpose_2 = layers.transpose2(reshape_2, axis, true);
 
-  // Link to decoder while block
-  layers.while_loop({transpose_1, transpose_2});
+  auto* cache_k = layers.data("cache_k", {1, 16, 128, 64});
+  auto* cache_v = layers.data("cache_v", {1, 16, 128, 64});
+  auto* concat_k = layers.concat({cache_k, transpose_1}, 2);
+  auto* concat_v = layers.concat({cache_v, transpose_2}, 2);
+  layers.assign(concat_k);
+  layers.assign(concat_v);
 
   // MHA: QK matmul
-  auto* matmul_qk = layers.matmul(transpose_0, transpose_1, nullptr, false, true);
+  auto* matmul_qk = layers.matmul(transpose_0, concat_k, nullptr, false, true);
 
   auto* bqk = layers.data("biasqk", {1, 12, 128, 128}, true);
   auto* elementwise_qk = layers.elementwise_add(matmul_qk, bqk);
@@ -145,7 +151,7 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
   auto* dropout_qk = layers.dropout(softmax_qk, 0.1, "upscale_in_train");
 
   // MHA: QKV matmul
-  auto* matmul_qkv = layers.matmul_v2(dropout_qk, transpose_2);
+  auto* matmul_qkv = layers.matmul_v2(dropout_qk, concat_v);
 
   auto* transpose_qkv = layers.transpose2(matmul_qkv, {0, 2, 1, 3}, true);
   auto* reshape_qkv_out = layers.reshape2(transpose_qkv, {1, 128, 1024}, true);
@@ -182,8 +188,8 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
 
-  auto pass = PassRegistry::Instance().Get("fused_multi_transformer_encoder_pass");
-  if (pass.get() == nullptr) LOG(INFO) << "get fused_multi_transformer_encoder_pass failed";
+  auto pass = PassRegistry::Instance().Get("fused_multi_transformer_decoder_pass");
+  if (pass.get() == nullptr) LOG(INFO) << "get fused_multi_transformer_decoder_pass failed";
   int num_nodes_before = graph->Nodes().size();
   VLOG(3) << DebugString(graph);
 
@@ -194,28 +200,28 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
 
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
-      num_nodes_after + 69,
+      num_nodes_after + 72,
       platform::errors::InvalidArgument(
-          "After the fused_multi_transformer_encoder_pass, The node num in graph "
+          "After the fused_multi_transformer_decoder_pass, The node num in graph "
           "should be %d, but the result is %d",
-          num_nodes_before - 69,
+          num_nodes_before - 72,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
                     platform::errors::InvalidArgument(
-                        "After the fused_multi_transformer_encoder pass, "
+                        "After the fused_multi_transformer_decoder pass, "
                         "there should be one fused_multi_transformer op, "
                         "but the result is %d",
                         num_fused_nodes_after));
 }
 
-TEST(FusedMultiTransformerEncoderPass, pass_op_version_check) {
+TEST(FusedMultiTransformerDecoderPass, pass_op_version_check) {
   ASSERT_TRUE(
       paddle::framework::compatible::PassVersionCheckerRegistrar::GetInstance()
-          .IsPassCompatible("fused_multi_transformer_encoder_pass"));
+          .IsPassCompatible("fused_multi_transformer_decoder_pass"));
 }
 
-TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
+TEST(FusedMultiTransformerDecoderFuseQKVPass, basic) {
   // inputs                           operator            output
   // --------------------------------------------------------------------
   // (x, ln_scale, ln_bias)           layer_norm       -> layer_norm_out
@@ -224,8 +230,10 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
   // (eltadd_0)                       reshape2         -> reshape_0
   // (reshape_0)                      transpose2       -> transpose_0
   // (transpose_0)                    split            -> split_q, split_k, split_v 
-  // (split_k)                        assign           -> assign_k 
-  // (split_v)                        assign           -> assign_v 
+  // (split_k)                        concat           -> concat_k 
+  // (split_v)                        concat           -> concat_v 
+  // (concat_k)                       assign           -> assign_k 
+  // (concat_v)                       assign           -> assign_v 
   // (split_q, split_k)               matmul           -> matmul_qk
   // (matmul_qk, bias_qk)             elementwise_add  -> eltadd_qk
   // (eltadd_qk)                      softmax          -> softmax_qk
@@ -273,14 +281,16 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
   auto* split_q = split_outs[0];
   auto* split_k = split_outs[1];
   auto* split_v = split_outs[2];
-  layers.assign(split_k);
-  layers.assign(split_v);
 
-  // Link to decoder while block
-  layers.while_loop({split_k, split_v});
+  auto* cache_k = layers.data("cache_k", {1, 16, 128, 64});
+  auto* cache_v = layers.data("cache_v", {1, 16, 128, 64});
+  auto* concat_k = layers.concat({cache_k, split_k}, 2);
+  auto* concat_v = layers.concat({cache_v, split_v}, 2);
+  layers.assign(concat_k);
+  layers.assign(concat_v);
 
   // MHA: QK matmul
-  auto* matmul_qk = layers.matmul(split_q, split_k, nullptr, false, true);
+  auto* matmul_qk = layers.matmul(split_q, concat_k, nullptr, false, true);
 
   auto* bqk = layers.data("biasqk", {1, 12, 128, 128}, true);
   auto* elementwise_qk = layers.elementwise_add(matmul_qk, bqk);
@@ -288,7 +298,7 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
   auto* dropout_qk = layers.dropout(softmax_qk, 0.1, "upscale_in_train");
 
   // MHA: QKV matmul
-  auto* matmul_qkv = layers.matmul_v2(dropout_qk, split_v);
+  auto* matmul_qkv = layers.matmul_v2(dropout_qk, concat_v);
 
   auto* transpose_qkv = layers.transpose2(matmul_qkv, {0, 2, 1, 3}, true);
   auto* reshape_qkv_out = layers.reshape2(transpose_qkv, {1, 128, 1024}, true);
@@ -325,8 +335,8 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
 
-  auto pass = PassRegistry::Instance().Get("fused_multi_transformer_encoder_fuse_qkv_pass");
-  if (pass.get() == nullptr) LOG(INFO) << "get fused_multi_transformer_encoder_fuse_qkv_pass failed";
+  auto pass = PassRegistry::Instance().Get("fused_multi_transformer_decoder_fuse_qkv_pass");
+  if (pass.get() == nullptr) LOG(INFO) << "get fused_multi_transformer_decoder_fuse_qkv_pass failed";
   int num_nodes_before = graph->Nodes().size();
   VLOG(3) << DebugString(graph);
 
@@ -337,30 +347,30 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
 
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
-      num_nodes_after + 57,
+      num_nodes_after + 62,
       platform::errors::InvalidArgument(
-          "After the fused_multi_transformer_encoder_fuse_qkv_pass, "
+          "After the fused_multi_transformer_decoder_fuse_qkv_pass, "
           "The node num in graph should be %d, but the result is %d",
-          num_nodes_before - 57,
+          num_nodes_before - 62,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
                     platform::errors::InvalidArgument(
-                        "After the fused_multi_transformer_encoder_fuse_qkv "
+                        "After the fused_multi_transformer_decoder_fuse_qkv "
                         "pass, there should be one fused_multi_transformer "
                         "op, but the result is %d",
                         num_fused_nodes_after));
 }
 
-TEST(FusedMultiTransformerEncoderFuseQKVPass, pass_op_version_check) {
+TEST(FusedMultiTransformerDecoderFuseQKVPass, pass_op_version_check) {
   ASSERT_TRUE(
       paddle::framework::compatible::PassVersionCheckerRegistrar::GetInstance()
-          .IsPassCompatible("fused_multi_transformer_encoder_fuse_qkv_pass"));
+          .IsPassCompatible("fused_multi_transformer_decoder_fuse_qkv_pass"));
 }
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(fused_multi_transformer_encoder_pass);
-USE_PASS(fused_multi_transformer_encoder_fuse_qkv_pass);
+USE_PASS(fused_multi_transformer_decoder_pass);
+USE_PASS(fused_multi_transformer_decoder_fuse_qkv_pass);
