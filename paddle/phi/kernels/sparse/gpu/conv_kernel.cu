@@ -223,35 +223,20 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
     phi::funcs::sparse::SaveToTable(
         dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
   }
-  // 2. gather
-  phi::DenseTensor in_features =
-      phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
+
   phi::DenseTensor out_features =
       phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
-  T* in_features_ptr = in_features.data<T>();
   T* out_features_ptr = out_features.data<T>();
   phi::funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
 
-  Gather<T, IntT>(dev_ctx,
-                  x.values().data<T>(),
-                  rulebook_ptr,
-                  rulebook_len,
-                  in_channels,
-                  in_features_ptr);
-
-  // 3. call gemm for every werght
-  auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
-  auto* out_values = out->mutable_values();
-  T* out_values_ptr = out_values->data<T>();
-  set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
   const T* kernel_ptr = kernel.data<T>();
 
   if (cutlass) {
     thrust::host_vector<cutlass::gemm::GemmCoord> h_shape(kernel_size);
-    thrust::host_vector<T*> h_ptr_A(kernel_size);
     thrust::host_vector<const T*> h_ptr_B(kernel_size);
     thrust::host_vector<T*> h_ptr_D(kernel_size);
+    thrust::host_vector<const IntT*> h_ptr_gather_A_indices(kernel_size);
 
     int group_count = 0;
     int group_idx = 0;
@@ -266,19 +251,20 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       int N = out_channels;
       h_shape[group_idx] = cutlass::gemm::GemmCoord(M,N,K);
 
-      T* tmp_in_ptr = in_features_ptr + h_offsets_ptr[i] * in_channels;
       const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
       T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
-      h_ptr_A[group_idx] = tmp_in_ptr;
       h_ptr_B[group_idx] = tmp_kernel_ptr;
       h_ptr_D[group_idx] = tmp_out_ptr;
+      h_ptr_gather_A_indices[group_idx] = rulebook_ptr + h_offsets_ptr[i];
       group_idx++;
     }
 
     thrust::device_vector<cutlass::gemm::GemmCoord> shape = h_shape;
-    thrust::device_vector<T*> ptr_A = h_ptr_A;
     thrust::device_vector<const T*> ptr_B = h_ptr_B;
     thrust::device_vector<T*> ptr_D = h_ptr_D;
+    thrust::device_vector<const IntT*> ptr_gather_A_indices =
+        h_ptr_gather_A_indices;
+    thrust::device_vector<T*> ptr_A(kernel_size, const_cast<T*>(x.values().data<T>()));
     thrust::device_vector<int64_t> lda(kernel_size, (int64_t)in_channels);
     thrust::device_vector<int64_t> ldb(kernel_size, (int64_t)out_channels);
     thrust::device_vector<int64_t> ldd(kernel_size, (int64_t)out_channels);
@@ -296,6 +282,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
     using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<128, 128, 16>;
     using ShapeMMAWarp = cutlass::gemm::GemmShape<64, 64, 16>;
     using ShapeMMAOp = cutlass::gemm::GemmShape<16, 8, 8>;
+    constexpr bool GatherA = true;
     constexpr int NumStages = 3;
     group_gemm<ElementA,
                ElementB,
@@ -309,7 +296,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                ShapeMMAThreadBlock,
                ShapeMMAWarp,
                ShapeMMAOp,
-               NumStages>(thrust::raw_pointer_cast(ptr_A.data()),
+               NumStages,
+               GatherA>(thrust::raw_pointer_cast(ptr_A.data()),
                           const_cast<T**>(thrust::raw_pointer_cast(ptr_B.data())),
                           nullptr,
                           thrust::raw_pointer_cast(ptr_D.data()),
@@ -318,11 +306,27 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                           thrust::raw_pointer_cast(ldb.data()),
                           nullptr,
                           thrust::raw_pointer_cast(ldd.data()),
+                          thrust::raw_pointer_cast(ptr_gather_A_indices.data()),
                           group_count,
                           static_cast<T>(1),
                           static_cast<T>(0));
 
   } else {
+    // 2. gather
+    phi::DenseTensor in_features =
+        phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
+    T* in_features_ptr = in_features.data<T>();
+
+    Gather<T, IntT>(dev_ctx,
+                    x.values().data<T>(),
+                    rulebook_ptr,
+                    rulebook_len,
+                    in_channels,
+                    in_features_ptr);
+
+    // 3. call gemm for every werght
+    auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
+
     for (int i = 0; i < kernel_size; i++) {
       if (h_counter_ptr[i] <= 0) {
         continue;
@@ -348,6 +352,10 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                 tmp_out_ptr);
     }
   }
+
+  auto* out_values = out->mutable_values();
+  T* out_values_ptr = out_values->data<T>();
+  set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
 
   // 4. scatter
   phi::funcs::sparse::ScatterV2<T>(dev_ctx,

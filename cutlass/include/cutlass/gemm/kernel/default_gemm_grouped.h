@@ -101,6 +101,8 @@ template <
     typename ThreadblockSwizzle,
     /// Number of stages used in the pipelined mainloop
     int Stages,
+
+    bool GatherA = false,
     /// Operation performed by GEMM
     typename Operator = typename device::DefaultGemmConfiguration<
         OperatorClass, ArchTag, ElementA_, ElementB_, ElementC_,
@@ -152,6 +154,9 @@ template <
     typename ThreadblockSwizzle,
     /// Number of stages used in the pipelined mainloop
     int Stages,
+
+    bool GatherA,
+
     /// Operation performed by GEMM
     typename Operator,
     /// Use zfill or predicate for out-of-bound cp.async
@@ -177,6 +182,7 @@ struct DefaultGemmGrouped<
   EpilogueOutputOp,
   ThreadblockSwizzle,
   Stages,
+  GatherA,
   Operator,
   SharedMemoryClear,
   typename std::enable_if< ! cutlass::is_complex<ElementAccumulator>::value>::type
@@ -219,7 +225,8 @@ struct DefaultGemmGrouped<
     Stages,
     true,
     Operator,
-    SharedMemoryClear
+    SharedMemoryClear,
+    GatherA
   >::GemmKernel;
 
     /// Define the kernel in terms of the default kernel
@@ -276,6 +283,9 @@ template <
     typename ThreadblockSwizzle,
     /// Number of stages used in the pipelined mainloop
     int Stages,
+
+    bool GatherA,
+
     /// Operation performed by GEMM
     typename Operator,
     /// Use zfill or predicate for out-of-bound cp.async
@@ -301,6 +311,7 @@ struct DefaultGemmGrouped<
   EpilogueOutputOp,
   ThreadblockSwizzle,
   Stages,
+  GatherA,
   Operator,
   SharedMemoryClear,
   typename std::enable_if<cutlass::is_complex<ElementAccumulator>::value>::type

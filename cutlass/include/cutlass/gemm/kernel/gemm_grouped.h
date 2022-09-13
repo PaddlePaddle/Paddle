@@ -297,6 +297,8 @@ public:
     typename LayoutC::Stride::LongIndex *ldc;
     typename LayoutC::Stride::LongIndex *ldd;
 
+    int const ** ptr_gather_A_indices;
+
     //
     // Methods
     //
@@ -313,7 +315,8 @@ public:
       lda(nullptr),
       ldb(nullptr),
       ldc(nullptr),
-      ldd(nullptr)
+      ldd(nullptr),
+      ptr_gather_A_indices(nullptr)
     {
 
     }
@@ -332,7 +335,8 @@ public:
       typename LayoutA::Stride::LongIndex *lda,
       typename LayoutB::Stride::LongIndex *ldb,
       typename LayoutC::Stride::LongIndex *ldc,
-      typename LayoutC::Stride::LongIndex *ldd
+      typename LayoutC::Stride::LongIndex *ldd,
+      int const ** ptr_gather_A_indices = nullptr
     ): 
       problem_sizes(problem_sizes),
       problem_count(problem_count),
@@ -345,7 +349,8 @@ public:
       lda(lda),
       ldb(ldb),
       ldc(ldc),
-      ldd(ldd)
+      ldd(ldd),
+      ptr_gather_A_indices(ptr_gather_A_indices)
     {
 
     }
@@ -373,6 +378,8 @@ public:
     typename LayoutC::Stride::LongIndex *ldc;
     typename LayoutC::Stride::LongIndex *ldd;
 
+    int ** ptr_gather_A_indices;
+
 
     //
     // Methods
@@ -387,7 +394,8 @@ public:
       lda(nullptr),
       ldb(nullptr),
       ldc(nullptr),
-      ldd(nullptr)
+      ldd(nullptr),
+      ptr_gather_A_indices(nullptr)
     { }
 
     CUTLASS_HOST_DEVICE
@@ -402,7 +410,8 @@ public:
       lda(args.lda),
       ldb(args.ldb),
       ldc(args.ldc),
-      ldd(args.ldd)
+      ldd(args.ldd),
+      ptr_gather_A_indices(const_cast<int **>(args.ptr_gather_A_indices))
     { 
 
     }
@@ -423,6 +432,7 @@ public:
       ldb = args.ldb;
       ldc = args.ldc;
       ldd = args.ldd;
+      ptr_gather_A_indices = const_cast<int **>(args.ptr_gather_A_indices);
     }
   };
 
@@ -503,6 +513,8 @@ public:
       ElementB *ptr_B = reinterpret_cast<ElementB *>((kTransposed ? params.ptr_A[problem_idx] : params.ptr_B[problem_idx]));
       typename LayoutB::LongIndex ldm_B = (kTransposed ? params.lda[problem_idx] : params.ldb[problem_idx]);
 
+      int const *ptr_gather_A_indices = params.ptr_gather_A_indices[problem_idx];
+
       // Compute initial location in logical coordinates
       cutlass::MatrixCoord tb_offset_A{
         threadblock_offset.m(),
@@ -523,7 +535,8 @@ public:
         ptr_A,
         {problem_size.m(), problem_size.k()},
         thread_idx,
-        tb_offset_A);
+        tb_offset_A,
+        ptr_gather_A_indices);
 
       typename Mma::IteratorB iterator_B(
         LayoutB(ldm_B),

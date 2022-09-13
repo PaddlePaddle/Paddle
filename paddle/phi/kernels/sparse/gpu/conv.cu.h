@@ -1070,7 +1070,8 @@ template <typename ElementA = float,
           typename ShapeMMAThreadBlock,
           typename ShapeMMAWarp,
           typename ShapeMMAOp,
-          int NumStages>
+          int NumStages,
+          bool GatherA>
 void group_gemm(ElementA** A,
                 ElementB** B,
                 ElementOutput** C,
@@ -1080,6 +1081,7 @@ void group_gemm(ElementA** A,
                 int64_t* ldb,
                 int64_t* ldc,
                 int64_t* ldd,
+                const IntT** ptr_gather_A_indices,
                 int group_count,
                 ElementComputeEpilogue alpha,
                 ElementComputeEpilogue beta) {
@@ -1110,7 +1112,8 @@ void group_gemm(ElementA** A,
       ShapeMMAOp,
       EpilogueOutputOp,
       cutlass::gemm::threadblock::GemmBatchedIdentityThreadblockSwizzle,
-      NumStages>::GemmKernel;
+      NumStages,
+      GatherA>::GemmKernel;
 
   using GemmGrouped = cutlass::gemm::device::GemmGrouped<GemmKernel>;
 
@@ -1146,7 +1149,8 @@ void group_gemm(ElementA** A,
                                        lda,
                                        ldb,
                                        ldc,
-                                       ldd);
+                                       ldd,
+                                       ptr_gather_A_indices);
   // Initialize the GEMM object
   GemmGrouped gemm;
 
