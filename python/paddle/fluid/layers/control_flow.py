@@ -77,10 +77,13 @@ def _select_input_infer_shape(first_shape, second_shape):
     2. compare axis one by one:
         if a == b: we set axis to a
         if a != b: we set axis to -1
+    for compatibility，non declarative mode, we just return second_shape.
     """
-    assert len(first_shape) == len(
-        second_shape
-    ), f"the input shapes of select_input should have the same rank, but get {first_shape}, {second_shape}"
+    if len(first_shape) != len(second_shape):
+        warnings.warn(
+            f"the input shapes of select_input should have the same rank, but get {first_shape}, {second_shape}"
+        )
+        return second_shape
     out_shape = list(
         map(lambda a, b: a if a == b else -1, first_shape, second_shape))
     return out_shape
@@ -135,7 +138,11 @@ def select_input_with_buildin_type(inputs, mask, name):
         return None
 
     if isinstance(false_var, Variable) and isinstance(true_var, Variable):
-        return select_input(inputs, mask)
+        try:
+            return select_input(inputs, mask)
+        except Exception as e:
+            raise RuntimeError(
+                f"Exceptions throwed while doing select_input on {name}:\n{e}")
 
     elif (isinstance(false_var, (support_ret_buildin_type))
           and isinstance(false_var, type(true_var))):
@@ -166,31 +173,19 @@ def select_input_with_buildin_type(inputs, mask, name):
             if isinstance(a, UndefinedVar): return a
             return to_static_variable(a)
 
-        true_var, false_var = create_var_if_not_undefined_var(
-            true_var), create_var_if_not_undefined_var(false_var)
-        if isinstance(true_var, UndefinedVar):
-            warnings.warn(
-                "Return results from different branches in cond contains undefined var:"
-                f"true_var with name `{name}` returned by true_fn is undefined var. we omit select input here."
-            )
-            return false_var
-        if isinstance(false_var, UndefinedVar):
-            warnings.warn(
-                "Return results from different branches in cond contains undefined var:"
-                f"false_var with name `{name}` returned by false_fn is undefined var. we omit select input here."
-            )
-            return true_var
+        true_var, false_var = to_static_variable(true_var), to_static_variable(
+            false_var)
+        inputs = [false_var, true_var]
     else:
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "
             "returned by fasle_fn is '{}' and true_var of true_fn is '{}'".
             format(type(false_var), type(true_var)))
     try:
-        ret = select_input(inputs, mask)
+        return select_input(inputs, mask)
     except Exception as e:
         raise RuntimeError(
-            f"Exceptions throwed while do select_input on {name}:\n{e}")
-    return ret
+            f"Exceptions throwed while doing select_input on {name}:\n{e}")
 
 
 def split_lod_tensor(input, mask, level=0):
@@ -2683,10 +2678,16 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                 .format(return_name, e))
 
     mask = cast(pred, dtype='int32')
-    merge_func = lambda false_var, true_var, name: select_input_with_buildin_type(
+    merge_func = lambda name, false_var, true_var: select_input_with_buildin_type(
         [false_var, true_var], mask, name)
-    merged_output = map_structure(merge_func, false_output, true_output,
-                                  return_names)
+
+    def merge_every_var_list(false_vars, true_vars, name):
+        return map_structure(partial(merge_func, name), false_vars, true_vars)
+
+    merged_output = list(
+        map(merge_every_var_list, to_sequence(false_output),
+            to_sequence(true_output), to_sequence(return_names)))
+    merged_output = pack_sequence_as(false_output, flatten(merged_output))
     return merged_output
 
 
