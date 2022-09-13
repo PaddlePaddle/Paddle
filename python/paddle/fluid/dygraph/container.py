@@ -297,11 +297,6 @@ class LayerList(Layer):
                 linears.insert(-1, another)
                 print(linears[-2] is another) # True
         """
-        assert isinstance(index, int) and \
-               -len(self._sub_layers) <= index < len(self._sub_layers), \
-            "index should be an integer in range [{}, {})".format(-len(self), len(self))
-
-        index = self._get_abs_idx(index)
         for i in range(len(self._sub_layers), index, -1):
             self._sub_layers[str(i)] = self._sub_layers[str(i - 1)]
         self._sub_layers[str(index)] = sublayer
