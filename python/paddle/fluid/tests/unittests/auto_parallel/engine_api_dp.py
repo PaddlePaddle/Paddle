@@ -26,10 +26,10 @@ import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
 from paddle.fluid import layers
-from paddle.io import Dataset, IterableDataset, DataLoader
-from paddle.static import InputSpec
-from paddle.distributed import fleet
+from paddle.io import Dataset, DataLoader
+
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.strategy import Strategy
 from paddle.distributed.auto_parallel.engine import Engine
 
 paddle.enable_static()
@@ -108,12 +108,8 @@ def train(fetch):
                                                      epsilon=1e-08,
                                                      grad_clip=None)
 
-    dist_strategy = fleet.DistributedStrategy()
-    dist_strategy.amp = False
-    dist_strategy.pipeline = False
-    dist_strategy.recompute = False
-    # init parallel optimizer
-    dist_strategy.semi_auto = True
+    dist_strategy = Strategy()
+    dist_strategy.auto_mode = "semi"
 
     # init engine
     engine = Engine(mlp,
@@ -124,7 +120,7 @@ def train(fetch):
 
     # train
     train_dataset = MyDataset(batch_num * batch_size)
-    engine.fit(train_dataset, batch_size=batch_size, fetches=fetches)
+    engine.fit(train_dataset, batch_size=batch_size)
 
     # eval
     eval_dataset = MyDataset(batch_size)

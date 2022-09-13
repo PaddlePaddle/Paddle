@@ -17,15 +17,13 @@ import copy
 import pathlib
 
 import paddle
-from paddle.distributed import fleet
+from ..strategy import Strategy
 
 _tuning_supported_passes = ["sharding", "recompute"]
-_strategy_config_suffiex = "_configs"
 
 
 def _get_pass_config(strategy, pass_name):
-    config_name = pass_name + _strategy_config_suffiex
-    config = getattr(strategy, config_name)
+    config = getattr(strategy, pass_name)
     return config
 
 
@@ -38,10 +36,8 @@ class TuningConfig(object):
 
     def __init__(self, user_config, strategy):
 
-        if not isinstance(strategy, fleet.DistributedStrategy):
-            raise TypeError(
-                "'strategy' must be object of class `fleet.DistributedStrategy`."
-            )
+        if not isinstance(strategy, Strategy):
+            raise TypeError("'strategy' must be object of class `Strategy`.")
 
         if not user_config:
             user_config = {}
@@ -116,11 +112,11 @@ class TuningConfig(object):
 
         for p in _tuning_supported_passes:
             if getattr(self._dist_strategy, p) and _get_pass_config(
-                    self._dist_strategy, p)["enable_tuning"]:
+                    self._dist_strategy, p).enable_tuning:
                 # TODO distinguish different args of each passes
                 self._tuning_passes_name.add(p)
 
-                config_name = p + _strategy_config_suffiex
+                config_name = p
                 p_dict = getattr(self._dist_strategy, config_name)
                 self.__dict__[config_name] = p_dict
 

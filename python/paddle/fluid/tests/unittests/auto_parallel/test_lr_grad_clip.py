@@ -78,9 +78,9 @@ class TestLRScheduler(TestEngineBase):
 
     def test_lr_scheduler(self):
         self.init_engine()
-        lr = self.engine.optimizer._learning_rate
-        assert isinstance(lr, paddle.optimizer.lr.LRScheduler)
         self.engine.fit(self.dataset, batch_size=self.batch_size)
+        lr = self.engine._lr_optimizer._learning_rate
+        assert isinstance(lr, paddle.optimizer.lr.LRScheduler)
 
 
 class TestGradClipByGlobalNorm(TestEngineBase):

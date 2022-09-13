@@ -45,28 +45,31 @@ set_field_default_config(BASE, "gradient_scale", True)
 set_field_default_config(BASE, "use_cache", True)
 set_field_default_config(BASE, "return_numpy", True)
 set_field_default_config(BASE, "all_ranks", False)
+set_field_default_config(BASE, "split_data", False)
+set_field_default_config(BASE, "seed", None)
 
 #########################################
 # recompute configuration
 #########################################
 RECOMPUTE = "recompute"
-set_field_default_config(RECOMPUTE, "enabled", False)
+set_field_default_config(RECOMPUTE, "enable", False)
 set_field_default_config(RECOMPUTE, "checkpoints", None)
+set_field_default_config(RECOMPUTE, "enable_tuning", False)
 
 #########################################
 # AMP configuration
 #########################################
 AMP = "amp"
-set_field_default_config(AMP, "enabled", False)
+set_field_default_config(AMP, "enable", False)
 set_field_default_config(AMP, "init_loss_scaling", 32768.0)
 set_field_default_config(AMP, "incr_every_n_steps", 1000)
 set_field_default_config(AMP, "decr_every_n_nan_or_inf", 2)
 set_field_default_config(AMP, "incr_ratio", 2.0)
 set_field_default_config(AMP, "decr_ratio", 0.8)
 set_field_default_config(AMP, "use_dynamic_loss_scaling", True)
-set_field_default_config(AMP, "custom_white_list", None)
-set_field_default_config(AMP, "custom_black_list", None)
-set_field_default_config(AMP, "custom_black_varnames", None)
+set_field_default_config(AMP, "custom_white_list", [])
+set_field_default_config(AMP, "custom_black_list", [])
+set_field_default_config(AMP, "custom_black_varnames", [])
 set_field_default_config(AMP, "use_pure_fp16", False)
 set_field_default_config(AMP, "use_fp16_guard", True)
 set_field_default_config(AMP, "use_optimizer_fp16", False)
@@ -75,23 +78,40 @@ set_field_default_config(AMP, "use_optimizer_fp16", False)
 # sharding configuration
 #########################################
 SHARDING = "sharding"
-set_field_default_config(SHARDING, "enabled", False)
+set_field_default_config(SHARDING, "enable", False)
 set_field_default_config(SHARDING, "stage", 1)
 set_field_default_config(SHARDING, "sharding_degree", 8)
 set_field_default_config(SHARDING, "segment_broadcast_MB", 32.0)
 set_field_default_config(SHARDING, "enable_tuning", False)
-set_field_default_config(SHARDING, "sharding_range", [])
+set_field_default_config(SHARDING, "tuning_range", [])
 
 #########################################
 # gradient merge configuration
 #########################################
 GRADIENT_MERGE = "gradient_merge"
-set_field_default_config(GRADIENT_MERGE, "enabled", False)
+set_field_default_config(GRADIENT_MERGE, "enable", False)
 set_field_default_config(GRADIENT_MERGE, "k_steps", 1)
 set_field_default_config(GRADIENT_MERGE, "avg", True)
 
+#########################################
+# quantization configuration
+#########################################
+QAT = "qat"
+set_field_default_config(QAT, "enable", False)
+set_field_default_config(QAT, "channel_wise_abs_max", True)
+set_field_default_config(QAT, "weight_bits", 8)
+set_field_default_config(QAT, "activation_bits", 8)
+set_field_default_config(QAT, "not_quant_pattern", ['skip_quant'])
+set_field_default_config(QAT, "algo", None)
+
 # #########################################
-# # auto tuning configuration
+# auto tuning configuration
 # #########################################
-# TUNING = "tuning"
-# set_field_default_config(TUNING, "batch_size")
+TUNING = "tuning"
+set_field_default_config(TUNING, "enable", False)
+set_field_default_config(TUNING, "batch_size", 1)
+set_field_default_config(TUNING, "dataset", None)
+set_field_default_config(TUNING, "profile_start_step", 1)
+set_field_default_config(TUNING, "profile_end_step", 1)
+set_field_default_config(TUNING, "run_after_tuning", True)
+set_field_default_config(TUNING, "verbose", True)

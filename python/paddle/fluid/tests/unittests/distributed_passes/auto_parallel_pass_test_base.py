@@ -86,7 +86,7 @@ class AutoPallelPassTestBase(DistPassTestBase):
                                          paddle.static.Program()):
             with paddle.static.scope_guard(scope):
                 with paddle.fluid.unique_name.guard():
-                    main_prog, startup_prog, inputs, outputs, reader = self.get_model(
+                    main_prog, startup_prog, inputs, outputs, data_loader = self.get_model(
                         place, **kwargs)
                     inputs = self._to_var_names(inputs)
                     outputs = self._to_var_names(outputs)
@@ -95,20 +95,48 @@ class AutoPallelPassTestBase(DistPassTestBase):
         exe = paddle.static.Executor(place)
         with paddle.static.scope_guard(scope):
             exe.run(startup_prog)
-            for batch_id, input_data in enumerate(reader()):
-                assert len(input_data) == len(inputs), "{} vs {}".format(
-                    len(input_data), len(inputs))
-                feed = dict(zip(inputs, input_data))
-                fetch_values = exe.run(main_prog, feed=feed, fetch_list=outputs)
-                if paddle.distributed.get_rank() == 0:
-                    output_dict = OrderedDict(zip(outputs, fetch_values))
-                    print('batch {}, outputs {}'.format(batch_id, output_dict))
-                all_fetch_values.append(fetch_values)
+            data_loader.start()
+            batch_id = 0
+            while True:
+                try:
+                    fetch_values = exe.run(main_prog, fetch_list=outputs)
+                    if paddle.distributed.get_rank() == 0:
+                        output_dict = OrderedDict(zip(outputs, fetch_values))
+                        print('batch {}, outputs {}'.format(
+                            batch_id, output_dict))
+                    all_fetch_values.append(fetch_values)
+                    batch_id += 1
+                except paddle.fluid.core.EOFException:
+                    data_loader.reset()
+                    break
         with open(dump_file, "wb") as f:
             pickle.dump(all_fetch_values, f)
 
     def get_gpt_model(self, strategy, place, batch_size, sequence_len,
                       vocab_size, **kwargs):
+
+        def gen_data():
+            np.random.seed(2021)
+            for _ in range(10):
+                tokens = []
+                position_ids = []
+                attention_mask = []
+                labels = []
+                loss_mask = []
+                for _ in range(batch_size):
+                    tokens.append(
+                        np.random.randint(vocab_size,
+                                          size=sequence_len).astype("int64"))
+                    position_ids.append(np.arange(sequence_len).astype("int64"))
+                    attention_mask.append(
+                        [np.tril(np.ones(sequence_len)).astype("float32")])
+                    labels.append(
+                        np.random.randint(vocab_size,
+                                          size=sequence_len).astype("int64"))
+                    loss_mask.append(np.ones(sequence_len).astype("float32"))
+
+                yield tokens, position_ids, attention_mask, labels, loss_mask
+
         modeling.init_global()
         if strategy == "dp":
             modeling._global_parallel_strategy = "dp"
@@ -138,6 +166,10 @@ class AutoPallelPassTestBase(DistPassTestBase):
                                        shape=[batch_size, sequence_len],
                                        dtype='float32')
         data_holder = [tokens, position_ids, attention_mask, labels, loss_mask]
+
+        data_loader = paddle.fluid.io.DataLoader.from_generator(
+            feed_list=data_holder, capacity=70, iterable=False)
+        data_loader.set_batch_generator(gen_data, paddle.static.cuda_places())
 
         if modeling._global_parallel_strategy == "dp":
             auto.shard_tensor(tokens, modeling._global_process_mesh,
@@ -170,40 +202,21 @@ class AutoPallelPassTestBase(DistPassTestBase):
         preds = model(tokens, position_ids, attention_mask)
         criterion = GPTPretrainingCriterion()
         loss = criterion(preds, labels, loss_mask)
-        clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
 
+        clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
         if kwargs.get('optimizer', None) == "LarsMomentum":
             optimizer = paddle.fluid.optimizer.LarsMomentumOptimizer(
                 learning_rate=0.001, momentum=0.9)
         else:
-            optimizer = paddle.fluid.optimizer.AdamOptimizer(
-                learning_rate=0.00001,
-                beta1=0.9,
-                beta2=0.999,
-                epsilon=1e-08,
-                grad_clip=clip)
+            optimizer = paddle.optimizer.Adam(learning_rate=0.00001,
+                                              beta1=0.9,
+                                              beta2=0.999,
+                                              epsilon=1e-08,
+                                              grad_clip=clip)
         optimizer = fleet.distributed_optimizer(optimizer)
         startup_program = paddle.static.default_startup_program()
         _, _, dist_startup_prog, dist_main_prog = optimizer.minimize(
             loss, startup_program)
 
-        def gen_data():
-            np.random.seed(2021)
-            for _ in range(10):
-                tokens = []
-                position_ids = []
-                attention_mask = []
-                labels = []
-                loss_mask = []
-                for _ in range(batch_size):
-                    tokens.append(
-                        np.random.randint(vocab_size, size=sequence_len))
-                    position_ids.append(np.arange(sequence_len))
-                    attention_mask.append([np.tril(np.ones(sequence_len))])
-                    labels.append(
-                        np.random.randint(vocab_size, size=sequence_len))
-                    loss_mask.append(np.ones(sequence_len))
-
-                yield tokens, position_ids, attention_mask, labels, loss_mask
-
-        return dist_main_prog, dist_startup_prog, data_holder, [loss], gen_data
+        return dist_main_prog, dist_startup_prog, data_holder, [loss
+                                                                ], data_loader

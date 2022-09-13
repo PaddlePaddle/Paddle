@@ -65,6 +65,14 @@ class BaseConfig(object):
                          sort_keys=True,
                          indent=4)
 
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            setattr(result, k, copy.deepcopy(v, memo))
+        return result
+
 
 class RecomputeConfig(BaseConfig):
 
@@ -92,6 +100,20 @@ class GradientMergeConfig(BaseConfig):
     def __init__(self, config_dict=None):
         category = constants.GRADIENT_MERGE
         super(GradientMergeConfig, self).__init__(category, config_dict)
+
+
+class QATConfig(BaseConfig):
+
+    def __init__(self, config_dict=None):
+        category = constants.QAT
+        super(QATConfig, self).__init__(category, config_dict)
+
+
+class TuningConfig(BaseConfig):
+
+    def __init__(self, config_dict=None):
+        category = constants.TUNING
+        super(TuningConfig, self).__init__(category, config_dict)
 
 
 class Strategy(BaseConfig):
@@ -135,6 +157,7 @@ class Strategy(BaseConfig):
                     .format(config))
         else:
             self._config_dict = {}
+
         category = constants.BASE
         super(Strategy, self).__init__(category, self._config_dict)
 
@@ -150,5 +173,8 @@ class Strategy(BaseConfig):
         config_dict = self._config_dict.get(constants.GRADIENT_MERGE, None)
         self.gradient_merge = GradientMergeConfig(config_dict)
 
-        config_dict = self._config_dict.get(constants.GRADIENT_MERGE, None)
-        self.gradient_merge = GradientMergeConfig(config_dict)
+        config_dict = self._config_dict.get(constants.QAT, None)
+        self.qat = QATConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.TUNING, None)
+        self.tuning = TuningConfig(config_dict)

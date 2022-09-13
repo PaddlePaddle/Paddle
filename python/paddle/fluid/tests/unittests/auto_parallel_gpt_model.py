@@ -726,6 +726,10 @@ class GPTForPretraining(nn.Layer):
                 masked_positions=None,
                 use_cache=False,
                 cache=None):
+        input_ids.stop_gradient = True
+        position_ids.stop_gradient = True
+        attention_mask.stop_gradient = True
+
         outputs = self.gpt(input_ids,
                            position_ids=position_ids,
                            attention_mask=attention_mask,
@@ -739,40 +743,42 @@ class GPTForPretraining(nn.Layer):
         x = encoder_outputs
         w = self.gpt.embeddings.word_embeddings.weight
 
-        mesh = _global_process_mesh
-        x_dims_mapping = [-1 for i in range(len(x.shape))]
-        w_dims_mapping = [-1 for i in range(len(w.shape))]
+        mesh = None
         if _global_parallel_strategy == "pp":
             mesh = PP_MESH_LIST[-1]
+            x_dims_mapping = [None for i in range(len(x.shape))]
+            w_dims_mapping = [None for i in range(len(w.shape))]
         elif _global_parallel_strategy == "dp":
-            x_dims_mapping = [0] + [-1 for i in range(len(x.shape) - 1)]
+            mesh = _global_process_mesh
+            x_dims_mapping = ["x"] + [None for i in range(len(x.shape) - 1)]
+            w_dims_mapping = [None for i in range(len(w.shape))]
         elif _global_parallel_strategy == "mp":
-            w_dims_mapping = [0] + [-1 for i in range(len(w.shape) - 1)]
+            mesh = _global_process_mesh
+            x_dims_mapping = [None for i in range(len(x.shape))]
+            w_dims_mapping = ["x"] + [None for i in range(len(w.shape) - 1)]
         elif _global_parallel_strategy == "dp_mp":
-            x_dims_mapping = [0] + [-1 for i in range(len(x.shape) - 1)]
-            w_dims_mapping = [1] + [-1 for i in range(len(w.shape) - 1)]
+            mesh = _global_process_mesh
+            x_dims_mapping = ["x"] + [None for i in range(len(x.shape) - 1)]
+            w_dims_mapping = ["y"] + [None for i in range(len(w.shape) - 1)]
         elif _global_parallel_strategy == "dp_pp":
             mesh = DPPP_MESH_LIST[-1]
-            x_dims_mapping = [0] + [-1 for i in range(len(x.shape) - 1)]
+            x_dims_mapping = ["x"] + [None for i in range(len(x.shape) - 1)]
+            w_dims_mapping = [None for i in range(len(w.shape))]
         elif _global_parallel_strategy == "mp_pp":
             mesh = MPPP_MESH_LIST[-1]
-            w_dims_mapping = [0] + [-1 for i in range(len(w.shape) - 1)]
+            x_dims_mapping = [None for i in range(len(x.shape))]
+            w_dims_mapping = ["x"] + [-1 for i in range(len(w.shape) - 1)]
         elif _global_parallel_strategy == "dp_mp_pp":
             mesh = DPMPPP_MESH_LIST[-1]
-            x_dims_mapping = [0] + [-1 for i in range(len(x.shape) - 1)]
-            w_dims_mapping = [1] + [-1 for i in range(len(w.shape) - 1)]
+            x_dims_mapping = ["x"] + [None for i in range(len(x.shape) - 1)]
+            w_dims_mapping = ["y"] + [None for i in range(len(w.shape) - 1)]
 
-        matmul = auto.shard_op(paddle.matmul,
-                               dist_attr={
-                                   'process_mesh': mesh,
-                                   x: {
-                                       "dims_mapping": x_dims_mapping
-                                   },
-                                   w: {
-                                       "dims_mapping": w_dims_mapping
-                                   }
-                               })
-        logits = matmul(x, w, transpose_y=True)
+        if mesh:
+            matmul = auto.shard_op(paddle.matmul, mesh,
+                                   [x_dims_mapping, w_dims_mapping, None])
+            logits = matmul(x, w, transpose_y=True)
+        else:
+            logits = paddle.matmul(x, w, transpose_y=True)
 
         if use_cache:
             return logits, cached_kvs
@@ -791,25 +797,29 @@ class GPTPretrainingCriterion(nn.Layer):
         self.loss_func = paddle.nn.CrossEntropyLoss(reduction="none")
 
     def forward(self, prediction_scores, masked_lm_labels, loss_mask):
+        masked_lm_labels.stop_gradient = True
+        loss_mask.stop_gradient = True
 
-        mesh = _global_process_mesh
-        dims_mapping = [-1 for i in range(len(loss_mask.shape))]
+        mesh = None
         if _global_parallel_strategy == "dp":
-            dims_mapping = [0] + [-1 for i in range(len(loss_mask.shape) - 1)]
+            mesh = _global_process_mesh
+            dims_mapping = ["x"
+                            ] + [None for i in range(len(loss_mask.shape) - 1)]
         elif _global_parallel_strategy == "dp_mp":
-            dims_mapping = [0] + [-1 for i in range(len(loss_mask.shape) - 1)]
+            mesh = _global_process_mesh
+            dims_mapping = ["x"
+                            ] + [None for i in range(len(loss_mask.shape) - 1)]
         elif _global_parallel_strategy == "dp_pp":
             mesh = DPPP_MESH_LIST[-1]
-            dims_mapping = [0] + [-1 for i in range(len(loss_mask.shape) - 1)]
+            dims_mapping = ["x"
+                            ] + [None for i in range(len(loss_mask.shape) - 1)]
         elif _global_parallel_strategy == "dp_mp_pp":
             mesh = DPMPPP_MESH_LIST[-1]
-            dims_mapping = [0] + [-1 for i in range(len(loss_mask.shape) - 1)]
+            dims_mapping = ["x"
+                            ] + [None for i in range(len(loss_mask.shape) - 1)]
 
-        auto.shard_tensor(loss_mask,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": dims_mapping
-                          })
+        if mesh:
+            auto.shard_tensor(loss_mask, mesh, dims_mapping)
 
         masked_lm_loss = self.loss_func(prediction_scores,
                                         masked_lm_labels.unsqueeze(2))

@@ -18,10 +18,9 @@ import unittest
 import numpy as np
 import paddle.distributed.auto_parallel as auto
 
-from paddle.static import InputSpec
-from paddle.distributed import fleet
 from paddle.incubate.autograd import Hessian
 from paddle.distributed.auto_parallel.engine import Engine
+from paddle.distributed.auto_parallel.strategy import Strategy
 
 np.random.seed(1234)
 paddle.seed(1234)
@@ -129,8 +128,8 @@ def main():
     # model
     laplace = LaplaceModel()
 
-    dist_strategy = fleet.DistributedStrategy()
-    dist_strategy.semi_auto = True
+    dist_strategy = Strategy()
+    dist_strategy.auto_mode = "semi"
 
     engine = Engine(laplace,
                     loss=loss_func,
