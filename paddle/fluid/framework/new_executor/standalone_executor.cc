@@ -34,12 +34,11 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     if (!graph_engine_) {
       graph_engine_ = CreateGraphEngine(scope, prog_, place_);
     }
-
     VLOG(4) << "StandaloneExecutor: " << this
             << ", GraphEngine: " << graph_engine_.get() << " Run.";
 
     graph_engine_->SetGraph(scope, prog_, feed_names, fetch_names, false);
-    return graph_engine_->Run(feed_names);
+    return graph_engine_->Run(feed_names, fetch_names);
   } else {
     auto core =
         GetInterpreterCore(scope, prog_, feed_names, fetch_names, false);
@@ -53,8 +52,8 @@ framework::interpreter::CostInfo StandaloneExecutor::DryRun(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors) {
   if (FLAGS_use_graph_engine) {
-    auto engine = GetGraphEngine(scope, prog_, feed_names, {}, false);
-    return engine->DryRun(feed_names, feed_tensors);
+    PADDLE_THROW(platform::errors::Unavailable(
+        "DryRun is not supportted on GraphEngine."));
   } else {
     auto core = GetInterpreterCore(scope, prog_, feed_names, {}, true);
     return core->DryRun(feed_names, feed_tensors);
