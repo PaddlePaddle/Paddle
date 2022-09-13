@@ -131,15 +131,20 @@ void ConcatKernel(const Context& dev_ctx,
   auto multi_input = ReduceMultiInput(x);
   EnforceLayouts(multi_input);
 
-  std::vector<phi::DDim> x_dims;
-  x_dims.reserve(x.size());
-  for (size_t i = 0; i < x.size(); ++i) {
-    x_dims.push_back(x[i]->dims());
-  }
+  auto out_dims_vec = vectorize(out->dims());
+  if (std::any_of(out_dims_vec.begin(), out_dims_vec.end(), [](int64_t i) {
+        return i < 0;
+      })) {
+    std::vector<phi::DDim> x_dims;
+    x_dims.reserve(x.size());
+    for (size_t i = 0; i < x.size(); ++i) {
+      x_dims.push_back(x[i]->dims());
+    }
 
-  DDim out_dims = funcs::ComputeAndCheckShape(true, x_dims, axis.to<size_t>());
-  out->Resize(out_dims);
-  out->mutable_data<T>(dev_ctx.GetPlace());
+    DDim out_dims =
+        funcs::ComputeAndCheckShape(true, x_dims, axis.to<size_t>());
+    out->Resize(out_dims);
+  }
 
   funcs::ConcatOneDNNHandler<T> handler(
       dev_ctx.GetPlace(), axis.to<int>(), onednn_engine, multi_input, out);
