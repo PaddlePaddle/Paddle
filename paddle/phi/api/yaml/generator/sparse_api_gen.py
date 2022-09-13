@@ -66,8 +66,7 @@ class SparseAPI(ForwardAPI):
 
                 for out_name in self.outputs['names']:
                     if out_name in self.inplace_map:
-                        output_create = output_create + self.inplace_map[
-                            out_name] + ', '
+                        output_create += self.inplace_map[out_name] + ', '
                     else:
                         output_create += 'Tensor(), '
                 output_create = output_create[:-2] + '};'
@@ -267,6 +266,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     for api in apis:
         sparse_api = SparseAPI(api)
         if sparse_api.is_dygraph_api:
+            # What's the point ?
             sparse_api.is_dygraph_api = False
         header_file.write(sparse_api.gene_api_declaration())
         source_file.write(sparse_api.gene_api_code())
