@@ -442,7 +442,7 @@ def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
 
     inputs = {'X': grads, 'Scale': loss_scaling}
     outputs = {'Out': grads, 'FoundInfinite': found_inf}
-    attrs = {'op_role': OpRole.Backward}
+    attrs = {'op_role': OpRole.Optimize}
     new_op = main_block.append_op(type='check_finite_and_unscale',
                                   inputs=inputs,
                                   outputs=outputs,
@@ -575,18 +575,18 @@ class FP16Pass(AMPPass):
                                  ) or self.get_attr("init_loss_scaling") != 1.0:
                     found_infs = []
                     if fp32_grads:
-                        with main_program._backward_role_guard():
+                        with main_program._optimized_guard([]):
                             _, found_inf_fp32 = _check_and_update_gradient(
                                 fp32_grads, self._loss_scaling, "@fp32",
                                 self.dist_context)
                         found_infs.append(found_inf_fp32)
                     if fp16_grads:
-                        with main_program._backward_role_guard():
+                        with main_program._optimized_guard([]):
                             _, found_inf_fp16 = _check_and_update_gradient(
                                 fp16_grads, self._loss_scaling, "@fp16",
                                 self.dist_context)
                         found_infs.append(found_inf_fp16)
-                    with main_program._backward_role_guard():
+                    with main_program._optimized_guard([]):
                         block = main_program.global_block()
 
                         all_infs = paddle.fluid.layers.concat(found_infs)
@@ -608,7 +608,7 @@ class FP16Pass(AMPPass):
                                                      block, self.dist_context)
 
                 if self.get_attr("use_dynamic_loss_scaling"):
-                    with main_program._backward_role_guard():
+                    with main_program._optimized_guard([]):
                         if fp32_grads:
                             self._update_loss_scaling(fp32_grads, found_inf)
                         if fp16_grads:
