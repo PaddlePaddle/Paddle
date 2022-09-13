@@ -146,7 +146,7 @@ def gelu(x, approximate=False, name=None):
     gelu activation.
 
     if approximate is True
-
+    The activation function of Gelu is calculated element by element. More information refers to :ref: `Gaussian Error Linear Units`.
     .. math::
 
         gelu(x) = 0.5 * x * (1 + tanh(\sqrt{\frac{2}{\pi}} * (x + 0.044715x^{3})))

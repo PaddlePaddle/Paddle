@@ -176,6 +176,7 @@ def interpolate(x,
     """
 
     This API resizes a batch of images.
+    
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
@@ -185,10 +186,15 @@ def interpolate(x,
 
     Supporting resample methods:
         'linear' : Linear interpolation
+
         'bilinear' : Bilinear interpolation
+
         'trilinear' : Trilinear interpolation
+
         'nearest' : Nearest neighbor interpolation
+
         'bicubic' : Bicubic interpolation
+
         'area': Area interpolation
 
     Linear interpolation is the method of using a line connecting two known quantities 
@@ -226,13 +232,13 @@ def interpolate(x,
 
     .. code-block:: text
 
-        For scale_factor:
+        # For scale_factor:
             if align_corners = True && out_size > 1 :
               scale_factor = (in_size-1.0)/(out_size-1.0)
             else:
               scale_factor = float(in_size/out_size)
 
-        Linear interpolation:
+        # Linear interpolation:
             if:
                 align_corners = False , align_mode = 0
                 input : (N,C,W_in)
@@ -243,7 +249,7 @@ def interpolate(x,
                 output: (N,C,W_out) where:
                 W_out = W_{in} * scale_{factor}
         
-        Nearest neighbor interpolation:
+        # Nearest neighbor interpolation:
 
               align_corners = False
               input : (N,C,H_in,W_in)
@@ -251,7 +257,7 @@ def interpolate(x,
               H_out = floor (H_{in} * scale_{factor})
               W_out = floor (W_{in} * scale_{factor})
 
-        Bilinear interpolation:
+        # Bilinear interpolation:
           if:
               align_corners = False , align_mode = 0
               input : (N,C,H_in,W_in)
@@ -264,7 +270,7 @@ def interpolate(x,
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
 
-        Bicubic interpolation:
+        # Bicubic interpolation:
           if:
               align_corners = False
               input : (N,C,H_in,W_in)
@@ -277,7 +283,7 @@ def interpolate(x,
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
 
-        Trilinear interpolation:
+        # Trilinear interpolation:
           if:
               align_corners = False , align_mode = 0
               input : (N,C,D_in,H_in,W_in)
@@ -1776,11 +1782,12 @@ def linear(x, weight, bias=None, name=None):
 def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     r"""
     Label smoothing is a mechanism to regularize the classifier layer and is called
-    label-smoothing regularization (LSR).
-
-    Label smoothing is proposed to encourage the model to be less confident,
-    since optimizing the log-likelihood of the correct label directly may
-    cause overfitting and reduce the ability of the model to adapt. Label
+    label-smoothing regularization (LSR).Label smoothing is proposed to encourage 
+    the model to be less confident, since optimizing the log-likelihood of the 
+    correct label directly may cause overfitting and reduce the ability of the 
+    model to adapt. 
+    
+    Label
     smoothing replaces the ground-truth label :math:`y` with the weighted sum
     of itself and some fixed distribution :math:`\mu`. For class :math:`k`,
     i.e.
