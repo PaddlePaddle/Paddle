@@ -34,7 +34,7 @@ class InterpolateOneDNNHandler
                                                              cpu_place) {
     const auto dst_tz = vectorize(out->dims());
     const auto dst_md = dnnl::memory::desc(
-        dst_tz, oneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
+        dst_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_inference, algo, x->mem_desc(), dst_md);
   }

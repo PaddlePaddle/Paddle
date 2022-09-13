@@ -30,7 +30,7 @@ class FillConstantOneDNNHandler
                             Place cpu_place)
       : OneDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
     const auto src0_md = dnnl::memory::desc({out->numel(), sizeof(T)},
-                                            oneDNNGetDataType<uint8_t>(),
+                                            OneDNNGetDataType<uint8_t>(),
                                             dnnl::memory::format_tag::ab);
 
     dnnl::primitive_attr attrs;
@@ -45,7 +45,7 @@ class FillConstantOneDNNHandler
 
 template <typename T>
 const dnnl::memory::desc FillConstantOneDNNHandler<T>::src1_md(
-    {1, sizeof(T)}, oneDNNGetDataType<uint8_t>(), dnnl::memory::format_tag::ab);
+    {1, sizeof(T)}, OneDNNGetDataType<uint8_t>(), dnnl::memory::format_tag::ab);
 }  // namespace funcs
 
 template <typename T, typename Context>
@@ -77,7 +77,7 @@ void FillKernel(const Context& dev_ctx,
   // src0_memory_p's md was just to allow the usage of a binary
   // primitive as a memset, and now we need to create a real one
   out->set_mem_desc({vectorize(out->dims()),
-                     funcs::oneDNNGetDataType<T>(),
+                     funcs::OneDNNGetDataType<T>(),
                      funcs::GetPlainOneDNNFormat(out->dims().size())});
 }
 
