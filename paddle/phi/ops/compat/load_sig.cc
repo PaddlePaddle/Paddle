@@ -12,20 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/size_kernel.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/size_kernel_impl.h"
+namespace phi {
 
-PD_REGISTER_KERNEL(size,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SizeKernel,
-                   int16_t,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   float,
-                   double,
-                   bool) {}
+KernelSignature LoadOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorOutput("Out")) {
+    return KernelSignature(
+        "load", {}, {"file_path", "seek", "shape", "load_as_fp16"}, {"Out"});
+  } else if (ctx.IsSelectedRowsOutput("Out")) {
+    return KernelSignature(
+        "load_sr", {}, {"file_path", "seek", "shape", "load_as_fp16"}, {"Out"});
+  } else {
+    return KernelSignature("unregistered", {}, {}, {});
+  }
+}
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(load, phi::LoadOpArgumentMapping);

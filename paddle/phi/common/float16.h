@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <immintrin.h>
 #include <stdint.h>
 
 #include <cmath>
