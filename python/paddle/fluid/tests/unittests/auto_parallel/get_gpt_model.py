@@ -67,15 +67,14 @@ def create_data_holder(batch_size):
 
 def generate_model(strategy):
     modeling.init_global()
+    modeling._global_process_mesh = list(
+        range(paddle.distributed.get_world_size()))
     if strategy == "serial":
         modeling._global_parallel_strategy = "serial"
-        modeling._global_process_mesh = [0]
     elif strategy == "mp":
         modeling._global_parallel_strategy = "mp"
-        modeling._global_process_mesh = [0, 1]
     elif strategy == "dp":
         modeling._global_parallel_strategy = "dp"
-        modeling._global_process_mesh = [0, 1]
     else:
         raise ValueError("Only support serial, mp2 and dp2.")
 

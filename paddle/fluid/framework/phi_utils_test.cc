@@ -75,7 +75,7 @@ TEST(PhiUtils, TransOpKernelTypeToPhiKernelKey) {
   auto kernel_key_mkldnn =
       paddle::framework::TransOpKernelTypeToPhiKernelKey(op_kernel_type_mkldnn);
   ASSERT_EQ(kernel_key_mkldnn.dtype(), phi::DataType::FLOAT32);
-  ASSERT_EQ(kernel_key_mkldnn.layout(), phi::DataLayout::MKLDNN);
+  ASSERT_EQ(kernel_key_mkldnn.layout(), phi::DataLayout::ONEDNN);
   ASSERT_EQ(kernel_key_mkldnn.backend(), phi::Backend::ONEDNN);
 #endif
 

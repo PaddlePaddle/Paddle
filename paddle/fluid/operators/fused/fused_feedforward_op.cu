@@ -57,7 +57,7 @@ static void AllReduce(framework::Tensor& tensor,  // NOLINT
     int64_t numel = tensor.numel();
     const void* sendbuff = tensor.data<T>();
     auto place = ctx.GetPlace();
-    void* recvbuff = tensor.mutable_data<T>(place);
+    void* recvbuff = ctx.Alloc<T>(&tensor, tensor.numel() * sizeof(T));
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
     auto stream = ctx.stream();
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
@@ -125,7 +125,6 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
         ctx, bsz_seq, d_model, dropout_param2, epsilon2);
 
-    auto place = ctx.GetPlace();
     using U = LayerNormParamType<T>;
     const framework::Tensor* in = &x;
 
@@ -158,7 +157,8 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
                                             dropout1_out->data<T>(),
                                             dropout1_mask->data<uint8_t>());
     framework::Tensor linear2_out;
-    linear2_out.mutable_data<T>({bsz_seq, d_model}, place);
+    linear2_out.Resize({bsz_seq, d_model});
+    ctx.Alloc<T>(&linear2_out, linear2_out.numel() * sizeof(T));
     MatMul(ctx, *dropout1_out, linear2_weight, &linear2_out);
 
     // tensor model parallel
@@ -203,6 +203,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     auto* linear2_weight = context.Input<framework::Tensor>("Linear2Weight");
     auto* linear2_bias = context.Input<framework::Tensor>("Linear2Bias");
     const bool pre_layer_norm = context.Attr<bool>("pre_layer_norm");
+    auto& dev_ctx = context.template device_context<phi::GPUContext>();
 
     auto* ln1_scale =
         pre_layer_norm ? context.Input<framework::Tensor>("Ln1Scale") : nullptr;
@@ -245,22 +246,23 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     DropoutParam dropout_param2(context, 2);
 
     using U = LayerNormParamType<T>;
-    auto place = context.GetPlace();
-    out->mutable_data<T>(place);
-    dropout1_mask->mutable_data<uint8_t>(place);
-    dropout2_mask->mutable_data<uint8_t>(place);
+    dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
+    dev_ctx.Alloc<uint8_t>(dropout1_mask,
+                           dropout1_mask->numel() * sizeof(uint8_t));
+    dev_ctx.Alloc<uint8_t>(dropout2_mask,
+                           dropout2_mask->numel() * sizeof(uint8_t));
     if (pre_layer_norm) {
-      ln1_mean->mutable_data<U>(place);
-      ln1_variance->mutable_data<U>(place);
-      ln1_out->mutable_data<T>(place);
+      dev_ctx.Alloc<U>(ln1_mean, ln1_mean->numel() * sizeof(U));
+      dev_ctx.Alloc<U>(ln1_variance, ln1_variance->numel() * sizeof(U));
+      dev_ctx.Alloc<T>(ln1_out, ln1_out->numel() * sizeof(T));
     } else {
-      ln2_mean->mutable_data<U>(place);
-      ln2_variance->mutable_data<U>(place);
+      dev_ctx.Alloc<U>(ln2_mean, ln2_mean->numel() * sizeof(U));
+      dev_ctx.Alloc<U>(ln2_variance, ln2_variance->numel() * sizeof(U));
     }
 
-    linear1_out->mutable_data<T>(place);
-    dropout1_out->mutable_data<T>(place);
-    dropout2_out->mutable_data<T>(place);
+    dev_ctx.Alloc<T>(linear1_out, linear1_out->numel() * sizeof(T));
+    dev_ctx.Alloc<T>(dropout1_out, dropout1_out->numel() * sizeof(T));
+    dev_ctx.Alloc<T>(dropout2_out, dropout2_out->numel() * sizeof(T));
 
     auto x_dim = x->dims();
     auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
@@ -374,7 +376,6 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
         ctx, bsz_seq, d_model, dropout_param2, epsilon2);
 
-    auto place = ctx.GetPlace();
     using U = LayerNormParamType<T>;
     const U* ln1_gamma_ptr =
         ln1_gamma == nullptr ? nullptr : ln1_gamma->data<U>();
@@ -396,12 +397,16 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     U* d_ln2_beta_ptr = d_ln2_beta == nullptr ? nullptr : d_ln2_beta->data<U>();
 
     framework::Tensor d_linear2_out, d_dropout2_out, d_residual;
-    d_linear2_out.mutable_data<T>({bsz_seq, d_model}, place);
-    d_dropout2_out.mutable_data<T>({bsz_seq, d_model}, place);
+    d_linear2_out.Resize({bsz_seq, d_model});
+    ctx.Alloc<T>(&d_linear2_out, d_linear2_out.numel() * sizeof(T));
+    d_dropout2_out.Resize({bsz_seq, d_model});
+    ctx.Alloc<T>(&d_dropout2_out, d_dropout2_out.numel() * sizeof(T));
 
     T* d_residual_ptr = nullptr;
     if (add_residual) {
-      d_residual_ptr = d_residual.mutable_data<T>(d_x->dims(), place);
+      d_residual.Resize(d_x->dims());
+      d_residual_ptr =
+          ctx.Alloc<T>(&d_residual, d_residual.numel() * sizeof(T));
     }
     if (pre_layer_norm) {
       fused_dropout_layernorm_helper.ResidualDropoutBiasGrad(
@@ -429,7 +434,8 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     }
 
     framework::Tensor d_dropout1_out;
-    d_dropout1_out.mutable_data<T>({bsz_seq, dim_feedforward}, place);
+    d_dropout1_out.Resize({bsz_seq, dim_feedforward});
+    ctx.Alloc<T>(&d_dropout1_out, d_dropout1_out.numel() * sizeof(T));
     MatMulGrad(ctx,
                d_linear2_out,
                dropout1_out,
@@ -438,7 +444,8 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
                d_linear2_weight);
 
     framework::Tensor d_linear1_out;
-    d_linear1_out.mutable_data<T>({bsz_seq, dim_feedforward}, place);
+    d_linear1_out.Resize({bsz_seq, dim_feedforward});
+    ctx.Alloc<T>(&d_linear1_out, d_linear1_out.numel() * sizeof(T));
     fused_act_dropout_helper.DropoutActBiasGrad(ctx,
                                                 d_dropout1_out.data<T>(),
                                                 linear1_out.data<T>(),
@@ -450,7 +457,8 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
 
     if (pre_layer_norm) {
       framework::Tensor d_ln1_out;
-      d_ln1_out.mutable_data<T>({bsz_seq, d_model}, place);
+      d_ln1_out.Resize({bsz_seq, d_model});
+      ctx.Alloc<T>(&d_ln1_out, d_ln1_out.numel() * sizeof(T));
       MatMulGrad(ctx,
                  d_linear1_out,
                  *ln1_out,
@@ -485,6 +493,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
 
   void Compute(const framework::ExecutionContext& context) const override {
     using U = LayerNormParamType<T>;
+    auto& dev_ctx = context.template device_context<phi::GPUContext>();
     auto d_out =
         *context.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto x = *context.Input<framework::Tensor>("X");
@@ -550,28 +559,27 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     DropoutParam dropout_param1(context, 1);
     DropoutParam dropout_param2(context, 2);
 
-    auto place = context.GetPlace();
-    d_x->mutable_data<T>(place);
+    dev_ctx.Alloc<T>(d_x, d_x->numel() * sizeof(T));
     if (d_ln1_scale) {
-      d_ln1_scale->mutable_data<U>(place);
+      dev_ctx.Alloc<U>(d_ln1_scale, d_ln1_scale->numel() * sizeof(U));
     }
     if (d_ln1_bias) {
-      d_ln1_bias->mutable_data<U>(place);
+      dev_ctx.Alloc<U>(d_ln1_bias, d_ln1_bias->numel() * sizeof(U));
     }
     if (d_ln2_scale) {
-      d_ln2_scale->mutable_data<U>(place);
+      dev_ctx.Alloc<U>(d_ln2_scale, d_ln2_scale->numel() * sizeof(U));
     }
     if (d_ln2_bias) {
-      d_ln2_bias->mutable_data<U>(place);
+      dev_ctx.Alloc<U>(d_ln2_bias, d_ln2_bias->numel() * sizeof(U));
     }
     if (d_linear1_bias) {
-      d_linear1_bias->mutable_data<T>(place);
+      dev_ctx.Alloc<T>(d_linear1_bias, d_linear1_bias->numel() * sizeof(T));
     }
     if (d_linear2_bias) {
-      d_linear2_bias->mutable_data<T>(place);
+      dev_ctx.Alloc<T>(d_linear2_bias, d_linear2_bias->numel() * sizeof(T));
     }
-    d_linear1_weight->mutable_data<T>(place);
-    d_linear2_weight->mutable_data<T>(place);
+    dev_ctx.Alloc<T>(d_linear1_weight, d_linear1_weight->numel() * sizeof(T));
+    dev_ctx.Alloc<T>(d_linear2_weight, d_linear2_weight->numel() * sizeof(T));
 
     auto x_dim = x.dims();
     auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(

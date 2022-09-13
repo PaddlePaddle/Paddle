@@ -56,17 +56,16 @@ void StridedSliceRawGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void StridedSliceArrayGradKernel(
-    const Context& dev_ctx,
-    const std::vector<const DenseTensor*>& x,
-    const std::vector<const DenseTensor*>& out_grad,
-    const std::vector<int>& axes,
-    const IntArray& starts,
-    const IntArray& ends,
-    const IntArray& strides,
-    const std::vector<int>& infer_flags,
-    const std::vector<int>& decrease_axis,
-    std::vector<DenseTensor*> x_grad) {
+void StridedSliceArrayGradKernel(const Context& dev_ctx,
+                                 const TensorArray& x,
+                                 const TensorArray& out_grad,
+                                 const std::vector<int>& axes,
+                                 const IntArray& starts,
+                                 const IntArray& ends,
+                                 const IntArray& strides,
+                                 const std::vector<int>& infer_flags,
+                                 const std::vector<int>& decrease_axis,
+                                 TensorArray* x_grad) {
   funcs::StridedSliceGradCompute<Context, T, 1>(dev_ctx,
                                                 x,
                                                 out_grad,
