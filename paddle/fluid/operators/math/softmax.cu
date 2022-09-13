@@ -156,14 +156,10 @@ template class SoftmaxCUDNNFunctor<double, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<double, phi::GPUContext>;
 #endif
 
-template class SoftmaxFunctor<phi::GPUContext, platform::float16, false>;
-template class SoftmaxFunctor<phi::GPUContext, platform::float16, true>;
-template class SoftmaxFunctor<phi::GPUContext, platform::bfloat16, false>;
-template class SoftmaxFunctor<phi::GPUContext, platform::bfloat16, true>;
-template class SoftmaxFunctor<phi::GPUContext, float, false>;
-template class SoftmaxFunctor<phi::GPUContext, double, false>;
-template class SoftmaxFunctor<phi::GPUContext, float, true>;
-template class SoftmaxFunctor<phi::GPUContext, double, true>;
+template class SoftmaxFunctor<phi::GPUContext, platform::float16>;
+template class SoftmaxFunctor<phi::GPUContext, platform::bfloat16>;
+template class SoftmaxFunctor<phi::GPUContext, float>;
+template class SoftmaxFunctor<phi::GPUContext, double>;
 template class SoftmaxGradFunctor<phi::GPUContext, float>;
 template class SoftmaxGradFunctor<phi::GPUContext, double>;
 template class SoftmaxGradFunctor<phi::GPUContext, platform::float16>;

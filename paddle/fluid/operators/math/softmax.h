@@ -19,10 +19,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-template <typename DeviceContext,
-          typename T,
-          bool is_test,
-          typename Enable = void>
+template <typename DeviceContext, typename T, typename Enable = void>
 class SoftmaxFunctor {
  public:
   void operator()(const DeviceContext& context,
