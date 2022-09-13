@@ -171,7 +171,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
   out->set_mem_desc(out_mem_desc);
   out->Resize(in.dims());
 
-  if ((in.mem_desc() != out->mem_desc()) || always_copy) {
+  if (in.initialized() && ((in.mem_desc() != out->mem_desc()) || always_copy)) {
     void* in_data = GetDataFromTensor(in, in_type);
 
     platform::ReorderMKLDNNHandler handler(

@@ -156,8 +156,7 @@ class SliceOp : public framework::OperatorWithKernel {
       auto input_data_type =
           framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
-      if (ctx.Input<Tensor>("Input")->initialized() &&
-          this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
         // OneDNN uses blocking format, which cannot be always supported with
         // reorders, because if blocked dimension is not divisible by 8 or
         // 16(depending on which blocking format is used) submemory cannot be
