@@ -74,7 +74,7 @@ class SparseAPI(ForwardAPI):
             for i in range(len(out_dtype_list)):
                 kernel_output.append(f'kernel_out_{i}')
                 output_names.append(f'kernel_out_{i}')
-                output_create = output_create + f"""
+                output_create += f"""
     auto* kernel_out_{i} = SetSparseKernelOutput(&std::get<{i}>(api_output), {output_type_map[out_dtype_list[i]]});"""
 
         else:
