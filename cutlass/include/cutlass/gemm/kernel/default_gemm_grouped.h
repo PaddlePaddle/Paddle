@@ -101,7 +101,7 @@ template <
     typename ThreadblockSwizzle,
     /// Number of stages used in the pipelined mainloop
     int Stages,
-
+    /// Gather operand A by using index arraies
     bool GatherA = false,
     /// Operation performed by GEMM
     typename Operator = typename device::DefaultGemmConfiguration<
@@ -154,9 +154,8 @@ template <
     typename ThreadblockSwizzle,
     /// Number of stages used in the pipelined mainloop
     int Stages,
-
+    /// Gather operand A by using index arraies
     bool GatherA,
-
     /// Operation performed by GEMM
     typename Operator,
     /// Use zfill or predicate for out-of-bound cp.async
@@ -283,9 +282,8 @@ template <
     typename ThreadblockSwizzle,
     /// Number of stages used in the pipelined mainloop
     int Stages,
-
+    /// Gather operand A by using index arraies
     bool GatherA,
-
     /// Operation performed by GEMM
     typename Operator,
     /// Use zfill or predicate for out-of-bound cp.async

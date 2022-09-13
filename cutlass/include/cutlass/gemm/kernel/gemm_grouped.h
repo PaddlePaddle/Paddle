@@ -380,7 +380,6 @@ public:
 
     int ** ptr_gather_A_indices;
 
-
     //
     // Methods
     //
