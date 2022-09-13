@@ -1076,9 +1076,13 @@ class Executor:
                 var = global_block.var(feed_target_name)
                 if var.dtype != core.VarDesc.VarType.STRINGS:
                     if not isinstance(cur_feed, core.LoDTensor):
-                        cur_feed = _as_lodtensor(
-                            cur_feed, self.place, var.dtype
-                        )
+                        if os.getenv('FLAGS_use_graph_engine') == '1':
+                            # Note(wangran16): ensure the graph engine feed data is on the cpu
+                            cur_feed = _as_lodtensor(cur_feed, core.CPUPlace(),
+                                                     var.dtype)
+                        else:
+                            cur_feed = _as_lodtensor(cur_feed, self.place,
+                                                     var.dtype)
                     check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)

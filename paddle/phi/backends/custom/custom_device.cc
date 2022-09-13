@@ -865,6 +865,66 @@ class CustomDevice : public DeviceInterface {
         reinterpret_cast<C_Profiler>(collector), start_ns, user_data));
   }
 
+  // Graph
+
+  void GraphEngineInitialize(size_t dev_id,
+                             const stream::Stream& stream) override {
+    CHECK_PTR(pimpl_->graph_engine_initialize);
+    const auto device = &devices_pool[dev_id];
+    pimpl_->graph_engine_initialize(
+        device,
+        reinterpret_cast<C_Stream>(const_cast<void*>(stream.raw_stream())));
+  }
+
+  void GraphEngineFinalize(size_t dev_id,
+                           const stream::Stream& stream) override {
+    CHECK_PTR(pimpl_->graph_engine_finalize);
+    const auto device = &devices_pool[dev_id];
+    pimpl_->graph_engine_finalize(
+        device,
+        reinterpret_cast<C_Stream>(const_cast<void*>(stream.raw_stream())));
+  }
+
+  void GraphEnginePrepareGraph(size_t dev_id,
+                               const stream::Stream& stream,
+                               const void* prog,
+                               char** init_tensor_name,
+                               void** init_tensor_data,
+                               size_t init_tensor_num) override {
+    CHECK_PTR(pimpl_->graph_engine_prepare);
+    const auto device = &devices_pool[dev_id];
+    pimpl_->graph_engine_prepare(
+        device,
+        reinterpret_cast<C_Stream>(const_cast<void*>(stream.raw_stream())),
+        reinterpret_cast<C_Graph>(const_cast<void*>(prog)),
+        init_tensor_name,
+        init_tensor_data,
+        init_tensor_num);
+  }
+
+  void GraphEngineExecuteGraph(size_t dev_id,
+                               const stream::Stream& stream,
+                               const void* prog,
+                               char** feed_tensor_name,
+                               void** feed_tensor_data,
+                               size_t feed_tensor_num,
+                               char** fetch_tensor_name,
+                               void** fetch_tensor_data,
+                               size_t fetch_tensor_num) override {
+    CHECK_PTR(pimpl_->graph_engine_execute_graph);
+    const auto device = &devices_pool[dev_id];
+    pimpl_->graph_engine_execute_graph(
+        device,
+        reinterpret_cast<C_Stream>(const_cast<void*>(stream.raw_stream())),
+        reinterpret_cast<C_Graph>(const_cast<void*>(prog)),
+        feed_tensor_name,
+        feed_tensor_data,
+        feed_tensor_num,
+        fetch_tensor_name,
+        fetch_tensor_data,
+        fetch_tensor_num);
+  }
+
  private:
   inline int PlaceToIdNoCheck(const Place& place) {
     int dev_id = place.GetDeviceId();

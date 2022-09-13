@@ -268,6 +268,30 @@ class DeviceManager {
       uint64_t start_ns,
       void* context);
 
+  // graph
+  static void GraphEngineInitialize(const Place& place,
+                                    const stream::Stream& stream);
+
+  static void GraphEngineFinalize(const Place& place,
+                                  const stream::Stream& stream);
+
+  static void GraphEnginePrepareGraph(const Place& place,
+                                      const stream::Stream& stream,
+                                      const void* prog,
+                                      char** init_tensor_name,
+                                      void** init_tensor_data,
+                                      size_t init_tensor_num);
+
+  static void GraphEngineExecuteGraph(const Place& place,
+                                      const stream::Stream& stream,
+                                      const void* prog,
+                                      char** feed_tensor_name,
+                                      void** feed_tensor_data,
+                                      size_t feed_tensor_num,
+                                      char** fetch_tensor_name,
+                                      void** fetch_tensor_data,
+                                      size_t fetch_tensor_num);
+
   static void Clear();
 
  private:

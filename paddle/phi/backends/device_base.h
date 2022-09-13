@@ -264,6 +264,29 @@ class DeviceInterface {  // Driver / Runtime
       uint64_t start_ns,
       void* user_data);
 
+  // graph
+  virtual void GraphEngineInitialize(size_t dev_id,
+                                     const stream::Stream& stream);
+
+  virtual void GraphEngineFinalize(size_t dev_id, const stream::Stream& stream);
+
+  virtual void GraphEnginePrepareGraph(size_t dev_id,
+                                       const stream::Stream& stream,
+                                       const void* prog,
+                                       char** init_tensor_name,
+                                       void** init_tensor_data,
+                                       size_t init_tensor_num);
+
+  virtual void GraphEngineExecuteGraph(size_t dev_id,
+                                       const stream::Stream& stream,
+                                       const void* prog,
+                                       char** feed_tensor_name,
+                                       void** feed_tensor_data,
+                                       size_t feed_tensor_num,
+                                       char** fetch_tensor_name,
+                                       void** fetch_tensor_data,
+                                       size_t fetch_tensor_num);
+
  private:
   const std::string type_;
   const uint8_t priority_;

@@ -647,6 +647,64 @@ void DeviceManager::ProfilerCollectTraceData(
   dev_impl->ProfilerCollectTraceData(collector, start_ns, context);
 }
 
+// Graph
+
+void DeviceManager::GraphEngineInitialize(const Place& place,
+                                          const stream::Stream& stream) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->GraphEngineInitialize(device_id, stream);
+}
+
+void DeviceManager::GraphEngineFinalize(const Place& place,
+                                        const stream::Stream& stream) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->GraphEngineFinalize(device_id, stream);
+}
+
+void DeviceManager::GraphEnginePrepareGraph(const Place& place,
+                                            const stream::Stream& stream,
+                                            const void* prog,
+                                            char** init_tensor_name,
+                                            void** init_tensor_data,
+                                            size_t init_tensor_num) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->GraphEnginePrepareGraph(device_id,
+                                    stream,
+                                    prog,
+                                    init_tensor_name,
+                                    init_tensor_data,
+                                    init_tensor_num);
+}
+
+void DeviceManager::GraphEngineExecuteGraph(const Place& place,
+                                            const stream::Stream& stream,
+                                            const void* prog,
+                                            char** feed_tensor_name,
+                                            void** feed_tensor_data,
+                                            size_t feed_tensor_num,
+                                            char** fetch_tensor_name,
+                                            void** fetch_tensor_data,
+                                            size_t fetch_tensor_num) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->GraphEngineExecuteGraph(device_id,
+                                    stream,
+                                    prog,
+                                    feed_tensor_name,
+                                    feed_tensor_data,
+                                    feed_tensor_num,
+                                    fetch_tensor_name,
+                                    fetch_tensor_data,
+                                    fetch_tensor_num);
+}
+
 DeviceManager& DeviceManager::Instance() {
   static DeviceManager platform_manager;
   return platform_manager;

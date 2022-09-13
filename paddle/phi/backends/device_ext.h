@@ -677,13 +677,28 @@ struct C_DeviceInterface {
                          float beta,
                          void* y);
 
-  C_Status (*execute_graph_with_feed_and_fetch)(const C_Device device,
-                                                C_Stream stream,
-                                                C_Graph graph,
-                                                void** feed_tensors,
-                                                size_t feed_num,
-                                                void** fetch_tensors,
-                                                size_t fetch_num);
+  C_Status (*graph_engine_initialize)(const C_Device device,
+                                      const C_Stream stream);
+
+  C_Status (*graph_engine_finalize)(const C_Device device,
+                                    const C_Stream stream);
+
+  C_Status (*graph_engine_prepare)(const C_Device device,
+                                   const C_Stream stream,
+                                   const C_Graph graph,
+                                   char** init_tensor_name,
+                                   void** init_tensor_data,
+                                   size_t init_tensor_num);
+
+  C_Status (*graph_engine_execute_graph)(const C_Device device,
+                                         const C_Stream stream,
+                                         const C_Graph graph,
+                                         char** feed_tensor_name,
+                                         void** feed_tensor_data,
+                                         size_t feed_tensor_num,
+                                         char** fetch_tensor_name,
+                                         void** fetch_tensor_data,
+                                         size_t fetch_tensor_num);
   void* reserved_other_api[6];
 };
 

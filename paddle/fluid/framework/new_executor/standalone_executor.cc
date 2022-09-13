@@ -31,10 +31,15 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
   if (FLAGS_use_graph_engine) {
-    auto engine = GetGraphEngine(scope, prog_, feed_names, fetch_names, false);
-    VLOG(4) << "StandaloneExecutor: " << this << ", GraphEngine: " << engine
-            << " Run.";
-    return engine->Run(feed_names);
+    if (!graph_engine_) {
+      graph_engine_ = CreateGraphEngine(scope, prog_, place_);
+    }
+
+    VLOG(4) << "StandaloneExecutor: " << this
+            << ", GraphEngine: " << graph_engine_.get() << " Run.";
+
+    graph_engine_->SetGraph(scope, prog_, feed_names, fetch_names, false);
+    return graph_engine_->Run(feed_names);
   } else {
     auto core =
         GetInterpreterCore(scope, prog_, feed_names, fetch_names, false);
@@ -97,31 +102,9 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
   }
 }
 
-std::shared_ptr<GraphEngine> StandaloneExecutor::GetGraphEngine(
-    Scope* scope,
-    const ProgramDesc& prog,
-    const std::vector<std::string>& feed_names,
-    const std::vector<std::string>& fetch_names,
-    bool add_fetch_op) {
-  //   if (paddle::platform::is_custom_place(place_)) {
-  // #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  auto new_prog = std::make_shared<framework::ProgramDesc>(prog);
-
-  if (add_fetch_op) {
-    auto* block = new_prog->MutableBlock(0);
-    interpreter::add_fetch(fetch_names, block);
-  }
-
-  auto engine = std::make_shared<CustomGraphEngine>(place_, scope, new_prog);
-  return engine;
-  // #else
-  //     PADDLE_THROW(platform::errors::Unimplemented(
-  //         "GraphEngine is not supported on %s", place_));
-  // #endif
-  //   } else {
-  //     PADDLE_THROW(platform::errors::Unimplemented(
-  //         "GraphEngine is not supported on %s", place_));
-  //   }
+std::shared_ptr<GraphEngine> StandaloneExecutor::CreateGraphEngine(
+    Scope* scope, const ProgramDesc& prog, const platform::Place& place) {
+  return std::make_shared<CustomGraphEngine>(scope, prog, place);
 }
 
 }  // namespace framework

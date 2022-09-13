@@ -401,6 +401,39 @@ void DeviceInterface::ProfilerCollectTraceData(
   INTERFACE_UNIMPLEMENT;
 }
 
+// graph
+
+void DeviceInterface::GraphEngineInitialize(size_t dev_id,
+                                            const stream::Stream& stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::GraphEngineFinalize(size_t dev_id,
+                                          const stream::Stream& stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::GraphEnginePrepareGraph(size_t dev_id,
+                                              const stream::Stream& stream,
+                                              const void* prog,
+                                              char** init_tensor_name,
+                                              void** init_tensor_data,
+                                              size_t init_tensor_num) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::GraphEngineExecuteGraph(size_t dev_id,
+                                              const stream::Stream& stream,
+                                              const void* prog,
+                                              char** feed_tensor_name,
+                                              void** feed_tensor_data,
+                                              size_t feed_tensor_num,
+                                              char** fetch_tensor_name,
+                                              void** fetch_tensor_data,
+                                              size_t fetch_tensor_num) {
+  INTERFACE_UNIMPLEMENT;
+}
+
 #undef INTERFACE_UNIMPLEMENT
 
 }  // namespace phi
