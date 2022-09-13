@@ -343,6 +343,26 @@ class TestFillZerosLikeOrig2Prim(TestElementWiseAddOrig2Prim):
         self.out_map = {0: self.output['Out']}
 
 
+class TestFillAnyLikeOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'fill_any_like'
+        X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.orig2prim_args = (X, )
+        self.all_ops = ['fill_any_like', 'fill_constant_p']
+        self.out_map = {0: self.output['Out']}
+
+
 class TestSumOrig2Prim(TestElementWiseAddOrig2Prim):
 
     def init_data(self):
