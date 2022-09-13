@@ -148,3 +148,9 @@ REGISTER_OP_CPU_KERNEL(beam_search,
                        ops::BeamSearchOpKernel<phi::CPUContext, double>,
                        ops::BeamSearchOpKernel<phi::CPUContext, int>,
                        ops::BeamSearchOpKernel<phi::CPUContext, int64_t>);
+
+REGISTER_OP_CUDA_KERNEL(beam_search,
+                        ops::BeamSearchOpKernel<phi::CPUContext, float>,
+                        ops::BeamSearchOpKernel<phi::CPUContext, double>,
+                        ops::BeamSearchOpKernel<phi::CPUContext, int>,
+                        ops::BeamSearchOpKernel<phi::CPUContext, int64_t>);
