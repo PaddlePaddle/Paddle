@@ -600,7 +600,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto place = instr_node.DeviceContext().GetPlace();
   Scope* local_scope = create_local_scope_ ? var_scope_.GetMutableLocalScope()
                                            : var_scope_.GetMutableScope();
-
+  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope_);
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(place)) {
     auto dev_id = place.device;
