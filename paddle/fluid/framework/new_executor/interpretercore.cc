@@ -16,6 +16,8 @@
 
 #include <unordered_set>
 
+#include "gflags/gflags.h"
+
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
@@ -192,14 +194,27 @@ paddle::framework::FetchList InterpreterCore::Run(
     paddle::framework::interpreter::build_variable_scope(
         block_, &var_scope_, create_local_scope_);
 
+    VLOG(10) << "var_scope_";
+    VLOG(10) << "var_scope_.scope_:"
+             << framework::GenScopeTreeDebugInfo(var_scope_.GetMutableScope());
+    VLOG(10) << "var_scope_.local_scope:"
+             << framework::GenScopeTreeDebugInfo(
+                    var_scope_.GetMutableLocalScope());
+    VLOG(10) << "internal vector: " << var_scope_.Name2Id().size();
+    for (const auto& v : var_scope_.Name2Id()) {
+      VLOG(10) << v.first << ", ";
+    }
+
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    paddle::framework::interpreter::build_op_func_list(place_,
-                                                       block_,
-                                                       skip_gc_vars_,
-                                                       &op_func_nodes,
-                                                       &var_scope_,
-                                                       create_local_scope_,
-                                                       used_for_jit_);
+    paddle::framework::interpreter::build_op_func_list(
+        place_,
+        block_,
+        skip_gc_vars_,
+        &op_func_nodes,
+        &var_scope_,
+        create_local_scope_,
+        used_for_jit_,
+        used_for_control_flow_op_);
     is_build_ = true;
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
@@ -1060,13 +1075,15 @@ void InterpreterCore::Prepare(
         block_, &var_scope_, create_local_scope_);
     FeedInput();
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    paddle::framework::interpreter::build_op_func_list(place_,
-                                                       block_,
-                                                       skip_gc_vars_,
-                                                       &op_func_nodes,
-                                                       &var_scope_,
-                                                       create_local_scope_,
-                                                       used_for_jit_);
+    paddle::framework::interpreter::build_op_func_list(
+        place_,
+        block_,
+        skip_gc_vars_,
+        &op_func_nodes,
+        &var_scope_,
+        create_local_scope_,
+        used_for_jit_,
+        used_for_control_flow_op_);
     is_build_ = true;
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph

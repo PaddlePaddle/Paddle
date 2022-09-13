@@ -33,6 +33,8 @@
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
 
+DECLARE_bool(new_executor_use_local_scope);
+
 namespace paddle {
 namespace framework {
 
@@ -65,6 +67,11 @@ class InterpreterCore {
   const VariableScope* GetVariableScope() const;
 
   void reset_scope(Scope* new_scope);
+
+  void SetUsedForControlFlowOp(bool new_value) {
+    used_for_control_flow_op_ = new_value;
+  }
+  bool UsedForControlFlowOp() const { return used_for_control_flow_op_; }
 
  private:
   bool BuildInplaceCheckVarIsOnlyInput(size_t var_index);
@@ -153,6 +160,7 @@ class InterpreterCore {
   std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_var_ref_;
 
   bool used_for_jit_{false};
+  bool used_for_control_flow_op_{false};
 };
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(

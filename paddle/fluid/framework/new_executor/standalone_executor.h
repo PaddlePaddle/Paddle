@@ -40,14 +40,12 @@ class StandaloneExecutor {
   // the latter can be moved to python side.
   paddle::framework::FetchList Run(Scope* scope,
                                    const std::vector<std::string>& feed_names,
-                                   const std::vector<std::string>& fetch_names,
-                                   int block_id = 0);
+                                   const std::vector<std::string>& fetch_names);
 
   framework::interpreter::CostInfo DryRun(
       Scope* scope,
       const std::vector<std::string>& feed_names,
-      const std::vector<framework::LoDTensor>& feed_tensors,
-      int block_id = 0);
+      const std::vector<framework::LoDTensor>& feed_tensors);
 
  private:
   std::shared_ptr<InterpreterCore> GetInterpreterCore(
@@ -55,8 +53,7 @@ class StandaloneExecutor {
       const ProgramDesc& prog,
       const std::vector<std::string>& feed_names,
       const std::vector<std::string>& fetch_names,
-      bool add_fetch_op,
-      int block_id = 0);
+      bool add_fetch_op);
 
   platform::Place place_;
   const ProgramDesc& prog_;

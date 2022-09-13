@@ -25,13 +25,10 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 paddle::framework::FetchList StandaloneExecutor::Run(
     Scope* scope,
     const std::vector<std::string>& feed_names,
-    const std::vector<std::string>& fetch_names,
-    int block_id) {
+    const std::vector<std::string>& fetch_names) {
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
-  VLOG(3) << prog_;
-  auto core = GetInterpreterCore(
-      scope, prog_, feed_names, fetch_names, false, block_id);
+  auto core = GetInterpreterCore(scope, prog_, feed_names, fetch_names, false);
   VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
   return core->Run(feed_names);
 }
@@ -39,9 +36,8 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 framework::interpreter::CostInfo StandaloneExecutor::DryRun(
     Scope* scope,
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors,
-    int block_id) {
-  auto core = GetInterpreterCore(scope, prog_, feed_names, {}, true, block_id);
+    const std::vector<framework::LoDTensor>& feed_tensors) {
+  auto core = GetInterpreterCore(scope, prog_, feed_names, {}, true);
 
   return core->DryRun(feed_names, feed_tensors);
 }
@@ -51,8 +47,7 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
     const ProgramDesc& prog,
     const std::vector<std::string>& feed_names,
     const std::vector<std::string>& fetch_names,
-    bool add_fetch_op,
-    int block_id) {
+    bool add_fetch_op) {
   std::ostringstream oss;
   oss << "feed:";
   for (auto& feedname : feed_names) {
@@ -77,7 +72,7 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
     } else {
       core = std::make_shared<InterpreterCore>(
           place_,
-          prog.Block(block_id),
+          prog.Block(0),
           /*skip_gc_vars=*/std::set<std::string>(),
           scope);
     }

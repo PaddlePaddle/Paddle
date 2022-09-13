@@ -135,6 +135,10 @@ class BlockDesc {
       os << *op;
       os << split;
     }
+    for (const auto &var : blockdesc.vars_) {
+      os << var.first << " :" << *(var.second) << endl;
+      os << split;
+    }
     return os;
   }
 };

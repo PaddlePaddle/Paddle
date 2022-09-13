@@ -285,7 +285,8 @@ std::tuple<VariableValueMap, VariableIdMap> build_variable_map(
     const VariableNameMap& var_name_map,
     VariableScope* var_scope,
     Scope* local_scope,
-    bool enforce_exist = true) {
+    bool enforce_exist = true,
+    bool used_for_control_flow_op = false) {
   VariableValueMap name2var;
   VariableIdMap name2id;
   for (auto& item : var_name_map) {
@@ -294,12 +295,21 @@ std::tuple<VariableValueMap, VariableIdMap> build_variable_map(
     vars.reserve(item.second.size());
 
     for (auto& var_name : item.second) {
+      auto* var = local_scope->FindVar(var_name);
+
       if (!var_scope->HasVar(var_name)) {
         // Hot fix for variables used in dataloader, like
         // 'lod_tensor_blocking_queue_0' These variables may be created in
         // scope, and it is not existed as variable in program.
         if (var_name.find(blocking_queue_prefix) != std::string::npos &&
-            local_scope->FindVar(var_name)) {
+            var != nullptr) {
+          var_scope->AddVar(var_name, nullptr);
+
+          // For Control Flow Op, some variables may not occur in
+          // BlockDesc.vars. So var_scope won't have these varaibles.
+        } else if (used_for_control_flow_op && var != nullptr) {
+          VLOG(4) << "[build_variable_map] insert " << var_name
+                  << " for use of control flow op";
           var_scope->AddVar(var_name, nullptr);
         } else if (!enforce_exist) {
           // skip the non-exist variable: such as recurrent_grad
@@ -307,8 +317,10 @@ std::tuple<VariableValueMap, VariableIdMap> build_variable_map(
           continue;
         }
       }
-      auto* var = local_scope->FindVar(var_name);
+      VLOG(4) << "[build_variable_map] local scope find: " << var_name << " "
+              << var;
       auto var_id = var_scope->VarId(var_name);
+      VLOG(4) << "[build_variable_map] var scope add: " << var_name;
       vars.push_back(var);
       ids.push_back(var_id);
     }
@@ -417,7 +429,10 @@ void build_op_func_list(const platform::Place& place,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* var_scope,
                         bool use_local_scope,
-                        bool used_for_jit) {
+                        bool used_for_jit,
+                        bool used_for_control_flow_op) {
+  VLOG(10) << "used_for_control_flow_op: " << used_for_control_flow_op;
+
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
   std::vector<std::unique_ptr<OperatorBase>>
@@ -472,12 +487,20 @@ void build_op_func_list(const platform::Place& place,
       enforce_exist = false;
     }
     std::tie(ins_map, ins_name2id) =
-        build_variable_map(inputs_names, var_scope, local_scope, enforce_exist);
+        build_variable_map(inputs_names,
+                           var_scope,
+                           local_scope,
+                           enforce_exist,
+                           used_for_control_flow_op);
 
     VariableValueMap outs_map;
     VariableIdMap outs_name2id;
-    std::tie(outs_map, outs_name2id) = build_variable_map(
-        outputs_names, var_scope, local_scope, enforce_exist);
+    std::tie(outs_map, outs_name2id) =
+        build_variable_map(outputs_names,
+                           var_scope,
+                           local_scope,
+                           enforce_exist,
+                           used_for_control_flow_op);
 
     // step 1: build OpFuncNode
     OpFuncNode op_func_node;

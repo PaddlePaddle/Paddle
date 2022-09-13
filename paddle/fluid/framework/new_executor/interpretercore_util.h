@@ -81,7 +81,8 @@ void build_op_func_list(const platform::Place& place,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* scope,
                         bool use_local_scope = true,
-                        bool used_for_jit = false);
+                        bool used_for_jit = false,
+                        bool used_for_control_flow_op = false);
 
 void add_fetch(const std::vector<std::string>& fetch_names,
                framework::BlockDesc* block);

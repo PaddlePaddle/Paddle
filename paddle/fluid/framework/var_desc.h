@@ -22,6 +22,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/type_defs.h"
 
@@ -224,6 +225,22 @@ class VarDesc {
   uint64_t id_ = GenerateId();
   uint64_t original_id_ = id_;
   std::unique_ptr<TensorDistAttr> dist_attr_;
+
+  friend std::ostream &operator<<(std::ostream &os, const VarDesc &var_desc) {
+    const std::string endl = "\n";
+    const std::string split = "--------------\n";
+
+    os << "Var[" << var_desc.Name()
+       << "]: " << static_cast<int>(var_desc.GetType());
+    os << "Attrs:";
+    for (const auto &n : var_desc.attrs_) {
+      auto &name = n.first;
+      // auto& value = n.second;
+      os << "\t[" << name << "]: ,";
+    }
+
+    return os;
+  }
 };
 
 bool operator==(const VarDesc &left, const VarDesc &right);
