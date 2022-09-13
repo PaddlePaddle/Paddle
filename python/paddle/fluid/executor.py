@@ -1555,17 +1555,10 @@ class Executor(object):
                     place, core.CustomPlace):
                 return False
 
-            # use_standalone_executor_for_compiled_program = os.environ.get(
+            # use_standalone_executor_for_distribution = os.environ.get(
             #     'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
             #     None) in [1, '1', True, 'True', 'true']
-            use_standalone_executor_for_compiled_program = True
-
-            # Only support fleet when 'FLAGS_CONVERT_GRAPH_TO_PROGRAM' is set to true
-            from paddle.distributed.fleet import fleet
-            if fleet._role_maker is not None and not use_standalone_executor_for_compiled_program:
-                warnings.warn("Standalone executor is not used for fleet",
-                              UserWarning)
-                return False
+            use_standalone_executor_for_distribution = True
 
             compiled = isinstance(program,
                                   compiler.CompiledProgram) or isinstance(
@@ -1573,6 +1566,22 @@ class Executor(object):
             if compiled:
                 compiled_program = program if isinstance(
                     program, compiler.CompiledProgram) else program._graph
+
+                # delete this code after supporting compiled_program._graph
+                if compiled_program._program is None:
+                    warnings.warn("Standalone executor is not used for Graph",
+                                  UserWarning)
+                    return use_standalone_executor_for_distribution
+
+                # delete this code after supporting distribution
+                if compiled_program._build_strategy is not None and (
+                        compiled_program._build_strategy.is_distribution
+                        or compiled_program._build_strategy.num_trainers > 1):
+                    warnings.warn(
+                        "Standalone executor is not used for distribution",
+                        UserWarning)
+                    return use_standalone_executor_for_distribution
+
                 # Unsupported case 1: data parallel
                 if compiled_program._is_data_parallel and len(
                         compiled_program._get_places(
@@ -1612,10 +1621,14 @@ class Executor(object):
                         UserWarning)
                     return False
 
-                return use_standalone_executor_for_compiled_program
-            else:
-                assert isinstance(program, Program)
-                return True
+            # delete this code after supporting fleet
+            from paddle.distributed.fleet import fleet
+            if fleet._role_maker is not None:
+                warnings.warn("Standalone executor is not used for fleet",
+                              UserWarning)
+                return use_standalone_executor_for_distribution
+
+            return True
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
