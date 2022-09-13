@@ -210,7 +210,6 @@ PreparedOp PrepareImpl(
       kernel_signature = *default_kernel_signature;
     }
   }
-  bool is_kp_support = false;
   if (has_phi_kernel) {
     VLOG(6) << kernel_signature;
     phi_kernel_name = kernel_signature.name;
@@ -218,6 +217,7 @@ PreparedOp PrepareImpl(
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
 #ifdef PADDLE_WITH_XPU_KP
+    bool is_kp_support = false;
     if (paddle::platform::is_xpu_place(expected_kernel_key.place_)) {
       bool use_xpu_kp_kernel_rt =
           FLAGS_run_kp_kernel &&
