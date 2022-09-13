@@ -504,7 +504,6 @@ HOSTDEVICE static void ReadVecDataWithInt64Index(
     }
   } else {
     if (!need_broadcast) {
-#pragma unroll
       phi::Load<T, VecSize>(in + idx, out);
     } else {
 #pragma unroll
@@ -733,13 +732,14 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
                MaxWithOne<Arity>::kValue>
         ins_strides;
     phi::Array<bool, MaxWithOne<Arity>::kValue> need_broadcasts;
+    phi::Array<int64_t, phi::DDim::kMaxRank + 1> out_strides;
+    const auto &out_dims = out_tensor->dims();
+    if (rank <= out_dims.size()) {
+      out_strides = ShapeToStride(out_dims.Get(), rank);
+    } else {
+      out_strides = ShapeToStride(broadcast_out_dims.Get(), rank);
+    }
 
-    PADDLE_ENFORCE_EQ(
-        rank,
-        out_tensor->dims().size(),
-        phi::errors::InvalidArgument(
-            "Output tensor's rank does not match. This may be a bug."));
-    auto out_strides = ShapeToStride(out_tensor->dims().Get(), rank);
     for (int i = 0; i < Arity; ++i) {
       ins_strides[i] = ShapeToStride(ins_expand_dims[i].Get(), rank);
       need_broadcasts[i] =
