@@ -14,7 +14,9 @@
 
 #pragma once
 
+#ifndef PADDLE_WITH_ARM
 #include <immintrin.h>
+#endif
 #include <stdint.h>
 
 #include <cmath>
