@@ -76,4 +76,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_process_mesh MODULES test_process_mesh)
   py_test_modules(test_interface MODULES test_interface)
   py_test_modules(test_stategy MODULES test_strategy)
+  py_test_modules(test_iterable_dataset MODULES test_iterable_dataset ENVS
+                  ${dist_ENVS})
+  set_tests_properties(test_iterable_dataset
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
 endif()

@@ -78,7 +78,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_alltoall_api MODULES test_collective_alltoall_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_alltoall_api
-                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   bash_test_modules(
@@ -91,6 +91,14 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     "PADDLE_DIST_UT_PORT=21290;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_collective_alltoall_single PROPERTIES TIMEOUT "350")
+endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  py_test_modules(
+    test_collective_alltoall_single_api MODULES
+    test_collective_alltoall_single_api ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_collective_alltoall_single_api
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -117,7 +125,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_broadcast_api MODULES test_collective_broadcast_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_broadcast_api
-                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -140,6 +148,13 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_global_scatter
                        PROPERTIES TIMEOUT "200" LABELS "RUN_TYPE=DIST")
+endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  py_test_modules(
+    test_collective_isend_irecv_api MODULES test_collective_isend_irecv_api
+    ENVS "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_collective_isend_irecv_api
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -188,6 +203,14 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
+    test_collective_reduce_scatter_api MODULES
+    test_collective_reduce_scatter_api ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_collective_reduce_scatter_api
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
+endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  py_test_modules(
     test_collective_scatter MODULES test_collective_scatter ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_scatter PROPERTIES TIMEOUT "300" LABELS
@@ -212,7 +235,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_sendrecv_api MODULES test_collective_sendrecv_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_sendrecv_api
-                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -280,6 +303,17 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
   set_tests_properties(test_communication_stream_allreduce_api
                        PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+endif()
+if((WITH_ROCM OR WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_world_size_and_rank
+    START_BASH
+    test_world_size_and_rank.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21532;http_proxy=;https_proxy=")
+  set_tests_properties(test_world_size_and_rank PROPERTIES TIMEOUT "120")
 endif()
 add_subdirectory(fleet)
 add_subdirectory(multinode)

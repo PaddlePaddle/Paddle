@@ -27,7 +27,6 @@ from paddle.io import Dataset
 from paddle.static import InputSpec
 from paddle.fluid.framework import _non_static_mode
 from paddle.distributed.auto_parallel.engine import Engine
-from paddle.distributed.auto_parallel.hepler import ProgramHelper
 
 from test_to_static import MLPLayer, MyDataset
 

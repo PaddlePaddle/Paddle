@@ -33,7 +33,7 @@ import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.engine import Engine
 
 paddle.enable_static()
-batch_size = 1
+batch_size = 2
 batch_num = 10
 hidden_size = 1024
 sequence_len = 512

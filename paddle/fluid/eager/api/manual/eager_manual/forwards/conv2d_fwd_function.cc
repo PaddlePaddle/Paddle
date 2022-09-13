@@ -86,7 +86,8 @@ paddle::experimental::Tensor conv2d_dygraph_function(
     auto transformer = egr::EagerLayoutAutotune<std::string>(
         op_name, tensors_vector, &data_format);
     auto NEW_input = transformer->TransInTensor("input", input);
-
+    bool is_enable_tune =
+        paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune();
     paddle::imperative::LayoutAutoTune::Instance().DisableLayoutAutoTune();
     auto out = conv2d_dygraph_function(NEW_input,
                                        filter,
@@ -100,7 +101,9 @@ paddle::experimental::Tensor conv2d_dygraph_function(
                                        workspace_size_MB,
                                        exhaustive_search);
     transformer->SetOutTensorLayout(&out);
-    paddle::imperative::LayoutAutoTune::Instance().EnableLayoutAutoTune();
+    if (is_enable_tune) {
+      paddle::imperative::LayoutAutoTune::Instance().EnableLayoutAutoTune();
+    }
     // Returns
     return out;
   }

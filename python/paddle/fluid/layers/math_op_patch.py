@@ -228,11 +228,29 @@ def monkey_patch_variable():
         array_write(x=var, i=array_length(self), array=self)
 
     @static_only
+    def _item(self):
+        """ 
+        In order to be compatible with the item interface introduced by the dynamic graph, it does nothing but returns self. 
+        It will check that the shape must be a 1-D tensor
+        """
+        if len(self.shape) > 1:
+            raise TypeError(
+                "Required input var should be 1-D Variable, but received {}".
+                format(self.shape))
+        return self
+
+    @static_only
     def pop(self, *args):
         """
-         **Notes**:
-            **The type variable must be LoD Tensor Array.
-        
+        The type variable must be LoD Tensor Array.
+        When self is LoDTensorArray, calling pop is similar to Python's pop on list. 
+        This interface is used to simplify dygraph to static graph operations.
+
+        Args:
+            self(Variable): The source variable, which must be LOD_TENSOR_ARRAY
+            *args: optional, a int means index.
+        Returns:
+            Variable: self[index]
         """
         from paddle.fluid.dygraph.dygraph_to_static.convert_operators import _run_paddle_pop
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
@@ -378,7 +396,8 @@ def monkey_patch_variable():
                     "If your code works well in the older versions but crashes in this version, try to use "
                     "%s(X, Y, axis=0) instead of %s. This transitional warning will be dropped in the future."
                     % (file_name, line_num, EXPRESSION_MAP[method_name],
-                       op_type, op_type, EXPRESSION_MAP[method_name]))
+                       op_type, op_type, EXPRESSION_MAP[method_name]),
+                    category=DeprecationWarning)
             current_block(self).append_op(type=op_type,
                                           inputs={
                                               'X': [self],
@@ -409,6 +428,7 @@ def monkey_patch_variable():
         ('cpu', cpu),
         ('cuda', cuda),
         ('append', append),
+        ('item', _item),
         ('pop', pop),
         ('dim', lambda x: len(x.shape)),
         ('ndimension', lambda x: len(x.shape)),
