@@ -139,6 +139,7 @@ void ConcatKernel(const Context& dev_ctx,
 
   DDim out_dims = funcs::ComputeAndCheckShape(true, x_dims, axis.to<size_t>());
   out->Resize(out_dims);
+  out->mutable_data<T>(dev_ctx.GetPlace());
 
   funcs::ConcatOneDNNHandler<T> handler(
       dev_ctx.GetPlace(), axis.to<int>(), onednn_engine, multi_input, out);
