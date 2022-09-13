@@ -2377,6 +2377,7 @@
     func : UnchangedInferMeta
   kernel :
     func : sign
+  backward : sign_grad
 
 - api : silu
   args : (Tensor x)
