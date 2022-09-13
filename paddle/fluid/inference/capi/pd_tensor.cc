@@ -35,6 +35,7 @@ void PD_DeletePaddleTensor(PD_Tensor* tensor) {
     delete tensor;
     tensor = nullptr;
     VLOG(3) << "PD_Tensor delete successfully. ";
+    VLOG(3) << "this log is just for testing. ";
   }
 }
 
