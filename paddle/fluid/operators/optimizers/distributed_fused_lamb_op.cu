@@ -475,19 +475,10 @@ static __global__ void UpdateLambMomentAndTrustRatioDivCUDAKernel(
     phi::Load(mom1_p + i, &mom1_vec);
     phi::Load(mom2_p + i, &mom2_vec);
 
-#define CUDA_ASSERT(__cond)           \
-  do {                                \
-    if (!(__cond)) {                  \
-      printf("Failed " #__cond "\n"); \
-      asm("trap;");                   \
-    }                                 \
-  } while (0)
-
 #define PD_LAMB_MOM_TRUST_RATIO_DIV_UPDATE(                                    \
     __param, __grad, __mom1, __mom2, __trust_ratio_div, __idx)                 \
   T p = __param[__idx];                                                        \
   T g = static_cast<T>(__grad[__idx]) * scale;                                 \
-  CUDA_ASSERT(isfinite(__grad[__idx]));                                        \
   T mom1 = __mom1[__idx];                                                      \
   T mom2 = __mom2[__idx];                                                      \
   mom1 = beta1 * mom1 + (1 - beta1) * g;                                       \
