@@ -43,12 +43,13 @@ template <typename Context, typename T>
 struct OneHotGenerator;
 
 template <typename T, typename Context>
-void GumbelSoftmaxKernel(const Context& ctx,
-                         const DenseTensor& x,
-                         float temperature,
-                         bool hard,
-                         int axis,
-                         DenseTensor* out) {
+void GumbelSoftmaxKernelHelper(const Context& ctx,
+                               const DenseTensor& x,
+                               float temperature,
+                               bool hard,
+                               int axis,
+                               DenseTensor* out,
+                               bool is_test) {
   const int rank = x.dims().size();
   axis = funcs::CanonicalAxis(axis, rank);
   int axis_dim = x.dims()[axis];
@@ -86,6 +87,16 @@ void GumbelSoftmaxKernel(const Context& ctx,
   if (hard) {
     OneHotGenerator<Context, T>::Transform(ctx, x, out, axis);
   }
+}
+
+template <typename T, typename Context>
+void GumbelSoftmaxKernel(const Context& ctx,
+                         const DenseTensor& x,
+                         float temperature,
+                         bool hard,
+                         int axis,
+                         DenseTensor* out) {
+  GumbelSoftmaxKernelHelper<T, Context>(ctx, x, temperature, hard, axis, out);
 }
 
 }  // namespace phi
