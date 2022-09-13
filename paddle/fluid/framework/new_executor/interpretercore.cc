@@ -193,6 +193,7 @@ paddle::framework::FetchList InterpreterCore::Run(
 #endif
 
   if (!is_build_) {
+    LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     paddle::framework::interpreter::build_variable_scope(
         block_, &var_scope_, create_local_scope_);
 
@@ -600,7 +601,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto place = instr_node.DeviceContext().GetPlace();
   Scope* local_scope = create_local_scope_ ? var_scope_.GetMutableLocalScope()
                                            : var_scope_.GetMutableScope();
-
+  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope_);
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(place)) {
     auto dev_id = place.device;
