@@ -22,7 +22,6 @@ limitations under the License. */
 #include "common/bertCommon.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/platform/enforce.h"
-#if IS_TRT_VERSION_GE(7000)
 
 namespace paddle {
 namespace inference {
@@ -248,4 +247,3 @@ REGISTER_TRT_PLUGIN_V2(EmbLayerNormVarSeqlenPluginMTronCreator);
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
-#endif  // if IS_TRT_VERSION_GE(7000)
