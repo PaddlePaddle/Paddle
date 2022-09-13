@@ -33,7 +33,7 @@ import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.engine import Engine
 
 paddle.enable_static()
-batch_size = 1
+batch_size = 2
 batch_num = 10
 hidden_size = 1024
 sequence_len = 512
@@ -133,10 +133,7 @@ def train(fetch):
 
     # train
     train_dataset = MyDataset(batch_num * batch_size)
-    engine.fit(train_dataset,
-               batch_size=batch_size,
-               steps_per_epoch=batch_num * batch_size,
-               fetches=fetches)
+    engine.fit(train_dataset, batch_size=batch_size, fetches=fetches)
 
     # eval
     eval_dataset = MyDataset(batch_size)

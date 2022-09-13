@@ -92,14 +92,14 @@ void RnnGradKernel(const Context& dev_ctx,
 
   std::vector<std::vector<const T*>> parameter_lists;
   parameter_lists.resize(num_layers);
-  reset_parameter_vector(weight_list, num_layers, is_bidirec, &parameter_lists);
+  ResetParameterVector(weight_list, num_layers, is_bidirec, &parameter_lists);
 
   for (unsigned int i = 0; i < weight_grad_list.size(); ++i) {
     dev_ctx.template Alloc<T>(weight_grad_list[i]);
   }
   std::vector<std::vector<T*>> parameter_lists_grad;
   parameter_lists_grad.resize(num_layers);
-  reset_parameter_vector(
+  ResetParameterVector(
       weight_grad_list, num_layers, is_bidirec, &parameter_lists_grad);
 
   // allocate the memory and initization the x_grad

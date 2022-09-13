@@ -1,5 +1,5 @@
 # The apis in this file are unstandardized that may caused by a variety of reasons,
-# we are trying to fix these apis and will move standardized apis into api.yaml.
+# we are trying to fix these apis and will move standardized apis into ops.yaml.
 
 - api : abs
   args : (Tensor x)
