@@ -2507,10 +2507,20 @@ set -x
         # set trt_convert ut to run 15% cases.
         export TEST_NUM_PERCENT_CASES=0.15
         precison_cases=""
+        check_added_ut_startTime_s=`date +%s`
         bash $PADDLE_ROOT/tools/check_added_ut.sh
+        check_added_ut_endTime_s=`date +%s`
+        echo "ipipe_log_param_check_added_ut_Total_Time: $[ $check_added_ut_endTime_s - $check_added_ut_startTime_s ]s" 
+        echo "ipipe_log_param_check_added_ut_Total_Time: $[ $check_added_ut_endTime_s - $check_added_ut_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt
+        
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
+            get_pr_ut_startTime_s=`date +%s`
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
+            get_pr_ut_endTime_s=`date +%s`
+            echo "ipipe_log_param_get_pr_ut_Total_Time: $[ $get_pr_ut_startTime_s - $get_pr_ut_endTime_s ]s" 
+            echo "ipipe_log_param_get_pr_ut_Total_Time: $[ $get_pr_ut_startTime_s - $get_pr_ut_endTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         fi
+
         if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
             duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
             if [[ "$duplicate_uts" != "" ]];then
@@ -2525,8 +2535,12 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+            run_added_ut_startTime_s=`date +%s`
             env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
             ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
+            run_added_ut_endTime_s=`date +%s`
+            echo "ipipe_log_param_run_added_ut_Total_Time: $[ $run_added_ut_endTime_s - $run_added_ut_startTime_s ]s" 
+            echo "ipipe_log_param_run_added_ut_Total_Time: $[ $run_added_ut_endTime_s - $run_added_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
             if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
                 echo "========================================"
                 echo "Added UT should not exceed 15 seconds"
@@ -2542,9 +2556,12 @@ set +x
         
         ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
-        test_cases=$(ctest -N -V) # get all test cases
-
+        
+        group_case_for_parallel_startTime_s=`date +%s`
         python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
+        group_case_for_parallel_endTime_s=`date +%s`
+        echo "ipipe_log_param_group_case_for_parallel_Total_Time: $[ $group_case_for_parallel_endTime_s - $group_case_for_parallel_startTime_s ]s" 
+        echo "ipipe_log_param_group_case_for_parallel_Total_Time: $[ $group_case_for_parallel_endTime_s - $group_case_for_parallel_startTime_s ]s" 
 
         single_ut_mem_0_startTime_s=`date +%s`
         while read line
@@ -2553,7 +2570,7 @@ set +x
         done < $PADDLE_ROOT/tools/single_card_tests_mem0_new
         single_ut_mem_0_endTime_s=`date +%s`
         echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $[ $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s ]s" 
-        echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $[ $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt
+        echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $[ $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt >> ${PADDLE_ROOT}/build/build_summary.txt
 
         single_ut_startTime_s=`date +%s`
         while read line
