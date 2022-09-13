@@ -42,6 +42,7 @@ from .utils import make_data_unshard
 from .utils import set_grad_var_shape
 from .utils import print_program_with_dist_attr
 from .utils import SerialProgramInfo
+from .utils import get_logger
 from .reshard import Resharder
 from .cluster import Cluster
 from .mapper import mapping

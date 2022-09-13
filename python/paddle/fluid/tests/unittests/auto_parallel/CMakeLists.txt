@@ -80,4 +80,5 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_process_mesh MODULES test_process_mesh)
   py_test_modules(test_interface MODULES test_interface)
   py_test_modules(test_stategy MODULES test_strategy)
+
 endif()

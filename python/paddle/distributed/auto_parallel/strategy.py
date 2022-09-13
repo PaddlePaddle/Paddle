@@ -126,21 +126,24 @@ class Strategy(BaseConfig):
         configurations while other default configurations are left unchanged. If this is a string,
         it is interpreted as the path to a YAML configuration and will be loaded to override the
         corresponding default configurations.
-    
+
     Examples:
         .. code-block:: python
 
             import paddle
             import paddle.distributed.auto_parallel as auto
-            
+
             strategy = auto.Strategy()
             sharding = strategy.sharding
             self.assertEqual(sharding.enabled, False)
             self.assertEqual(sharding.stage, 1)
+            self.assertEqual(sharding.sharding_degree, 8)
             sharding.enabled = True
-            sharding.state = 2 
+            sharding.stage = 2
+            sharding.sharding_degree = 2
             self.assertEqual(sharding.enabled, True)
             self.assertEqual(sharding.stage, 2)
+            self.assertEqual(sharding.sharding_degree, 2)
 
     """
 

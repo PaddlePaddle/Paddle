@@ -50,6 +50,7 @@ from .dist_saver import DistributedSaver
 from .dist_loader import NonIterableGeneratorLoader
 from .utils import make_data_unshard, set_grad_var_shape
 from .utils import print_program_with_dist_attr, to_list
+from .utils import get_logger
 from .process_group import new_process_group, get_all_process_groups, get_world_process_group
 from .dist_context import DistributedContext, get_default_distributed_context
 from .strategy import Strategy
@@ -75,7 +76,7 @@ class Engine:
         metrics (Metric|list[Metric]|None, optional): If metrics is set, all
             metrics will be calculated and output in train/eval mode. Default: None.
         cluster (Cluster|None, optional): The cluster represents the topology information
-            about the used physical devices. Default: None. (No need to set for now)
+            about the used physical devices. Default: None. (Unused for now)
         strategy (Strategy|None, optional): The strategy is used to configure the
         paralleization and optimization beheviors. Default: None.
 
@@ -91,6 +92,7 @@ class Engine:
                  cluster=None,
                  strategy=None):
         self.model = model
+
         if loss and not isinstance(loss,
                                    paddle.nn.Layer) and not callable(loss):
             raise TypeError(
@@ -133,17 +135,7 @@ class Engine:
         self._nranks = paddle.distributed.get_world_size()
         self._saver = DistributedSaver()
 
-        # TODO: add logger module
-        self._logger = logging.getLogger()
-        self._logger.propagate = False
-        if not self._logger.handlers:
-            self._logger.setLevel(logging.INFO)
-            log_handler = logging.StreamHandler()
-            log_format = logging.Formatter(
-                '[%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s'
-            )
-            log_handler.setFormatter(log_format)
-            self._logger.addHandler(log_handler)
+        self._logger = get_logger(logging.INFO)
 
         self._orig_main_prog = static.default_main_program()
         self._orig_startup_prog = static.default_startup_program()
@@ -489,9 +481,9 @@ class Engine:
                 The items before it are input and the left are label. Default: None.
             collate_fn(callable, optional): function to generate mini-batch data by merging
                 the sample list, None for only stack each fields of sample in axis
-                0. Default None. (Unsupported for now)
+                0. Default None. 
             callbacks (Callback|None, optional): A list of `Callback` instances to apply
-                during training. Default: None. (Unsupported for now)
+                during training. Default: None. (Unused for now)
 
         Returns:
             None
@@ -529,6 +521,7 @@ class Engine:
                         return_numpy=self.strategy.return_numpy)
                 except fluid.core.EOFException:
                     break
+                # update lr
                 train_logs["step: {:d} "] = step
                 if lr_scheduler is not None and step % self._k_steps == 0:
                     lr_scheduler.step()
@@ -567,9 +560,9 @@ class Engine:
                 be used directly without batching if set to None. Default: 1.
             collate_fn(callable, optional): function to generate mini-batch data by merging
                 the sample list, None for only stack each fields of sample in axis
-                0. Default None. (Unsupported for now)
+                0. Default None.
             callbacks (Callback|None, optional): A list of `Callback` instances to apply
-                during evaling. Default: None. (Unsupported for now)
+                during evaling. Default: None. (Unused for now)
 
         Returns:
             None
@@ -646,9 +639,9 @@ class Engine:
                 be used directly without batching if set to None. Default: 1.
             collate_fn(callable, optional): function to generate mini-batch data by merging
                 the sample list, None for only stack each fields of sample in axis
-                0. Default None. (Unsupported for now)
+                0. Default None.
             callbacks (Callback|None, optional): A list of `Callback` instances to apply
-                during testing. Default: None. (Unsupported for now)
+                during testing. Default: None. (Unused for now)
 
         Returns:
             None
@@ -873,7 +866,6 @@ class Engine:
     def save(self, path, training=True):
         """  
         Saves the model, parameters, optimizer state to path. 
-
         If `training` is set to False, only inference model will be saved.
 
         Args:
