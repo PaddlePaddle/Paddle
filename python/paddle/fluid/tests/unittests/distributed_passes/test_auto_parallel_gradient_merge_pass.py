@@ -97,11 +97,8 @@ class MLPLayer(nn.Layer):
 
 
 def mlp_forward(input, label, hidden_size):
-    auto.shard_tensor(input,
-                      dist_attr={
-                          "process_mesh": [0],
-                          "dims_mapping": [-1, -1]
-                      })
+    auto.shard_tensor(input, auto.ProcessMesh([0], dim_names=["x"]),
+                      [None, None])
     mlp = MLPLayer(hidden_size=hidden_size,
                    intermediate_size=4 * hidden_size,
                    initializer_range=0.02)

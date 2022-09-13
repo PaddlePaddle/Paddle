@@ -112,10 +112,12 @@ class AutoPallelPassTestBase(DistPassTestBase):
         modeling.init_global()
         if strategy == "dp":
             modeling._global_parallel_strategy = "dp"
-            modeling._global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
+            modeling._global_process_mesh = auto.ProcessMesh(mesh=[0, 1],
+                                                             dim_names=["x"])
         elif strategy == "mp":
             modeling._global_parallel_strategy = "mp"
-            modeling._global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
+            modeling._global_process_mesh = auto.ProcessMesh(mesh=[0, 1],
+                                                             dim_names=["x"])
         else:
             raise ValueError("'get_gpt_model' only support dp and mp.")
 
@@ -138,22 +140,12 @@ class AutoPallelPassTestBase(DistPassTestBase):
         data_holder = [tokens, position_ids, attention_mask, labels, loss_mask]
 
         if modeling._global_parallel_strategy == "dp":
-            auto.shard_tensor(tokens,
-                              dist_attr={
-                                  "process_mesh": modeling._global_process_mesh,
-                                  "dims_mapping": [0, -1]
-                              })
+            auto.shard_tensor(tokens, modeling._global_process_mesh,
+                              ["x", None])
         elif modeling._global_parallel_strategy == "pp":
-            auto.shard_tensor(tokens,
-                              dist_attr={
-                                  "process_mesh": modeling.PP_MESH_LIST[0],
-                                  "dims_mapping": [-1, -1]
-                              })
-            auto.shard_tensor(attention_mask,
-                              dist_attr={
-                                  "process_mesh": modeling.PP_MESH_LIST[0],
-                                  "dims_mapping": [-1, -1, -1, -1]
-                              })
+            auto.shard_tensor(tokens, modeling.PP_MESH_LIST[0], [None, None])
+            auto.shard_tensor(attention_mask, modeling.PP_MESH_LIST[0],
+                              [None, None, None, None])
 
         gpt = GPTModel(vocab_size=1000,
                        hidden_size=64,
