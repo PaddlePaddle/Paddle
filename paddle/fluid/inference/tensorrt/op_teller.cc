@@ -342,9 +342,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     if (!with_dynamic_shape) {
       std::string X_name;
       auto inputs = desc.Inputs();
-      if (inputs.count("X")) {
+      if (inputs.count("X") && !desc.Input("X").empty()) {
         X_name = desc.Input("X")[0];
-      } else if (inputs.count("Input")) {
+      } else if (inputs.count("Input") && !desc.Input("Input").empty()) {
         X_name = desc.Input("Input")[0];
       }
       auto* block = desc.Block();
