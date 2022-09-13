@@ -14,7 +14,10 @@
 
 #pragma once
 
+#if !defined(PADDLE_WITH_ARM) && !defined(PADDLE_WITH_SW) && \
+    !defined(PADDLE_WITH_MIPS)
 #include <immintrin.h>
+#endif
 #include <stdint.h>
 
 #include <cmath>
