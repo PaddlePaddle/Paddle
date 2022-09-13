@@ -41,24 +41,27 @@ void ElementWiseAddCooKernel(const Context& dev_ctx,
 
   PD_VISIT_BASE_INTEGRAL_TYPES(
       x.indices().dtype(), "VerifyIndices", ([&] {
-    const data_t* x_indices_ptr = x_indices.data<data_t>();
-    const data_t* y_indices_ptr = y_indices.data<data_t>();
+        const data_t* x_indices_ptr = x_indices.data<data_t>();
+        const data_t* y_indices_ptr = y_indices.data<data_t>();
 #ifdef PADDLE_WITH_HIP
-    bool is_same = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
+        bool is_same = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
+                                     x_indices_ptr,
+                                     x_indices_ptr + x_indices.numel(),
+                                     y_indices_ptr);
 #else
-    bool is_same = thrust::equal(thrust::cuda::par.on(dev_ctx.stream()),
+        bool is_same = thrust::equal(thrust::cuda::par.on(dev_ctx.stream()),
+                                     x_indices_ptr,
+                                     x_indices_ptr + x_indices.numel(),
+                                     y_indices_ptr);
 #endif
-                                 x_indices_ptr,
-                                 x_indices_ptr + x_indices.numel(),
-                                 y_indices_ptr);
 
-    PADDLE_ENFORCE_EQ(
-        is_same,
-        true,
-        phi::errors::PreconditionNotMet(
-            "Currently, ElementWiseAddCooKernel only supports the case "
-            "where x and y have the same indices"));
-      })));
+        PADDLE_ENFORCE_EQ(
+            is_same,
+            true,
+            phi::errors::PreconditionNotMet(
+                "Currently, ElementWiseAddCooKernel only supports the case "
+                "where x and y have the same indices"));
+      }));
 
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
   phi::AddKernel<T, Context>(
