@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -334,8 +333,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           /*** transpose the weight and bias ***/
           int head_size = hidden_out / head_number;
-          // [3, head_number, head_size, hidden_in] -> [head_number, 3,
-          // head_size, hidden_in]
+          // [3, head_number, head_size, hidden_in]
+          // -> [head_number, 3, head_size, hidden_in]
           auto transpose_weight_v2 = [](const float* src,
                                         float* dst,
                                         int three,
@@ -788,7 +787,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                   biasQK_constLayer->getOutput(0));
               op_desc.SetInput("BiasQK",
                                {biasQK_constLayer->getOutput(0)->getName()});
+              // after folding, there is no BiasQK_mask
+              has_BiasQK_mask = false;
             } else {
+              // else for !with_fastertransformer_window_mha && has_BiasQK_mask
+              // link bias_qk to constant layer without folding
               auto biasqk_name = op_desc.Input("BiasQK").front();
               auto biasqk_constlayer_outputname = biasqk_name + "_cl";
               auto* biasqk_v = scope.FindVar(biasqk_name);
@@ -988,15 +991,15 @@ class MultiheadMatMulOpConverter : public OpConverter {
             with_fp16 = true;
           }
 
-          if (with_fastertransformer_window_mha == false &&
-              has_BiasQK_mask == true) {
+          if (!with_fastertransformer_window_mha &&
+              has_BiasQK_mask) {
             PADDLE_THROW(platform::errors::Fatal(
                 "When fastertransformer_window_mha is not available, the "
                 "BiasQK_mask need to be folded into BiasQk, but got "
                 "has_BiasQK_mask = true."));
           }
 
-          if (has_BiasQK_mask && with_fastertransformer_window_mha) {
+          if (has_BiasQK_mask) {
             plugin_inputs.push_back(input_bias_qk_mask);
           }
           plugin::DynamicPluginTensorRT* plugin =
@@ -1009,7 +1012,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
                   has_BiasQK_mask,
                   window_number,
                   with_fastertransformer_window_mha);
-          if (!has_BiasQK_mask || !with_fastertransformer_window_mha) {
+          if (!has_BiasQK_mask) {
             layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
           } else {
             layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 3, plugin);
