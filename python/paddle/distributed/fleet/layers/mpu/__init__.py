@@ -22,16 +22,3 @@ from .random import get_rng_state_tracker
 from .random import model_parallel_random_seed
 from .random import determinate_seed
 from .random import dropout
-
-from .mp_ops import split
-from .mp_ops import _c_identity
-from .mp_ops import _c_concat
-from .mp_ops import _c_split
-from .mp_ops import _mp_allreduce
-from .mp_ops import _c_lookup_table
-from .mp_ops import _Linear
-from .mp_ops import _set_var_distributed
-from .mp_ops import _c_softmax_with_cross_entropy
-from .mp_ops import _linear
-from .mp_ops import _parallel_linear
-from .mp_ops import _parallel_embedding
