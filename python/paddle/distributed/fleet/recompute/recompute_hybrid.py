@@ -75,7 +75,7 @@ class _HPRecomputeFunction(PyLayer):
 
     @staticmethod
     def forward(ctx, run_function, all_outputs, mp_group, offload, partition,
-                preserve_rng_state, *args, **kwargs):
+                *args, **kwargs):
         check_recompute_necessary(args)
 
         # store for recomputing
@@ -84,7 +84,6 @@ class _HPRecomputeFunction(PyLayer):
         ctx.kwargs = kwargs
 
         # store the rng states
-        assert preserve_rng_state, 'preserve_rng_state must be True in recompute_hybrid.'
         ctx.fwd_cuda_rng_state = paddle.get_cuda_rng_state()
         ctx.fwd_cuda_rng_state_tracker = get_rng_state_tracker(
         ).get_states_tracker()
@@ -239,7 +238,7 @@ def recompute_hybrid(ctx, function, *args, **kwargs):
 
     all_outputs = []
     _HPRecomputeFunction.apply(function, all_outputs, mp_group, offload,
-                               partition, preserve_rng_state, *args, **kwargs)
+                               partition, *args, **kwargs)
 
     if len(all_outputs) == 1:
         return all_outputs[0]
