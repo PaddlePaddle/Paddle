@@ -534,6 +534,53 @@ class MultiheadMatMulOpConverter : public OpConverter {
           //              && engine_->precision() !=
           //              AnalysisConfig::Precision::kFloat32)
           // go qkv_to_context plugin
+          /*
+          * [without FASTERTRANSFORMER_TRT_FUSED_MHA for swin]
+          * input_dims.d[0]: batch(-1):batch_num(1)*window_num(64)
+          * input_dims.d[1]: length:49
+          * input_dims.d[2]: hidden_size(head_num*head_size=3x32):96
+            input
+              |[b,49,96]
+              |
+            shuffle                weight   bias
+              |[b,49,96,1,1]        |         |
+              |_____________________|_________|
+              |
+              fc                    qk_bias / folded_qk_bias
+              |                     |
+              |                     constant_layer(if qk_bias is directly linked to MHA)
+              |[b,49,288,1,1]       | [3(head_num), 49, 49] / [64(window_num),3(head_num),49,49]
+              |_____________________|
+              |
+              MHA (QkvToContextPluginDynamic)
+              |[b, 49, 96]
+              |
+              out
+          * [with FASTERTRANSFORMER_TRT_FUSED_MHA for swin]
+          * input_dims.d[0]: batch(-1):batch_num(1)*window_num(64)
+          * input_dims.d[1]: length:49
+          * input_dims.d[2]: hidden_size(head_num*head_size=3x32):96
+            input
+              |[b,49,96]
+              |
+            shuffle                      weight    
+              |[b,49,hidden_size,1,1]     | [head_number, 3, head_size, hidden_size] 
+              |___________________________|
+              |                               bias
+              |                                | [head_number, 3, head_size]
+              |________________________________|
+              |
+              fc                   qk_bias                   qk_bias_mask
+              |                     |                         |
+              |                     const_layer               const_layer
+              |[b,49,288,1,1]       | [3(head_num), 49, 49]   | [64(window_number), 49, 49]
+              |_____________________|_________________________|
+              |
+              MHA (QkvToContextPluginDynamic)
+              |[b, 49, 96]
+              |
+              out
+          */
           PADDLE_ENFORCE_EQ(
               input->getDimensions().nbDims,
               3,
@@ -862,8 +909,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                       static_cast<size_t>(bias_t->numel())};
 
           if (with_fastertransformer_window_mha) {
-            // [3, head_number, head_size, hidden_in] -> [head_number, 3,
-            // head_size, hidden_in]
+            // [3, head_number, head_size, hidden_in] 
+            // -> [head_number, 3, head_size, hidden_in]
             auto transpose_weight_v2 = [](const float* src,
                                           float* dst,
                                           int three,
@@ -1002,6 +1049,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           if (has_BiasQK_mask) {
             plugin_inputs.push_back(input_bias_qk_mask);
           }
+          
           plugin::DynamicPluginTensorRT* plugin =
               new plugin::QkvToContextPluginDynamic(
                   hidden_in,
