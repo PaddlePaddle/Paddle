@@ -21,6 +21,18 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
+inline T GetValue(const Context& dev_ctx, const DenseTensor& x) {
+  T value = static_cast<T>(0);
+  if (x.place() != CPUPlace()) {
+    DenseTensor cpu_x;
+    Copy(dev_ctx, x, CPUPlace(), true, &cpu_x);
+    value = cpu_x.data<T>()[0];
+  } else {
+    value = x.data<T>()[0];
+  }
+  return value;
+}
+template <typename T, typename Context>
 void ArangeKernel(const Context& dev_ctx,
                   const DenseTensor& start,
                   const DenseTensor& end,
@@ -29,19 +41,9 @@ void ArangeKernel(const Context& dev_ctx,
   auto place = dev_ctx.GetPlace();
   auto cpu_place = phi::CPUPlace();
 
-  DenseTensor n_cpu;
-  n_cpu.Resize({start.numel()});
-  T* n_cpu_data = dev_ctx.template HostAlloc<T>(&n_cpu);
-
-  paddle::memory::Copy(
-      cpu_place, n_cpu_data, place, start.data<T>(), sizeof(T) * start.numel());
-  T start_value = n_cpu_data[0];
-  paddle::memory::Copy(
-      cpu_place, n_cpu_data, place, end.data<T>(), sizeof(T) * end.numel());
-  T end_value = n_cpu_data[0];
-  paddle::memory::Copy(
-      cpu_place, n_cpu_data, place, step.data<T>(), sizeof(T) * step.numel());
-  T step_value = n_cpu_data[0];
+  T start_value = GetValue<T, Context>(dev_ctx, start);
+  T end_value = GetValue<T, Context>(dev_ctx, end);
+  T step_value = GetValue<T, Context>(dev_ctx, step);
 
   int64_t size = 0;
   phi::funcs::GetSize(start_value, end_value, step_value, &size);
@@ -50,7 +52,9 @@ void ArangeKernel(const Context& dev_ctx,
 
   DenseTensor out_cpu;
   out_cpu.Resize({out->numel()});
-  T* out_cpu_data = dev_ctx.template HostAlloc<T>(&out_cpu);
+  dev_ctx.template HostAlloc<T>(&out_cpu);
+  T* out_cpu_data = out_cpu.data<T>();
+
   T value = start_value;
   for (int64_t i = 0; i < size; ++i) {
     out_cpu_data[i] = value;
@@ -63,4 +67,8 @@ void ArangeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    arange, XPU, ALL_LAYOUT, phi::ArangeKernel, float, double, int, int64_t) {}
+    arange, XPU, ALL_LAYOUT, phi::ArangeKernel, float, double, int, int64_t) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+}

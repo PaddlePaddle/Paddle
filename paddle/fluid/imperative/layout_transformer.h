@@ -77,6 +77,9 @@ class LayoutTransformer {
       for (auto& var : pair.second) {
         // Once the any input is desired layout, we set in_layout is desired
         // layout.
+        if (in_layout == DataLayout::UNDEFINED) {
+          in_layout = paddle::imperative::GetDataLayout(var);
+        }
         if (var != nullptr && (paddle::imperative::GetDataLayout(var) ==
                                LayoutAutoTune::Instance().GetDesiredLayout())) {
           in_layout = LayoutAutoTune::Instance().GetDesiredLayout();
@@ -84,7 +87,11 @@ class LayoutTransformer {
         }
       }
     }
-    SetVarsLayout(outs, in_layout);
+    VLOG(3) << "Optimze Layout agnostic op: " << type_ << " "
+            << paddle::framework::DataLayoutToString(in_layout);
+    if (in_layout != DataLayout::UNDEFINED) {
+      SetVarsLayout(outs, in_layout);
+    }
     return ins;
   }
 

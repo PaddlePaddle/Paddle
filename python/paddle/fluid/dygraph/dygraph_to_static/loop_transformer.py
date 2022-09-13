@@ -33,6 +33,7 @@ from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransfor
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import RenameTransformer
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import ForLoopTuplePreTransformer
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import ForNodeVisitor
+from paddle.fluid.dygraph.dygraph_to_static.utils import GetterSetterHelper, create_name_str
 
 __all__ = ['LoopTransformer', 'NameVisitor']
 
@@ -43,8 +44,8 @@ FOR_CONDITION_PREFIX = 'for_loop_condition'
 FOR_BODY_PREFIX = 'for_loop_body'
 
 
-def create_while_nodes(condition_name, body_name, loop_var_names, getter_name,
-                       setter_name):
+def create_while_nodes(condition_name, body_name, loop_var_names,
+                       push_pop_names, getter_name, setter_name):
     """
     Returns a list of gast.Node which represents the calling of Paddle
     controlflow while_loop.
@@ -84,9 +85,9 @@ def create_while_nodes(condition_name, body_name, loop_var_names, getter_name,
         assign_loop_var_names.append(name)
 
     while_func_name = "_jst.While"
-    while_node_str = "{}({}, {}, {}, {})".format(while_func_name,
-                                                 condition_name, body_name,
-                                                 getter_name, setter_name)
+    while_node_str = "{}({}, {}, {}, {}, return_name_ids={}, push_pop_names={})".format(
+        while_func_name, condition_name, body_name, getter_name, setter_name,
+        create_name_str(loop_var_names), create_name_str(push_pop_names))
     while_node = gast.parse(while_node_str).body[0]
 
     ret = [while_node]
@@ -539,6 +540,7 @@ class LoopTransformer(BaseTransformer):
         # 2. get original loop vars
         loop_var_names, create_var_names = node.pd_scope.modified_vars(
         ), node.pd_scope.created_vars()
+        push_pop_names = list(node.pd_scope.variadic_length_vars())
         # TODO: Remove the bunch of code?  We have the unique format `for A in B:`
         # NOTE: in 'for x in var' or 'for i, x in enumerate(var)' cases,
         # we need append new loop var & remove useless loop var
@@ -607,12 +609,13 @@ class LoopTransformer(BaseTransformer):
             type_comment=None)
         new_stmts.append(body_func_node)
 
-        get_args_node = create_get_args_node(nonlocal_names)
-        set_args_node = create_set_args_node(nonlocal_names)
+        helper = GetterSetterHelper(None, None, nonlocal_names, push_pop_names)
+        get_args_node = create_get_args_node(helper.union())
+        set_args_node = create_set_args_node(helper.union())
         # 7. create & append while loop node
         while_loop_nodes = create_while_nodes(condition_func_node.name,
                                               body_func_node.name,
-                                              nonlocal_names,
+                                              nonlocal_names, push_pop_names,
                                               get_args_node.name,
                                               set_args_node.name)
         new_stmts.extend([get_args_node, set_args_node])
@@ -623,6 +626,7 @@ class LoopTransformer(BaseTransformer):
     def get_while_stmt_nodes(self, node):
         loop_var_names, create_var_names = node.pd_scope.modified_vars(
         ), node.pd_scope.created_vars()
+        push_pop_names = list(node.pd_scope.variadic_length_vars())
         new_stmts = []
 
         # create non-local statement for body and cond.
@@ -675,12 +679,14 @@ class LoopTransformer(BaseTransformer):
             returns=None,
             type_comment=None)
         new_stmts.append(body_func_node)
-        get_args_node = create_get_args_node(nonlocal_names)
-        set_args_node = create_set_args_node(nonlocal_names)
+
+        helper = GetterSetterHelper(None, None, nonlocal_names, push_pop_names)
+        get_args_node = create_get_args_node(helper.union())
+        set_args_node = create_set_args_node(helper.union())
 
         while_loop_nodes = create_while_nodes(condition_func_node.name,
                                               body_func_node.name,
-                                              nonlocal_names,
+                                              nonlocal_names, push_pop_names,
                                               get_args_node.name,
                                               set_args_node.name)
         new_stmts.extend([get_args_node, set_args_node])

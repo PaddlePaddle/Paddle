@@ -692,7 +692,8 @@ def get_eager_double_grad(func,
                             allow_unused=True)
 
     if return_mid_result:
-        return dd_inputs, inputs + ddys
+        return [dd_input for dd_input in dd_inputs
+                if dd_input is not None], inputs + ddys
     else:
         return [
             dd_input.numpy() for dd_input in dd_inputs if dd_input is not None
@@ -857,8 +858,13 @@ def get_eager_triple_grad(func,
         dddy = paddle.ones(shape=dd_yi.shape, dtype=dd_yi.dtype)
         dddy.stop_gradient = False
         dddys.append(dddy)
-    ddd_inputs = paddle.grad(outputs=dd_y, inputs=dd_x, grad_outputs=dddys)
-    return [ddd_input.numpy() for ddd_input in ddd_inputs]
+    ddd_inputs = paddle.grad(outputs=dd_y,
+                             inputs=dd_x,
+                             grad_outputs=dddys,
+                             allow_unused=True)
+    return [
+        ddd_input.numpy() for ddd_input in ddd_inputs if ddd_input is not None
+    ]
 
 
 def triple_grad_check_for_dygraph(func,

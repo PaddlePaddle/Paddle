@@ -93,7 +93,7 @@ class DygraphToStaticAst(BaseTransformer):
             EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
             TensorShapeTransformer,  # Tensor.shape -> layers.shape(Tensor)
-            ListTransformer,  # List used in control flow
+            #ListTransformer,  # List used in control flow
             BreakContinueTransformer,  # break/continue in loops
             ReturnTransformer,  # return in functions
             LogicalTransformer,  # logical and/or/not
@@ -123,7 +123,10 @@ class DygraphToStaticAst(BaseTransformer):
         # Remove the decorated name of dygraph_to_static
         if hasattr(node, 'decorator_list'):
             decorator_list = []
+            ignore_list = ["staticmethod"]
             for d in node.decorator_list:
+                if isinstance(d, gast.Name) and d.id in ignore_list:
+                    continue
                 if isinstance(d, gast.Name) and d.id not in DECORATOR_NAMES:
                     raise NotImplementedError(
                         "ProgramTranslator hasn't implemented multiple decorators. Please remove "
