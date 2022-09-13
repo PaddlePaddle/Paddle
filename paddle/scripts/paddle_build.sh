@@ -2516,7 +2516,7 @@ set -x
             get_pr_ut_startTime_s=`date +%s`
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
             get_pr_ut_endTime_s=`date +%s`
-            echo "ipipe_log_param_get_pr_ut_Total_Time: $[ $get_pr_ut_startTime_s - $get_pr_ut_endTime_s ]s" 
+            echo "ipipe_log_param_get_pr_ut_Total_Time: $[ $get_pr_ut_endTime_s - $get_pr_ut_startTime_s  ]s" 
         fi
 
         if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
