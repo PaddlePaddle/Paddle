@@ -109,10 +109,10 @@ class SparseAPI(ForwardAPI):
         for param in kernel_param:
             if param in input_names:
                 if param in self.optional_vars:
-                    kernel_context_code = kernel_context_code + f"""
+                    kernel_context_code += f"""
     kernel_context.EmplaceBackInput({param} ? {param}->impl().get() : nullptr);"""
                 else:
-                    kernel_context_code = kernel_context_code + f"""
+                    kernel_context_code += f"""
     kernel_context.EmplaceBackInput({param}.impl().get());"""
 
                 continue
@@ -125,12 +125,12 @@ class SparseAPI(ForwardAPI):
             elif isinstance(param, bool):
                 param = str(param).lower()
             else:
-                param + str(param) + ", "
-            kernel_context_code = kernel_context_code + f"""
+                param = str(param) + ", "
+            kernel_context_code += f"""
     kernel_context.EmplaceBackAttr({param});"""
 
         for out_name in kernel_output_names:
-            kernel_context_code = kernel_context_code + f"""
+            kernel_context_code += f"""
     kernel_context.EmplaceBackOutput({out_name});"""
 
         return kernel_context_code
