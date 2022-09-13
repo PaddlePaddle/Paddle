@@ -42,7 +42,7 @@ from .binary import add
 from .binary import divide
 from .binary import multiply
 from .binary import subtract
-from .binary import values_add
+from .binary import is_same_shape
 
 from .multiary import addmm
 
@@ -78,5 +78,5 @@ __all__ = [
     'multiply',
     'divide',
     'coalesce',
-    'values_add',
+    'is_same_shape',
 ]

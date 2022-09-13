@@ -835,6 +835,24 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
   }
 }
 
+void CheckMemoryContinueInferMeta(const std::vector<const MetaTensor*>& input,
+                                  MetaTensor* output,
+                                  std::vector<MetaTensor*> xout,
+                                  MetaConfig config) {
+  if (config.is_runtime) {
+    return;
+  }
+  int64_t numel = 0;
+  for (size_t i = 0; i < input.size(); ++i) {
+    const auto& dim = input[i]->dims();
+    auto size = phi::product(dim);
+    auto len = size * paddle::experimental::SizeOf(input[i]->dtype());
+    numel += len;
+  }
+  output->set_dims(phi::make_ddim({numel}));
+  output->set_dtype(phi::DataType::INT8);
+}
+
 void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,

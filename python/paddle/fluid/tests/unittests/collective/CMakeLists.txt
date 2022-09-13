@@ -304,5 +304,16 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   set_tests_properties(test_communication_stream_allreduce_api
                        PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
 endif()
+if((WITH_ROCM OR WITH_GPU) AND (LINUX))
+  bash_test_modules(
+    test_world_size_and_rank
+    START_BASH
+    test_world_size_and_rank.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21532;http_proxy=;https_proxy=")
+  set_tests_properties(test_world_size_and_rank PROPERTIES TIMEOUT "120")
+endif()
 add_subdirectory(fleet)
 add_subdirectory(multinode)

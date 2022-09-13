@@ -509,12 +509,8 @@ cc_library(
        operator
        glog
        version
+       xxhash
        dist_attr)
-
-if(WITH_CRYPTO)
-  add_dependencies(proto_desc cryptopp)
-  target_link_libraries(proto_desc cryptopp)
-endif()
 
 cc_library(
   op_registry

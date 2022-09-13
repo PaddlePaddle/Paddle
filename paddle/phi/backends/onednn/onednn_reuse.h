@@ -24,9 +24,12 @@ limitations under the License. */
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 
 namespace phi {
 namespace funcs {
@@ -945,6 +948,314 @@ class ReductionOneDNNHandler
     else
       this->AcquireForwardPrimitiveDescriptor(
           algo, x->mem_desc(), out_md, p, eps);
+  }
+};
+
+template <typename T>
+class ClipOneDNNHandler
+    : public OneDNNHandlerNoCachingT<T,
+                                     dnnl::eltwise_forward,
+                                     dnnl::eltwise_backward> {
+ public:
+  ClipOneDNNHandler(const Scalar& min,
+                    const Scalar& max,
+                    const dnnl::engine engine,
+                    Place cpu_place,
+                    const DenseTensor* x)
+      : OneDNNHandlerNoCachingT<T,
+                                dnnl::eltwise_forward,
+                                dnnl::eltwise_backward>(engine, cpu_place) {
+    float alpha = min.to<float>();
+    float beta = max.to<float>();
+
+    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
+                                            dnnl::algorithm::eltwise_clip_v2,
+                                            x->mem_desc(),
+                                            alpha,
+                                            beta);
+  }
+
+  ClipOneDNNHandler(const Scalar& min,
+                    const Scalar& max,
+                    const dnnl::engine engine,
+                    Place cpu_place,
+                    const DenseTensor* x,
+                    const DenseTensor* dout)
+      : OneDNNHandlerNoCachingT<T,
+                                dnnl::eltwise_forward,
+                                dnnl::eltwise_backward>(engine, cpu_place) {
+    float alpha = min.to<float>();
+    float beta = max.to<float>();
+
+    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
+                                            dnnl::algorithm::eltwise_clip_v2,
+                                            x->mem_desc(),
+                                            alpha,
+                                            beta);
+    this->AcquireBackwardPrimitiveDescriptor(dnnl::algorithm::eltwise_clip_v2,
+                                             dout->mem_desc(),
+                                             x->mem_desc(),
+                                             alpha,
+                                             beta);
+  }
+  std::shared_ptr<dnnl::memory> AcquireBackwardSrcMemory(
+      const DenseTensor* input) {
+    const T* input_data = input->data<T>();
+    return this->AcquireMemoryFromPrimitive(this->bwd_pd_->src_desc(),
+                                            to_void_cast<T>(input_data));
+  }
+};
+
+template <typename T>
+class PoolingOneDNNHandler
+    : public OneDNNHandlerNoCachingT<T,
+                                     dnnl::pooling_forward,
+                                     dnnl::pooling_backward> {
+ public:
+  PoolingOneDNNHandler(const std::string& pooling_type,
+                       const IntArray& kernel_size,
+                       const std::vector<int>& strides,
+                       const std::vector<int>& paddings,
+                       bool global_pooling,
+                       const std::string& padding_algorithm,
+                       bool ceil_mode,
+                       bool exclusive,
+                       bool adaptive,
+                       const dnnl::engine engine,
+                       Place cpu_place,
+                       const DenseTensor* input,
+                       DenseTensor* output)
+      : OneDNNHandlerNoCachingT<T,
+                                dnnl::pooling_forward,
+                                dnnl::pooling_backward>(engine, cpu_place) {
+    std::vector<int64_t> copied_kernel_size(kernel_size.GetData().begin(),
+                                            kernel_size.GetData().end());
+    std::vector<int64_t> copied_strides(strides.begin(), strides.end());
+    std::vector<int64_t> copied_paddings(paddings.begin(), paddings.end());
+    // Only 2D pooling is supported now
+    PADDLE_ENFORCE_EQ(
+        copied_kernel_size.size(),
+        2,
+        errors::InvalidArgument("The copied_kernel_size must be 2D, i.e. 2D "
+                                "pooling, but received %dD.",
+                                copied_kernel_size.size()));
+    PADDLE_ENFORCE_EQ(
+        pooling_type == "max" || pooling_type == "avg",
+        true,
+        errors::InvalidArgument(
+            "The pooling_type must be 'max' or 'avg', but received %s.",
+            pooling_type));
+    PADDLE_ENFORCE_EQ(
+        input->dims().size(),
+        4,
+        errors::InvalidArgument(
+            "Input dim must be with 4, i.e. NCHW, but received %d.",
+            input->dims().size()));
+
+    const auto input_dims = input->dims();
+    DDim data_dims = slice_ddim(input_dims, 2, input_dims.size());
+
+    if (global_pooling) {
+      UpdateKernelSize<int64_t>(&copied_kernel_size, data_dims);
+    }
+
+    UpdatePadding<int64_t>(&copied_paddings,
+                           global_pooling,
+                           0,
+                           padding_algorithm,
+                           data_dims,
+                           copied_strides,
+                           copied_kernel_size);
+
+    auto onednn_paddings = ToOneDNNPadding(copied_paddings);
+
+    const auto dt = ToOneDNNDataType(input->dtype());
+    const auto src_tz = vectorize(input->dims());
+    const auto dst_tz = vectorize(output->dims());
+    const auto dst_md = OneDNNMemDesc(dst_tz, dt, OneDNNMemoryFormat::any);
+
+    if (ceil_mode) {
+      CorrectOutputSize(src_tz,
+                        dst_tz,
+                        copied_kernel_size,
+                        copied_paddings,
+                        copied_strides,
+                        onednn_paddings[1]);
+    }
+
+    if (adaptive) {
+      ComputeAdaptivePoolParameters(
+          src_tz, &copied_kernel_size, &copied_strides);
+    }
+    this->AcquireForwardPrimitiveDescriptor(
+        dnnl::prop_kind::forward_training,
+        pooling_type == "max"
+            ? dnnl::algorithm::pooling_max
+            : (exclusive ? dnnl::algorithm::pooling_avg_exclude_padding
+                         : dnnl::algorithm::pooling_avg_include_padding),
+        input->mem_desc(),
+        dst_md,
+        copied_strides,
+        copied_kernel_size,
+        onednn_paddings[0],
+        onednn_paddings[1]);
+  }
+
+  PoolingOneDNNHandler(const std::string& pooling_type,
+                       const IntArray& kernel_size,
+                       const std::vector<int>& strides,
+                       const std::vector<int>& paddings,
+                       bool global_pooling,
+                       const std::string& padding_algorithm,
+                       bool ceil_mode,
+                       bool exclusive,
+                       bool adaptive,
+                       const dnnl::engine engine,
+                       Place cpu_place,
+                       const DenseTensor* in_x,
+                       const DenseTensor* out_grad,
+                       DenseTensor* in_x_grad)
+
+      : OneDNNHandlerNoCachingT<T,
+                                dnnl::pooling_forward,
+                                dnnl::pooling_backward>(engine, cpu_place) {
+    std::vector<int64_t> copied_kernel_size(kernel_size.GetData().begin(),
+                                            kernel_size.GetData().end());
+    std::vector<int64_t> copied_strides(strides.begin(), strides.end());
+    std::vector<int64_t> copied_paddings(paddings.begin(), paddings.end());
+    auto in_x_dims = in_x->dims();
+    DDim data_dims = slice_ddim(in_x_dims, 2, in_x_dims.size());
+    if (global_pooling) {
+      UpdateKernelSize<int64_t>(&copied_kernel_size, data_dims);
+    }
+
+    UpdatePadding<int64_t>(&copied_paddings,
+                           global_pooling,
+                           0,
+                           padding_algorithm,
+                           data_dims,
+                           copied_strides,
+                           copied_kernel_size);
+
+    auto src_tz = vectorize<int64_t>(in_x->dims());
+    auto diff_src_tz = vectorize<int64_t>(in_x_grad->dims());
+    auto diff_dst_tz = vectorize<int64_t>(out_grad->dims());
+
+    const auto dt = ToOneDNNDataType(in_x->dtype());
+    auto dst_md = dnnl::memory::desc(diff_dst_tz, dt, OneDNNMemoryFormat::any);
+    auto diff_src_md = dnnl::memory::desc(
+        diff_src_tz, oneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
+
+    auto onednn_paddings = ToOneDNNPadding(copied_paddings);
+
+    if (ceil_mode) {
+      CorrectOutputSize(src_tz,
+                        diff_dst_tz,
+                        copied_kernel_size,
+                        copied_paddings,
+                        copied_strides,
+                        onednn_paddings[1]);
+    }
+
+    if (adaptive) {
+      ComputeAdaptivePoolParameters(
+          diff_src_tz, &copied_kernel_size, &copied_strides);
+    }
+
+    this->AcquireForwardPrimitiveDescriptor(
+        dnnl::prop_kind::forward_training,
+        pooling_type == "max"
+            ? dnnl::algorithm::pooling_max
+            : (exclusive ? dnnl::algorithm::pooling_avg_exclude_padding
+                         : dnnl::algorithm::pooling_avg_include_padding),
+        in_x->mem_desc(),
+        dst_md,
+        copied_strides,
+        copied_kernel_size,
+        onednn_paddings[0],
+        onednn_paddings[1]);
+
+    this->AcquireBackwardPrimitiveDescriptor(
+        pooling_type == "max"
+            ? dnnl::algorithm::pooling_max
+            : (exclusive ? dnnl::algorithm::pooling_avg_exclude_padding
+                         : dnnl::algorithm::pooling_avg_include_padding),
+        diff_src_md,
+        out_grad->mem_desc(),
+        copied_strides,
+        copied_kernel_size,
+        onednn_paddings[0],
+        onednn_paddings[1]);
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireWorkspaceMemory(
+      const OneDNNContext& dev_ctx, const std::string& unique_name) {
+    dnnl::memory::desc workspace_md = this->fwd_pd_->workspace_desc();
+    // Pooling Workspace has to be passed to Grad op that
+    // may be executed by diffrent thread, hence
+    // for that one we use key that does not contain TID
+    std::string workspace_key = CreateKey(dev_ctx,
+                                          workspace_md.dims(),
+                                          workspace_md.data_type(),
+                                          unique_name,
+                                          "@wrk");
+    auto mem_p =
+        std::static_pointer_cast<dnnl::memory>(dev_ctx.GetBlob(workspace_key));
+    if (mem_p == nullptr) {
+      static std::mutex acquire_barrier;
+      std::lock_guard<std::mutex> block_threads_until_finish_this_job(
+          acquire_barrier);
+      mem_p = std::static_pointer_cast<dnnl::memory>(
+          dev_ctx.GetBlob(workspace_key));
+      if (mem_p == nullptr) {
+        mem_p = std::make_shared<dnnl::memory>(workspace_md, this->engine_);
+        dev_ctx.SetBlob(workspace_key, mem_p);
+      }
+    }
+    return mem_p;
+  }
+
+  static void ComputeAdaptivePoolParameters(const std::vector<int64_t>& src_tz,
+                                            std::vector<int64_t>* kernel_size,
+                                            std::vector<int64_t>* strides) {
+    // https://github.com/oneapi-src/oneDNN/tree/bkocot/adaptive-pooling/rfcs/20200818-adaptive-pooling
+    auto IH = static_cast<double>(src_tz[src_tz.size() - 2]);
+    auto IW = static_cast<double>(src_tz[src_tz.size() - 1]);
+    auto OH = static_cast<double>(kernel_size->at(0));
+    auto OW = static_cast<double>(kernel_size->at(1));
+
+    strides->at(0) =
+        static_cast<int64_t>(floor((IH * 2.0) / OH) - floor(IH / OH));
+    strides->at(1) =
+        static_cast<int64_t>(floor((IW * 2.0) / OW) - floor(IW / OW));
+    kernel_size->at(0) =
+        static_cast<int64_t>(ceil((IH * 2.0) / OH) - floor(IH / OH));
+    kernel_size->at(1) =
+        static_cast<int64_t>(ceil((IW * 2.0) / OW) - floor(IW / OW));
+  }
+
+ private:
+  static inline int ComputeCeiledOutput(int input_size,
+                                        int kernel_size,
+                                        int padding,
+                                        int stride) {
+    return (input_size - kernel_size + 2 * padding) / stride + 1;
+  }
+
+  static inline void CorrectOutputSize(
+      const std::vector<int64_t>& src_tz,
+      const std::vector<int64_t>& dst_tz,
+      const std::vector<int64_t>& kernel_size,
+      const std::vector<int64_t>& paddings,
+      const std::vector<int64_t>& strides,
+      std::vector<int64_t>& right_bot_padding) {  // NOLINT
+    for (size_t i = 0; i < right_bot_padding.size(); i++) {
+      int desired_size = ComputeCeiledOutput(
+          src_tz[i + 2], kernel_size[i], paddings[i], strides[i]);
+      if (desired_size != dst_tz[i + 2]) {
+        right_bot_padding[i] += strides[i] - 1;
+      }
+    }
   }
 };
 }  // namespace funcs
