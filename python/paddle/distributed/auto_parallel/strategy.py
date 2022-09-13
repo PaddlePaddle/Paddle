@@ -95,6 +95,32 @@ class GradientMergeConfig(BaseConfig):
 
 
 class Strategy(BaseConfig):
+    """
+    The `Strategy` object is used to configure the paralleization and optimization beheviors. 
+
+    Args:
+        config (dict|string, optional): If this is None, the default configurations will used.
+        If this is a dictionary, the recognized key-value of it will be used to override the default
+        configurations while other default configurations are left unchanged. If this is a string,
+        it is interpreted as the path to a YAML configuration and will be loaded to override the
+        corresponding default configurations.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.distributed.auto_parallel as auto
+            
+            strategy = auto.Strategy()
+            sharding = strategy.sharding
+            self.assertEqual(sharding.enabled, False)
+            self.assertEqual(sharding.stage, 1)
+            sharding.enabled = True
+            sharding.state = 2 
+            self.assertEqual(sharding.enabled, True)
+            self.assertEqual(sharding.stage, 2)
+
+    """
 
     def __init__(self, config=None):
         if config is not None:
@@ -126,43 +152,3 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.GRADIENT_MERGE, None)
         self.gradient_merge = GradientMergeConfig(config_dict)
-
-
-# def _parse_yaml_config():
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument("-c", "--config", help="Path of YAML configuration file for Auto Parallel")
-#     yaml_args = parser.parse_args()
-#     yaml_dict = yaml.load(
-#         open(yaml_args.config, 'rb'), Loader=yaml.Loader)
-#     _print_args(yaml_dict)
-#     return yaml_dict
-
-# def _print_args(yaml_dict):
-#     """Print arguments."""
-
-#     def add_dict(config, k, v):
-#         if not isinstance(v, dict):
-#             config[k] = v
-#             return
-#         for ik, iv in v.items():
-#             add_dict(config, ik, iv)
-
-#     print(
-#         '------------------------ YAML configuration for Auto Parallel ------------------------',
-#         flush=True)
-
-#     for key, value in yaml_dict.items():
-#         args = {}
-#         add_dict(args, key, value)
-
-#         print("{}:".format(key), flush=True)
-#         str_list = []
-#         for key, value in args.items():
-#             dots = '.' * (48 - len(key))
-#             str_list.append('  {} {} {}'.format(key, dots, value))
-#         for arg in sorted(str_list, key=lambda x: x.lower()):
-#             print(arg, flush=True)
-
-#     print(
-#         '--------------------------- End of YAML configuration --------------------------------',
-#         flush=True)

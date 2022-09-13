@@ -41,24 +41,21 @@ def reset_current_process_mesh():
 
 class ProcessMesh(object):
     """
-    The class `Processmesh` describes the topology of logical processes. 
+    The `Processmesh` object describes the topology of the used processes. 
 
     Args:
-        mesh (list|numpy.array): an N-dimensional array describes the toplogy
-            of logical processes.
+        mesh (list|numpy.array): an n-dimensional array describes the toplogy
+            of the processes.
         dim_names (list, optional): the i-th element of this list gives the name of the
-            i-th dimension.
+            i-th dimension of the mesh.
     
-    Returns:
-        None
-
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.distributed as dist
+            import paddle.distributed.auto_parallel as auto
             
-            mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
+            mesh = auto.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
             assert mesh.shape == [2, 3]
             assert mesh.processe_ids == [2, 4, 5, 0, 1, 3]
 
@@ -113,35 +110,35 @@ class ProcessMesh(object):
     @property
     def shape(self):
         """
-        Get the topology of logical processes belonging to this ProcessMesh.
+        Get the shape of this ProcessMesh.
         """
         return self._shape
 
     @property
     def process_ids(self):
         """
-        Get a list of all processes belonging to this ProcessMesh.
+        Get the process ids belonging to this ProcessMesh.
         """
         return self._process_ids
 
     @property
     def dim_names(self):
         """
-        Get the topology of logical processes belonging to this ProcessMesh.
+        Get the dimension names of this ProcessMesh.
         """
         return self._dim_names
 
     @property
     def ndim(self):
         """
-        Get the number of dimension of ProcessMesh.
+        Get the number of dimension of this ProcessMesh.
         """
         return len(self._shape)
 
     @property
     def mesh(self):
         """
-        Get the number of dimension of ProcessMesh.
+        Get the underlying mesh of ProcessMesh.
         """
         return self._mesh
 

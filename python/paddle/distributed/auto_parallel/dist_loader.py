@@ -141,42 +141,6 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
             )
         return steps_per_epoch
 
-    # def _wrap_collate_fn(self, collate_fn):
-    #     def wrapper(batch):
-    #         if self.auto_collate_batch:
-    #             sample = batch[0]
-    #         else:
-    #             sample = batch
-    #         print(sample, flush=True)
-    #         assert len(sample) == 2, \
-    #             "Expect data sample is a (input, label) pair, but receive {}.".format(len(sample))
-    #         assert isinstance(sample[0], (list, tuple, None)), \
-    #             "Expect input of data sample is a list, tuple or None, but receive {}".format(type(sample[0]).__name__)
-    #         assert isinstance(sample[1], (list, tuple, None)), \
-    #             "Expect label of data sample is a list, tuple or None, but receive {}".format(type(sample[1]).__name__)
-    #         if self.auto_collate_batch:
-    #             new_batch = []
-    #             for sample in batch:
-    #                 new_sample = []
-    #                 if sample[0] is not None:
-    #                     for item in sample[0]:
-    #                         new_sample.append(item)
-    #                 if sample[1] is not None:
-    #                     for item in sample[1]:
-    #                         new_sample.append(item)
-    #                 new_batch.append(new_sample)
-    #         else:
-    #             new_sample = []
-    #             if sample[0] is not None:
-    #                 for item in sample[0]:
-    #                     new_sample.append(item)
-    #             if sample[1] is not None:
-    #                 for item in sample[1]:
-    #                     new_sample.append(item)
-    #             new_batch = tuple(new_sample)
-    #         return collate_fn(new_batch)
-    #     return wrapper
-
     def _create_inner_dataloader(self):
 
         def data_generator():
