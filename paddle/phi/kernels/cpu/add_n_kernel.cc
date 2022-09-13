@@ -21,19 +21,12 @@ void AddNKernel(const Context& dev_ctx,
                 const std::vector<const TensorBase*>& x,
                 DenseTensor* out) {
   size_t in_num = x.size();
+  dev_ctx.template Alloc<T>(out);
 
-  auto* out_ptr = dev_ctx.template Alloc<T>(out);
   bool in_place = false;
   if (x.size() > 0 && x[0]->initialized() && DenseTensor::classof(x[0])) {
     if ((static_cast<const DenseTensor*>(x[0]))->Holder() == out->Holder()) {
       in_place = true;
-    }
-  }
-
-  if (in_num >= 1 && DenseTensor::classof(x[0]) && x[0]->initialized()) {
-    auto& in_0_tensor = *(static_cast<const DenseTensor*>(x[0]));
-    if (in_0_tensor.numel() > 0) {
-      in_place = (in_0_tensor.data<T>() == out_ptr);
     }
   }
 
@@ -81,7 +74,7 @@ void AddNKernel(const Context& dev_ctx,
           x[i]->type_info().name()));
     }
   }
-  VLOG(10) << "end sum kernel";
+  VLOG(10) << "end add_n kernel";
 }
 
 }  // namespace phi

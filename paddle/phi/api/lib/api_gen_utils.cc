@@ -123,6 +123,16 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 }
 
 std::vector<phi::MetaTensor> MakeMetaTensor(
+    const std::vector<const phi::SelectedRows*>& tensors) {
+  std::vector<phi::MetaTensor> meta_tensors;
+  meta_tensors.reserve(tensors.size());
+  for (const auto* t : tensors) {
+    meta_tensors.emplace_back(*t);
+  }
+  return meta_tensors;
+}
+
+std::vector<phi::MetaTensor> MakeMetaTensor(
     const std::vector<phi::DenseTensor*>& tensors) {
   std::vector<phi::MetaTensor> meta_tensors;
   meta_tensors.reserve(tensors.size());
