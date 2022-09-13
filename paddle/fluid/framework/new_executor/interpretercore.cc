@@ -193,6 +193,7 @@ paddle::framework::FetchList InterpreterCore::Run(
 #endif
 
   if (!is_build_) {
+    LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     paddle::framework::interpreter::build_variable_scope(
         block_, &var_scope_, create_local_scope_);
 
