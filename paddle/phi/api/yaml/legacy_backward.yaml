@@ -767,10 +767,7 @@
   forward : expand_grad (Tensor x, Tensor grad_out, IntArray shape) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray shape)
   output : Tensor(grad_out_grad)
-  infer_meta :
-    func : ExpandInferMeta
-  kernel :
-    func : expand
+  invoke : expand(grad_x_grad, shape)
 
 - backward_op : expand_grad
   forward : expand (Tensor x, IntArray shape) -> Tensor(out)
