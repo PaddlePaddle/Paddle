@@ -233,8 +233,8 @@ class Engine:
         assert "dataset" in self._user_tuning_config, "Optimization Tuning should provide with dataset."
         batch_size = self._user_tuning_config["batch_size"]
         dataset = self._user_tuning_config["dataset"]
-        dataset.dp_world_size = self._input_split_size
-        dataset.dp_rank = self._input_split_rank
+        dataset.dp_world_size = self.dp_world_sizes
+        dataset.dp_rank = self.dp_ranks
 
         from .tuner.optimization_tuner import OptimizationTuner
         self._optimization_tuner = OptimizationTuner(self._user_tuning_config,
@@ -272,8 +272,13 @@ class Engine:
             if var.name in block.vars:
                 feed_list.append(block.vars[var.name])
 
-        self._input_split_size, self._input_split_rank = self._get_input_split_info(
-            feed_list[0], self._dist_contexts[mode])
+        self.dp_world_sizes = []
+        self.dp_ranks = []
+        for feed_var in feed_list:
+            dp_world_size, dp_rank = self._get_input_split_info(
+                feed_var, self._dist_contexts[mode])
+            self.dp_world_sizes.append(dp_world_size)
+            self.dp_ranks.append(dp_rank)
 
     def _parallel(self, mode, all_ranks):
         # Parallelize program based on the planner's results
@@ -374,40 +379,6 @@ class Engine:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
                 self._executor.run(prune_startup_prog)
 
-            # if self.strategy.amp and self.strategy.amp_configs['use_pure_fp16']:
-            #     # from paddle.fluid.contrib.mixed_precision.fp16_utils import cast_parameters_to_fp16
-            #     def cast_parameters_to_fp16(place,
-            #                                 program,
-            #                                 scope=None,
-            #                                 to_fp16_var_names=None):
-            #         """
-            #         Traverse all parameters in the whole model and set them to the FP16 data type.
-            #         Whereas, this function will keep parameters of batchnorms in FP32.
-            #         Args:
-            #             place(fluid.CPUPlace|fluid.CUDAPlace): `place` is used to restore the FP16 weight tensors.
-            #             program (Program): The used program.
-            #             scope(fluid.Scope, optional): `scope` is used to get the FP32 weight tensor values.
-            #                                         Default is None.
-            #             to_fp16_var_names(set|list, optional): The data types of vars in `to_fp16_var_names`
-            #                                                 will be set to FP16. Usually, it is the returned
-            #                                                 value of `cast_model_to_fp16` API.
-            #         """
-            #         from paddle.framework import core
-            #         import numpy as np
-            #         all_parameters = []
-            #         for block in program.blocks:
-            #             all_parameters.extend(block.all_parameters())
-
-            #         var_scope = scope if scope else paddle.static.global_scope()
-            #         for param in all_parameters:
-            #             if param.dtype == core.VarDesc.VarType.FP16:
-            #                 param_t = var_scope.find_var(
-            #                     param.name).get_tensor()
-            #                 data = np.array(param_t)
-            #                 param_t.set(np.float16(data), place)
-
-            #     cast_parameters_to_fp16(self._place, prune_startup_prog)
-
     def fit(self,
             train_data,
             batch_size=1,
@@ -416,8 +387,7 @@ class Engine:
             steps_per_epoch=None,
             collate_fn=None,
             use_cache=False,
-            return_numpy=True,
-            profile_dir=""):
+            return_numpy=True):
         # TODO: callbacks
         # TODO: evaluate after training
 
@@ -440,39 +410,27 @@ class Engine:
 
         for epoch in range(epochs):
             train_logs = {"epoch: {:d} ": epoch}
-            start_time = time.time()
             for step, _ in enumerate(train_dataloader):
+                try:
+                    outs = self._executor.run(self.main_program,
+                                              fetch_list=fetch_list,
+                                              use_program_cache=use_cache,
+                                              return_numpy=return_numpy)
+                except fluid.core.EOFException:
+                    break
 
-                if len(profile_dir) and step == 30:
-                    from paddle.fluid import core
-                    core.nvprof_start()
-                    core.nvprof_enable_record_event()
-                if len(profile_dir) and step >= 30 and step < 40:
-                    core.nvprof_nvtx_push(str(step))
-                outs = self._executor.run(self.main_program,
-                                          fetch_list=fetch_list,
-                                          use_program_cache=use_cache,
-                                          return_numpy=return_numpy)
                 train_logs["step: {:d} "] = step
                 if lr_scheduler is not None:
                     lr_scheduler.step()
-                    train_logs["lr: {:5e} "] = self._lr_optimizer.get_lr()
-                if len(profile_dir) and step >= 30 and step < 40:
-                    core.nvprof_nvtx_pop()
-                if len(profile_dir) and step == 40:
-                    core.nvprof_stop()
-                if len(profile_dir) and step == 50:
-                    import sys
-                    sys.exit("NV sys profile finish!")
+                    try:
+                        train_logs["lr: {:5e} "] = self._lr_optimizer.get_lr()
+                    except:
+                        train_logs[
+                            "lr: {:5e} "] = self._lr_optimizer._learning_rate.get_lr(
+                            )
                 # inner fetches
                 if fetch_loss:
                     train_logs["loss: {:9f} "] = outs[0][0]
-                duration = time.time() - start_time
-                speed = 1.0 / duration
-                train_logs["speed: {:5f}"] = speed
-                train_logs["ips_total: {:5f}"] = batch_size * 1024 * speed
-                train_logs[
-                    "ips: {:5f}"] = batch_size * 1024 * speed / self._input_split_size
                 # user fetches
                 user_outs = outs[len(fetch_loss):]
                 user_fetch_list = fetch_list[len(fetch_loss):]
@@ -481,8 +439,6 @@ class Engine:
                 # logger
                 string = '[train] ' + ''.join(list(train_logs.keys()))
                 self._logger.info(string.format(*list(train_logs.values())))
-
-                start_time = time.time()
 
     def evaluate(self,
                  eval_data,
@@ -509,10 +465,13 @@ class Engine:
 
         for step, _ in enumerate(eval_dataloader):
             eval_logs = {"step: {:d} ": step}
-            outs = self._executor.run(self.main_program,
-                                      fetch_list=fetch_list,
-                                      use_program_cache=use_cache,
-                                      return_numpy=return_numpy)
+            try:
+                outs = self._executor.run(self.main_program,
+                                          fetch_list=fetch_list,
+                                          use_program_cache=use_cache,
+                                          return_numpy=return_numpy)
+            except fluid.core.EOFException:
+                break
             # inner fetches
             if fetch_loss:
                 eval_logs["loss: {:9f} "] = outs[0][0]
@@ -557,10 +516,13 @@ class Engine:
         outputs = []
         for step, _ in enumerate(test_dataloader):
             predict_logs = {"step: {:d} ": step}
-            outs = self._executor.run(self.main_program,
-                                      fetch_list=fetch_list,
-                                      use_program_cache=use_cache,
-                                      return_numpy=return_numpy)
+            try:
+                outs = self._executor.run(self.main_program,
+                                          fetch_list=fetch_list,
+                                          use_program_cache=use_cache,
+                                          return_numpy=return_numpy)
+            except fluid.core.EOFException:
+                break
             outputs.append(outs[:len(fetch_outputs)])
             for i, out in enumerate(outs):
                 predict_logs[fetch_map[fetch_list[i]] + ": {}"] = out
@@ -609,8 +571,9 @@ class Engine:
                 epochs,
                 steps_per_epoch,
                 collate_fn,
-                data_parallel_world_size=self._input_split_size,
-                data_parallel_rank=self._input_split_rank)
+                data_parallel_world_size=self.dp_world_sizes,
+                data_parallel_rank=self.dp_ranks,
+                split_data=self.strategy.split_data)
 
         # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)
@@ -700,13 +663,16 @@ class Engine:
         config = self.strategy.recompute_configs
 
         # extract ckpts by specific model
-        exact_ckpts = config["checkpoints"]
         if isinstance(self.model, paddle.nn.Layer):
             if hasattr(
                     self.model, "gpt"
             ) and self.model.__class__.__name__ == 'GPTForPretraining':
                 exact_ckpts = self.model.gpt.checkpoints
-                exact_ckpts.pop()
+            else:
+                exact_ckpts = config["checkpoints"]
+        else:
+            exact_ckpts = config["checkpoints"]
+
         # modify strategy
         if self.strategy.recompute:
             config["checkpoints"] = exact_ckpts[:]
