@@ -35,7 +35,8 @@ repos:
         files: \.(c|cc|cxx|cpp|cu|cuh|h|hpp|hxx|xpu|kps)$
         exclude: |
             (?x)^(
-                paddle/fluid/distributed/ps/thirdparty/round_robin.h
+                paddle/fluid/distributed/ps/thirdparty/round_robin.h|
+                patches/.+
             )$
 -   repo: local
     hooks:
@@ -62,7 +63,9 @@ repos:
         files: \.(c|cc|cxx|cpp|cu|cuh|h|hpp|hxx|proto|xpu|kps|py|sh)$
         exclude: |
             (?x)^(
-                paddle/utils/.*
+                paddle/utils/.*|
+                paddle/fluid/distributed/ps/thirdparty/round_robin.h|
+                patches/.+
             )$
 -   repo: local
     hooks:
