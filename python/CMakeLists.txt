@@ -83,7 +83,7 @@ if(APPLE)
     if(NOT NOAVX_CORE_EXT STREQUAL ".so")
       message(
         FATAL_ERROR
-          "Wrong file ${NOAVX_CORE_NAME}, the ext does not match *.dylib!")
+          "Wrong file ${NOAVX_CORE_NAME}, the ext does not match *.so!")
     endif()
     add_custom_command(
       OUTPUT ${FLUID_NOAVX_CORE}
