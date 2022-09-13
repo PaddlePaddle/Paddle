@@ -25,31 +25,42 @@ from .utils import verify_shard_spec, convert_to_dims_mapping
 
 def shard_tensor(x, process_mesh=None, shard_spec=None):
     """
-    Add distributed attributes for a tensors.
+    Shard a tensor on a process mesh according to the shard specification.
 
     Args:
         x (Tensor): the tensor to be sharded.
-        dist_attr (dict): the tensor distributed attributes. The accepted attributes are as follow:
-            "process_mesh": a nested list an to describe the mesh topology of logical processes.
-            "shard_spec": a list to describe the mapping between `x` and `process_mesh`, the dimension 
-                `i` of `x` is split across the dimension `shard_spec[i]` of `process_mesh`, 
-                where -1 means that tensor dimension is not split.
-            Both process_mesh and shard_spec are optional and users can specify as need.
+        process_mesh (ProcessMesh, optional): An instance of ProcessMesh describes a mesh
+            topology of the used logical processes where the tensor is sharded. If it is None,
+            the found current process mesh will be used. And an error will be raised if the 
+            current process mesh cannot be found. Default: None.
+        shard_spec (list, optional): a list to describe the sharding mapping between `x` and `process_mesh`,
+            which means the dimension `i` of `x` is split across the dimension `shard_spec[i]` of `process_mesh`,
+            where `None` means that tensor dimension is not split. For example, given a tensor wih 
+            the shape [6, 12] and a process mesh with the shape [2, 3] and the dimension names ["x", "y"]:
+                If `shard_spec=["x", "y"]`, each shard of the tensor will have a shape [3, 4];
+                If `shard_spec=["y", "x"]`, each shard of the tensor will have a shape [2, 6];
+                If `shard_spec=["x", None]`, each shard of the tensor will have a shape [3, 12];
+                If `shard_spec=[None, "x"]`, each shard of the tensor will have a shape [6, 4];
+                If `shard_spec=["y", None]`, each shard of the tensor will have a shape [2, 12];
+                If `shard_spec=[None, "y"]`, each shard of the tensor will have a shape [6, 4];
+                If `shard_spec=[None, None]`, each shard of the tensor will have a shape [6, 12];
+        If the `shard_spec` is None, the tensor will be replicated across all the processes of `process_mesh`.
+        In the above example, the `shard_spec=None` is same as 'shard_spec=[None, None]'. Defaults: None.
 
     Returns:
-        Tensor: the tensor `x` annotated with distributed attributes.
+        Tensor: the tensor `x` annotated with sharding information. 
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.distributed as dist
-            
+            import paddle.distributed.auto_parallel as auto 
             paddle.enable_static()
 
+            mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
             x = paddle.ones([4, 6])
-            dist.shard_tensor(x, dist_attr={"process_mesh": [[0, 1], [2, 3]],
-                                            "shard_spec": [0, -1]})
+            shard_spec = ["x", "y"]
+            auto.shard_tensor(x, mesh, shard_spec)
 
     """
 
@@ -90,36 +101,44 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
 
 def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
     """
-    Call a functioin and add distributed attributes for ops added by the function.
+    Shard an operation on a process mesh according to its input and output shard specification.
 
     Args:
-        op_fn (callable): a callable operator or module to be sharded.
-        dist_attr (dict): the operator distributed attributes. The accepted attributes are classified into 
-            two categories. The first category decsribes the distributed attributes shared by all inputs and 
-            outputs, and only `process_mesh` can be specified now. The second category describes distributed
-            attributes for inputs or outputs same as the `dist_attr` of `shard_tensor`. All of them are
-            optional and users can specify them as need. Note that `process_mesh` for operators must be the
-            same as these process_meshes for inputs and outputs. 
+        op (Callable): a callable operator or module to be sharded.
+        process_mesh (ProcessMesh, optional): An instance of ProcessMesh describes a mesh
+            topology of the used logical processes where the op is sharded. All of its inputs and
+            outputs are sharded by this process mesh. If it is None, the found current process mesh
+            will be used. And an error will be raised if the current process mesh cannot be found.
+            Default: None.
+        in_shard_specs (list of list, optional): a list of list to describe the sharding specifications
+            for the inputs. Each item of `in_shard_specs` is a `shard_spec` between the correspoinding input
+            and `process_mesh`. If one item is None, the cooresponding input is replicated across all processes
+            If it is None, all inputs are replicated accross all processes. Note that the lenght of the 
+            `in_shard_specs` should be equal to the actual number of inputs when calling this operation.
+            Default: None.
+        out_shard_specs (list of list, optional): a list of list to describe the sharding specifications
+            for the outputs. Each item of `out_shard_specs` is a `shard_spec` between the correspoinding output
+            and `process_mesh`. If one item is None, the cooresponding output is replicated across all processes
+            If it is None, all outputs are replicated accross all processes. Note that the lenght of the 
+            `in_shard_specs` should be equal to the actual number of inputs when calling this operation.
+            Default: None. Default: None.
 
     Returns:
-        list: the outputs of the function `op_fn`, which are annotated with distributed attributes.
+        Outputs of `op`, each of which is annotated with sharding information.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.distributed as dist
-
+            import paddle.distributed.auto_parallel as auto 
             paddle.enable_static()
             
             x = paddle.ones([4, 6])
             y = paddle.zeros([4, 6])
-            dist_add = dist.shard_op(paddle.add,
-                                     dist_attr={
-                                         "process_mesh": [[2, 3, 1], [0, 4, 5]],
-                                         x: {"shard_spec": [-1, 0]},
-                                         y: {"shard_spec": [0, -1]}
-                                     })
+            mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+            dist_add = auto.shard_op(paddle.add,
+                                     in_shard_specs=[["x", "y"], ["y", None]],
+                                     out_shard_specs=[[None, "x"]])
             dist_add(x, y)
 
     """

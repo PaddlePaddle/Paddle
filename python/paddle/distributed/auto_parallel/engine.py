@@ -56,6 +56,31 @@ from .interface import _get_fetches
 
 
 class Engine:
+    """
+    An Engine object can provide the full power of auto parallel to users. 
+    With the help of it, users can easily obtain the abilities of the 
+    distributed training and inference. It also support the dynamic graph and
+    static graph at the same time.
+
+    Args:
+        model (paddle.nn.Layer, optional): The model is an instance of
+            paddle.nn.Layer.
+        loss (Loss|Callable|None, optional): The loss can be a `paddle.nn.Layer`
+            instance or any callable function taken the predicted values and 
+            ground truth values as input. It can be None when there is no loss. 
+            Default: None.
+        optimizer (Optimizer|None, optional): The optimizer need to be set in training
+            and should be None in eval and predict mode. Default: None.
+        metrics (Metric|list[Metric]|None, optional): If metrics is set, all
+            metrics will be calculated and output in train/eval mode. Default: None.
+        cluster (Cluster|None, optional): The cluster represents the topology information
+            about the used physical devices. Default: None. (No need to set for now)
+        strategy (Strategy|None, optional): The strategy is used to configure the
+        paralleization and optimization beheviors. Default: None.
+
+    Examples:
+        None
+    """
 
     def __init__(self,
                  model=None,
@@ -481,6 +506,47 @@ class Engine:
             valid_sample_split=None,
             collate_fn=None,
             callbacks=None):
+        """
+        Trains the model for a fixed number of epochs. If `valid_data` is set,
+        evaluation will be done at the end of each epoch.
+
+        Args:
+            train_data (Dataset): An instance of paddle paddle.io.Dataset. Default: None.
+            train_sample_split (int, optional): Each sample of the train dataset is assumed
+                to be a (input, label) pair by default and has two items. If each sample has
+                more than two items, train_sample_split specifies how to split these items into 
+                input and label. The items before it are input and the left are label. Default: None.
+            batch_size (int, optional): The batch size of train_data. The user's data will
+                be used directly without batching if set to None. Default: 1.
+            epochs (int, optional): The number of epochs to train the model. Default: 1.
+            steps_per_epoch (int, optional): The total number of steps (batches of samples)
+                is executed in one epoch before stating the next one. If None, it is equal to 
+                the number samples in your dataset divided by the batch size. Default: None.
+            valid_data (Dataset, optional): An instance of paddle paddle.io.Dataset used for
+                evaluation at the end of epoch. No evaluation will be done if set to None. 
+                Default: None. (Unsupported for now)
+            valid_freq (int, optional): Only relevant if valid_data is provided. This specifies 
+                how many training epochs before a new evaluation is performed. Default: 1.
+            valid_batch_size (int, optional): Only relevant if valid_data is provided.
+                The batch size of valid_data. The user's data will be used directly without
+                batching if set to None. Default: 1.
+            valid_sample_split (int, optional): Only relevant if valid_data is provided.
+                Each sample of the valid dataset is assumed to be a (input, label) pair 
+                by default and has two items. If each sample has more than two items, 
+                valid_sample_split specifies how to split these items into input and label.
+                The items before it are input and the left are label. Default: None.
+            collate_fn(callable, optional): function to generate mini-batch data by merging
+                the sample list, None for only stack each fields of sample in axis
+                0. Default None. (Unsupported for now)
+            callbacks (Callback|None, optional): A list of `Callback` instances to apply
+                during training. Default: None. (Unsupported for now)
+
+        Returns:
+            None
+
+        Examples:
+            None
+        """
         assert valid_data is None, "No support for validation for now"
         self.mode = 'train'
         self._infer_sample_spec(train_data, batch_size, train_sample_split)
@@ -529,6 +595,29 @@ class Engine:
                  batch_size=1,
                  collate_fn=None,
                  callbacks=None):
+        """
+        Evaluate the loss and metrics of the model on evaluation data.
+
+        Args:
+            eval_data (Dataset): An instance of paddle paddle.io.Dataset. Default: None.
+            eval_sample_split (int, optional): Each sample of the eval dataset is assumed
+                to be a (input, label) pair by default and has two items. If each sample has
+                more than two items, eval_sample_split specifies how to split these items into 
+                input and label. The items before it are input and the left are label. Default: None.
+            batch_size (int, optional): The batch size of eval_data. The user's data will
+                be used directly without batching if set to None. Default: 1.
+            collate_fn(callable, optional): function to generate mini-batch data by merging
+                the sample list, None for only stack each fields of sample in axis
+                0. Default None. (Unsupported for now)
+            callbacks (Callback|None, optional): A list of `Callback` instances to apply
+                during evaling. Default: None. (Unsupported for now)
+
+        Returns:
+            None
+
+        Examples:
+            None
+        """
         self.mode = 'eval'
         self._infer_sample_spec(eval_data, batch_size, eval_sample_split)
         if not self._mode_init_states[self.mode]:
@@ -579,6 +668,29 @@ class Engine:
                 batch_size=1,
                 collate_fn=None,
                 callbacks=None):
+        """
+        Compute the output predictions on testing data.
+
+        Args:
+            test_data (Dataset): An instance of paddle paddle.io.Dataset. Default: None.
+            test_sample_split (int, optional): Each sample of the test dataset is assumed
+                to be a (input, label) pair by default and has two items. If each sample has
+                more than two items, test_sample_split specifies how to split these items into 
+                input and label. The items before it are input and the left are label. Default: None.
+            batch_size (int, optional): The batch size of test_data. The user's data will
+                be used directly without batching if set to None. Default: 1.
+            collate_fn(callable, optional): function to generate mini-batch data by merging
+                the sample list, None for only stack each fields of sample in axis
+                0. Default None. (Unsupported for now)
+            callbacks (Callback|None, optional): A list of `Callback` instances to apply
+                during testing. Default: None. (Unsupported for now)
+
+        Returns:
+            None
+
+        Examples:
+            None
+        """
         self.mode = 'predict'
         self._infer_sample_spec(test_data, batch_size, test_sample_split)
         if not self._mode_init_states[self.mode]:
@@ -760,6 +872,27 @@ class Engine:
             self._logger.info(logs)
 
     def save(self, path, training=True):
+        """  
+        Saves the model, parameters, optimizer state to path. 
+
+        If `training` is set to False, only inference model will be saved.
+
+        Args:
+            path (str): The file prefix to save model. The format
+                is 'dirname/file_prefix' or 'file_prefix'. if empty str.
+                A exception will be raised.
+            training (bool, optional): Whether to save for training. If not, save
+                for inference only. If `training` is set to True, the optimzer state
+                will be saved. Otherwise, only the model and parameters are saved.
+                This function will silently overwrite existing file at the target
+                location. Default: True.
+
+        Returns:
+            None
+
+        Examples:
+            None
+        """
         if training:
             assert 'train' in self._serial_main_progs, \
                 "training model is not ready, please call `engine.prepare()` first."
@@ -782,6 +915,26 @@ class Engine:
                                              program=dist_main_prog)
 
     def load(self, path, strict=True, load_optimizer=True):
+        """
+        Load the stored model, parameters and optimizer states.
+
+        Args:
+            path (str): The prefix of files storing the model states and
+                optimizer states. 
+            strict (bool, optional): Whether to skip the loading of mismatch
+                parameter or raise an error when mismatch happens (not found
+                the parameter in file storing model states of or receives a
+                mismatch shape). Default: False.
+            load_optimizer (bool, optional): If True, the stored optimizer
+                states is restored. Otherwise, the optimizer states is intialized
+                from scratch. Default: False.
+
+        Returns:
+            None
+
+        Examples:
+            None
+        """
         if load_optimizer:
             if not self._mode_init_states['train']:
                 self._prepare()
