@@ -29,6 +29,7 @@ class  DataNormXPUKernel : public framework::OpKernel<T> {
     const auto &x_dims = x->dims();
     float* scale_w = nullptr;
     float* bias = nullptr;
+    bool enable_scale_and_shift = context.Attr<bool>("enable_scale_and_shift");
     if (enable_scale_and_shift) {
         scale_w = const_cast<float*>(context.Input<Tensor>("scale_w")->data<T>());
         bias = const_cast<float*>(context.Input<Tensor>("bias")->data<T>());
