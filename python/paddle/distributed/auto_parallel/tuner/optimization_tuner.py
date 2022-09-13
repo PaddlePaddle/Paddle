@@ -29,7 +29,6 @@ import paddle
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
 from paddle.distributed.passes import new_pass, PassContext
-from paddle.distributed.utils import get_logger
 
 from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
 from paddle.distributed.auto_parallel.completion import Completer
@@ -39,6 +38,7 @@ from paddle.distributed.auto_parallel.process_group import clear_all_process_gro
 from paddle.distributed.auto_parallel.utils import debug_program
 from paddle.distributed.auto_parallel.utils import make_data_unshard, set_grad_var_shape
 
+from ..utils import get_logger
 from .config import TuningConfig
 from .algorithms import new_algorithm
 from .trial import TrialStatus
