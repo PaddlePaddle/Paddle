@@ -121,6 +121,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fc",
       "shuffle_channel",
       "swish",
+      "silu",
       "split",
       "instance_norm",
       "gelu",
@@ -175,7 +176,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "sum",
       "shape",
       "squeeze2",
-      "unsqueeze2"};
+      "unsqueeze2",
+      "layernorm_shift_partition"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -228,6 +230,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fc",
       "shuffle_channel",
       "swish",
+      "silu",
       "split",
       "instance_norm",
       "gelu",
@@ -284,7 +287,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shape",
       "squeeze2",
       "unsqueeze2",
-      "fused_token_prune"};
+      "fused_token_prune",
+      "layernorm_shift_partition"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node,
@@ -292,12 +296,6 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                     bool with_dynamic_shape) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();
-  // do not support the op which is labeled the `skip_quant`
-  if ((desc.HasAttr("namescope") &&
-       PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
-           "/skip_quant_2/") ||
-      desc.HasAttr("skip_quant"))
-    return false;
 
   for (auto& teller : tellers_) {
     std::unordered_set<std::string> act_op_list = {
@@ -309,7 +307,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         "tan",      "tanh",  "sinh",
         "cosh",     "asin",  "acos",
         "atan",     "asinh", "atanh",
-        "ceil",     "floor", "erf"};
+        "ceil",     "floor", "erf",
+        "silu"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -356,7 +355,30 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
     }
 
+    if (op_type == "dropout") {
+      /*
+       * Some OpDescs Attribute support both constant value and dynamic
+       * runtime value (which is a Variable(s) type). But TensorRT maybe
+       * only support constant value Attribute, so we shall distinguish
+       * this case in time and return False in OpTeller.Tell().
+       * If Attribute is Variable(s), HasAttr() will return False
+       */
+      if (!desc.HasAttr("dropout_prob", /*with_attr_var=*/false)) {
+        VLOG(3)
+            << "Skip to convert into TRT while found Attribute('dropout_prob') "
+               "is Variable type in dropout.";
+        return false;
+      }
+    }
+
     if (op_type == "pool2d") {
+      // If Attribute is Variable(s), HasAttr() will return False
+      if (!desc.HasAttr("ksize", /*with_attr_var=*/false)) {
+        VLOG(3) << "Skip to convert into TRT while found Attribute('ksize') is "
+                   "Variable type in pool2d.";
+        return false;
+      }
+
       std::vector<int> paddings =
           PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       if (paddings.size() > 2) {
@@ -789,6 +811,12 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "arg_max") {
+      if (!desc.HasAttr("axis", /*with_attr_var=*/false)) {
+        VLOG(3) << "Skip to convert into TRT while found Attribute('axis') is "
+                   "Variable type in arg_max.";
+        return false;
+      }
+
       int axis = desc.HasAttr("axis")
                      ? PADDLE_GET_CONST(int64_t, desc.GetAttr("axis"))
                      : -1;
@@ -1053,6 +1081,13 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "squeeze2") {
+      // If Attribute is Variable(s), HasAttr() will return False
+      if (!desc.HasAttr("axes", /*with_attr_var=*/false)) {
+        VLOG(3) << "Skip to convert into TRT while found Attribute('axes') is "
+                   "Variable type in squeeze2.";
+        return false;
+      }
+
       std::vector<int> axes;
       if (desc.HasAttr("axes")) {
         axes = PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
@@ -1994,6 +2029,13 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean") {
+      if (!desc.HasAttr("dim", /*with_attr_var=*/false)) {
+        VLOG(3) << "Skip to convert into TRT while found Attribute('dim') is "
+                   "Variable type in "
+                << desc.Type();
+        return false;
+      }
+
       if (!(desc.HasAttr("keep_dim") && desc.HasAttr("dim") &&
             desc.HasAttr("reduce_all"))) {
         VLOG(3) << "the " << op_type
@@ -2243,11 +2285,20 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 #endif
     }
 
+    if (op_type == "layernorm_shift_partition") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the layernorm_shift_partition does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
 
   return false;
 }
+
 OpTeller::OpTeller() { tellers_.emplace_back(new SimpleOpTypeSetTeller); }
 }  // namespace tensorrt
 }  // namespace inference
