@@ -26,7 +26,6 @@ except ImportError:
 
 from . import wave_backend
 from . import backend
-from paddle.utils import try_import
 from typing import List
 
 __all__ = [
