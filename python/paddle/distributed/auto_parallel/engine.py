@@ -709,18 +709,18 @@ class Engine:
 
         # extract ckpts by specific model
         exact_ckpts = config["checkpoints"]
-        if isinstance(self.model, paddle.nn.Layer):
+        if isinstance(self.model.model, paddle.nn.Layer):
             if hasattr(
-                    self.model, "gpt"
-            ) and self.model.__class__.__name__ == 'GPTForPretraining':
-                exact_ckpts = self.model.gpt.checkpoints
+                    self.model.model, "gpt"
+            ) and self.model.model.__class__.__name__ == 'GPTForPretraining':
+                exact_ckpts = self.model.model.gpt.checkpoints
                 exact_ckpts.pop()
         # modify strategy
         if self.strategy.recompute:
             config["checkpoints"] = exact_ckpts[:]
             self.strategy.recompute_configs = config
             logs = {
-                'Model Class': self.model.__class__.__name__,
+                'Model Class': self.model.model.__class__.__name__,
                 'Applied Recompute ckpts': exact_ckpts
             }
             self._logger.info(logs)
