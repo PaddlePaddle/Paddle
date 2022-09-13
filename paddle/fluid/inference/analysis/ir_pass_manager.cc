@@ -209,8 +209,23 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("disable_trt_plugin_fp16",
                 new bool(argument->disable_trt_plugin_fp16()));
     } else if (pass_name == "dlnne_subgraph_pass") {
+      auto precision_mode = argument->dlnne_precision_mode();
       pass->Set("min_subgraph_size",
                 new int(argument->dlnne_min_subgraph_size()));
+      pass->Set("max_batch_size", new int(argument->dlnne_max_batch_size()));
+      pass->Set("use_static_batch",
+                new bool(argument->dlnne_use_static_batch()));
+      pass->Set("weight_share_mode",
+                new std::string(argument->dlnne_weight_share_mode()));
+      pass->Set("disable_nodes_by_outputs",
+                new std::unordered_set<std::string>(
+                    argument->dlnne_disable_nodes_by_outputs()));
+      pass->Set("use_calib_mode", new bool(argument->dlnne_use_calib_mode()));
+      pass->Set("precision_mode",
+                new AnalysisConfig::Precision(precision_mode));
+      pass->Set("input_shape_dict",
+                new std::map<std::string, std::vector<int64_t>>(
+                    argument->dlnne_input_shape_dict()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
     }

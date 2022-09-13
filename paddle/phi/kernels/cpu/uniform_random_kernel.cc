@@ -15,33 +15,9 @@
 #include "paddle/phi/kernels/uniform_random_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/uniform_real_distribution.h"
 
 namespace phi {
-
-template <typename T>
-inline void UniformRealDistribution(T *data,
-                                    const int64_t &size,
-                                    const float &min,
-                                    const float &max,
-                                    std::shared_ptr<std::mt19937_64> engine) {
-  std::uniform_real_distribution<T> dist(static_cast<T>(min),
-                                         static_cast<T>(max));
-  for (int64_t i = 0; i < size; ++i) {
-    data[i] = dist(*engine);
-  }
-}
-
-template <>
-inline void UniformRealDistribution(phi::dtype::bfloat16 *data,
-                                    const int64_t &size,
-                                    const float &min,
-                                    const float &max,
-                                    std::shared_ptr<std::mt19937_64> engine) {
-  std::uniform_real_distribution<float> dist(min, max);
-  for (int64_t i = 0; i < size; ++i) {
-    data[i] = static_cast<phi::dtype::bfloat16>(dist(*engine));
-  }
-}
 
 template <typename T, typename Context>
 void UniformRandomRawKernel(const Context &dev_ctx,
@@ -85,32 +61,12 @@ void UniformRandomRawKernel(const Context &dev_ctx,
   }
 }
 
-template <typename T, typename Context>
-void UniformRandomKernel(const Context &dev_ctx,
-                         const IntArray &shape,
-                         DataType dtype,
-                         const Scalar &min,
-                         const Scalar &max,
-                         int seed,
-                         DenseTensor *out) {
-  UniformRandomRawKernel<T>(
-      dev_ctx, shape, dtype, min, max, seed, 0, 0, 0.0f, out);
-}
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(uniform_random_raw,
                    CPU,
                    ALL_LAYOUT,
                    phi::UniformRandomRawKernel,
-                   float,
-                   double,
-                   phi::dtype::bfloat16) {}
-
-PD_REGISTER_KERNEL(uniform_random,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::UniformRandomKernel,
                    float,
                    double,
                    phi::dtype::bfloat16) {}

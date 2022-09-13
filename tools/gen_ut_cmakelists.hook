@@ -1,0 +1,6 @@
+
+set -e
+lists=`python tools/gen_ut_cmakelists.py -f $* |grep 'modified/new:'|cut -f 2 -d :`
+num=`echo $lists |wc -w`
+[[ $num -ge 1 ]] && git add $lists && exit 1
+exit 0

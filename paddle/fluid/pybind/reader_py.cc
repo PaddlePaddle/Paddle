@@ -118,7 +118,7 @@ class MultiDeviceFeedReader {
  public:
   using ResultDictList =
       std::vector<std::unordered_map<std::string, framework::LoDTensor>>;
-  using ResultList = std::vector<std::vector<framework::LoDTensor>>;
+  using ResultList = std::vector<paddle::framework::LoDTensorArray>;
 
   static constexpr bool kKeepOrder =
       std::is_same<QueueType,
@@ -332,7 +332,7 @@ class MultiDeviceFeedReader {
   std::vector<std::future<Status>> futures_;
   std::vector<std::exception_ptr> exceptions_;
 
-  std::vector<std::vector<framework::LoDTensor>> ret_;
+  std::vector<paddle::framework::LoDTensorArray> ret_;
   bool drop_last_;
   bool pin_memory_;
 };
@@ -427,7 +427,7 @@ void BindReader(py::module *module) {
       .def(
           "push",
           [](reader::LoDTensorBlockingQueue &self,
-             const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+             const paddle::framework::LoDTensorArray &lod_tensor_vec) {
             return self.Push(lod_tensor_vec);
           },
           py::call_guard<py::gil_scoped_release>())
@@ -445,7 +445,7 @@ void BindReader(py::module *module) {
       .def(
           "push",
           [](reader::OrderedMultiDeviceLoDTensorBlockingQueue &self,
-             const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+             const paddle::framework::LoDTensorArray &lod_tensor_vec) {
             return self.Push(lod_tensor_vec);
           },
           py::call_guard<py::gil_scoped_release>())
