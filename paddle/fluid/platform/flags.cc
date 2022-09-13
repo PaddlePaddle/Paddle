@@ -1023,3 +1023,5 @@ PADDLE_DEFINE_EXPORTED_bool(
 PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
                               "PE",
                               "Choose default funciton type in JitLayer.");
+
+PADDLE_DEFINE_EXPORTED_bool(use_int32_kernel, false, "");

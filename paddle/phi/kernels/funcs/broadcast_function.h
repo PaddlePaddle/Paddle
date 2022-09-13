@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "gflags/gflags.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
@@ -21,6 +22,8 @@ limitations under the License. */
 namespace kps = phi::kps;
 
 #endif
+
+DECLARE_bool(use_int32_kernel);
 
 namespace phi {
 namespace funcs {
@@ -469,6 +472,14 @@ void LaunchBroadcastKernel(
 }
 
 #ifndef PADDLE_WITH_XPU_KP
+#define CUDA_ASSERT(__cond) \
+  do {                      \
+    if (!(__cond)) {        \
+      printf(#__cond);      \
+      asm("trap;");         \
+    }                       \
+  } while (0)
+
 HOSTDEVICE static int64_t ConvertSrcIdxToDstIdx(
     int64_t src_idx,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &src_strides,
@@ -484,6 +495,8 @@ HOSTDEVICE static int64_t ConvertSrcIdxToDstIdx(
       dst_idx += local_idx * dst_strides[k + 1];
     }
   }
+  CUDA_ASSERT(src_idx >= 0 && src_idx < src_strides[0]);
+  CUDA_ASSERT(dst_idx >= 0 && dst_idx < dst_strides[0]);
   return dst_idx;
 }
 
@@ -504,6 +517,16 @@ HOSTDEVICE static void ReadVecDataWithInt64Index(
     }
   } else {
     if (!need_broadcast) {
+#pragma unroll
+      for (int i = 0; i < VecSize; ++i) {
+        CUDA_ASSERT(idx + i >= 0 && idx + i < src_strides[0]);
+      }
+      for (int i = 0; i < rank; ++i) {
+        CUDA_ASSERT(src_strides[i] == dst_strides[i]);
+      }
+      CUDA_ASSERT(src_strides[rank] == 1);
+      CUDA_ASSERT(dst_strides[rank] == 1);
+
       phi::Load<T, VecSize>(in + idx, out);
     } else {
 #pragma unroll
@@ -634,13 +657,14 @@ __global__ void BroadcastKernelWithInt64Index(
     }
 
     for (int i = 0; i < remain; ++i) {
-      out[idx] = ApplyFunctorWithInt64IndexHelper<InT,
-                                                  OutT,
-                                                  Functor,
-                                                  VecSize,
-                                                  NumIns>::Run(ins_vec.Get(),
-                                                               functor,
-                                                               i);
+      out[idx + i] =
+          ApplyFunctorWithInt64IndexHelper<InT,
+                                           OutT,
+                                           Functor,
+                                           VecSize,
+                                           NumIns>::Run(ins_vec.Get(),
+                                                        functor,
+                                                        i);
     }
   }
 }
@@ -732,7 +756,12 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
         ins_strides;
     phi::Array<bool, MaxWithOne<Arity>::kValue> need_broadcasts;
 
-    auto out_strides = ShapeToStride(broadcast_out_dims.Get(), rank);
+    PADDLE_ENFORCE_EQ(
+        rank,
+        out_tensor->dims().size(),
+        phi::errors::InvalidArgument(
+            "Output tensor's rank does not match. This may be a bug."));
+    auto out_strides = ShapeToStride(out_tensor->dims().Get(), rank);
     for (int i = 0; i < Arity; ++i) {
       ins_strides[i] = ShapeToStride(ins_expand_dims[i].Get(), rank);
       need_broadcasts[i] =
@@ -742,6 +771,28 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
     int64_t numel = out_strides[0];
     auto gpu_config =
         phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
+
+    if (VLOG_IS_ON(10)) {
+      VLOG(10) << "-------------------------------------------------";
+      VLOG(10) << "Arity = " << Arity << " , VecSize = " << VecSize
+               << " , rank = " << rank << " , Functor = "
+               << phi::enforce::demangle(typeid(Functor).name())
+               << " , InT = " << phi::enforce::demangle(typeid(InT).name())
+               << " , OutT = " << phi::enforce::demangle(typeid(OutT).name());
+      for (int i = 0; i < Arity; ++i) {
+        VLOG(10) << "in " << i << " : dims = " << ins[i]->dims()
+                 << " broadcast_dims = "
+                 << phi::DDim(ins_expand_dims[i].Get(), rank)
+                 << " strides = " << phi::DDim(ins_strides[i].Get(), rank + 1)
+                 << " need_broadcast = " << need_broadcasts[i];
+      }
+      VLOG(10) << "out : dims = " << (*outs)[0]->dims()
+               << " strides = " << phi::DDim(out_strides.Get(), rank + 1);
+      VLOG(10) << "gpu_config.block_per_grid = " << gpu_config.block_per_grid.x
+               << " , gpu_config.thread_per_block = "
+               << gpu_config.thread_per_block.x;
+      VLOG(10) << "-------------------------------------------------";
+    }
 
     BroadcastKernelWithInt64Index<InT, OutT, Functor, VecSize, Arity>
         <<<gpu_config.block_per_grid,
@@ -898,7 +949,9 @@ void BroadcastKernelForDifferentVecSize(
   bool use_int64_index_kernel =
       kEnabledInt64IndexKernel &&
       (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
-  use_int64_index_kernel = kEnabledInt64IndexKernel;
+  if (!FLAGS_use_int32_kernel) {
+    use_int64_index_kernel = kEnabledInt64IndexKernel;
+  }
   if (use_int64_index_kernel) {
     int vec_size = GetVecsize<InT, OutT>(ins, outs);
     switch (vec_size) {
