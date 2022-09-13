@@ -23,6 +23,7 @@ limitations under the License. */
 #include "NvInferRuntime.h"
 
 #include "common/bertCommon.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/platform/enforce.h"
 
 #include <string>
@@ -245,8 +246,8 @@ class EmbLayerNormVarSeqlenPluginMTronCreator
                                          void const* serialData,
                                          size_t serialLength) noexcept override;
 };
-REGISTER_TENSORRT_PLUGIN(EmbLayerNormVarSeqlenPluginHFaceCreator);
-REGISTER_TENSORRT_PLUGIN(EmbLayerNormVarSeqlenPluginMTronCreator);
+REGISTER_TRT_PLUGIN_V2(EmbLayerNormVarSeqlenPluginHFaceCreator);
+REGISTER_TRT_PLUGIN_V2(EmbLayerNormVarSeqlenPluginMTronCreator);
 
 }  // namespace plugin
 }  // namespace tensorrt
