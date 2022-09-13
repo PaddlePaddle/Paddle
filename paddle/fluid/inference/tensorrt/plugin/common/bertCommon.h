@@ -15,7 +15,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <cuda.h>
+#include "paddle/fluid/inference/tensorrt/helper.h"
+
 #if CUDA_VERSION >= 10010
+#if IS_TRT_VERSION_GE(7000)
 
 #ifndef BERT_COMMON_H
 #define BERT_COMMON_H
@@ -630,4 +633,5 @@ inline nvinfer1::DataType fieldTypeToDataType(
 }  // namespace paddle
 #endif  // BERT_COMMON_H
 
+#endif  // TRT_VERSION >= 7
 #endif  // CUDA_VERSION >= 10010
