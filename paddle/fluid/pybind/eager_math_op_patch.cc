@@ -41,6 +41,7 @@ typedef SSIZE_T ssize_t;
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/op_function_common.h"
@@ -57,20 +58,89 @@ bool PyCheckTensor(PyObject* obj) {
   return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
 }
 
-// bool PyCheckFloat(PyObject* obj, std::string& op_type) {
-//   return PyObject_IsInstance(obj, static_cast<float>());
-// }
-
-// bool PyCheckInt(PyObject* obj, std::string& op_type) {
-//   return PyObject_IsInstance(obj, static_cast<int>());
-// }
-
 std::set<phi::DataType> _supported_int_dtype_{DataType::UINT8,
                                               DataType::INT8,
                                               DataType::INT16,
                                               DataType::INT32,
                                               DataType::INT64,
                                               DataType::BOOL};
+std::set<phi::DataType> _complex_dtypes{
+    DataType::COMPLEX64,
+    DataType::COMPLEX128,
+};
+
+// std::set<string> _supported_promote_complex_types_{
+//     '__add__',
+//     '__radd__',
+//     '__sub__',
+//     '__rsub__',
+//     '__mul__',
+//     '__rmul__',
+//     '__div__',
+//     '__truediv__',
+//     '__rdiv__',
+//     '__rtruediv__',
+//     '__matmul__',
+// }
+
+void SetDevice(paddle::platform::Place place) {
+  if (paddle::platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    phi::backends::gpu::SetDeviceId(place.device);
+    VLOG(6) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
+            << " from " << static_cast<int>(place.device);
+#else
+    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU if use CUDAPlace."));
+#endif
+  }
+
+  if (paddle::platform::is_custom_place(place)) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    phi::DeviceManager::SetDevice(place);
+    VLOG(6) << "CurrentDeviceId: "
+            << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from "
+            << static_cast<int>(place.device);
+#else
+    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with CUSTOM_DEVICE if use "
+        "CustomPlace."));
+#endif
+  }
+}
+
+paddle::experimental::Tensor CallScalarFuction(
+    paddle::experimental::Tensor* self_tensor,
+    PyObject* other_obj,
+    std::string op_type) {
+  paddle::experimental::Tensor ret;
+  if (PyFloat_Check(other_obj)) {
+    if (_supported_int_dtype_.find(self_tensor->dtype()) !=
+        _supported_int_dtype_.end()) {
+      (*self_tensor) = cast_dygraph_function(*self_tensor, DataType::FLOAT32);
+    }
+  }
+
+  if (op_type == "add" || op_type == "radd") {
+    ret = scale_dygraph_function(*self_tensor,
+                                 phi::Scalar(1.0),
+                                 CastPyArg2AttrFloat(other_obj, 0),
+                                 true);
+  } else if (op_type == "sub") {
+    ret = scale_dygraph_function(*self_tensor,
+                                 phi::Scalar(1.0),
+                                 -CastPyArg2AttrFloat(other_obj, 0),
+                                 true);
+
+  } else if (op_type == "rsub") {
+    ret = scale_dygraph_function(*self_tensor,
+                                 phi::Scalar(-1.0),
+                                 CastPyArg2AttrFloat(other_obj, 0),
+                                 true);
+  }
+
+  return ret;
+}
 
 static PyObject* tensor__add__method(TensorObject* self,
                                      PyObject* args,
@@ -86,79 +156,66 @@ static PyObject* tensor__add__method(TensorObject* self,
 
     // Set Device ID
     auto place = egr::Controller::Instance().GetExpectedPlace();
-    if (paddle::platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      phi::backends::gpu::SetDeviceId(place.device);
-      VLOG(6) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
-              << " from " << static_cast<int>(place.device);
-#else
-      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-          "PaddlePaddle should compile with GPU if use CUDAPlace."));
-#endif
-    }
-    if (paddle::platform::is_custom_place(place)) {
-#if defined(PADDLE_WITH_CUSTOM_DEVICE)
-      phi::DeviceManager::SetDevice(place);
-      VLOG(6) << "CurrentDeviceId: "
-              << phi::DeviceManager::GetDevice(place.GetDeviceType())
-              << " from " << static_cast<int>(place.device);
-#else
-      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-          "PaddlePaddle should compile with CUSTOM_DEVICE if use "
-          "CustomPlace."));
-#endif
-    }
+    SetDevice(place);
 
     paddle::experimental::Tensor ret;
     paddle::experimental::Tensor self_tensor = self->tensor;
     PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
-    if (PyFloat_Check(other_obj)) {
-      VLOG(1) << "================ other is float type ==================";
-      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-          _supported_int_dtype_.end()) {
-        self_tensor = cast_dygraph_function(self_tensor, DataType::FLOAT32);
-      }
-      VLOG(1) << "Calling scale_dygraph_function in tensor__add__method";
-      ret = scale_dygraph_function(
-          self_tensor,
-          phi::Scalar(1.0),
-          CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 0), 0),
-          true);
-
-    } else if (PyLong_Check(other_obj)) {
-      VLOG(1) << "================ other is int type ==================";
-      VLOG(1) << "Calling scale_dygraph_function in tensor__add__method";
-      ret = scale_dygraph_function(
-          self_tensor, phi::Scalar(1.0), CastPyArg2AttrInt(other_obj, 0), true);
+    // 1. scalar exists cases
+    if (PyFloat_Check(other_obj) || PyLong_Check(other_obj)) {
+      ret = CallScalarFuction(&self_tensor, other_obj, "add");
+      PyEval_RestoreThread(tstate);
+      tstate = nullptr;
+      return ToPyObject(ret);
     }
-    // else if (!PyCheckTensor(other_obj)) {
-    //   if (PyComplex_Check(other_obj)) {
 
-    //   } else {
+    // 2. create or get tensor for other_obj
+    paddle::experimental::Tensor other_tensor;
+    if (!PyCheckTensor(other_obj)) {
+      paddle::experimental::Scalar value =
+          CastPyArg2Scalar(other_obj, "full", 0);
+      other_tensor = full_dygraph_function(
+          self_tensor.shape(), value, self_tensor.dtype(), place);
+    } else {
+      other_tensor = CastPyArg2Tensor(other_obj, 0);
+    }
 
-    //   }
-
-    // }
-
-    if (PyCheckTensor(other_obj)) {
-      paddle::experimental::Tensor other_tensor =
-          CastPyArg2Tensor(other_obj, 0);
-      if (self_tensor.dtype() != other_tensor.dtype()) {
+    // 3. promote types or unify right var type to left var
+    phi::DataType lhs_dtype = self_tensor.dtype();
+    phi::DataType rhs_dtype = other_tensor.dtype();
+    if (lhs_dtype != rhs_dtype) {
+      // note: only op_type in _supported_promote_complex_types_ should promote
+      // dtype
+      if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
+          _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
+        phi::DataType promote_dtype = framework::TransToPhiDataType(
+            framework::PromoteTypesIfComplexExists(
+                framework::TransToProtoVarType(lhs_dtype),
+                framework::TransToProtoVarType(rhs_dtype)));
+        if (lhs_dtype != promote_dtype) {
+          // cast
+          self_tensor = cast_dygraph_function(self_tensor, promote_dtype);
+        }
+        if (rhs_dtype != promote_dtype) {
+          other_tensor = cast_dygraph_function(other_tensor, promote_dtype);
+        }
+      } else {
         printf(
             "Warning: update_value will not used. Please use "
             "dy_mf_update_value\n");
         LOG(WARNING)
             << "The dtype of left and right Tensor are not the same, left "
                "dtype is "
-            << self_tensor.dtype() << ", but right dtype is "
-            << other_tensor.dtype() << ", the right dtype will convert to "
-            << self_tensor.dtype();
-        other_tensor = cast_dygraph_function(other_tensor, self_tensor.dtype());
+            << lhs_dtype << ", but right dtype is " << rhs_dtype
+            << ", the right dtype will convert to " << lhs_dtype;
+        other_tensor = cast_dygraph_function(other_tensor, lhs_dtype);
       }
-      VLOG(6) << "Calling add_dygraph_function in tensor__add__method";
-      ret = add_dygraph_function(self_tensor, other_tensor);
     }
+
+    // 4. calculation
+    VLOG(6) << "Calling add_dygraph_function in tensor__add__method";
+    ret = add_dygraph_function(self_tensor, other_tensor);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     return ToPyObject(ret);
@@ -185,66 +242,66 @@ static PyObject* tensor__sub__method(TensorObject* self,
 
     // Set Device ID
     auto place = egr::Controller::Instance().GetExpectedPlace();
-    if (paddle::platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      phi::backends::gpu::SetDeviceId(place.device);
-      VLOG(6) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
-              << " from " << static_cast<int>(place.device);
-#else
-      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-          "PaddlePaddle should compile with GPU if use CUDAPlace."));
-#endif
-    }
-    if (paddle::platform::is_custom_place(place)) {
-#if defined(PADDLE_WITH_CUSTOM_DEVICE)
-      phi::DeviceManager::SetDevice(place);
-      VLOG(6) << "CurrentDeviceId: "
-              << phi::DeviceManager::GetDevice(place.GetDeviceType())
-              << " from " << static_cast<int>(place.device);
-#else
-      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-          "PaddlePaddle should compile with CUSTOM_DEVICE if use "
-          "CustomPlace."));
-#endif
-    }
+    SetDevice(place);
+
     paddle::experimental::Tensor ret;
     paddle::experimental::Tensor self_tensor = self->tensor;
 
     PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
-    if (PyFloat_Check(other_obj)) {
-      VLOG(1) << "================ other is float type ==================";
-      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-          _supported_int_dtype_.end()) {
-        self_tensor = cast_dygraph_function(self_tensor, DataType::FLOAT32);
-      }
-      VLOG(1) << "Calling scale_dygraph_function in tensor__sub__method";
-      ret = scale_dygraph_function(
-          self_tensor,
-          phi::Scalar(1.0),
-          -CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 0), 0),
-          true);
-
-    } else if (PyLong_Check(other_obj)) {
-      VLOG(1) << "================ other is int type ==================";
-      ret = scale_dygraph_function(self_tensor,
-                                   phi::Scalar(1.0),
-                                   -CastPyArg2AttrInt(other_obj, 0),
-                                   true);
-    } else if (PyCheckTensor(other_obj)) {
-      paddle::experimental::Tensor other_tensor =
-          CastPyArg2Tensor(other_obj, 0);
-      if (self_tensor.dtype() != other_tensor.dtype()) {
-        VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-                   "dtype is "
-                << self_tensor.dtype() << ", but right dtype is "
-                << other_tensor.dtype() << ", the right dtype will convert to "
-                << self_tensor.dtype();
-        other_tensor = cast_dygraph_function(other_tensor, self_tensor.dtype());
-      }
-      VLOG(6) << "Calling subtract_dygraph_function in tensor__sub__method";
-      ret = subtract_dygraph_function(self_tensor, other_tensor);
+    // 1. scalar exists cases
+    if (PyFloat_Check(other_obj) || PyLong_Check(other_obj)) {
+      ret = CallScalarFuction(&self_tensor, other_obj, "sub");
+      PyEval_RestoreThread(tstate);
+      tstate = nullptr;
+      return ToPyObject(ret);
     }
+
+    // 2. create or get tensor for other_obj
+    paddle::experimental::Tensor other_tensor;
+    if (!PyCheckTensor(other_obj)) {
+      paddle::experimental::Scalar value =
+          CastPyArg2Scalar(other_obj, "full", 0);
+      other_tensor = full_dygraph_function(
+          self_tensor.shape(), value, self_tensor.dtype(), place);
+    } else {
+      other_tensor = CastPyArg2Tensor(other_obj, 0);
+    }
+
+    // 3. promote types or unify right var type to left var
+    phi::DataType lhs_dtype = self_tensor.dtype();
+    phi::DataType rhs_dtype = other_tensor.dtype();
+    if (lhs_dtype != rhs_dtype) {
+      if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
+          _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
+        phi::DataType promote_dtype = framework::TransToPhiDataType(
+            framework::PromoteTypesIfComplexExists(
+                framework::TransToProtoVarType(lhs_dtype),
+                framework::TransToProtoVarType(rhs_dtype)));
+        if (lhs_dtype != promote_dtype) {
+          // cast
+          self_tensor = cast_dygraph_function(self_tensor, promote_dtype);
+        }
+        if (rhs_dtype != promote_dtype) {
+          other_tensor = cast_dygraph_function(other_tensor, promote_dtype);
+        }
+      } else {
+        printf(
+            "Warning: update_value will not used. Please use "
+            "dy_mf_update_value\n");
+        LOG(WARNING)
+            << "The dtype of left and right Tensor are not the same, left "
+               "dtype is "
+            << lhs_dtype << ", but right dtype is " << rhs_dtype
+            << ", the right dtype will convert to " << lhs_dtype;
+        other_tensor = cast_dygraph_function(other_tensor, lhs_dtype);
+      }
+    }
+
+    // 4. calculation
+    VLOG(6) << "Calling subtract_dygraph_function in tensor__sub__method";
+    ret = subtract_dygraph_function(self_tensor, other_tensor);
+
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     return ToPyObject(ret);
@@ -260,6 +317,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
 static PyObject* tensor__rsub__method(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
+  VLOG(1) << "running in tensor__rsub__method";
   paddle::platform::RecordEvent pythonc_record_event(
       "rsub pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
@@ -271,64 +329,66 @@ static PyObject* tensor__rsub__method(TensorObject* self,
 
     // Set Device ID
     auto place = egr::Controller::Instance().GetExpectedPlace();
-    if (paddle::platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      phi::backends::gpu::SetDeviceId(place.device);
-      VLOG(6) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
-              << " from " << static_cast<int>(place.device);
-#else
-      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-          "PaddlePaddle should compile with GPU if use CUDAPlace."));
-#endif
-    }
-    if (paddle::platform::is_custom_place(place)) {
-#if defined(PADDLE_WITH_CUSTOM_DEVICE)
-      phi::DeviceManager::SetDevice(place);
-      VLOG(6) << "CurrentDeviceId: "
-              << phi::DeviceManager::GetDevice(place.GetDeviceType())
-              << " from " << static_cast<int>(place.device);
-#else
-      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
-          "PaddlePaddle should compile with CUSTOM_DEVICE if use "
-          "CustomPlace."));
-#endif
-    }
+    SetDevice(place);
+
     paddle::experimental::Tensor ret;
     paddle::experimental::Tensor self_tensor = self->tensor;
-
     PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
-    if (PyFloat_Check(other_obj)) {
-      VLOG(1) << "================ other is float type ==================";
-      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-          _supported_int_dtype_.end()) {
-        self_tensor = cast_dygraph_function(self_tensor, DataType::FLOAT32);
-      }
-      VLOG(1) << "Calling scale_dygraph_function in tensor__rsub__method";
-      ret = scale_dygraph_function(self_tensor,
-                                   phi::Scalar(-1.0),
-                                   CastPyArg2AttrFloat(other_obj, 0),
-                                   true);
-    } else if (PyLong_Check(other_obj)) {
-      VLOG(1) << "================ other is int type ==================";
-      ret = scale_dygraph_function(self_tensor,
-                                   phi::Scalar(-1.0),
-                                   CastPyArg2AttrInt(other_obj, 0),
-                                   true);
-    } else if (PyCheckTensor(other_obj)) {
-      paddle::experimental::Tensor other_tensor =
-          CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
-      if (self_tensor.dtype() != other_tensor.dtype()) {
-        VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-                   "dtype is "
-                << self_tensor.dtype() << ", but right dtype is "
-                << other_tensor.dtype() << ", the right dtype will convert to "
-                << self_tensor.dtype();
-        other_tensor = cast_dygraph_function(other_tensor, self_tensor.dtype());
-      }
-      VLOG(6) << "Calling subtract_dygraph_function in tensor__rsub__method";
-      ret = subtract_dygraph_function(other_tensor, self_tensor);
+    // 1. scalar exists cases
+    if (PyFloat_Check(other_obj) || PyLong_Check(other_obj)) {
+      ret = CallScalarFuction(&self_tensor, other_obj, "rsub");
+      PyEval_RestoreThread(tstate);
+      tstate = nullptr;
+      return ToPyObject(ret);
     }
+
+    // 2. create or get tensor for other_obj
+    paddle::experimental::Tensor other_tensor;
+    if (!PyCheckTensor(other_obj)) {
+      VLOG(1) << "============= before ====== CastPyArg2Scalar ====== ";
+      paddle::experimental::Scalar value =
+          CastPyArg2Scalar(other_obj, "full", 0);
+      other_tensor = full_dygraph_function(
+          self_tensor.shape(), value, self_tensor.dtype(), place);
+    } else {
+      other_tensor = CastPyArg2Tensor(other_obj, 0);
+    }
+
+    // 3. promote types or unify right var type to left var
+    phi::DataType lhs_dtype = self_tensor.dtype();
+    phi::DataType rhs_dtype = other_tensor.dtype();
+    if (lhs_dtype != rhs_dtype) {
+      if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
+          _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
+        phi::DataType promote_dtype = framework::TransToPhiDataType(
+            framework::PromoteTypesIfComplexExists(
+                framework::TransToProtoVarType(lhs_dtype),
+                framework::TransToProtoVarType(rhs_dtype)));
+        if (lhs_dtype != promote_dtype) {
+          // cast
+          self_tensor = cast_dygraph_function(self_tensor, promote_dtype);
+        }
+        if (rhs_dtype != promote_dtype) {
+          other_tensor = cast_dygraph_function(other_tensor, promote_dtype);
+        }
+      } else {
+        printf(
+            "Warning: update_value will not used. Please use "
+            "dy_mf_update_value\n");
+        LOG(WARNING)
+            << "The dtype of left and right Tensor are not the same, left "
+               "dtype is "
+            << lhs_dtype << ", but right dtype is " << rhs_dtype
+            << ", the right dtype will convert to " << lhs_dtype;
+        other_tensor = cast_dygraph_function(other_tensor, lhs_dtype);
+      }
+    }
+
+    // 4. calculation
+    VLOG(6) << "Calling subtract_dygraph_function in tensor__rsub__method";
+    ret = subtract_dygraph_function(other_tensor, self_tensor);
+
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     return ToPyObject(ret);
