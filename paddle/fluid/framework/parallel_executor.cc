@@ -983,6 +983,7 @@ void ParallelExecutor::BCastParamsToDevices(
 
 FetchUnmergedList ParallelExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
+  LOG_FIRST_N(INFO, 1) << "ParallelExecutor is Running (Run).";
   PreludeToRun(fetch_tensors);
   platform::RecordBlock b(0);
 
@@ -1000,6 +1001,7 @@ FetchUnmergedList ParallelExecutor::Run(
 
 FetchList ParallelExecutor::RunAndMerge(
     const std::vector<std::string> &fetch_tensors) {
+  LOG_FIRST_N(INFO, 1) << "ParallelExecutor is Running (RunAndMerge).";
   PreludeToRun(fetch_tensors);
   platform::RecordBlock b(0);
 
