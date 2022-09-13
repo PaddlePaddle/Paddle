@@ -26,11 +26,11 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-template <typename T, typename Context>
-void ElementWiseAddCooKernel(const Context& dev_ctx,
-                             const SparseCooTensor& x,
-                             const SparseCooTensor& y,
-                             SparseCooTensor* out) {
+template <typename T, typename IntT>
+void ElementWiseAddCooGPUKernel(const GPUContext& dev_ctx,
+                                const SparseCooTensor& x,
+                                const SparseCooTensor& y,
+                                SparseCooTensor* out) {
   const auto& x_indices = x.indices();
   const auto& y_indices = y.indices();
   PADDLE_ENFORCE_EQ(
@@ -38,34 +38,36 @@ void ElementWiseAddCooKernel(const Context& dev_ctx,
       y_indices.numel(),
       phi::errors::PreconditionNotMet(
           "The numel of x.indices() and y.indices() should be equal"));
-
-  PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.indices().dtype(), "VerifyIndices", ([&] {
-        const data_t* x_indices_ptr = x_indices.data<data_t>();
-        const data_t* y_indices_ptr = y_indices.data<data_t>();
+  const IntT* x_indices_ptr = x_indices.data<IntT>();
+  const IntT* y_indices_ptr = y_indices.data<IntT>();
 #ifdef PADDLE_WITH_HIP
-        bool is_same = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
-                                     x_indices_ptr,
-                                     x_indices_ptr + x_indices.numel(),
-                                     y_indices_ptr);
+  bool is_same = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
 #else
-        bool is_same = thrust::equal(thrust::cuda::par.on(dev_ctx.stream()),
-                                     x_indices_ptr,
-                                     x_indices_ptr + x_indices.numel(),
-                                     y_indices_ptr);
+  bool is_same = thrust::equal(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
-
-        PADDLE_ENFORCE_EQ(
-            is_same,
-            true,
-            phi::errors::PreconditionNotMet(
-                "Currently, ElementWiseAddCooKernel only supports the case "
-                "where x and y have the same indices"));
-      }));
-
-  EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
-  phi::AddKernel<T, Context>(
+                               x_indices_ptr,
+                               x_indices_ptr + x_indices.numel(),
+                               y_indices_ptr);
+  PADDLE_ENFORCE_EQ(
+      is_same,
+      true,
+      phi::errors::PreconditionNotMet(
+          "Currently, ElementWiseAddCooKernel only supports the case "
+          "where x and y have the same indices"));
+  EmptyLikeCooKernel<T, GPUContext>(dev_ctx, x, out);
+  phi::AddKernel<T, GPUContext>(
       dev_ctx, x.values(), y.values(), out->mutable_values());
+}
+
+template <typename T, typename Context>
+void ElementWiseAddCooKernel(const Context& dev_ctx,
+                             const SparseCooTensor& x,
+                             const SparseCooTensor& y,
+                             SparseCooTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "VerifyIndices", ([&] {
+                                 ElementWiseAddCooGPUKernel<T, data_t>(
+                                     dev_ctx, x, y, out);
+                               }));
 }
 
 }  // namespace sparse
