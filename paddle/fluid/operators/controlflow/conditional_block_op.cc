@@ -23,6 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+DECLARE_bool(use_mkldnn);
+
 namespace paddle {
 namespace operators {
 
@@ -31,6 +33,9 @@ const char ConditionalOp::kOutputs[] = "Out";
 const char ConditionalOp::kCondition[] = "Cond";
 const char ConditionalOp::kScope[] = "Scope";
 const char ConditionalOp::kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
+
+using Executor = framework::Executor;
+using ExecutorPrepareContext = framework::ExecutorPrepareContext;
 
 class ConditionalBlockOp : public ConditionalOp {
  public:
@@ -78,7 +83,6 @@ class ConditionalBlockOp : public ConditionalOp {
       // Executors (executors declared inside control ops)
       platform::DontClearMKLDNNCache(dev_place);
 #endif
-
       auto *block = Attr<framework::BlockDesc *>("sub_block");
       // framework::StandaloneExecutor exec(dev_place, *block->Program());
 
@@ -223,7 +227,6 @@ class ConditionalBlockGradOp : public ConditionalOp {
       //          inside_grads,
       //          /* force_disable_gc */ false,
       //          /* keep_kid_scopes */ false);
-
       AssignLocalGradientToParentScope(
           dev_place, cur_scope, scope, inside_grads, outside_grads, inputs);
       return;
@@ -353,6 +356,37 @@ class ConditionalBlockGradOp : public ConditionalOp {
   }
 };
 
+template <class T>
+struct FilterNoGradInput {};
+
+template <>
+struct FilterNoGradInput<framework::OpDesc> {
+  static void filter(const framework::BlockDesc *desc,
+                     std::vector<std::string> *vec) {
+    auto f = [desc](const std::string &name) -> std::string {
+      if (name == framework::kEmptyVarName) {
+        // don't drop empty var name, you can use Input(name, true) to drop it.
+        return framework::kEmptyVarName;
+      }
+      auto var_desc =
+          desc->FindVarRecursive(framework::GradOriginalVarName(name));
+      std::set<framework::proto::VarType::Type> not_support_backward_dtype = {
+          framework::proto::VarType::BOOL,
+          framework::proto::VarType::INT8,
+          framework::proto::VarType::UINT8,
+          framework::proto::VarType::INT16,
+          framework::proto::VarType::INT32,
+          framework::proto::VarType::INT64,
+      };
+      if (!var_desc ||
+          not_support_backward_dtype.count(var_desc->GetDataType()))
+        return framework::kEmptyVarName;
+      return name;
+    };
+    std::transform(vec->begin(), vec->end(), vec->begin(), f);
+  }
+};
+
 class ConditionalBlockGradInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
@@ -410,8 +444,11 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpMaker<T> {
                       this->OutputGrad(ConditionalOp::kOutputs));
     grad_op->SetInput(ConditionalOp::kScope,
                       this->Output(ConditionalOp::kScope));
+
+    auto fwd_inputs = this->InputGrad(ConditionalOp::kInputs, false);
+    FilterNoGradInput<T>::filter(this->GetForwardOpBlock(), &fwd_inputs);
     grad_op->SetOutput(framework::GradVarName(ConditionalOp::kInputs),
-                       this->InputGrad(ConditionalOp::kInputs, false));
+                       fwd_inputs);
     grad_op->SetBlockAttr("sub_block", this->grad_block_[0]);
     grad_op->SetAttr("is_scalar_condition",
                      this->GetAttr("is_scalar_condition"));

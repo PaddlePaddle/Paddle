@@ -132,6 +132,11 @@ class Scope : public ScopeBase {
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
 
+  // only for dygraph_to_static
+  bool CanReuesd() const { return can_reused_; }
+
+  void SetCanReuesd(bool can_reused) { can_reused_ = can_reused; }
+
  protected:
   struct KeyHasher {
     std::size_t operator()(const std::string& key) const {
@@ -168,6 +173,9 @@ class Scope : public ScopeBase {
   // Scope in `kids_` are owned by this class.
   mutable std::list<Scope*> kids_;
   const Scope* parent_{nullptr};
+
+  // only for dygraph_to_static
+  bool can_reused_{false};
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 

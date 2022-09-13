@@ -23,6 +23,7 @@ list(
   multihead_matmul_op.cc
   shuffle_channel_op.cc
   swish_op.cc
+  silu_op.cc
   instance_norm_op.cc
   stack_op.cc
   transpose_op.cc
@@ -74,7 +75,8 @@ list(
   sum_op.cc
   shape_op.cc
   fill_constant_op.cc
-  fused_token_prune_op.cc)
+  fused_token_prune_op.cc
+  layernorm_shift_partition_op.cc)
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)
