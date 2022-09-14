@@ -905,7 +905,6 @@ void BroadcastKernelForDifferentVecSize(
   bool use_int64_index_kernel =
       kEnabledInt64IndexKernel &&
       (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
-  use_int64_index_kernel = kEnabledInt64IndexKernel;
   if (use_int64_index_kernel) {
     int vec_size = GetVecsize<InT, OutT>(ins, outs);
     switch (vec_size) {
