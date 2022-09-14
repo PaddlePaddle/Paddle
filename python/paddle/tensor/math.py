@@ -4821,6 +4821,25 @@ def sgn(x, name=None):
 
 
 def frexp(x):
+    """
+        The function used to decompose a floating point number into mantissa and exponent.
+
+        Args:
+            x (Tensor): The input tensor, which data type should be float32, float64.
+
+        Returns:
+            mantissa: A mantissa Tensor for real input, shape and data type are same as input.
+            exponent: A mantissa Tensor for real input, shape and data type are same as input.
+
+        Examples:
+            .. code-block:: Python
+
+                import paddle
+
+                x = paddle.to_tensor([[1,2,3,4]])
+                print(paddle.sgn(x))
+                #[[0.5 , 0.5 , 0.75, 0.5 ],[1,2,2,3]]
+        """
     if x.dtype not in [paddle.float32, paddle.float64]:
         raise TypeError(
             "The data type of input must be one of ['float32', 'float64'], but got {}"
