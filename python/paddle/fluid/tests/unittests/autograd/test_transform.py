@@ -290,8 +290,8 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
             'index_select'
         ]
         self.orig2prim_ops = [
-            'broadcast_p', 'add_p', 'reshape_p', 'mul_p', 'reduce_p', 'sqrt_p',
-            'broadcast_p', 'sub_p', 'concat_p', 'gather_p'
+            'broadcast_p', 'add_p', 'reshape_p', 'mul_p', 'reduce_sum_p',
+            'sqrt_p', 'broadcast_p', 'sub_p', 'concat_p', 'gather_p'
         ]
         self.linearize_ops = self.orig2prim_ops + [
             # call fill_const() in linearize() function
@@ -306,7 +306,7 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
             'mul_p',
             'mul_p',
             'add_p',
-            'reduce_p',
+            'reduce_sum_p',
             'fill_constant_p',  # 'sqrt_p', Will not append sqrt_p op when apply JVP for sqrt_p
             'mul_p',
             'div_p',
@@ -326,7 +326,7 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
             'fill_constant_p',
             'mul_p',
             # transposed op
-            'reduce_p',
+            'reduce_sum_p',
             'reshape_p',
             'reshape_p',
             'mul_p',
@@ -334,7 +334,7 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
             'reshape_p',
             'broadcast_p',
             'div_p',
-            'reduce_p',
+            'reduce_sum_p',
             'reshape_p',
             'fill_constant_p',
             'sub_p',
