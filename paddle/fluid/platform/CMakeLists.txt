@@ -288,11 +288,17 @@ if(WITH_GPU)
   set(DEVICE_EVENT_LIBS
       device_event_gpu
       CACHE INTERNAL "device event libs")
-  nv_test(
-    device_event_test
-    SRCS device_event_test.cc
-    DEPS device_event_gpu)
-
+  if(WITH_CUSTOM_DEVICE)
+    nv_test(
+      device_event_test
+      SRCS device_event_test.cc
+      DEPS device_event_gpu device_event_custom_device)
+  else()
+    nv_test(
+      device_event_test
+      SRCS device_event_test.cc
+      DEPS device_event_gpu)
+  endif()
   nv_test(
     device_context_test
     SRCS device_context_test.cu
@@ -315,11 +321,17 @@ if(WITH_ROCM)
   set(DEVICE_EVENT_LIBS
       device_event_gpu
       CACHE INTERNAL "device event libs")
-  hip_test(
-    device_event_test
-    SRCS device_event_test.cc
-    DEPS device_event_gpu)
-
+  if(WITH_CUSTOM_DEVICE)
+    hip_test(
+      device_event_test
+      SRCS device_event_test.cc
+      DEPS device_event_gpu device_event_custom_device)
+  else()
+    hip_test(
+      device_event_test
+      SRCS device_event_test.cc
+      DEPS device_event_gpu)
+  endif()
   hip_test(
     device_context_test
     SRCS device_context_test.cu
