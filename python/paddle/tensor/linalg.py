@@ -1026,7 +1026,7 @@ def cond(x, p=None, name=None):
 
 def dot(x, y, name=None):
     """
-    This operator calculates inner product for vectors.
+    Calculated inner product for vectors.
 
     .. note::
        Support 1-d and 2-d Tensor. When it is 2d, the first dimension of this matrix
