@@ -223,7 +223,7 @@ class EagerUtils {
       const std::vector<paddle::experimental::Tensor*>& out_var,
       std::vector<paddle::experimental::Tensor>* result);
 
-  // end Intermidate needed
+  // end Intermidate needed.
 
   static void CheckAndRetainGrad(const paddle::experimental::Tensor& tensor);
   static void CheckAndRetainGrad(
