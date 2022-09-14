@@ -78,10 +78,46 @@ class Engine:
         cluster (Cluster|None, optional): The cluster represents the topology information
             about the used physical devices. Default: None. (Unused for now)
         strategy (Strategy|None, optional): The strategy is used to configure the
-        paralleization and optimization beheviors. Default: None.
+        paralleization and optimization behaviors. Default: None.
 
     Examples:
-        None
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.vision.transforms as T
+            import paddle.distributed.auto_parallel as auto
+            from paddle.vision.datasets import MNIST
+
+            transform = T.Compose([
+                T.Transpose(),
+                T.Normalize([127.5], [127.5])
+            ])
+            train_dataset = MNIST(mode='train', transform=transform)
+            valid_dataset = MNIST(mode='test', transform=transform)
+
+            model = paddle.vision.models.LeNet()
+            loss = paddle.nn.CrossEntropyLoss() 
+            optimizer = paddle.optimizer.Adam(
+                learning_rate=0.001, parameters=model.parameters())
+            metrics = paddle.metric.Accuracy(topk=(1, 2))
+
+            engine = auto.Engine(model, loss, optimizer, metrics) 
+            # fit 
+            engine.fit(train_dataset,
+                       epochs=2,
+                       batch_size=64)
+            # evaluate 
+            engine.evaluate(valid_dataset,
+                            batch_size=64)
+            # predict
+            engine.predict(valid_dataset,
+                           batch_size=64)
+            # save
+            engine.save("./my_model")
+            # load 
+            engine.load("./my_model")
+
     """
 
     def __init__(self,
@@ -489,7 +525,30 @@ class Engine:
             None
 
         Examples:
-            None
+
+            .. code-block:: python
+
+                import paddle
+                import paddle.vision.transforms as T
+                import paddle.distributed.auto_parallel as auto
+                from paddle.vision.datasets import MNIST
+
+                transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+                train_dataset = MNIST(mode='train', transform=transform)
+
+                model = paddle.vision.models.LeNet()
+                loss = paddle.nn.CrossEntropyLoss() 
+                optimizer = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=model.parameters())
+                metrics = paddle.metric.Accuracy(topk=(1, 2))
+
+                engine = auto.Engine(model, loss, optimizer, metrics) 
+                engine.fit(train_dataset,
+                           epochs=2,
+                           batch_size=64)
         """
         assert valid_data is None, "No support for validation for now"
         self.mode = 'train'
@@ -568,7 +627,27 @@ class Engine:
             None
 
         Examples:
-            None
+
+            .. code-block:: python
+
+                import paddle
+                import paddle.vision.transforms as T
+                import paddle.distributed.auto_parallel as auto
+                from paddle.vision.datasets import MNIST
+
+                transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+                valid_dataset = MNIST(mode='test', transform=transform)
+
+                model = paddle.vision.models.LeNet()
+                loss = paddle.nn.CrossEntropyLoss() 
+                metrics = paddle.metric.Accuracy(topk=(1, 2))
+
+                engine = auto.Engine(model, loss, metrics=metrics) 
+                engine.evaluate(valid_dataset, batch_size=64)
+
         """
         self.mode = 'eval'
         self._infer_sample_spec(eval_data, batch_size, eval_sample_split)
@@ -647,7 +726,24 @@ class Engine:
             None
 
         Examples:
-            None
+
+            .. code-block:: python
+
+                import paddle
+                import paddle.vision.transforms as T
+                import paddle.distributed.auto_parallel as auto
+                from paddle.vision.datasets import MNIST
+
+                transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+                valid_dataset = MNIST(mode='test', transform=transform)
+
+                model = paddle.vision.models.LeNet()
+
+                engine = auto.Engine(model) 
+                engine.predict(valid_dataset, batch_size=64)
         """
         self.mode = 'predict'
         self._infer_sample_spec(test_data, batch_size, test_sample_split)
@@ -859,8 +955,9 @@ class Engine:
             self._logger.info(logs)
 
     def _validate_opt(self, optimizer):
-        optimizer._parameter_list = None
-        optimizer._param_groups = None
+        if optimizer is not None:
+            optimizer._parameter_list = None
+            optimizer._param_groups = None
         return optimizer
 
     def save(self, path, training=True):
@@ -882,7 +979,31 @@ class Engine:
             None
 
         Examples:
-            None
+
+            .. code-block:: python
+                import paddle
+                import paddle.vision.transforms as T
+                import paddle.distributed.auto_parallel as auto
+                from paddle.vision.datasets import MNIST
+
+                transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+                train_dataset = MNIST(mode='train', transform=transform)
+
+                model = paddle.vision.models.LeNet()
+                loss = paddle.nn.CrossEntropyLoss() 
+                optimizer = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=model.parameters())
+                metrics = paddle.metric.Accuracy(topk=(1, 2))
+
+                engine = auto.Engine(model, loss, optimizer, metrics) 
+                engine.fit(train_dataset,
+                           epochs=1,
+                           batch_size=64)
+                engine.save("./my_model")
+
         """
         if training:
             assert 'train' in self._serial_main_progs, \
@@ -924,11 +1045,36 @@ class Engine:
             None
 
         Examples:
-            None
+
+            .. code-block:: python
+                import paddle
+                import paddle.vision.transforms as T
+                import paddle.distributed.auto_parallel as auto
+                from paddle.vision.datasets import MNIST
+
+                transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+                train_dataset = MNIST(mode='train', transform=transform)
+
+                model = paddle.vision.models.LeNet()
+                loss = paddle.nn.CrossEntropyLoss() 
+                optimizer = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=model.parameters())
+                metrics = paddle.metric.Accuracy(topk=(1, 2))
+
+                engine = auto.Engine(model, loss, optimizer, metrics) 
+                engine.fit(train_dataset,
+                           epochs=1,
+                           batch_size=64)
+                engine.save("./my_model")
+                engine.load("./my_model")
+
         """
         if load_optimizer:
             if not self._mode_init_states['train']:
-                self._prepare()
+                self._prepare_single_mode('train')
             mode = "train"
         else:
             mode = "predict"
