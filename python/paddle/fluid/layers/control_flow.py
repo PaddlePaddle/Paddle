@@ -2633,15 +2633,16 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
     # Merge ture and false output if they are not None
     if return_names is None:
+        is_dy2staic = False
         return_names = ["no name"] * len(to_sequence(true_output))
     else:
         """ 
         dy2static will set the return_names and expand the return values to UndefinedVar.
         """
+        is_dy2staic = True
         true_output, false_output = expand_undefined_var(
             true_output, false_output, return_names)
-        true_output, false_output = change_none_to_undefinedvar(
-            true_output, false_output)
+
     if len(to_sequence(true_output)) != len(to_sequence(false_output)):
         raise ValueError(
             "true fn returns {} vars, but false fn returns {} vars, which is not equals"
@@ -2656,6 +2657,30 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             raise ValueError(
                 "Incompatible return values of `{}` in true_fn and false_fn in cond: {}"
                 .format(return_name, e))
+
+    def check_ret_none(seq_true, seq_false, seq_names):
+        length = len(seq_true)
+        for i in range(length):
+            f_true = flatten(seq_true[i])
+            f_false = flatten(seq_false[i])
+            for idx in range(len(f_true)):
+                if f_true[idx] is None and isinstance(
+                        f_false[idx],
+                        Variable) or f_false[idx] is None and isinstance(
+                            f_true[idx], Variable):
+                    warnings.warn(
+                        "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
+                        "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
+                        "'None' in ifelse block might lead to error.".format(
+                            seq_names[i], type(f_true[idx]), f_true[idx],
+                            type(f_false[idx]), f_false[idx]))
+
+    check_ret_none(to_sequence(true_output), to_sequence(false_output),
+                   to_sequence(return_names))
+
+    if is_dy2staic:
+        true_output, false_output = change_none_to_undefinedvar(
+            true_output, false_output)
 
     mask = cast(pred, dtype='int32')
     merge_func = lambda false_var, true_var: select_input_with_buildin_type(
@@ -2692,21 +2717,19 @@ def expand_undefined_var(nest1, nest2, names):
     def map_fn(n1, n2, name, order):
         if not name.startswith(RETURN_VALUE_PREFIX) and (isinstance(
                 n1, UndefinedVar) or n1 is None):
-            if n1 == None and isinstance(n2, Variable):
+            if n1 is None and isinstance(n2, Variable):
                 if order == 0:
                     warnings.warn(
-                        "Dynamic to Static : Var '{}' is set differently in ifelse branchs,"
-                        "<{}, {}> in true branch and <{}, {}> in false branch. Set var to"
+                        "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
+                        "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
                         "'None' in ifelse block might lead to error.".format(
-                            name, type(n1), n1, type(n2), n2),
-                        DeprecationWarning)
+                            name, type(n1), n1, type(n2), n2))
                 else:
                     warnings.warn(
-                        "Dynamic to Static : Var '{}' is set differently in ifelse branchs,"
-                        "<{}, {}> in true branch and <{}, {}> in false branch. Set var to"
+                        "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
+                        "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
                         "'None' in ifelse block might lead to error.".format(
-                            name, type(n2), n2, type(n1), n1),
-                        DeprecationWarning)
+                            name, type(n2), n2, type(n1), n1))
             return pack_undefined_var_as(n2)
         return n1
 
