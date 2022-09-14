@@ -80,9 +80,7 @@ framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
     // op. Treat this as NCHW (default data_format value)
     if (dl != framework::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
-          expected_kernel_type.data_type_,
-          tensor.place(),
-          framework::StringToDataLayout(data_format));
+          expected_kernel_type.data_type_, tensor.place(), dl);
     }
   }
 #endif
