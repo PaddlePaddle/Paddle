@@ -83,10 +83,10 @@ def ReadBwdFile(filepath):
     ret = {}
     if contents is not None:
         for content in contents:
-            assert 'backward_api' in content.keys(), AssertMessage(
-                'backward_api', content.keys())
-            if 'backward_api' in content.keys():
-                api_name = content['backward_api']
+            assert 'backward_op' in content.keys(), AssertMessage(
+                'backward_op', content.keys())
+            if 'backward_op' in content.keys():
+                api_name = content['backward_op']
 
             ret[api_name] = content
     f.close()
