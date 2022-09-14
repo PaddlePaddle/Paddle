@@ -21,7 +21,7 @@ from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
 
-class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
+class TrtConvertMulticlassNMSTest(TrtLayerAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
@@ -79,15 +79,13 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                             0.01,
                     ]:
                         ops_config = [{
-                            "op_type": "multiclass_nms3",
+                            "op_type": "multiclass_nms",
                             "op_inputs": {
                                 "BBoxes": ["input_bboxes"],
                                 "Scores": ["input_scores"],
                             },
                             "op_outputs": {
                                 "Out": ["nms_output_boxes"],
-                                "Index": ["nms_output_index"],
-                                "NmsRoisNum": ["nms_output_num"]
                             },
                             "op_attrs": {
                                 "background_label": -1,
@@ -112,10 +110,7 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                                     data_gen=partial(generate_scores, batch,
                                                      num_boxes, num_classes))
                             },
-                            outputs=[
-                                "nms_output_boxes", "nms_output_num",
-                                "nms_output_index"
-                            ])
+                            outputs=["nms_output_boxes"])
                         yield program_config
 
     def sample_predictor_configs(
@@ -171,8 +166,6 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                             baseline: Dict[str, np.array]):
         # the order of tensorrt outputs are not consistent with paddle
         for key, arr in tensor.items():
-            if key == "nms_output_index":
-                continue
             if key == "nms_output_boxes":
                 basline_arr = np.array(
                     sorted(baseline[key].reshape((-1, 6)),
