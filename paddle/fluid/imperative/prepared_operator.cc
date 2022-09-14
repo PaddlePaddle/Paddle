@@ -210,7 +210,6 @@ PreparedOp PrepareImpl(
       kernel_signature = *default_kernel_signature;
     }
   }
-
   if (has_phi_kernel) {
     VLOG(6) << kernel_signature;
     phi_kernel_name = kernel_signature.name;
@@ -218,10 +217,13 @@ PreparedOp PrepareImpl(
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
 #ifdef PADDLE_WITH_XPU_KP
+    bool is_kp_support = false;
     if (paddle::platform::is_xpu_place(expected_kernel_key.place_)) {
       bool use_xpu_kp_kernel_rt =
-          FLAGS_run_kp_kernel && paddle::platform::is_xpu_kp_support_op(
-                                     op.Type(), expected_kernel_key);
+          FLAGS_run_kp_kernel &&
+          paddle::platform::is_xpu_kp_support_op(op.Type(),
+                                                 expected_kernel_key) &&
+          (!paddle::platform::is_in_xpu_black_list(op.Type()));
       bool use_xpu_kp_kernel_debug =
           paddle::platform::is_in_xpu_kpwhite_list(op.Type());
       if (use_xpu_kp_kernel_rt) {
@@ -232,6 +234,7 @@ PreparedOp PrepareImpl(
       }
       bool is_xpu_kp_support =
           (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
+      is_kp_support = is_xpu_kp_support;
       if (is_xpu_kp_support) {
         auto expected_kernel_key_library_type =
             expected_kernel_key.library_type_;
@@ -261,6 +264,9 @@ PreparedOp PrepareImpl(
     if (phi_kernel.IsValid()
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
         && !is_xpu_unsupport
+#endif
+#if defined(PADDLE_WITH_XPU_KP)
+        && is_kp_support
 #endif
     ) {
       VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << phi_kernel_name

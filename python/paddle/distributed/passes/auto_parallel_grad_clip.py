@@ -207,12 +207,15 @@ class ClipGradByGloblNormPass(PassBase):
         super(ClipGradByGloblNormPass, self).__init__()
         self.set_attr("rank_id", None)
         self.set_attr("dist_context", None)
+        self.set_attr("params_grads", None)
 
     def _check_self(self):
         if self.get_attr("dist_context") is None:
             return False
         dist_context = self.get_attr("dist_context")
         if dist_context._lr_optimizer._grad_clip is None:
+            return False
+        if self.get_attr("params_grads") is None:
             return False
         return True
 
@@ -223,7 +226,8 @@ class ClipGradByGloblNormPass(PassBase):
         dist_context = self.get_attr("dist_context", None)
         rank_id = self.get_attr("rank_id", None)
         block = main_program.global_block()
-        dist_params_grads = _get_params_grads(block)
+        dist_params_grads = self.get_attr("params_grads", None)
+        # dist_params_grads = _get_params_grads(block)
 
         self.clip_helper = ClipHelper(dist_params_grads, rank_id, block,
                                       dist_context)

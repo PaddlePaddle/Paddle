@@ -60,21 +60,18 @@ class ReduceOp:
     Examples:
         .. code-block:: python
 
-            import numpy as np
+            # required: distributed
             import paddle
-            from paddle.distributed import ReduceOp
-            from paddle.distributed import init_parallel_env
+            import paddle.distributed as dist
 
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
-            if paddle.distributed.ParallelEnv().local_rank == 0:
-                np_data = np.array([[4, 5, 6], [4, 5, 6]])
+            dist.init_parallel_env()
+            if dist.get_rank() == 0:
+                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             else:
-                np_data = np.array([[1, 2, 3], [1, 2, 3]])
-            data = paddle.to_tensor(np_data)
-            paddle.distributed.all_reduce(data, op=ReduceOp.SUM)
-            out = data.numpy()
-            # [[5, 7, 9], [5, 7, 9]]
+                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            dist.all_reduce(data, op=dist.ReduceOp.SUM)
+            print(data)
+            # [[5, 7, 9], [5, 7, 9]] (2 GPUs)
     """
     SUM = 0
     MAX = 1
@@ -112,6 +109,10 @@ class Group():
     @property
     def process_group(self):
         return self.pg
+
+    @property
+    def world_size(self):
+        return self.nranks if self.rank >= 0 else -1
 
     def __repr__(self):
         debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
@@ -589,15 +590,16 @@ def destroy_process_group(group=None):
 
             # required: distributed
             import paddle
+            import paddle.distributed as dist
 
-            paddle.distributed.init_parallel_env()
-            group = paddle.distributed.new_group([0, 1])
+            dist.init_parallel_env()
+            group = dist.new_group([0, 1])
 
-            paddle.distributed.destroy_process_group(group)
-            print(paddle.distributed.is_initialized())
+            dist.destroy_process_group(group)
+            print(dist.is_initialized())
             # True
-            paddle.distributed.destroy_process_group()
-            print(paddle.distributed.is_initialized())
+            dist.destroy_process_group()
+            print(dist.is_initialized())
             # False
 
     """
@@ -690,8 +692,8 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
     """
 
     Broadcast a tensor from the source to all others.
-    As shown below, 4 GPUs each start 4 processes and GPU0 owns data 0. Through broadcast operator,
-    the data 0 will be sent to all GPUs from GPU0.
+    As shown below, one process is started with a GPU and GPU0 owns data 0. Through broadcast operator,
+    data 0 will be sent to all GPUs from GPU0.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/broadcast.png
         :width: 800
@@ -699,8 +701,8 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
         :align: center
 
     Args:
-        tensor (Tensor): The Tensor to send if current rank is the source, or the tensor to receive otherwise. Its data type
-            should be float16, float32, float64, int32 or int64.
+        tensor (Tensor): The Tensor to send if current rank is the source, or the Tensor to receive otherwise. Its data type
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         src (int): The source rank.
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
@@ -713,20 +715,17 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
         .. code-block:: python
 
             # required: distributed
-            import numpy as np
             import paddle
-            from paddle.distributed import init_parallel_env
+            import paddle.distributed as dist
 
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
-            if paddle.distributed.ParallelEnv().local_rank == 0:
-                np_data = np.array([[4, 5, 6], [4, 5, 6]])
+            dist.init_parallel_env()
+            if dist.get_rank() == 0:
+                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             else:
-                np_data = np.array([[1, 2, 3], [1, 2, 3]])
-            data = paddle.to_tensor(np_data)
-            paddle.distributed.broadcast(data, 1)
-            out = data.numpy()
-            # [[1, 2, 3], [1, 2, 3]]
+                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            dist.broadcast(data, src=1)
+            print(data)
+            # [[1, 2, 3], [1, 2, 3]] (2 GPUs)
     """
 
     if group is not None and not group.is_member():
@@ -756,9 +755,10 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
                                          'ring_id', ring_id)
 
     op_type = 'c_broadcast'
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'broadcast')
+    check_variable_and_dtype(tensor, 'tensor', [
+        'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
+        'bool'
+    ], 'broadcast')
 
     helper = LayerHelper(op_type, **locals())
     helper.append_op(type=op_type,
@@ -800,15 +800,16 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 
             # required: distributed
             import paddle
-            from paddle.distributed import init_parallel_env
+            import paddle.distributed as dist
 
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
-            if paddle.distributed.ParallelEnv().local_rank == 0:
+            dist.init_parallel_env()
+            if dist.get_rank() == 0:
                 data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             else:
                 data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            paddle.distributed.all_reduce(data)
+            dist.all_reduce(data)
+            print(data)
+            # [[5, 7, 9], [5, 7, 9]] (2 GPUs)
     """
     if group is not None and not group.is_member():
         return
@@ -871,8 +872,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
 
-    Reduce a tensor to the destination from all others. As shown below, 4 GPUs each start 4 processes and the data on each GPU is respresnted
-    by the GPU number. The destination of the reduce operator is GPU0 and the process is sum. Through reduce operator,
+    Reduce a tensor to the destination from all others. As shown below, one process is started with a GPU and the data of this process is represented
+    by its group rank. The destination of the reduce operator is GPU0 and the process is sum. Through reduce operator,
     the GPU0 will owns the sum of all data from all GPUs.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/reduce.png
@@ -882,7 +883,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 
     Args:
         tensor (Tensor): The output Tensor for the destination and the input Tensor otherwise. Its data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         dst (int): The destination rank id.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default value is ReduceOp.SUM.
         group (Group): The group instance return by new_group or None for global default group.
@@ -896,20 +897,18 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         .. code-block:: python
 
             # required: distributed
-            import numpy as np
             import paddle
-            from paddle.distributed import init_parallel_env
+            import paddle.distributed as dist
 
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
-            if paddle.distributed.ParallelEnv().local_rank == 0:
-                np_data = np.array([[4, 5, 6], [4, 5, 6]])
+            dist.init_parallel_env()
+            if dist.get_rank() == 0:
+                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             else:
-                np_data = np.array([[1, 2, 3], [1, 2, 3]])
-            data = paddle.to_tensor(np_data)
-            paddle.distributed.reduce(data, 0)
-            out = data.numpy()
-            # [[5, 7, 9], [5, 7, 9]]
+                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            dist.reduce(data, dst=0)
+            print(data)
+            # [[5, 7, 9], [5, 7, 9]] (2 GPUs, out for rank 0)
+            # [[1, 2, 3], [1, 2, 3]] (2 GPUs, out for rank 1)
     """
     if group is not None and not group.is_member():
         return
@@ -952,9 +951,10 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             raise ValueError("Unknown parameter: {}.".format(op))
 
     op_type = 'c_reduce'
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'all_reduce')
+    check_variable_and_dtype(tensor, 'tensor', [
+        'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
+        'bool'
+    ], 'reduce')
 
     if op == ReduceOp.SUM:
         op_type = 'c_reduce_sum'
@@ -980,8 +980,8 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     """
 
     Gather tensors from all participators and all get the result. As shown
-    below, 4 GPUs each starts 4 processes and the data on each GPU is represented
-    by the GPU number. Through the all_gather operator, each GPU will have data
+    below, one process is started with a GPU and the data of this process is represented
+    by its group rank. Through the all_gather operator, each GPU will have data
     from all GPUs.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/allgather.png
@@ -1006,17 +1006,17 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
 
             # required: distributed
             import paddle
-            from paddle.distributed import init_parallel_env
+            import paddle.distributed as dist
 
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
+            dist.init_parallel_env()
             tensor_list = []
-            if paddle.distributed.ParallelEnv().local_rank == 0:
-                data1 = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
-                paddle.distributed.all_gather(tensor_list, data1)
+            if dist.get_rank() == 0:
+                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             else:
-                data2 = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-                paddle.distributed.all_gather(tensor_list, data2)
+                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            dist.all_gather(tensor_list, data)
+            print(tensor_list)
+            # [[[4, 5, 6], [4, 5, 6]], [[1, 2, 3], [1, 2, 3]]] (2 GPUs)
     """
     if group is not None and not group.is_member():
         return
@@ -1126,20 +1126,23 @@ def all_gather_object(object_list, obj, group=None):
             import paddle
             import paddle.distributed as dist
 
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             dist.init_parallel_env()
             object_list = []
-            if paddle.distributed.ParallelEnv().local_rank == 0:
+            if dist.get_rank() == 0:
                 obj = {"foo": [1, 2, 3]}
-                paddle.distributed.all_gather_object(object_list, obj)
             else:
                 obj = {"bar": [4, 5, 6]}
-                paddle.distributed.all_gather_object(object_list, obj)
+            dist.all_gather_object(object_list, obj)
+            print(object_list)
+            # [{'foo': [1, 2, 3]}, {'bar': [4, 5, 6]}] (2 GPUs)
     """
     assert in_dygraph_mode(
     ), "all_gather_object doesn't support static graph mode."
 
     tensor, len_of_tensor = _convert_object_to_tensor(obj)
+    if paddle.get_device() != "cpu":
+        len_of_tensor = len_of_tensor._copy_to(
+            paddle.framework._current_expected_place(), False)
 
     # gather len_of_tensor from all ranks
     list_len_of_tensor = []
@@ -1163,7 +1166,7 @@ def all_gather_object(object_list, obj, group=None):
 def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     """
 
-    Scatter a tensor to all participators. As shown below, 4 GPUs each start 4 processes and the source of the scatter
+    Scatter a tensor to all participators. As shown below, one process is started with a GPU and the source of the scatter
     is GPU0. Through scatter operator, the data in GPU0 will be sent to all GPUs averagely.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/scatter.png
@@ -1173,9 +1176,9 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
 
     Args:
         tensor (Tensor): The output Tensor. Its data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         tensor_list (list|tuple): A list/tuple of Tensors to scatter. Every element in the list must be a Tensor whose data type
-            should be float16, float32, float64, int32 or int64. Default value is None.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool. Default value is None.
         src (int): The source rank id. Default value is 0.
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
@@ -1188,25 +1191,21 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
         .. code-block:: python
 
             # required: distributed
-            import numpy as np
             import paddle
-            from paddle.distributed import init_parallel_env
+            import paddle.distributed as dist
 
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
-            if paddle.distributed.ParallelEnv().local_rank == 0:
-                np_data1 = np.array([7, 8, 9])
-                np_data2 = np.array([10, 11, 12])
+            dist.init_parallel_env()
+            if dist.get_rank() == 0:
+                data1 = paddle.to_tensor([7, 8, 9])
+                data2 = paddle.to_tensor([10, 11, 12])
+                dist.scatter(data1, src=1)
             else:
-                np_data1 = np.array([1, 2, 3])
-                np_data2 = np.array([4, 5, 6])
-            data1 = paddle.to_tensor(np_data1)
-            data2 = paddle.to_tensor(np_data2)
-            if paddle.distributed.ParallelEnv().local_rank == 0:
-                paddle.distributed.scatter(data1, src=1)
-            else:
-                paddle.distributed.scatter(data1, tensor_list=[data1, data2], src=1)
-            out = data1.numpy()
+                data1 = paddle.to_tensor([1, 2, 3])
+                data2 = paddle.to_tensor([4, 5, 6])
+                dist.scatter(data1, tensor_list=[data1, data2], src=1)
+            print(data1, data2)
+            # [1, 2, 3] [10, 11, 12] (2 GPUs, out for rank 0)
+            # [4, 5, 6] [4, 5, 6] (2 GPUs, out for rank 1)
     """
     if group is not None and not group.is_member():
         return
@@ -1244,9 +1243,10 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
                                        use_calc_stream, 'ring_id', ring_id,
                                        'nranks', nranks, 'root', gsrc)
     op_type = 'c_scatter'
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'scatter')
+    check_variable_and_dtype(tensor, 'tensor', [
+        'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
+        'bool'
+    ], 'scatter')
     helper = LayerHelper(op_type, **locals())
     helper.append_op(type=op_type,
                      inputs={'X': [temp]},
@@ -2014,7 +2014,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
 
     Args:
         in_tensor_list (list): A list of input Tensors. Every element in the list must be a Tensor whose data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         out_tensor_list (list): A list of output Tensors. The data type of its elements should be the same as the
             data type of the input Tensors.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
@@ -2027,29 +2027,29 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
         .. code-block:: python
 
             # required: distributed
-            import numpy as np
             import paddle
-            from paddle.distributed import init_parallel_env
-            
-            init_parallel_env()
+            import paddle.distributed as dist
+
+            dist.init_parallel_env()
             out_tensor_list = []
-            if paddle.distributed.ParallelEnv().rank == 0:
-                np_data1 = np.array([[1, 2, 3], [4, 5, 6]])
-                np_data2 = np.array([[7, 8, 9], [10, 11, 12]])
+            if dist.get_rank() == 0:
+                data1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+                data2 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]])
             else:
-                np_data1 = np.array([[13, 14, 15], [16, 17, 18]])
-                np_data2 = np.array([[19, 20, 21], [22, 23, 24]])
-            data1 = paddle.to_tensor(np_data1)
-            data2 = paddle.to_tensor(np_data2)
-            paddle.distributed.alltoall([data1, data2], out_tensor_list)
-            # out for rank 0: [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]
-            # out for rank 1: [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]]
+                data1 = paddle.to_tensor([[13, 14, 15], [16, 17, 18]])
+                data2 = paddle.to_tensor([[19, 20, 21], [22, 23, 24]])
+            dist.alltoall([data1, data2], out_tensor_list)
+            print(out_tensor_list)
+            # [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]] (2 GPUs, out for rank 0)
+            # [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]] (2 GPUs, out for rank 1)
     """
     if group is not None and not group.is_member():
         return
 
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
+        backend = _group_map_backend[group]
+        assert backend != 'gloo', ("backend gloo is not supported yet")
     else:
         ring_id = 0 if group is None else group.id
 
@@ -2114,7 +2114,7 @@ def alltoall_single(in_tensor,
         ``alltoall_single`` is only supported in eager mode.
 
     Args:
-        in_tensor (Tensor): Input tensor. The data type should be float16, float32, float64, int32 or int64.
+        in_tensor (Tensor): Input tensor. The data type should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         out_tensor (Tensor): Output Tensor. The data type should be the same as the data type of the input Tensor.
         in_split_sizes (list[int], optional): Split sizes of ``in_tensor`` for dim[0]. If not given, dim[0] of ``in_tensor`` 
             must be divisible by group size and ``in_tensor`` will be scattered averagely to all participators. Default: None.
@@ -2137,35 +2137,36 @@ def alltoall_single(in_tensor,
             rank = dist.get_rank()
             size = dist.get_world_size()
 
-            # case 1
-            input = paddle.arange(2, dtype='int64') + rank * 2
-            # input for rank 0: [0, 1]
-            # input for rank 1: [2, 3]
-            
+            # case 1 (2 GPUs)
+            data = paddle.arange(2, dtype='int64') + rank * 2
+            # data for rank 0: [0, 1]
+            # data for rank 1: [2, 3]
             output = paddle.empty([2], dtype='int64')
-            dist.alltoall_single(input, output)
+            dist.alltoall_single(data, output)
+            print(output)
             # output for rank 0: [0, 2]
             # output for rank 1: [1, 3]
 
-            # case 2
+            # case 2 (2 GPUs)
             in_split_sizes = [i + 1 for i in range(size)]
-            # in_split_sizes for rank 0: [1, 2] and for rank 1: [1, 2]
+            # in_split_sizes for rank 0: [1, 2]
+            # in_split_sizes for rank 1: [1, 2]
             out_split_sizes = [rank + 1 for i in range(size)]
-            # out_split_sizes for rank 0: [1, 1] and for rank 1: [2, 2]
-
-            input = paddle.ones([sum(in_split_sizes), size], dtype='float32') * rank
-            # input for rank 0: [[0., 0.], [0., 0.], [0., 0.]]
-            # input for rank 1: [[1., 1.], [1., 1.], [1., 1.]]
+            # out_split_sizes for rank 0: [1, 1]
+            # out_split_sizes for rank 1: [2, 2]
+            data = paddle.ones([sum(in_split_sizes), size], dtype='float32') * rank
+            # data for rank 0: [[0., 0.], [0., 0.], [0., 0.]]
+            # data for rank 1: [[1., 1.], [1., 1.], [1., 1.]]
             output = paddle.empty([(rank + 1) * size, size], dtype='float32')
-
             group = dist.new_group([0, 1])
-            task = dist.alltoall_single(input,
+            task = dist.alltoall_single(data,
                                         output,
                                         in_split_sizes,
                                         out_split_sizes,
                                         use_calc_stream=False,
                                         group=group)
             task.wait()
+            print(output)
             # output for rank 0: [[0., 0.], [1., 1.]]
             # output for rank 1: [[0., 0.], [0., 0.], [1., 1.], [1., 1.]]
 
@@ -2177,6 +2178,9 @@ def alltoall_single(in_tensor,
     # _check_single_tensor
 
     group = _get_default_group() if group is None else group
+    backend = _group_map_backend[group]
+    assert backend != 'gloo', ("backend gloo is not supported yet")
+
     in_split_sizes = [] if in_split_sizes is None else in_split_sizes
     out_split_sizes = [] if out_split_sizes is None else out_split_sizes
 
@@ -2199,7 +2203,7 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
 
     Args:
         tensor (Tensor): The Tensor to send. Its data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         dst (int): The destination rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
@@ -2212,22 +2216,25 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
 
             # required: distributed
             import paddle
-            from paddle.distributed import init_parallel_env
+            import paddle.distributed as dist
 
-            init_parallel_env()
-            if paddle.distributed.ParallelEnv().rank == 0:
+            dist.init_parallel_env()
+            if dist.get_rank() == 0:
                 data = paddle.to_tensor([7, 8, 9])
-                paddle.distributed.send(data, dst=1)
+                dist.send(data, dst=1)
             else:
-                data = paddle.to_tensor([1,2,3])
-                paddle.distributed.recv(data, src=0)
-            out = data.numpy()
+                data = paddle.to_tensor([1, 2, 3])
+                dist.recv(data, src=0)
+            print(data)
+            # [7, 8, 9] (2 GPUs)
     """
     if group is not None and not group.is_member():
         return
     dst = _get_group_rank(dst, group)
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
+        backend = _group_map_backend[group]
+        assert backend != 'gloo', ("backend gloo is not supported yet")
         task = group.process_group.send(tensor, dst)
         if use_calc_stream:
             task.wait()
@@ -2261,7 +2268,7 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
 
     Args:
         tensor (Tensor): The Tensor to receive. Its data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         src (int): The source rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
@@ -2274,16 +2281,17 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
 
             # required: distributed
             import paddle
-            from paddle.distributed import init_parallel_env
+            import paddle.distributed as dist
 
-            init_parallel_env()
-            if paddle.distributed.ParallelEnv().rank == 0:
+            dist.init_parallel_env()
+            if dist.get_rank() == 0:
                 data = paddle.to_tensor([7, 8, 9])
-                paddle.distributed.send(data, dst=1)
+                dist.send(data, dst=1)
             else:
-                data = paddle.to_tensor([1,2,3])
-                paddle.distributed.recv(data, src=0)
-            out = data.numpy()
+                data = paddle.to_tensor([1, 2, 3])
+                dist.recv(data, src=0)
+            print(data)
+            # [7, 8, 9] (2 GPUs)
     """
     if group is not None and not group.is_member():
         return
@@ -2291,6 +2299,8 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
     src = _get_group_rank(src, group)
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
+        backend = _group_map_backend[group]
+        assert backend != 'gloo', ("backend gloo is not supported yet")
         task = group.process_group.recv(tensor, src)
         if use_calc_stream:
             task.wait()
@@ -2340,7 +2350,7 @@ def isend(tensor, dst, group=None):
 
     Args:
         tensor (Tensor): The Tensor to send. Its data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         dst (int): The destination rank.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
     
@@ -2358,21 +2368,15 @@ def isend(tensor, dst, group=None):
             import paddle.distributed as dist
 
             dist.init_parallel_env()
-            rank = dist.get_rank()
-            world_size = dist.get_world_size()
-
-            if rank == 0:
+            if dist.get_rank() == 0:
                 data = paddle.to_tensor([7, 8, 9])
-                task = paddle.distributed.isend(data, dst=1)
+                task = dist.isend(data, dst=1)
             else:
                 data = paddle.to_tensor([1, 2, 3])
-                task = paddle.distributed.irecv(data, src=0)
-
+                task = dist.irecv(data, src=0)
             task.wait()
-
             print(data)
-            # paddle.tensor([7, 8, 9])     # Rank-0
-            # paddle.tensor([7, 8, 9])     # Rank-1
+            # [7, 8, 9] (2 GPUs)
 
     """
     _check_single_tensor(tensor, "tensor")
@@ -2381,11 +2385,13 @@ def isend(tensor, dst, group=None):
 
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
+        backend = _group_map_backend[group]
+        assert backend != 'gloo', ("backend gloo is not supported yet")
         group_dst_rank = group.get_group_rank(dst)
         assert group_dst_rank >= 0, ("dst rank out of group, need global rank")
         return group.process_group.send(tensor, group_dst_rank)
     else:
-        raise RuntimeError("Don't support static graph mode currently.")
+        raise RuntimeError("Only support eager dygraph mode.")
 
 
 def irecv(tensor, src=None, group=None):
@@ -2394,12 +2400,12 @@ def irecv(tensor, src=None, group=None):
 
     Args:
         tensor (Tensor): The Tensor to receive. Its data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         src (int): The source rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
 
     Returns:
-         A distributed task object.
+        A distributed task object.
 
     Warning:    
         This API only supports the dygraph mode.
@@ -2412,21 +2418,15 @@ def irecv(tensor, src=None, group=None):
             import paddle.distributed as dist
 
             dist.init_parallel_env()
-            rank = dist.get_rank()
-            world_size = dist.get_world_size()
-
-            if rank == 0:
+            if dist.get_rank() == 0:
                 data = paddle.to_tensor([7, 8, 9])
-                task = paddle.distributed.isend(data, dst=1)
+                task = dist.isend(data, dst=1)
             else:
                 data = paddle.to_tensor([1, 2, 3])
-                task = paddle.distributed.irecv(data, src=0)
-
+                task = dist.irecv(data, src=0)
             task.wait()
-
             print(data)
-            # paddle.tensor([7, 8, 9])     # Rank-0
-            # paddle.tensor([7, 8, 9])     # Rank-1
+            # [7, 8, 9] (2 GPUs)
     """
     _check_single_tensor(tensor, "tensor")
     if group is not None and not group.is_member():
@@ -2434,11 +2434,13 @@ def irecv(tensor, src=None, group=None):
 
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
+        backend = _group_map_backend[group]
+        assert backend != 'gloo', ("backend gloo is not supported yet")
         group_src_rank = group.get_group_rank(src)
         assert group_src_rank >= 0, ("src rank out of group, need global rank")
         return group.process_group.recv(tensor, group_src_rank)
     else:
-        raise RuntimeError("Don't support static graph mode currently.")
+        raise RuntimeError("Only support eager dygraph mode.")
 
 
 class P2POp(object):
@@ -2581,8 +2583,9 @@ def reduce_scatter(tensor,
     Reduces, then scatters a list of tensors to all processes in a group
 
     Args:
-        tensor (Tensor): Output tensor.
-        tensor_list (list[Tensor]): List of tensors to reduce and scatter.
+        tensor (Tensor): Output tensor. Its data type should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+        tensor_list (list[Tensor]): List of tensors to reduce and scatter. Every element in the list must be a Tensor whose data type
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (Group, optional): The group instance return by new_group or None for global 
             default group. Default: None.
@@ -2604,24 +2607,16 @@ def reduce_scatter(tensor,
             import paddle.distributed as dist
 
             dist.init_parallel_env()
-            rank = dist.get_rank()
-            world_size = dist.get_world_size()
-
-            if rank == 0:
-                t1 = paddle.to_tensor([0, 1])
-                t2 = paddle.to_tensor([2, 3])
+            if dist.get_rank() == 0:
+                data1 = paddle.to_tensor([0, 1])
+                data2 = paddle.to_tensor([2, 3])
             else:
-                t1 = paddle.to_tensor([4, 5])
-                t2 = paddle.to_tensor([6, 7])
-
-            tensor_list = [t1, t2]
-
-            output = paddle.empty(shape=[2], dtype=tensor_list[0].dtype)
-            dist.reduce_scatter(output, tensor_list)
-
-            print(output)
-            # [4, 6]     # Rank-0
-            # [8, 10]     # Rank-1
+                data1 = paddle.to_tensor([4, 5])
+                data2 = paddle.to_tensor([6, 7])
+            dist.reduce_scatter(data1, [data1, data2])
+            print(data1)
+            # [4, 6] (2 GPUs, out for rank 0)
+            # [8, 10] (2 GPUs, out for rank 1)
 
     """
     _check_single_tensor(tensor, "tensor")
@@ -2633,6 +2628,8 @@ def reduce_scatter(tensor,
     if in_dygraph_mode():
         op_type = _get_reduce_op(op, "reduce_scatter")
         group = _get_default_group() if group is None else group
+        backend = _group_map_backend[group]
+        assert backend != 'gloo', ("backend gloo is not supported yet")
 
         temp = paddle.concat(tensor_list, axis=0)
         task = group.process_group._reduce_scatter_base(tensor, temp, op_type)
@@ -2654,8 +2651,9 @@ def _reduce_scatter_base(output,
     Reduces, then scatters a flattened tensor to all processes in a group.
 
     Args:
-        output (Tensor): Output tensor.
-        input (Tensor): Input tensor that is of size output tensor size times world size
+        output (Tensor): Output tensor. Its data type should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+        input (Tensor): Input tensor that is of size output tensor size times world size. Its data type 
+            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (ProcessGroup, optional): The process group to work on. If None,
             the default process group will be used.
@@ -2669,23 +2667,19 @@ def _reduce_scatter_base(output,
         .. code-block:: python
 
             # required: distributed
-
             import paddle
             import paddle.distributed as dist
 
             dist.init_parallel_env()
             rank = dist.get_rank()
-            world_size = dist.get_world_size()
-
-            input = paddle.arange(4) + rank
-            # [0, 1, 2, 3]  # Rank-0
-            # [1, 2, 3, 4]  # Rank-1
-
-            output = paddle.empty(shape=[2], dtype=input.dtype)
-            paddle.distributed.collective._reduce_scatter_base(output, input)
+            data = paddle.arange(4) + rank
+            # [0, 1, 2, 3] (2 GPUs, for rank 0)
+            # [1, 2, 3, 4] (2 GPUs, for rank 1)
+            output = paddle.empty(shape=[2], dtype=data.dtype)
+            dist.collective._reduce_scatter_base(output, data)
             print(output)
-            # [1, 3]     # Rank-0
-            # [5, 7]     # Rank-1
+            # [1, 3] (2 GPUs, out for rank 0)
+            # [5, 7] (2 GPUs, out for rank 1)
 
     """
     _check_single_tensor(output, "output")

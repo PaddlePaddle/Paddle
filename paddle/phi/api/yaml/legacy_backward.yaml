@@ -430,11 +430,7 @@
   forward : concat_grad (Tensor[] x, Tensor grad_out, Scalar axis) -> Tensor[](grad_x)
   args : (Tensor[] grad_x_grad, Scalar axis = 0)
   output : Tensor(grad_out_grad)
-  infer_meta :
-    func : ConcatInferMeta
-    param : [grad_x_grad, axis]
-  kernel :
-    func : concat
+  invoke : concat(grad_x_grad, axis)
 
 - backward_api : concat_grad
   forward : concat (Tensor[] x, Scalar axis) -> Tensor(out)
@@ -483,8 +479,8 @@
   optional : grad_input_grad, grad_filter_grad
 
 - backward_api : conv2d_transpose_double_grad
-  forward : conv2d_transpose_grad(Tensor x, Tensor filter, Tensor grad_out, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(grad_x), Tensor(grad_filter)
-  args : (Tensor x, Tensor filter, Tensor grad_out, Tensor grad_x_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
+  forward : conv2d_transpose_grad(Tensor x, Tensor filter, Tensor grad_out, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(grad_x), Tensor(grad_filter)
+  args : (Tensor x, Tensor filter, Tensor grad_out, Tensor grad_x_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(x_grad), Tensor(filter_grad), Tensor(grad_out_grad)
   infer_meta :
     func : Conv2dTransposeDoubleGradInferMeta
@@ -493,11 +489,11 @@
     use_gpudnn : true
 
 - backward_api : conv2d_transpose_grad
-  forward : conv2d_transpose(Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)
-  args : (Tensor x, Tensor filter, Tensor out_grad, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
+  forward : conv2d_transpose(Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)
+  args : (Tensor x, Tensor filter, Tensor out_grad, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(x_grad), Tensor(filter_grad)
   infer_meta :
-    func : ConvTransposeGradInferMeta
+    func : Conv2dTransposeGradInferMeta
   kernel :
     func : conv2d_transpose_grad
     use_gpudnn : true
@@ -592,9 +588,6 @@
 
 - backward_api : cumsum_grad
   forward : cumsum(Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
   args : (Tensor out_grad, Scalar axis, bool flatten, bool exclusive, bool reverse)
   output : Tensor(x_grad)
   invoke : cumsum(out_grad, axis, flatten, exclusive, !reverse)
@@ -635,11 +628,11 @@
   optional : grad_input_grad, grad_filter_grad
 
 - backward_api : depthwise_conv2d_transpose_grad
-  forward : depthwise_conv2d_transpose(Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)
-  args : (Tensor x, Tensor filter, Tensor out_grad, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
+  forward : depthwise_conv2d_transpose(Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)
+  args : (Tensor x, Tensor filter, Tensor out_grad, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(x_grad), Tensor(filter_grad)
   infer_meta :
-    func : ConvTransposeGradInferMeta
+    func : Conv2dTransposeGradInferMeta
   kernel :
     func : depthwise_conv2d_transpose_grad
 
@@ -800,10 +793,7 @@
   forward : expand_grad (Tensor x, Tensor grad_out, IntArray shape) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray shape)
   output : Tensor(grad_out_grad)
-  infer_meta :
-    func : ExpandInferMeta
-  kernel :
-    func : expand
+  invoke : expand(grad_x_grad, shape)
 
 - backward_api : expand_grad
   forward : expand (Tensor x, IntArray shape) -> Tensor(out)
@@ -884,11 +874,7 @@
   forward : flip (Tensor x, int[] axis) -> Tensor(out)
   args : (Tensor out_grad, int[] axis)
   output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [out_grad]
-  kernel :
-    func : flip
+  invoke : flip(out_grad, axis)
 
 - backward_api : floor_grad
   forward : floor(Tensor x) -> Tensor(out)
@@ -1971,8 +1957,6 @@
   forward : reverse (Tensor x, IntArray axis) -> Tensor(out)
   args : (Tensor out_grad, IntArray axis)
   output : Tensor(x_grad)
-  infer_meta :
-    func : ReverseInferMeta
   invoke : reverse(out_grad, axis)
 
 - backward_api : roi_align_grad
@@ -2542,10 +2526,7 @@
   forward : tile_grad (Tensor x, Tensor grad_out, IntArray repeat_times) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray repeat_times)
   output : Tensor(grad_out_grad)
-  infer_meta :
-    func : TileInferMeta
-  kernel :
-    func : tile
+  invoke : tile(grad_x_grad, repeat_times)
 
 - backward_api : tile_grad
   forward : tile (Tensor x, IntArray repeat_times) -> Tensor(out)
