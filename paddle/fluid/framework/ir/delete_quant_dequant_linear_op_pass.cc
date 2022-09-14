@@ -111,9 +111,6 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     }
     */
     std::unordered_set<const Node*> nodes2rm = {};
-    int bit_length =
-        PADDLE_GET_CONST(int, quantize_linear_op->Op()->GetAttr("bit_length"));
-    int range = ((1 << (bit_length - 1)) - 1);
 
     // Get input scale from tensor
     const LoDTensor& input_scale_tensor =
@@ -124,7 +121,7 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
         platform::errors::InvalidArgument(
             "Input scale tensor's place should be CPU."));
     const float* input_scale_data = input_scale_tensor.data<float>();
-    float input_scale = input_scale_data[0] / range;
+    float input_scale = input_scale_data[0];
 
     int nums_any_ops = dequantize_linear_op_out->outputs.size();
     for (int i = 0; i < nums_any_ops; ++i) {
@@ -138,8 +135,9 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       IR_NODE_LINK_TO(quantize_linear_op_x,
                       dequantize_linear_op_out->outputs[i]);
     }
-
-    nodes2rm.insert(quantize_linear_op_scale);
+    // Forbid removing weight tensor when weight is shared between ops
+    if (quantize_linear_op_scale->outputs.size() <= 1UL)
+      nodes2rm.insert(quantize_linear_op_scale);
     nodes2rm.insert(quantize_linear_op);
     nodes2rm.insert(quantize_linear_op_out);
     nodes2rm.insert(dequantize_linear_op);
