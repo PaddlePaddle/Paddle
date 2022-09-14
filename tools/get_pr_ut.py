@@ -274,8 +274,10 @@ class PRChecker(object):
         f = open(all_ut_file, 'r')
         all_ut_case = f.read().strip().split('\n')
         if filename in all_ut_case:
+            f.close()
             return True
         else:
+            f.close()
             return False
 
     def get_pr_ut(self):
@@ -371,7 +373,9 @@ class PRChecker(object):
                             f_judge_in_added_ut = False
                             with open('{}/added_ut'.format(
                                     PADDLE_ROOT)) as utfile:
-                                if f_judge in utfile:
+                                added_ut_list = utfile.read().strip().split(
+                                    '\n')
+                                if f_judge in added_ut_list:
                                     f_judge_in_added_ut = True
                             if f_judge_in_added_ut != False:
                                 print(
