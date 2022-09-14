@@ -31,7 +31,6 @@
 
 #if defined(PADDLE_WITH_MPI)
 #include "paddle/fluid/distributed/collective/MPITools.h"
-#include "paddle/fluid/platform/dynload/mpi_comm.h"
 #endif
 
 constexpr const char* MPI_BACKEND_NAME = "MPI";

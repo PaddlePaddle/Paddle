@@ -46,7 +46,6 @@ void* GetCUFFTDsoHandle();
 void* GetMKLRTDsoHandle();
 void* GetROCFFTDsoHandle();
 void* GetCusparseLtDsoHandle();
-void* GetMPIDsoHandle();
 
 void SetPaddleLibPath(const std::string&);
 
