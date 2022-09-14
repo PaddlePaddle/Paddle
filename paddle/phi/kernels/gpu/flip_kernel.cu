@@ -23,7 +23,7 @@
 namespace phi {
 
 template <typename T, size_t Rank>
-__global__ void flip_cuda_kernel(const int N,
+__global__ void flip_cuda_kernel(const int64_t N,
                                  const T* in_data,
                                  T* out_data,
                                  phi::Array<int64_t, Rank> shape,
@@ -53,17 +53,17 @@ __global__ void flip_cuda_kernel(const int N,
 }
 
 template <typename T, typename Context, size_t N>
-void launch_flip_cuda_kernel(const Context& dev_ctx,
-                             const DenseTensor& x,
-                             const std::vector<int>& axis,
-                             DenseTensor* out) {
+void LaunchFlipCudaKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const std::vector<int>& axis,
+                          DenseTensor* out) {
   std::vector<int> flip_dims_v = axis;
   auto* in_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
 
   auto x_dims = x.dims();
   const int total_dims = x_dims.size();
-  const int numel = x.numel();
+  const int64_t numel = x.numel();
 
   int block_size = 512;
   dim3 dim_block(block_size);
@@ -98,31 +98,31 @@ void FlipKernel(const Context& dev_ctx,
   const size_t total_dims = x.dims().size();
   switch (total_dims) {
     case 1:
-      launch_flip_cuda_kernel<T, Context, 1>(dev_ctx, x, axis, out);
+      LaunchFlipCudaKernel<T, Context, 1>(dev_ctx, x, axis, out);
       break;
     case 2:
-      launch_flip_cuda_kernel<T, Context, 2>(dev_ctx, x, axis, out);
+      LaunchFlipCudaKernel<T, Context, 2>(dev_ctx, x, axis, out);
       break;
     case 3:
-      launch_flip_cuda_kernel<T, Context, 3>(dev_ctx, x, axis, out);
+      LaunchFlipCudaKernel<T, Context, 3>(dev_ctx, x, axis, out);
       break;
     case 4:
-      launch_flip_cuda_kernel<T, Context, 4>(dev_ctx, x, axis, out);
+      LaunchFlipCudaKernel<T, Context, 4>(dev_ctx, x, axis, out);
       break;
     case 5:
-      launch_flip_cuda_kernel<T, Context, 5>(dev_ctx, x, axis, out);
+      LaunchFlipCudaKernel<T, Context, 5>(dev_ctx, x, axis, out);
       break;
     case 6:
-      launch_flip_cuda_kernel<T, Context, 6>(dev_ctx, x, axis, out);
+      LaunchFlipCudaKernel<T, Context, 6>(dev_ctx, x, axis, out);
       break;
     case 7:
-      launch_flip_cuda_kernel<T, Context, 7>(dev_ctx, x, axis, out);
+      LaunchFlipCudaKernel<T, Context, 7>(dev_ctx, x, axis, out);
       break;
     case 8:
-      launch_flip_cuda_kernel<T, Context, 8>(dev_ctx, x, axis, out);
+      LaunchFlipCudaKernel<T, Context, 8>(dev_ctx, x, axis, out);
       break;
     case 9:
-      launch_flip_cuda_kernel<T, Context, 9>(dev_ctx, x, axis, out);
+      LaunchFlipCudaKernel<T, Context, 9>(dev_ctx, x, axis, out);
       break;
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(
