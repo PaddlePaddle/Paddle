@@ -32,14 +32,70 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.nn.initializer import Constant
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.fluid.framework import _non_static_mode, default_main_program
-from paddle import _C_ops
-from paddle.incubate.nn.functional import fused_multi_transformer_int8, fused_multi_transformer
+from paddle import _legacy_C_ops
 
 default_main_program().random_seed = 42
 np.random.seed(0)
 
 
-class TestFusedMultiTransformerInt8Op(OpTest):
+def fused_multi_transformer_int8(
+    x,
+    ln_scales,
+    ln_biases,
+    qkv_weights,
+    qkv_biases,
+    linear_weights,
+    linear_biases,
+    ffn_ln_scales,
+    ffn_ln_biases,
+    ffn1_weights,
+    ffn1_biases,
+    ffn2_weights,
+    ffn2_biases,
+    pre_layer_norm=True,
+    epsilon=1e-05,
+    cache_kvs=None,
+    time_step=None,
+    attn_mask=None,
+    dropout_rate=0.0,
+    activation="gelu",
+    training=False,
+    mode='upscale_in_train',
+    trans_qkvw=True,
+    ring_id=-1,
+    name=None,
+    qkv_out_scales=None,
+    out_linear_out_scales=None,
+    ffn1_out_scales=None,
+    ffn2_out_scales=None,
+    num_head=0,
+    dim_head=0,
+    dim_ffn=0,
+    qkv_in_scale=[],
+    out_linear_in_scale=[],
+    ffn1_in_scale=[],
+    ffn2_in_scale=[],
+):
+    mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
+
+    cache_kv_out, final_out = _legacy_C_ops.fused_multi_transformer_int8(
+        x, ln_scales, ln_biases, qkv_weights, qkv_biases, cache_kvs, time_step,
+        attn_mask, linear_weights, linear_biases, ffn_ln_scales, ffn_ln_biases,
+        ffn1_weights, ffn1_biases, ffn2_weights, ffn2_biases, qkv_out_scales,
+        out_linear_out_scales, ffn1_out_scales, ffn2_out_scales, cache_kvs,
+        'num_head', num_head, 'dim_head', dim_head, 'dim_ffn', dim_ffn,
+        'qkv_in_scale', qkv_in_scale, 'out_linear_in_scale',
+        out_linear_in_scale, 'ffn1_in_scale', ffn1_in_scale, 'ffn2_in_scale',
+        ffn2_in_scale, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
+        'dropout_rate', dropout_rate, 'is_test', not training,
+        'dropout_implementation', mode, 'act_method', activation, 'trans_qkvw',
+        trans_qkvw, 'ring_id', ring_id)
+    if cache_kvs is not None:
+        return final_out, cache_kv_out
+    return final_out
+
+
+class TestFusedMultiTransformerInt8Op(unittest.TestCase):
 
     def setUp(self):
         self.config()
@@ -328,6 +384,7 @@ class TestFusedMultiTransformerInt8Op(OpTest):
 
             out = paddle.nn.functional.linear(out_linear_in,
                                               self.out_weight_tensor)
+
             out = paddle.cast(
                 paddle.cast(out, 'float32') * self.out_linear_out_scales[i],
                 self.x_type)
@@ -638,6 +695,7 @@ class TestFusedMultiTransformerInt8OpCacheKV(TestFusedMultiTransformerInt8Op):
 
     def config(self):
         super().config()
+        super().generate_input_data()
         self.has_cache_kv = True
         self.query_length = 1
         self.key_length, self.value_length = 1, 1

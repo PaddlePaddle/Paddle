@@ -15,7 +15,6 @@
 from .fused_transformer import fused_multi_head_attention
 from .fused_transformer import fused_feedforward
 from .fused_transformer import fused_multi_transformer
-from .fused_transformer import fused_multi_transformer_int8
 from .fused_matmul_bias import fused_matmul_bias, fused_linear
 from .fused_transformer import fused_bias_dropout_residual_layer_norm
 
@@ -23,7 +22,6 @@ __all__ = [
     'fused_multi_head_attention',
     'fused_feedforward',
     'fused_multi_transformer',
-    'fused_multi_transformer_int8',
     'fused_matmul_bias',
     'fused_linear',
     'fused_bias_dropout_residual_layer_norm',

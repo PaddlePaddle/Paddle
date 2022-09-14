@@ -678,7 +678,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
         x[it][jt] = static_cast<T>(static_cast<U>(gamma[it][jt]) * tmp +
                                    static_cast<U>(beta[it][jt]));
 
-        if (std::is_same<T, int8_t>::value)
+        if (std::is_same<OutType, int8_t>::value)
           x_output[it][jt] = __float2int_rn(static_cast<float>(x[it][jt]) *
                                             quant_in_scale_data);
       }
@@ -686,7 +686,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
 
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
-      if (std::is_same<T, int8_t>::value) {
+      if (std::is_same<OutType, int8_t>::value) {
         phi::Store<OutType, VecSize>(
             x_output[it], y_ptr + row * ELTS_PER_ROW + col * VecSize);
       } else {

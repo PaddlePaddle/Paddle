@@ -392,33 +392,33 @@ __global__ void LayerNormForward(
     if (bias != nullptr) {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        if (std::is_same<OutType, float>::value) {
-          y[i] = static_cast<OutType>(static_cast<U>(scale[j]) *
-                                          (static_cast<U>(x[i]) - mean_val) *
-                                          invvar +
-                                      static_cast<U>(bias[j]));
-        } else if (std::is_same<OutType, int8_t>::value) {
+        if (std::is_same<OutType, int8_t>::value) {
           y[i] = __float2int_rn(
               quant_in_scale_data *
               static_cast<float>(static_cast<T>(
                   static_cast<U>(scale[j]) * (static_cast<U>(x[i]) - mean_val) *
                       invvar +
                   static_cast<U>(bias[j]))));
+        } else {
+          y[i] = static_cast<OutType>(static_cast<U>(scale[j]) *
+                                          (static_cast<U>(x[i]) - mean_val) *
+                                          invvar +
+                                      static_cast<U>(bias[j]));
         }
       }
     } else {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        if (std::is_same<OutType, float>::value) {
-          y[i] =
-              static_cast<OutType>(static_cast<U>(scale[j]) *
-                                   (static_cast<U>(x[i]) - mean_val) * invvar);
-        } else if (std::is_same<OutType, int8_t>::value) {
+        if (std::is_same<OutType, int8_t>::value) {
           y[i] =
               __float2int_rn(quant_in_scale_data *
                              static_cast<float>(static_cast<T>(
                                  static_cast<U>(scale[j]) *
                                  (static_cast<U>(x[i]) - mean_val) * invvar)));
+        } else {
+          y[i] =
+              static_cast<OutType>(static_cast<U>(scale[j]) *
+                                   (static_cast<U>(x[i]) - mean_val) * invvar);
         }
       }
     }
@@ -426,28 +426,28 @@ __global__ void LayerNormForward(
     if (bias != nullptr) {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        if (std::is_same<OutType, float>::value) {
-          y[i] =
-              static_cast<OutType>((static_cast<U>(x[i]) - mean_val) * invvar +
-                                   static_cast<U>(bias[j]));
-        } else if (std::is_same<OutType, int8_t>::value) {
+        if (std::is_same<OutType, int8_t>::value) {
           y[i] = __float2int_rn(quant_in_scale_data *
                                 static_cast<float>(static_cast<T>(
                                     (static_cast<U>(x[i]) - mean_val) * invvar +
                                     static_cast<U>(bias[j]))));
+        } else {
+          y[i] =
+              static_cast<OutType>((static_cast<U>(x[i]) - mean_val) * invvar +
+                                   static_cast<U>(bias[j]));
         }
       }
     } else {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        if (std::is_same<OutType, float>::value) {
-          y[i] =
-              static_cast<OutType>((static_cast<U>(x[i]) - mean_val) * invvar);
-        } else if (std::is_same<OutType, int8_t>::value) {
+        if (std::is_same<OutType, int8_t>::value) {
           y[i] =
               __float2int_rn(quant_in_scale_data *
                              static_cast<float>(static_cast<T>(
                                  (static_cast<U>(x[i]) - mean_val) * invvar)));
+        } else {
+          y[i] =
+              static_cast<OutType>((static_cast<U>(x[i]) - mean_val) * invvar);
         }
       }
     }
