@@ -9,6 +9,11 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- api : acosh
+  backward : acosh_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
 - api : addmm
   backward : addmm_grad
   extra :
@@ -24,11 +29,21 @@
   extra :
     attrs : [bool use_cudnn = false, bool use_mkldnn = false]
 
+- api : asinh
+  backward : asinh_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
 - api : atan2
   inputs :
     {x : X1, y : X2}
   outputs :
     out : Out
+
+- api : atanh
+  backward : atanh_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - api : batch_norm
   backward : batch_norm_grad
@@ -50,6 +65,11 @@
   backward : bilinear_interp_grad (bilinear_interp_v2_grad)
   extra :
     attrs : [bool use_mkldnn = false]
+
+- api : ceil
+  backward : ceil_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - api : cholesky
   inputs :
@@ -112,6 +132,16 @@
   backward : conv3d_transpose_grad
   extra :
     attrs : [bool use_cudnn = true, bool use_mkldnn = false, int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
+
+- api : cos
+  backward : cos_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- api : cosh
+  backward : cosh_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - api : cross
   inputs :
@@ -197,6 +227,11 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- api : elu
+  backward : elu_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - api : erf
   inputs :
     x : X
@@ -208,6 +243,16 @@
     x : X
   outputs :
     out : Out
+
+- api : exp
+  backward : exp_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- api : expm1
+  backward : expm1_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - api : fft_c2c
   inputs: {x: X}
@@ -237,6 +282,11 @@
   extra :
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
+- api : floor
+  backward : floor_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - api : frobenius_norm
   backward : frobenius_norm_grad
@@ -269,6 +319,11 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- api : hard_swish
+  backward : hard_swish_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - api : inplace_abn
   backward : inplace_abn_grad
   extra :
@@ -278,6 +333,11 @@
   backward : layer_norm_grad
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
+- api : leaky_relu
+  backward : leaky_relu_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - api : lgamma
   inputs :
@@ -290,10 +350,35 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- api : log
+  backward : log_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- api : log10
+  backward : log10_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- api : log1p
+  backward : log1p_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- api : log2
+  backward : log2_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
 - api : log_softmax
   backward : log_softmax_grad
   extra :
     attrs : [bool use_mkldnn = false]
+
+- api : logsigmoid
+  backward : logsigmoid_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - api : lrn
   backward : lrn_grad
@@ -324,6 +409,11 @@
   extra :
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
+- api : mish
+  backward : mish_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - api : mv
   inputs :
@@ -356,6 +446,21 @@
     x : X
   outputs :
     out : Out
+
+- api : prelu
+  backward : prelu_grad
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
+- api : prelu
+  backward : prelu_grad
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
+- api : reciprocal
+  backward : reciprocal_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - api : reduce_all
   extra :
@@ -405,15 +510,30 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- api : relu
+  backward : relu_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- api : relu6
+  backward : relu6_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - api : renorm
   backward : renorm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- api : rnn
-  backward : rnn_grad
+- api : round
+  backward : round_grad
   extra :
-    attrs : [bool is_test = false]
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- api : rsqrt
+  backward : rsqrt_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - api : seed
   extra :
@@ -428,6 +548,26 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- api : sigmoid
+  backward : sigmoid_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- api : silu
+  backward : silu_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- api : sin
+  backward : sin_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- api : sinh
+  backward : sinh_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
 - api : slice
   backward : slice_grad
   extra :
@@ -437,16 +577,37 @@
   backward : softmax_grad
   extra :
     attrs : [bool use_cudnn = false, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
-- api : prelu
-  backward : prelu_grad
+
+- api : softplus
+  backward : softplus_grad
   extra :
-    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false, str fuse_activation_type = "", float fuse_activation_alpha = 0.0f,
+             float fuse_activation_beta = 0.0f, float fuse_activation_scale = 1.0f]
+
+- api : softsign
+  backward : softsign_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+- api : rnn
+  backward : rnn_grad
+  extra :
+    attrs : [bool is_test = false]
 
 - api : solve
   inputs :
     {x : X, y : Y}
   outputs :
     out : Out
+
+- api : sqrt
+  backward : sqrt_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- api : square
+  backward : square_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - api : squeeze (squeeze2)
   backward : squeeze_grad (squeeze2_grad)
@@ -464,10 +625,30 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- api : swish
+  backward : swish_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - api : sync_batch_norm
   backward : sync_batch_norm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
+
+- api : tan
+  backward : tan_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- api : tanh
+  backward : tanh_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- api : tanh_shrink
+  backward : tanh_shrink_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - api : trace
   inputs :
