@@ -78,7 +78,7 @@ class TestPrimDistOp(unittest.TestCase):
                                        outputs={'Z': self.w_grad},
                                        attrs=self.attrs)
 
-        op = self.layer_help.append_op(type="reduce_p",
+        op = self.layer_help.append_op(type="reduce_sum_p",
                                        inputs={'X': self.tmp2},
                                        outputs={'Y': self.batch_reduced},
                                        attrs={"axis": [0]})
