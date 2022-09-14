@@ -48,8 +48,7 @@ void GumbelSoftmaxKernelHelper(const Context& ctx,
                                float temperature,
                                bool hard,
                                int axis,
-                               DenseTensor* out,
-                               bool is_test) {
+                               DenseTensor* out) {
   const int rank = x.dims().size();
   axis = funcs::CanonicalAxis(axis, rank);
   int axis_dim = x.dims()[axis];
