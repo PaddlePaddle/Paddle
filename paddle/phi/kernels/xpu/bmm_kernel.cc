@@ -34,7 +34,7 @@ void BmmKernel(const Context& dev_ctx,
                     3,
                     phi::errors::InvalidArgument(
                         "Input(X) of BmmOp must be 3-dimensional in BmmOp, "
-                        "but received X's shape: [%s].",
+                        "but received X's shape: [%s]",
                         x_dims));
   PADDLE_ENFORCE_EQ(y_dims.size(),
                     3,
