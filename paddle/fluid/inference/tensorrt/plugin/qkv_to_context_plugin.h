@@ -84,9 +84,9 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
                                       has_biasqk_mask_,
                                       window_number_,
                                       with_fastertransformer_window_mha_);
-  #ifdef FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
+#ifdef FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
     ptr->ft_dispatcher_fp16_num_head_ = ft_dispatcher_fp16_num_head_;
-  #endif
+#endif
     ptr->mask_half_ = mask_half_;
     ptr->fake_qk_bias_ = fake_qk_bias_;
     return ptr;

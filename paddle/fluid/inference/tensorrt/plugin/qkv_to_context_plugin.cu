@@ -407,8 +407,6 @@ void invokeTransformMask(half *tranformed_mask,
 }
 #endif
 
-
-
 int QkvToContextPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
 nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
@@ -859,8 +857,7 @@ int QkvToContextPluginDynamic::enqueue(
       framework::Tensor temp_qk_bias_mask_tensor;
 
       // input 1 is relative pos (biasqk)
-      const half *input1_data =
-          static_cast<const half *>(inputs[1]);  
+      const half *input1_data = static_cast<const half *>(inputs[1]);
       invokeTransformMask(
           temp_qk_bias_data, input1_data, head_number_, seq_len, stream);
 

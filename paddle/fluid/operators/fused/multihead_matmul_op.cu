@@ -318,8 +318,8 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     // in swin SW-MSA block dim[0] of input is batch_number*windows_number
     // therefore, we broadcast bias_qk to [window_num*originalBatch,
     // head_number, seq_len, seq_len]
-    if (bias_qk &&
-        bias_qk->numel() == (bias_qk->dims()[0] * head_number * seq_len * seq_len)) {
+    if (bias_qk && bias_qk->numel() ==
+                       (bias_qk->dims()[0] * head_number * seq_len * seq_len)) {
       int window_num = bias_qk->dims()[0];
       temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
       auto *temp_qk_bias =
