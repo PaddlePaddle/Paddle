@@ -4430,36 +4430,6 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
                                          "Reduce", reduce)
 
 
-def _index_add_params_check(x, index, input_axis, add_value):
-    dims = len(x.shape)
-    add_value_dims = len(add_value.shape)
-
-    if input_axis >= 0:
-        axis = input_axis
-    else:
-        axis = input_axis + dims
-
-    check_axis = axis
-    if check_axis >= dims or check_axis < -dims:
-        raise ValueError("Axis should be in range [-rank(x), rank(x)).")
-
-    if isinstance(index, Variable):
-        if index.dtype not in [paddle.int64, paddle.int32]:
-            raise TypeError("The index dtype should be int32 or int64.")
-        if len(index.shape) != 1:
-            raise ValueError("The index should be a 1-D Tensor.")
-
-    if dims != add_value_dims:
-        raise ValueError(
-            "The add_value does not support broadcast now. It must have the same dimension as x."
-        )
-    for i in range(dims):
-        if i != axis and x.shape[i] != add_value.shape[i]:
-            raise ValueError(
-                "The add_value.shape[i] should be equal to x.shape[i] when i != axis."
-            )
-
-
 def index_add(x, index, axis, value, name=None):
     """
     Adds the elements of the input tensor with value tensor by selecting the indices in the order given in index.
@@ -4490,8 +4460,6 @@ def index_add(x, index, axis, value, name=None):
             #  [1 1 1]
             #  [2 2 2]]
     """
-    _index_add_params_check(x, index, axis, value)
-
     if in_dygraph_mode():
         return _C_ops.index_add(x, index, value, axis)
 
@@ -4539,8 +4507,6 @@ def index_add_(x, index, axis, value, name=None):
             #  [2, 1, 2]
             #  [2, 1, 2]]
     """
-
-    _index_add_params_check(x, index, axis, value)
     return _C_ops.index_add_(x, index, value, axis)
 
 
