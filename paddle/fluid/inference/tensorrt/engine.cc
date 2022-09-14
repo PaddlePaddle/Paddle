@@ -231,6 +231,24 @@ void TensorRTEngine::FreezeNetwork() {
             nvinfer1::OptProfileSelector::kOPT,
             Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
       }
+
+      for (auto &input : min_shape_tensor_) {
+        optim_profiles_[i]->setShapeValues(input.first.c_str(),
+                                           nvinfer1::OptProfileSelector::kMIN,
+                                           input.second.data(),
+                                           input.second.size());
+        optim_profiles_[i]->setShapeValues(
+            input.first.c_str(),
+            nvinfer1::OptProfileSelector::kMAX,
+            max_shape_tensor_[input.first].data(),
+            input.second.size());
+        optim_profiles_[i]->setShapeValues(
+            input.first.c_str(),
+            nvinfer1::OptProfileSelector::kOPT,
+            optim_shape_tensor_[input.first].data(),
+            input.second.size());
+      }
+
       infer_builder_config_->addOptimizationProfile(optim_profiles_[i]);
     }
     if (WithFp16() && disable_trt_plugin_fp16()) {

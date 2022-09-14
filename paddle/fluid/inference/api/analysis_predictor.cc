@@ -1739,10 +1739,35 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
     if (!var->IsType<framework::LoDTensor>()) {
       continue;
     }
-    framework::DDim dim = var->Get<framework::LoDTensor>().dims();
+    auto tensor = var->GetMutable<framework::LoDTensor>();
+    framework::DDim dim = tensor->dims();
     std::vector<int32_t> shape(dim.size());
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
     shape_info_[name].emplace_back(shape);
+
+    // We need collect value range for shape tensor for Paddle-TRT's use
+    auto is_shape_tensor = tensor->numel() <= 7 && tensor->numel() >= 1;
+    if (tensor->dtype() == paddle::experimental::DataType::INT32 &&
+        is_shape_tensor) {
+      std::vector<int> int32_host(tensor->numel());
+      if (tensor->place() == platform::CPUPlace()) {
+        memcpy(int32_host.data(),
+               tensor->data<int>(),
+               tensor->numel() * sizeof(int));
+      } else if (tensor->place() == platform::CUDAPlace()) {
+        cudaMemcpy(int32_host.data(),
+                   tensor->data<int>(),
+                   tensor->numel() * sizeof(int),
+                   cudaMemcpyDeviceToHost);
+      }
+      std::cout << cudaGetErrorString(cudaGetLastError()) << std::endl;
+      shape_tensor_value_[name].emplace_back(int32_host);
+    } else if (tensor->dtype() == paddle::experimental::DataType::INT64 &&
+               is_shape_tensor) {
+      // auto int64_data = tensor.data<int64_t>();
+      // auto hah = std::vector<int64_t>(int64_data, int64_data +
+      // tensor.numel()); shape_tensor_value_[name].emplace_back(hah);
+    }
   }
 }
 
@@ -1787,6 +1812,52 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
 
   inference::SerializeShapeRangeInfo(
       config_.shape_range_info_path(), min_shapes, max_shapes, opt_shapes);
+}
+
+void AnalysisPredictor::StatisticShapeTensorValueInfo() {
+  std::map<std::string, std::vector<int32_t>> min_shapes;
+  std::map<std::string, std::vector<int32_t>> max_shapes;
+  std::map<std::string, std::vector<int32_t>> opt_shapes;
+  for (auto it : shape_tensor_value_) {
+    auto name = it.first;
+    auto shapes = it.second;
+
+    std::vector<int32_t> min_shape(shapes[0].begin(), shapes[0].end());
+    std::vector<int32_t> max_shape(shapes[0].begin(), shapes[0].end());
+    std::vector<int32_t> opt_shape(shapes[0].begin(), shapes[0].end());
+
+    auto ShapeMaxFreq = [](const std::map<int32_t, int32_t> &m) -> int32_t {
+      std::vector<std::pair<int32_t, int32_t>> counter;
+      for (auto &it : m) counter.push_back(it);
+      std::sort(
+          counter.begin(),
+          counter.end(),
+          [](std::pair<int32_t, int32_t> &a, std::pair<int32_t, int32_t> &b) {
+            return a.second > b.second;
+          });
+      return counter[0].first;
+    };
+
+    for (size_t d = 0; d < shapes[0].size(); ++d) {
+      std::map<int32_t, int32_t> counter;
+      for (size_t i = 0; i < shapes.size(); ++i) {
+        counter[shapes[i][d]] += 1;
+        if (shapes[i][d] < min_shape[d]) min_shape[d] = shapes[i][d];
+        if (shapes[i][d] > max_shape[d]) max_shape[d] = shapes[i][d];
+      }
+      opt_shape[d] = ShapeMaxFreq(counter);
+    }
+
+    min_shapes[name] = min_shape;
+    max_shapes[name] = max_shape;
+    opt_shapes[name] = opt_shape;
+  }
+
+  inference::SerializeShapeRangeInfo(
+      config_.shape_range_info_path() + "_shape_tensor_value.txt",
+      min_shapes,
+      max_shapes,
+      opt_shapes);
 }
 
 bool AnalysisPredictor::LoadProgramDesc() {
@@ -2009,6 +2080,7 @@ AnalysisPredictor::~AnalysisPredictor() {
 
   if (config_.shape_range_info_collected()) {
     StatisticShapeRangeInfo();
+    StatisticShapeTensorValueInfo();
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (predictor_stream_ != nullptr) {

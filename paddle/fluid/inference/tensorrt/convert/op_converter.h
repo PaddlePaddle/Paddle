@@ -357,6 +357,17 @@ class OpConverter {
     for (auto& output : outputs) {
       engine->DeclareOutput(output);
     }
+
+    for (auto& input : inputs) {
+      if (parameters.count(input)) continue;
+      if (engine->GetITensor(input)->isShapeTensor()) {
+        std::cout << "不是的啦" << std::endl;
+      }
+      //  auto min_input_shape = engine->min_input_shape()[input];
+      //  auto max_input_shape = engine->max_input_shape()[input];
+      //  auto optim_input_shape = engine->optim_input_shape()[input];
+    }
+
     engine->FreezeNetwork();
     engine->ClearWeights();
   }
