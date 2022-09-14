@@ -36,12 +36,10 @@ if(WITH_NCCL OR WITH_RCCL)
         ProcessGroupHeter.cc PROPERTIES COMPILE_FLAGS
                                         ${DISTRIBUTE_COMPILE_FLAGS})
     endif()
-
     cc_library(
       processgroup_heter
       SRCS ProcessGroupHeter.cc NCCLTools.cc Common.cc
       DEPS place enforce collective_helper device_context phi_api eager_api)
-
   endif()
 endif()
 

@@ -680,7 +680,6 @@ if(WITH_DISTRIBUTE)
 
     bash_test_modules(test_fleetrun START_BASH test_fleetrun.sh ENVS
                       PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-
     if(WITH_GPU
        OR WITH_XPU
        OR WITH_ASCEND
