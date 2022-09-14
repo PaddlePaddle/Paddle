@@ -300,8 +300,21 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
          (np.random.rand(200, 345), ), None, 'float32'),
         ('abs', paddle.abs, (np.random.uniform(-10, 10,
                                                (200, 345)), ), None, 'float32'),
-    ))
-
+        ('cast_float', lambda x: paddle.cast(x, paddle.float64),
+         (np.random.rand(10, 20), ), None, 'float32'),
+        ('cast_int', lambda x: paddle.cast(x, paddle.int32),
+         (np.random.rand(10, 20), ), None, 'float32'),
+        ('square', paddle.square, (np.random.rand(100), ), None, 'float32'),
+        ('pow_scalar', lambda x: paddle.pow(x, 2),
+         (np.random.rand(20, 30), ), None, 'float32'),
+        ('var', paddle.var, (np.random.rand(200, 324), ), None, 'float32'),
+        ('var_with_axis', lambda x: paddle.var(x, axis=1),
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('var_without_unbiased',
+         lambda x: paddle.var(x, axis=1, unbiased=False),
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('var_with_keepdim', lambda x: paddle.var(x, axis=1, keepdim=True),
+         (np.random.rand(10, 20, 30), ), None, 'float32')))
 class TestGrad(unittest.TestCase):
 
     def setUp(self):

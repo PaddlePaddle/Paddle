@@ -323,8 +323,8 @@ def p_norm_orig2prim(op, x):
 
 
 @REGISTER_ORIG2PRIM('cast')
-def cast_orig2pirm(op, x):
-    return primops.cast(x, op.attr('out_dtype'))
+def cast_orig2prim(op, x):
+    return primops.cast(x, paddle.dtype(op.attr('out_dtype')))
 
 
 # TODO: support broadcast
@@ -352,7 +352,6 @@ def gt_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
     return gt(x, y)
-
 
 
 @REGISTER_ORIG2PRIM('greater_equal')
@@ -888,7 +887,6 @@ def gt_jvp(op, x_dot, y_dot):
     x, _ = op_position_inputs(op)
     z_dot = fill_const(value=0., shape=x.shape, dtype=x.dtype)
     return z_dot
-
 
 
 @REGISTER_JVP('ge_p')

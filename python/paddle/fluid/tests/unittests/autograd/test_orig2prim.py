@@ -786,5 +786,41 @@ class TestReduceMeanOrig2Prim(TestElementWiseAddOrig2Prim):
         self.out_map = {0: self.output['Out']}
 
 
+class TestSizeOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'size'
+        X = paddle.static.data(name='X', shape=[5, 8], dtype='float')
+
+        self.input = {'X': X}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+
+        self.orig2prim_args = (X, )
+        self.all_ops = ['size', 'fill_constant_p']
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Out']}
+
+
+class TestCastOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'cast'
+        X = paddle.static.data(name='X', shape=[5, 8], dtype='float')
+
+        self.input = {'X': X}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {'dtype': paddle.float64}
+        self.orig2prim_args = (X, )
+        self.all_ops = ['cast', 'cast_p']
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Out']}
+
+
 if __name__ == '__main__':
     unittest.main()

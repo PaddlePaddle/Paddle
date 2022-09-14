@@ -64,7 +64,7 @@ class CastPrimOpVarTypeInference
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto out_type = static_cast<framework::proto::VarType::Type>(
         PADDLE_GET_CONST(int, ctx->GetAttr("dtype")));
-    ctx->SetOutputDataType("Out", out_type);
+    ctx->SetOutputDataType("Y", out_type);
   }
 };
 

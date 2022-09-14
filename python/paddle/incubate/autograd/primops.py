@@ -390,6 +390,7 @@ def cast(x, dtype, out=None):
     if out is None:
         out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type=helper.layer_type,
+                     inputs={'X': x},
                      outputs={'Y': out},
                      attrs={'dtype': dtype})
     return out
