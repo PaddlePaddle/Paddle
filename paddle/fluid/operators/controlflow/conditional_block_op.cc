@@ -23,6 +23,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
+                            false,
+                            "Use inplace in new executor");
+
 DECLARE_bool(use_mkldnn);
 
 namespace paddle {
@@ -107,26 +111,28 @@ class ConditionalBlockOp : public ConditionalOp {
         VLOG(10) << v << " ,";
       }
 
-      // framework::Executor exec(dev_place);
-      // exec.Run(*block->Program(),
-      //          &cur_scope,
-      //          block->ID(),
-      //          false,
-      //          true,
-      //          skip_vars,
-      //          /* force_disable_gc */ false,
-      //          /* keep_kid_scopes */ true);
-
-      std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
-      bool old_flag_new_executor_use_loacl_scope =
-          FLAGS_new_executor_use_local_scope;
-      FLAGS_new_executor_use_local_scope = false;
-      auto core = std::make_shared<framework::InterpreterCore>(
-          dev_place, *block, skip_gc_vars, &cur_scope, false);
-      core->SetUsedForControlFlowOp(true);
-      core->Run({});
-      FLAGS_new_executor_use_local_scope =
-          old_flag_new_executor_use_loacl_scope;
+      if (FLAGS_control_flow_use_new_executor) {
+        std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
+        bool old_flag_new_executor_use_loacl_scope =
+            FLAGS_new_executor_use_local_scope;
+        FLAGS_new_executor_use_local_scope = false;
+        auto core = std::make_shared<framework::InterpreterCore>(
+            dev_place, *block, skip_gc_vars, &cur_scope, false);
+        core->SetUsedForControlFlowOp(true);
+        core->Run({}, false);
+        FLAGS_new_executor_use_local_scope =
+            old_flag_new_executor_use_loacl_scope;
+      } else {
+        framework::Executor exec(dev_place);
+        exec.Run(*block->Program(),
+                 &cur_scope,
+                 block->ID(),
+                 false,
+                 true,
+                 skip_vars,
+                 /* force_disable_gc */ false,
+                 /* keep_kid_scopes */ true);
+      }
     }
   }
 };
@@ -188,11 +194,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
               "Expect Scope variable contains at least 1 scope, but got: %d",
               scopes.size()));
       framework::Scope &cur_scope = *(scopes[0]);
-      // framework::Scope &cur_scope = *(scopes[0]->kids().front());
 
-      // framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
-
       VLOG(3) << "Conditional Grad block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
 
@@ -206,27 +209,30 @@ class ConditionalBlockGradOp : public ConditionalOp {
       VLOG(10) << framework::GenScopeTreeDebugInfo(
           const_cast<framework::Scope *>(&cur_scope));
 
-      std::set<std::string> skip_gc_vars(inside_grads.begin(),
-                                         inside_grads.end());
-      bool old_flag_new_executor_use_loacl_scope =
-          FLAGS_new_executor_use_local_scope;
-      FLAGS_new_executor_use_local_scope = false;
-      auto core = std::make_shared<framework::InterpreterCore>(
-          dev_place, *block, skip_gc_vars, &cur_scope, false);
-      core->SetUsedForControlFlowOp(true);
-      core->Run({});
-      FLAGS_new_executor_use_local_scope =
-          old_flag_new_executor_use_loacl_scope;
+      if (FLAGS_control_flow_use_new_executor) {
+        std::set<std::string> skip_gc_vars(inside_grads.begin(),
+                                           inside_grads.end());
+        bool old_flag_new_executor_use_loacl_scope =
+            FLAGS_new_executor_use_local_scope;
+        FLAGS_new_executor_use_local_scope = false;
+        auto core = std::make_shared<framework::InterpreterCore>(
+            dev_place, *block, skip_gc_vars, &cur_scope, false);
+        core->SetUsedForControlFlowOp(true);
+        core->Run({}, false);
+        FLAGS_new_executor_use_local_scope =
+            old_flag_new_executor_use_loacl_scope;
+      } else {
+        framework::Executor exec(dev_place);
+        exec.Run(*block->Program(),
+                 &cur_scope,
+                 block->ID(),
+                 false,
+                 true,
+                 inside_grads,
+                 /* force_disable_gc */ false,
+                 /* keep_kid_scopes */ true);
+      }
 
-      //       framework::Executor exec(dev_place);
-      // exec.Run(*block->Program(),
-      //          &cur_scope,
-      //          block->ID(),
-      //          false,
-      //          true,
-      //          inside_grads,
-      //          /* force_disable_gc */ false,
-      //          /* keep_kid_scopes */ false);
       AssignLocalGradientToParentScope(
           dev_place, cur_scope, scope, inside_grads, outside_grads, inputs);
       return;

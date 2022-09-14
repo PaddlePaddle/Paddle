@@ -183,7 +183,7 @@ paddle::framework::FetchList InterpreterCore::Run(
 }
 
 paddle::framework::FetchList InterpreterCore::Run(
-    const std::vector<std::string>& feed_names) {
+    const std::vector<std::string>& feed_names, bool need_fetch) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place_)) {
     platform::SetDeviceId(place_.device);
@@ -195,6 +195,9 @@ paddle::framework::FetchList InterpreterCore::Run(
 #endif
 
   if (!is_build_) {
+    VLOG(10) << "block: ";
+    VLOG(10) << block_;
+
     paddle::framework::interpreter::build_variable_scope(
         block_, &var_scope_, create_local_scope_);
 
@@ -247,7 +250,7 @@ paddle::framework::FetchList InterpreterCore::Run(
   Scope* inner_scope =
       create_local_scope_ ? local_scope_ : var_scope_.GetMutableScope();
   auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-  if (fetch_var) {
+  if (fetch_var && need_fetch) {
     return std::move(*fetch_var->GetMutable<framework::FetchList>());
   } else {
     return {};
