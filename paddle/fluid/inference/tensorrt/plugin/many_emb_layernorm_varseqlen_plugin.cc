@@ -267,25 +267,21 @@ bool EmbLayerNormVarSeqlenPluginBase::supportsFormatCombination(
     return false;
   }
 
-  if (pos == 0)  // pos_id
-  {
+  if (pos == 0) { // pos_id
     return desc.dims.nbDims == 1 && desc.type == nvinfer1::DataType::kINT32;
   }
 
-  if (pos == 1)  //  input_id
-  {
+  if (pos == 1) { //  input_id
     return desc.dims.nbDims == 1 && desc.type == nvinfer1::DataType::kINT32;
   }
 
   nvinfer1::PluginTensorDesc const& prev = inOut[1];  // input_ids
   if (1 < pos &&
-      pos < (nbInputs - 1))  // other ids: check it's the same as input_ids
-  {
+      pos < (nbInputs - 1)) { // other ids: check it's the same as input_ids
     return desc.type == prev.type && desc.dims.nbDims == 1 &&
            desc.dims.d[0] == prev.dims.d[0];
   }
-  if (pos == nbInputs - 1)  // max seq length
-  {
+  if (pos == nbInputs - 1) { // max seq length
     return desc.dims.nbDims == 1;
   }
 
@@ -747,8 +743,8 @@ nvinfer1::IPluginV2* EmbLayerNormVarSeqlenPluginHFaceCreator::createPlugin(
 
   nvinfer1::Weights beta;
   nvinfer1::Weights gamma;
-  std::vector<nvinfer1::Weights> IdsEmb(fc->nbFields - 3);
-
+  nvinfer1::Weights tem;
+  std::vector<nvinfer1::Weights> IdsEmb(fc->nbFields - 3,tem);
   bool output_fp16 = initializeFields(name, fc, beta, gamma, IdsEmb);
 
   TRANSFORMER_DEBUG_MSG("Building the Plugin...");
@@ -768,7 +764,8 @@ nvinfer1::IPluginV2* EmbLayerNormVarSeqlenPluginMTronCreator::createPlugin(
 
   nvinfer1::Weights beta;
   nvinfer1::Weights gamma;
-  std::vector<nvinfer1::Weights> IdsEmb(fc->nbFields - 3);
+  nvinfer1::Weights tem;
+  std::vector<nvinfer1::Weights> IdsEmb(fc->nbFields - 3,tem);
   bool output_fp16 = initializeFields(name, fc, beta, gamma, IdsEmb);
 
   TRANSFORMER_DEBUG_MSG("Building the Plugin...");
