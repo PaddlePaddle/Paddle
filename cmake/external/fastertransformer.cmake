@@ -32,7 +32,8 @@ set(FASTER_TRANSFORMER_PATH
     "${THIRD_PARTY_PATH}/fastertransformer"
     CACHE PATH "FASTER_TRANSFORMER_PATH" FORCE)
 set(FASTER_TRANSFORMER_PREFIX_DIR ${FASTER_TRANSFORMER_PATH})
-
+set(FASTER_TRANSFORMER_SOURCE_DIR
+    ${FASTER_TRANSFORMER_PREFIX_DIR}/src/extern_fastertransformer)
 set(FASTER_TRANSFORMER_INSTALL_DIR
     ${THIRD_PARTY_PATH}/install/fastertransformer)
 
@@ -60,11 +61,34 @@ set(FASTER_TRANSFORMER_OPTIONAL_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_TRT=ON)
 
 ExternalProject_Add(
   extern_fastertransformer
-  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-  GIT_REPOSITORY ${FASTER_TRANSFORMER_REPOSITORY}
-  GIT_TAG ${FASTER_TRANSFORMER_TAG}
+  ${EXTERNAL_PROJECT_LOG_ARGS}
   PREFIX ${FASTER_TRANSFORMER_PREFIX_DIR}
-  UPDATE_COMMAND ""
+  DOWNLOAD_DIR ${FASTER_TRANSFORMER_SOURCE_DIR}
+  DOWNLOAD_COMMAND
+  COMMAND rm -rf .git cmake CMakeLists.txt 3rdparty src
+  COMMAND git init
+  COMMAND git remote add origin ${FASTER_TRANSFORMER_REPOSITORY}
+  COMMAND git config core.sparsecheckout true
+  COMMAND echo /3rdparty/CMakeLists.txt >> .git/info/sparse-checkout
+  COMMAND echo /3rdparty/INIReader.h >> .git/info/sparse-checkout
+  COMMAND echo /3rdparty/trt_fused_multihead_attention >>
+          .git/info/sparse-checkout
+  COMMAND echo /cmake/ >> .git/info/sparse-checkout
+  COMMAND echo /src/fastertransformer/utils/cuda_utils.h >>
+          .git/info/sparse-checkout
+  COMMAND echo /src/fastertransformer/utils/cuda_bf16_wrapper.h >>
+          .git/info/sparse-checkout
+  COMMAND echo /src/fastertransformer/utils/logger.h >>
+          .git/info/sparse-checkout
+  COMMAND echo /src/fastertransformer/utils/string_utils.h >>
+          .git/info/sparse-checkout
+  COMMAND git fetch --depth 1 origin ${FASTER_TRANSFORMER_TAG}
+  COMMAND git checkout FETCH_HEAD
+  PATCH_COMMAND
+  COMMAND
+    ${CMAKE_COMMAND} -E copy_if_different
+    "${PADDLE_SOURCE_DIR}/patches/fastertransformer/CMakeLists.txt"
+    "<SOURCE_DIR>/"
   BUILD_COMMAND ${BUILD_COMMAND}
   INSTALL_COMMAND ${INSTALL_COMMAND}
   CMAKE_ARGS ${FASTER_TRANSFORMER_OPTIONAL_ARGS}
