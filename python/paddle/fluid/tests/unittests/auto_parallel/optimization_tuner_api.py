@@ -29,8 +29,6 @@ from paddle.fluid import layers
 from paddle.io import Dataset, IterableDataset, DataLoader
 
 import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.engine import Engine
-from paddle.distributed.auto_parallel.strategy import Strategy
 from engine_api_dp import MyDataset
 
 paddle.enable_static()
@@ -93,7 +91,7 @@ def train(fetch):
                                                      epsilon=1e-08,
                                                      grad_clip=None)
 
-    dist_strategy = Strategy()
+    dist_strategy = auto.Strategy()
     dist_strategy.auto_mode = "semi"
     # sharding config
     sharding = dist_strategy.sharding
@@ -111,11 +109,11 @@ def train(fetch):
     tuning.verbose = True
 
     dataset = MyDataset(batch_num * batch_size)
-    engine = Engine(mlp,
-                    loss,
-                    optimizer,
-                    paddle.metric.Accuracy(),
-                    strategy=dist_strategy)
+    engine = auto.Engine(mlp,
+                         loss,
+                         optimizer,
+                         paddle.metric.Accuracy(),
+                         strategy=dist_strategy)
     engine._tune(dataset, batch_size=batch_size)
 
     # check tuned

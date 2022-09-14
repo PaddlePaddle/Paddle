@@ -29,8 +29,6 @@ from paddle.fluid import layers
 from paddle.io import Dataset, IterableDataset, DataLoader
 
 import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.strategy import Strategy
-from paddle.distributed.auto_parallel.engine import Engine
 from paddle.optimizer.lr import CosineAnnealingDecay
 from paddle.fluid.dataloader.collate import default_collate_fn
 
@@ -118,10 +116,10 @@ def train(fetch):
                                       grad_clip=None)
     metric = paddle.metric.Accuracy()
 
-    strategy = Strategy()
+    strategy = auto.Strategy()
     strategy.auto_mode = "semi"
 
-    engine = Engine(mlp, loss, optimizer, metric, strategy=strategy)
+    engine = auto.Engine(mlp, loss, optimizer, metric, strategy=strategy)
 
     # train
     train_dataset = MyDataset(batch_num * batch_size)

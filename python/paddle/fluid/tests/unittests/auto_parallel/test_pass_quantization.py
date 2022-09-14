@@ -19,16 +19,13 @@ import numpy as np
 import paddle
 
 import paddle.distributed.auto_parallel as auto
-
-from paddle.distributed.auto_parallel.strategy import Strategy
-from paddle.distributed.auto_parallel.engine import Engine
 from get_gpt_model import generate_model, create_data_holder, FakeDataset
 
 paddle.enable_static()
 
 
 def apply_pass():
-    dist_strategy = Strategy()
+    dist_strategy = auto.Strategy()
     dist_strategy.auto_mode = "semi"
     qat = dist_strategy.qat
     qat.enable = True
@@ -49,7 +46,7 @@ class TestQuantizationPass(unittest.TestCase):
         strategy = apply_pass()
         model, loss = generate_model("serial")
         opt = paddle.optimizer.AdamW(learning_rate=0.00001)
-        engine = Engine(model, loss, opt, strategy=strategy)
+        engine = auto.Engine(model, loss, opt, strategy=strategy)
         dataset = FakeDataset(batch_size * batch_num)
         engine.fit(dataset, 3, batch_size=batch_size)
 

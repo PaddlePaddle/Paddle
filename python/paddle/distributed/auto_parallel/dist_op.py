@@ -23,7 +23,7 @@ from .dist_attribute import append_op_input_suffix
 from .dist_attribute import append_op_output_suffix
 from .dist_attribute import get_tensor_dist_attr_field_keys
 from .dist_attribute import get_op_dist_attr_field_keys
-from .utils import convert_to_shard_spec
+from .utils import convert_to_shard_spec, verify_shard_spec
 
 
 class DistributedOperator:
@@ -317,8 +317,9 @@ class DistributedOperatorHelper:
                         dims_mapping = tensor_to_dims_mapping[name]
                         shard_spec = convert_to_shard_spec(
                             dims_mapping, self._process_mesh)
-                        assert len(tensor_shape) == len(dims_mapping), \
-                            "shard_spec {} does not match tensor shape {}, given process_mesh {}.".format(shard_spec, tensor_shape, self._process_mesh)
+                        assert verify_shard_spec(shard_spec, tensor_shape, self._process_mesh), \
+                            "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
+                                name, shard_spec, tensor_shape, self._process_mesh)
                         tensor_dist_attr.dims_mapping = dims_mapping
                         tensor_dist_attr.mark_annotated("dims_mapping")
             for name in dist_op.serial_op.output_arg_names:
@@ -340,8 +341,9 @@ class DistributedOperatorHelper:
                         dims_mapping = tensor_to_dims_mapping[name]
                         shard_spec = convert_to_shard_spec(
                             dims_mapping, self._process_mesh)
-                        assert len(tensor_shape) == len(dims_mapping), \
-                            "shard_spec {} does not match tensor shape {}, given process_mesh {}.".format(shard_spec, tensor_shape, self._process_mesh)
+                        assert verify_shard_spec(shard_spec, tensor_shape, self._process_mesh), \
+                            "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
+                                name, shard_spec, tensor_shape, self._process_mesh)
                         tensor_dist_attr.dims_mapping = dims_mapping
                         tensor_dist_attr.mark_annotated("dims_mapping")
             dist_op.dist_attr.process_mesh = self._process_mesh

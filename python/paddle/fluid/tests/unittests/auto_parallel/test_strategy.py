@@ -15,13 +15,13 @@
 import os
 import yaml
 import unittest
-from paddle.distributed.auto_parallel.strategy import Strategy
+import paddle.distributed.auto_parallel as auto
 
 
 class TestStrategy(unittest.TestCase):
 
     def test_default_config(self):
-        strategy = Strategy()
+        strategy = auto.Strategy()
 
         recompute = strategy.recompute
         self.assertEqual(recompute.enable, False)
@@ -73,7 +73,7 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(tuning.verbose, True)
 
     def test_modify_config(self):
-        strategy = Strategy()
+        strategy = auto.Strategy()
 
         recompute = strategy.recompute
         recompute.enable = True
@@ -194,8 +194,7 @@ class TestStrategy(unittest.TestCase):
         with open(yaml_path, 'w') as outfile:
             yaml.dump(yaml_dict, outfile, default_flow_style=False)
 
-        strategy = Strategy(yaml_path)
-        print(strategy)
+        strategy = auto.Strategy(yaml_path)
         self.assertEqual(yaml_dict, strategy.to_dict())
 
         # Remove the created file

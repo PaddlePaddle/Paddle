@@ -27,7 +27,6 @@ from paddle import LazyGuard
 from paddle.io import Dataset
 from paddle.static import InputSpec
 from paddle.fluid.framework import _non_static_mode
-from paddle.distributed.auto_parallel.engine import Engine
 from paddle.distributed.auto_parallel.helper import ProgramHelper
 
 batch_size = 4
@@ -144,11 +143,11 @@ class TestToStatic(unittest.TestCase):
         # labels = InputSpec([batch_size], 'int64', 'label')
 
         assert _non_static_mode() == True
-        engine = Engine(model=mlp,
-                        loss=loss,
-                        optimizer=optimizer,
-                        metrics=paddle.metric.Accuracy(),
-                        strategy=None)
+        engine = auto.Engine(model=mlp,
+                             loss=loss,
+                             optimizer=optimizer,
+                             metrics=paddle.metric.Accuracy(),
+                             strategy=None)
         engine.fit(dataset, batch_size=batch_size)
         engine.evaluate(dataset, batch_size=batch_size)
         engine.predict(dataset, batch_size=batch_size)

@@ -82,11 +82,10 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
         tensor_shape = []
     else:
         tensor_shape = serial_tensor.shape
-    assert len(tensor_shape) == len(shard_spec), \
-        "The length of shard_spec {} does not match the length of tensor shape {}.".format(shard_spec, tensor_shape)
     if shard_spec is not None:
-        assert verify_shard_spec(shard_spec, process_mesh), \
-            "shard_spec {} is invalid".format(shard_spec)
+        assert verify_shard_spec(shard_spec, tensor_shape, process_mesh), \
+            "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
+                serial_tensor.name, shard_spec, tensor_shape, process_mesh)
         dist_tensor.dist_attr.dims_mapping = convert_to_dims_mapping(
             shard_spec, process_mesh)
     if process_mesh is not None:
@@ -156,9 +155,6 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
             "in_shard_spec {} is not a list of list or None".format(in_shard_specs)
         for shard_spec in in_shard_specs:
             if shard_spec is not None:
-                assert verify_shard_spec(shard_spec, process_mesh), \
-                    "shard_spec {} of in_shard_specs {} is invalid".format(
-                        shard_spec, in_shard_specs)
                 in_dims_mappings.append(
                     convert_to_dims_mapping(shard_spec, process_mesh))
             else:
@@ -169,9 +165,6 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
             "out_shard_spec {} is not a list of list or None".format(out_shard_specs)
         for shard_spec in out_shard_specs:
             if shard_spec is not None:
-                assert verify_shard_spec(shard_spec, process_mesh), \
-                    "shard_spec {} of in_shard_specs {} is invalid".format(
-                        shard_spec, out_shard_specs)
                 out_dims_mappings.append(
                     convert_to_dims_mapping(shard_spec, process_mesh))
             else:

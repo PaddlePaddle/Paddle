@@ -26,7 +26,6 @@ import paddle.distributed.fleet as fleet
 from paddle.io import Dataset
 from paddle.static import InputSpec
 from paddle.fluid.framework import _non_static_mode
-from paddle.distributed.auto_parallel.engine import Engine
 
 from test_to_static import MLPLayer, MyDataset
 
@@ -63,10 +62,10 @@ class TestEngineBase(unittest.TestCase):
         # inputs = InputSpec([self.batch_size, self.hidden_size], 'float32', 'x')
         # labels = InputSpec([self.batch_size], 'int64', 'label')
 
-        self.engine = Engine(model=self.mlp,
-                             loss=self.loss,
-                             optimizer=self.optimizer,
-                             metrics=paddle.metric.Accuracy())
+        self.engine = auto.Engine(model=self.mlp,
+                                  loss=self.loss,
+                                  optimizer=self.optimizer,
+                                  metrics=paddle.metric.Accuracy())
 
 
 class TestLRScheduler(TestEngineBase):

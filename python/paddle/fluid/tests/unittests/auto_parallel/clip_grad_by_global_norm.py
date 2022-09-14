@@ -19,17 +19,14 @@ import numpy as np
 import paddle
 
 import paddle.distributed.auto_parallel as auto
-
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.distributed.auto_parallel.strategy import Strategy
-from paddle.distributed.auto_parallel.engine import Engine
 from get_gpt_model import generate_model, create_data_holder, FakeDataset
 
 paddle.enable_static()
 
 
 def apply_pass(use_sharding=False):
-    strategy = Strategy()
+    strategy = auto.Strategy()
     strategy.auto_mode = "semi"
     if use_sharding:
         sharding = strategy.sharding
@@ -85,7 +82,7 @@ class TestGradientClipByGlobalNorm(unittest.TestCase):
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
         model, loss = generate_model("dp")
-        engine = Engine(model, loss, opt, strategy=strategy)
+        engine = auto.Engine(model, loss, opt, strategy=strategy)
         self.init(engine)
         return engine
 

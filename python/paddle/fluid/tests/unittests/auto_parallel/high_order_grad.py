@@ -17,10 +17,7 @@ import paddle
 import unittest
 import numpy as np
 import paddle.distributed.auto_parallel as auto
-
 from paddle.incubate.autograd import Hessian
-from paddle.distributed.auto_parallel.engine import Engine
-from paddle.distributed.auto_parallel.strategy import Strategy
 
 np.random.seed(1234)
 paddle.seed(1234)
@@ -128,13 +125,13 @@ def main():
     # model
     laplace = LaplaceModel()
 
-    dist_strategy = Strategy()
+    dist_strategy = auto.Strategy()
     dist_strategy.auto_mode = "semi"
 
-    engine = Engine(laplace,
-                    loss=loss_func,
-                    optimizer=optimizer,
-                    strategy=dist_strategy)
+    engine = auto.Engine(laplace,
+                         loss=loss_func,
+                         optimizer=optimizer,
+                         strategy=dist_strategy)
     engine.fit(train_dataset, train_sample_split=2, batch_size=None)
 
     dist_context = engine.dist_context

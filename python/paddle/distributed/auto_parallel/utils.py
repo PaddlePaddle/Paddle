@@ -96,14 +96,22 @@ def convert_to_shard_spec(dims_mapping, process_mesh):
     return shard_spec
 
 
-def verify_shard_spec(shard_spec, process_mesh):
+def verify_shard_spec(shard_spec, tensor_shape, process_mesh):
+    if len(shard_spec) != len(tensor_shape):
+        return False
     for shard in shard_spec:
         if shard is not None and not isinstance(shard, str):
             return False
         if shard is not None and shard not in process_mesh.dim_names:
             return False
     dims_mapping = convert_to_dims_mapping(shard_spec, process_mesh)
-    return verify_dims_mapping(dims_mapping, process_mesh)
+    if not verify_dims_mapping(dims_mapping, process_mesh):
+        return False
+    for i in range(len(tensor_shape)):
+        if dims_mapping[i] != -1 and tensor_shape[i] > 0 \
+            and tensor_shape[i] % process_mesh.shape[dims_mapping[i]] != 0:
+            return False
+    return True
 
 
 def compute_compatible_dim_mapping(dim_mappings):
