@@ -1037,7 +1037,7 @@ class Completer:
                     grad_op_dist_attr.set_output_dims_mapping(
                         output_name, ref_fwd_dims_mapping)
 
-                elif grad_op.type == 'fill_zeros_like':
+                elif grad_op.type == 'fill_any_like':
                     ref_var_name = grad_op.input_arg_names[0]
                     ref_var = vars[ref_var_name]
                     ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
@@ -1274,7 +1274,7 @@ class Completer:
                     grad_op_dist_attr.impl_type = "default"
                     grad_op_dist_attr.impl_idx = 0
 
-                elif grad_op.type == 'fill_zeros_like':
+                elif grad_op.type == 'fill_any_like':
                     ref_var_name = grad_op.input_arg_names[0]
                     ref_var = vars[ref_var_name]
                     ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(

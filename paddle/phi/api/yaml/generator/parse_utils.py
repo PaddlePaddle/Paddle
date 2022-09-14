@@ -210,9 +210,9 @@ def extract_type_and_name(records: List[Dict]) -> List[Dict]:
 def parse_forward(api_name: str, forward_config: str) -> Dict[str, Any]:
     # api_name (const Tensor& input, ... , int attr, ...) -> Tensor(out)
     result = re.search(
-        r"(?P<api>[a-z][a-z0-9_]+)\s*(?P<args>\([^\)]+\))\s*->\s*(?P<outputs>.+)",
+        r"(?P<op>[a-z][a-z0-9_]+)\s*(?P<args>\([^\)]+\))\s*->\s*(?P<outputs>.+)",
         forward_config)
-    api = result.group("api")
+    api = result.group("op")
     outputs = parse_outputs(api_name, result.group("outputs"))
     outputs = extract_type_and_name(outputs)
 
@@ -228,7 +228,7 @@ def parse_forward(api_name: str, forward_config: str) -> Dict[str, Any]:
     return forward_cfg
 
 
-def parse_api_entry(api_entry: Dict[str, Any], name_field="api"):
+def parse_api_entry(api_entry: Dict[str, Any], name_field="op"):
     api_name = api_entry[name_field]
     inputs, attrs = parse_input_and_attr(api_name, api_entry["args"])
     outputs = parse_outputs(api_name, api_entry["output"])

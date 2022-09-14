@@ -178,6 +178,7 @@ class AutoPallelPassTestBase(DistPassTestBase):
         preds = model(tokens, position_ids, attention_mask)
         criterion = GPTPretrainingCriterion()
         loss = criterion(preds, labels, loss_mask)
+        clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
 
         if kwargs.get('optimizer', None) == "LarsMomentum":
             optimizer = paddle.fluid.optimizer.LarsMomentumOptimizer(
@@ -188,7 +189,7 @@ class AutoPallelPassTestBase(DistPassTestBase):
                 beta1=0.9,
                 beta2=0.999,
                 epsilon=1e-08,
-                grad_clip=None)
+                grad_clip=clip)
         optimizer = fleet.distributed_optimizer(optimizer)
         startup_program = paddle.static.default_startup_program()
         _, _, dist_startup_prog, dist_main_prog = optimizer.minimize(

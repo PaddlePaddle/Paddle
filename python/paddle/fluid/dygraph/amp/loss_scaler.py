@@ -132,6 +132,8 @@ class AmpScaler(object):
             self._found_inf = to_variable(np.array([0]).astype(np.bool_))
             self._temp_found_inf_fp16 = to_variable(
                 np.array([0]).astype(np.bool_))
+            self._temp_found_inf_bf16 = to_variable(
+                np.array([0]).astype(np.bool_))
             self._temp_found_inf_fp32 = to_variable(
                 np.array([0]).astype(np.bool_))
             self._scale = to_variable(
@@ -262,6 +264,7 @@ class AmpScaler(object):
                 optimizer._param_groups[0], dict):
             param_grads = []
             param_grads_fp16 = []
+            param_grads_bf16 = []
             param_grads_fp32 = []
             for group in optimizer._param_groups:
                 for param in group['params']:
@@ -270,6 +273,9 @@ class AmpScaler(object):
                         if param._grad_ivar(
                         ).dtype == core.VarDesc.VarType.FP16:
                             param_grads_fp16.append(param._grad_ivar())
+                        elif param._grad_ivar(
+                        ).dtype == core.VarDesc.VarType.BF16:
+                            param_grads_bf16.append(param._grad_ivar())
                         else:
                             param_grads_fp32.append(param._grad_ivar())
         else:
@@ -280,6 +286,10 @@ class AmpScaler(object):
             param_grads_fp16 = [
                 param for param in param_grads
                 if param.dtype == core.VarDesc.VarType.FP16
+            ]
+            param_grads_bf16 = [
+                param for param in param_grads
+                if param.dtype == core.VarDesc.VarType.BF16
             ]
             param_grads_fp32 = [
                 param for param in param_grads
@@ -293,6 +303,10 @@ class AmpScaler(object):
                 _legacy_C_ops.check_finite_and_unscale(
                     param_grads_fp16, self._scale, float_status,
                     param_grads_fp16, self._temp_found_inf_fp16)
+            if len(param_grads_bf16):
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_bf16, self._scale, float_status,
+                    param_grads_bf16, self._temp_found_inf_bf16)
             if len(param_grads_fp32):
                 _legacy_C_ops.check_finite_and_unscale(
                     param_grads_fp32, self._scale, float_status,
@@ -302,12 +316,16 @@ class AmpScaler(object):
                 _legacy_C_ops.check_finite_and_unscale(
                     param_grads_fp16, self._scale, param_grads_fp16,
                     self._temp_found_inf_fp16)
+            if len(param_grads_bf16):
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_bf16, self._scale, param_grads_bf16,
+                    self._temp_found_inf_bf16)
             if len(param_grads_fp32):
                 _legacy_C_ops.check_finite_and_unscale(
                     param_grads_fp32, self._scale, param_grads_fp32,
                     self._temp_found_inf_fp32)
 
-        self._found_inf = self._temp_found_inf_fp16 or self._temp_found_inf_fp32
+        self._found_inf = self._temp_found_inf_fp16 or self._temp_found_inf_bf16 or self._temp_found_inf_fp32
 
         optimizer_state["state"] = OptimizerState.UNSCALED
 

@@ -50,7 +50,7 @@ class BaseAPI(object):
             self.inplace_map, self.view_map = {}, {}
 
     def get_api_name(self, api_item_yaml):
-        return api_item_yaml['api']
+        return api_item_yaml['op']
 
     def get_api_func_name(self):
         return self.api

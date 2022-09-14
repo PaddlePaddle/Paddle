@@ -16,6 +16,7 @@ from collections import defaultdict
 
 import paddle
 from paddle.framework import core
+from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.fluid import unique_name
 from .pass_base import register_pass
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
@@ -442,7 +443,7 @@ def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
 
     inputs = {'X': grads, 'Scale': loss_scaling}
     outputs = {'Out': grads, 'FoundInfinite': found_inf}
-    attrs = {'op_role': OpRole.Backward}
+    attrs = {'op_role': OpRole.Optimize}
     new_op = main_block.append_op(type='check_finite_and_unscale',
                                   inputs=inputs,
                                   outputs=outputs,
@@ -536,6 +537,39 @@ def _insert_memcopy(block, idx, src_var, dist_context, direction="D2H"):
     return output_var
 
 
+def cast_startup_program():
+    main_program = default_main_program()
+    startup_program = default_startup_program()
+
+    param_to_dtype = {}
+    for block in main_program.blocks:
+        for p in block.all_parameters():
+            param_to_dtype[p.name] = p.dtype
+
+    def is_initialization_op(op):
+        comm_op_prefix = "c_"
+        op_type = op.type
+        if op_type.startswith(comm_op_prefix):
+            return False
+
+        if len(op.output_arg_names) != 1 and len(op.input_arg_names) != 0:
+            return False
+
+        return True
+
+    for op in startup_program.global_block().ops:
+        if is_initialization_op(op):
+            output_name = op.output_arg_names[0]
+            if param_to_dtype.get(output_name,
+                                  None) == core.VarDesc.VarType.FP16:
+                assert op.has_attr(
+                    'dtype'
+                ), "initialization op is supported to has dtype attribute but got {}.".format(
+                    str(op))
+                if op.attr('dtype') == core.VarDesc.VarType.FP32:
+                    op._set_attr('dtype', core.VarDesc.VarType.FP16)
+
+
 @register_pass("auto_parallel_fp16")
 class FP16Pass(AMPPass):
 
@@ -563,6 +597,8 @@ class FP16Pass(AMPPass):
                                    input_data_var_names)
             is_train = fp16_state._build_state()
 
+            cast_startup_program()
+
         if is_train:
             with paddle.static.program_guard(main_program, startup_program):
                 # TODO (JZ-LIANG)support cast forward program only when inference
@@ -575,18 +611,18 @@ class FP16Pass(AMPPass):
                                  ) or self.get_attr("init_loss_scaling") != 1.0:
                     found_infs = []
                     if fp32_grads:
-                        with main_program._backward_role_guard():
+                        with main_program._optimized_guard([]):
                             _, found_inf_fp32 = _check_and_update_gradient(
                                 fp32_grads, self._loss_scaling, "@fp32",
                                 self.dist_context)
                         found_infs.append(found_inf_fp32)
                     if fp16_grads:
-                        with main_program._backward_role_guard():
+                        with main_program._optimized_guard([]):
                             _, found_inf_fp16 = _check_and_update_gradient(
                                 fp16_grads, self._loss_scaling, "@fp16",
                                 self.dist_context)
                         found_infs.append(found_inf_fp16)
-                    with main_program._backward_role_guard():
+                    with main_program._optimized_guard([]):
                         block = main_program.global_block()
 
                         all_infs = paddle.fluid.layers.concat(found_infs)
@@ -608,7 +644,7 @@ class FP16Pass(AMPPass):
                                                      block, self.dist_context)
 
                 if self.get_attr("use_dynamic_loss_scaling"):
-                    with main_program._backward_role_guard():
+                    with main_program._optimized_guard([]):
                         if fp32_grads:
                             self._update_loss_scaling(fp32_grads, found_inf)
                         if fp16_grads:
