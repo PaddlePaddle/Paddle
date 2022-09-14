@@ -41,7 +41,8 @@ set(PYBIND_DEPS
     new_profiler
     auto_parallel
     jit_layer
-    jit_property)
+    jit_property
+    paddle_rpc)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -133,7 +134,8 @@ set(PYBIND_SRCS
     op_function5.cc
     op_function6.cc
     op_function7.cc
-    op_function8.cc)
+    op_function8.cc
+    rpc.cc)
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} phi_capi)
@@ -209,6 +211,8 @@ if(WITH_PSCORE)
   endif()
   set_source_files_properties(
     fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(rpc.cc PROPERTIES COMPILE_FLAGS
+                                                ${DISTRIBUTE_COMPILE_FLAGS})
   list(APPEND PYBIND_DEPS fleet index_wrapper index_sampler)
   list(APPEND PYBIND_SRCS)
   set(PYBIND_SRCS fleet_py.cc ${PYBIND_SRCS})

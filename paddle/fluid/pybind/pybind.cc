@@ -183,6 +183,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/rpc.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
@@ -2448,6 +2449,19 @@ All parameter, weight, gradient are variables in Paddle.
   BindGraphGpuWrapper(&m);
 #endif
 #endif
+  BindServiceInfo(&m);
+  BindRpcAgent(&m);
+  BindFuture(&m);
+  SetAgentInstance(&m);
+  InvokeRpc(&m);
+  StopServer(&m);
+  GetServiceInfo(&m);
+  GetServiceInfoByRank(&m);
+  GetCurrentServiceInfo(&m);
+  GetAllServiceInfos(&m);
+  GetRank(&m);
+  GetWorldSize(&m);
+  ClearPythonRpcHandler(&m);
 }
 }  // namespace pybind
 }  // namespace paddle

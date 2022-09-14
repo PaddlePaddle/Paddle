@@ -42,7 +42,7 @@ set(DISTRIBUTE_COMPILE_FLAGS
 if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
   set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
 endif()
-
+add_subdirectory(rpc)
 add_subdirectory(common)
 add_subdirectory(ps)
 add_subdirectory(test)
