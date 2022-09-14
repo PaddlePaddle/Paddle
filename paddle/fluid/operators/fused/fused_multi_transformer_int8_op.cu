@@ -291,6 +291,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                    i * qkv_out_scale_n);
       } else {
         qkv_compute.ComputeForwardINT8ToT(qkv_weights[i],
+                                          qkv_in_scale[i],
                                           &input_workspace,
                                           bias,
                                           &qkv_out,
@@ -430,6 +431,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
             input_workspace.data<int8_t>(),
             ln_mean_data,
             ln_var_data,
+            out_linear_in_scale[i],
             out_linear_out_scale->data<float>(),
             i * out_linear_out_scale_n,
             ffn1_in_scale[i]);
@@ -489,6 +491,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
             "gelu",
             input_workspace.data<int8_t>(),
             ffn1_dropout_mask_data,
+            ffn1_in_scale[i],
             ffn1_out_scale->data<float>(),
             i * ffn1_out_scale_n,
             ffn2_in_scale[i]);
@@ -559,6 +562,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
               input_workspace.data<int8_t>(),
               ln_mean_data,
               ln_var_data,
+              ffn2_in_scale[i],
               ffn2_out_scale->data<float>(),
               i * ffn2_out_scale_n,
               qkv_in_scale[i + 1]);
@@ -570,6 +574,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
               ffn2_biases[i]->data<T>(),
               buf1->data<T>(),
               dropout_mask_out_data,
+              ffn2_in_scale[i],
               ffn2_out_scale->data<float>(),
               i * ffn2_out_scale_n,
               1.0);

@@ -66,21 +66,23 @@ template <typename T,
           typename Functor,
           typename InType = T,
           typename OutType = T>
-__global__ void FusedDropoutActBias(Functor act,
-                                    const uint64_t seed,
-                                    const uint64_t rows,
-                                    const uint64_t cols,
-                                    const int increment,
-                                    const float dropout_prob,
-                                    const bool is_upscale_in_train,
-                                    const bool is_test,
-                                    const InType *__restrict__ src,
-                                    const T *__restrict__ bias,
-                                    OutType *dst,
-                                    MaskType *mask,
-                                    const float *quant_out_scale_data = nullptr,
-                                    const int quant_out_scale_offset = 0,
-                                    const float quant_in_scale_data = 1.0) {
+__global__ void FusedDropoutActBias(
+    Functor act,
+    const uint64_t seed,
+    const uint64_t rows,
+    const uint64_t cols,
+    const int increment,
+    const float dropout_prob,
+    const bool is_upscale_in_train,
+    const bool is_test,
+    const InType *__restrict__ src,
+    const T *__restrict__ bias,
+    OutType *dst,
+    MaskType *mask,
+    const float quant_last_in_scale_data = 1.0,
+    const float *quant_out_scale_data = nullptr,
+    const int quant_out_scale_offset = 0,
+    const float quant_next_in_scale_data = 1.0) {
   int col_id = blockDim.x * blockIdx.x + threadIdx.x;
   int row_id = blockIdx.y;
   int idx = row_id * cols + col_id;
@@ -115,9 +117,10 @@ __global__ void FusedDropoutActBias(Functor act,
                                                  nullptr,
                                                  nullptr,
                                                  act,
+                                                 quant_last_in_scale_data,
                                                  quant_out_scale_data,
                                                  quant_out_scale_offset,
-                                                 quant_in_scale_data);
+                                                 quant_next_in_scale_data);
     }
   }
 }
@@ -143,9 +146,10 @@ void LaunchDropoutActBias(Functor act_functor,
                           OutType *dst,
                           MaskType *mask_data,
                           const phi::GPUContext &ctx,
+                          const float quant_last_in_scale_data = 1.0,
                           const float *quant_out_scale_data = nullptr,
                           const int quant_out_scale_offset = 0,
-                          const float quant_in_scale_data = 1.0) {
+                          const float quant_next_in_scale_data = 1.0) {
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     SetZero<T>(ctx, reinterpret_cast<T *>(dst), rows * cols);
@@ -171,9 +175,10 @@ void LaunchDropoutActBias(Functor act_functor,
             bias,
             dst,
             mask_data,
+            quant_last_in_scale_data,
             quant_out_scale_data,
             quant_out_scale_offset,
-            quant_in_scale_data);
+            quant_next_in_scale_data);
   } else {
     FusedDropoutActBias<T, MaskType, 1, Functor, InType, OutType>
         <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
@@ -189,9 +194,10 @@ void LaunchDropoutActBias(Functor act_functor,
             bias,
             dst,
             mask_data,
+            quant_last_in_scale_data,
             quant_out_scale_data,
             quant_out_scale_offset,
-            quant_in_scale_data);
+            quant_next_in_scale_data);
   }
 }
 

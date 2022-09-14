@@ -24,6 +24,7 @@ namespace cub = hipcub;
 
 #include <iostream>
 
+#include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/core/ddim.h"
@@ -393,12 +394,11 @@ __global__ void LayerNormForward(
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
-          y[i] = __float2int_rn(
-              quant_in_scale_data *
-              static_cast<float>(static_cast<T>(
-                  static_cast<U>(scale[j]) * (static_cast<U>(x[i]) - mean_val) *
-                      invvar +
-                  static_cast<U>(bias[j]))));
+          y[i] = clip_round(
+              static_cast<T>(static_cast<U>(scale[j]) *
+                                 (static_cast<U>(x[i]) - mean_val) * invvar +
+                             static_cast<U>(bias[j])),
+              quant_in_scale_data);
         } else {
           y[i] = static_cast<OutType>(static_cast<U>(scale[j]) *
                                           (static_cast<U>(x[i]) - mean_val) *
@@ -410,11 +410,10 @@ __global__ void LayerNormForward(
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
-          y[i] =
-              __float2int_rn(quant_in_scale_data *
-                             static_cast<float>(static_cast<T>(
-                                 static_cast<U>(scale[j]) *
-                                 (static_cast<U>(x[i]) - mean_val) * invvar)));
+          y[i] = clip_round(
+              static_cast<T>(static_cast<U>(scale[j]) *
+                             (static_cast<U>(x[i]) - mean_val) * invvar),
+              quant_in_scale_data);
         } else {
           y[i] =
               static_cast<OutType>(static_cast<U>(scale[j]) *
@@ -427,10 +426,10 @@ __global__ void LayerNormForward(
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
-          y[i] = __float2int_rn(quant_in_scale_data *
-                                static_cast<float>(static_cast<T>(
-                                    (static_cast<U>(x[i]) - mean_val) * invvar +
-                                    static_cast<U>(bias[j]))));
+          y[i] = clip_round(
+              static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar +
+                             static_cast<U>(bias[j])),
+              quant_in_scale_data);
         } else {
           y[i] =
               static_cast<OutType>((static_cast<U>(x[i]) - mean_val) * invvar +
@@ -441,10 +440,9 @@ __global__ void LayerNormForward(
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
-          y[i] =
-              __float2int_rn(quant_in_scale_data *
-                             static_cast<float>(static_cast<T>(
-                                 (static_cast<U>(x[i]) - mean_val) * invvar)));
+          y[i] = clip_round(
+              static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar),
+              quant_in_scale_data);
         } else {
           y[i] =
               static_cast<OutType>((static_cast<U>(x[i]) - mean_val) * invvar);

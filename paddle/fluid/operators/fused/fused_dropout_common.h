@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
