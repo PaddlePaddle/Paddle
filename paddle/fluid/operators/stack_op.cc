@@ -56,11 +56,6 @@ class StackOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "The axis along which all of the Inputs(X) should be stacked.")
         .SetDefault(0);
-    AddAttr<bool>(
-        "use_mkldnn",
-        "(bool, default false) Indicates if MKL-DNN kernel will be used")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Stack Operator.
 Stack all of the Inputs(X) into one tensor along Attr(axis). The dims of all Inputs(X) must be the same.

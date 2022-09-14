@@ -88,16 +88,6 @@ class ExpandV2OpMaker : public framework::OpProtoAndCheckerMaker {
               "the corresponding value given by Attr(expand_times).");
     AddAttr<std::vector<int>>("shape", "The expanded shape for each dimension.")
         .SetDefault({});
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
     AddComment(R"DOC(
 Expand the input to the given shape. The rank of X
 should be in [1, 6] and size of 'shape' must be in [1, 6] also.
