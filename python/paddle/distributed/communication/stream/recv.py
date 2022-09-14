@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle.distributed.collective as collective
 import paddle.fluid.framework as framework
-from ...collective import _get_default_group
 
 
 def _recv_in_dygraph(tensor, src, group, sync_op, use_calc_stream):
-    group = _get_default_group() if group is None else group
+    group = collective._get_default_group() if group is None else group
     if use_calc_stream:
         return group.process_group.recv_on_calc_stream(tensor, src)
 

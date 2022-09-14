@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle.distributed.collective as collective
 import paddle.fluid.framework as framework
-from ...collective import _get_default_group, _get_reduce_op, ReduceOp
 
 
 def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
-    op_type = _get_reduce_op(op, "all_reduce")
-    group = _get_default_group() if group is None else group
+    op_type = collective._get_reduce_op(op, "all_reduce")
+    group = collective._get_default_group() if group is None else group
     if use_calc_stream:
         return group.process_group.allreduce_on_calc_stream(tensor, op_type)
 
@@ -30,7 +30,7 @@ def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
 
 
 def all_reduce(tensor,
-               op=ReduceOp.SUM,
+               op=collective.ReduceOp.SUM,
                group=None,
                sync_op=True,
                use_calc_stream=False):
