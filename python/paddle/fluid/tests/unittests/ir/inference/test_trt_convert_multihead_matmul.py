@@ -1441,9 +1441,6 @@ class TrtConvertSwinToMultiHeadMatmul_1_Test(TrtLayerAutoScanTest):
         ]
 
         def generate_trt_nodes_num():
-            ver = paddle_infer.get_trt_compile_version()
-            if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8000:
-                return 0, 3
             return 1, 2
 
         # for dynamic_shape
@@ -1853,9 +1850,6 @@ class TrtConvertSwinToMultiHeadMatmul_2_Test(TrtLayerAutoScanTest):
         ]
 
         def generate_trt_nodes_num():
-            ver = paddle_infer.get_trt_compile_version()
-            if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8000:
-                return 0, 3
             return 1, 2
 
         # for dynamic_shape
