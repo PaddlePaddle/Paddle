@@ -377,7 +377,7 @@ class TestFillAnyLikeOrig2Prim2(TestElementWiseAddOrig2Prim):
             'Out':
             self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
         }
-        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32), 'value': 5}
+        self.attrs = {'dtype': X.dtype, 'value': 5}
 
         self.orig2prim_args = (X, )
         self.all_ops = ['fill_any_like', 'fill_constant_p']
