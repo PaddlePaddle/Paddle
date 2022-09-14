@@ -470,3 +470,13 @@ if(NOT APPLE AND NOT WIN32)
       DEPS device_code lod_tensor)
   endif()
 endif()
+
+if(WITH_CUSTOM_DEVICE)
+  cc_library(
+    device_event_custom_device
+    SRCS device_event_custom_device.cc
+    DEPS device_event_base custom_device_resource_pool)
+  set(DEVICE_EVENT_LIBS
+      device_event_custom_device
+      CACHE INTERNAL "device event libs")
+endif()
