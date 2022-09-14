@@ -1193,6 +1193,38 @@ static void PrintAllMinMaxRange(const framework::ExecutionContext &ctx,
   }
 }
 
+template <typename T>
+static bool HasNanInf(const phi::GPUContext &dev_ctx, const T *x, int numel) {
+  if (numel <= 0) return false;
+  cub::TransformInputIterator<bool, IsNanInfFunctor<T>, const T *> iter(
+      x, IsNanInfFunctor<T>());
+  memory::Buffer buffer(dev_ctx.GetPlace());
+  memory::Buffer out(dev_ctx.GetPlace());
+  CubDeviceReduce(iter,
+                  out.Alloc<bool>(1),
+                  numel,
+                  OrFunctor(),
+                  false,
+                  dev_ctx.stream(),
+                  &buffer);
+  bool flag;
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(&flag,
+                                            out.Get<bool>(),
+                                            sizeof(flag),
+                                            hipMemcpyDeviceToHost,
+                                            dev_ctx.stream()));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&flag,
+                                             out.Get<bool>(),
+                                             sizeof(flag),
+                                             cudaMemcpyDeviceToHost,
+                                             dev_ctx.stream()));
+#endif
+  dev_ctx.Wait();
+  return flag;
+}
+
 static void CheckHasNanInfGrad(const float *fp32_grad,
                                int fp32_numel,
                                const platform::float16 *fp16_grad,
@@ -1830,17 +1862,11 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
         } else {
           VLOG(1) << "Grad scale: " << FlattenToString(fp16_scale, 1, place);
         }
-        if (nranks > 1) {
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              platform::dynload::ncclAllReduce(fp32_square_grad_norm,
-                                               fp32_square_grad_norm,
-                                               1,
-                                               ncclFloat32,
-                                               ncclSum,
-                                               global_comm,
-                                               stream));
-        }
         // (3) Do ReduceScatter with scale
+        VLOG(1) << "FP32 HasNanInf before all reduce: "
+                << HasNanInf(dev_ctx, fp32_grad, fp32_numel);
+        VLOG(1) << "FP16 HasNanInf before all reduce: "
+                << HasNanInf(dev_ctx, fp16_grad, fp16_numel);
         if (local_shard) {
           if (use_hierarchical_allreduce) {
             NCCLReduceScatterWithScale(
@@ -1915,6 +1941,29 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
                                      stream,
                                      dev_ctx,
                                      fp16_scale);
+        }
+        VLOG(1) << "FP32 HasNanInf after all reduce: "
+                << HasNanInf(dev_ctx, fp32_sum_grad, fp32_numel_each_device);
+        VLOG(1) << "FP16 HasNanInf after all reduce: "
+                << HasNanInf(dev_ctx, fp16_sum_grad, fp16_numel_each_device);
+        CheckHasNanInfGrad(fp32_sum_grad,
+                           fp32_numel_each_device,
+                           fp16_sum_grad,
+                           fp16_numel_each_device,
+                           fp32_square_grad_norm,
+                           stream,
+                           &cub_tmp_buffer);
+        if (num_devices > 1) {
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              platform::dynload::ncclAllReduce(fp32_square_grad_norm,
+                                               fp32_square_grad_norm,
+                                               1,
+                                               ncclFloat32,
+                                               ncclSum,
+                                               local_comm,
+                                               stream));
+          VLOG(1) << "Grad square norm after all reduce: "
+                  << FlattenToString(fp32_square_grad_norm, 1, place);
         }
         // (4) mark max_global_grad_norm as 0, meaning that clip has been
         // already performed
