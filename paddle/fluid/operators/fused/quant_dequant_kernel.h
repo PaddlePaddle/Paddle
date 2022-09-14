@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename T>
 __forceinline__ __device__ int8_t clip_round(const T input, const float scale) {
   float quant_value = 127.0f * (1.0f / scale) * static_cast<float>(input);
