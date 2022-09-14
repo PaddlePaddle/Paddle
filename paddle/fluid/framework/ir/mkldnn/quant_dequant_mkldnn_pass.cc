@@ -109,27 +109,34 @@ void QuantDequantMkldnnPass::CollectWeightScalesInfoFromONNXFormatDequantize(
 
     if (op_node->Name() == "dequantize_linear") {
       auto* op_desc = op_node->Op();
+
+      auto scale_name = op_desc->Input("Scale")[0];
+      auto* var = scope->FindVar(scale_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          var,
+          platform::errors::NotFound(
+              "The Scales variable [%s] of dequantize op is not found.", var));
+
+      auto* scale_tensor = var->GetMutable<LoDTensor>();
+      auto* scale_data = scale_tensor->data<float>();
+
       auto x_var_name = op_desc->Input("X")[0];
       auto* weight_var = scope->FindVar(x_var_name);
       if (!weight_var) {
         auto out_var_name = op_desc->Output("Y")[0];
-        if (var_quant_scales->count(x_var_name) &&
-            !var_quant_scales->count(out_var_name)) {
-          std::vector<float> scale_v = var_quant_scales->at(x_var_name);
+        float scale = 1.0 / scale_data[0];
+        if (std::isinf(scale) || std::isnan(scale)) {
+          scale = 0.0;
+        }
+        std::vector<float> scale_v = {scale};
+        if (!var_quant_scales->count(out_var_name)) {
           var_quant_scales->insert(std::make_pair(out_var_name, scale_v));
+        }
+        if (!var_quant_scales->count(x_var_name)) {
+          var_quant_scales->insert(std::make_pair(x_var_name, scale_v));
         }
       } else {
         *onnx_format_quantize_model = true;
-        auto scale_name = op_desc->Input("Scale")[0];
-        auto* var = scope->FindVar(scale_name);
-        PADDLE_ENFORCE_NOT_NULL(
-            var,
-            platform::errors::NotFound(
-                "The Scales variable [%s] of dequantize op is not found.",
-                var));
-
-        auto* scale_tensor = var->GetMutable<LoDTensor>();
-        auto* scale_data = scale_tensor->data<float>();
         std::vector<float> thresholds(scale_data,
                                       scale_data + scale_tensor->numel());
         weight_thresholds->insert(std::make_pair(x_var_name, thresholds));

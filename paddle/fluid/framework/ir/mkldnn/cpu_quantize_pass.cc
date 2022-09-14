@@ -422,7 +422,16 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     auto filter_scale_tensor = GetScaleTensorForNode(conv_filter);
     EigenVectorArrayMap eigen_tensor{filter_scale_tensor.data<double>(),
                                      filter_scale_tensor.numel()};
-    eigen_tensor *= static_cast<double>(S8_MAX);
+
+    // If the scale value of a weight is already multiplied by S8_MAX, it does
+    // not need to be multiplied again
+    if (std::find(change_weight_->begin(),
+                  change_weight_->end(),
+                  conv_filter->Name()) == change_weight_->end()) {
+      eigen_tensor *= static_cast<double>(S8_MAX);
+      change_weight_->push_back(conv_filter->Name());
+    }
+
     std::vector<float> filter_scale{
         filter_scale_tensor.data<double>(),
         filter_scale_tensor.data<double>() + filter_scale_tensor.numel()};

@@ -61,7 +61,9 @@ bool ShouldSkipConv(ir::Node* conv_op, Scope* scope, ir::Node* conv_filter) {
   auto filter_var = scope->GetVar(conv_filter->Name());
   if (filter_var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
     VLOG(4) << "Skipping convolution (id: " << conv_op->id()
-            << ") because it's a bug that it is detected again.";
+            << ", name: " << conv_filter->Name()
+            << ") because it is detected again.";
+    conv_op->Op()->SetAttr("Scale_weights", std::vector<float>(1, 1));
     return true;
   }
 
