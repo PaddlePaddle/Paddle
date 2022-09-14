@@ -1,0 +1,365 @@
+- op : abs
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : abs_coo{sparse_coo -> sparse_coo},
+           abs_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : abs_grad
+
+- op : acos
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : acos_coo{sparse_coo -> sparse_coo},
+           acos_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : acos_grad
+
+- op : acosh
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : acosh_coo{sparse_coo -> sparse_coo},
+           acosh_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : acosh_grad
+
+- op : add
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  kernel :
+    func : add_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
+           add_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
+    layout : x
+  backward : add_grad
+
+- op : asin
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : asin_coo{sparse_coo -> sparse_coo},
+           asin_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : asin_grad
+
+- op : asinh
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : asinh_coo{sparse_coo -> sparse_coo},
+           asinh_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : asinh_grad
+
+- op : atan
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : atan_coo{sparse_coo -> sparse_coo},
+           atan_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : atan_grad
+
+- op : atanh
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : atanh_coo{sparse_coo -> sparse_coo},
+           atanh_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : atanh_grad
+
+- op : cast
+  args : (Tensor x, DataType index_dtype=DataType::UNDEFINED, DataType value_dtype=DataType::UNDEFINED)
+  output : Tensor(out)
+  kernel :
+    func : cast_coo{sparse_coo -> sparse_coo},
+           cast_csr{sparse_csr -> sparse_csr}
+    layout : x
+    data_type : x
+  backward : cast_grad
+
+- op : conv3d
+  args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key)
+  output : Tensor(out), Tensor(rulebook), Tensor(counter)
+  kernel :
+    func : conv3d_coo{sparse_coo, dense -> sparse_coo, dense, dense}
+    layout : x
+  intermediate: rulebook, counter
+  backward : conv3d_coo_grad
+
+- op : divide
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  kernel :
+    func : divide_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
+           divide_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
+    layout : x
+  backward : divide_grad
+
+- op : divide_scalar
+  args : (Tensor x, float scalar)
+  output : Tensor(out)
+  kernel :
+    func : divide_coo_scalar{sparse_coo -> sparse_coo},
+           divide_csr_scalar{sparse_csr -> sparse_csr}
+  backward : divide_scalar_grad
+
+- op : expm1
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : expm1_coo{sparse_coo -> sparse_coo},
+           expm1_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : expm1_grad
+
+- op : leaky_relu
+  args : (Tensor x, float alpha)
+  output : Tensor(out)
+  kernel :
+    func : leaky_relu_coo{sparse_coo -> sparse_coo},
+           leaky_relu_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : leaky_relu_grad
+
+- op : log1p
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : log1p_coo{sparse_coo -> sparse_coo},
+           log1p_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : log1p_grad
+
+- op : multiply
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  kernel :
+    func : multiply_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
+           multiply_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
+    layout : x
+  backward : multiply_grad
+
+- op : pow
+  args : (Tensor x, float factor)
+  output : Tensor(out)
+  kernel :
+    func : pow_coo{sparse_coo -> sparse_coo},
+           pow_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : pow_grad
+
+- op : relu
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : relu_coo{sparse_coo -> sparse_coo},
+           relu_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : relu_grad
+
+- op : relu6
+  args : (Tensor x, float threshold)
+  output : Tensor(out)
+  kernel :
+    func : relu6_coo{sparse_coo -> sparse_coo},
+           relu6_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : relu6_grad
+
+- op : scale
+  args : (Tensor x, float scale, float bias, bool bias_after_scale)
+  output : Tensor(out)
+  kernel :
+    func : scale_coo{sparse_coo -> sparse_coo},
+           scale_csr{sparse_csr -> sparse_csr}
+  backward : scale_grad
+
+- op : sin
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : sin_coo{sparse_coo -> sparse_coo},
+           sin_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : sin_grad
+
+- op : sinh
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : sinh_coo{sparse_coo -> sparse_coo},
+           sinh_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : sinh_grad
+
+- op : softmax
+  args : (Tensor x, int axis=-1)
+  output : Tensor(out)
+  kernel :
+    func : softmax_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : softmax_grad
+
+- op : sparse_coo_tensor
+  args : (Tensor values, Tensor indices, IntArray dense_shape)
+  output : Tensor(out)
+  kernel :
+    func : sparse_coo_tensor{dense, dense -> sparse_coo}
+    layout : values
+    data_type : values
+  backward : sparse_coo_tensor_grad
+
+- op : sqrt
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : sqrt_coo{sparse_coo -> sparse_coo},
+           sqrt_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : sqrt_grad
+
+- op : square
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : square_coo{sparse_coo -> sparse_coo},
+           square_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : square_grad
+
+- op : subtract
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  kernel :
+    func : subtract_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
+           subtract_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
+    layout : x
+  backward : subtract_grad
+
+- op : tan
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : tan_coo{sparse_coo -> sparse_coo},
+           tan_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : tan_grad
+
+- op : tanh
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : tanh_coo{sparse_coo -> sparse_coo},
+           tanh_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : tanh_grad
+
+- op : to_dense
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : coo_to_dense {sparse_coo -> dense},
+           csr_to_dense {sparse_csr -> dense}
+  backward : to_dense_grad
+
+- op : to_sparse_coo
+  args : (Tensor x, int64_t sparse_dim)
+  output : Tensor(out)
+  kernel :
+    func : dense_to_coo { dense -> sparse_coo },
+           csr_to_coo { sparse_csr -> sparse_coo}
+  backward : to_sparse_coo_grad
+
+- op : to_sparse_csr
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : dense_to_csr {dense -> sparse_csr},
+           coo_to_csr {sparse_coo -> sparse_csr}
+
+- op : values
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : values_coo{sparse_coo -> dense},
+           values_csr{sparse_csr -> dense}
+    layout : x
+  backward : values_grad
+
+- op: addmm
+  args : (Tensor input, Tensor x, Tensor y, float alpha=1.0, float beta=1.0)
+  output : Tensor(out)
+  kernel :
+    func : addmm_csr_dense {dense, sparse_csr, dense -> dense},
+           addmm_csr_csr {sparse_csr, sparse_csr, sparse_csr -> sparse_csr},
+           addmm_coo_dense {dense, sparse_coo, dense -> dense},
+           addmm_coo_coo {sparse_coo, sparse_coo, sparse_coo -> sparse_coo}
+    layout : x
+  backward: addmm_grad
+
+- op: coalesce
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func: coalesce{sparse_coo -> sparse_coo}
+    layout : x
+
+- op: full_like
+  args : (Tensor x, Scalar value, DataType dtype=DataType::UNDEFINED)
+  output : Tensor(out)
+  kernel :
+    func : coo_full_like{sparse_coo -> sparse_coo},
+           csr_full_like{sparse_csr -> sparse_csr}
+    layout : x
+    data_type : dtype
+
+- op: fused_attention
+  args : (Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask)
+  output : Tensor(out), Tensor(softmax)
+  kernel :
+    func : fused_attention_csr{dense, dense, dense, sparse_csr, dense, dense -> dense, sparse_csr}
+    layout : sparse_mask
+    data_type: query
+  optional : key_padding_mask, attn_mask
+  intermediate : softmax
+  backward: fused_attention_grad
+
+- op: masked_matmul
+  args : (Tensor x, Tensor y, Tensor mask)
+  output : Tensor(out)
+  kernel :
+    func : masked_matmul_csr{dense, dense, sparse_csr -> sparse_csr}
+    layout : x
+  backward: masked_matmul_grad
+
+- op: matmul
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  kernel :
+    func : matmul_csr_dense {sparse_csr, dense -> dense},
+           matmul_csr_csr {sparse_csr, sparse_csr -> sparse_csr},
+           matmul_coo_dense {sparse_coo, dense -> dense},
+           matmul_coo_coo {sparse_coo, sparse_coo -> sparse_coo}
+    layout : x
+  backward: matmul_grad
+
+- op: maxpool
+  args : (Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides)
+  output : Tensor(out), Tensor(rulebook), Tensor(counter)
+  kernel :
+    func : maxpool_coo{sparse_coo -> sparse_coo, dense, dense}
+    layout : x
+  intermediate : rulebook, counter
+  backward : maxpool_grad
+
+- op: mv
+  args : (Tensor x, Tensor vec)
+  output : Tensor(out)
+  kernel :
+    func : mv_coo{sparse_coo, dense -> dense},
+           mv_csr{sparse_csr, dense -> dense}
+    layout : x
+  backward: mv_grad

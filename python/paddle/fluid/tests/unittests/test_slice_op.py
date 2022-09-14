@@ -22,6 +22,9 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle
 from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
+import gradient_checker
+from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
 
 paddle.enable_static()
 
@@ -784,7 +787,7 @@ class TestInferShape(unittest.TestCase):
         self.assertEqual(x.shape, (3, -1, 5))
 
         out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
-        self.assertEqual(out0.shape, (3, 3, 5))
+        self.assertEqual(out0.shape, (3, -1, 5))
 
     def test_axis_less_than_zero(self):
         # Using paddle.disable_static will make other unittests fail.
@@ -838,6 +841,92 @@ class TestImperativeCUDAPinnedInput(unittest.TestCase):
                                zero_copy=False)
             sliced = var[:, 10:, :var.shape[1]]
             self.assertEqual(sliced.shape, [2, 70, 80])
+
+
+class TestSliceDoubleGradCheck(unittest.TestCase):
+
+    def slice_wrapper(self, x):
+        return paddle.slice(x[0],
+                            axes=[0, 1, 2],
+                            starts=[-3, 0, 2],
+                            ends=[3, 2, 4])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [4, 5, 6], False, dtype)
+        data.persistable = True
+        out = paddle.slice(data,
+                           axes=[0, 1, 2],
+                           starts=[-3, 0, 2],
+                           ends=[3, 2, 4])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.double_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(self.slice_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestSliceTripleGradCheck(unittest.TestCase):
+
+    def slice_wrapper(self, x):
+        return paddle.slice(x[0],
+                            axes=[0, 1, 2],
+                            starts=[-3, 0, 2],
+                            ends=[3, 2, 4])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [4, 5, 6], False, dtype)
+        data.persistable = True
+        out = paddle.slice(data,
+                           axes=[0, 1, 2],
+                           starts=[-3, 0, 2],
+                           ends=[3, 2, 4])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.triple_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(self.slice_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
 
 
 if __name__ == '__main__':

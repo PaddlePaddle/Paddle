@@ -33,7 +33,10 @@ namespace tensorrt {
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {
 #if IS_TRT_VERSION_GE(7130)
+    // use TensorRT plugin
     teller_set.insert("group_norm");
+    teller_set.insert("multiclass_nms3");
+    teller_set.insert("multiclass_nms");
 #endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
@@ -278,7 +281,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "c_allreduce_prod",
       "roll",
       "cast",
-      "multiclass_nms3",
       "transformer_input_convert",
       "recover_padding",
       "remove_padding",
@@ -296,12 +298,6 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                     bool with_dynamic_shape) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();
-  // do not support the op which is labeled the `skip_quant`
-  if ((desc.HasAttr("namescope") &&
-       PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
-           "/skip_quant_2/") ||
-      desc.HasAttr("skip_quant"))
-    return false;
 
   for (auto& teller : tellers_) {
     std::unordered_set<std::string> act_op_list = {
@@ -361,7 +357,30 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
     }
 
+    if (op_type == "dropout") {
+      /*
+       * Some OpDescs Attribute support both constant value and dynamic
+       * runtime value (which is a Variable(s) type). But TensorRT maybe
+       * only support constant value Attribute, so we shall distinguish
+       * this case in time and return False in OpTeller.Tell().
+       * If Attribute is Variable(s), HasAttr() will return False
+       */
+      if (!desc.HasAttr("dropout_prob", /*with_attr_var=*/false)) {
+        VLOG(3)
+            << "Skip to convert into TRT while found Attribute('dropout_prob') "
+               "is Variable type in dropout.";
+        return false;
+      }
+    }
+
     if (op_type == "pool2d") {
+      // If Attribute is Variable(s), HasAttr() will return False
+      if (!desc.HasAttr("ksize", /*with_attr_var=*/false)) {
+        VLOG(3) << "Skip to convert into TRT while found Attribute('ksize') is "
+                   "Variable type in pool2d.";
+        return false;
+      }
+
       std::vector<int> paddings =
           PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       if (paddings.size() > 2) {
@@ -794,6 +813,12 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "arg_max") {
+      if (!desc.HasAttr("axis", /*with_attr_var=*/false)) {
+        VLOG(3) << "Skip to convert into TRT while found Attribute('axis') is "
+                   "Variable type in arg_max.";
+        return false;
+      }
+
       int axis = desc.HasAttr("axis")
                      ? PADDLE_GET_CONST(int64_t, desc.GetAttr("axis"))
                      : -1;
@@ -824,7 +849,6 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "multiclass_nms" || op_type == "multiclass_nms3") {
-      if (with_dynamic_shape) return false;
       auto* block = desc.Block();
       if (block == nullptr) {
         VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
@@ -1058,6 +1082,13 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "squeeze2") {
+      // If Attribute is Variable(s), HasAttr() will return False
+      if (!desc.HasAttr("axes", /*with_attr_var=*/false)) {
+        VLOG(3) << "Skip to convert into TRT while found Attribute('axes') is "
+                   "Variable type in squeeze2.";
+        return false;
+      }
+
       std::vector<int> axes;
       if (desc.HasAttr("axes")) {
         axes = PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
@@ -1999,6 +2030,13 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean") {
+      if (!desc.HasAttr("dim", /*with_attr_var=*/false)) {
+        VLOG(3) << "Skip to convert into TRT while found Attribute('dim') is "
+                   "Variable type in "
+                << desc.Type();
+        return false;
+      }
+
       if (!(desc.HasAttr("keep_dim") && desc.HasAttr("dim") &&
             desc.HasAttr("reduce_all"))) {
         VLOG(3) << "the " << op_type
@@ -2261,6 +2299,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 
   return false;
 }
+
 OpTeller::OpTeller() { tellers_.emplace_back(new SimpleOpTypeSetTeller); }
 }  // namespace tensorrt
 }  // namespace inference

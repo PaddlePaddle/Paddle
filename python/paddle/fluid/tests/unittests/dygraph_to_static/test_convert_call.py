@@ -65,6 +65,23 @@ def dyfunc_with_third_library_logging(x_v):
     return x_v
 
 
+class A:
+
+    @staticmethod
+    def add(a, b):
+        """
+        dygraph mode, return a numpy object.
+        static mode, return a variable object.
+        """
+        return paddle.to_tensor(a.numpy() + b.numpy())
+
+
+@paddle.jit.to_static
+def dyfunc_with_staticmethod(x_v):
+    a = A()
+    return a.add(x_v, x_v)
+
+
 class TestRecursiveCall1(unittest.TestCase):
 
     def setUp(self):
@@ -186,6 +203,12 @@ class TestThirdPartyLibrary(TestRecursiveCall2):
 
     def set_func(self):
         self.dygraph_func = dyfunc_with_third_library_logging
+
+
+class TestStaticMethod(TestRecursiveCall2):
+
+    def set_func(self):
+        self.dygraph_func = dyfunc_with_staticmethod
 
 
 # Situation 2 : test not_to_static

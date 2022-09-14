@@ -33,9 +33,9 @@ class BackwardAPI(BaseAPI):
     def parse_forward_config(self, forward_config):
         # api_name (const Tensor& input, ... , int attr, ...) -> Tensor(out)
         result = re.search(
-            r"(?P<api>[a-z][a-z0-9_]+)\s*(?P<args>\([^\)]+\))\s*->\s*(?P<outputs>.+)",
+            r"(?P<op>[a-z][a-z0-9_]+)\s*(?P<args>\([^\)]+\))\s*->\s*(?P<outputs>.+)",
             forward_config)
-        api = result.group('api')
+        api = result.group('op')
         _, outputs, _, = self.parse_output(self.api, result.group('outputs'))
         outputs = [item.split('@')[0] for item in outputs]
         fw_inputs, fw_attrs = self.parse_input_and_attr(api,

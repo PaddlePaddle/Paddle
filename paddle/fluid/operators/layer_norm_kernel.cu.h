@@ -348,68 +348,69 @@ __global__ void LayerNormForward(
     U *var,
     float epsilon,
     int64_t feature_size) {
-  __shared__ U mean_share;
-  __shared__ U var_share;
-  __shared__ U shared_mean[32];  // threadIdx.x / warpSize <= kMaxBlockDim /
-                                 // warpSize <= 1024/32 = 32;
-  __shared__ U shared_var[32];
+  __shared__ float mean_share;
+  __shared__ float var_share;
+  __shared__ float shared_mean[32];  // threadIdx.x / warpSize <= kMaxBlockDim /
+                                     // warpSize <= 1024/32 = 32;
+  __shared__ float shared_var[32];
 
   int64_t beg_idx = blockIdx.x * feature_size + threadIdx.x;
   int64_t end_idx = (blockIdx.x + 1) * feature_size;
 
   // Step 1: Reduce to calculate mean and var
-  U mean_val = 0;
-  U var_val = 0;
+  float mean_val = 0;
+  float var_val = 0;
   for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
-    U tmp = static_cast<U>(x[i]);
+    float tmp = static_cast<float>(x[i]);
     mean_val += tmp;
     var_val += (tmp * tmp);
   }
 
-  mean_val = BlockReduceSum<U>(mean_val, shared_mean);
-  var_val = BlockReduceSum<U>(var_val, shared_var);
+  mean_val = BlockReduceSum<float>(mean_val, shared_mean);
+  var_val = BlockReduceSum<float>(var_val, shared_var);
 
   if (threadIdx.x == 0) {
-    auto scale = static_cast<U>(static_cast<float>(1.) /
-                                static_cast<float>(feature_size));
+    auto scale = static_cast<float>(static_cast<float>(1.) /
+                                    static_cast<float>(feature_size));
     auto tmp = mean_val * scale;
-    mean[blockIdx.x] = mean_share = static_cast<U>(tmp);
-    var_share = static_cast<U>(var_val * scale - mean_share * mean_share);
-    var_share = var_share > U(0) ? var_share : U(0);
+    mean[blockIdx.x] = mean_share = static_cast<float>(tmp);
+    var_share = static_cast<float>(var_val * scale - mean_share * mean_share);
+    var_share = var_share > 0 ? var_share : 0;
     var[blockIdx.x] = var_share;
   }
   __syncthreads();
 
   mean_val = mean_share;
-  U invvar = rsqrt_<U>(var_share + static_cast<U>(epsilon));
+  float invvar = rsqrt_<float>(var_share + static_cast<float>(epsilon));
 
   // Step 2: Calculate y
   if (scale != nullptr) {
     if (bias != nullptr) {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = static_cast<T>(static_cast<U>(scale[j]) *
-                                  (static_cast<U>(x[i]) - mean_val) * invvar +
-                              static_cast<U>(bias[j]));
+        y[i] =
+            static_cast<T>(static_cast<float>(scale[j]) *
+                               (static_cast<float>(x[i]) - mean_val) * invvar +
+                           static_cast<float>(bias[j]));
       }
     } else {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = static_cast<T>(static_cast<U>(scale[j]) *
-                              (static_cast<U>(x[i]) - mean_val) * invvar);
+        y[i] = static_cast<T>(static_cast<float>(scale[j]) *
+                              (static_cast<float>(x[i]) - mean_val) * invvar);
       }
     }
   } else {  // scale == nullptr
     if (bias != nullptr) {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar +
-                              static_cast<U>(bias[j]));
+        y[i] = static_cast<T>((static_cast<float>(x[i]) - mean_val) * invvar +
+                              static_cast<float>(bias[j]));
       }
     } else {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar);
+        y[i] = static_cast<T>((static_cast<float>(x[i]) - mean_val) * invvar);
       }
     }
   }
