@@ -280,6 +280,14 @@
   kernel :
     func : coo_to_dense { sparse_coo -> dense }
 
+- backward_op : transpose_grad
+  forward : transpose(Tensor x, int[] dims) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] dims)
+  output : Tensor(x_grad)
+  kernel :
+    func : transpose_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
+           transpose_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
+
 - backward_op : values_grad
   forward : values_coo(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
