@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.fluid import core
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import _in_legacy_dygraph
