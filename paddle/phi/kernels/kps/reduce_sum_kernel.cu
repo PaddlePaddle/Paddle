@@ -126,6 +126,11 @@ void SumRawKernel(const Context& dev_ctx,
         break;
     }
 #undef CALL_EIGEN_REDUCE_SUM_KERNEL
+#else
+    PADDLE_THROW(phi::errors::Fatal(
+        "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
+        "sum for reduce_sum function. Such case is only supported on GPU "
+        "now."));
 #endif
   } else {
     phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
