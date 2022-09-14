@@ -44,7 +44,7 @@ repos:
         description: Check C++ code style using cpplint.py.
         entry: bash ./tools/codestyle/cpplint_pre_commit.hook
         language: system
-        files: \.(c|cc|cxx|cpp|cu|cuh|h|hpp|hxx)$
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
 -   repo: local
     hooks:
     -   id: pylint-doc-string
@@ -59,7 +59,7 @@ repos:
         name: copyright_checker
         entry: python ./tools/codestyle/copyright.hook
         language: system
-        files: \.(c|cc|cxx|cpp|cu|cuh|h|hpp|hxx|proto|xpu|kps|py|sh)$
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|sh)$
         exclude: |
             (?x)^(
                 paddle/utils/.*
