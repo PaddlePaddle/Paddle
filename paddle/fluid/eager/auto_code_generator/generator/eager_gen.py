@@ -403,9 +403,9 @@ LAYOUT_LOGIC_TEMPLATE=\
   if (paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune()) {{
     VLOG(5) << "Check and Prepare For LAYOUT";
     paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> tensors_vector = {};
-    {} 
     {}
-    paddle::imperative::LayoutAutoTune::Instance().DisableLayoutAutoTune(); 
+    {}
+    paddle::imperative::LayoutAutoTune::Instance().DisableLayoutAutoTune();
     {}
     {}
     paddle::imperative::LayoutAutoTune::Instance().EnableLayoutAutoTune();
@@ -569,8 +569,8 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         forward_api_contents = self.forward_api_contents
         grad_api_contents = self.grad_api_contents
 
-        assert 'api' in forward_api_contents.keys(
-        ), "Unable to find \"api\" in ops.yaml"
+        assert 'op' in forward_api_contents.keys(
+        ), "Unable to find \"op\" in ops.yaml"
         assert 'args' in forward_api_contents.keys(
         ), "Unable to find \"args\" in ops.yaml"
         assert 'output' in forward_api_contents.keys(
@@ -1485,7 +1485,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         if next_grad_api_contents:
             # Fake forward_api_contents and backward_api_contents
             forward_api_contents = grad_api_contents
-            forward_api_contents['api'] = forward_api_contents['backward_api']
+            forward_api_contents['op'] = forward_api_contents['backward_op']
             backward_api_contents = next_grad_api_contents
 
             next_node_generator = DygraphFunctionGeneratorBase(
@@ -1772,7 +1772,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             autograd_api = self.grad_api_contents['invoke'].replace(
                 forward_api_name, forward_api_name + '_dygraph_function', 1)
             grad_function_call_str = f"""
-  if (trace_backward) {{            
+  if (trace_backward) {{
   {indent}{autograd_api_out} api_output = {autograd_api};
   {out_assign_str}}} else {{
   {indent}{autograd_api_out} api_output = paddle::experimental::{self.namespace}{self.grad_api_contents['invoke']};
@@ -1914,11 +1914,11 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
         grad_api_dict = self.grad_api_dict
         forward_apis_dict = {}
         for api_item in forward_api_list:
-            forward_apis_dict[api_item['api']] = api_item
+            forward_apis_dict[api_item['op']] = api_item
         namespace = self.namespace
 
         for forward_api_contents in forward_api_list:
-            if forward_api_contents['api'] in black_ops_list: continue
+            if forward_api_contents['op'] in black_ops_list: continue
 
             self.CollectIsForwardOnly(forward_api_contents)
 
@@ -1959,8 +1959,7 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                 forward_api_contents = backward_api_contents
 
                 # Fake forward_api_content
-                forward_api_contents['api'] = forward_api_contents[
-                    'backward_api']
+                forward_api_contents['op'] = forward_api_contents['backward_op']
                 backward_api_contents = next_grad_api_contents
 
         if len(namespace) > 0:

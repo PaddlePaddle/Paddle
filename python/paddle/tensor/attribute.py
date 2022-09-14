@@ -251,7 +251,7 @@ def real(x, name=None):
         x (Tensor): the input Tensor, its data type could be complex64 or complex128.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-      
+
     Returns:
         Tensor: a Tensor containing real values of the input Tensor.
 

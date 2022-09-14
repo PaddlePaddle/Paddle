@@ -115,7 +115,7 @@ class Momentum(Optimizer):
                     'learning_rate': 0.1
                 }],
                 weight_decay=0.01,
-                momentum=0.9)                   
+                momentum=0.9)
             out.backward()
             momentum.step()
             momentum.clear_grad()
@@ -274,7 +274,7 @@ class Momentum(Optimizer):
 
     def _create_regularization_of_grad(self, param, grad, regularization=None):
         """ Create and add backward regularization Operators
-    
+
         Function helper of append_regularization_ops.
         """
         # If ParamAttr is set to L2Decay, we skip doing regularization here. And then we fused
@@ -416,7 +416,7 @@ class Momentum(Optimizer):
 
     def _append_optimize_multi_tensor_op(self, target_block,
                                          parameters_and_grads):
-        """ 
+        """
         For Multi Tensor, append optimize merged_operator to block.
         """
         assert isinstance(target_block, framework.Block)

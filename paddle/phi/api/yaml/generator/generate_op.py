@@ -65,7 +65,7 @@ def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
             return names[0].strip(), names[1].split(')')[0].strip()
 
     for api_args in api_op_map:
-        api_name, op_name = get_api_and_op_name(api_args['api'])
+        api_name, op_name = get_api_and_op_name(api_args['op'])
         if api_name not in forward_api_dict:
             continue
         forward_api_item = forward_api_dict[api_name]
@@ -191,7 +191,7 @@ def main(api_yaml_path, backward_yaml_path, op_compat_yaml_path,
         api_versions = yaml.safe_load(f)
     # add api version info into api
     for api_version in api_versions:
-        forward_api_dict[api_version['api']]['version'] = api_version['version']
+        forward_api_dict[api_version['op']]['version'] = api_version['version']
 
     with open(op_compat_yaml_path, "rt") as f:
         api_op_map = yaml.safe_load(f)

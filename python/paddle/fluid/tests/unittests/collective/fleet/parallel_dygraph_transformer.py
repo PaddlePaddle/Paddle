@@ -24,7 +24,7 @@ from paddle.optimizer.lr import NoamDecay
 
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 """
-Note(chenweihang): To compare loss of single-card and multi-card 
+Note(chenweihang): To compare loss of single-card and multi-card
     in our dist test framework, two parameters need to be adjusted:
   1. set the dropout rate to 0.
   2. set the weights for Transformer.forward to constant.

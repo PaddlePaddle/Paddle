@@ -56,7 +56,7 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
     Noam decay method. The numpy implementation of noam decay as follows.
 
     .. code-block:: python
-      
+
       import paddle.fluid as fluid
       import numpy as np
       # set hyper parameters
@@ -128,11 +128,11 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     >>>     decayed_learning_rate = learning_rate * decay_rate ^ (global_step / decay_steps)
 
     Args:
-        learning_rate(Variable|float): The initial learning rate. It should be a Variable 
+        learning_rate(Variable|float): The initial learning rate. It should be a Variable
                                        or a float
         decay_steps(int): The learning rate decay steps. See the decay computation above.
         decay_rate(float): The learning rate decay rate. See the decay computation above.
-        staircase(bool): If True, decay the learning rate at discrete intervals, which 
+        staircase(bool): If True, decay the learning rate at discrete intervals, which
                          means the learning rate will be decayed by `decay_rate` every
                          `decay_steps`. If False, learning rate will be decayed continuously
                          and following the formula above. Default: False
@@ -189,11 +189,11 @@ Applies natural exponential decay to the initial learning rate.
     >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * floor(global_step / decay_steps))
 
     Args:
-        learning_rate(Variable|float): The initial learning rate. It should be a Variable 
+        learning_rate(Variable|float): The initial learning rate. It should be a Variable
                                        or a float
         decay_steps(int): The learning rate decay steps. See the decay computation above.
         decay_rate(float): The learning rate decay rate. See the decay computation above.
-        staircase(bool): If True, decay the learning rate at discrete intervals, which 
+        staircase(bool): If True, decay the learning rate at discrete intervals, which
                          means the learning rate will be decayed by natural exponential power
                          `decay_rate` every `decay_steps`. If False, learning rate will be
                          decayed continuously and following the formula above. Default: False
@@ -250,13 +250,13 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * global_step / decay_step)
 
     Args:
-        learning_rate(Variable|float): The initial learning rate. It should be a Variable 
+        learning_rate(Variable|float): The initial learning rate. It should be a Variable
                                        or a float
         decay_steps(int): The learning rate decay steps. See the decay computation above.
         decay_rate(float): The learning rate decay rate. See the decay computation above.
-        staircase(bool): If True, decay the learning rate at discrete intervals, which 
-                         means the learning rate will be decayed by `decay_rate` times 
-                         every `decay_steps`. If False, learning rate will be decayed 
+        staircase(bool): If True, decay the learning rate at discrete intervals, which
+                         means the learning rate will be decayed by `decay_rate` times
+                         every `decay_steps`. If False, learning rate will be decayed
                          continuously and following the formula above. Default: False
 
     Returns:
@@ -493,40 +493,40 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
 
     This operator use the linear learning rate warm up strategy to adjust the learning rate preliminarily before the normal learning rate scheduling.
     For more information, please refer to `Bag of Tricks for Image Classification with Convolutional Neural Networks <https://arxiv.org/abs/1812.01187>`_
-    
+
     When global_step < warmup_steps, learning rate is updated as:
-    
+
     .. code-block:: text
-    
+
             linear_step = end_lr - start_lr
             lr = start_lr + linear_step * (global_step / warmup_steps)
-    
+
     where start_lr is the initial learning rate, and end_lr is the final learning rate;
-    
+
     When global_step >= warmup_steps, learning rate is updated as:
-    
+
     .. code-block:: text
-    
+
             lr = learning_rate
-    
+
     where lr is the learning_rate after warm-up.
-    
+
     Args:
         learning_rate (Variable|float): Learning_rate after warm-up, it could be 1D-Tensor or single value with the data type of float32.
         warmup_steps (int): Steps for warm up.
         start_lr (float): Initial learning rate of warm up.
         end_lr (float): Final learning rate of warm up.
-    
+
     Returns:
         Variable: Warm-up learning rate with the same data type as learning_rate.
-    
-    
+
+
     Examples:
-    
+
     .. code-block:: python
-    
+
         import paddle.fluid as fluid
-    
+
         boundaries = [100, 200]
         lr_steps = [0.1, 0.01, 0.001]
         learning_rate = fluid.layers.piecewise_decay(boundaries, lr_steps) #case1, 1D-Tensor
@@ -536,7 +536,7 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
         end_lr = 0.1
         decayed_lr = fluid.layers.linear_lr_warmup(learning_rate,
             warmup_steps, start_lr, end_lr)
-    
+
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
