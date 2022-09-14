@@ -2664,10 +2664,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             f_true = flatten(seq_true[i])
             f_false = flatten(seq_false[i])
             for idx in range(len(f_true)):
-                if f_true[idx] is None and isinstance(
-                        f_false[idx],
-                        Variable) or f_false[idx] is None and isinstance(
-                            f_true[idx], Variable):
+                if f_true[idx] is None and f_false[idx] is not None or f_false[
+                        idx] is None and f_true[idx] is not None:
                     warnings.warn(
                         "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
                         "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
@@ -2717,7 +2715,7 @@ def expand_undefined_var(nest1, nest2, names):
     def map_fn(n1, n2, name, order):
         if not name.startswith(RETURN_VALUE_PREFIX) and (isinstance(
                 n1, UndefinedVar) or n1 is None):
-            if n1 is None and isinstance(n2, Variable):
+            if n1 is None and n2 is not None:
                 if order == 0:
                     warnings.warn(
                         "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
