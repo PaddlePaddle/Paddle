@@ -418,7 +418,6 @@ void build_op_func_list(const platform::Place& place,
                                        : var_scope->GetMutableScope();
   std::vector<std::unique_ptr<OperatorBase>>
       ops_unique;  // its elements will be moved to vec_func_list
-  bool flag_log_is_printed = false;
   // Step 1: create all ops for current block.
   create_all_ops(block, &ops_unique);
 
@@ -448,13 +447,6 @@ void build_op_func_list(const platform::Place& place,
     const std::string& op_type = op->Type();
 
     VLOG(6) << "Build OpFuncNode from : " << op_type;
-
-    // Print new executor log if grad op is used.
-    // It's only for test and will be removed later.
-    if (!flag_log_is_printed && op_type.find("_grad") != std::string::npos) {
-      VLOG(0) << "Standalone Executor is Used.";
-      flag_log_is_printed = true;
-    }
 
     // Hot fix for variables used in dataloader, like
     // 'lod_tensor_blocking_queue_0'. These variables may be created in scope,
