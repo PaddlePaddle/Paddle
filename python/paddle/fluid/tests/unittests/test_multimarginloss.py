@@ -101,6 +101,58 @@ def test_static(place,
     return static_result
 
 
+def test_static_data_shape(place,
+                           input_np,
+                           label_np,
+                           wrong_label_shape=None,
+                           weight_np=None,
+                           wrong_weight_shape=None,
+                           functional=False):
+    prog = paddle.static.Program()
+    startup_prog = paddle.static.Program()
+    with paddle.static.program_guard(prog, startup_prog):
+        input = paddle.static.data(name='input',
+                                   shape=input_np.shape,
+                                   dtype=input_np.dtype)
+        if wrong_label_shape is None:
+            label_shape = label_np.shape
+        else:
+            label_shape = wrong_label_shape
+        label = paddle.static.data(name='label',
+                                   shape=label_shape,
+                                   dtype=label_np.dtype)
+        feed_dict = {
+            "input": input_np,
+            "label": label_np,
+        }
+        weight = None
+        if weight_np is not None:
+            if wrong_weight_shape is None:
+                weight_shape = weight_np.shape
+            else:
+                weight_shape = wrong_weight_shape
+            weight = paddle.static.data(name='weight',
+                                        shape=weight_shape,
+                                        dtype=weight_np.dtype)
+            feed_dict['weight'] = weight_np
+        if functional:
+            res = call_MultiMarginLoss_functional(
+                input=input,
+                label=label,
+                weight=weight,
+            )
+        else:
+            res = call_MultiMarginLoss_layer(
+                input=input,
+                label=label,
+                weight=weight,
+            )
+
+        exe = paddle.static.Executor(place)
+        static_result = exe.run(prog, feed=feed_dict, fetch_list=[res])
+    return static_result
+
+
 def test_dygraph(place,
                  input,
                  label,
@@ -152,9 +204,8 @@ def calc_multi_margin_loss(
         expected = np.mean(np.maximum(margin + input - index_sample, 0.0)**p,
                            axis=1) - margin**p / input.shape[1]
     else:
-        weight = weight.reshape(-1, 1)
         expected = np.mean(np.maximum(weight * (margin + input - index_sample), 0.0) ** p, axis=1) - margin ** p / \
-               input.shape[1]
+                   input.shape[1]
 
     if reduction == 'mean':
         expected = np.mean(expected)
@@ -169,10 +220,12 @@ def calc_multi_margin_loss(
 class TestMultiMarginLoss(unittest.TestCase):
 
     def test_MultiMarginLoss(self):
-        shape = (2, 2)
+        batch_size = 5
+        num_classes = 2
+        shape = (batch_size, num_classes)
         input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
         label = np.random.uniform(0, input.shape[1],
-                                  size=(2, )).astype(np.int32)
+                                  size=(batch_size, )).astype(np.int64)
 
         places = [paddle.CPUPlace()]
         if paddle.device.is_compiled_with_cuda():
@@ -251,12 +304,14 @@ class TestMultiMarginLoss(unittest.TestCase):
 
     def test_MultiMarginLoss_p(self):
         p = 2
-        shape = (2, 2)
+        batch_size = 5
+        num_classes = 2
+        shape = (batch_size, num_classes)
         reduction = 'mean'
         place = paddle.CPUPlace()
         input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
         label = np.random.uniform(0, input.shape[1],
-                                  size=(2, )).astype(np.int64)
+                                  size=(batch_size, )).astype(np.int64)
         expected = calc_multi_margin_loss(input=input,
                                           p=p,
                                           label=label,
@@ -297,13 +352,16 @@ class TestMultiMarginLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_functional, expected))
 
     def test_MultiMarginLoss_weight(self):
-        shape = (2, 2)
+        batch_size = 5
+        num_classes = 2
+        shape = (batch_size, num_classes)
         reduction = 'mean'
         place = paddle.CPUPlace()
         input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
         label = np.random.uniform(0, input.shape[1],
-                                  size=(2, )).astype(np.int64)
-        weight = np.random.uniform(0, 2, size=(2, )).astype(np.float64)
+                                  size=(batch_size, )).astype(np.int64)
+        weight = np.random.uniform(0, 2,
+                                   size=(num_classes, )).astype(np.float64)
         expected = calc_multi_margin_loss(input=input,
                                           label=label,
                                           weight=weight,
@@ -342,6 +400,56 @@ class TestMultiMarginLoss(unittest.TestCase):
         self.assertTrue(np.allclose(static_functional, expected))
         self.assertTrue(np.allclose(static_functional, dy_functional))
         self.assertTrue(np.allclose(dy_functional, expected))
+
+    def test_MultiMarginLoss_static_data_shape(self):
+        batch_size = 5
+        num_classes = 2
+        shape = (batch_size, num_classes)
+        place = paddle.CPUPlace()
+        input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
+        label = np.random.uniform(0, input.shape[1],
+                                  size=(batch_size, )).astype(np.int64)
+        weight = np.random.uniform(0, 2,
+                                   size=(num_classes, )).astype(np.float64)
+
+        self.assertRaises(
+            ValueError,
+            test_static_data_shape,
+            place=place,
+            input_np=input,
+            label_np=label,
+            wrong_label_shape=(10, ),
+            functional=True,
+        )
+        self.assertRaises(
+            ValueError,
+            test_static_data_shape,
+            place=place,
+            input_np=input,
+            label_np=label,
+            wrong_label_shape=(10, ),
+            functional=False,
+        )
+        self.assertRaises(
+            ValueError,
+            test_static_data_shape,
+            place=place,
+            input_np=input,
+            label_np=label,
+            weight_np=weight,
+            wrong_weight_shape=(3, ),
+            functional=True,
+        )
+        self.assertRaises(
+            ValueError,
+            test_static_data_shape,
+            place=place,
+            input_np=input,
+            label_np=label,
+            weight_np=weight,
+            wrong_weight_shape=(3, ),
+            functional=False,
+        )
 
 
 if __name__ == "__main__":

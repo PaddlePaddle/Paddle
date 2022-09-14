@@ -1690,26 +1690,26 @@ class TripletMarginLoss(Layer):
 
 
 class MultiMarginLoss(Layer):
-    r"""Creates a criterion that optimizes a multi-class classification hinge loss (margin-based loss)
-        between input :math:`x` (a 2D mini-batch `Tensor`)
-        and output :math:`y` (which is a 1D tensor of target class indices,:math:`0 \leq y \leq \text{x.size}(1)-1`):
+    r"""Creates a criterion that optimizes a multi-class classification hinge loss (margin-based loss) between input :math:`input` (a 2D mini-batch `Tensor`, in shape (N, C),
+        where C is number of classes) and label :math:`label` (which is a 1D tensor of target class indices,:math:`0 \leq label \leq \text{C}-1`):
 
-        For each mini-batch sample, the loss in terms of the 1D input :math:`x` and scalar
-        output :math:`y` is:
+        For ith mini-batch sample, the loss in terms of the 1D input :math:`input_i` and scalar
+        output :math:`label_i` is:
 
         .. math::
-            \text{loss}(x, y) = \frac{\sum_i \max(0, \text{margin} - x[y] + x[i])^p}{\text{x.size}(0)}
+            \text{loss}(input_i, label_i) = \frac{\sum^C_j \max(0, \text{margin} - input_i[label_i] + input_i[j])^p}{\text{C}}
 
-        where :math:`x \in \left\{0, \; \cdots , \; \text{x.size}(0) - 1\right\}`
-        and :math:`i \neq y`.
+        where :math:`input_i \in \left\{0, \; \cdots , \; \text{C} - 1\right\}`
+        and :math:`j \neq label_i`.
 
         Optionally, you can give non-equal weighting on the classes by passing
         a 1D :attr:`weight` tensor into the constructor.
 
-        The loss function then becomes:
+        The loss function for ith mini-batch then becomes:
 
         .. math::
-            \text{loss}(x, y) = \frac{\sum_i \max(0, w[y] * (\text{margin} - x[y] + x[i]))^p}{\text{x.size}(0)}
+            \text{loss}(input_i, label_i) = \frac{\sum^C_j \max(0, weight[label_i] * (\text{margin} - input_i[label_i] + input_i[j]))^p}{\text{C}}
+
 
         Parameters:
 
@@ -1718,11 +1718,11 @@ class MultiMarginLoss(Layer):
             margin (float, Optional):Default: :math:`1`.
 
 	        weight (Tensor,optional): a manual rescaling weight given to each class.
-                    If given, has to be a Tensor of size C and the data type is float32, float64.
+                    If given, has to be a Tensor of shape (C,) and the data type is float32, float64.
                     Default is ``'None'`` .
 
-            reduction (str, optional): Indicate how to average the loss by batch_size,
-                    the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            reduction (str, optional): Indicate how to calculate the loss by batch_size,
+                    the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
                     If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
                     If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
                     If :attr:`reduction` is ``'sum'``, the summed loss is returned.
