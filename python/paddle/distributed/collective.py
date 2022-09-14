@@ -446,6 +446,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
             tindata = paddle.randn(shape=[2, 3])
             gp = paddle.distributed.new_group([2,4,6])
             paddle.distributed.all_reduce(tindata, group=gp, use_calc_stream=False)
+
     """
     global _custom_gid
     global _group_map
