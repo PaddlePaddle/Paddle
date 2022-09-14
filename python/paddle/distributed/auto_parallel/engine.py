@@ -60,14 +60,10 @@ class Engine:
                  strategy=None,
                  user_tuning_config=None):
         self.model = model
+        self.strategy = strategy or fleet.DistributedStrategy()
         self.inputs_spec = self._validate_spec(inputs_spec)
         self.labels_spec = self._validate_spec(labels_spec)
-        self.cluster = cluster
-        if self.cluster is None:
-            self.cluster = get_default_cluster()
-        self.strategy = strategy
-        if self.strategy is None:
-            self.strategy = fleet.DistributedStrategy()
+        self.cluster = cluster or get_default_cluster()
         self._user_tuning_config = user_tuning_config
 
         self._executor = None
@@ -358,40 +354,6 @@ class Engine:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
                 self._executor.run(prune_startup_prog)
 
-            if self.strategy.amp and self.strategy.amp_configs['use_pure_fp16']:
-                # from paddle.fluid.contrib.mixed_precision.fp16_utils import cast_parameters_to_fp16
-                def cast_parameters_to_fp16(place,
-                                            program,
-                                            scope=None,
-                                            to_fp16_var_names=None):
-                    """
-                    Traverse all parameters in the whole model and set them to the FP16 data type.
-                    Whereas, this function will keep parameters of batchnorms in FP32.
-                    Args:
-                        place(fluid.CPUPlace|fluid.CUDAPlace): `place` is used to restore the FP16 weight tensors.
-                        program (Program): The used program.
-                        scope(fluid.Scope, optional): `scope` is used to get the FP32 weight tensor values.
-                                                    Default is None.
-                        to_fp16_var_names(set|list, optional): The data types of vars in `to_fp16_var_names`
-                                                            will be set to FP16. Usually, it is the returned
-                                                            value of `cast_model_to_fp16` API.
-                    """
-                    from paddle.framework import core
-                    import numpy as np
-                    all_parameters = []
-                    for block in program.blocks:
-                        all_parameters.extend(block.all_parameters())
-
-                    var_scope = scope if scope else paddle.static.global_scope()
-                    for param in all_parameters:
-                        if param.dtype == core.VarDesc.VarType.FP16:
-                            param_t = var_scope.find_var(
-                                param.name).get_tensor()
-                            data = np.array(param_t)
-                            param_t.set(np.float16(data), place)
-
-                cast_parameters_to_fp16(place, prune_startup_prog)
-
     def fit(self,
             train_data,
             batch_size=1,
@@ -433,7 +395,7 @@ class Engine:
                     break
 
                 train_logs["step: {:d} "] = step
-                if lr_scheduler is not None:
+                if lr_scheduler is not None and step % self.k_steps == 0:
                     lr_scheduler.step()
                     try:
                         train_logs["lr: {:5e} "] = self._lr_optimizer.get_lr()
@@ -551,6 +513,12 @@ class Engine:
                            epochs=1,
                            steps_per_epoch=None,
                            collate_fn=None):
+
+        if self.strategy.gradient_merge and batch_size is not None:
+            assert batch_size % self.k_steps == 0, \
+                "Requires batch_size:[{}] to be divisible by k_steps:[{}].".format(batch_size, self.k_steps)
+            batch_size //= self.k_steps
+
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
         dist_startup_prog = self._dist_startup_progs[self.mode][self._cur_rank]
         dist_context = self._dist_contexts[self.mode]
@@ -612,6 +580,9 @@ class Engine:
 
     def _validate_spec(self, specs):
         specs = to_list(specs)
+        self.k_steps = 1
+        if self.strategy.gradient_merge:
+            self.k_steps = self.strategy.gradient_merge_configs['k_steps']
         if specs is not None:
             for i, spec in enumerate(specs):
                 assert isinstance(spec, InputSpec)
@@ -619,6 +590,12 @@ class Engine:
                     raise ValueError(
                         "Requires Input[{}].name != None, but receive `None` with {}."
                         .format(i, spec))
+                if self.k_steps > 1:
+                    shape = list(spec.shape)
+                    assert shape[0] % self.k_steps == 0, \
+                        "Requires batch_size[{}] to be divisible by k_steps[{}].".format(spec.shape[0], self.k_steps)
+                    shape[0] //= self.k_steps
+                    spec.shape = shape
         return specs
 
     def _is_local_var(self, var):

@@ -12,20 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/squeeze_kernel.h"
+#include "paddle/phi/kernels/squeeze_grad_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/squeeze_kernel_impl.h"
+#include "paddle/phi/core/tensor_utils.h"
 
-PD_REGISTER_KERNEL(squeeze,
-                   GPU,
+namespace phi {
+template <typename T, typename Context>
+void SqueezeGradKernel(const Context& dev_ctx,
+                       const DenseTensor& xshape,
+                       const DenseTensor& dout,
+                       const IntArray& axes,
+                       DenseTensor* dx) {
+  auto xshape_dims = xshape.dims();
+  auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
+
+  dev_ctx.template Alloc<T>(dx);
+  phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+  dx->Resize(x_dims);
+}
+}  // namespace phi
+
+PD_REGISTER_KERNEL(squeeze_grad,
+                   CPU,
                    ALL_LAYOUT,
-                   phi::SqueezeKernel,
+                   phi::SqueezeGradKernel,
                    float,
                    double,
                    phi::dtype::bfloat16,
-                   phi::dtype::float16,
                    bool,
                    int,
                    uint8_t,
@@ -34,14 +49,15 @@ PD_REGISTER_KERNEL(squeeze,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PD_REGISTER_KERNEL(squeeze_with_xshape,
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(squeeze_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::SqueezeWithXShapeKernel,
+                   phi::SqueezeGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    bool,
                    int,
                    uint8_t,
@@ -49,3 +65,21 @@ PD_REGISTER_KERNEL(squeeze_with_xshape,
                    int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+#endif
+
+#ifdef PADDLE_WITH_XPU
+PD_REGISTER_KERNEL(squeeze_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SqueezeGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   bool,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int64_t) {}
+
+#endif

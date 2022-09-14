@@ -1586,6 +1586,18 @@ void IndexAddInferMeta(const MetaTensor& x,
     }
   }
 
+  const auto& index_type = index.dtype();
+  bool index_type_match =
+      index_type == phi::DataType::INT64 || index_type == phi::DataType::INT32;
+  PADDLE_ENFORCE_EQ(index_type_match,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Input(Index) holds the wrong type, it holds %s, but "
+                        "desires to be %s or %s",
+                        index_type,
+                        phi::DataType::INT32,
+                        phi::DataType::INT64));
+
   output->set_dims(x.dims());
   output->set_dtype(x.dtype());
   output->set_layout(x.layout());

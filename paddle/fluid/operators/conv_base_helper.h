@@ -36,10 +36,6 @@ using framework::ConvSearchCache;
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 
-// As the basic for SearchAlgorithm struct.
-template <typename PerfT>
-struct SearchAlgorithm {};
-
 // As the container of searchAlgorithm::Find() result.
 template <typename AlgoT>
 struct SearchResult {
