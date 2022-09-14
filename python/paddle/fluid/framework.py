@@ -1163,7 +1163,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
     Convert the data type in numpy to the data type in Paddle.
 
     Args:
-        np_dtype(np.dtype|str): The data type in numpy or valid data type
+        np_dtype (np.dtype|str): The data type in numpy or valid data type
             string.
 
     Returns:
@@ -1171,11 +1171,10 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
     """
     # Convert the data type string to numpy data type.
-    if isinstance(np_dtype, str):
-        if np_dtype == "bfloat16":
-            dtype = np.uint16
-        else:
-            dtype = np.dtype(np_dtype)
+    if isinstance(np_dtype, str) and np_dtype == "bfloat16":
+        dtype = np.uint16
+    else:
+        dtype = np.dtype(np_dtype)
 
     if dtype == np.float32:
         return core.VarDesc.VarType.FP32
