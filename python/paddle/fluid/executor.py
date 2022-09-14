@@ -1570,12 +1570,6 @@ class Executor(object):
                 compiled_program = program if isinstance(
                     program, compiler.CompiledProgram) else program._graph
 
-                # delete this code after supporting compiled_program._graph
-                if compiled_program._program is None:
-                    warnings.warn("Standalone executor is not used for Graph",
-                                  UserWarning)
-                    return use_standalone_executor_for_distribution
-
                 # delete this code after supporting distribution
                 if compiled_program._build_strategy is not None and (
                         compiled_program._build_strategy.is_distribution
