@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .interface import shard_tensor  # noqa: F401
-from .interface import shard_op  # noqa: F401
+from .strategy import Strategy
+from .process_mesh import ProcessMesh
+from .engine import Engine
+from .interface import shard_tensor
+from .interface import shard_op
 from .interface import recompute
 from .interface import fetch
-from .engine import Engine
-from .process_mesh import ProcessMesh
-from .strategy import Strategy
-from .reshard import Resharder  # noqa: F401
-from .cost_model import estimate_cost
 
 __all__ = []

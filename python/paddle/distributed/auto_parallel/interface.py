@@ -55,7 +55,6 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
 
             import paddle
             import paddle.distributed.auto_parallel as auto 
-            paddle.enable_static()
 
             mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
             x = paddle.ones([4, 6])
@@ -130,7 +129,6 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
 
             import paddle
             import paddle.distributed.auto_parallel as auto 
-            paddle.enable_static()
             
             x = paddle.ones([4, 6])
             y = paddle.zeros([4, 6])
