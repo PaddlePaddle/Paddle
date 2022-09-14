@@ -20,7 +20,14 @@
 constexpr int64_t kWaitBlockTImeout = 10;
 namespace paddle {
 namespace distributed {
-using mpiDatatype = mpi::mpiDatatype;
+
+std::map<phi::DataType, MPI_Datatype> mpiDatatype = {
+    {phi::DataType::INT8, MPI_CHAR},
+    {phi::DataType::UINT8, MPI_UNSIGNED_CHAR},
+    {phi::DataType::FLOAT32, MPI_FLOAT},
+    {phi::DataType::FLOAT64, MPI_DOUBLE},
+    {phi::DataType::INT32, MPI_INT},
+    {phi::DataType::INT64, MPI_LONG}};
 
 void ProcessGroupMPI::MPITask::FinishMPITaskError(std::exception_ptr eptr) {
   Finish(eptr);
@@ -207,7 +214,7 @@ void ProcessGroupMPI::workLoop() {
     queue_consume.notify_one();
 
     try {
-      taskEntry->run(taskEntry);
+      taskEntry->run_(taskEntry);
       task->FinishMPITask();
     } catch (...) {
       task->FinishMPITaskError(std::current_exception());
@@ -220,7 +227,7 @@ void ProcessGroupMPI::workLoop() {
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Enqueue(
     std::unique_ptr<TaskEntry> entry,
     const std::vector<phi::DenseTensor>& inputs) {
-  auto task = std::make_shared<MPITask>(entry->dst, inputs);
+  auto task = std::make_shared<MPITask>(entry->dst_, inputs);
   std::unique_lock<std::mutex> lock(pg_mutex);
   queue_.push_back(std::make_tuple(std::move(entry), task));
   lock.unlock();
@@ -237,7 +244,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Broadcast(
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [opts, this](std::unique_ptr<TaskEntry>& entry) {
-        auto data = (entry->src)[0];
+        auto data = (entry->src_)[0];
         std::unique_lock<std::mutex> lock(pg_global_mutex);
         const auto root = opts.source_rank + opts.source_root;
         MPI_CHECK(MPI_Bcast(data.data(),
@@ -259,7 +266,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllReduce(
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [opts, this](std::unique_ptr<TaskEntry>& entry) {
-        auto data = (entry->src)[0];
+        auto data = (entry->src_)[0];
         std::unique_lock<std::mutex> lock(pg_global_mutex);
         MPI_CHECK(MPI_Allreduce(MPI_IN_PLACE,
                                 data.data(),
@@ -340,8 +347,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllGather(
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [this](std::unique_ptr<TaskEntry>& entry) {
-        auto data = (entry->src)[0];
-        std::vector<phi::DenseTensor> dst = entry->dst;
+        auto data = (entry->src_)[0];
+        std::vector<phi::DenseTensor> dst = entry->dst_;
 
         std::unique_lock<std::mutex> lock(pg_global_mutex);
         MPI_CHECK(MPI_Allgather(data.data(),
@@ -374,8 +381,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllToAll(
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [this](std::unique_ptr<TaskEntry>& entry) {
-        auto srcdata = (entry->src)[0];
-        auto dstdata = (entry->dst)[0];
+        auto srcdata = (entry->src_)[0];
+        auto dstdata = (entry->dst_)[0];
         std::unique_lock<std::mutex> lock(pg_global_mutex);
         MPI_CHECK(MPI_Alltoall(srcdata.data(),
                                srcdata.numel() / size_,
@@ -399,8 +406,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Reduce(
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [opts, this](std::unique_ptr<TaskEntry>& entry) {
-        auto data = (entry->src)[0];
-        auto dataPtr = (entry->src)[0].data();
+        auto data = (entry->src_)[0];
+        auto dataPtr = (entry->src_)[0].data();
         void* sendbuf = (rank_ == opts.root_rank) ? MPI_IN_PLACE : dataPtr;
         void* recvbuf = (rank_ == opts.root_rank) ? dataPtr : nullptr;
 
@@ -426,11 +433,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Scatter(
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [opts, this](std::unique_ptr<TaskEntry>& entry) {
-        auto data = (entry->dst)[0];
+        auto data = (entry->dst_)[0];
         void* sendbuf = nullptr;
 
         if (rank_ == opts.root_rank) {
-          std::vector<phi::DenseTensor>& inputData = entry->src;
+          std::vector<phi::DenseTensor>& inputData = entry->src_;
           sendbuf = inputData[0].data();
         }
 
