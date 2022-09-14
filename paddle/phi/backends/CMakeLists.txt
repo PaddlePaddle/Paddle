@@ -1,7 +1,7 @@
 add_subdirectory(dynload)
 
 set(BACKENDS_SRCS all_context.cc cpu/cpu_context.cc)
-set(BACKENDS_DEPS enforce place flags eigen3)
+set(BACKENDS_DEPS enforce place flags eigen3 phi_device_context)
 
 if(WITH_GPU OR WITH_ROCM)
   list(APPEND BACKENDS_SRCS gpu/gpu_context.cc gpu/gpu_info.cc

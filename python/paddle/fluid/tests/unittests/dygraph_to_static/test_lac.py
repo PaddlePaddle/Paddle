@@ -30,7 +30,7 @@ from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.framework import _non_static_mode
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 SEED = 2020
 
@@ -176,7 +176,7 @@ class LinearChainCRF(fluid.dygraph.Layer):
 
     def forward(self, input, label, length=None):
         if _non_static_mode():
-            _, _, _, log_likelihood = _C_ops.linear_chain_crf(
+            _, _, _, log_likelihood = _legacy_C_ops.linear_chain_crf(
                 input, self._transition, label, length, "is_test",
                 self._is_test)
             return log_likelihood
@@ -234,8 +234,8 @@ class CRFDecoding(fluid.dygraph.Layer):
 
     def forward(self, input, label=None, length=None):
         if _non_static_mode():
-            return _C_ops.crf_decoding(input, self._transition, label, length,
-                                       "is_test", self._is_test)
+            return _legacy_C_ops.crf_decoding(input, self._transition, label,
+                                              length, "is_test", self._is_test)
 
         viterbi_path = self._helper.create_variable_for_type_inference(
             dtype=self._dtype)
@@ -268,11 +268,12 @@ class ChunkEval(fluid.dygraph.Layer):
 
     def forward(self, input, label, seq_length=None):
         if _non_static_mode():
-            return _C_ops.chunk_eval(input, label, seq_length,
-                                     "num_chunk_types", self.num_chunk_types,
-                                     "chunk_scheme", self.chunk_scheme,
-                                     "excluded_chunk_types",
-                                     self.excluded_chunk_types or [])
+            return _legacy_C_ops.chunk_eval(input, label, seq_length,
+                                            "num_chunk_types",
+                                            self.num_chunk_types,
+                                            "chunk_scheme", self.chunk_scheme,
+                                            "excluded_chunk_types",
+                                            self.excluded_chunk_types or [])
 
         precision = self._helper.create_variable_for_type_inference(
             dtype="float32")

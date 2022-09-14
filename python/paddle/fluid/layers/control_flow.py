@@ -29,7 +29,7 @@ from functools import reduce, partial
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
@@ -70,6 +70,25 @@ def select_output(input, outputs, mask):
     return outputs
 
 
+def _select_input_infer_shape(first_shape, second_shape):
+    """
+    This function infer the output shape by following algorithm:
+    1. if the dims is different, raise a error.
+    2. compare axis one by one:
+        if a == b: we set axis to a
+        if a != b: we set axis to -1
+    for compatibility，non declarative mode, we just return second_shape.
+    """
+    if len(first_shape) != len(second_shape):
+        warnings.warn(
+            f"the input shapes of select_input should have the same rank, but get {first_shape}, {second_shape}"
+        )
+        return second_shape
+    out_shape = list(
+        map(lambda a, b: a if a == b else -1, first_shape, second_shape))
+    return out_shape
+
+
 def select_input(inputs, mask):
     """
     **select_input**
@@ -89,13 +108,15 @@ def select_input(inputs, mask):
     check_type(inputs, 'inputs', (list, tuple), 'select_input')
     check_variable_and_dtype(mask, 'mask', ['int32'], 'select_input')
 
-    input_dtype = inputs[0].dtype
-    input_shape = inputs[0].shape
-    input_type = inputs[0].type
+    # Select input should expand the shape. If it is - 1 and valid number, use - 1 first. If the dim is different, an error will be reported directly
+    #assert inputs[0].dtype == inputs[1].dtype, f"Expect the inputs should have the same dtype, but get {inputs[0].dtype} and {inputs[1].dtype}"
+    output_shape = _select_input_infer_shape(inputs[0].shape, inputs[1].shape)
+    output_dtype = inputs[1].dtype
+    output_type = inputs[1].type
 
-    out = helper.create_variable(dtype=input_dtype,
-                                 shape=input_shape,
-                                 type=input_type)
+    out = helper.create_variable(dtype=output_dtype,
+                                 shape=output_shape,
+                                 type=output_type)
     helper.append_op(type='select_input',
                      inputs={
                          'X': inputs,
@@ -105,9 +126,9 @@ def select_input(inputs, mask):
     return out
 
 
-def select_input_with_buildin_type(inputs, mask):
+def select_input_with_buildin_type(inputs, mask, name):
     from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
-    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, create_undefined_var_like
+    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
     false_var, true_var = inputs
 
     if isinstance(false_var, UndefinedVar) and isinstance(
@@ -117,7 +138,11 @@ def select_input_with_buildin_type(inputs, mask):
         return None
 
     if isinstance(false_var, Variable) and isinstance(true_var, Variable):
-        return select_input(inputs, mask)
+        try:
+            return select_input(inputs, mask)
+        except Exception as e:
+            raise RuntimeError(
+                f"Exceptions throwed while doing select_input on {name}:\n{e}")
 
     elif (isinstance(false_var, (support_ret_buildin_type))
           and isinstance(false_var, type(true_var))):
@@ -148,24 +173,19 @@ def select_input_with_buildin_type(inputs, mask):
             if isinstance(a, UndefinedVar): return a
             return to_static_variable(a)
 
-        def create_like_if_undefined_var(a, b):
-            if isinstance(a, UndefinedVar): return create_undefined_var_like(b)
-            return a
-
-        # TODO(xiongkun): add warning here.
-        true_var, false_var = create_var_if_not_undefined_var(
-            true_var), create_var_if_not_undefined_var(false_var)
-        inputs = [
-            create_like_if_undefined_var(false_var, true_var),
-            create_like_if_undefined_var(true_var, false_var)
-        ]
+        true_var, false_var = to_static_variable(true_var), to_static_variable(
+            false_var)
+        inputs = [false_var, true_var]
     else:
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "
             "returned by fasle_fn is '{}' and true_var of true_fn is '{}'".
             format(type(false_var), type(true_var)))
-
-    return select_input(inputs, mask)
+    try:
+        return select_input(inputs, mask)
+    except Exception as e:
+        raise RuntimeError(
+            f"Exceptions throwed while doing select_input on {name}:\n{e}")
 
 
 def split_lod_tensor(input, mask, level=0):
@@ -1161,6 +1181,11 @@ class While(object):
             if inner_var:
                 out_vars.append(inner_var)
 
+        x_name_list |= set(map(lambda x: x.name, out_vars))
+        # NOTE(dev): cond_var has been contained in Input('Condition'), so
+        # we remove it from Input('X')
+        x_name_list -= {self.cond_var.name}
+
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
 
@@ -1188,6 +1213,13 @@ def assign_skip_lod_tensor_array(input, output):
     """
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     """
+
+    def has_shape_diff(x_var, y_var):
+        if len(x_var.shape) != len(y_var.shape): return True
+        for x_dim, y_dim in zip(x_var.shape, y_var.shape):
+            if x_dim != y_dim and -1 not in [x_dim, y_dim]: return True
+        return False
+
     if not isinstance(input, (Variable, core.VarBase)):
         if isinstance(output, Variable) and isinstance(
                 input, support_ret_buildin_type):
@@ -1203,6 +1235,11 @@ def assign_skip_lod_tensor_array(input, output):
         if parent_block and not parent_block._find_var_recursive(input.name):
             assign(input, output)
     else:
+        if isinstance(output, Variable) and isinstance(
+                input, Variable) and has_shape_diff(input, output):
+            warnings.warn(
+                "In dy2static mode, we attemp to assign a variable with shape {} into a variable with shape{}, which is not always right."
+                .format(input.shape, output.shape))
         assign(input, output)
 
 
@@ -1327,8 +1364,11 @@ def _deal_with_undefined_var(output_vars, loop_vars):
         if isinstance(o_var,
                       (Variable, ) + support_ret_buildin_type) or o_var is None:
             return create_undefined_variable()
-        if isinstance(o_var, (tuple, list)):
-            return [create_undefined_variable() for i in range(len(o_var))]
+        if is_sequence(o_var):
+            """ 
+            Create a complex container class inside the body of while, including Python list and python Dict
+            """
+            return map_structure(lambda x: create_undefined_variable(), o_var)
 
     if len(output_vars) != len(loop_vars):
         raise ValueError("The length of loop_vars should be the same.")
@@ -1549,6 +1589,9 @@ def increment(x, value=1.0, in_place=True):
           counter = fluid.layers.zeros(shape=[1], dtype='float32') # [0.]
           fluid.layers.increment(counter) # [1.]
     """
+    if in_dygraph_mode():
+        return _C_ops.increment_(x, value)
+
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'increment')
     helper = LayerHelper("increment", **locals())
@@ -1871,7 +1914,7 @@ def greater_than(x, y, cond=None, name=None):
     attrs = dict()
 
     if in_dygraph_mode():
-        return _C_ops.final_state_greater_than(x, y, -1)
+        return _C_ops.greater_than(x, y, -1)
     else:
         helper.append_op(type='greater_than',
                          inputs={
@@ -1968,6 +2011,10 @@ def equal(x, y, cond=None, name=None):
           out1 = fluid.layers.equal(x=label,y=limit) #out1=[True, False]
           out2 = fluid.layers.equal(x=label_cond,y=limit, cond=out_cond) #out2=[False, True] out_cond=[False, True]
     """
+    if in_dygraph_mode():
+        default_axis = -1
+        return _C_ops.equal(x, y, default_axis)
+
     check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
                              "equal")
     check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
@@ -2631,9 +2678,16 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                 .format(return_name, e))
 
     mask = cast(pred, dtype='int32')
-    merge_func = lambda false_var, true_var: select_input_with_buildin_type(
-        [false_var, true_var], mask)
-    merged_output = map_structure(merge_func, false_output, true_output)
+    merge_func = lambda name, false_var, true_var: select_input_with_buildin_type(
+        [false_var, true_var], mask, name)
+
+    def merge_every_var_list(false_vars, true_vars, name):
+        return map_structure(partial(merge_func, name), false_vars, true_vars)
+
+    merged_output = list(
+        map(merge_every_var_list, to_sequence(false_output),
+            to_sequence(true_output), to_sequence(return_names)))
+    merged_output = pack_sequence_as(false_output, flatten(merged_output))
     return merged_output
 
 
@@ -4026,9 +4080,9 @@ def is_empty(x, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_is_empty(x)
-    if _in_legacy_dygraph():
         return _C_ops.is_empty(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.is_empty(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'is_empty')

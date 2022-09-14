@@ -24,12 +24,18 @@ template <typename T, typename Context>
 void ReduceMeanGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& out_grad,
-                          const std::vector<int64_t>& dims,
+                          const IntArray& dims,
                           bool keep_dim,
                           bool reduce_all,
                           DenseTensor* x_grad) {
-  ReduceGradKernel<Context, T, funcs::MeanGradFunctor, true>(
-      dev_ctx, x, paddle::none, out_grad, dims, keep_dim, reduce_all, x_grad);
+  ReduceGradKernel<Context, T, funcs::MeanGradFunctor, true>(dev_ctx,
+                                                             x,
+                                                             paddle::none,
+                                                             out_grad,
+                                                             dims.GetData(),
+                                                             keep_dim,
+                                                             reduce_all,
+                                                             x_grad);
 }
 
 }  // namespace phi
