@@ -54,7 +54,7 @@ class DatasetBase(object):
             thread_num(int): thread num, it is the num of readers. default is 1.
             use_var(list): list of variables. Variables which you will use. default is [].
             pipe_command(str): pipe command of current dataset. A pipe command is a UNIX pipeline command that can be used only. default is "cat"
-            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. defalut is 0.
+            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. default is 0.
             fs_name(str): fs name. default is "".
             fs_ugi(str): fs ugi. default is "".
             download_cmd(str): customized download command. default is "cat"
@@ -441,7 +441,7 @@ class InMemoryDataset(DatasetBase):
             batch_size(int): batch size. It will be effective during training. default is 1.
             thread_num(int): thread num, it is the num of readers. default is 1.
             use_var(list): list of variables. Variables which you will use. default is [].
-            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. defalut is 0.
+            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. default is 0.
             fs_name(str): fs name. default is "".
             fs_ugi(str): fs ugi. default is "".
             pipe_command(str): pipe command of current dataset. A pipe command is a UNIX pipeline command that can be used only. default is "cat"
@@ -522,7 +522,7 @@ class InMemoryDataset(DatasetBase):
             batch_size(int): batch size. It will be effective during training. default is 1.
             thread_num(int): thread num, it is the num of readers. default is 1.
             use_var(list): list of variables. Variables which you will use. default is [].
-            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. defalut is 0.
+            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. default is 0.
             fs_name(str): fs name. default is "".
             fs_ugi(str): fs ugi. default is "".
             pipe_command(str): pipe command of current dataset. A pipe command is a UNIX pipeline command that can be used only. default is "cat"

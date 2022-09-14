@@ -316,7 +316,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
         m (int, optional): m of `n:m` sparse pattern. Default is 4.
         mask_algo (string, optional): The function name to generate spase mask. Default is `mask_1d`.
                                       The vaild inputs should be one of 'mask_1d', 'mask_2d_greedy' and 'mask_2d_best'.
-        with_mask (bool, optional): To prune mask Variables related to parameters or not. Ture is purning also, False is not. Defalut is True.
+        with_mask (bool, optional): To prune mask Variables related to parameters or not. Ture is purning also, False is not. Default is True.
     Returns:
         dictionary: A dictionary with key: `parameter name` (string) and value: its corresponding mask Variable.
     Examples:
