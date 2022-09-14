@@ -13,7 +13,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include "NvInfer.h"
 #include "common/bertCommon.h"
 #include "common/common.cuh"
@@ -24,6 +23,7 @@ limitations under the License. */
 #include <cuda.h>
 #include <cassert>
 #include <cstring>
+#include <iostream>
 #include <vector>
 
 namespace paddle {
@@ -31,7 +31,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#ifdef WIN32
+#ifdef _WIN32
 #else
 template <typename T, unsigned TPB>
 __global__ void embLayerNormKernelMTron(int32_t ld,
@@ -123,7 +123,7 @@ int32_t embSkipLayerNormMTron(cudaStream_t stream,
                               int32_t* IdsSize,
                               T* output,
                               T* skip) {
-#ifdef WIN32
+#ifdef _WIN32
 #else
   constexpr int32_t tpb = 256;
   dim3 const grid(S, B, 1);

@@ -24,6 +24,7 @@ limitations under the License. */
 #include <cuda.h>
 #include <cassert>
 #include <cstring>
+#include <iostream>
 #include <vector>
 
 namespace paddle {
@@ -31,7 +32,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#ifdef WIN32
+#ifdef _WIN32
 #else
 template <typename T, unsigned TPB>
 __global__ void embLayerNormKernelHFace(int32_t ld,
@@ -120,7 +121,7 @@ int32_t embSkipLayerNormHFace(cudaStream_t stream,
                               T** mIdsEmbDev,
                               int32_t* IdsSize,
                               T* output) {
-#ifdef WIN32
+#ifdef _WIN32
 #else
   constexpr int32_t tpb = 256;
   dim3 const grid(S, B, 1);
