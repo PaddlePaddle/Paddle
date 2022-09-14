@@ -788,10 +788,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send_Partial(
   phi::DenseTensor flatten_tensor;
   flatten_tensor.ShareDataWith(tensors).Resize({tensors.numel()});
 
-  phi::DenseTensor shared_input = flatten_tensor.Slice(offset, offset + length);
-
-  std::vector<phi::DenseTensor> shared_tensors;
-  shared_tensors.push_back(shared_input);
+  std::vector<phi::DenseTensor> shared_tensors{
+      flatten_tensor.Slice(offset, offset + length)};
 
   auto task = PointToPoint(
       shared_tensors,
@@ -822,10 +820,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send_Partial(
   phi::DenseTensor flatten_tensor;
   flatten_tensor.ShareDataWith(tensors).Resize({tensors.numel()});
 
-  phi::DenseTensor shared_input = flatten_tensor.Slice(offset, offset + length);
-
-  std::vector<phi::DenseTensor> shared_tensors;
-  shared_tensors.push_back(shared_input);
+  std::vector<phi::DenseTensor> shared_tensors{
+      flatten_tensor.Slice(offset, offset + length)};
 
   auto task = PointToPoint(
       shared_tensors,
@@ -854,10 +850,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv_Partial(
 
   phi::DenseTensor flatten_tensor;
   flatten_tensor.ShareDataWith(tensors).Resize({tensors.numel()});
-  phi::DenseTensor shared_input = flatten_tensor.Slice(offset, offset + length);
 
-  std::vector<phi::DenseTensor> shared_tensors;
-  shared_tensors.push_back(shared_input);
+  std::vector<phi::DenseTensor> shared_tensors{
+      flatten_tensor.Slice(offset, offset + length)};
 
   auto task = PointToPoint(
       shared_tensors,
@@ -887,10 +882,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv_Partial(
     bool use_calc_stream) {
   phi::DenseTensor flatten_tensor;
   flatten_tensor.ShareDataWith(tensors).Resize({tensors.numel()});
-  phi::DenseTensor shared_input = flatten_tensor.Slice(offset, offset + length);
 
-  std::vector<phi::DenseTensor> shared_tensors;
-  shared_tensors.push_back(shared_input);
+  std::vector<phi::DenseTensor> shared_tensors{
+      flatten_tensor.Slice(offset, offset + length)};
 
   auto task = PointToPoint(
       shared_tensors,
