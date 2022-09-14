@@ -23,7 +23,6 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     using U = LayerNormParamType<T>;
-    auto place = ctx.GetPlace();
     auto &dev_ctx = ctx.cuda_device_context();
 
     auto *time_step = ctx.Input<Tensor>("TimeStep");
@@ -62,8 +61,11 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     auto ln_compute =
         AttnLayerNorm<T, T, int8_t>(dev_ctx, epsilon, bsz_seq, dim_embed);
     Tensor ln_mean, ln_var;
-    auto *ln_mean_data = ln_mean.mutable_data<U>({bsz_seq}, place);
-    auto *ln_var_data = ln_var.mutable_data<U>({bsz_seq}, place);
+    ln_mean.Resize({{bsz_seq}});
+    auto *ln_mean_data =
+        dev_ctx.Alloc<U>(&ln_mean, ln_mean.numel() * sizeof(U));
+    ln_var.Resize({{bsz_seq}});
+    auto *ln_var_data = dev_ctx.Alloc<U>(&ln_var, ln_var.numel() * sizeof(U));
 
     // 2. qkv
     // x: qkv's input [batch_size, seq_len, dim_embed]
@@ -83,8 +85,9 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     AttnMatmulINT8<T> qkv_compute(
         dev_ctx, bsz_seq, output_size, input_size, compute_bias);
     Tensor qkv_out;
+    qkv_out.Resize({{bsz, seq_len, 3, num_head, dim_head}});
     auto *qkv_out_data =
-        qkv_out.mutable_data<T>({bsz, seq_len, 3, num_head, dim_head}, place);
+        dev_ctx.Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
 
     // 3. fmha
     AttnDropoutParam attn_param(
@@ -119,26 +122,32 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     }
 
     Tensor transpose_out_2, qk_out;
-    auto *transpose_out_2_data = transpose_out_2.mutable_data<T>(
-        {3, bsz, num_head, seq_len, dim_head}, place);
-    auto *qk_out_data =
-        qk_out.mutable_data<T>({bsz, num_head, seq_len, out_seq_len}, place);
+    transpose_out_2.Resize({{3, bsz, num_head, seq_len, dim_head}});
+    auto *transpose_out_2_data =
+        dev_ctx.Alloc<T>(&transpose_out_2, transpose_out_2.numel() * sizeof(T));
+    qk_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
+    auto *qk_out_data = dev_ctx.Alloc<T>(&qk_out, qk_out.numel() * sizeof(T));
 
     Tensor softmax_out;
     Tensor attn_dropout_mask_out, attn_dropout_out;
     Tensor qktv_out, fmha_out;
-    auto *softmax_out_data = softmax_out.mutable_data<T>(
-        {bsz, num_head, seq_len, out_seq_len}, place);
+    softmax_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
+    auto *softmax_out_data =
+        dev_ctx.Alloc<T>(&softmax_out, softmax_out.numel() * sizeof(T));
 
-    auto *attn_dropout_mask_out_data = attn_dropout_mask_out.mutable_data<T>(
-        {bsz, num_head, seq_len, out_seq_len}, place);
-    auto *attn_dropout_data_data = attn_dropout_out.mutable_data<T>(
-        {bsz, num_head, seq_len, out_seq_len}, place);
+    attn_dropout_mask_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
+    auto *attn_dropout_mask_out_data = dev_ctx.Alloc<T>(
+        &attn_dropout_mask_out, attn_dropout_mask_out.numel() * sizeof(T));
+    attn_dropout_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
+    auto *attn_dropout_data_data = dev_ctx.Alloc<T>(
+        &attn_dropout_out, attn_dropout_out.numel() * sizeof(T));
 
+    qktv_out.Resize({{bsz, num_head, seq_len, dim_head}});
     auto *qktv_out_data =
-        qktv_out.mutable_data<T>({bsz, num_head, seq_len, dim_head}, place);
+        dev_ctx.Alloc<T>(&qktv_out, qktv_out.numel() * sizeof(T));
+    fmha_out.Resize({{bsz, seq_len, num_head, dim_head}});
     auto *fmha_out_data =
-        fmha_out.mutable_data<T>({bsz, seq_len, num_head, dim_head}, place);
+        dev_ctx.Alloc<T>(&fmha_out, fmha_out.numel() * sizeof(T));
 
     // 4. out_linear
     auto out_linear_weights = ctx.MultiInput<Tensor>("OutLinearW");
@@ -161,12 +170,14 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     Tensor bias_dropout_residual_out, dropout_mask_out;
     T *bias_dropout_residual_out_data = nullptr;
     if (pre_layer_norm) {
+      bias_dropout_residual_out.Resize({{bsz, seq_len, dim_embed}});
       bias_dropout_residual_out_data =
-          bias_dropout_residual_out.mutable_data<T>({bsz, seq_len, dim_embed},
-                                                    place);
+          dev_ctx.Alloc<T>(&bias_dropout_residual_out,
+                           bias_dropout_residual_out.numel() * sizeof(T));
     }
-    auto *dropout_mask_out_data = dropout_mask_out.mutable_data<uint8_t>(
-        {bsz, seq_len, dim_embed}, place);
+    dropout_mask_out.Resize({{bsz, seq_len, dim_embed}});
+    auto *dropout_mask_out_data = dev_ctx.Alloc<uint8_t>(
+        &dropout_mask_out, dropout_mask_out.numel() * sizeof(uint8_t));
 
     // 6. ffn matmul1
     auto ffn1_weights = ctx.MultiInput<Tensor>("FFN1Weight");
@@ -177,7 +188,9 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     AttnMatmulINT8<T> ffn1_linear_compute(
         dev_ctx, bsz_seq, dim_ffn, dim_embed, false);
     Tensor ffn1_out;
-    auto *ffn1_out_data = ffn1_out.mutable_data<T>({bsz_seq, dim_ffn}, place);
+    ffn1_out.Resize({{bsz_seq, dim_ffn}});
+    auto *ffn1_out_data =
+        dev_ctx.Alloc<T>(&ffn1_out, ffn1_out.numel() * sizeof(T));
 
     // 7. ffn act + bias
     DropoutParam ffn1_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
@@ -186,10 +199,12 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper_for_post_layernorm(
         dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
     Tensor ffn1_dropout_out, ffn1_dropout_mask;
-    auto *ffn1_dropout_out_data =
-        ffn1_dropout_out.mutable_data<T>({bsz_seq, dim_ffn}, place);
-    auto *ffn1_dropout_mask_data =
-        ffn1_dropout_mask.mutable_data<uint8_t>({bsz_seq, dim_ffn}, place);
+    ffn1_dropout_out.Resize({{bsz_seq, dim_ffn}});
+    auto *ffn1_dropout_out_data = dev_ctx.Alloc<T>(
+        &ffn1_dropout_out, ffn1_dropout_out.numel() * sizeof(T));
+    ffn1_dropout_mask.Resize({{bsz_seq, dim_ffn}});
+    auto *ffn1_dropout_mask_data = dev_ctx.Alloc<uint8_t>(
+        &ffn1_dropout_mask, ffn1_dropout_mask.numel() * sizeof(uint8_t));
 
     // 8. ffn2 matmul
     auto ffn2_weights = ctx.MultiInput<Tensor>("FFN2Weight");
@@ -215,18 +230,22 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     int m_max = bsz_seq, k_max = std::max(dim_embed, dim_ffn),
         n_max = std::max({output_size, dim_embed, dim_ffn});
 
-    input_workspace.mutable_data<int8_t>(
-        {32 * ((m_max + 32 - 1) / 32), (k_max + 31) / 32 * 32}, place);
-    output_workspace.mutable_data<int32_t>(
-        {n_max * 4, (m_max + 31) / 32 * 32 * 4}, place);
+    input_workspace.Resize(
+        {{32 * ((m_max + 32 - 1) / 32), (k_max + 31) / 32 * 32}});
+    dev_ctx.Alloc<int8_t>(&input_workspace,
+                          input_workspace.numel() * sizeof(int8_t));
+    output_workspace.Resize({{n_max * 4, (m_max + 31) / 32 * 32 * 4}});
+    dev_ctx.Alloc<int32_t>(&output_workspace,
+                           output_workspace.numel() * sizeof(int32_t));
 
     // calc
     auto *out = ctx.Output<Tensor>("Out");
-    auto *from_data = out->mutable_data<T>(place);
+    auto *from_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
     Tensor *from_tensor = out;
     Tensor tmp_out;
+    tmp_out.Resize({{bsz, seq_len, dim_embed}});
     auto *tmp_out_data =
-        tmp_out.mutable_data<T>({bsz, seq_len, dim_embed}, place);
+        dev_ctx.Alloc<T>(&tmp_out, tmp_out.numel() * sizeof(T));
 
     auto *x_data = input_x->data<T>();
     Tensor *buf0 = nullptr;
