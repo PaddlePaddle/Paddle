@@ -354,40 +354,6 @@ class Engine:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
                 self._executor.run(prune_startup_prog)
 
-            if self.strategy.amp and self.strategy.amp_configs['use_pure_fp16']:
-                # from paddle.fluid.contrib.mixed_precision.fp16_utils import cast_parameters_to_fp16
-                def cast_parameters_to_fp16(place,
-                                            program,
-                                            scope=None,
-                                            to_fp16_var_names=None):
-                    """
-                    Traverse all parameters in the whole model and set them to the FP16 data type.
-                    Whereas, this function will keep parameters of batchnorms in FP32.
-                    Args:
-                        place(fluid.CPUPlace|fluid.CUDAPlace): `place` is used to restore the FP16 weight tensors.
-                        program (Program): The used program.
-                        scope(fluid.Scope, optional): `scope` is used to get the FP32 weight tensor values.
-                                                    Default is None.
-                        to_fp16_var_names(set|list, optional): The data types of vars in `to_fp16_var_names`
-                                                            will be set to FP16. Usually, it is the returned
-                                                            value of `cast_model_to_fp16` API.
-                    """
-                    from paddle.framework import core
-                    import numpy as np
-                    all_parameters = []
-                    for block in program.blocks:
-                        all_parameters.extend(block.all_parameters())
-
-                    var_scope = scope if scope else paddle.static.global_scope()
-                    for param in all_parameters:
-                        if param.dtype == core.VarDesc.VarType.FP16:
-                            param_t = var_scope.find_var(
-                                param.name).get_tensor()
-                            data = np.array(param_t)
-                            param_t.set(np.float16(data), place)
-
-                cast_parameters_to_fp16(place, prune_startup_prog)
-
     def fit(self,
             train_data,
             batch_size=1,
