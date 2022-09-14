@@ -52,7 +52,7 @@ std::shared_ptr<ProcessGroupNCCL::NCCLTask> ProcessGroupNCCL::CreateTask(
 }
 
 std::shared_ptr<ProcessGroupNCCL::NCCLTask> ProcessGroupNCCL::CreateTask(
-    const std::vector<Place> places,
+    const std::vector<Place>& places,
     int rank,
     CommType comm_type,
     const std::vector<phi::DenseTensor>& inputs,
@@ -275,7 +275,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
 
   auto& nccl_comms = places_to_ncclcomm_[key];
 
-  if (use_calc_stream) {
+  if (!use_calc_stream) {
     SyncDefaultStream(places, places_to_events_[key], places_to_ctx_[key]);
   }
 
@@ -439,7 +439,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::PointToPoint(
 
   auto& nccl_comms = places_to_ncclcomm_[key];
 
-  if (use_calc_stream) {
+  if (!use_calc_stream) {
     SyncDefaultStream(places, places_to_events_[key], places_to_ctx_[key]);
   }
 
