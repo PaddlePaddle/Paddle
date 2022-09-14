@@ -45,6 +45,7 @@ class DistributeMode():
     COLLECTIVE = 0
     PS = 1
     PS_HETER = 2
+    RPC = 3
 
 
 class DeviceMode():
