@@ -29,8 +29,64 @@ void SumRawKernel(const Context& dev_ctx,
   if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
     out_dtype = out->dtype();
   }
-  phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
-      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+  if (x.numel() > std::numeric_limits<int32_t>::max()) {
+#ifndef PADDLE_WITH_XPU_KP
+    if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
+      PADDLE_THROW(phi::errors::Fatal(
+          "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
+          "sum for reduce_sum function. As a result, input dtype should be "
+          "the same as out dtype"));
+    }
+
+    std::vector<int> reduce_dims = phi::funcs::details::GetReduceDim(
+        dims.GetData(), x.dims().size(), reduce_all);
+
+#define CALL_EIGEN_REDUCE_SUM_KERNEL(reduce_rank)              \
+  case reduce_rank: {                                          \
+    if (reduce_all) {                                          \
+      ReduceSumEigen<T, 5, reduce_rank, true>(dev_ctx,         \
+                                              x,               \
+                                              reduce_all,      \
+                                              dims.GetData(),  \
+                                              out_dtype,       \
+                                              out,             \
+                                              &reduce_dims);   \
+    } else {                                                   \
+      ReduceSumEigen<T, 5, reduce_rank, false>(dev_ctx,        \
+                                               x,              \
+                                               reduce_all,     \
+                                               dims.GetData(), \
+                                               out_dtype,      \
+                                               out,            \
+                                               &reduce_dims);  \
+    }                                                          \
+    break;                                                     \
+  }
+
+    switch (reduce_dims.size()) {
+      CALL_EIGEN_REDUCE_SUM_KERNEL(1);
+      CALL_EIGEN_REDUCE_SUM_KERNEL(2);
+      CALL_EIGEN_REDUCE_SUM_KERNEL(3);
+      CALL_EIGEN_REDUCE_SUM_KERNEL(4);
+      CALL_EIGEN_REDUCE_SUM_KERNEL(5);
+      default:
+        PADDLE_THROW(phi::errors::Fatal(
+            "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
+            "sum for reduce_sum function. As a result, its dim should be <= "
+            "5."));
+        break;
+    }
+#undef CALL_EIGEN_REDUCE_SUM_KERNEL
+#else
+    PADDLE_THROW(phi::errors::Fatal(
+        "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
+        "sum for reduce_sum function. Such case is only supported on GPU "
+        "now."));
+#endif
+  } else {
+    phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
+        dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+  }
 }
 
 }  // namespace phi
