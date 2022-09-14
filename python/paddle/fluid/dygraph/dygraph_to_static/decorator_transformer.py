@@ -24,7 +24,7 @@ import re
 
 IGNORE_NAMES = [
     'declarative', 'to_static', 'dygraph_to_static_func', 'wraps',
-    'staticmethod', 'classmethod'
+    'staticmethod', 'classmethod', 'decorator'
 ]
 
 
@@ -84,7 +84,7 @@ class DecoratorTransformer(BaseTransformer):
             if isinstance(deco, gast.Call):
                 # in this case , the deco_full_name will be like:
                 # '_jst.Call(deco)(5)'
-                rematch = re.match(r'\_jst\.Call\((.+?)\)\((.+?)\)',
+                rematch = re.match(r'\_jst\.Call\((.+?)\)\((.*?)\)',
                                    deco_full_name)
                 re_name = rematch.group(1)
                 re_args = rematch.group(2)

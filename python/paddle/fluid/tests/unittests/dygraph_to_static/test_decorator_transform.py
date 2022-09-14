@@ -83,6 +83,21 @@ def deco4(func=None, x=0):
         return decorated
     return decorated(func)
 
+class deco5:
+    def __call__(self, func):
+
+        @decorator.decorator
+        def _decorate_function(func, *args, **kwargs):
+            with self:
+                return func(*args, **kwargs)
+
+        return _decorate_function(func)
+    def __enter__(self):
+        pass
+
+    def __exit__(self, *args):
+        pass
+
 
 @deco2
 def fun1(x, y=0):
@@ -128,10 +143,15 @@ def fun6(x, y=0):
     print('in fun6, x=%d' % (x))
     return a
 
+@deco5()
+def fun7():
+    return paddle.to_tensor(1)
+
+
 
 @paddle.jit.to_static
 def forward():
-    funcs = [fun1, fun2, fun3, fun4, fun5, fun6]
+    funcs = [fun1, fun2, fun3, fun4, fun5, fun6, fun7]
     out = []
     for idx, fun in enumerate(funcs):
         out.append(fun(idx + 1, idx + 1))
@@ -148,6 +168,7 @@ class TestDecoratorTransform(unittest.TestCase):
         np.testing.assert_allclose(outs[3], np.array(8), rtol=1e-05)
         np.testing.assert_allclose(outs[4], np.array(12), rtol=1e-05)
         np.testing.assert_allclose(outs[5], np.array(9), rtol=1e-05)
+        np.testing.assert_allclose(outs[6], np.array(1), rtol=1e-05)
 
 
 if __name__ == '__main__':
