@@ -41,6 +41,8 @@ __global__ void embLayerNormKernelMTron(int32_t ld,
                                         int32_t* IdsSize,
                                         T* output,
                                         T* skip) {
+#ifdef _WIN32
+#else
   // this code currently assumes the input shape is SxB, row-major => seqPos = s
   // * B + b instead we want BxS, row-major => seqPos = b * S + s
 
@@ -105,6 +107,7 @@ __global__ void embLayerNormKernelMTron(int32_t ld,
 
   // 3. layer norm on the sum
   layerNorm<T, T, float, TPB>(threadData, ld, outOffset, beta, gamma, output);
+#endif
 }
 
 template <typename T>

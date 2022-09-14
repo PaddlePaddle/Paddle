@@ -55,6 +55,11 @@ int32_t embSkipLayerNormMTron(cudaStream_t stream,
                               T* output,
                               T* skip);
 
+bool initializeFields(char const* name,
+                      nvinfer1::PluginFieldCollection const* fc,
+                      nvinfer1::Weights& beta,
+                      nvinfer1::Weights& gamma,
+                      std::vector<nvinfer1::Weights>& IdsEmb);
 class EmbLayerNormVarSeqlenPluginBase : public nvinfer1::IPluginV2DynamicExt {
  public:
   EmbLayerNormVarSeqlenPluginBase(
