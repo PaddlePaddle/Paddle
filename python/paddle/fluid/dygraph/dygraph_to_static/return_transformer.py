@@ -23,6 +23,7 @@ from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fi
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
+from paddle.fluid.dygraph.dygraph_to_static.utils import ORIGI_INFO
 
 __all__ = [
     'RETURN_NO_VALUE_MAGIC_NUM', 'RETURN_NO_VALUE_VAR_NAME', 'ReturnTransformer'
@@ -276,7 +277,7 @@ class SingleReturnTransformer(BaseTransformer):
             ancestor = self.ancestor_nodes[ancestor_index]
             cur_node = self.ancestor_nodes[ancestor_index + 1]
 
-            def _deal_if_branch(branch_name):
+            def _deal_branches(branch_name):
                 if hasattr(ancestor, branch_name):
                     branch_node = getattr(ancestor, branch_name)
                     if index_in_list(branch_node, cur_node) != -1:
@@ -288,8 +289,8 @@ class SingleReturnTransformer(BaseTransformer):
                             branch_node, cur_node, return_name,
                             parent_node_of_return)
 
-            _deal_if_branch("body")
-            _deal_if_branch("orelse")
+            _deal_branches("body")
+            _deal_branches("orelse")
             # If return node in while loop, add `not return_name` in gast.While.test
             if isinstance(ancestor, gast.While):
                 cond_var_node = gast.UnaryOp(op=gast.Not(),
@@ -348,6 +349,8 @@ class SingleReturnTransformer(BaseTransformer):
                               type_comment=None)
                 ],
                             value=return_node.value))
+            return_origin_info = getattr(return_node, ORIGI_INFO, None)
+            setattr(assign_nodes[-1], ORIGI_INFO, return_origin_info)
 
         # If there is a return in the body or else of if, the remaining statements
         # will not be executed, so they can be properly replaced.
