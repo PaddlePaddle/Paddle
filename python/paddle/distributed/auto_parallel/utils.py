@@ -1504,3 +1504,15 @@ def ring_id_to_process_group(ring_id):
         if g.id == ring_id:
             return g
     return None
+
+
+def find_higher_order_backward_op(program):
+
+    higher_order_op_suffix = ['_grad_grad', 'triple_grad']
+    for block in program.blocks:
+        for op in block.ops:
+            for suffix in higher_order_op_suffix:
+                if suffix in op.type:
+                    return True
+
+    return False
