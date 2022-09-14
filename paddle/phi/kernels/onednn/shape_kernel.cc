@@ -21,11 +21,11 @@ namespace phi {
 
 template <typename T, typename Context>
 void ShapeKernel(const Context& dev_ctx,
-                 const DenseTensor& input,
+                 const DenseTensor& x,
                  DenseTensor* out) {
-  DDim in_dims = input.dims();
+  DDim in_dims = x.dims();
 
-  // Output of shape op is often fed as input to fill_constant ops
+  // Output of shape op is often fed as x to fill_constant ops
   // and we need to rotate a shape otherwise Tensors of wrong shape may be
   // allocated
   if (OneDNNContext::tls().get_cur_paddle_data_layout() == DataLayout::kNHWC &&
@@ -35,8 +35,8 @@ void ShapeKernel(const Context& dev_ctx,
     in_dims = make_ddim(rdims);
   }
 
-  out->Resize({in_dims.size()});
-  auto* out_data = dev_ctx.template Alloc<T>(out);
+  out->Resize(in_dims);
+  auto out_data = dev_ctx.template Alloc<int32_t>(out);
   for (int i = 0; i < in_dims.size(); ++i) {
     out_data[i] = in_dims[i];
   }
