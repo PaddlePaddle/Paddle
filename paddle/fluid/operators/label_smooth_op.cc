@@ -92,23 +92,23 @@ class LabelSmoothOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 LabelSmooth Operator.
 
-Label smoothing is a mechanism to regularize the classifier layer. In machine 
-learning, optimizing the log-likelihood of the correct label directly may 
-cause two problems. First, it may result in overfitting: if the model learns 
+Label smoothing is a mechanism to regularize the classifier layer. In machine
+learning, optimizing the log-likelihood of the correct label directly may
+cause two problems. First, it may result in overfitting: if the model learns
 to assign full probability to the ground-truth label for each training example,
-it is not guaranteed to generalize. Second, it encourages the differences 
-between the largest logit and all others to become large, reducing the ability 
-of the model to adapt. Label smoothing is proposed to encourage the model to 
-be less confident, which replaces the ground-truth label $y$ with the weighted 
+it is not guaranteed to generalize. Second, it encourages the differences
+between the largest logit and all others to become large, reducing the ability
+of the model to adapt. Label smoothing is proposed to encourage the model to
+be less confident, which replaces the ground-truth label $y$ with the weighted
 sum of itself and some fixed distribution $\mu$, i.e.
 
 $$
     \tilde{y} = (1 - \epsilon) * y + \epsilon * \mu,
 $$
 
-where $(1 - \epsilon)$ and $\epsilon$ are the weights respectively, and 
-$\tilde{y}$ is the smoothed label. Usually uniform distribution is used for 
-$\mu$. This change in the ground-truth label is called label-smoothing 
+where $(1 - \epsilon)$ and $\epsilon$ are the weights respectively, and
+$\tilde{y}$ is the smoothed label. Usually uniform distribution is used for
+$\mu$. This change in the ground-truth label is called label-smoothing
 regularization or LSR.
 
 See more details about label smoothing in https://arxiv.org/abs/1512.00567.

@@ -18,7 +18,7 @@
  * in the root directory of this source tree.
  */
 
-#ifndef MANAGED_ALLOCATOR_CUH 
+#ifndef MANAGED_ALLOCATOR_CUH
 #define MANAGED_ALLOCATOR_CUH
 
 #include <new>

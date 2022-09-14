@@ -70,7 +70,7 @@ struct MurmurHash3_32 {
 
     combined ^= rhs + 0x9e3779b9 + (combined << 6) + (combined >> 2);
 
-    return combined; 
+    return combined;
   }
 
   __forceinline__ __host__ __device__ result_type operator()(const Key& key) const {

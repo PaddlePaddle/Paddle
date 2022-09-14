@@ -98,12 +98,12 @@ void BindCudaStream(py::module *m_ptr) {
       The handle of the CUDA stream.
 
       Parameters:
-        device(paddle.CUDAPlace()|int|None, optional): The device which wanted to allocate the stream. 
-        If device is None or negative integer, device will be the current device. 
-        If device is positive integer, it must less than the device count. Default: None. 
+        device(paddle.CUDAPlace()|int|None, optional): The device which wanted to allocate the stream.
+        If device is None or negative integer, device will be the current device.
+        If device is positive integer, it must less than the device count. Default: None.
 
         priority(int|None, optional): The priority of stream. The priority can be 1(high) or 2(normal).
-        If priority is None, the priority is 2(normal). Default: None. 
+        If priority is None, the priority is 2(normal). Default: None.
 
       Examples:
         .. code-block:: python
@@ -126,7 +126,7 @@ void BindCudaStream(py::module *m_ptr) {
 
       Parameters:
         event(CUDAEvent): The event to wait on.
-      
+
       Examples:
         .. code-block:: python
 
@@ -149,7 +149,7 @@ void BindCudaStream(py::module *m_ptr) {
 
       Parameters:
         stream(CUDAStream): The stream to synchronize with.
-      
+
       Examples:
         .. code-block:: python
 
@@ -207,7 +207,7 @@ void BindCudaStream(py::module *m_ptr) {
       Parameters:
           event(CUDAEvent, optional): The event to be record. If event is None, a new event is created.
           Default: None.
-      
+
       Returns:
           The recored event.
 
@@ -238,7 +238,7 @@ void BindCudaStream(py::module *m_ptr) {
             import ctypes
             cuda_stream = paddle.device.cuda.current_stream().cuda_stream
             print(cuda_stream)
-            
+
             ptr = ctypes.c_void_p(cuda_stream)  # convert back to void*
             print(ptr)
 
@@ -322,7 +322,7 @@ void BindCudaStream(py::module *m_ptr) {
         enable_timing(bool, optional): Whether the event will measure time. Default: False.
         blocking(bool, optional): Whether the wait() func will be blocking. Default: False;
         interprocess(bool, optional): Whether the event can be shared between processes. Defalut: False.
-      
+
       Examples:
         .. code-block:: python
 
@@ -345,7 +345,7 @@ void BindCudaStream(py::module *m_ptr) {
 
           Parameters:
             stream(CUDAStream, optional): The handle of CUDA stream. If None, the stream is the current stream. Default: None.
-          
+
           Examples:
             .. code-block:: python
 
@@ -353,7 +353,7 @@ void BindCudaStream(py::module *m_ptr) {
               import paddle
               event = paddle.device.cuda.Event()
               event.record()
-    
+
         )DOC",
           py::arg("stream") = nullptr)
       .def(
