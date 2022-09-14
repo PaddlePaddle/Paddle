@@ -24,25 +24,25 @@ class VarDesc;
 
 namespace paddle {
 namespace operators {
-class ReducePrimOp : public framework::OperatorBase {
+class ReduceSumPrimOp : public framework::OperatorBase {
  public:
-  ReducePrimOp(const std::string &type,
-               const framework::VariableNameMap &inputs,
-               const framework::VariableNameMap &outputs,
-               const framework::AttributeMap &attrs)
+  ReduceSumPrimOp(const std::string &type,
+                  const framework::VariableNameMap &inputs,
+                  const framework::VariableNameMap &outputs,
+                  const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Prim operator reduce_p should not be excuted directly"));
+        "Prim operator reduce_sum_p should not be excuted directly"));
   }
 };
 
-class ReducePrimOpMaker : public framework::OpProtoAndCheckerMaker {
+class ReduceSumPrimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), The input tensor of reduce_p op.");
-    AddOutput("Y", "(Tensor), The output tensor of reduce_p op.");
+    AddInput("X", "(Tensor), The input tensor of reduce_sum_p op.");
+    AddOutput("Y", "(Tensor), The output tensor of reduce_sum_p op.");
     AddAttr<std::vector<int64_t>>(
         "axis",
         "(std::vector<int64_t>) The axis along which to reduce on. Must be in "
@@ -53,12 +53,12 @@ class ReducePrimOpMaker : public framework::OpProtoAndCheckerMaker {
                   "If true, retain the reduced axis with length 1.")
         .SetDefault(false);
     AddComment(R"DOC(
-Autograd primitive reduce_p operator.
+Autograd primitive reduce_sum_p operator.
 )DOC");
   }
 };
 
-class ReducePrimOpShapeInference : public framework::InferShapeBase {
+class ReduceSumPrimOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
@@ -87,7 +87,7 @@ class ReducePrimOpShapeInference : public framework::InferShapeBase {
   }
 };
 
-class ReducePrimOpVarTypeInference
+class ReduceSumPrimOpVarTypeInference
     : public framework::StaticGraphVarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
@@ -101,8 +101,8 @@ class ReducePrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(reduce_p,
-                  paddle::operators::ReducePrimOp,
-                  paddle::operators::ReducePrimOpMaker,
-                  paddle::operators::ReducePrimOpShapeInference,
-                  paddle::operators::ReducePrimOpVarTypeInference);
+REGISTER_OPERATOR(reduce_sum_p,
+                  paddle::operators::ReduceSumPrimOp,
+                  paddle::operators::ReduceSumPrimOpMaker,
+                  paddle::operators::ReduceSumPrimOpShapeInference,
+                  paddle::operators::ReduceSumPrimOpVarTypeInference);

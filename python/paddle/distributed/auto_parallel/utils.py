@@ -1040,7 +1040,7 @@ def set_grad_var_shape(program, dist_context):
 
             if op.type in [
                     "c_allreduce_sum", "c_identity", "scale", "cast",
-                    "fill_zeros_like"
+                    'fill_any_like'
             ]:
                 forward_var_name = op.input_arg_names[0]
             elif op.type == "matmul_v2_grad" or op.type == "matmul_grad" or op.type == "mul_grad":
@@ -1504,3 +1504,15 @@ def ring_id_to_process_group(ring_id):
         if g.id == ring_id:
             return g
     return None
+
+
+def find_higher_order_backward_op(program):
+
+    higher_order_op_suffix = ['_grad_grad', 'triple_grad']
+    for block in program.blocks:
+        for op in block.ops:
+            for suffix in higher_order_op_suffix:
+                if suffix in op.type:
+                    return True
+
+    return False
