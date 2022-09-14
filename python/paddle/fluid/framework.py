@@ -1160,24 +1160,23 @@ def grad_var_name(var_name):
 
 def convert_np_dtype_to_dtype_(np_dtype):
     """
-    Convert the data type in numpy to the data type in Paddle
+    Convert the data type in numpy to the data type in Paddle.
 
     Args:
-        np_dtype(np.dtype): the data type in numpy.
+        np_dtype(np.dtype|str): The data type in numpy or valid data type
+            string.
 
     Returns:
-        core.VarDesc.VarType: the data type in Paddle.
+        core.VarDesc.VarType: The data type in Paddle.
 
     """
-    try:
-        np_dtype == "bfloat16"
-    except TypeError:
-        print("[Catched TypeError] np_dtype: ", np_dtype, ", type: ",
-              type(np_dtype))
-    if np_dtype == "bfloat16":
-        dtype = np.uint16
-    else:
-        dtype = np.dtype(np_dtype)
+    # Convert the data type string to numpy data type.
+    if isinstance(np_dtype, str):
+        if np_dtype == "bfloat16":
+            dtype = np.uint16
+        else:
+            dtype = np.dtype(np_dtype)
+
     if dtype == np.float32:
         return core.VarDesc.VarType.FP32
     elif dtype == np.float64:
