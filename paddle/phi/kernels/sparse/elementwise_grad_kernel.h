@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/infermeta/sparse/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
 namespace phi {
@@ -49,6 +51,9 @@ namespace sparse {
       const Sparse##type##Tensor& dout) {                          \
     Sparse##type##Tensor dx;                                       \
     Sparse##type##Tensor dy;                                       \
+    MetaTensor meta_dx(&dx), meta_dy(&dy);                         \
+    phi::sparse::UnchangedInferMeta(x, &meta_dx);                  \
+    phi::sparse::UnchangedInferMeta(y, &meta_dy);                  \
     ElementWise##name##type##GradKernel<T, Context>(               \
         dev_ctx, x, y, dout, &dx, &dy);                            \
     return std::vector<Sparse##type##Tensor>{dx, dy};              \
@@ -89,6 +94,9 @@ std::vector<SparseCsrTensor> ElementWiseDivideCsrGrad(
     const SparseCsrTensor& dout) {
   SparseCsrTensor dx;
   SparseCsrTensor dy;
+  MetaTensor meta_dx(&dx), meta_dy(&dy);
+  phi::sparse::UnchangedInferMeta(x, &meta_dx);
+  phi::sparse::UnchangedInferMeta(y, &meta_dy);
   ElementWiseDivideCsrGradKernel<T, Context>(
       dev_ctx, x, y, out, dout, &dx, &dy);
   return std::vector<SparseCsrTensor>{dx, dy};
@@ -103,10 +111,29 @@ std::vector<SparseCooTensor> ElementWiseDivideCooGrad(
     const SparseCooTensor& dout) {
   SparseCooTensor dx;
   SparseCooTensor dy;
+  MetaTensor meta_dx(&dx), meta_dy(&dy);
+  phi::sparse::UnchangedInferMeta(x, &meta_dx);
+  phi::sparse::UnchangedInferMeta(y, &meta_dy);
   ElementWiseDivideCooGradKernel<T, Context>(
       dev_ctx, x, y, out, dout, &dx, &dy);
   return std::vector<SparseCooTensor>{dx, dy};
 }
+
+template <typename T, typename Context>
+void ValuesAddCooCooGradKernel(const Context& dev_ctx,
+                               const SparseCooTensor& x,
+                               const SparseCooTensor& y,
+                               const SparseCooTensor& dout,
+                               SparseCooTensor* dx,
+                               SparseCooTensor* dy);
+
+template <typename T, typename Context>
+void ValuesAddCooDenseGradKernel(const Context& dev_ctx,
+                                 const SparseCooTensor& x,
+                                 const DenseTensor& y,
+                                 const SparseCooTensor& dout,
+                                 SparseCooTensor* dx,
+                                 DenseTensor* dy);
 
 }  // namespace sparse
 }  // namespace phi

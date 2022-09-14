@@ -103,6 +103,7 @@ void DenseToCooKernel(const Context& dev_ctx,
       ++index;
     }
   }
+
   out->SetMember(indices, values, x_dims, true);
 }
 
@@ -181,17 +182,12 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
   int batchs = x_dims.size() == 2 ? 1 : x_dims[0];
   int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
 
-  phi::DenseTensor crows;
-  crows.Resize({batchs * (rows + 1)});
-  IntT* csr_crows_data = dev_ctx.template Alloc<IntT>(&crows);
-
-  phi::DenseTensor cols;
-  cols.Resize({non_zero_num});
-  IntT* csr_cols_data = dev_ctx.template Alloc<IntT>(&cols);
-
-  phi::DenseTensor values;
-  values.Resize({non_zero_num});
-  T* csr_values_data = dev_ctx.template Alloc<T>(&values);
+  phi::DenseTensor crows = phi::Empty<IntT>(dev_ctx, {batchs * (rows + 1)});
+  phi::DenseTensor cols = phi::Empty<IntT>(dev_ctx, {non_zero_num});
+  phi::DenseTensor values = phi::EmptyLike<T, CPUContext>(dev_ctx, x.values());
+  IntT* csr_crows_data = crows.data<IntT>();
+  IntT* csr_cols_data = cols.data<IntT>();
+  T* csr_values_data = values.data<T>();
 
   const auto& coo_indices = x.indices();
   const auto& coo_values = x.values();
@@ -270,8 +266,7 @@ void CooToDenseCPUKernel(const CPUContext& dev_ctx,
   const int64_t dense_dim = x.dense_dim();
 
   const T* x_data = values.data<T>();
-  *out = phi::Empty(dev_ctx,
-                    DenseTensorMeta(x.dtype(), x.dims(), x.values().layout()));
+  dev_ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
   int64_t base_offset = 1;
   for (int64_t i = 0; i < dense_dim; i++) {
@@ -403,6 +398,21 @@ PD_REGISTER_KERNEL(values_coo,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
+PD_REGISTER_KERNEL(indices_coo,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::IndicesCooKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
 PD_REGISTER_KERNEL(values_csr,
                    CPU,
                    ALL_LAYOUT,
@@ -415,7 +425,7 @@ PD_REGISTER_KERNEL(values_csr,
                    int16_t,
                    int,
                    int64_t) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
 PD_REGISTER_KERNEL(sparse_coo_tensor,

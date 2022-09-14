@@ -99,4 +99,24 @@ inline bool operator==(const StringTensorMeta& lhs,
          (lhs.offset == rhs.offset);
 }
 
+struct SparseTensorMeta {
+  using DataLayout = paddle::experimental::DataLayout;
+
+  SparseTensorMeta() = default;
+  explicit SparseTensorMeta(const DDim& dims);
+  explicit SparseTensorMeta(const DDim& dims, const DataLayout& layout);
+  /// \brief Test whether the metadata is valid. Does not throw exceptions.
+  /// \return Whether the metadata is valid.
+  bool valid() const noexcept;
+
+  DDim dims;
+  DataType dtype;
+  DataLayout layout{DataLayout::NCHW};
+};
+
+inline bool operator==(const SparseTensorMeta& lhs,
+                       const SparseTensorMeta& rhs) {
+  return (lhs.dims == rhs.dims) && (lhs.layout == rhs.layout);
+}
+
 }  // namespace phi

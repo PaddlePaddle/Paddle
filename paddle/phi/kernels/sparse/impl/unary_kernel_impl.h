@@ -129,8 +129,6 @@ void CastCooKernel(const Context& dev_ctx,
                    DataType index_dtype,
                    DataType value_dtype,
                    SparseCooTensor* out) {
-  out->set_dims(x.dims());
-
   const DenseTensor& x_indices = x.indices();
   const DenseTensor& x_values = x.non_zero_elements();
   DenseTensor* out_indices = out->mutable_indices();
@@ -165,8 +163,6 @@ void CastCsrKernel(const Context& dev_ctx,
                    DataType index_dtype,
                    DataType value_dtype,
                    SparseCsrTensor* out) {
-  out->set_dims(x.dims());
-
   const DenseTensor& x_crows = x.crows();
   const DenseTensor& x_cols = x.cols();
   const DenseTensor& x_values = x.non_zero_elements();

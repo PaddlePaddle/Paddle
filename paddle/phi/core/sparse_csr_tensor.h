@@ -14,14 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 
 namespace phi {
 
-class CompatibleDenseTensorUtils;
+class DenseTensorUtils;
 
 /// \brief The SparseCsrTensor uses three 1-D DenseTensors to represent
 /// the row index , column index and non zero elements of the original
@@ -100,21 +99,19 @@ class SparseCsrTensor : public TensorBase,
 
   /// \brief Return the number of elements contained in original dense tensor
   /// \return The number of elements contained in original dense tensor
-  int64_t numel() const override { return product(dims_); }
+  int64_t numel() const override { return product(meta_.dims); }
 
   /// \brief Returns the dims of the original dense tensor.
   /// \return The dims of the original dense tensor.
-  const DDim& dims() const noexcept override { return dims_; }
+  const DDim& dims() const noexcept override { return meta_.dims; }
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
-  DataType dtype() const noexcept override {
-    return non_zero_elements_.dtype();
-  }
+  DataType dtype() const noexcept override { return meta_.dtype; }
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
-  DataLayout layout() const noexcept override { return DataLayout::SPARSE_CSR; }
+  DataLayout layout() const noexcept override { return meta_.layout; }
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.
@@ -145,6 +142,18 @@ class SparseCsrTensor : public TensorBase,
                  const DenseTensor& non_zero_elements,
                  const DDim& dims);
 
+  /// \brief set the member of sparse csr tensor.
+  /// \param non_zero_crows The compresessed row index of non zero elements in
+  /// original dense tensor.
+  /// \param non_zero_cols The column index of non zero elements in original
+  /// dense tensor.
+  /// \param non_zero_elements The non zero elements of original dense tensor.
+  /// \param meta The meta of original dense tensor.
+  void SetMember(const DenseTensor& non_zero_crows,
+                 const DenseTensor& non_zero_cols,
+                 const DenseTensor& non_zero_elements,
+                 const SparseTensorMeta& meta);
+
   /// \brief Get a mutable pointer of non_zero_crows.
   /// return a mutable pointer of non_zero_crows.
   DenseTensor* mutable_crows() { return &non_zero_crows_; }
@@ -169,18 +178,28 @@ class SparseCsrTensor : public TensorBase,
   /// mutable_values()
   DenseTensor* mutable_non_zero_elements() { return &non_zero_elements_; }
 
+  /// \brief Returns the meta information of the tensor.
+  /// \return The meta information of the tensor.
+  const SparseTensorMeta& meta() const noexcept { return meta_; }
+
+  void set_meta(SparseTensorMeta&& meta);
+
+  void set_meta(const SparseTensorMeta& meta);
+
   /// \brief set the dims of original dense tensor
-  void set_dims(const DDim& dims) { this->dims_ = dims; }
+  void set_dims(const DDim& dims) { meta_.dims = dims; }
+
+ protected:
+  SparseTensorMeta meta_;
 
  private:
+  friend class DenseTensorUtils;
   // save the compressed rows information of non zero elements
   DenseTensor non_zero_crows_;
   // save the columns information of non zero elements
   DenseTensor non_zero_cols_;
   // save the non zero elements
   DenseTensor non_zero_elements_;
-  // save the number of non zero elements in each batch
-  DDim dims_;
   /* --------------------------- */
   /*   example: 2-D Tensor */
   /* --------------------------- */

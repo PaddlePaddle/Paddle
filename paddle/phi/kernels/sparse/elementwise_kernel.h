@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/infermeta/sparse/binary.h"
 
 namespace phi {
 namespace sparse {
@@ -45,8 +46,10 @@ namespace sparse {
                                          const SparseCsrTensor& y) { \
     DenseTensor crows;                                               \
     DenseTensor cols;                                                \
-    DenseTensor non_zero_elements;                                   \
-    SparseCsrTensor out(crows, cols, non_zero_elements, x.dims());   \
+    DenseTensor values;                                              \
+    SparseCsrTensor out(crows, cols, values, x.dims());              \
+    MetaTensor meta_out(out);                                        \
+    phi::sparse::ElementwiseInferMeta(x, y, &meta_out);              \
     ElementWise##name##CsrKernel<T, Context>(dev_ctx, x, y, &out);   \
     return out;                                                      \
   }
@@ -57,8 +60,10 @@ namespace sparse {
                                          const SparseCooTensor& x,   \
                                          const SparseCooTensor& y) { \
     DenseTensor indices;                                             \
-    DenseTensor non_zero_elements;                                   \
-    SparseCooTensor out(indices, non_zero_elements, x.dims());       \
+    DenseTensor values;                                              \
+    SparseCooTensor out(indices, values, x.dims());                  \
+    MetaTensor meta_out(out);                                        \
+    phi::sparse::ElementwiseInferMeta(x, y, &meta_out);              \
     ElementWise##name##CooKernel<T, Context>(dev_ctx, x, y, &out);   \
     return out;                                                      \
   }
@@ -72,6 +77,24 @@ DEFINE_ELEMENTWISE_KERNEL_FUNC(Add)
 DEFINE_ELEMENTWISE_KERNEL_FUNC(Subtract)
 DEFINE_ELEMENTWISE_KERNEL_FUNC(Multiply)
 DEFINE_ELEMENTWISE_KERNEL_FUNC(Divide)
+
+/*
+ * out.values() = x.values() + y.values()
+ */
+template <typename T, typename Context>
+void ValuesAddCooCooKernel(const Context& dev_ctx,
+                           const SparseCooTensor& x,
+                           const SparseCooTensor& y,
+                           SparseCooTensor* out);
+
+/*
+ * out.values() = x.values() + y
+ */
+template <typename T, typename Context>
+void ValuesAddCooDenseKernel(const Context& dev_ctx,
+                             const SparseCooTensor& x,
+                             const DenseTensor& y,
+                             SparseCooTensor* out);
 
 }  // namespace sparse
 }  // namespace phi

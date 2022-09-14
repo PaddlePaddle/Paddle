@@ -56,6 +56,7 @@ void CooFullLikeKernel(const Context& dev_ctx,
     phi::funcs::ElementwiseKernel<T>(
         dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
   }
+
   out->set_dims(x.dims());
 }
 
@@ -82,6 +83,7 @@ void CsrFullLikeKernel(const Context& dev_ctx,
     phi::funcs::ElementwiseKernel<T>(
         dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
   }
+
   out->set_dims(x.dims());
 }
 
