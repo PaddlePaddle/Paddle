@@ -1765,6 +1765,12 @@ class TestNotJitForward(unittest.TestCase):
 
         paddle.jit.save(layer=layer, path=path, skip_forward=True)
 
+        self.assertTrue(not os.path.exists(path + ".pdmodel"))
+        self.assertTrue(not os.path.exists(path + ".pdparam"))
+
+        with self.assertRaises(ValueError):
+            paddle.jit.load(path=path)
+
         shutil.rmtree(save_dir)
 
 

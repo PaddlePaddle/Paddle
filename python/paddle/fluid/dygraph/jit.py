@@ -524,7 +524,10 @@ def _build_load_path_and_config(path, config):
             "don't know which one to load, please make sure that the specified target "
             "of ``path`` is unique." % (path, path))
     elif not prefix_format_exist and not directory_format_exist:
-        raise ValueError("The ``path`` (%s) to load model not exists." % path)
+        raise ValueError("The ``path`` (%s) to load model not exists. "
+                         "Please make sure that *.pdmodel exists or "
+                         "don't using ``skip_forward=True`` to jit.save." %
+                         path)
     else:
         if prefix_format_exist:
             file_prefix = os.path.basename(path)
