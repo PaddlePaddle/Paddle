@@ -251,6 +251,10 @@ if(WITH_MLU)
   target_link_libraries(device_context mlu_resource_pool)
 endif()
 
+if(WITH_CUSTOM_DEVICE)
+  target_link_libraries(device_context custom_device_resource_pool)
+endif()
+
 cc_test(
   init_test
   SRCS init_test.cc
@@ -477,6 +481,6 @@ if(WITH_CUSTOM_DEVICE)
     SRCS device_event_custom_device.cc
     DEPS device_event_base custom_device_resource_pool)
   set(DEVICE_EVENT_LIBS
-      device_event_custom_device
+      ${DEVICE_EVENT_LIBS} device_event_custom_device
       CACHE INTERNAL "device event libs")
 endif()
