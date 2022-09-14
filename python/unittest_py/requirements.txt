@@ -3,7 +3,7 @@ PyGithub
 coverage==5.5
 pycrypto ; platform_system != "Windows"
 mock
-gym
+gym==0.25.2
 pygame==2.1.0
 hypothesis
 opencv-python<=4.2.0.32
@@ -15,3 +15,5 @@ prettytable
 distro
 numpy>=1.20,<1.22; python_version >= "3.7"
 autograd==1.4
+librosa==0.8.1
+parameterized

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <memory>
 #include <unordered_map>
 
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
 
@@ -41,6 +42,32 @@ struct DevicePythonNode {
   uint64_t context_id;
   // stream id
   uint64_t stream_id;
+  // correlation id, used for correlating async activities happened on device
+  uint32_t correlation_id;
+  // The X-dimension block size for the kernel.
+  uint32_t block_x;
+  // The Y-dimension block size for the kernel.
+  uint32_t block_y;
+  // The Z-dimension grid size for the kernel.
+  uint32_t block_z;
+  // X-dimension of a grid.
+  uint32_t grid_x;
+  // Y-dimension of a grid.
+  uint32_t grid_y;
+  // Z-dimension of a grid.
+  uint32_t grid_z;
+  // dynamic + static
+  uint64_t shared_memory;
+  // The number of registers required for each thread executing the kernel.
+  uint32_t registers_per_thread;
+  float blocks_per_sm;
+  float warps_per_sm;
+  // theoretical achieved occupancy
+  float occupancy;
+  // The number of bytes transferred by the memory copy.
+  uint64_t num_bytes;
+  // the value being assigned to memory by the memory set.
+  uint32_t value;
 };
 
 struct MemPythonNode {
@@ -87,6 +114,8 @@ struct HostPythonNode {
   uint64_t process_id;
   // thread id of the record
   uint64_t thread_id;
+  // correlation id, used for correlating async activities happened on device
+  uint32_t correlation_id;
   // input shapes
   std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;
   std::map<std::string, std::vector<std::string>> dtypes;
@@ -105,8 +134,15 @@ struct HostPythonNode {
 class ProfilerResult {
  public:
   ProfilerResult() : tree_(nullptr) {}
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  explicit ProfilerResult(
+      std::unique_ptr<NodeTrees> tree,
+      const ExtraInfo& extra_info,
+      const std::map<uint32_t, gpuDeviceProp> device_property_map);
+#endif
   explicit ProfilerResult(std::unique_ptr<NodeTrees> tree,
                           const ExtraInfo& extra_info);
+
   ~ProfilerResult();
   std::map<uint64_t, HostPythonNode*> GetData() {
     return thread_event_trees_map_;
@@ -120,10 +156,27 @@ class ProfilerResult {
 
   std::shared_ptr<NodeTrees> GetNodeTrees() { return tree_; }
 
+  void SetVersion(const std::string& version) { version_ = version; }
+
+  void SetSpanIndx(uint32_t span_indx) { span_indx_ = span_indx; }
+
+  std::string GetVersion() { return version_; }
+  uint32_t GetSpanIndx() { return span_indx_; }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  std::map<uint32_t, gpuDeviceProp> GetDeviceProperty() {
+    return device_property_map_;
+  }
+#endif
+
  private:
   std::map<uint64_t, HostPythonNode*> thread_event_trees_map_;
   std::shared_ptr<NodeTrees> tree_;
   ExtraInfo extra_info_;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  std::map<uint32_t, gpuDeviceProp> device_property_map_;
+#endif
+  std::string version_;
+  uint32_t span_indx_;
   HostPythonNode* CopyTree(HostTraceEventNode* root);
 };
 

@@ -87,7 +87,10 @@ def convert_while_loop(cond,
     Args:
         cond(Callable): A callable object that returns a boolean variable to control whether to execute the loop body. It takes ``loop_vars`` as arguments.
         body(Callable): A callable object that returns a tuple or list of variables with the same arguments ``loops_vars`` as ``cond`` .
-        loop_vars(list|tuple): A list or tuple of variables passed to ``cond`` and ``body`` .
+        get_args(callable): Get all arguments that needed in true_fn and false_fn.
+        set_args(callable): Update arguments that modified in trure_fn and false_fn.
+        return_name_ids(list[string], optional): the returned names.
+        push_pop_names(list[string], optional): the names on which called .append() or .pop().
 
     Returns:
         A list or tuple of variables which returned by ``body``.
@@ -134,7 +137,7 @@ def _run_paddle_while(cond, body, getter, setter, return_name_ids,
         return helper.get(return_name_ids)
 
     def new_cond_fn(*args):
-        """ cond is a zero-args function, which is not 
+        """ cond is a zero-args function, which is not
             compatible with `while_loop`.
         """
         return cond()
@@ -306,7 +309,8 @@ def convert_ifelse(pred,
         false_fn(callable): A callable to be performed if ``pred`` is false.
         get_args(callable): Get all arguments that needed in true_fn and false_fn.
         set_args(callable): Update arguments that modified in trure_fn and false_fn.
-        return_name_ids(list[string]): the returned names.
+        return_name_ids(list[string], optional): the returned names.
+        push_pop_names(list[string], optional): the names on which called .append() or .pop().
 
     Returns:
         ``true_fn()`` if the predicate ``pred`` is true else ``false_fn()`` .
@@ -491,7 +495,7 @@ def convert_zip(*args):
 
 # TODO(xiongkun): delete when list<variable> is ready.
 class VariableTuple:
-    """ 
+    """
         this class will cause enumerate can't be wrapped by other iterator change function.
         this will be fixed when list<Variable> is producted.
         VariableTuple can only deal with variables which is fixed.
@@ -573,7 +577,7 @@ def convert_shape_compare(left, *args):
         Python like "a op1 b and b op2 c and ... ".
         If the variables to compare are Paddle Variables, we will do elementwise
         comparsion first and then reduce to a boolean whose numel is 1.
-        
+
     """
     args_len = len(args)
     assert args_len >= 2, "convert_shape_compare needs at least one right compare variable"

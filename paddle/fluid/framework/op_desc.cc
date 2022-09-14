@@ -661,10 +661,13 @@ void OpDesc::RemoveAttr(const std::string &name) {
 void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   AttributeMap *attrs_ptr = &(this->attrs_);
 
+  bool is_runtime_attr = false;
+
   const auto &extra_attr_map =
       operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(Type());
   auto extra_attr_iter = extra_attr_map.find(name);
   if (extra_attr_iter != extra_attr_map.end()) {
+    is_runtime_attr = true;
     attrs_ptr = &(this->runtime_attrs_);
   }
   // NOTICE(minqiyang): pybind11 will take the empty list in python as
@@ -674,8 +677,11 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   if (attr_type == proto::AttrType::INTS &&
       PADDLE_GET_CONST(std::vector<int>, v).size() == 0u) {
     // Find current attr via attr name and set the correct attribute value
-    const proto::OpProto::Attr &attr = GetProtoAttr(name);
-    switch (attr.type()) {
+    auto attr_type =
+        is_runtime_attr
+            ? static_cast<proto::AttrType>(extra_attr_iter->second.index() - 1)
+            : GetProtoAttr(name).type();
+    switch (attr_type) {
       case proto::AttrType::BOOLEANS: {
         VLOG(11) << "SetAttr: " << Type() << ", " << name
                  << " from INTS to BOOLEANS";
@@ -720,7 +726,7 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
       }
       default:
         PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported attribute type (code %d).", attr.type()));
+            "Unsupported attribute type (code %d).", attr_type));
     }
     need_update_ = true;
     return;
@@ -793,7 +799,11 @@ Attribute OpDesc::GetAttr(const std::string &name, bool with_attr_var) const {
     PADDLE_ENFORCE_EQ(
         HasAttrVar(it->second),
         false,
-        platform::errors::NotFound("Attribute %s is not found.", name));
+        platform::errors::NotFound(
+            "Attribute %s with constant value is not found, but found it with "
+            "Variable(s) type, which maybe not supported in some scenarios "
+            "currently, such as TensorRT et.al",
+            name));
   }
   return it->second;
 }
