@@ -771,9 +771,6 @@ class _ExecutorCache(object):
 
             inner_program = converted_program
             # print(f"Program after convert:\n {inner_program}", flush=True)
-            warnings.warn(
-                "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
-            )
         else:
             build_strategy = None
             from paddle.incubate.autograd import prim_enabled, prim2orig
@@ -789,9 +786,16 @@ class _ExecutorCache(object):
                                       fetch_var_name=fetch_var_name,
                                       use_fetch_v2=True)
 
-        # If there are multiple blocks in the program, subblock will not be executed with the new executor in temporary
-        if program.num_blocks > 1:
-            warnings.warn("There are more than 1 block in program.")
+        if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None) in [
+                1, '1', True, 'True', 'true'
+        ] and not program._is_start_up_program_:
+            if program.num_blocks > 1:
+                # If there are multiple blocks in the program, subblock will not be executed with the new executor in temporary
+                logging.warning("There are more than 1 block in program.")
+            elif program.num_blocks == 1:
+                logging.warning("There are 1 block in program.")
+            else:
+                logging.warning("There are no block in program.")
 
         # standalone executor will apply buffer_shared_inplace_pass and
         # inplace_addto_op_pass to program according to build_strategy
@@ -1567,12 +1571,6 @@ class Executor(object):
                 compiled_program = program if isinstance(
                     program, compiler.CompiledProgram) else program._graph
 
-                # delete this code after supporting compiled_program._graph
-                # if compiled_program._program is None:
-                #     warnings.warn("Standalone executor is not used for Graph",
-                #                   UserWarning)
-                #     return use_standalone_executor_for_distribution
-
                 # delete this code after supporting distribution
                 # if compiled_program._build_strategy is not None and (
                 #         compiled_program._build_strategy.is_distribution
@@ -1667,10 +1665,6 @@ class Executor(object):
                     tensor._copy_from(cpu_tensor, tensor._place())
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
-
-            warnings.warn(
-                "FLAGS_USE_STANDALONE_EXECUTOR is set to 1. New executor is used to execute Program."
-            )
 
             return new_exe.run(scope, list(feed.keys()), fetch_list,
                                return_numpy)
