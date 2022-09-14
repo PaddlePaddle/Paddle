@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/infermeta/sparse/binary.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
@@ -140,10 +139,6 @@ void MaxPoolCooKernel(const Context& dev_ctx,
                       SparseCooTensor* out,
                       DenseTensor* rulebook,
                       DenseTensor* counter) {
-  MetaTensor meta_out(out);
-  phi::sparse::Pool3dInferMeta(
-      x, kernel_sizes, paddings, dilations, strides, &meta_out);
-
   PD_VISIT_BASE_INTEGRAL_TYPES(
       x.indices().dtype(), "MaxPoolCooGPUKernel", ([&] {
         MaxPoolCooGPUKernel<T, data_t>(dev_ctx,

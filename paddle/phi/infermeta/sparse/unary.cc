@@ -13,11 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/sparse/unary.h"
+#include "paddle/phi/infermeta/unary.h"
 
 #include "paddle/phi/core/infermeta_utils.h"
 
 namespace phi {
 namespace sparse {
+
+void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
+  phi::CreateLikeInferMeta(x, dtype, out);
+}
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(x.dims());
@@ -25,12 +30,13 @@ void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
-void SparseCooTensorInferMeta(const MetaTensor& x,
+void SparseCooTensorInferMeta(const MetaTensor& values,
+                              const MetaTensor& indices,
                               const IntArray& dense_shape,
                               MetaTensor* out) {
   out->set_dims(phi::make_ddim(dense_shape.GetData()));
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
+  out->set_dtype(values.dtype());
+  out->set_layout(values.layout());
 }
 
 void ValuesInferMeta(const MetaTensor& x, MetaTensor* out) {
@@ -44,6 +50,13 @@ void IndicesInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims({-1});
   out->set_dtype(DataType::INT32);
   out->set_layout(DataLayout::NCHW);
+}
+
+void CastInferMeta(const MetaTensor& x,
+                   const DataType index_dtype,
+                   const DataType value_dtype,
+                   MetaTensor* out) {
+  phi::CastInferMeta(x, value_dtype, out);
 }
 
 }  // namespace sparse

@@ -19,7 +19,6 @@
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/infermeta/sparse/unary.h"
 #include "paddle/phi/kernels/abs_kernel.h"
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/cast_kernel.h"
@@ -130,9 +129,6 @@ void CastCooKernel(const Context& dev_ctx,
                    DataType index_dtype,
                    DataType value_dtype,
                    SparseCooTensor* out) {
-  MetaTensor meta_out(out);
-  phi::sparse::UnchangedInferMeta(x, &meta_out);
-
   const DenseTensor& x_indices = x.indices();
   const DenseTensor& x_values = x.non_zero_elements();
   DenseTensor* out_indices = out->mutable_indices();
@@ -157,7 +153,6 @@ void CastCooKernel(const Context& dev_ctx,
     phi::MetaTensor meta(out_values);
     meta.set_dims(x_values.dims());
     meta.set_dtype(value_dtype);
-    meta_out.set_dtype(value_dtype);
     phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
 }
@@ -168,9 +163,6 @@ void CastCsrKernel(const Context& dev_ctx,
                    DataType index_dtype,
                    DataType value_dtype,
                    SparseCsrTensor* out) {
-  MetaTensor meta_out(out);
-  phi::sparse::UnchangedInferMeta(x, &meta_out);
-
   const DenseTensor& x_crows = x.crows();
   const DenseTensor& x_cols = x.cols();
   const DenseTensor& x_values = x.non_zero_elements();
@@ -206,7 +198,6 @@ void CastCsrKernel(const Context& dev_ctx,
     phi::MetaTensor meta(out_values);
     meta.set_dims(x_values.dims());
     meta.set_dtype(value_dtype);
-    meta_out.set_dtype(value_dtype);
     phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
 }

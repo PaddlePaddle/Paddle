@@ -247,9 +247,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
         vectorize(slice_ddim(x.values().dims(), 1, x.values().dims().size()));
     indeces_dim.insert(indeces_dim.begin(), nnz);
     DenseTensorMeta values_meta(
-        paddle::experimental::CppTypeToDataType<T>::Type(),
-        phi::make_ddim(indeces_dim),
-        DataLayout::NCHW);
+        x.dtype(), phi::make_ddim(indeces_dim), DataLayout::NCHW);
     phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
     phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
 
@@ -272,11 +270,14 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                        SparseCsrTensor* out) {           \
     funcs::name##Functor<T> functor;                                     \
     SparseCooTensor coo_x, coo_y;                                        \
+    MetaTensor meta_coo_x(&coo_x), meta_coo_y(&coo_y);                   \
+    phi::sparse::UnchangedInferMeta(x, &meta_coo_x);                     \
+    phi::sparse::UnchangedInferMeta(y, &meta_coo_y);                     \
     CsrToCooKernel<T>(dev_ctx, x, &coo_x);                               \
     CsrToCooKernel<T>(dev_ctx, y, &coo_y);                               \
     SparseCooTensor coo_out;                                             \
-    MetaTensor meta_out_coo(&coo_out);                                   \
-    phi::sparse::UnchangedInferMeta(x, &meta_out_coo);                   \
+    MetaTensor meta_coo_out(&coo_out);                                   \
+    phi::sparse::UnchangedInferMeta(x, &meta_coo_out);                   \
     ElementWiseCooKernelImpl<T, IntT, Context, funcs::name##Functor<T>>( \
         dev_ctx, coo_x, coo_y, &coo_out, functor);                       \
     CooToCsrKernel<T>(dev_ctx, coo_out, out);                            \
@@ -311,8 +312,6 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                     const SparseCooTensor& x,             \
                                     const SparseCooTensor& y,             \
                                     SparseCooTensor* out) {               \
-    MetaTensor meta_out(out);                                             \
-    phi::sparse::UnchangedInferMeta(x, &meta_out);                        \
     PD_VISIT_BASE_INTEGRAL_TYPES(                                         \
         x.indices().dtype(), "ElementWise##name##CooCPUKernel", ([&] {    \
           ElementWise##name##CooCPUKernel<T, data_t>(dev_ctx, x, y, out); \

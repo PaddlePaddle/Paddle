@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/infermeta/sparse/binary.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
@@ -203,21 +202,6 @@ void Conv3dCooKernel(const Context& dev_ctx,
                      SparseCooTensor* out,
                      DenseTensor* rulebook,
                      DenseTensor* counter) {
-  MetaTensor meta_out(out);
-  MetaTensor meta_rulebook(rulebook);
-  MetaTensor meta_counter(counter);
-  phi::sparse::Conv3dInferMeta(x,
-                               kernel,
-                               paddings,
-                               dilations,
-                               strides,
-                               groups,
-                               subm,
-                               key,
-                               &meta_out,
-                               &meta_rulebook,
-                               &meta_counter);
-
   PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "Conv3dCooGPUKernel", ([&] {
                                  Conv3dCooGPUKernel<T, data_t>(dev_ctx,
                                                                x,

@@ -22,23 +22,23 @@ limitations under the License. */
 
 namespace phi {
 namespace sparse {
-void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
-void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
+void GeneralBinaryGradInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                MetaTensor* dx,
+                                MetaTensor* dy);
 
-void SparseCooTensorInferMeta(const MetaTensor& values,
-                              const MetaTensor& indices,
-                              const IntArray& dense_shape,
-                              MetaTensor* out);
+void CastGradInferMeta(const MetaTensor& x,
+                       const MetaTensor& out_grad,
+                       const DataType value_dtype,
+                       MetaTensor* out);
 
-void ValuesInferMeta(const MetaTensor& x, MetaTensor* out);
-
-void IndicesInferMeta(const MetaTensor& x, MetaTensor* out);
-
-void CastInferMeta(const MetaTensor& x,
-                   const DataType index_dtype,
-                   const DataType value_dtype,
-                   MetaTensor* out);
+void GeneralTernaryGradInferMeta(const MetaTensor& x,
+                                 const MetaTensor& y,
+                                 const MetaTensor& z,
+                                 MetaTensor* dx,
+                                 MetaTensor* dy,
+                                 MetaTensor* dz);
 
 }  // namespace sparse
 }  // namespace phi

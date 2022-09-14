@@ -173,8 +173,6 @@ void DenseToCooKernel(const Context& dev_ctx,
                                                      indices_data,
                                                      sparse_data);
 
-  MetaTensor meta_out(out);
-  phi::sparse::UnchangedInferMeta(x, &meta_out);
   out->SetMember(indices, values, x_dims, true);
 }
 
@@ -280,8 +278,6 @@ template <typename T, typename Context>
 void CsrToCooKernel(const Context& dev_ctx,
                     const SparseCsrTensor& x,
                     SparseCooTensor* out) {
-  MetaTensor meta_out(out);
-  phi::sparse::UnchangedInferMeta(x, &meta_out);
   PD_VISIT_BASE_INTEGRAL_TYPES(x.crows().dtype(), "CsrToCooGPUKernel", ([&] {
                                  CsrToCooGPUKernel<T, data_t>(dev_ctx, x, out);
                                }));
@@ -423,8 +419,6 @@ template <typename T, typename Context>
 void CooToCsrKernel(const Context& dev_ctx,
                     const SparseCooTensor& x,
                     SparseCsrTensor* out) {
-  MetaTensor meta_out(out);
-  phi::sparse::UnchangedInferMeta(x, &meta_out);
   PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "CooToCsrGPUKernel", ([&] {
                                  CooToCsrGPUKernel<T, data_t>(dev_ctx, x, out);
                                }));
@@ -512,8 +506,6 @@ template <typename T, typename Context>
 void CooToDenseKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
                       DenseTensor* out) {
-  MetaTensor meta_out(out);
-  phi::sparse::UnchangedInferMeta(x, &meta_out);
   PD_VISIT_BASE_INTEGRAL_TYPES(
       x.indices().dtype(), "CooToDenseGPUKernel", ([&] {
         CooToDenseGPUKernel<T, data_t>(dev_ctx, x, out);

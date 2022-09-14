@@ -13,9 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/sparse/binary.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace phi {
 namespace sparse {
+
+void ElementwiseInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          MetaTensor* out) {
+  // if (x.dims() == y.dims()) {
+  //   out->set_dims(x.dims());
+  // }
+  // out->set_dtype(x.dtype());
+  // out->set_layout(x.layout());
+  phi::ElementwiseInferMeta(x, y, out);
+}
 
 inline void GetOutShape(const DDim& x_dims,
                         const std::vector<int>& kernel_sizes,
@@ -111,7 +123,9 @@ void Pool3dInferMeta(const MetaTensor& x,
                      const std::vector<int>& paddings,
                      const std::vector<int>& dilations,
                      const std::vector<int>& strides,
-                     MetaTensor* out) {
+                     MetaTensor* out,
+                     MetaTensor* rulebook,
+                     MetaTensor* counter) {
   const auto& x_dims = x.dims();
   DDim out_dims = {1, 1, 1, 1, 1};
 
@@ -122,6 +136,24 @@ void Pool3dInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   out->set_dims(out_dims);
   out->set_layout(x.layout());
+
+  rulebook->set_dtype(DataType::INT32);
+  rulebook->set_layout(DataLayout::NCHW);
+  rulebook->set_dims({1});
+
+  counter->set_dtype(DataType::INT32);
+  counter->set_layout(DataLayout::NCHW);
+  counter->set_dims({1});
+}
+
+void MatmulInferMeta(const MetaTensor& x,
+                     const MetaTensor& y,
+                     MetaTensor* out) {
+  phi::MatmulInferMeta(x, y, false, false, out);
+}
+
+void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
+  phi::MvInferMeta(x, vec, out);
 }
 
 }  // namespace sparse

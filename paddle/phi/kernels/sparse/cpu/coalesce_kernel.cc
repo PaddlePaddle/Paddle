@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/infermeta/sparse/unary.h"
 #include "paddle/phi/kernels/funcs/sparse/flatten_indices.h"
 
 namespace phi {
@@ -99,8 +98,6 @@ template <typename T, typename Context>
 void CoalesceKernel(const Context& dev_ctx,
                     const SparseCooTensor& x,
                     SparseCooTensor* out) {
-  MetaTensor meta_out(out);
-  phi::sparse::UnchangedInferMeta(x, &meta_out);
   PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "CoalesceCPUKernel", ([&] {
                                  CoalesceCPUKernel<T, data_t>(dev_ctx, x, out);
                                }));

@@ -479,7 +479,7 @@ class TestStatic(unittest.TestCase):
         values = paddle.static.data(name='values',
                                     shape=[2, 1],
                                     dtype='float32')
-        shape = [2, 4]
+        shape = [2, 4, 1]
         out = sparse.sparse_coo_tensor(indices, values, shape)
         out = out.to_dense()
 

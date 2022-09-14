@@ -1916,8 +1916,11 @@ All parameter, weight, gradient are variables in Paddle.
                 auto &data = PADDLE_GET(LoDTensor, self[i]);
                 res[i] = py::cast(std::move(data));
               } else if (data_is_sparse_coo_tensor(self[i])) {
+                printf("call move_to_list\n");
                 auto &data = PADDLE_GET(phi::SparseCooTensor, self[i]);
+                printf("call move_to_list: get sparse coo tensor\n");
                 res[i] = py::cast(std::move(data));
+                printf("call move_to_list: move data\n");
               } else {
                 auto &data = PADDLE_GET(LoDTensorArray, self[i]);
                 py::list tmp(data.size());

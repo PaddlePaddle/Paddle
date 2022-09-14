@@ -394,6 +394,7 @@ cc_library(
        kernel_dispatch
        api_gen_utils
        backward_infermeta
+       sparse_backward_infermeta
        phi_data_transform
        phi_function_api
        api_custom_impl
@@ -405,7 +406,12 @@ cc_library(
 cc_library(
   sparse_bw_api
   SRCS ${sparse_bw_api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils sparse_api
+  DEPS phi_tensor_raw
+       phi
+       kernel_dispatch
+       api_gen_utils
+       sparse_api
+       sparse_backward_infermeta
        sparse_api_custom_impl)
 cc_library(
   phi_dygraph_api

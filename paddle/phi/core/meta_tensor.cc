@@ -126,6 +126,10 @@ void MetaTensor::set_layout(DataLayout layout) {
 void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
   ValidCheck(meta_tensor);
+  if (phi::SparseCooTensor::classof(tensor_) ||
+      phi::SparseCsrTensor::classof(tensor_)) {
+    return;
+  }
   if (meta_tensor.lod().size() == 0) {
     // no need share
     return;
