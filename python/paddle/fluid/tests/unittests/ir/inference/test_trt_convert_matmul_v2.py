@@ -31,29 +31,13 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
-        for trans_x in [True]:
-            for trans_y in [True]:
-                if trans_x and trans_y:
-                    input1_shape = [4, 4, 4]
-                    input2_shape = [4, 4]
-                # if trans_x and not trans_y:
-                #     input1_shape = [4, 4, 4]
-                #     input2_shape = [4, 4, 4]
-                # if not trans_x and trans_y:
-                #     input1_shape = [batch, 32, 6]
-                #     input2_shape = [batch, 11, 6]
-                # if not trans_x and not trans_y:
-                #     input1_shape = [batch, 32, 6]
-                #     input2_shape = [batch, 6, 11]
+        for trans_x in [True, False]:
+            for trans_y in [True, False]:
+                input1_shape = [4, 4, 4]
+                input2_shape = [4, 4]
                 dics = [{
-                    "transpose_X": trans_x,
-                    "transpose_Y": trans_y,
-                    "fused_reshape_X": [],
-                    "fused_reshape_Y": [],
-                    "fused_transpose_X": [],
-                    "fused_transpose_Y": [],
-                    "fused_reshape_Out": [],
-                    "fused_transpose_Out": []
+                    "trans_x": trans_x,
+                    "trans_y": trans_y,
                 }]
                 ops_config = [{
                     "op_type": "matmul_v2",
