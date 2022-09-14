@@ -2145,11 +2145,7 @@
   forward : slice_grad (Tensor input, Tensor grad_out, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(grad_input)
   args : (Tensor grad_input_grad, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
   output : Tensor(grad_out_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [grad_input_grad]
-  kernel :
-    func : slice
+  invoke : slice(grad_input_grad, axes, starts, ends, infer_flags, decrease_axis)
 
 - backward_op : slice_grad
   forward : slice (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(out)
