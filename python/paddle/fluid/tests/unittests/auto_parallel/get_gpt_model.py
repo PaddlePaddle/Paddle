@@ -14,6 +14,7 @@
 
 import sys
 import numpy as np
+import random
 
 import paddle
 import paddle.distributed.auto_parallel as auto
@@ -34,6 +35,9 @@ class FakeDataset(paddle.io.Dataset):
         self.vocab_size = vocab_size
 
     def __getitem__(self, idx):
+        paddle.seed(2021)
+        np.random.seed(2021)
+        random.seed(2021)
         tokens = np.random.randint(self.vocab_size, size=self.sequence_len)
         position_ids = np.arange(self.sequence_len)
         attention_mask = np.tril(np.ones(self.sequence_len)).reshape(

@@ -28,6 +28,7 @@ paddle.enable_static()
 def apply_pass(use_sharding=False):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
+    strategy.reinit = True
     if use_sharding:
         sharding = strategy.sharding
         sharding.sharding_degree = 2

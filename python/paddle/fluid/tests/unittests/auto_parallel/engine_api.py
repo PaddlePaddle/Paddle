@@ -123,13 +123,15 @@ def train(fetch):
 
     # train
     train_dataset = MyDataset(batch_num * batch_size)
-    engine.fit(train_dataset,
+    eval_dataset1 = MyDataset(5 * batch_size)
+    engine.fit(train_data=train_dataset,
+               epochs=2,
                batch_size=batch_size,
-               steps_per_epoch=batch_num * batch_size)
+               valid_data=eval_dataset)
 
     # eval
-    eval_dataset = MyDataset(batch_size)
-    engine.evaluate(eval_dataset, batch_size=batch_size)
+    eval_dataset2 = MyDataset(batch_size)
+    engine.evaluate(eval_dataset2, batch_size=batch_size)
 
     # predict
     test_dataset = MyDataset(batch_size)
@@ -137,8 +139,9 @@ def train(fetch):
 
     # save
     temp_dir = tempfile.TemporaryDirectory()
-    model_filename = os.path.join(temp_dir.name, 'mlp_inf')
-    engine.save(model_filename, training=False)
+    model_filename = os.path.join(temp_dir.name, 'mlp')
+    engine.save(model_filename, training=True)
+    engine.load(model_filename)
     temp_dir.cleanup()
 
 

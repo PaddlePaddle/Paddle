@@ -47,6 +47,9 @@ set_field_default_config(BASE, "return_numpy", True)
 set_field_default_config(BASE, "all_ranks", False)
 set_field_default_config(BASE, "split_data", False)
 set_field_default_config(BASE, "seed", None)
+set_field_default_config(
+    BASE, "reinit", False
+)  # Only for debug, and must be set with seed at the same time when the value is True.
 
 #########################################
 # recompute configuration
