@@ -178,8 +178,9 @@ class Fleet(object):
                 the rolemaker by yourself, it will be automatically initialized to PaddleRoleMaker.
                 The default value is None.
             is_collective (Boolean, optional): A ``Boolean`` variable determines whether the program 
-                runs on the CPU or GPU. False means set distributed training using CPU, and True means
-                GPU.The default value is False.The default value is False.
+                runs on Collective mode or ParameterServer mode. True means the program runs on
+                Collective mode, and False means running on ParameterServer mode. The default value 
+                is False.
             strategy (DistributedStrategy): Extra properties for distributed training. 
                 For details, please refer to paddle.distributed.fleet.DistributedStrategy. Default: None.
 

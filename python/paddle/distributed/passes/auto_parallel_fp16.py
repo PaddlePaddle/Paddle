@@ -16,6 +16,7 @@ from collections import defaultdict
 
 import paddle
 from paddle.framework import core
+from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.fluid import unique_name
 from .pass_base import register_pass
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
@@ -536,6 +537,39 @@ def _insert_memcopy(block, idx, src_var, dist_context, direction="D2H"):
     return output_var
 
 
+def cast_startup_program():
+    main_program = default_main_program()
+    startup_program = default_startup_program()
+
+    param_to_dtype = {}
+    for block in main_program.blocks:
+        for p in block.all_parameters():
+            param_to_dtype[p.name] = p.dtype
+
+    def is_initialization_op(op):
+        comm_op_prefix = "c_"
+        op_type = op.type
+        if op_type.startswith(comm_op_prefix):
+            return False
+
+        if len(op.output_arg_names) != 1 and len(op.input_arg_names) != 0:
+            return False
+
+        return True
+
+    for op in startup_program.global_block().ops:
+        if is_initialization_op(op):
+            output_name = op.output_arg_names[0]
+            if param_to_dtype.get(output_name,
+                                  None) == core.VarDesc.VarType.FP16:
+                assert op.has_attr(
+                    'dtype'
+                ), "initialization op is supported to has dtype attribute but got {}.".format(
+                    str(op))
+                if op.attr('dtype') == core.VarDesc.VarType.FP32:
+                    op._set_attr('dtype', core.VarDesc.VarType.FP16)
+
+
 @register_pass("auto_parallel_fp16")
 class FP16Pass(AMPPass):
 
@@ -562,6 +596,8 @@ class FP16Pass(AMPPass):
                                    self.get_attr("use_fp16_guard"),
                                    input_data_var_names)
             is_train = fp16_state._build_state()
+
+            cast_startup_program()
 
         if is_train:
             with paddle.static.program_guard(main_program, startup_program):

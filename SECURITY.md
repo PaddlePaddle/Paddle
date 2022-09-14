@@ -48,7 +48,7 @@ We will indicate the bug fix in the release of PaddlePaddle, and publish the vul
 
 ### What is a vulnerability?
 
-In the process of computation graphs in PaddlePaddle, models can perform arbitrary computations , including reading and writing files, communicating with the network, etc. It may cause memory exhaustion, deadlock, etc., which will lead to unexpected behavior of PaddlePaddle. We consider these behavior to be security vulnerabilities only if they are out of the intention of the operation involved. 
+In the process of computation graphs in PaddlePaddle, models can perform arbitrary computations , including reading and writing files, communicating with the network, etc. It may cause memory exhaustion, deadlock, etc., which will lead to unexpected behavior of PaddlePaddle. We consider these behavior to be security vulnerabilities only if they are out of the intention of the operation involved.
 
 
 
