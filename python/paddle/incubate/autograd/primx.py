@@ -12,17 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.fluid import framework as framework
-from paddle.fluid.framework import default_main_program
-from paddle.fluid.framework import Operator
-from paddle import compat as cpt
-from .primops import fill_const, add
-from .primreg import op_position_inputs, op_position_output, lookup_orig2prim, lookup_prim2orig
-from .primrules import _orig2prim, _prim2orig, _jvp, _transpose
-from .utils import get_input_var_list, get_output_var_list, flatten, flatten_and_remove_none
 from collections import OrderedDict
+
+import paddle
+from paddle import compat as cpt
+from paddle.fluid import framework as framework
+from paddle.fluid.framework import Operator, default_main_program
 from paddle.incubate.autograd.utils import as_tensors
+
+from .primops import add, fill_const
+from .primreg import (lookup_orig2prim, lookup_prim2orig, op_position_inputs,
+                      op_position_output)
+from .primrules import _jvp, _orig2prim, _prim2orig, _transpose
+from .utils import (flatten, flatten_and_remove_none, get_input_var_list,
+                    get_output_var_list)
 
 
 def topo_path(xs, ys, block=None):

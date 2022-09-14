@@ -55,6 +55,9 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
   out_t.device(place) = in_t.slice(offsets, extents);
 }
 
+template <typename PerfT>
+struct SearchAlgorithm {};
+
 template <>
 struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {
   using perf_t = miopenConvAlgoPerf_t;

@@ -413,9 +413,8 @@ class Engine:
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
                 self._executor.run(prune_startup_prog)
-
         else:
-            self._logger.info("NOTE: parameters wiil be re-initialized.")
+            self._logger.info("NOTE: parameters will be re-initialized.")
             dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
             self._executor.run(dist_startup_prog)
 

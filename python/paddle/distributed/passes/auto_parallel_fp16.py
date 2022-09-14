@@ -16,6 +16,7 @@ from collections import defaultdict
 
 import paddle
 from paddle.framework import core
+from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.fluid import unique_name
 from .pass_base import register_pass
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
@@ -541,8 +542,8 @@ def _insert_memcopy(block, idx, src_var, dist_context, direction="D2H"):
 
 
 def cast_startup_program():
-    main_program = paddle.static.default_main_program()
-    startup_program = paddle.static.default_startup_program()
+    main_program = default_main_program()
+    startup_program = default_startup_program()
 
     param_to_dtype = {}
     for block in main_program.blocks:
