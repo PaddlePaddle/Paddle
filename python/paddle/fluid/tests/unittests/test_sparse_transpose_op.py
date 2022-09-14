@@ -47,29 +47,29 @@ class TestTranspose(unittest.TestCase):
                                        rtol=1e-05)
 
     def test_transpose_2d(self):
-        self.check_result([12, 5], [0, 1], 'coo')
-        self.check_result([12, 5], [0, 1], 'csr')
-        self.check_result([12, 5], [1, 0], 'coo')
-        self.check_result([12, 5], [1, 0], 'csr')
+        self.check_result([2, 5], [0, 1], 'coo')
+        self.check_result([2, 5], [0, 1], 'csr')
+        self.check_result([2, 5], [1, 0], 'coo')
+        self.check_result([2, 5], [1, 0], 'csr')
 
     def test_transpose_3d(self):
-        self.check_result([16, 12, 3], [0, 1, 2], 'coo')
-        self.check_result([16, 12, 3], [0, 1, 2], 'csr')
-        self.check_result([16, 12, 3], [0, 2, 1], 'coo')
-        self.check_result([16, 12, 3], [0, 2, 1], 'csr')
-        self.check_result([16, 12, 3], [1, 0, 2], 'coo')
-        self.check_result([16, 12, 3], [1, 0, 2], 'csr')
-        self.check_result([16, 12, 3], [2, 0, 1], 'coo')
-        self.check_result([16, 12, 3], [2, 0, 1], 'csr')
-        self.check_result([16, 12, 3], [2, 1, 0], 'coo')
-        self.check_result([16, 12, 3], [2, 1, 0], 'csr')
-        self.check_result([16, 12, 3], [1, 2, 0], 'coo')
-        self.check_result([16, 12, 3], [1, 2, 0], 'csr')
+        self.check_result([6, 2, 3], [0, 1, 2], 'coo')
+        self.check_result([6, 2, 3], [0, 1, 2], 'csr')
+        self.check_result([6, 2, 3], [0, 2, 1], 'coo')
+        self.check_result([6, 2, 3], [0, 2, 1], 'csr')
+        self.check_result([6, 2, 3], [1, 0, 2], 'coo')
+        self.check_result([6, 2, 3], [1, 0, 2], 'csr')
+        self.check_result([6, 2, 3], [2, 0, 1], 'coo')
+        self.check_result([6, 2, 3], [2, 0, 1], 'csr')
+        self.check_result([6, 2, 3], [2, 1, 0], 'coo')
+        self.check_result([6, 2, 3], [2, 1, 0], 'csr')
+        self.check_result([6, 2, 3], [1, 2, 0], 'coo')
+        self.check_result([6, 2, 3], [1, 2, 0], 'csr')
 
     @unittest.skipIf(paddle.is_compiled_with_cuda(),
                      "cuda randint not supported")
     def test_transpose_nd(self):
-        self.check_result([8, 12, 24, 4, 20, 12], [5, 3, 4, 1, 0, 2], 'coo')
+        self.check_result([8, 3, 4, 4, 5, 3], [5, 3, 4, 1, 0, 2], 'coo')
         # Randint now only supports access to dimension 0 to 9.
         self.check_result([i % 3 + 2 for i in range(9)],
                           [(i + 2) % 9 for i in range(9)], 'coo')
