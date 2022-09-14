@@ -1169,7 +1169,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
         core.VarDesc.VarType: the data type in Paddle.
 
     """
-    if np_dtype == "bfloat16":
+    if isinstance(np_dtype, str) and (np_dtype == "bfloat16"):
         dtype = np.uint16
     else:
         dtype = np.dtype(np_dtype)
