@@ -466,6 +466,10 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : scale
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : seed
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
@@ -587,7 +591,3 @@
     x : X
   outputs :
     out : Out
-
-- api : scale
-  extra :
-    attrs : [bool use_mkldnn = false]
