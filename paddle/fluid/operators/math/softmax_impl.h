@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
 namespace operators {
