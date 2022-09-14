@@ -572,7 +572,7 @@ class TestBroadcastPJVPAndTranspose(TestAddPJVPAndTranspose):
             # jvp op:
             'broadcast_p',
             # transpose op:
-            'reduce_p',
+            'reduce_sum_p',
             'reshape_p'
         ]
 
@@ -719,11 +719,11 @@ class TestConcatPJVPAndTranspose(TestAddPJVPAndTranspose):
         ]
 
 
-class TestReducePJVPAndTranspose(TestAddPJVPAndTranspose):
+class TestReduceSumPJVPAndTranspose(TestAddPJVPAndTranspose):
 
     def init_data(self):
         # Set prim op
-        self.op_type = 'reduce_p'
+        self.op_type = 'reduce_sum_p'
         X = paddle.static.data(name='X', shape=[2, 3, 4, 5], dtype='float64')
         self.prim_input = {'X': X}
         self.prim_output = {
@@ -751,9 +751,9 @@ class TestReducePJVPAndTranspose(TestAddPJVPAndTranspose):
 
         self.all_ops = [
             # prim op:
-            'reduce_p',
+            'reduce_sum_p',
             # jvp op:
-            'reduce_p',
+            'reduce_sum_p',
             # transpose op:
             'reshape_p',
             'broadcast_p',
@@ -1041,6 +1041,96 @@ class TestEqPJVPAndTranspose(TestAddPJVPAndTranspose):
         self.all_ops = [
             # prim op:
             'eq_p',
+            # jvp op:
+            'fill_constant_p',
+            # transpose op:
+        ]
+
+
+class TestGtPJVPAndTranspose(TestAddPJVPAndTranspose):
+
+    def init_data(self):
+        # Set prim op
+        self.op_type = 'gt_p'
+        X = paddle.static.data(name='X', shape=[4, 5], dtype='float64')
+        Y = paddle.static.data(name='Y', shape=[4, 5], dtype='float64')
+
+        self.prim_input = {'X': X, 'Y': Y}
+        self.prim_output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.prim_attrs = {}
+
+        # Set JVP
+        X_DOT = paddle.static.data(name='X_DOT', shape=[4, 5], dtype='float64')
+        Y_DOT = paddle.static.data(name='Y_DOT', shape=[4, 5], dtype='float64')
+        self.jvp_args = (X_DOT, Y_DOT)
+        self.jvp_out_shape_map = {0: self.prim_output['Z']}
+
+        self.all_ops = [
+            # prim op:
+            'gt_p',
+            # jvp op:
+            'fill_constant_p',
+            # transpose op:
+        ]
+
+
+class TestGePJVPAndTranspose(TestAddPJVPAndTranspose):
+
+    def init_data(self):
+        # Set prim op
+        self.op_type = 'ge_p'
+        X = paddle.static.data(name='X', shape=[4, 5], dtype='float64')
+        Y = paddle.static.data(name='Y', shape=[4, 5], dtype='float64')
+
+        self.prim_input = {'X': X, 'Y': Y}
+        self.prim_output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.prim_attrs = {}
+
+        # Set JVP
+        X_DOT = paddle.static.data(name='X_DOT', shape=[4, 5], dtype='float64')
+        Y_DOT = paddle.static.data(name='Y_DOT', shape=[4, 5], dtype='float64')
+        self.jvp_args = (X_DOT, Y_DOT)
+        self.jvp_out_shape_map = {0: self.prim_output['Z']}
+
+        self.all_ops = [
+            # prim op:
+            'ge_p',
+            # jvp op:
+            'fill_constant_p',
+            # transpose op:
+        ]
+
+
+class TestNePJVPAndTranspose(TestAddPJVPAndTranspose):
+
+    def init_data(self):
+        # Set prim op
+        self.op_type = 'ne_p'
+        X = paddle.static.data(name='X', shape=[4, 5], dtype='float64')
+        Y = paddle.static.data(name='Y', shape=[4, 5], dtype='float64')
+
+        self.prim_input = {'X': X, 'Y': Y}
+        self.prim_output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.prim_attrs = {}
+
+        # Set JVP
+        X_DOT = paddle.static.data(name='X_DOT', shape=[4, 5], dtype='float64')
+        Y_DOT = paddle.static.data(name='Y_DOT', shape=[4, 5], dtype='float64')
+        self.jvp_args = (X_DOT, Y_DOT)
+        self.jvp_out_shape_map = {0: self.prim_output['Z']}
+
+        self.all_ops = [
+            # prim op:
+            'ne_p',
             # jvp op:
             'fill_constant_p',
             # transpose op:

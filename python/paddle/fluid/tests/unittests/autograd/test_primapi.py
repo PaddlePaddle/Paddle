@@ -150,6 +150,8 @@ class TestWithoutProgramGuard(unittest.TestCase):
      (np.random.rand(3, 3), np.random.rand(3, 3)),
      (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64'),
     ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
+    ('abs', paddle.abs, (np.random.uniform(-10, 10,
+                                           (10, 10)), ), None, 'float32'),
 ))
 # paddle.where, paddle.pow, paddle.maximum has no double grad definition,
 # can not compute forward grad use double trick
