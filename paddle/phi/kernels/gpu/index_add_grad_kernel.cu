@@ -104,5 +104,6 @@ PD_REGISTER_KERNEL(index_add_grad,
                    phi::IndexAddGradKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    int,
                    int64_t) {}

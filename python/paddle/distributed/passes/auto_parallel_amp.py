@@ -314,7 +314,9 @@ class AMPState(object):
                         consume_op_attr.set_input_dist_attr(
                             cast_name, in_var_dist_attr)
                     else:
-                        assert in_var.dtype == dst_dtype
+                        assert in_var.dtype == dst_dtype, "op [{}] expect input [{}] to be dtype [{}] BUT got [{}]. {}".format(
+                            grad_op.type, in_name, dst_dtype, in_var.dtype,
+                            str(grad_op))
 
         for out_name in grad_op.output_names:
             if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_output(
