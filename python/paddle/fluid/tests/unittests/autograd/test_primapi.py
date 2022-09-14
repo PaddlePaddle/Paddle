@@ -257,6 +257,8 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
          (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'),
         ('multiply', paddle.multiply,
          (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
+        ('div', paddle.divide,
+         (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
         ('add', paddle.add,
          (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
         ('input_not_sequence', paddle.tanh,

@@ -80,7 +80,7 @@ def op_position_inputs(op):
 
     """
     args = _primop_position_argnames.lookup(op.type)
-    assert args is not None, 'args should not be None in op_position_inputs().'
+    assert args is not None, f'args of {op.type} should not be None in op_position_inputs().'
     *input_names, _ = args
 
     inputs = []
