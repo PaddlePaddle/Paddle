@@ -228,8 +228,7 @@ __global__ void AdaptiveKernelPool2D(const int nthreads,
         pool_process.compute(input_data[input_offset + input_idx], &ele);
       }
     }
-    int pool_size = exclusive ? (hend - hstart) * (wend - wstart)
-                              : ksize_height * ksize_width;
+    int pool_size = (hend - hstart) * (wend - wstart);
     pool_process.finalize(static_cast<T>(pool_size), &ele);
     int output_idx =
         channel_last
