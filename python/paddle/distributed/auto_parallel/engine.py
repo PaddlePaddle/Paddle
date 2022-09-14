@@ -283,9 +283,10 @@ class Engine:
         self._dist_contexts[mode].gradient_scale = self._strategy.gradient_scale
 
     def _optimization_tuning(self, mode, dataset, batch_size):
-        if not self._strategy.tuning.enable or mode != "train":
-            return
+        if not self._tuning.enable:
+            raise ValueError("Please set `tuning.enable=True`.")
 
+        assert mode == "train"
         # Do the build process
         self._build(mode)
         # Do the planning process
@@ -309,8 +310,6 @@ class Engine:
             # update the strategy
             self._dist_contexts[
                 mode]._strategy = self._optimization_tuner.get_best_config()
-        else:
-            return
 
     def _plan(self, mode):
         if self._planned_mode is None:
@@ -620,6 +619,7 @@ class Engine:
                 self.evaluate(valid_data, valid_sample_split, batch_size,
                               valid_steps, collate_fn, callbacks)
                 self._switch_mode("train")
+
             self._reset_metrics()
         return outputs
 
@@ -1134,7 +1134,10 @@ class Engine:
         if isinstance(optimizer, paddle.optimizer.Optimizer):
             return optimizer.get_lr()
         elif isinstance(optimizer, paddle.fluid.optimizer.Optimizer):
-            return optimizer._learning_rate.get_lr()
+            if isinstance(optimizer._learning_rate, float):
+                return optimizer._learning_rate
+            else:
+                return optimizer._learning_rate()
         else:
             raise TypeError(
                     "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \

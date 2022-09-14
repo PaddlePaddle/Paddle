@@ -127,7 +127,7 @@ def train(fetch):
     engine.fit(train_data=train_dataset,
                epochs=2,
                batch_size=batch_size,
-               valid_data=eval_dataset)
+               valid_data=eval_dataset1)
 
     # eval
     eval_dataset2 = MyDataset(batch_size)

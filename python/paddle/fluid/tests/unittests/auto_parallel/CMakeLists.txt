@@ -93,7 +93,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_dist_matmul MODULES test_dist_matmul)
   py_test_modules(test_process_mesh MODULES test_process_mesh)
   py_test_modules(test_interface MODULES test_interface)
-  py_test_modules(test_stategy MODULES test_strategy)
+  py_test_modules(test_strategy MODULES test_strategy)
   py_test_modules(test_pass_quantization MODULES test_pass_quantization)
 
 endif()
