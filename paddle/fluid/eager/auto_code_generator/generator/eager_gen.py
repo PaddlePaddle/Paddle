@@ -1485,7 +1485,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         if next_grad_api_contents:
             # Fake forward_api_contents and backward_api_contents
             forward_api_contents = grad_api_contents
-            forward_api_contents['op'] = forward_api_contents['backward_api']
+            forward_api_contents['op'] = forward_api_contents['backward_op']
             backward_api_contents = next_grad_api_contents
 
             next_node_generator = DygraphFunctionGeneratorBase(
@@ -1959,8 +1959,7 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                 forward_api_contents = backward_api_contents
 
                 # Fake forward_api_content
-                forward_api_contents['op'] = forward_api_contents[
-                    'backward_api']
+                forward_api_contents['op'] = forward_api_contents['backward_op']
                 backward_api_contents = next_grad_api_contents
 
         if len(namespace) > 0:
