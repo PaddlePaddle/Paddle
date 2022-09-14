@@ -26,6 +26,7 @@ from get_gpt_model import generate_model, create_data_holder, FakeDataset
 def apply_pass(use_recompute=False):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
+    strategy.reinit = True
     if use_recompute:
         recompute = strategy.recompute
         recompute.enable = True
@@ -79,12 +80,12 @@ class TestRecomputePass(unittest.TestCase):
         # mp2 training
         mp_engine = self.get_engine()
         mp_losses = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        mp_losses = np.array(mp_losses)
+        mp_losses = np.array(mp_losses["loss"])
 
         # mp2 recompute training
         rc_engine = self.get_engine(True)
         rc_losses = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        rc_losses = np.array(rc_losses)
+        rc_losses = np.array(rc_losses["loss"])
         self.check_results(mp_losses, rc_losses)
 
 

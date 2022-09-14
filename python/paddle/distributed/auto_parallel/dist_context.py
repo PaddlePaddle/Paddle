@@ -120,7 +120,7 @@ class DistributedContext:
         self._backup_serial_main_program_stack = []
         self._backup_serial_startup_program_stack = []
 
-        # # flag whether scale gradient with dp size
+        # flag whether scale gradient with dp size
         self._gradient_scale = True
 
         # A flag indicates whether the used parallelism is data parallel
