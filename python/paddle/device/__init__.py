@@ -119,7 +119,7 @@ def XPUPlace(dev_id):
         .. code-block:: python
 
             # required: xpu
-            
+
             import paddle
             place = paddle.device.XPUPlace(0)
     """
@@ -163,15 +163,15 @@ def MLUPlace(dev_id):
 
 def get_cudnn_version():
     """
-    This funciton return the version of cudnn. the retuen value is int which represents the 
+    This funciton return the version of cudnn. the retuen value is int which represents the
     cudnn version. For example, if it return 7600, it represents the version of cudnn is 7.6.
-    
+
     Returns:
         int: A int value which represents the cudnn version. If cudnn version is not installed, it return None.
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
 
             cudnn_version = paddle.device.get_cudnn_version()
@@ -305,7 +305,7 @@ def set_device(device):
     Examples:
 
      .. code-block:: python
-            
+
         import paddle
 
         paddle.device.set_device("cpu")
@@ -322,13 +322,13 @@ def get_device():
     """
     This funciton can get the current global device of the program is running.
     It's a string which is like 'cpu', 'gpu:x', 'xpu:x', 'mlu:x' and 'npu:x'. if the global device is not
-    set, it will return a string which is 'gpu:x' when cuda is avaliable or it 
+    set, it will return a string which is 'gpu:x' when cuda is avaliable or it
     will return a string which is 'cpu' when cuda is not avaliable.
 
     Examples:
 
      .. code-block:: python
-            
+
         import paddle
         device = paddle.device.get_device()
 
@@ -394,7 +394,7 @@ def get_all_custom_device_type():
     """
     Get all available custom device types.
 
-    Returns: 
+    Returns:
         A list of all available custom device types.
 
     Examples:

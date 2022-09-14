@@ -61,7 +61,7 @@ class AvgPool1D(Layer):
 
     Returns:
         A callable object of AvgPool1D.
-        
+
     Examples:
 
         .. code-block:: python
@@ -1102,25 +1102,25 @@ class MaxUnPool1D(Layer):
     r"""
     This API implements max unpooling 1d opereation.
 
-    `max_unpool1d` accepts the output of `max_pool1d` as input, 
-    including the indices of the maximum value and calculate the partial inverse. 
+    `max_unpool1d` accepts the output of `max_pool1d` as input,
+    including the indices of the maximum value and calculate the partial inverse.
     All non-maximum values ​​are set to zero.
 
     - Input: :math:`(N, C, L_{in})`
     - Output: :math:`(N, C, L_{out})`, where
-    
+
     .. math::
         L_{out} = (L_{in} - 1) * stride - 2 * padding + kernel\_size
 
     or as given by :attr:`output_size` in the call operator.
-    
+
     Parameters:
         kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
             it must contain an integer.
         stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
             it must contain an integer.
         padding (int | tuple): Padding that was added to the input.
-        output_size(list|tuple, optional): The target output size. If output_size is not specified, 
+        output_size(list|tuple, optional): The target output size. If output_size is not specified,
                            the actual output shape will be automatically calculated by (input_shape,
                            kernel_size, stride, padding).
         data_format (string): The data format of the input and output data.
@@ -1136,7 +1136,7 @@ class MaxUnPool1D(Layer):
 
     Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn.functional as F
             import numpy as np
@@ -1186,7 +1186,7 @@ class MaxUnPool2D(Layer):
     'max_unpool2d' accepts the output of 'max_unpool2d' as input
     Including the indices of the maximum value and calculating the partial inverse
     All non-maximum values ​​are set to zero.
-    
+
 
     Parameters:
         kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
@@ -1195,7 +1195,7 @@ class MaxUnPool2D(Layer):
             it must contain an integer.
         kernel_size (int|tuple): Size of the max unpooling window.
         padding (int | tuple): Padding that was added to the input.
-        output_size(list|tuple, optional): The target output size. If output_size is not specified, 
+        output_size(list|tuple, optional): The target output size. If output_size is not specified,
                            the actual output shape will be automatically calculated by (input_shape,
                            kernel_size, padding).
         name(str, optional): For detailed information, please refer
@@ -1217,11 +1217,11 @@ class MaxUnPool2D(Layer):
     Returns:
         A callable object of MaxUnPool2D.
 
-            
+
 
     Examples:
         .. code-block:: python
-        
+
         import paddle
         import paddle.nn.functional as F
 
@@ -1267,13 +1267,13 @@ class MaxUnPool3D(Layer):
     r"""
     This API implements max unpooling 3d opereation.
 
-    `max_unpool3d` accepts the output of `max_pool3d` as input, 
-    including the indices of the maximum value and calculate the partial inverse. 
+    `max_unpool3d` accepts the output of `max_pool3d` as input,
+    including the indices of the maximum value and calculate the partial inverse.
     All non-maximum values ​​are set to zero.
 
     - Input: :math:`(N, C, D_{in}, H_{in}, W_{in})`
     - Output: :math:`(N, C, D_{out}, H_{out}, W_{out})`, where
-    
+
     .. math::
         D_{out} = (D_{in} - 1) * stride[0] - 2 * padding[0] + kernel\_size[0]
 
@@ -1285,14 +1285,14 @@ class MaxUnPool3D(Layer):
 
     or as given by :attr:`output_size` in the call operator
 
-    
+
     Parameters:
         kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
             it must contain an integer.
         stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
             it must contain an integer.
         padding (int | tuple): Padding that was added to the input.
-        output_size(list|tuple, optional): The target output size. If output_size is not specified, 
+        output_size(list|tuple, optional): The target output size. If output_size is not specified,
                            the actual output shape will be automatically calculated by (input_shape,
                            kernel_size, stride, padding).
         data_format (string): The data format of the input and output data.
@@ -1308,7 +1308,7 @@ class MaxUnPool3D(Layer):
 
     Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn.functional as F
             import numpy as np

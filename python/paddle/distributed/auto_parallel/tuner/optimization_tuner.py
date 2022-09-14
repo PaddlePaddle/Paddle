@@ -161,7 +161,7 @@ def _copy_context(ref_dist_context):
 
 class OptimizationTuner:
     """
-    OptimizationTuner is used to manage the tuning procedure of hyper-parameters (configs) 
+    OptimizationTuner is used to manage the tuning procedure of hyper-parameters (configs)
     of Optimization Pass in AutoParallel.
     """
 
@@ -466,7 +466,7 @@ class OptimizationTuner:
         Return the best optimization configuration found in the tuning.
 
         Returns:
-            A object of fleet.DistributedStrategy with best configuration.       
+            A object of fleet.DistributedStrategy with best configuration.
         """
         assert self._best_iter >= 0, "The best configuration is not found yet !"
         best_trial = self._finished_trials[self._best_iter]
@@ -481,7 +481,7 @@ class OptimizationTuner:
         summary_ = """
 Tuning Result Summary
 Run total {} trials with {} min.
-The best trial is: [{}], whose configuration is following: 
+The best trial is: [{}], whose configuration is following:
         """.format(len(self._finished_trials),
                    (time.time() - self._tuning_start_time) / 60,
                    best_trial.name)
@@ -508,8 +508,8 @@ The best trial is: [{}], whose configuration is following:
 
     def tune(self):
         """
-        Performs the search for best hyperparameter configuations 
-        for the selected optimization pass(es). 
+        Performs the search for best hyperparameter configuations
+        for the selected optimization pass(es).
         """
 
         # step1: collect model info which might be used for

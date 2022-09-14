@@ -47,7 +47,7 @@ class UCIHousing(Dataset):
         Dataset: instance of UCI housing dataset.
 
     Examples:
-        
+
         .. code-block:: python
 
             import paddle

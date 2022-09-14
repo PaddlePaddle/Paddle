@@ -191,9 +191,9 @@ def interpolate(x,
         'bicubic' : Bicubic interpolation
         'area': Area interpolation
 
-    Linear interpolation is the method of using a line connecting two known quantities 
-    to determine the value of an unknown quantity between the two known quantities. 
-    
+    Linear interpolation is the method of using a line connecting two known quantities
+    to determine the value of an unknown quantity between the two known quantities.
+
     Nearest neighbor interpolation is to perform nearest neighbor interpolation
     in both the 3rd dimension(in height direction) and the 4th dimension(in width
     direction) on input tensor.
@@ -218,8 +218,8 @@ def interpolate(x,
 
     Area interpolation is to perform area interpolation
     in both the 3rd dimension(in height direction) , the 4th dimension(in width
-    direction) and the 5th dimension(in depth direction) on input tensor. Set to 
-    area will directly call `paddle.nn.functional.adaptive_avg_pool1d` or 
+    direction) and the 5th dimension(in depth direction) on input tensor. Set to
+    area will directly call `paddle.nn.functional.adaptive_avg_pool1d` or
     `paddle.nn.functional.adaptive_avg_pool2d` or `paddle.nn.functional.adaptive_avg_pool3d`.
 
     Example:
@@ -242,7 +242,7 @@ def interpolate(x,
                 input : (N,C,W_in)
                 output: (N,C,W_out) where:
                 W_out = W_{in} * scale_{factor}
-        
+
         Nearest neighbor interpolation:
 
               align_corners = False
@@ -294,25 +294,25 @@ def interpolate(x,
 
     For details of linear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Linear_interpolation.
-    
+
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
-    
+
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
-    
+
     For details of trilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
-    
+
     For details of bicubic interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bicubic_interpolation
-    
+
     Parameters:
         x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Tensor|None): Output shape of image resize
-             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
-             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
+             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
+             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
              Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
              If a Tensor, its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
@@ -664,9 +664,9 @@ def upsample(x,
         'trilinear' : Trilinear interpolation
         'nearest' : Nearest neighbor interpolation
         'bicubic' : Bicubic interpolation
-    Linear interpolation is the method of using a line connecting two known quantities 
-    to determine the value of an unknown quantity between the two known quantities. 
-    
+    Linear interpolation is the method of using a line connecting two known quantities
+    to determine the value of an unknown quantity between the two known quantities.
+
     Nearest neighbor interpolation is to perform nearest neighbor interpolation
     in both the 3rd dimension(in height direction) and the 4th dimension(in width
     direction) on input tensor.
@@ -675,7 +675,7 @@ def upsample(x,
     W-direction in this op) on a rectilinear 2D grid. The key idea is
     to perform linear interpolation first in one direction, and then
     again in the other direction.
-    
+
     Bicubic interpolation is an extension of cubic interpolation for interpolating
     data points on a two-dimensional regular grid. The interpolated surface is
     smoother than corresponding surfaces obtained by bilinear interpolation or
@@ -697,7 +697,7 @@ def upsample(x,
 
     Example:
     .. code-block:: text
-    
+
         For scale_factor:
             if align_corners = True && out_size > 1 :
               scale_factor = (in_size-1.0)/(out_size-1.0)
@@ -726,7 +726,7 @@ def upsample(x,
               output: (N,C,H_out,W_out) where:
               H_out = round(H_{in} * scale_{factor})
               W_out = round(W_{in} * scale_{factor})
-        
+
         Bilinear interpolation:
           if:
               align_corners = False , align_mode = 0
@@ -767,30 +767,30 @@ def upsample(x,
               W_out = W_{in} * scale_{factor}
     https://en.wikipedia.org/wiki/Linear_interpolation.
     For details of linear interpolation, please refer to Wikipedia:
-    
+
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
-    
+
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
-    
+
     For details of bicubic interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bicubic_interpolation
-    
+
     For details of trilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
-    
+
     Parameters:
         x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Tensor|None, optional): Output shape of image resize
-             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
-             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
+             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
+             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
              Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
              If a Tensor , its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None, optional): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
-             And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if 
+             And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if
              it is either a list or a tuple or a Tensor.
              Default: None.
         mode (str, optional): The resample method. It supports 'linear', 'nearest', 'bilinear',
@@ -817,7 +817,7 @@ def upsample(x,
 
         Examples:
         .. code-block:: python
-	
+
 		import paddle
 		import paddle.nn as nn
 
@@ -1353,11 +1353,11 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     Parameters:
         x (Tensor): The input tensor with data type float32/double/int32/int64_t.
         pad (Tensor|list[int]|tuple[int]): The padding size with data type int.
-            If mode is 'constant' and length of pad is twice as length of x dimension, then x will 
+            If mode is 'constant' and length of pad is twice as length of x dimension, then x will
             be padded from the first  dimension to the last dimension.
             Else: 1. If input dimension is 3, then the pad has the form (pad_left,
-            pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right, 
-            pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form 
+            pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right,
+            pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form
             (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
         mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'
 
@@ -1370,12 +1370,12 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         data_format (str, optional): An string from: "NCL", "NLC", NHWC", "NCHW", "NCDHW", "NDHWC". Specify the data format of
            the input data. Default is "NCHW"，
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-                    
-    Returns: 
+
+    Returns:
         Tensor, a Tensor padded according to pad and mode and data type is same as input.
 
     Example:
-    
+
         .. code-block:: text
 
             x = [[[[[1., 2., 3.],
@@ -1428,21 +1428,21 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
             import paddle
             import paddle.nn.functional as F
-            
+
             # example 1
             x_shape = (1, 1, 3)
             x = paddle.arange(paddle.prod(paddle.to_tensor(x_shape)), dtype="float32").reshape(x_shape) + 1
             y = F.pad(x, [0, 0, 0, 0, 2, 3], value=1, mode='constant', data_format="NCL")
             print(y)
             # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
-            
+
             # example 2
             x_shape = (1, 1, 3)
             x = paddle.arange(paddle.prod(paddle.to_tensor(x_shape)), dtype="float32").reshape(x_shape) + 1
             y = F.pad(x, [2, 3], value=1, mode='constant', data_format="NCL")
             print(y)
             # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
-            
+
             # example 3
             x_shape = (1, 1, 2, 3)
             x = paddle.arange(paddle.prod(paddle.to_tensor(x_shape)), dtype="float32").reshape(x_shape) + 1
@@ -1601,7 +1601,7 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
         name(str, optional): The default value is None. Normally there is no need for user
             to set this property.
 
-    Returns: 
+    Returns:
         Tensor, padded with 0 according to pad and data type is same as input.
 
     Examples:
@@ -1637,8 +1637,8 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
         x2 (Tensor): Second input. float32/double.
         axis (int, optional): Dimension of vectors to compute cosine similarity. Default is 1.
         eps(float, optional): Small value to avoid division by zero. Default is 1e-8.
-                    
-    Returns: 
+
+    Returns:
         Tensor, a Tensor representing cosine similarity between x1 and x2 along axis.
 
     Examples:
@@ -1670,7 +1670,7 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
             result = paddle.nn.functional.cosine_similarity(x1, x2, axis=0)
             print(result)
             # [0.97689527,  0.99996042, -0.55138415]
-            
+
     """
     w12 = sum(paddle.multiply(x1, x2), axis=axis)
     w1 = sum(paddle.multiply(x1, x1), axis=axis)
@@ -1696,7 +1696,7 @@ def linear(x, weight, bias=None, name=None):
     input should be a multi-dimensional tensor of shape
     :math:`[batch\_size, *, in\_features]` , where :math:`*` means any number of
     additional dimensions. The linear operator multiplies input tensor with
-    weight and produces an output tensor of shape :math:`[batch\_size, *, out\_features]` , 
+    weight and produces an output tensor of shape :math:`[batch\_size, *, out\_features]` ,
     If :math:`bias` is not None, the bias should be a 1-D tensor of shape
     :math:`[out\_features]` and will be added to the output.
 
@@ -1714,9 +1714,9 @@ def linear(x, weight, bias=None, name=None):
 
     Examples:
         .. code-block:: python
-          
+
           import paddle
-          
+
           x = paddle.randn((3, 2), dtype="float32")
           # x: [[-0.32342386 -1.200079  ]
           #     [ 0.7979031  -0.90978354]
@@ -1819,7 +1819,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
 
             import paddle
             import numpy as np
-            
+
             x_data = np.array([[[0, 1, 0],
                                 [ 1,  0, 1]]]).astype("float32")
             print(x_data.shape)
@@ -1827,7 +1827,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
             x = paddle.to_tensor(x_data, stop_gradient=False)
             output = paddle.nn.functional.label_smooth(x)
             print(output)
-            
+
             #[[[0.03333334 0.93333334 0.03333334]
             #  [0.93333334 0.03333334 0.93333334]]]
     """
@@ -1860,19 +1860,19 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
 def class_center_sample(label, num_classes, num_samples, group=None):
     """
     Class center sample method is proposed from the paper PartialFC that only sample a subset of the class centers.
-    The process of sampling subset class centers is straightforward: 
+    The process of sampling subset class centers is straightforward:
 
     1. First select the positive class centers;
     2. Then randomly sample negative class centers.
 
-    Specifically, given a label tensor, shape [batch_size], select all the positive class centers and randomly 
+    Specifically, given a label tensor, shape [batch_size], select all the positive class centers and randomly
     sample negative class centers, then remap the input label tensor using the sampled class centers.
 
     For more information, Partial FC: Training 10 Million Identities on a Single Machine
     arxiv: https://arxiv.org/abs/2010.05222
-    
+
     .. hint::
-        If the number of the positive class centers is greater than the input num_samples, it keeps all the positive 
+        If the number of the positive class centers is greater than the input num_samples, it keeps all the positive
         class centers and the shape of sampled_class_center will be [num_positive_class_centers].
 
         The API supports CPU, single GPU and multi GPU.
@@ -1886,7 +1886,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         num_classes (int): A positive integer to specify the number of classes at local rank.
             Note that num_classes of each GPU can be different.
         num_samples (int): A positive integer to specify the number of class center to sample.
-        group (Group, optional): The group instance return by paddle.distributed.new_group 
+        group (Group, optional): The group instance return by paddle.distributed.new_group
             or ``None`` for global default group or ``False`` for data parallel (do not communication cross ranks).
             Default is ``None``.
 
@@ -1952,7 +1952,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         #       [6 , 11, 10, 7 , 4 , 8 , 12, 12, 11, 12, 13, 1 , 3 , 9 , 7 , 9 , 4 , 6 , 0 , 2 ])
         #Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
         #       [0, 2, 4, 8, 9, 3])
-        
+
         # rank 1 output:
         #Tensor(shape=[20], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
         #       [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])
@@ -2048,17 +2048,17 @@ def fold(x,
          dilations=1,
          name=None):
     r"""
-    
+
     Combines an array of sliding local blocks into a large containing
-    tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each 
-    combined value in the resulting large tensor by summing all values from all containing blocks. 
+    tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each
+    combined value in the resulting large tensor by summing all values from all containing blocks.
 
 
     For each input :math:`x` with shape [N, C_in , L], the output shape [N, C_out, H_out, W_out]
     can be calculated as following.
 
     .. math::
-    
+
         H_{out} &= output\_size[0] \\
         W_{out} &= output\_size[1] \\
         C_{out} &= \frac{C_{in}}{kernel\_sizes[0]\times kernel\_sizes[1]} \\

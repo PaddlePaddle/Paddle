@@ -1290,7 +1290,7 @@ class TestLayerNormFp16(unittest.TestCase):
 
 class TestBf16(unittest.TestCase):
     '''
-    test amp for BF16 
+    test amp for BF16
     '''
 
     def train(self, enable_amp=True, amp_level='O1'):

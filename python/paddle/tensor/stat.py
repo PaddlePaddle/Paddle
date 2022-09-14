@@ -129,10 +129,10 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
-        axis (int|list|tuple, optional): The axis along which to perform variance calculations. ``axis`` should be int, list(int) or tuple(int). 
-        
-            - If ``axis`` is a list/tuple of dimension(s), variance is calculated along all element(s) of ``axis`` . ``axis`` or element(s) of ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` . 
-            - If ``axis`` or element(s) of ``axis`` is less than 0, it works the same way as :math:`axis + D` . 
+        axis (int|list|tuple, optional): The axis along which to perform variance calculations. ``axis`` should be int, list(int) or tuple(int).
+
+            - If ``axis`` is a list/tuple of dimension(s), variance is calculated along all element(s) of ``axis`` . ``axis`` or element(s) of ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
+            - If ``axis`` or element(s) of ``axis`` is less than 0, it works the same way as :math:`axis + D` .
             - If ``axis`` is None, variance is calculated over all elements of ``x``. Default is None.
 
         unbiased (bool, optional): Whether to use the unbiased estimation. If ``unbiased`` is True, the divisor used in the computation is :math:`N - 1`, where :math:`N` represents the number of elements along ``axis`` , otherwise the divisor is :math:`N`. Default is True.
@@ -236,7 +236,7 @@ def numel(x, name=None):
         .. code-block:: python
 
             import paddle
-            
+
             x = paddle.full(shape=[4, 5, 7], fill_value=0, dtype='int32')
             numel = paddle.numel(x) # 140
 

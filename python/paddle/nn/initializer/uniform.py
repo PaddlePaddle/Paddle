@@ -44,7 +44,7 @@ class Uniform(UniformInitializer):
             # linear.weight:  [[-0.46245047  0.05260676]
             #                  [ 0.38054508  0.29169726]]
             # linear.bias:  [-0.2734719   0.23939109]
-            
+
             res = linear(data)
             # res:  [[[-0.3553773  0.5836951]]
             #        [[-0.3553773  0.5836951]]
