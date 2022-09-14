@@ -77,6 +77,7 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
 
     out->Resize(phi::make_ddim(slice_dims));
 
+    // Note(0x45f): To support slice Tensor which shape like [0, 0, 0].
     if (!x->initialized()) {
       out->mutable_data(x->place(), x->dtype());
       out->set_layout(experimental::DataLayout::kMKLDNN);
