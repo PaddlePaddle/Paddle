@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/flip_kernel.h"
-
+#include "paddle/phi/core/utils/array.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -22,22 +22,21 @@
 
 namespace phi {
 
-template <typename T>
+template <typename T,size_t Rank>
 __global__ void flip_cuda_kernel(const int N,
                                  const T* in_data,
                                  T* out_data,
-                                 int64_t* x_shape,
-                                 int64_t* x_stride,
-                                 int* flip_dims,
-                                 int flip_dims_size,
-                                 int total_dims) {
+                                 phi::Array<int64_t,Rank> x_shape,
+                                 phi::Array<int64_t,Rank> x_stride,
+                                 phi::Array<int,Rank> flip_dims,
+                                 int flip_dims_size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= N) {
     return;
   }
 
   int cur_indices = idx, rem = 0, dst_offset = 0;
-  for (int i = 0; i < total_dims; ++i) {
+  for (int i = 0; i < Rank; ++i) {
     int64_t temp = cur_indices;
     cur_indices = cur_indices / x_stride[i];
     rem = temp - cur_indices * x_stride[i];
@@ -52,6 +51,27 @@ __global__ void flip_cuda_kernel(const int N,
   }
   out_data[idx] = in_data[dst_offset];
 }
+
+#define CALL_FLIP_CUDA_KERNEL(N)                                            \
+  case N: {                                                                 \
+    phi::Array<int64_t, N> _stride;                                         \
+    phi::Array<int64_t, N> _shape;                                          \
+    phi::Array<int, N> _flip_dims;                                          \
+    for (size_t idx = 0; idx < N; ++idx) {                                  \
+      _stride[idx] = x_stride_v[idx];                                       \
+      _shape[idx] = x_dims_v[idx];                                          \                                   
+      _flip_dims[idx] = idx<flip_dims_size?flip_dims[idx]:0;                \
+    }                                                                       \
+    flip_cuda_kernel<T, N>                                                  \
+      <<<dim_grid, dim_block, 0, dev_ctx.stream()>>>(numel,                 \
+                                                     in_data,               \
+                                                     out_data,              \
+                                                     _shape,                \
+                                                     _stride,               \
+                                                     _flip_dims,            \
+                                                     flip_dims_size);       \
+    break;                                                                  \
+  }   
 
 template <typename T, typename Context>
 void FlipKernel(const Context& dev_ctx,
@@ -68,11 +88,11 @@ void FlipKernel(const Context& dev_ctx,
   const int flip_dims_size = static_cast<int>(flip_dims.size());
   auto x_dims = x.dims();
   const int total_dims = x_dims.size();
-  const int N = x.numel();
+  const int numel = x.numel();
 
   int block_size = 512;
   dim3 dim_block(block_size);
-  dim3 dim_grid((N + block_size - 1) / block_size);
+  dim3 dim_grid((numel + block_size - 1) / block_size);
 
   for (size_t i = 0; i < flip_dims.size(); ++i) {
     if (flip_dims[i] < 0) {
@@ -84,55 +104,22 @@ void FlipKernel(const Context& dev_ctx,
   std::vector<int64_t> x_dims_v = phi::vectorize(x_dims);
   std::vector<int64_t> x_stride_v = phi::vectorize(x_stride);
 
-  int bytes = total_dims * sizeof(int64_t);
-  auto x_strides_array_tmp = paddle::memory::Alloc(
-      dev_ctx.GetPlace(),
-      bytes,
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  int64_t* x_strides_array_gpu =
-      reinterpret_cast<int64_t*>(x_strides_array_tmp->ptr());
-  paddle::memory::Copy(gplace,
-                       x_strides_array_gpu,
-                       cplace,
-                       x_stride_v.data(),
-                       bytes,
-                       dev_ctx.stream());
-
-  auto x_shape_array_tmp = paddle::memory::Alloc(
-      dev_ctx.GetPlace(),
-      bytes,
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  int64_t* x_shape_array_gpu =
-      reinterpret_cast<int64_t*>(x_shape_array_tmp->ptr());
-  paddle::memory::Copy(gplace,
-                       x_shape_array_gpu,
-                       cplace,
-                       x_dims_v.data(),
-                       bytes,
-                       dev_ctx.stream());
-
-  bytes = flip_dims_size * sizeof(int);
-  auto flip_dims_array_tmp = paddle::memory::Alloc(
-      dev_ctx.GetPlace(),
-      bytes,
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  int* flip_dims_array_gpu = reinterpret_cast<int*>(flip_dims_array_tmp->ptr());
-  paddle::memory::Copy(gplace,
-                       flip_dims_array_gpu,
-                       cplace,
-                       flip_dims.data(),
-                       bytes,
-                       dev_ctx.stream());
-
-  flip_cuda_kernel<T>
-      <<<dim_grid, dim_block, 0, dev_ctx.stream()>>>(N,
-                                                     in_data,
-                                                     out_data,
-                                                     x_shape_array_gpu,
-                                                     x_strides_array_gpu,
-                                                     flip_dims_array_gpu,
-                                                     flip_dims_size,
-                                                     total_dims);
+   switch (total_dims) {
+    CALL_FLIP_CUDA_KERNEL(1);
+    CALL_FLIP_CUDA_KERNEL(2);
+    CALL_FLIP_CUDA_KERNEL(3);
+    CALL_FLIP_CUDA_KERNEL(4);
+    CALL_FLIP_CUDA_KERNEL(5);
+    CALL_FLIP_CUDA_KERNEL(6);
+    CALL_FLIP_CUDA_KERNEL(7);
+    CALL_FLIP_CUDA_KERNEL(8);
+    CALL_FLIP_CUDA_KERNEL(9);
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "dims of input tensor should be less than 10, But received"
+          "%d",
+          x_dims.size()));
+  }
 }
 }  // namespace phi
 
@@ -148,3 +135,4 @@ PD_REGISTER_KERNEL(flip,
                    bool,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+                
