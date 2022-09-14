@@ -182,27 +182,11 @@
     func : asinh_grad
   inplace : (out_grad -> x_grad)
 
-- backward_api : assign_double_grad
-  forward : assign_grad (Tensor grad_out) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad)
-  output : Tensor(grad_out_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : assign
-  backward: assign_triple_grad
-  inplace : (grad_x_grad -> grad_out_grad)
-
 - backward_api : assign_grad
   forward : assign (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
   output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : assign
-  backward: assign_double_grad
-  inplace : (out_grad -> x_grad)
+  invoke : assign(out_grad)
 
 - backward_api : assign_out__grad
   forward : assign_out_ (Tensor x, Tensor output) -> Tensor(out)
@@ -213,16 +197,6 @@
   kernel :
     func : assign
   inplace : (out_grad -> x_grad)
-
-- backward_api : assign_triple_grad
-  forward : assign_double_grad (Tensor grad_out) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad)
-  output : Tensor(grad_out_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : assign
-  inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_api : atan_grad
   forward : atan (Tensor x) -> Tensor(out)
