@@ -333,6 +333,224 @@ class AdamWMLUKernel : public AdamMLUKernel<T> {
   }
 };
 
+template <typename T>
+class MergedAdamMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    // Get inputs and outputs
+    auto params = ctx.MultiInput<framework::Tensor>("Param");
+    auto grads = ctx.MultiInput<framework::Tensor>("Grad");
+    auto lrs = ctx.MultiInput<framework::Tensor>("LearningRate");
+    auto mom1s = ctx.MultiInput<framework::Tensor>("Moment1");
+    auto mom2s = ctx.MultiInput<framework::Tensor>("Moment2");
+    auto beta1_pows = ctx.MultiInput<framework::Tensor>("Beta1Pow");
+    auto beta2_pows = ctx.MultiInput<framework::Tensor>("Beta2Pow");
+    auto master_params = ctx.MultiInput<framework::Tensor>("MasterParam");
+    auto param_outs = ctx.MultiOutput<framework::Tensor>("ParamOut");
+    auto mom1_outs = ctx.MultiOutput<framework::Tensor>("Moment1Out");
+    auto mom2_outs = ctx.MultiOutput<framework::Tensor>("Moment2Out");
+    auto beta1_pow_outs = ctx.MultiOutput<framework::Tensor>("Beta1PowOut");
+    auto beta2_pow_outs = ctx.MultiOutput<framework::Tensor>("Beta2PowOut");
+
+    // Check validation of inputs and outputs
+    size_t param_num = params.size();
+    PADDLE_ENFORCE_EQ(param_num,
+                      param_outs.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of Output(ParamOut) must be equal to "
+                          "Input(Param), but got the size of Output(ParamOut) "
+                          "is %d, the size of Input(Param) is %d.",
+                          param_outs.size(),
+                          param_num));
+
+    bool skip_update = false;
+    if (ctx.HasInput("SkipUpdate")) {
+      auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
+      PADDLE_ENFORCE_EQ(skip_update_tensor->numel(),
+                        1,
+                        platform::errors::InvalidArgument(
+                            "Input(SkipUpdate) size must be 1, but get %d",
+                            skip_update_tensor->numel()));
+      std::vector<bool> skip_update_vec;
+      paddle::framework::TensorToVector(
+          *skip_update_tensor, ctx.device_context(), &skip_update_vec);
+      ctx.device_context().Wait();
+      skip_update = skip_update_vec[0];
+    }
+    // skip_update=true, just copy input to output, and TensorCopy will call
+    // mutable_data
+
+    if (skip_update) {
+      VLOG(4) << "MergedAdam skip update";
+      for (size_t i = 0; i < param_num; ++i) {
+        framework::TensorCopy(
+            *params[i],
+            ctx.GetPlace(),
+            ctx.template device_context<platform::MLUDeviceContext>(),
+            param_outs[i]);
+        framework::TensorCopy(
+            *mom1s[i],
+            ctx.GetPlace(),
+            ctx.template device_context<platform::MLUDeviceContext>(),
+            mom1_outs[i]);
+        framework::TensorCopy(
+            *mom2s[i],
+            ctx.GetPlace(),
+            ctx.template device_context<platform::MLUDeviceContext>(),
+            mom2_outs[i]);
+        framework::TensorCopy(
+            *beta1_pows[i],
+            beta1_pows[i]->place(),
+            ctx.template device_context<platform::MLUDeviceContext>(),
+            beta1_pow_outs[i]);
+        framework::TensorCopy(
+            *beta2_pows[i],
+            beta2_pows[i]->place(),
+            ctx.template device_context<platform::MLUDeviceContext>(),
+            beta2_pow_outs[i]);
+      }
+      return;
+    }
+
+    bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
+    VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
+
+    // Get beta1, beta2 and epsilon from attribute.
+    const Tensor* beta1_tensor = nullptr;
+    const Tensor* beta2_tensor = nullptr;
+    const Tensor* epsilon_tensor = nullptr;
+
+    Tensor beta1_tmp(experimental::DataType::FLOAT32);
+    Tensor beta2_tmp(experimental::DataType::FLOAT32);
+    Tensor epsilon_tmp(experimental::DataType::FLOAT32);
+
+    T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
+    T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
+    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
+    beta1_tmp.mutable_data<T>({1}, ctx.GetPlace());
+    beta2_tmp.mutable_data<T>({1}, ctx.GetPlace());
+    epsilon_tmp.mutable_data<T>({1}, ctx.GetPlace());
+    MLUCnnlTensorDesc beta1_tmp_desc(beta1_tmp);
+    MLUCnnlTensorDesc beta2_tmp_desc(beta2_tmp);
+    MLUCnnlTensorDesc epsilon_tmp_desc(epsilon_tmp);
+    MLUCnnl::Fill(ctx,
+                  CNNL_POINTER_MODE_HOST,
+                  &beta1,
+                  beta1_tmp_desc.get(),
+                  GetBasePtr(&beta1_tmp));
+    MLUCnnl::Fill(ctx,
+                  CNNL_POINTER_MODE_HOST,
+                  &beta2,
+                  beta2_tmp_desc.get(),
+                  GetBasePtr(&beta2_tmp));
+    MLUCnnl::Fill(ctx,
+                  CNNL_POINTER_MODE_HOST,
+                  &epsilon,
+                  epsilon_tmp_desc.get(),
+                  GetBasePtr(&epsilon_tmp));
+    beta1_tensor = &beta1_tmp;
+    beta2_tensor = &beta2_tmp;
+    epsilon_tensor = &epsilon_tmp;
+
+    // Loop to compute
+    for (size_t i = 0; i < param_num; ++i) {
+      VLOG(4) << "[MergedAdam] loop: " << i;
+      param_outs[i]->ShareDataWith(*params[i]);
+      mom1_outs[i]->ShareDataWith(*mom1s[i]);
+      mom2_outs[i]->ShareDataWith(*mom2s[i]);
+
+      LoDTensor beta1_pow_tmp;
+      LoDTensor beta2_pow_tmp;
+      if (beta1_pows[i]->place() == platform::CPUPlace()) {
+        T beta1 = *beta1_pows[i]->data<T>();
+        beta1_pow_tmp.mutable_data<T>({1}, ctx.GetPlace());
+        MLUCnnlTensorDesc beta1_pow_tmp_desc(beta1_pow_tmp);
+        MLUCnnl::Fill(ctx,
+                      CNNL_POINTER_MODE_HOST,
+                      &beta1,
+                      beta1_pow_tmp_desc.get(),
+                      GetBasePtr(&beta1_pow_tmp));
+        beta1_pows[i] = &beta1_pow_tmp;
+      }
+      if (beta2_pows[i]->place() == platform::CPUPlace()) {
+        T beta2 = *beta2_pows[i]->data<T>();
+        beta2_pow_tmp.mutable_data<T>({1}, ctx.GetPlace());
+        MLUCnnlTensorDesc beta2_pow_tmp_desc(beta2_pow_tmp);
+        MLUCnnl::Fill(ctx,
+                      CNNL_POINTER_MODE_HOST,
+                      &beta2,
+                      beta2_pow_tmp_desc.get(),
+                      GetBasePtr(&beta2_pow_tmp));
+        beta2_pows[i] = &beta2_pow_tmp;
+      }
+
+      VLOG(3) << "beta1_pow.numel() : " << beta1_pows[i]->numel()
+              << "beta2_pow.numel() : " << beta2_pows[i]->numel();
+      VLOG(3) << "param.numel(): " << params[i]->numel();
+      PADDLE_ENFORCE_EQ(beta1_pow_outs[i]->numel(),
+                        1,
+                        platform::errors::InvalidArgument(
+                            "beta1 pow output size should be 1, but received "
+                            "value is:%d.",
+                            beta1_pow_outs[i]->numel()));
+
+      PADDLE_ENFORCE_EQ(beta2_pow_outs[i]->numel(),
+                        1,
+                        platform::errors::InvalidArgument(
+                            "beta2 pow output size should be 1, but received "
+                            "value is:%d.",
+                            beta2_pow_outs[i]->numel()));
+      MLUCnnlTensorDesc param_desc(*params[i]);
+      MLUCnnlTensorDesc mom1_desc(*mom1s[i]);
+      MLUCnnlTensorDesc mom2_desc(*mom2s[i]);
+      MLUCnnlTensorDesc grad_desc(*grads[i]);
+      MLUCnnl::ApplyAdam(ctx,
+                         param_desc.get(),
+                         GetBasePtr(param_outs[i]),
+                         mom1_desc.get(),
+                         GetBasePtr(mom1_outs[i]),
+                         mom2_desc.get(),
+                         GetBasePtr(mom2_outs[i]),
+                         grad_desc.get(),
+                         GetBasePtr(grads[i]),
+                         GetBasePtr(lrs[i]),
+                         GetBasePtr(beta1_tensor),
+                         GetBasePtr(beta2_tensor),
+                         GetBasePtr(beta1_pows[i]),
+                         GetBasePtr(beta2_pows[i]),
+                         GetBasePtr(epsilon_tensor),
+                         /*use_nesterov*/ false);
+      if (!use_global_beta_pow) {
+        beta1_pow_outs[i]->mutable_data<T>(ctx.GetPlace());
+        beta2_pow_outs[i]->mutable_data<T>(ctx.GetPlace());
+
+        MLUCnnlTensorDesc beta1_desc(*beta1_tensor);
+        MLUCnnlOpTensorDesc mul_op_desc(
+            CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
+
+        MLUCnnl::OpTensor(ctx,
+                          mul_op_desc.get(),
+                          beta1_desc.get(),
+                          GetBasePtr(beta1_pows[i]),
+                          beta1_desc.get(),
+                          GetBasePtr(beta1_tensor),
+                          beta1_desc.get(),
+                          GetBasePtr(beta1_pow_outs[i]),
+                          ToCnnlDataType<T>());
+
+        MLUCnnl::OpTensor(ctx,
+                          mul_op_desc.get(),
+                          beta1_desc.get(),
+                          GetBasePtr(beta2_pows[i]),
+                          beta1_desc.get(),
+                          GetBasePtr(beta2_tensor),
+                          beta1_desc.get(),
+                          GetBasePtr(beta2_pow_outs[i]),
+                          ToCnnlDataType<T>());
+      }
+    }
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
@@ -346,3 +564,7 @@ REGISTER_OP_MLU_KERNEL(adam,
 REGISTER_OP_MLU_KERNEL(adamw,
                        ops::AdamWMLUKernel<float>,
                        ops::AdamWMLUKernel<plat::float16>);
+
+REGISTER_OP_MLU_KERNEL(merged_adam,
+                       ops::MergedAdamMLUKernel<float>,
+                       ops::MergedAdamMLUKernel<plat::float16>);
