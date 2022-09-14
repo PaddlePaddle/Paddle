@@ -467,7 +467,7 @@ static const std::initializer_list<std::string> variable_names_immutable_ops = {
 void TestImmutableOp(const std::string tested_op) {
   ProgramDesc prog;
   for (auto& v : variable_names_immutable_ops) {
-    prog.MutableBlock(0)->Var(v);
+    prog.MutableBlock(0)->Var(v)->SetDataType(proto::VarType::FP32);
   }
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
   SetOp(&prog, tested_op, tested_op, {"b"}, {"c"}, true, "int8");
