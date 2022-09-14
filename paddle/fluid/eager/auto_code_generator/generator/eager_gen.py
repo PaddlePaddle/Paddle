@@ -569,16 +569,16 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         forward_api_contents = self.forward_api_contents
         grad_api_contents = self.grad_api_contents
 
-        assert 'api' in forward_api_contents.keys(
-        ), "Unable to find \"api\" in api.yaml"
+        assert 'op' in forward_api_contents.keys(
+        ), "Unable to find \"op\" in ops.yaml"
         assert 'args' in forward_api_contents.keys(
-        ), "Unable to find \"args\" in api.yaml"
+        ), "Unable to find \"args\" in ops.yaml"
         assert 'output' in forward_api_contents.keys(
-        ), "Unable to find \"output\" in api.yaml"
+        ), "Unable to find \"output\" in ops.yaml"
 
         if grad_api_contents is not None:
             assert 'backward' in forward_api_contents.keys(
-            ), "Unable to find \"backward\" in api.yaml"
+            ), "Unable to find \"backward\" in ops.yaml"
             assert 'args' in grad_api_contents.keys(
             ), "Unable to find \"args\" in backward.yaml"
             assert 'output' in grad_api_contents.keys(
@@ -1485,7 +1485,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         if next_grad_api_contents:
             # Fake forward_api_contents and backward_api_contents
             forward_api_contents = grad_api_contents
-            forward_api_contents['api'] = forward_api_contents['backward_api']
+            forward_api_contents['op'] = forward_api_contents['backward_api']
             backward_api_contents = next_grad_api_contents
 
             next_node_generator = DygraphFunctionGeneratorBase(
@@ -1914,11 +1914,11 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
         grad_api_dict = self.grad_api_dict
         forward_apis_dict = {}
         for api_item in forward_api_list:
-            forward_apis_dict[api_item['api']] = api_item
+            forward_apis_dict[api_item['op']] = api_item
         namespace = self.namespace
 
         for forward_api_contents in forward_api_list:
-            if forward_api_contents['api'] in black_ops_list: continue
+            if forward_api_contents['op'] in black_ops_list: continue
 
             self.CollectIsForwardOnly(forward_api_contents)
 
@@ -1959,7 +1959,7 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                 forward_api_contents = backward_api_contents
 
                 # Fake forward_api_content
-                forward_api_contents['api'] = forward_api_contents[
+                forward_api_contents['op'] = forward_api_contents[
                     'backward_api']
                 backward_api_contents = next_grad_api_contents
 
@@ -2043,7 +2043,7 @@ if __name__ == "__main__":
         api_yaml_path = api_yaml_paths[i]
 
         # string api is forwrad only
-        if not api_yaml_path.endswith('strings_api.yaml'):
+        if not api_yaml_path.endswith('strings_ops.yaml'):
             backward_yaml_path = backward_yaml_paths[i]
         else:
             backward_yaml_path = None

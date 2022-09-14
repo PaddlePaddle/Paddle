@@ -50,7 +50,7 @@ class BaseAPI(object):
             self.inplace_map, self.view_map = {}, {}
 
     def get_api_name(self, api_item_yaml):
-        return api_item_yaml['api']
+        return api_item_yaml['op']
 
     def get_api_func_name(self):
         return self.api
@@ -881,7 +881,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
     def get_condition_code(self, kernel_name):
         assert self.kernel['dispatch'][kernel_name], \
-                f"{self.api} api: the tensor type of inputs and outputs for kernel isn't set, see also 'kernel:func' of 'scale' in api.yaml."
+                f"{self.api} api: the tensor type of inputs and outputs for kernel isn't set, see also 'kernel:func' of 'scale' in ops.yaml."
         input_types = self.kernel['dispatch'][kernel_name][0]
         condition_list = []
         for i, in_type in enumerate(input_types):

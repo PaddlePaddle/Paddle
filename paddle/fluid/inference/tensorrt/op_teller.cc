@@ -33,7 +33,10 @@ namespace tensorrt {
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {
 #if IS_TRT_VERSION_GE(7130)
+    // use TensorRT plugin
     teller_set.insert("group_norm");
+    teller_set.insert("multiclass_nms3");
+    teller_set.insert("multiclass_nms");
 #endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
@@ -278,7 +281,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "c_allreduce_prod",
       "roll",
       "cast",
-      "multiclass_nms3",
       "transformer_input_convert",
       "recover_padding",
       "remove_padding",
@@ -296,12 +298,6 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                     bool with_dynamic_shape) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();
-  // do not support the op which is labeled the `skip_quant`
-  if ((desc.HasAttr("namescope") &&
-       PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
-           "/skip_quant_2/") ||
-      desc.HasAttr("skip_quant"))
-    return false;
 
   for (auto& teller : tellers_) {
     std::unordered_set<std::string> act_op_list = {
@@ -853,7 +849,6 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "multiclass_nms" || op_type == "multiclass_nms3") {
-      if (with_dynamic_shape) return false;
       auto* block = desc.Block();
       if (block == nullptr) {
         VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "

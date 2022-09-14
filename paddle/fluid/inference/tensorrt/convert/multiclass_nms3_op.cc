@@ -54,18 +54,34 @@ class MultiClassNMS3OpConverter : public OpConverter {
         PADDLE_GET_CONST(float, op_desc.GetAttr("nms_threshold"));
     int keep_top_k = PADDLE_GET_CONST(int, op_desc.GetAttr("keep_top_k"));
     bool normalized = PADDLE_GET_CONST(bool, op_desc.GetAttr("normalized"));
-    int num_classes = scores_tensor->getDimensions().d[0];
+    int class_index = engine_->with_dynamic_shape() ? 1 : 0;
+    int num_classes = scores_tensor->getDimensions().d[class_index];
 
     auto bboxes_dims = bboxes_tensor->getDimensions();
-    nvinfer1::Dims3 bboxes_expand_dims(bboxes_dims.d[0], 1, bboxes_dims.d[1]);
-    auto* bboxes_expand_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *bboxes_tensor);
-    bboxes_expand_layer->setReshapeDimensions(bboxes_expand_dims);
+    nvinfer1::IShuffleLayer* bboxes_expand_layer = nullptr;
+    nvinfer1::IShuffleLayer* scores_transpose_layer = nullptr;
+    if (engine_->with_dynamic_shape()) {
+      nvinfer1::Dims4 bboxes_expand_dims(
+          bboxes_dims.d[0], bboxes_dims.d[1], 1, bboxes_dims.d[2]);
+      bboxes_expand_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *bboxes_tensor);
+      bboxes_expand_layer->setReshapeDimensions(bboxes_expand_dims);
 
-    nvinfer1::Permutation permutation{1, 0};
-    auto* scores_transpose_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *scores_tensor);
-    scores_transpose_layer->setFirstTranspose(permutation);
+      nvinfer1::Permutation permutation{0, 2, 1};
+      scores_transpose_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *scores_tensor);
+      scores_transpose_layer->setFirstTranspose(permutation);
+    } else {
+      nvinfer1::Dims3 bboxes_expand_dims(bboxes_dims.d[0], 1, bboxes_dims.d[1]);
+      bboxes_expand_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *bboxes_tensor);
+      bboxes_expand_layer->setReshapeDimensions(bboxes_expand_dims);
+
+      nvinfer1::Permutation permutation{1, 0};
+      scores_transpose_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *scores_tensor);
+      scores_transpose_layer->setFirstTranspose(permutation);
+    }
 
     std::vector<nvinfer1::ITensor*> batch_nms_inputs;
     batch_nms_inputs.push_back(bboxes_expand_layer->getOutput(0));
@@ -101,27 +117,41 @@ class MultiClassNMS3OpConverter : public OpConverter {
                    fields.size() * sizeof(nvinfer1::PluginField)));
     plugin_collections->nbFields = static_cast<int>(fields.size());
     plugin_collections->fields = fields.data();
-
-    auto creator = GetPluginRegistry()->getPluginCreator("BatchedNMS_TRT", "1");
+    std::string nms_plugin_name = "BatchedNMS_TRT";
+    if (engine_->with_dynamic_shape()) {
+      nms_plugin_name = "BatchedNMSDynamic_TRT";
+    }
+    auto creator =
+        GetPluginRegistry()->getPluginCreator(nms_plugin_name.c_str(), "1");
     auto batch_nms_plugin =
-        creator->createPlugin("BatchNMSPlugin", plugin_collections);
+        creator->createPlugin(nms_plugin_name.c_str(), plugin_collections);
     free(plugin_collections);
 
     auto batch_nms_layer = engine_->network()->addPluginV2(
         batch_nms_inputs.data(), batch_nms_inputs.size(), *batch_nms_plugin);
+    // static shape: [keep_topk, 4], [keep_topk], [keep_topk]
+    // dynamic shape: [bs, keep_topk, 4], [bs, keep_topk], [bs, keep_topk]
     auto nmsed_boxes = batch_nms_layer->getOutput(1);
     auto nmsed_scores = batch_nms_layer->getOutput(2);
     auto nmsed_classes = batch_nms_layer->getOutput(3);
 
     auto nmsed_scores_transpose_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *nmsed_scores);
-    nmsed_scores_transpose_layer->setReshapeDimensions(
-        nvinfer1::Dims2(keep_top_k, 1));
     auto nmsed_classes_reshape_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *nmsed_classes);
-    nmsed_classes_reshape_layer->setReshapeDimensions(
-        nvinfer1::Dims2(keep_top_k, 1));
+    if (engine_->with_dynamic_shape()) {
+      nmsed_scores_transpose_layer->setReshapeDimensions(
+          nvinfer1::Dims3(bboxes_dims.d[0], keep_top_k, 1));
 
+      nmsed_classes_reshape_layer->setReshapeDimensions(
+          nvinfer1::Dims3(bboxes_dims.d[0], keep_top_k, 1));
+    } else {
+      nmsed_scores_transpose_layer->setReshapeDimensions(
+          nvinfer1::Dims2(keep_top_k, 1));
+
+      nmsed_classes_reshape_layer->setReshapeDimensions(
+          nvinfer1::Dims2(keep_top_k, 1));
+    }
     std::vector<nvinfer1::ITensor*> concat_inputs;
     concat_inputs.push_back(nmsed_classes_reshape_layer->getOutput(0));
     concat_inputs.push_back(nmsed_scores_transpose_layer->getOutput(0));
@@ -129,7 +159,8 @@ class MultiClassNMS3OpConverter : public OpConverter {
 
     auto nms_concat_layer = TRT_ENGINE_ADD_LAYER(
         engine_, Concatenation, concat_inputs.data(), concat_inputs.size());
-    nms_concat_layer->setAxis(1);
+    int axis_index = engine_->with_dynamic_shape() ? 1 : 0;
+    nms_concat_layer->setAxis(axis_index + 1);
 
     // add fake index as output to be consistent with the outputs of
     // multiclass_nms3
