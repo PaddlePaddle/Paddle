@@ -1562,6 +1562,7 @@ class Executor(object):
             # use_standalone_executor_for_distribution = os.environ.get(
             #     'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
             #     None) in [1, '1', True, 'True', 'true']
+            # test
             use_standalone_executor_for_distribution = True
 
             compiled = isinstance(program,
