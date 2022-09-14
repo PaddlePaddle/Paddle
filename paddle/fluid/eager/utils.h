@@ -381,7 +381,7 @@ class EagerUtils {
       return paddle::string::Sprintf(
           GRAD_NODE_TEMPLATE, out_meta_str, in_meta_str);
     } else {
-      return "[ Not specified grad node log level ] ";
+      return "[ Not specified grad node log level. ] ";
     }
   }
 
