@@ -1169,9 +1169,12 @@ def convert_np_dtype_to_dtype_(np_dtype):
         core.VarDesc.VarType: the data type in Paddle.
 
     """
+    print("np_dtype: ", np_dtype, ", type: ", type(np_dtype))
     if np_dtype == "bfloat16":
+        print("branch IF")
         dtype = np.uint16
     else:
+        print("branch ELSE")
         dtype = np.dtype(np_dtype)
     if dtype == np.float32:
         return core.VarDesc.VarType.FP32
