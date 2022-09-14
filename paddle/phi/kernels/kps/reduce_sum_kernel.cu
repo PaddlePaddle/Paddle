@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-#include <climits>
+#include <limits>
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -35,22 +35,26 @@ void ReduceSumEigen(const KPDevice& dev_ctx,
   // Resize Input Tensor
   auto new_x = x;
   int added_dims = EigenDimSize - x.dims().size();
-  std::vector<int64_t> new_dim(added_dims, 1);
+  std::array<int64_t, EigenDimSize> new_x_dim;
+  new_x_dim.fill(1);
   for (int i = 0; i < x.dims().size(); i++) {
-    new_dim.push_back(x.dims().at(i));
+    new_x_dim[i + added_dims] = x.dims().at(i);
   }
-  new_x.Resize(phi::make_ddim(new_dim));
-  auto eigen_x_tensor = EigenTensor<T, EigenDimSize>::From(x);
+  new_x.Resize(phi::DDim(new_x_dim.data(), new_x_dim.size()));
+  auto eigen_x_tensor = EigenTensor<T, EigenDimSize>::From(new_x);
 
   // Create Out Tensor
   dev_ctx.Alloc<T>(out);
-  // Resize Out Tensor
-  std::vector<int64_t> new_reduced_dim(added_dims, 1);
-  for (int i = 0; i < out->dims().size(); i++) {
-    new_reduced_dim.push_back(out->dims().at(i));
-  }
-  out->Resize(phi::make_ddim(new_reduced_dim));
+  auto origin_out_dims = out->dims();
   constexpr int kReduceOutRank = ReduceAll ? 1 : EigenDimSize - ReducedDimSize;
+  // Resize Out Tensor
+  std::array<int64_t, kReduceOutRank> new_out_dim;
+  new_out_dim.fill(1);
+  for (int i = 0; i < out->dims().size(); i++) {
+    new_out_dim[i + added_dims] = out->dims().at(i);
+  }
+  out->Resize(phi::DDim(new_out_dim.data(), new_out_dim.size()));
+
   auto eigen_out_tensor = EigenTensor<T, kReduceOutRank>::From(*out);
   for (int i = 0; i < ReducedDimSize; i++) {
     (*reduce_dims)[i] += added_dims;
@@ -60,11 +64,7 @@ void ReduceSumEigen(const KPDevice& dev_ctx,
   // Caculate
   eigen_out_tensor.device(*dev_ctx.eigen_device()) =
       eigen_x_tensor.sum(eigen_reduce_dim);
-  std::vector<int64_t> final_out_dim;
-  for (int i = added_dims; i < out->dims().size(); i++) {
-    final_out_dim.push_back(out->dims().at(i));
-  }
-  out->Resize(phi::make_ddim(final_out_dim));
+  out->Resize(origin_out_dims);
 }
 
 template <typename T, typename Context>
@@ -78,8 +78,15 @@ void SumRawKernel(const Context& dev_ctx,
   if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
     out_dtype = out->dtype();
   }
-  if (x.numel() > INT_MAX) {
+  if (x.numel() > std::numeric_limits<int32_t>::max()) {
 #ifndef PADDLE_WITH_XPU_KP
+    if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
+      PADDLE_THROW(phi::errors::Fatal(
+          "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
+          "sum for reduce_sum function. As a result, input dtype should be "
+          "the same as out dtype"));
+    }
+
     std::vector<int> reduce_dims = phi::funcs::details::GetReduceDim(
         dims.GetData(), x.dims().size(), reduce_all);
 
