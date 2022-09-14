@@ -81,7 +81,7 @@ class DecoratorTransformer(BaseTransformer):
             # get function after decoration
             deco_full_name = ast_to_source_code(deco).strip()
             decoed_func = '_decoby_' + deco_name
-            if isinstance(deco, gast.Call):
+            if isinstance(deco, gast.Call) and '_jst\.Call' in deco_full_name:
                 # in this case , the deco_full_name will be like:
                 # '_jst.Call(deco)(5)'
                 rematch = re.match(r'\_jst\.Call\((.+?)\)\((.*?)\)',

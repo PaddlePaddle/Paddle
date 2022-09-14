@@ -83,20 +83,8 @@ def deco4(func=None, x=0):
         return decorated
     return decorated(func)
 
-class deco5:
-    def __call__(self, func):
-
-        @decorator.decorator
-        def _decorate_function(func, *args, **kwargs):
-            with self:
-                return func(*args, **kwargs)
-
-        return _decorate_function(func)
-    def __enter__(self):
-        pass
-
-    def __exit__(self, *args):
-        pass
+def deco5():
+    return deco2
 
 
 @deco2
@@ -129,7 +117,7 @@ def fun4(x, y=0):
 
 
 @deco2
-@deco4(x=5)
+@deco4()
 def fun5(x, y=0):
     a = paddle.to_tensor(y)
     print('in fun5, x=%d' % (x))
@@ -144,8 +132,10 @@ def fun6(x, y=0):
     return a
 
 @deco5()
-def fun7():
-    return paddle.to_tensor(1)
+def fun7(x, y=0):
+    a = paddle.to_tensor(y)
+    print('in fun6, x=%d' % (x))
+    return a
 
 
 
@@ -166,9 +156,9 @@ class TestDecoratorTransform(unittest.TestCase):
         np.testing.assert_allclose(outs[1], np.array(5), rtol=1e-05)
         np.testing.assert_allclose(outs[2], np.array(6), rtol=1e-05)
         np.testing.assert_allclose(outs[3], np.array(8), rtol=1e-05)
-        np.testing.assert_allclose(outs[4], np.array(12), rtol=1e-05)
+        np.testing.assert_allclose(outs[4], np.array(7), rtol=1e-05)
         np.testing.assert_allclose(outs[5], np.array(9), rtol=1e-05)
-        np.testing.assert_allclose(outs[6], np.array(1), rtol=1e-05)
+        np.testing.assert_allclose(outs[6], np.array(9), rtol=1e-05)
 
 
 if __name__ == '__main__':
