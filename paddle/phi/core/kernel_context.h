@@ -92,7 +92,7 @@ class KernelContext {
   std::vector<const TensorType*> InputsBetween(size_t start, size_t end) {
     std::vector<const TensorType*> v;
     for (size_t i = start; i < end; ++i) {
-      auto* t = static_cast<const TensorType*>(inputs_.at(i));
+      const auto* t = static_cast<const TensorType*>(inputs_.at(i));
       v.emplace_back(t);
     }
     return v;
