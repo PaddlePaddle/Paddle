@@ -1,5 +1,5 @@
-// This file copy from boost/none_t.hpp and boost/none.hpp and boost version:
-// 1.41.0
+// This file was copied from boost/none_t.hpp and boost/none.hpp
+// and boost version: 1.41.0
 // Modified the following points:
 // 1. modify namespace from boost::none to paddle::none
 // 2. modify namespace from boost::none_t to paddle::none_t
