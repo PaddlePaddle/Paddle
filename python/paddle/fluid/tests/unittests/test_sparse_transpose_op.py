@@ -40,11 +40,11 @@ class TestTranspose(unittest.TestCase):
                                        dense_out.numpy(),
                                        rtol=1e-05)
 
-            # dense_out.mean().backward()
-            # sp_out.mean().backward()
-            # np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
-            #                            (dense_x.grad * mask).numpy(),
-            #                            rtol=1e-05)
+            dense_out.mean().backward()
+            sp_out.mean().backward()
+            np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
+                                       (dense_x.grad * mask).numpy(),
+                                       rtol=1e-05)
 
     def test_transpose_2d(self):
         self.check_result([12, 5], [0, 1], 'coo')
