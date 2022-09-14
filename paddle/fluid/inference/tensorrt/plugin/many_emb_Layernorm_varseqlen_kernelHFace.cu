@@ -31,6 +31,8 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#ifdef _WIN32
+#else
 template <typename T, unsigned TPB>
 __global__ void embLayerNormKernelHFace(int32_t ld,
                                         int32_t** inputIds,
@@ -40,8 +42,6 @@ __global__ void embLayerNormKernelHFace(int32_t ld,
                                         T** mIdsEmbDev,
                                         int32_t* IdsSize,
                                         T* output) {
-#ifdef _WIN32
-#else
   // this code currently assumes the input shape is SxB, row-major => seqPos = s
   // * B + b instead we want BxS, row-major => seqPos = b * S + s
 
@@ -105,8 +105,8 @@ __global__ void embLayerNormKernelHFace(int32_t ld,
 
   // 3. layer norm on the sum
   layerNorm<T, T, float, TPB>(threadData, ld, outOffset, beta, gamma, output);
-#endif
 }
+#endif
 
 template <typename T>
 int32_t embSkipLayerNormHFace(cudaStream_t stream,
@@ -120,13 +120,16 @@ int32_t embSkipLayerNormHFace(cudaStream_t stream,
                               T** mIdsEmbDev,
                               int32_t* IdsSize,
                               T* output) {
+#ifdef _WIN32
+#else
   constexpr int32_t tpb = 256;
   dim3 const grid(S, B, 1);
   dim3 const block(tpb, 1, 1);
   size_t cache_size = sizeof(int32_t) * (nbLookupTables - 1);
   embLayerNormKernelHFace<T, tpb><<<grid, block, cache_size, stream>>>(
       ld, inputIds, nbLookupTables, beta, gamma, mIdsEmbDev, IdsSize, output);
-  // return cudaPeekAtLastError();
+#endif
+  return cudaPeekAtLastError();
 }
 
 template int32_t embSkipLayerNormHFace<float>(cudaStream_t,
