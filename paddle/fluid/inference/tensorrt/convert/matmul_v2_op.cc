@@ -37,7 +37,7 @@ class MatMulV2OpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid matmul op to tensorrt matmul layer ";
+    VLOG(3) << "convert a fluid matmul_v2 op to tensorrt matmul layer ";
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ILayer* layer = nullptr;
 

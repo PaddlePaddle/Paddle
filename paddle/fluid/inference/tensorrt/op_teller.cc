@@ -533,6 +533,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "matmul_v2") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
       auto* block = desc.Block();
       if (block == nullptr) {
         VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
