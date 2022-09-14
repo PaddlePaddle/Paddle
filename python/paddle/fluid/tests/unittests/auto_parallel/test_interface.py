@@ -32,7 +32,8 @@ batch_size = 4
 epoch_num = 10
 hidden_size = 1024
 sequence_len = 512
-process_mesh1 = ProcessMesh(mesh=[[0, 1, 2], [3, 4, 5]], dim_names=["x", "y"])
+process_mesh1 = ProcessMesh(mesh=[[0, 1, 2, 3], [4, 5, 6, 7]],
+                            dim_names=["x", "y"])
 process_mesh2 = ProcessMesh(mesh=[0, 1, 2, 3], dim_names=["x"])
 
 
