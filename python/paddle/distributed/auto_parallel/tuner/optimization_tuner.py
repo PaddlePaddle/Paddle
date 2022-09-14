@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
+# import yaml
 import os
 import sys
 import copy
@@ -493,10 +493,10 @@ The best trial is: [{}], whose configuration is following:
             for line in summary_.split("\n"):
                 fw.write(line + "\n")
 
-        full_strategy = self.get_best_config()
-        path = os.path.join(self.project_dir, "tuned_dist_strategy.yaml")
-        with open(path, 'w') as outfile:
-            yaml.dump(full_strategy, outfile, default_flow_style=False)
+        # full_strategy = self.get_best_config()
+        # path = os.path.join(self.project_dir, "tuned_dist_strategy.yaml")
+        # with open(path, 'w') as outfile:
+        #     yaml.dump(full_strategy, outfile, default_flow_style=False)
 
     def clear(self):
         """

@@ -13,7 +13,6 @@
 # limitations under the License
 
 import os
-import yaml
 import copy
 import argparse
 from . import constants
@@ -151,13 +150,12 @@ class Strategy(BaseConfig):
         if config is not None:
             if isinstance(config, dict):
                 self._config_dict = copy.deepcopy(config)
-            elif os.path.exists(config):
-                with open(config, "rb") as yaml_file:
-                    self._config_dict = yaml.load(yaml_file, Loader=yaml.Loader)
+            # elif os.path.exists(config):
+            #     with open(config, "rb") as yaml_file:
+            #         self._config_dict = yaml.load(yaml_file, Loader=yaml.Loader)
             else:
                 raise ValueError(
-                    "Expected a string path to an existing configuration file, or a dictionary. But received: {}"
-                    .format(config))
+                    "Expected a dictionary. But received: {}".format(config))
         else:
             self._config_dict = {}
 
