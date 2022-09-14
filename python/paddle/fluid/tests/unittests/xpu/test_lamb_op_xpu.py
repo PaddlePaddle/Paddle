@@ -23,53 +23,8 @@ from paddle.fluid import core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import paddle
-"""
-class TestLambOp1(XPUOpTest):
-    def set_attrs(self):
-        self.attrs = {
-            'epsilon': 1e-6,
-            'beta1': 0.9,
-            'beta2': 0.999,
-            'weight_decay': 0.01
-        }
 
-    def setUp(self):
-        '''Test Lamb Op with supplied attributes
-        '''
-        self.op_type = 'lamb'
-        param = np.random.uniform(-1, 1, 5000).astype('float32')
-        grad = np.random.uniform(-1, 1, 5000).astype('float32')
-        moment1 = np.random.uniform(-1, 1, 5000).astype('float32')
-        moment2 = np.random.random(5000).astype('float32')
-
-        self.set_attrs()
-        learning_rate = 0.001
-        beta1_pow = self.attrs['beta1']
-        beta2_pow = self.attrs['beta2']
-
-        self.inputs = {
-            'Param': param,
-            'Grad': grad,
-            'Moment1': moment1,
-            'Moment2': moment2,
-            'LearningRate': np.array([learning_rate]).astype('float32'),
-            'Beta1Pow': np.array([beta1_pow]).astype('float32'),
-            'Beta2Pow': np.array([beta2_pow]).astype('float32')
-        }
-
-        param_out, moment1_out, moment2_out, \
-            beta1_pow_out, beta2_pow_out = lamb_step(self.inputs, self.attrs)
-
-        self.outputs = {
-            'Moment1Out': moment1_out,
-            'Moment2Out': moment2_out,
-            'ParamOut': param_out,
-            'Beta1PowOut': beta1_pow_out,
-            'Beta2PowOut': beta2_pow_out
-        }
-
-    def test_check_output(self):
-        self.check_output_with_place(paddle.XPUPlace(0))
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 
 def lamb_step(inputs, attributes):
@@ -100,21 +55,132 @@ def lamb_step(inputs, attributes):
     moment2_unbiased = moment2_out / (1 - beta2_pow)
 
     r_1 = np.linalg.norm(param)
-    r_2 = np.linalg.norm(moment1_unbiased / (np.sqrt(moment2_unbiased) + epsilon
-                                             ) + weight_decay * param)
-    if r_1 > 0.0 and r_2 > 0.0:
-        lr_t = lr * r_1 / r_2
-    else:
-        lr_t = 1.0
+    r_2 = np.linalg.norm(moment1_unbiased /
+                         (np.sqrt(moment2_unbiased) + epsilon) +
+                         weight_decay * param)
+    lr_t = lr * r_1 / r_2
 
-    param_out = param - lr_t * (moment1_unbiased / (
-        np.sqrt(moment2_unbiased) + epsilon) + weight_decay * param)
+    param_out = param - lr_t * (moment1_unbiased /
+                                (np.sqrt(moment2_unbiased) + epsilon) +
+                                weight_decay * param)
 
     beta1_pow_out = beta1_pow * beta1
     beta2_pow_out = beta2_pow * beta2
 
     return param_out, moment1_out, moment2_out, beta1_pow_out, beta2_pow_out
-"""
+
+
+class XPUTestLambOp(XPUOpTestWrapper):
+
+    def __init__(self):
+        self.op_name = 'lamb'
+        self.use_dynamic_create_class = False
+
+    class TestLambOp1(XPUOpTest):
+
+        def set_attrs(self):
+            self.attrs = {
+                'epsilon': 1e-4,
+                'beta1': 0.78,
+                'beta2': 0.836,
+                'weight_decay': 0.01
+            }
+
+        def setUp(self):
+            '''Test Lamb Op with supplied attributes
+            '''
+            # self.op_type = self.op_name
+            self.__class__.op_type = 'lamb'
+            self.dtype = self.in_type
+            param = np.random.uniform(-1, 1, (102, 105)).astype(self.dtype)
+            grad = np.random.uniform(-1, 1, (102, 105)).astype(self.dtype)
+            moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+            moment2 = np.random.random((102, 105)).astype("float32")
+
+            learning_rate = 0.001
+            self.set_attrs()
+            beta1_pow = self.attrs['beta1']
+            beta2_pow = self.attrs['beta2']
+
+            self.inputs = {
+                'Param': param,
+                'Grad': grad,
+                'Moment1': moment1,
+                'Moment2': moment2,
+                'LearningRate': np.array([learning_rate]).astype("float32"),
+                'Beta1Pow': np.array([beta1_pow]).astype("float32"),
+                'Beta2Pow': np.array([beta2_pow]).astype("float32")
+            }
+
+
+            param_out, moment1_out, moment2_out, \
+                beta1_pow_out, beta2_pow_out = lamb_step(self.inputs, self.attrs)
+
+            self.outputs = {
+                'Moment1Out': moment1_out,
+                'Moment2Out': moment2_out,
+                'ParamOut': param_out,
+                'Beta1PowOut': beta1_pow_out,
+                'Beta2PowOut': beta2_pow_out
+            }
+
+        def test_check_output(self):
+            self.check_output_with_place(paddle.XPUPlace(0))
+
+    class TestLambOp2(TestLambOp1):
+
+        def set_attrs(self):
+            self.attrs = {
+                'epsilon': 1e-8,
+                'beta1': 0.9,
+                'beta2': 0.999,
+                'weight_decay': 0.01
+            }
+
+    class TestLambOpMultipleSteps(TestLambOp1):
+
+        def set_attrs(self):
+            self.attrs = {
+                'epsilon': 1e-8,
+                'beta1': 0.9,
+                'beta2': 0.999,
+                'weight_decay': 0.01
+            }
+            self.num_steps = 10
+
+        def test_check_output(self):
+            for i in range(self.num_steps):
+                param_out, moment1_out, moment2_out, \
+                    beta1_pow_out, beta2_pow_out = lamb_step(self.inputs, self.attrs)
+
+                self.outputs = {
+                    'Moment1Out': moment1_out,
+                    'Moment2Out': moment2_out,
+                    'ParamOut': param_out,
+                    'Beta1PowOut': beta1_pow_out,
+                    'Beta2PowOut': beta2_pow_out
+                }
+
+                # Verify output for this step
+                self.check_output()
+
+                # Output of this step becomes input for next step
+                self.inputs['Param'] = param_out
+                self.inputs['Moment1'] = moment1_out
+                self.inputs['Moment2'] = moment2_out
+
+                # Update powers of Beta1 and Beta2 for next time step
+                self.inputs['Beta1Pow'] = beta1_pow_out
+                self.inputs['Beta2Pow'] = beta2_pow_out
+
+                # Randomize gradient for next step
+                self.inputs['Grad'] = np.random.uniform(
+                    -1, 1, (102, 105)).astype("float32")
+
+
+support_types = get_xpu_op_support_types('lamb')
+for stype in support_types:
+    create_test_class(globals(), XPUTestLambOp, stype)
 
 if __name__ == "__main__":
     paddle.enable_static()

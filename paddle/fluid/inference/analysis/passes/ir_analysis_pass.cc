@@ -20,6 +20,10 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
+#endif
+
 namespace paddle {
 namespace inference {
 namespace analysis {
@@ -32,6 +36,19 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
   auto* the_graph = argument->ReleaseMainGraph();
   auto graph = std::unique_ptr<Graph>(the_graph);
 
+#ifdef PADDLE_WITH_MKLDNN
+  if (argument->Has("calibration_file_path")) {
+    VLOG(5) << "Calibration file path of quantize model: "
+            << argument->calibration_file_path();
+    std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
+    ReadCalibrationInfo(argument, &var_quant_scales);
+    // save var_quant_scales in the first op's attr
+    // for quant_dequant_mkldnn_pass
+    SaveInfoInTheFirstOp(
+        the_graph, "has_quant_info", "var_quant_scales", var_quant_scales);
+  }
+#endif
+
   // Apply passes.
   IRPassManager the_ir_manager(argument);
   graph = the_ir_manager.Apply(std::move(graph));
@@ -42,6 +59,40 @@ void IrAnalysisPass::RunImpl(Argument* argument) {
           "The graph nodes size should be greater than 0, but got 0"));
   argument->SetMainGraph(graph.release());
   CollectFusionStatis(argument);
+}
+
+void IrAnalysisPass::ReadCalibrationInfo(
+    Argument* argument,
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales) {
+  std::string calibration_file_path;
+#ifdef PADDLE_WITH_MKLDNN
+  if (argument->Has("calibration_file_path")) {
+    calibration_file_path = argument->calibration_file_path();
+  }
+#endif
+  if (calibration_file_path.empty()) {
+    LOG(INFO) << "argument has no calibration_file_path";
+    return;
+  }
+  std::ifstream calibration_file(calibration_file_path);
+  std::string one_line;
+  while (getline(calibration_file, one_line)) {
+    if (one_line.find(" ") != one_line.npos) {
+      auto pos = one_line.find(" ");
+      std::string pre_str = one_line.substr(0, pos);
+      std::string pos_str = one_line.substr(pos);
+      if (pre_str.size() && pos_str.size()) {
+        std::string tensor_name = pre_str;
+        float scale = std::stod(pos_str);
+        scale = 1.0 / scale;
+        if (std::isinf(scale) || std::isnan(scale)) {
+          continue;
+        }
+        std::vector<float> scales = {scale};
+        (*var_quant_scales)[tensor_name] = scales;
+      }
+    }
+  }
 }
 
 void IrAnalysisPass::CollectFusionStatis(Argument* argument) {

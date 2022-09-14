@@ -55,6 +55,12 @@ class TaskNode final {
            int64_t max_run_times,
            int64_t max_slot_nums);
   TaskNode(paddle::framework::ProgramDesc* program, int64_t rank);
+  // TODO(liyurui): This will be the only constructor for task node
+  TaskNode(paddle::framework::ProgramDesc* program,
+           int64_t task_id,
+           int64_t rank,
+           int64_t max_run_times,
+           int64_t max_slot_nums);
   ~TaskNode() = default;
 
   void SetProgram(paddle::framework::ProgramDesc* program);

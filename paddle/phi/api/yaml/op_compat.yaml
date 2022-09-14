@@ -1,0 +1,589 @@
+- op : abs
+  backward : abs_grad
+  extra :
+    attrs : [bool use_cudnn = false, bool use_mkldnn = false]
+
+- op : acosh
+  backward : acosh_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : addmm
+  backward : addmm_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : affine_grid
+  backward : affine_grid_grad
+  extra :
+    attrs : [bool use_cudnn = true]
+
+- op : angle
+  backward : angle_grad
+  extra :
+    attrs : [bool use_cudnn = false, bool use_mkldnn = false]
+
+- op : asinh
+  backward : asinh_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : atan2
+  inputs :
+    {x : X1, y : X2}
+  outputs :
+    out : Out
+
+- op : atanh
+  backward : atanh_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : batch_norm
+  backward : batch_norm_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
+
+- op : bernoulli
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : bicubic_interp (bicubic_interp_v2)
+  backward : bicubic_interp_grad (bicubic_interp_v2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : bilinear_interp (bilinear_interp_v2)
+  backward : bilinear_interp_grad (bilinear_interp_v2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : ceil
+  backward : ceil_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : cholesky
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : cholesky_solve
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : clip
+  backward : clip_grad
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- op : concat
+  backward : concat_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
+
+- op : conv2d
+  backward : conv2d_grad
+  extra :
+    attrs : [bool is_test = false, bool use_cudnn = true, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
+             bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
+             str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f, bool use_addto = false,
+             bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
+             float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
+             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+
+- op : conv2d_fusion
+  extra :
+    attrs : [bool is_test = false, bool use_cudnn = false, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
+             bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
+             str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f, bool use_addto = false,
+             bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
+             float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
+             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+
+- op : conv2d_transpose
+  backward : conv2d_transpose_grad
+  extra :
+    attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool force_fp32_output = false,
+             str mkldnn_data_type = "float32", bool fuse_relu = false,
+             str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
+             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
+
+- op : conv3d
+  backward : conv3d_grad
+  extra :
+    attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
+             str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
+             bool use_addto = false, bool fuse_residual_connection = false, bool force_fp32_output = false,
+             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+
+- op : conv3d_transpose
+  backward : conv3d_transpose_grad
+  extra :
+    attrs : [bool use_cudnn = true, bool use_mkldnn = false, int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
+
+- op : cos
+  backward : cos_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : cosh
+  backward : cosh_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : cross
+  inputs :
+    {x : X, y : Y}
+  attrs :
+    axis : dim
+  outputs :
+    out : Out
+
+- op : data_norm
+  backward : data_norm_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : depthwise_conv2d
+  backward : depthwise_conv2d_grad
+  extra :
+    attrs : [bool is_test = false, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
+             bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
+             str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f, bool use_addto = false,
+             bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
+             float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
+             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+
+- op : depthwise_conv2d_transpose
+  backward : depthwise_conv2d_transpose_grad
+  extra :
+    attrs : [bool is_test = false, bool use_cudnn = false, bool use_mkldnn = false, bool force_fp32_output = false,
+             str mkldnn_data_type = "float32", bool fuse_relu = false,
+             str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
+             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
+
+- op : diag (diag_v2)
+  backward : diag_grad (diag_v2_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : diagonal
+  inputs :
+    x : Input
+  outputs :
+    out : Out
+
+- op : digamma
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : dist
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : dot
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : dropout
+  backward : dropout_grad
+  extra :
+    attrs : [bool fix_seed = false, int seed = 0]
+
+- op : dropout_nd
+  backward : dropout_nd_grad
+  extra :
+    attrs : [bool fix_seed = false, int seed = 0]
+
+- op : elu
+  backward : elu_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : erf
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : erfinv
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : exp
+  backward : exp_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : expm1
+  backward : expm1_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : fft_c2c
+  inputs: {x: X}
+  outputs: {out: Out}
+
+- op : fft_c2r
+  inputs: {x: X}
+  outputs: {out: Out}
+
+- op : fft_r2c
+  inputs: {x: X}
+  outputs: {out: Out}
+
+- op : floor
+  backward : floor_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : frobenius_norm
+  backward : frobenius_norm_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : gelu
+  backward : gelu_grad
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_cudnn = false]
+
+- op : grid_sampler
+  backward : grid_sampler_grad
+  extra :
+    attrs : [bool use_cudnn = true]
+
+- op : gru
+  backward : gru_grad
+  extra :
+    attrs : [bool is_test = false]
+
+- op : hard_swish
+  backward : hard_swish_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : inplace_abn
+  backward : inplace_abn_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
+
+- op : layer_norm
+  backward : layer_norm_grad
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
+- op : leaky_relu
+  backward : leaky_relu_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : lgamma
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : linear_interp (linear_interp_v2)
+  backward : linear_interp_grad (linear_interp_v2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : log
+  backward : log_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : log10
+  backward : log10_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : log1p
+  backward : log1p_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : log2
+  backward : log2_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : log_softmax
+  backward : log_softmax_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : logsigmoid
+  backward : logsigmoid_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : lrn
+  backward : lrn_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool is_test = false]
+
+- op : matmul (matmul_v2)
+  backward : matmul_grad (matmul_v2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, 'int[] fused_reshape_Out = {}', 'int[] fused_transpose_Out = {}',
+             str mkldnn_data_type = "float32", 'int[] fused_reshape_X = {}', 'int[] fused_reshape_Y = {}',
+             'int[] fused_transpose_X = {}', 'int[] fused_transpose_Y = {}',]
+
+- op : mish
+  backward : mish_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : mv
+  inputs :
+    {x : X, vec : Vec}
+  outputs :
+    out : Out
+
+- op : nearest_interp (nearest_interp_v2)
+  backward : nearest_interp_grad (nearest_interp_v2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : pad2d
+  backward : pad2d_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : pad3d
+  backward : pad3d_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : partial_sum
+  backward : partial_sum_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : poisson
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : prelu
+  backward : prelu_grad
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
+- op : reciprocal
+  backward : reciprocal_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : reduce_all
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : reduce_amax
+  backward : reduce_amax_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : reduce_amin
+  backward : reduce_amin_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : reduce_any
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : reduce_max
+  backward : reduce_max_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : reduce_mean
+  backward : reduce_mean_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : reduce_min
+  backward : reduce_min_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : reduce_prod
+  backward : reduce_prod_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : reduce_sum
+  backward : reduce_sum_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : relu
+  backward : relu_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : relu6
+  backward : relu6_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : renorm
+  backward : renorm_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : rnn
+  backward : rnn_grad
+  extra :
+    attrs : [bool is_test = false]
+
+- op : round
+  backward : round_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : rsqrt
+  backward : rsqrt_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : seed
+  extra :
+    attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
+
+- op : shape
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- op : shuffle_channel
+  backward : shuffle_channel_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : sigmoid
+  backward : sigmoid_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : silu
+  backward : silu_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : sin
+  backward : sin_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : sinh
+  backward : sinh_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : slice
+  backward : slice_grad
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- op : softmax
+  backward : softmax_grad
+  extra :
+    attrs : [bool use_cudnn = false, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
+- op : softplus
+  backward : softplus_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false, str fuse_activation_type = "", float fuse_activation_alpha = 0.0f,
+             float fuse_activation_beta = 0.0f, float fuse_activation_scale = 1.0f]
+
+- op : softsign
+  backward : softsign_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : solve
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : sqrt
+  backward : sqrt_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : square
+  backward : square_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : squeeze (squeeze2)
+  backward : squeeze_grad (squeeze2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- op : stack
+  backward : stack_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : swish
+  backward : swish_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : sync_batch_norm
+  backward : sync_batch_norm_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
+
+- op : tan
+  backward : tan_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : tanh
+  backward : tanh_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : tanh_shrink
+  backward : tanh_shrink_grad
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : trace
+  inputs :
+    x : Input
+  outputs :
+    out : Out
+
+- op : trilinear_interp (trilinear_interp_v2)
+  backward : trilinear_interp_grad (trilinear_interp_v2_grad)
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : trunc
+  inputs :
+    x : X
+  outputs :
+    out : Out

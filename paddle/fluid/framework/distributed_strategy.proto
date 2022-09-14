@@ -184,6 +184,14 @@ message TensorParallelConfig {
   optional int32 tensor_init_seed = 2 [ default = -1 ];
 }
 
+message QatConfig {
+  optional bool channel_wise_abs_max = 1 [default = true];
+  optional int32 weight_bits = 2 [default = 8];
+  optional int32 activation_bits = 3 [default = 8];
+  repeated string not_quant_pattern = 4;
+  optional string algo = 5;
+}
+
 enum TableType {
   PS_SPARSE_TABLE = 0;
   PS_DENSE_TABLE = 1;
@@ -197,6 +205,13 @@ message TableParameter {
   optional TableType type = 5;
   optional TableAccessorParameter accessor = 6;
   optional bool compress_in_save = 7 [ default = false ];
+  // for cache model
+  optional bool enable_sparse_table_cache = 10 [ default = true ];
+  optional double sparse_table_cache_rate = 11 [ default = 0.00055 ];
+  optional uint32 sparse_table_cache_file_num = 12 [ default = 16 ];
+  // for patch model
+  optional bool enable_revert = 13 [ default = false ];
+  optional float shard_merge_rate = 14 [ default = 1.0 ];
 }
 
 message TableAccessorParameter {
@@ -327,6 +342,8 @@ message DistributedStrategy {
   optional bool heter_ccl_mode = 38 [ default = false ];
   optional bool is_fl_ps_mode = 39 [ default = false ];
   optional bool with_coordinator = 40 [ default = false ];
+  optional bool qat = 41 [ default = false ];
+  optional bool split_data = 42 [ default = true ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
@@ -344,6 +361,7 @@ message DistributedStrategy {
   optional TrainerDescConfig trainer_desc_configs = 114;
   repeated TableParameter downpour_table_param = 115;
   optional FsClientParameter fs_client_param = 116;
+  optional QatConfig qat_configs = 117;
 
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
