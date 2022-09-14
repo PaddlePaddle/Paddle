@@ -66,6 +66,58 @@ class ProcessGroupStream : public ProcessGroup {
       const AllreduceOptions& options,
       bool sync_op,
       bool use_calc_stream);
+
+  std::shared_ptr<ProcessGroup::Task> Send(
+      std::vector<phi::DenseTensor>& tensors,  // NOLINT
+      int dst_rank,
+      bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> Send(
+      std::vector<phi::DenseTensor>& tensors,  // NOLINT
+      int dst_rank,
+      bool sync_op,
+      bool use_calc_stream);
+
+  std::shared_ptr<ProcessGroup::Task> Send_Partial(
+      phi::DenseTensor& tensors,  // NOLINT
+      int dst_rank,
+      int offset,
+      int length,
+      bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> Send_Partial(
+      phi::DenseTensor& tensors,  // NOLINT
+      int dst_rank,
+      int offset,
+      int length,
+      bool sync_op,
+      bool use_calc_stream);
+
+  std::shared_ptr<ProcessGroup::Task> Recv(
+      std::vector<phi::DenseTensor>& tensors,  // NOLINT
+      int src_rank,
+      bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> Recv(
+      std::vector<phi::DenseTensor>& tensors,  // NOLINT
+      int src_rank,
+      bool sync_op,
+      bool use_calc_stream);
+
+  std::shared_ptr<ProcessGroup::Task> Recv_Partial(
+      phi::DenseTensor& tensors,  // NOLINT
+      int src_rank,
+      int offset,
+      int length,
+      bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> Recv_Partial(
+      phi::DenseTensor& tensors,  // NOLINT
+      int src_rank,
+      int offset,
+      int length,
+      bool sync_op,
+      bool use_calc_stream);
 };
 
 }  // namespace distributed

@@ -134,24 +134,56 @@ class ProcessGroup {
         "ProcessGroup%s does not support send", GetBackendName()));
   }
 
-  virtual std::shared_ptr<ProcessGroup::Task> Recv(
-      std::vector<phi::DenseTensor>& tensors, int) {  // NOLINT
+  virtual std::shared_ptr<ProcessGroup::Task> Send(
+      std::vector<phi::DenseTensor>&, int, bool) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support receive", GetBackendName()));
+        "ProcessGroup%s does not support send with sync_op flag",
+        GetBackendName()));
   }
 
-  virtual std::shared_ptr<ProcessGroup::Task> Send_Partial(phi::DenseTensor&,
-                                                           int,
-                                                           int,
-                                                           int) {  // NOLINT
+  virtual std::shared_ptr<ProcessGroup::Task> Recv(
+      std::vector<phi::DenseTensor>&, int) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support send", GetBackendName()));
+        "ProcessGroup%s does not support recv", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Recv(
+      std::vector<phi::DenseTensor>&, int, bool) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support recv with sync_op flag",
+        GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Send_Partial(
+      phi::DenseTensor&,  // NOLINT
+      int,
+      int,
+      int) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support send_partial", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Send_Partial(
+      phi::DenseTensor&, int, int, int, bool) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support send_partial with sync_op flag",
+        GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Recv_Partial(
-      phi::DenseTensor& tensors, int, int, int) {  // NOLINT
+      phi::DenseTensor&,  // NOLINT
+      int,
+      int,
+      int) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support receive", GetBackendName()));
+        "ProcessGroup%s does not support recv_partial", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Recv_Partial(
+      phi::DenseTensor&, int, int, int, bool) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support recv_partial with sync_op flag",
+        GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(

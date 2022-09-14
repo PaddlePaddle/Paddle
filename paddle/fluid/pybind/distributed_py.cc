@@ -197,6 +197,23 @@ void BindDistributed(py::module *m) {
               py::call_guard<py::gil_scoped_release>())
 
           .def(
+              "send",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_tensor,
+                 int dst,
+                 bool sync_op) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.Send(tensors, dst, sync_op);
+              },
+              py::arg("tensor"),
+              py::arg("dst"),
+              py::arg("sync_op"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
               "send_partial",
               [](distributed::ProcessGroup &self,
                  py::handle py_tensor,
@@ -218,6 +235,30 @@ void BindDistributed(py::module *m) {
               py::call_guard<py::gil_scoped_release>())
 
           .def(
+              "send_partial",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_tensor,
+                 int dst_rank,
+                 int nranks,
+                 int rank_id,
+                 bool sync_op) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                int numel = (*dense).numel();
+                int send_numel = numel / nranks;
+                int offset = send_numel * rank_id;
+                return self.Send_Partial(
+                    *dense, dst_rank, offset, send_numel, sync_op);
+              },
+              py::arg("tensor"),
+              py::arg("dst"),
+              py::arg("num"),
+              py::arg("id"),
+              py::arg("sync_op"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
               "recv",
               [](distributed::ProcessGroup &self,
                  py::handle py_tensor,
@@ -230,6 +271,23 @@ void BindDistributed(py::module *m) {
               },
               py::arg("tensor"),
               py::arg("src"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "recv",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_tensor,
+                 int src,
+                 bool sync_op) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.Recv(tensors, src, sync_op);
+              },
+              py::arg("tensor"),
+              py::arg("src"),
+              py::arg("sync_op"),
               py::call_guard<py::gil_scoped_release>())
 
           .def(
@@ -251,6 +309,30 @@ void BindDistributed(py::module *m) {
               py::arg("src"),
               py::arg("num"),
               py::arg("id"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "recv_partial",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_tensor,
+                 int src_rank,
+                 int nranks,
+                 int rank_id,
+                 bool sync_op) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                int numel = (*dense).numel();
+                int recv_numel = numel / nranks;
+                int offset = recv_numel * rank_id;
+                return self.Recv_Partial(
+                    *dense, src_rank, offset, recv_numel, sync_op);
+              },
+              py::arg("tensor"),
+              py::arg("src"),
+              py::arg("num"),
+              py::arg("id"),
+              py::arg("sync_op"),
               py::call_guard<py::gil_scoped_release>())
 
           .def(
@@ -427,6 +509,94 @@ void BindDistributed(py::module *m) {
               },
               py::arg("tensor"),
               py::arg("op"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "send_on_calc_stream",
+              [](distributed::ProcessGroupStream &self,
+                 py::handle py_tensor,
+                 int dst) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.Send(tensors,
+                                 dst,
+                                 /*sync_op*/ true,
+                                 /*use_calc_stream*/ true);
+              },
+              py::arg("tensor"),
+              py::arg("dst"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "send_partial_on_calc_stream",
+              [](distributed::ProcessGroupStream &self,
+                 py::handle py_tensor,
+                 int dst_rank,
+                 int nranks,
+                 int rank_id) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                int numel = (*dense).numel();
+                int send_numel = numel / nranks;
+                int offset = send_numel * rank_id;
+                return self.Send_Partial(*dense,
+                                         dst_rank,
+                                         offset,
+                                         send_numel,
+                                         /*sync_op*/ true,
+                                         /*use_calc_stream*/ true);
+              },
+              py::arg("tensor"),
+              py::arg("dst"),
+              py::arg("num"),
+              py::arg("id"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "recv_on_calc_stream",
+              [](distributed::ProcessGroupStream &self,
+                 py::handle py_tensor,
+                 int src) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                std::vector<phi::DenseTensor> tensors = {*dense};
+                return self.Recv(tensors,
+                                 src,
+                                 /*sync_op*/ true,
+                                 /*use_calc_stream*/ true);
+              },
+              py::arg("tensor"),
+              py::arg("src"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "recv_partial_on_calc_stream",
+              [](distributed::ProcessGroupStream &self,
+                 py::handle py_tensor,
+                 int src_rank,
+                 int nranks,
+                 int rank_id) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                int numel = (*dense).numel();
+                int recv_numel = numel / nranks;
+                int offset = recv_numel * rank_id;
+                return self.Recv_Partial(*dense,
+                                         src_rank,
+                                         offset,
+                                         recv_numel,
+                                         /*sync_op*/ true,
+                                         /*use_calc_stream*/ true);
+              },
+              py::arg("tensor"),
+              py::arg("src"),
+              py::arg("num"),
+              py::arg("id"),
               py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
