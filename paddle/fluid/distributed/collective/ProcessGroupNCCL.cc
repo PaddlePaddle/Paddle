@@ -52,7 +52,7 @@ std::shared_ptr<ProcessGroupNCCL::NCCLTask> ProcessGroupNCCL::CreateTask(
 }
 
 std::shared_ptr<ProcessGroupNCCL::NCCLTask> ProcessGroupNCCL::CreateTask(
-    std::vector<Place> places,
+    const std::vector<Place> places,
     int rank,
     CommType comm_type,
     const std::vector<phi::DenseTensor>& inputs,
@@ -275,7 +275,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
 
   auto& nccl_comms = places_to_ncclcomm_[key];
 
-  SyncDefaultStream(places, places_to_events_[key], places_to_ctx_[key]);
+  if (use_calc_stream) {
+    SyncDefaultStream(places, places_to_events_[key], places_to_ctx_[key]);
+  }
 
   auto task =
       CreateTask(places, rank_, comm_type, inputs, sync_op, use_calc_stream);
@@ -437,7 +439,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::PointToPoint(
 
   auto& nccl_comms = places_to_ncclcomm_[key];
 
-  SyncDefaultStream(places, places_to_events_[key], places_to_ctx_[key]);
+  if (use_calc_stream) {
+    SyncDefaultStream(places, places_to_events_[key], places_to_ctx_[key]);
+  }
 
   auto task =
       CreateTask(places, rank_, op_type, tensors, sync_op, use_calc_stream);
@@ -477,10 +481,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::PointToPoint(
     }
   }
 
-  for (size_t i = 0; i < tensors.size(); ++i) {
-    cuda_guard.SetDevice(places[i]);
-    task->control_events_[i].Record(*places_to_ctx_[key][i]);
+  if (!use_calc_stream) {
+    for (size_t i = 0; i < tensors.size(); ++i) {
+      cuda_guard.SetDevice(places[i]);
+      task->control_events_[i].Record(*places_to_ctx_[key][i]);
+    }
   }
+
   return task;
 }
 

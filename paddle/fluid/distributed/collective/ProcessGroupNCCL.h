@@ -212,7 +212,7 @@ class ProcessGroupNCCL : public ProcessGroupStream {
       const std::vector<phi::DenseTensor>& inputs);
 
   virtual std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
-      std::vector<Place> places,
+      const std::vector<Place> places,
       int rank,
       CommType op_type,
       const std::vector<phi::DenseTensor>& inputs,
