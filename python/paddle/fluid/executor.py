@@ -771,9 +771,6 @@ class _ExecutorCache(object):
 
             inner_program = converted_program
             # print(f"Program after convert:\n {inner_program}", flush=True)
-            warnings.warn(
-                "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
-            )
         else:
             build_strategy = None
             from paddle.incubate.autograd import prim_enabled, prim2orig
@@ -789,9 +786,16 @@ class _ExecutorCache(object):
                                       fetch_var_name=fetch_var_name,
                                       use_fetch_v2=True)
 
-        # If there are multiple blocks in the program, subblock will not be executed with the new executor in temporary
-        if program.num_blocks > 1:
-            warnings.warn("There are more than 1 block in program.")
+        if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None) in [
+                1, '1', True, 'True', 'true'
+        ] and not program._is_start_up_program_:
+            if program.num_blocks > 1:
+                # If there are multiple blocks in the program, subblock will not be executed with the new executor in temporary
+                logging.warning("There are more than 1 block in program.")
+            elif program.num_blocks == 1:
+                logging.warning("There are 1 block in program.")
+            else:
+                logging.warning("There are no block in program.")
 
         # standalone executor will apply buffer_shared_inplace_pass and
         # inplace_addto_op_pass to program according to build_strategy
@@ -1555,16 +1559,9 @@ class Executor(object):
                     place, core.CustomPlace):
                 return False
 
-            use_standalone_executor_for_compiled_program = os.environ.get(
+            use_standalone_executor_for_distribution = os.environ.get(
                 'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
                 None) in [1, '1', True, 'True', 'true']
-
-            # Only support fleet when 'FLAGS_CONVERT_GRAPH_TO_PROGRAM' is set to true
-            from paddle.distributed.fleet import fleet
-            if fleet._role_maker is not None and not use_standalone_executor_for_compiled_program:
-                warnings.warn("Standalone executor is not used for fleet",
-                              UserWarning)
-                return False
 
             compiled = isinstance(program,
                                   compiler.CompiledProgram) or isinstance(
@@ -1572,6 +1569,16 @@ class Executor(object):
             if compiled:
                 compiled_program = program if isinstance(
                     program, compiler.CompiledProgram) else program._graph
+
+                # delete this code after supporting distribution
+                if compiled_program._build_strategy is not None and (
+                        compiled_program._build_strategy.is_distribution
+                        or compiled_program._build_strategy.num_trainers > 1):
+                    warnings.warn(
+                        "Standalone executor is not used for distribution",
+                        UserWarning)
+                    return use_standalone_executor_for_distribution
+
                 # Unsupported case 1: data parallel
                 if compiled_program._is_data_parallel and len(
                         compiled_program._get_places(
@@ -1611,10 +1618,14 @@ class Executor(object):
                         UserWarning)
                     return False
 
-                return use_standalone_executor_for_compiled_program
-            else:
-                assert isinstance(program, Program)
-                return True
+            # delete this code after supporting fleet
+            from paddle.distributed.fleet import fleet
+            if fleet._role_maker is not None:
+                warnings.warn("Standalone executor is not used for fleet",
+                              UserWarning)
+                return use_standalone_executor_for_distribution
+
+            return True
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
@@ -1653,10 +1664,6 @@ class Executor(object):
                     tensor._copy_from(cpu_tensor, tensor._place())
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
-
-            warnings.warn(
-                "FLAGS_USE_STANDALONE_EXECUTOR is set to 1. New executor is used to execute Program."
-            )
 
             return new_exe.run(scope, list(feed.keys()), fetch_list,
                                return_numpy)

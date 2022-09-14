@@ -83,10 +83,10 @@ def ReadBwdFile(filepath):
     ret = {}
     if contents is not None:
         for content in contents:
-            assert 'backward_api' in content.keys(), AssertMessage(
-                'backward_api', content.keys())
-            if 'backward_api' in content.keys():
-                api_name = content['backward_api']
+            assert 'backward_op' in content.keys(), AssertMessage(
+                'backward_op', content.keys())
+            if 'backward_op' in content.keys():
+                api_name = content['backward_op']
 
             ret[api_name] = content
     f.close()
@@ -418,12 +418,12 @@ class FunctionGeneratorBase:
     def CollectOriginalForwardInfo(self):
         forward_api_contents = self.forward_api_contents
 
-        self.forward_api_name = forward_api_contents['api']
+        self.forward_api_name = forward_api_contents['op']
         forward_args_str = forward_api_contents['args']
         forward_returns_str = forward_api_contents['output']
 
-        assert 'api' in forward_api_contents.keys(
-        ), "Unable to find \"api\" in forward_api_contents keys"
+        assert 'op' in forward_api_contents.keys(
+        ), "Unable to find \"op\" in forward_api_contents keys"
         assert 'args' in forward_api_contents.keys(
         ), "Unable to find \"args\" in forward_api_contents keys"
         assert 'output' in forward_api_contents.keys(
