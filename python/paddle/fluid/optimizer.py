@@ -76,8 +76,8 @@ class Optimizer(object):
                  name=None):
         """
         Args:
-            flatten_param_grads (bool, optional): Whether to flatten all the parameters and grads. 
-                If true, the parameters and gradients will be coalesce to contiguous mempry, 
+            flatten_param_grads (bool, optional): Whether to flatten all the parameters and grads.
+                If true, the parameters and gradients will be coalesce to contiguous mempry,
                 and the grad_clip ops / optimizer ops will be fuse to one operator.
         """
         # Because of the loop import, so place it in the function body
@@ -158,7 +158,7 @@ class Optimizer(object):
         Args: None
         Return:
             state_dict(dict) : dict contains all the variable used by optimizer
-        
+
         Examples:
             .. code-block:: python
 
@@ -204,11 +204,11 @@ class Optimizer(object):
         '''
         Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
 
-        Args: 
+        Args:
             state_dict(dict) : Dict contains all the Variable needed by optimizer
         Return:
             None
-        
+
         Examples:
             .. code-block:: python
 
@@ -222,7 +222,7 @@ class Optimizer(object):
                 state_dict = emb.state_dict()
                 fluid.save_dygraph(state_dict, "paddle_dy")
 
-                scheduler = paddle.optimizer.lr.NoamDecay(	
+                scheduler = paddle.optimizer.lr.NoamDecay(
                     d_model=0.01, warmup_steps=100, verbose=True)
                 adam = paddle.optimizer.Adam(
                     learning_rate=scheduler,
@@ -385,7 +385,7 @@ class Optimizer(object):
     def set_lr(self, value):
         """
         :api_attr: imperative
-        
+
         Set the value of the learning rate manually in the optimizer. If the optimizer use LearningRateDecay,
         this API cannot be invoked, because it will lead to conflict.
 
@@ -394,12 +394,12 @@ class Optimizer(object):
 
         Returns:
             None
-          
+
         Examples:
             .. code-block:: python
 
                 import paddle.fluid as fluid
-                        
+
                 with fluid.dygraph.guard():
                     linear = fluid.dygraph.nn.Linear(10, 10)
 
@@ -473,7 +473,7 @@ class Optimizer(object):
     def current_step_lr(self):
         """
         :api_attr: imperative
-        
+
         Get current step learning rate. The return value is all the same When LearningRateDecay is not used,
         otherwise return the step learning rate.
 
@@ -500,7 +500,7 @@ class Optimizer(object):
                     inp = fluid.dygraph.to_variable(inp)
                     out = linear(inp)
                     loss = fluid.layers.reduce_mean(out)
-                    
+
                     bd = [2, 4, 6, 8]
                     value = [0.2, 0.4, 0.6, 0.8, 1.0]
                     adam = fluid.optimizer.Adam(fluid.dygraph.PiecewiseDecay(bd, value, 0),
@@ -930,7 +930,7 @@ class Optimizer(object):
 
     def _create_regularization_of_grad(self, param, grad, regularization=None):
         """ Create and add backward regularization Operators
-    
+
         Function helper of append_regularization_ops.
         """
         # If no gradient or no regularization is specified,  then we don't need to do anything
@@ -974,22 +974,22 @@ class Optimizer(object):
                                   parameters_and_grads,
                                   regularization=None):
         r"""Create and add backward regularization Operators
-    
+
         Creates and adds backward regularization operators in the BlockDesc.
         This will add gradients of the regularizer function to the gradients
         of the parameters and return these modified gradients. This is the
         same as implementing weight decay in optimizers for regularization.
-    
+
         Args:
             parameters_and_grads: A list of (parameters, gradients) pairs
                                   that need to be regularized.
             regularization: A global regularizer. If the parameter is not
                             set. It will be applied with regularizer.
-    
+
         Returns:
             list[(Variable, Variable)]: list of (parameters, gradients) \
             pair with the regularized gradient
-    
+
         Raises:
             Exception: Unknown regularization type
         """
@@ -1177,10 +1177,10 @@ class Optimizer(object):
         Clear the gradients of all optimized parameters for model.
 
         If not, new gradient will accumulat on previous gradient.
-        
+
         Returns:
             None
-        
+
         Examples:
             .. code-block:: python
 
@@ -1192,7 +1192,7 @@ class Optimizer(object):
                     a = fluid.dygraph.to_variable(value)
                     linear = fluid.Linear(13, 5, dtype="float32")
                     # This can be any optimizer supported by dygraph.
-                    adam = fluid.optimizer.Adam(learning_rate = 0.01, 
+                    adam = fluid.optimizer.Adam(learning_rate = 0.01,
                                                 parameter_list = linear.parameters())
                     out = linear(a)
                     out.backward()
@@ -1228,8 +1228,8 @@ class Optimizer(object):
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
             by minimize and a list of (param, grad) variable pairs, param is
             ``Parameter``, grad is the gradient value corresponding to the parameter.
-            The returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to 
-            indicate program pruning. If so, the program will be pruned by ``feed`` and 
+            The returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to
+            indicate program pruning. If so, the program will be pruned by ``feed`` and
             ``fetch_list`` before run, see details in ``Executor``.
 
         Examples:
@@ -1271,9 +1271,9 @@ class SGDOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
@@ -1443,9 +1443,9 @@ class MomentumOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
@@ -1589,8 +1589,8 @@ class DGCMomentumOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipByNorm, optional): Gradient cliping strategy. ``DGCMomentumOptimizer`` only support 
-            :ref:`api_fluid_clip_GradientClipByNorm` , and if not, it will raise TypeError. Default None, 
+        grad_clip (GradientClipByNorm, optional): Gradient cliping strategy. ``DGCMomentumOptimizer`` only support
+            :ref:`api_fluid_clip_GradientClipByNorm` , and if not, it will raise TypeError. Default None,
             meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
@@ -2000,9 +2000,9 @@ class LarsMomentumOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
@@ -2011,7 +2011,7 @@ class LarsMomentumOptimizer(Optimizer):
         multi_precision (bool, optional): Whether to use multi-precision during weight updating.
         rescale_grad (float, optional): Multiply the gradient with `rescale_grad` \
             before updating. Often choose to be `1.0/batch_size`.
-        
+
     Examples:
         .. code-block:: python
 
@@ -2221,9 +2221,9 @@ class AdagradOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
@@ -2322,7 +2322,7 @@ class AdamOptimizer(Optimizer):
     of section 2 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
     it can dynamically adjusts the learning rate of each parameter using
     the 1st moment estimates and the 2nd moment estimates of the gradient.
-    
+
     The parameter ``param_out`` update rule with gradient ``grad``:
 
     .. math::
@@ -2360,9 +2360,9 @@ class AdamOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
@@ -2374,11 +2374,11 @@ class AdamOptimizer(Optimizer):
             gradient in current mini-batch, so it will be much more faster. But this mode has
             different semantics with the original Adam algorithm and may lead to different result.
             The default value is False.
-        use_global_beta_pow (bool, optional): Whether to use global beta_pow. If true, Adam will use global beta_pow 
+        use_global_beta_pow (bool, optional): Whether to use global beta_pow. If true, Adam will use global beta_pow
             for whole model instead of creating beta_pow for each parameter. Default is false.
         flatten_param_grads (bool, optional): Whether to flatten all parameters and gradients. Default is false.
         align_size (int, optional): The alignment size when flatten parameters and gradients. Default is -1, which means
-            use same align_size as allocator. 
+            use same align_size as allocator.
 
     Examples:
         .. code-block:: python
@@ -2686,7 +2686,7 @@ class AdamOptimizer(Optimizer):
 
 class AdamaxOptimizer(Optimizer):
     r"""
-    The Adamax optimizer is implemented based on the Adamax Optimization 
+    The Adamax optimizer is implemented based on the Adamax Optimization
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
     The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
     which makes the learning rate update algorithm more stable and simple.
@@ -2727,9 +2727,9 @@ class AdamaxOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
@@ -3013,9 +3013,9 @@ class DecayedAdagradOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
@@ -3130,9 +3130,9 @@ class AdadeltaOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
@@ -3305,9 +3305,9 @@ class RMSPropOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
@@ -3495,9 +3495,9 @@ class FtrlOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
@@ -3619,16 +3619,16 @@ class LambOptimizer(AdamOptimizer):
     r"""
     LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
 
-    LAMB Optimizer is designed to scale up the batch size of training without losing 
-    accuracy, which supports adaptive element-wise updating and accurate layer-wise 
-    correction. For more information, please refer to `Large Batch Optimization for 
+    LAMB Optimizer is designed to scale up the batch size of training without losing
+    accuracy, which supports adaptive element-wise updating and accurate layer-wise
+    correction. For more information, please refer to `Large Batch Optimization for
     Deep Learning: Training BERT in 76 minutes <https://arxiv.org/abs/1904.00962>`_ .
 
     The updating of parameters follows:
 
     ..  math::
 
-        m_t &= \\beta_1 m_{t - 1}+ (1 - \\beta_1)g_t 
+        m_t &= \\beta_1 m_{t - 1}+ (1 - \\beta_1)g_t
 
         v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2
 
@@ -3641,7 +3641,7 @@ class LambOptimizer(AdamOptimizer):
         w_t &= w_{t-1} -\\eta_t \\frac{\\left \| w_{t-1}\\right \|}{\\left \| r_t + \\lambda w_{t-1}\\right \|} (r_t + \\lambda w_{t-1})
 
 
-    where :math:`m` is the 1st moment, and :math:`v` the 2nd moment, :math:`\\eta` the 
+    where :math:`m` is the 1st moment, and :math:`v` the 2nd moment, :math:`\\eta` the
     learning rate, :math:`\\lambda` the LAMB weight decay rate.
 
     Args:
@@ -3661,21 +3661,21 @@ class LambOptimizer(AdamOptimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` , :ref:`api_paddle_fluid_clip_ClipGradByNorm` ,
             :ref:`api_paddle_fluid_clip_ClipGradByValue` ). If you want better convergence, it is recommended
             to use :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` . Default None, meaning there is no gradient clipping.
-        exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight 
-            decay when **exclude_from_weight_decay_fn(parameter)** returns true. 
+        exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight
+            decay when **exclude_from_weight_decay_fn(parameter)** returns true.
             Default None.
-        name(str|None): For detailed information, please refer to 
+        name(str|None): For detailed information, please refer to
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Examples:
         .. code-block:: python
-            
-            import paddle.fluid as fluid 
+
+            import paddle.fluid as fluid
 
             data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
@@ -4068,7 +4068,7 @@ class ModelAverage(Optimizer):
     def restore(self, executor):
         """
         Restore ``Parameter`` values of current model.
-        
+
         Args:
             executor(fluid.Executor): The current network executor.
 
@@ -4132,28 +4132,28 @@ class ExponentialMovingAverage(object):
 
 	\\text{EMA}_t & = \\text{decay} * \\text{EMA}_{t-1} + (1 - \\text{decay}) * \\theta_t
 
-    The average results calculated by **update()** method will be saved in 
-    temporary variables which are created and maintained by the object, and can 
-    be applied to parameters of current model by calling **apply()** method. And 
+    The average results calculated by **update()** method will be saved in
+    temporary variables which are created and maintained by the object, and can
+    be applied to parameters of current model by calling **apply()** method. And
     the **restore()** method is used to restore the parameters.
 
-    **Bias correction**. All EMAs are initialized to :math:`0` and hence they will be 
-    zero biased, which can be corrected by divided by a factor 
-    :math:`(1 - \\text{decay}^t)` , i.e., the actual EMAs applied to parameters 
-    when calling **apply()** method would be 
+    **Bias correction**. All EMAs are initialized to :math:`0` and hence they will be
+    zero biased, which can be corrected by divided by a factor
+    :math:`(1 - \\text{decay}^t)` , i.e., the actual EMAs applied to parameters
+    when calling **apply()** method would be
 
     ..  math::
-    
+
         \\widehat{\\text{EMA}}_t = \\frac{\\text{EMA}_t}{1 - \\text{decay}^t}
 
-    **Decay rate scheduling**. A large decay rate very close to 1 would result 
-    in that the averages move very slowly. And a better strategy is to set a 
+    **Decay rate scheduling**. A large decay rate very close to 1 would result
+    in that the averages move very slowly. And a better strategy is to set a
     relative smaller decay rate in the very beginning. The argument **thres_steps**
-    allows users to pass a Variable to schedule the decay rate, in this case, 
+    allows users to pass a Variable to schedule the decay rate, in this case,
     the actual decay rate becomes
-     
+
     ..  math::
-    
+
         \\min(\\text{decay}, \\frac{1 + \\text{thres_steps}}{10 + \\text{thres_steps}})
 
     Usually **thres_steps** can be the global training steps.
@@ -4195,21 +4195,21 @@ class ExponentialMovingAverage(object):
                 for batch_id in range(6):
                     data = numpy.random.random(size=(10, 5)).astype('float32')
                     exe.run(program=static.default_main_program(),
-                    feed={'x': data}, 
+                    feed={'x': data},
                     fetch_list=[cost.name])
 
                 # usage 1
                 with ema.apply(exe):
                     data = numpy.random.random(size=(10, 5)).astype('float32')
                     exe.run(program=test_program,
-                        feed={'x': data}, 
+                        feed={'x': data},
                         fetch_list=[hidden.name])
 
                 # usage 2
                 with ema.apply(exe, need_restore=False):
                     data = numpy.random.random(size=(10, 5)).astype('float32')
                     exe.run(program=test_program,
-                        feed={'x': data}, 
+                        feed={'x': data},
                         fetch_list=[hidden.name])
                 ema.restore(exe)
 
@@ -4308,8 +4308,8 @@ class ExponentialMovingAverage(object):
         return param_ema
 
     def update(self):
-        """ 
-        Update Exponential Moving Average. Should only call this method in 
+        """
+        Update Exponential Moving Average. Should only call this method in
         train program.
         """
         global_step = layers.autoincreased_step_counter(
@@ -4342,10 +4342,10 @@ class ExponentialMovingAverage(object):
     def apply(self, executor, need_restore=True):
         """
         Apply moving average to parameters for evaluation.
-        
+
         Args:
             executor (Executor): The Executor to execute applying.
-            need_restore (bool, optional): Whether to restore parameters after 
+            need_restore (bool, optional): Whether to restore parameters after
                 applying. Default True.
         """
         executor.run(self.apply_program)
@@ -4357,7 +4357,7 @@ class ExponentialMovingAverage(object):
 
     def restore(self, executor):
         """Restore parameters.
-        
+
         Args:
             executor (Executor): The Executor to execute restoring.
         """
@@ -4377,7 +4377,7 @@ class PipelineOptimizer(object):
         optimizer (Optimizer): The optimizer to use, such as SGD.
         num_microbatches (int): Number of microbatches. [Optional. Default:1].
         start_cpu_core_id (int): The first cpu core id to use. [Optional. Default:0].
-    
+
     Examples:
         .. code-block:: python
 
@@ -4890,7 +4890,7 @@ class PipelineOptimizer(object):
 
     def _add_op_device_attr(self, block):
         """
-        Add op_device attrribute for ops in block that have 
+        Add op_device attrribute for ops in block that have
         not that attribute set.
         """
         for idx, op in enumerate(list(block.ops)):
@@ -4909,7 +4909,7 @@ class PipelineOptimizer(object):
 
     def _check_validation(self, block):
         """
-        Check whether ops in a block have both the op_device and the 
+        Check whether ops in a block have both the op_device and the
         op_role attributes set.
         Then, return all devices in order.
         """
@@ -6154,18 +6154,18 @@ class RecomputeOptimizer(Optimizer):
     Recompute Optimizer Wrapper
 
     Normally, a training step contains three sub-steps: first, run forward
-    Operators to calculate the loss; second, run backward Operators to 
+    Operators to calculate the loss; second, run backward Operators to
     calculate gradient of the parameters; third, apply optimization method
     to update the value of the parameters.
 
-    In the forward computation process, all variables that are needed by 
+    In the forward computation process, all variables that are needed by
     backward computation process will be kept in memory, which occupy a great
     amount of memory when the network becomes very deep.
 
-    Recompute split the network to k segments. In each segment, It will 
+    Recompute split the network to k segments. In each segment, It will
     recompute the forward Operators, before running backward operators. It is
     very helpful for saving memory.
- 
+
     The Variables that separate a network to segments are called as checkpoints,
     and users should set it manually. The usage is very simple:
 
@@ -6222,7 +6222,7 @@ class RecomputeOptimizer(Optimizer):
     def _set_checkpoints(self, checkpoints):
         """
         Args:
-            checkpoints (list): List of Variable or string    
+            checkpoints (list): List of Variable or string
         """
         assert isinstance(
             checkpoints, list
@@ -6254,19 +6254,19 @@ class RecomputeOptimizer(Optimizer):
 
                 import paddle.fluid as fluid
                 import paddle.compat as cpt
-                
+
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
                     cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
                     sum_cost = fluid.layers.reduce_mean(cost)
                     return sum_cost, fc_1, prediction
-                
+
                 input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
                 input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
-                
+
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
@@ -6351,9 +6351,9 @@ class RecomputeOptimizer(Optimizer):
         add fill_constant_ops to the end of the prog
 
         we should fill the pinned vars before runing the main_prog
-        to instantiate their tensor hold_, which could tell us whether 
-        the host memory could hold all the checkpoints from all the 
-        GPU devices in this node. 
+        to instantiate their tensor hold_, which could tell us whether
+        the host memory could hold all the checkpoints from all the
+        GPU devices in this node.
         """
         op_role = 0
         block = startup_program.global_block()
@@ -6640,7 +6640,7 @@ class RecomputeOptimizer(Optimizer):
     def _offload(self, loss, startup_program=None):
         """
         core steps for recompute offload
-        1. create pinned vars and temp vars 
+        1. create pinned vars and temp vars
         2. parse & update Forward pass: offload, sync
         3. parse & update Backward pass: rename, fetch, sync
         4. verify the correctness
@@ -6702,20 +6702,20 @@ class RecomputeOptimizer(Optimizer):
             .. code-block:: python
 
                 import paddle.fluid as fluid
-    
+
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
                     cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
                     sum_cost = fluid.layers.reduce_mean(cost)
                     return sum_cost, fc_1, prediction
-    
-    
+
+
                 input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
                 input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
-    
+
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
@@ -6773,19 +6773,19 @@ class RecomputeOptimizer(Optimizer):
         Examples:
             .. code-block:: python
                 import paddle.fluid as fluid
-                
+
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
                     cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
                     sum_cost = fluid.layers.reduce_mean(cost)
-                    return sum_cost, fc_1, prediction                
-                
+                    return sum_cost, fc_1, prediction
+
                 input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
                 input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
-                
+
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
@@ -6794,10 +6794,10 @@ class RecomputeOptimizer(Optimizer):
                     startup_program=None,
                     parameter_list=None,
                     no_grad_set=None)
-                
+
                 optimize_ops = sgd.apply_optimize(
                     cost, startup_program=None, params_grads=params_grads)
-                
+
                 print("Finished apply_optimize")
         """
 
@@ -6839,18 +6839,18 @@ class LookaheadOptimizer(object):
     paper : https://arxiv.org/abs/1907.08610.
 
     Lookahead keeps two sets of params: the fast_params and
-    the slow_params. inner_optimizer update fast_params every 
-    training step. Lookahead updates the slow_params and fast_params 
+    the slow_params. inner_optimizer update fast_params every
+    training step. Lookahead updates the slow_params and fast_params
     every k training steps as follows:
 
     .. math::
-        
+
         slow\_param_t &= slow\_param_{t-1} + \\alpha * (fast\_param_{t-1} - slow\_param_{t-1})
-	
+
 	fast\_param_t &=  slow\_param_t
 
     Args:
-        inner_optimizer (Optimizer): The optimizer that update fast params step by step. 
+        inner_optimizer (Optimizer): The optimizer that update fast params step by step.
         alpha (float): The learning rate of Lookahead.
         k (int): The slow params is updated every k steps.
 
@@ -6863,7 +6863,7 @@ class LookaheadOptimizer(object):
             import numpy.random as random
 
             paddle.enable_static()
-        
+
             x = fluid.layers.data(name='x', shape=[2], dtype='float32')
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
             y = fluid.layers.fc(input=[x], size=2, act="softmax")
@@ -6882,10 +6882,10 @@ class LookaheadOptimizer(object):
             def train_reader(limit=5):
                 for i in range(limit):
                     yield random.random([2]).astype('float32'), random.random([1]).astype('int64')
-            
+
             feeder = fluid.DataFeeder(feed_list=[x, label], place=place)
             reader = paddle.batch(paddle.reader.shuffle(train_reader, buf_size=50000),batch_size=1)
-            
+
             for batch_data in reader():
                 exe.run(fluid.default_main_program(),
                 feed=feeder.feed(batch_data))

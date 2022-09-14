@@ -43,7 +43,7 @@ def to_tensor(pic, data_format='CHW'):
 
     Args:
         pic (np.ndarray): Image to be converted to tensor.
-        data_format (str, optional): Data format of output tensor, should be 'HWC' or 
+        data_format (str, optional): Data format of output tensor, should be 'HWC' or
             'CHW'. Default: 'CHW'.
 
     Returns:
@@ -76,12 +76,12 @@ def resize(img, size, interpolation='bilinear'):
     Args:
         input (np.ndarray): Image to be resized.
         size (int|list|tuple): Target size of input data, with (height, width) shape.
-        interpolation (int|str, optional): Interpolation method. when use cv2 backend, 
-            support method are as following: 
-            - "nearest": cv2.INTER_NEAREST, 
-            - "bilinear": cv2.INTER_LINEAR, 
-            - "area": cv2.INTER_AREA, 
-            - "bicubic": cv2.INTER_CUBIC, 
+        interpolation (int|str, optional): Interpolation method. when use cv2 backend,
+            support method are as following:
+            - "nearest": cv2.INTER_NEAREST,
+            - "bilinear": cv2.INTER_LINEAR,
+            - "area": cv2.INTER_AREA,
+            - "bicubic": cv2.INTER_CUBIC,
             - "lanczos": cv2.INTER_LANCZOS4
 
     Returns:
@@ -143,7 +143,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
             respectively.
         fill (float, optional): Pixel fill value for constant fill. If a tuple of
             length 3, it is used to fill R, G, B channels respectively.
-            This value is only used when the padding_mode is constant. Default: 0. 
+            This value is only used when the padding_mode is constant. Default: 0.
         padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default: 'constant'.
 
             - constant: pads with a constant value, this value is specified with fill
@@ -222,7 +222,7 @@ def crop(img, top, left, height, width):
     """Crops the given image.
 
     Args:
-        img (np.array): Image to be cropped. (0,0) denotes the top left 
+        img (np.array): Image to be cropped. (0,0) denotes the top left
             corner of the image.
         top (int): Vertical component of the top left corner of the crop box.
         left (int): Horizontal component of the top left corner of the crop box.
@@ -244,8 +244,8 @@ def center_crop(img, output_size):
             img (np.array): Image to be cropped. (0,0) denotes the top left corner of the image.
             output_size (sequence or int): (height, width) of the crop box. If int,
                 it is used for both directions
-            backend (str, optional): The image proccess backend type. Options are `pil`, `cv2`. Default: 'pil'. 
-        
+            backend (str, optional): The image proccess backend type. Options are `pil`, `cv2`. Default: 'pil'.
+
         Returns:
             np.array: Cropped image.
 
@@ -425,11 +425,11 @@ def affine(img,
         shear (sequence or float): shear angle value in degrees between -180 to 180, clockwise direction.
             If a sequence is specified, the first value corresponds to a shear parallel to the x axis, while
             the second value corresponds to a shear parallel to the y axis.
-        interpolation (int|str, optional): Interpolation method. If omitted, or if the 
+        interpolation (int|str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to cv2.INTER_NEAREST.
-            when use cv2 backend, support method are as following: 
-            - "nearest": cv2.INTER_NEAREST, 
-            - "bilinear": cv2.INTER_LINEAR, 
+            when use cv2 backend, support method are as following:
+            - "nearest": cv2.INTER_NEAREST,
+            - "bilinear": cv2.INTER_LINEAR,
             - "bicubic": cv2.INTER_CUBIC
         fill (3-tuple or int): RGB pixel fill value for area outside the affined image.
             If int, it is used for all channels respectively.
@@ -497,11 +497,11 @@ def rotate(img,
     Args:
         img (np.array): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
-        interpolation (int|str, optional): Interpolation method. If omitted, or if the 
+        interpolation (int|str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to cv2.INTER_NEAREST.
-            when use cv2 backend, support method are as following: 
-            - "nearest": cv2.INTER_NEAREST, 
-            - "bilinear": cv2.INTER_LINEAR, 
+            when use cv2 backend, support method are as following:
+            - "nearest": cv2.INTER_NEAREST,
+            - "bilinear": cv2.INTER_LINEAR,
             - "bicubic": cv2.INTER_CUBIC
         expand (bool, optional): Optional expansion flag.
             If true, expands the output image to make it large enough to hold the entire rotated image.
@@ -589,11 +589,11 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
         img (np.array): Image to be perspectived.
         startpoints (list[list[int]]): [top-left, top-right, bottom-right, bottom-left] of the original image,
         endpoints (list[list[int]]): [top-left, top-right, bottom-right, bottom-left] of the transformed image.
-        interpolation (int|str, optional): Interpolation method. If omitted, or if the 
+        interpolation (int|str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to cv2.INTER_NEAREST.
-            when use cv2 backend, support method are as following: 
-            - "nearest": cv2.INTER_NEAREST, 
-            - "bilinear": cv2.INTER_LINEAR, 
+            when use cv2 backend, support method are as following:
+            - "nearest": cv2.INTER_NEAREST,
+            - "bilinear": cv2.INTER_LINEAR,
             - "bicubic": cv2.INTER_CUBIC
         fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
             If int, it is used for all channels respectively.
@@ -664,7 +664,7 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
         img (np.array): input data to be normalized.
         mean (list|tuple): Sequence of means for each channel.
         std (list|tuple): Sequence of standard deviations for each channel.
-        data_format (str, optional): Data format of img, should be 'HWC' or 
+        data_format (str, optional): Data format of img, should be 'HWC' or
             'CHW'. Default: 'CHW'.
         to_rgb (bool, optional): Whether to convert to rgb. Default: False.
 
@@ -701,7 +701,7 @@ def erase(img, i, j, h, w, v, inplace=False):
 
         Returns:
             np.array: Erased image.
-        
+
     """
     if not inplace:
         img = img.copy()

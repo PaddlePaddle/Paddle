@@ -403,9 +403,9 @@ LAYOUT_LOGIC_TEMPLATE=\
   if (paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune()) {{
     VLOG(5) << "Check and Prepare For LAYOUT";
     paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> tensors_vector = {};
-    {} 
     {}
-    paddle::imperative::LayoutAutoTune::Instance().DisableLayoutAutoTune(); 
+    {}
+    paddle::imperative::LayoutAutoTune::Instance().DisableLayoutAutoTune();
     {}
     {}
     paddle::imperative::LayoutAutoTune::Instance().EnableLayoutAutoTune();
@@ -1772,7 +1772,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             autograd_api = self.grad_api_contents['invoke'].replace(
                 forward_api_name, forward_api_name + '_dygraph_function', 1)
             grad_function_call_str = f"""
-  if (trace_backward) {{            
+  if (trace_backward) {{
   {indent}{autograd_api_out} api_output = {autograd_api};
   {out_assign_str}}} else {{
   {indent}{autograd_api_out} api_output = paddle::experimental::{self.namespace}{self.grad_api_contents['invoke']};

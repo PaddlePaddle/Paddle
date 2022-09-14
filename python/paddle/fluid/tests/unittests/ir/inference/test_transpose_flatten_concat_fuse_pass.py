@@ -28,12 +28,12 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
         x_1_var              x_2_var
           |                     |
       transpose2            transpose2
-          |                     | 
+          |                     |
        flatten2              flatten2
           \                     /
     flatten2_out_var    flatten2_out_var
               \              /
-                   concat 
+                   concat
     """
 
     def sample_predictor_configs(self, program_config):

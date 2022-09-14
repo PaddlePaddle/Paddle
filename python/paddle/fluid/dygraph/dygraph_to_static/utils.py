@@ -51,7 +51,7 @@ ORIGI_INFO = "Original information of source code for ast node."
 
 class BaseNodeVisitor(gast.NodeVisitor):
     """
-    Implement customized NodeVisitor inherited from gast.NodeVisitor. 
+    Implement customized NodeVisitor inherited from gast.NodeVisitor.
     Ancestor nodes are traced to easily support more operations of currently
     visited node.
     """
@@ -107,7 +107,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
     data can be various-length. This API is used in translating dygraph into
     static graph.
 
-     Note: 
+     Note:
         The default :code:`stop_gradient` attribute of the Tensor created by
         this API is true, which means the gradient won't be passed backward
         through the data Tensor. Set :code:`var.stop_gradient = False` If
@@ -118,7 +118,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
            for more details.
        shape (list|tuple): List|Tuple of integers declaring the shape. You can
            set "None" at a dimension to indicate the dimension can be of any
-           size. For example, it is useful to set changeable batch size as "None" 
+           size. For example, it is useful to set changeable batch size as "None"
        dtype (np.dtype|VarType|str, optional): The type of the data. Supported
            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
            uint8. Default: float32
@@ -996,8 +996,8 @@ def slice_is_num(slice_node):
 class NameScope:
 
     def __init__(self):
-        """ 
-            A NameScope is a object which manager all the variable names. 
+        """
+            A NameScope is a object which manager all the variable names.
             only FunctionDef and Controlflow node will have a namescope property.
 
             type can be "function" and "controlflow"
@@ -1018,7 +1018,7 @@ class NameScope:
         self.father = father
 
     def existed_vars(self):
-        """ vars existing in current scope. 
+        """ vars existing in current scope.
             they must not contain qualified names.
         """
         local_vars = self.w_vars - self.globals - self.nonlocals - self.args
@@ -1032,9 +1032,9 @@ class NameScope:
         return self.w_vars
 
     def variadic_length_vars(self):
-        """ 
+        """
         At present, we do not support global append, such as
-        
+
         import numpy as np
         a = []
         def func():
@@ -1063,9 +1063,9 @@ class NameScope:
         return True
 
     def is_global_var(self, name):
-        """ 
+        """
         Return whether the name is a var created in global scope.
-        Search from bottom to top. If it is not created or modified, 
+        Search from bottom to top. If it is not created or modified,
         it means global vars; otherwise, it means local vars.
         Only valid after FunctionNameLivenessAnalysis visitor.
         """
@@ -1093,16 +1093,16 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
     """ analyze the liveness of a function.
 
         every variables stored in this scope will be collected,
-        in addition with global/nonlocal information and 
+        in addition with global/nonlocal information and
         push_pop information.
 
         1. global variable is stored in node.var_globals.
         2. nonlocal variable is stored in node.var_nonlocals.
         3. arguments is stored in node.var_args.
-        4. if a variable's push and pop attribute is called, 
+        4. if a variable's push and pop attribute is called,
            it will be collected in push_pop_vars. They are
            used for transformation to tensor_array.
-           NOTE: push_pop_vars **may not** in w_vars. 
+           NOTE: push_pop_vars **may not** in w_vars.
            a.push(0) don't modify the variable a, but the content
            of a.
 
@@ -1120,13 +1120,13 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
                 q = 12
                 b.push(1)
                 c.pop()
-        
-        After this visitor we have: 
+
+        After this visitor we have:
         # node is the FunctionDef node with name: "func"
         node.pd_scope = NameScope(
             globals = ['i', 'j'],
             nonlocals = ['x', 'y'],
-            args = ['args', 'kargs'], 
+            args = ['args', 'kargs'],
             wr_vars = ['a', 'i', 'q', 'm', 'c', 'b']
             push_pop_vars = ['b', 'c']
         )
@@ -1160,7 +1160,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
 
     def visit_ListComp(self, node):
         """ [ i for i in range(10) ]
-            In this case, `i` will not created in FunctionScope. 
+            In this case, `i` will not created in FunctionScope.
             We don't collect `i` by not calling generic_visit.
         """
         pass
@@ -1183,7 +1183,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
                 self._get_argument_names(node))
 
         def post_func():
-            """ NOTE: why we need merge w_vars and push_pop_vars here ? 
+            """ NOTE: why we need merge w_vars and push_pop_vars here ?
                 because we do ifelse_transformer after loop_transformer. Loops will changed into functioons. but we know this function will be called in if. so we add w_vars to father function scope.
             """
             from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import WHILE_CONDITION_PREFIX, WHILE_BODY_PREFIX, FOR_CONDITION_PREFIX, FOR_BODY_PREFIX
@@ -1271,7 +1271,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
 
     def _get_argument_names(self, node):
         """ get all arguments name in the functiondef node.
-            this node is local to the function and shouldn't 
+            this node is local to the function and shouldn't
             be created.
         """
         assert isinstance(
@@ -1372,7 +1372,7 @@ def create_nonlocal_stmt_nodes(names):
 
 
 class GetterSetterHelper:
-    """ we have two classes of names in setter and getter function: 
+    """ we have two classes of names in setter and getter function:
         w_vars(loop_vars) + push_pop_vars
         To simplify the setter logic in convert_while and convert_cond,
         we extract the helper class here.

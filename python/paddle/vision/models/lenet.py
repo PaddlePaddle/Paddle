@@ -23,7 +23,7 @@ class LeNet(nn.Layer):
     `"Gradient-based learning applied to document recognition" <https://ieeexplore.ieee.org/document/726791>`_.
 
     Args:
-        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
                             will not be defined. Default: 10.
 
     Returns:
