@@ -160,7 +160,7 @@ class SparseAPI(ForwardAPI):
 
     def get_condition_code(self, kernel_name):
         assert self.kernel['dispatch'][kernel_name], \
-                f"{self.api} api: the tensor type of inputs and outputs for kernel isn't set, see also 'kernel:func' of 'conv3d' in sparse_api.yaml."
+                f"{self.api} api: the tensor type of inputs and outputs for kernel isn't set, see also 'kernel:func' of 'conv3d' in sparse_ops.yaml."
         input_types = self.kernel['dispatch'][kernel_name][0]
         sparse_type_map = {
             'sparse_coo': 'DataLayout::SPARSE_COO',
@@ -229,7 +229,6 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 #include "paddle/phi/core/kernel_registry.h"
 """
 
@@ -284,7 +283,7 @@ def main():
         description='Generate PaddlePaddle C++ Sparse API files')
     parser.add_argument('--api_yaml_path',
                         help='path to sparse api yaml file',
-                        default='paddle/phi/api/yaml/sparse_api.yaml')
+                        default='paddle/phi/api/yaml/sparse_ops.yaml')
 
     parser.add_argument('--api_header_path',
                         help='output of generated api header code file',

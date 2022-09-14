@@ -1169,7 +1169,10 @@ def convert_np_dtype_to_dtype_(np_dtype):
         core.VarDesc.VarType: the data type in Paddle.
 
     """
-    dtype = np.dtype(np_dtype)
+    if np_dtype == "bfloat16":
+        dtype = np.uint16
+    else:
+        dtype = np.dtype(np_dtype)
     if dtype == np.float32:
         return core.VarDesc.VarType.FP32
     elif dtype == np.float64:
@@ -7220,9 +7223,9 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'npu', 'xpu', '', None]:
+    if device not in ['cpu', 'gpu', 'npu', 'xpu', 'mlu', '', None]:
         raise ValueError(
-            "The Attr(device) should be 'cpu' 'npu' 'xpu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu' 'npu' 'xpu' 'mlu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
     if index:
         device = ":".join([device, index])

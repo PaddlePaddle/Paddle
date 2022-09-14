@@ -708,6 +708,11 @@ class _ExecutorCache(object):
             # NOTE(Ruibiao): Not all changeable item is considered for key at present,
             # ONLY: program, feed, and fetch_list
             if isinstance(self.program, compiler.CompiledProgram):
+                if not self.program._program:
+                    # The program holds no _program, maybe it is constructed by graph.
+                    # Convert graph to program in order to generate key.
+                    self.program._program = framework.IrGraph(
+                        self.program._graph).to_program()
                 self.key = hash(
                     _get_strong_program_cache_key_for_new_exe(
                         self.program._program, feed, fetch_list))
@@ -766,9 +771,6 @@ class _ExecutorCache(object):
 
             inner_program = converted_program
             # print(f"Program after convert:\n {inner_program}", flush=True)
-            warnings.warn(
-                "FLAGS_USE_STANDALONE_EXECUTOR and FLAGS_CONVERT_GRAPH_TO_PROGRAM is set to 1. Graph will be converted to Program and executed using new executor."
-            )
         else:
             build_strategy = None
             from paddle.incubate.autograd import prim_enabled, prim2orig
@@ -784,9 +786,16 @@ class _ExecutorCache(object):
                                       fetch_var_name=fetch_var_name,
                                       use_fetch_v2=True)
 
-        # If there are multiple blocks in the program, subblock will not be executed with the new executor in temporary
-        if program.num_blocks > 1:
-            warnings.warn("There are more than 1 block in program.")
+        if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None) in [
+                1, '1', True, 'True', 'true'
+        ] and not program._is_start_up_program_:
+            if program.num_blocks > 1:
+                # If there are multiple blocks in the program, subblock will not be executed with the new executor in temporary
+                logging.warning("There are more than 1 block in program.")
+            elif program.num_blocks == 1:
+                logging.warning("There are 1 block in program.")
+            else:
+                logging.warning("There are no block in program.")
 
         # standalone executor will apply buffer_shared_inplace_pass and
         # inplace_addto_op_pass to program according to build_strategy
@@ -953,6 +962,13 @@ class Executor(object):
     def _add_scope_cache(self, scope_cache_key, scope):
         self.scope_caches[scope_cache_key] = scope
 
+    # just for testing, will be removed later
+    @lru_cache()
+    def _log_force_set_program_cache(self, use_program_cache):
+        logging.warning(
+            f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE"
+        )
+
     def _feed_data(self, program, feed, feed_var_name, scope):
         # feed var to framework
         global_block = program.global_block()
@@ -1118,6 +1134,7 @@ class Executor(object):
                 warnings.warn(
                     "The program holds no _program, maybe it is constructed by graph."
                 )
+                return feed
         else:
             global_block = program.global_block()
 
@@ -1427,9 +1444,7 @@ class Executor(object):
             use_program_cache = force_use_program_cache in [
                 1, '1', True, 'True', 'true'
             ]
-            warnings.warn(
-                f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE",
-                UserWarning)
+            self._log_force_set_program_cache(use_program_cache)
 
         try:
             res = self._run_impl(program=program,
@@ -1544,16 +1559,9 @@ class Executor(object):
                     place, core.CustomPlace):
                 return False
 
-            use_standalone_executor_for_compiled_program = os.environ.get(
+            use_standalone_executor_for_distribution = os.environ.get(
                 'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
                 None) in [1, '1', True, 'True', 'true']
-
-            # Only support fleet when 'FLAGS_CONVERT_GRAPH_TO_PROGRAM' is set to true
-            from paddle.distributed.fleet import fleet
-            if fleet._role_maker is not None and not use_standalone_executor_for_compiled_program:
-                warnings.warn("Standalone executor is not used for fleet",
-                              UserWarning)
-                return False
 
             compiled = isinstance(program,
                                   compiler.CompiledProgram) or isinstance(
@@ -1561,13 +1569,23 @@ class Executor(object):
             if compiled:
                 compiled_program = program if isinstance(
                     program, compiler.CompiledProgram) else program._graph
-                # Unsupported case 1 : the CompiledProgram is constructed by Graph
+
+                # delete this code after supporting compiled_program._graph
                 if compiled_program._program is None:
                     warnings.warn("Standalone executor is not used for Graph",
                                   UserWarning)
-                    return False
+                    return use_standalone_executor_for_distribution
 
-                # Unsupported case 2: data parallel
+                # delete this code after supporting distribution
+                if compiled_program._build_strategy is not None and (
+                        compiled_program._build_strategy.is_distribution
+                        or compiled_program._build_strategy.num_trainers > 1):
+                    warnings.warn(
+                        "Standalone executor is not used for distribution",
+                        UserWarning)
+                    return use_standalone_executor_for_distribution
+
+                # Unsupported case 1: data parallel
                 if compiled_program._is_data_parallel and len(
                         compiled_program._get_places(
                             place, compiled_program._places)) != 1:
@@ -1576,7 +1594,7 @@ class Executor(object):
                         UserWarning)
                     return False
 
-                # Unsupported case 3 : parallel graph
+                # Unsupported case 2: parallel graph
                 if core.globals()['FLAGS_enable_parallel_graph'] in [
                         1, '1', True, 'True', 'true'
                 ]:
@@ -1585,81 +1603,76 @@ class Executor(object):
                         UserWarning)
                     return False
 
-                # Unsupported case 4: inference
+                # Unsupported case 3: inference
                 if compiled_program._is_inference:
                     warnings.warn(
                         "Standalone executor is not used for inference",
                         UserWarning)
                     return False
 
-                # Unsupported case 5: CUDA Graph
+                # Unsupported case 4: CUDA Graph
                 if compiled_program._build_strategy is not None and compiled_program._build_strategy.allow_cuda_graph_capture:
                     warnings.warn(
                         "Standalone executor is not used for CUDA Graph",
                         UserWarning)
                     return False
 
-                # Unsupported case 6: async mode
+                # Unsupported case 5: async mode
                 if compiled_program._build_strategy is not None and compiled_program._build_strategy.async_mode:
                     warnings.warn(
                         "Standalone executor is not used for async mode",
                         UserWarning)
                     return False
 
-                return use_standalone_executor_for_compiled_program
-            else:
-                assert isinstance(program, Program)
-                return True
+            # delete this code after supporting fleet
+            from paddle.distributed.fleet import fleet
+            if fleet._role_maker is not None:
+                warnings.warn("Standalone executor is not used for fleet",
+                              UserWarning)
+                return use_standalone_executor_for_distribution
+
+            return True
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
         if return_merged and self._enable_interpreter_core and _can_use_interpreter_core(
                 program, self.place):
-            inner_program = program._program if isinstance(
-                program, compiler.CompiledProgram) else program
-            if not inner_program._is_start_up_program_:
-                if feed is None:
-                    feed = {}
-                elif isinstance(feed, (list, tuple)):
-                    assert len(feed) == 1, "Not compiled with data parallel"
-                    feed = feed[0]
-                if not isinstance(feed, dict):
-                    raise TypeError(
-                        "feed requires dict as its Parameter. But you passed in %s"
-                        % (type(feed)))
-                feed = self._update_feed(program, feed)
 
-                program, new_exe = self._executor_cache.get_program_and_executor(
-                    program, feed, fetch_list, feed_var_name, fetch_var_name,
-                    self.place, scope)
+            if feed is None:
+                feed = {}
+            elif isinstance(feed, (list, tuple)):
+                assert len(feed) == 1, "Not compiled with data parallel"
+                feed = feed[0]
+            if not isinstance(feed, dict):
+                raise TypeError(
+                    "feed requires dict as its Parameter. But you passed in %s"
+                    % (type(feed)))
+            feed = self._update_feed(program, feed)
 
-                self._feed_data(program, feed, feed_var_name, scope)
-                if hasattr(program, 'lr_sheduler'):
-                    from paddle.optimizer.lr import LRScheduler
-                    assert isinstance(program.lr_sheduler,
-                                      LRScheduler), "must be LRScheduler"
-                    lr_sheduler = program.lr_sheduler
-                    lr_value = lr_sheduler()
-                    lr_var = program.global_block().vars[lr_sheduler._var_name]
-                    data = np.array([lr_value
-                                     ]).astype(convert_dtype(lr_var.dtype))
-                    tensor = core.get_variable_tensor(scope,
-                                                      lr_sheduler._var_name)
-                    # NOTE(dev): `set` always call TensorCopySync that is a
-                    # blocking behavior. So we use `_copy_from` to replace it.
-                    cpu_tensor = _as_lodtensor(data, core.CPUPlace())
-                    # for ipu, tensor is allocated on cpu
-                    if core.is_compiled_with_ipu():
-                        tensor._copy_from(cpu_tensor, tensor._place())
-                    else:
-                        tensor._copy_from(cpu_tensor, self.place)
+            program, new_exe = self._executor_cache.get_program_and_executor(
+                program, feed, fetch_list, feed_var_name, fetch_var_name,
+                self.place, scope)
 
-                warnings.warn(
-                    "FLAGS_USE_STANDALONE_EXECUTOR is set to 1. New executor is used to execute Program."
-                )
+            self._feed_data(program, feed, feed_var_name, scope)
+            if hasattr(program, 'lr_sheduler'):
+                from paddle.optimizer.lr import LRScheduler
+                assert isinstance(program.lr_sheduler,
+                                  LRScheduler), "must be LRScheduler"
+                lr_sheduler = program.lr_sheduler
+                lr_value = lr_sheduler()
+                lr_var = program.global_block().vars[lr_sheduler._var_name]
+                data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+                tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+                # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
+                cpu_tensor = _as_lodtensor(data, core.CPUPlace())
+                # for ipu, tensor is allocated on cpu
+                if core.is_compiled_with_ipu():
+                    tensor._copy_from(cpu_tensor, tensor._place())
+                else:
+                    tensor._copy_from(cpu_tensor, self.place)
 
-                return new_exe.run(scope, list(feed.keys()), fetch_list,
-                                   return_numpy)
+            return new_exe.run(scope, list(feed.keys()), fetch_list,
+                               return_numpy)
 
         compiled = isinstance(program, compiler.CompiledProgram)
 

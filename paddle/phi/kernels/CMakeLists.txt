@@ -25,6 +25,7 @@ set(COMMON_KERNEL_DEPS
     string_tensor
     sparse_coo_tensor
     sparse_csr_tensor
+    tensor_array
     kernel_context
     kernel_factory
     arg_map_context
@@ -94,8 +95,8 @@ file(
   "kps/*.cu"
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
-  "strings/*.cu"
-  "strings/gpu/*.cu")
+  "strings/gpu/*.cu"
+  "fusion/gpu/*.cu")
 
 if(WITH_MKLDNN)
   file(
@@ -109,7 +110,9 @@ if(WITH_MKLDNN)
     "sparse/cpu/*.cc"
     "strings/*.cc"
     "strings/cpu/*.cc"
-    "onednn/*.cc")
+    "onednn/*.cc"
+    "fusion/*.cc"
+    "fusion/cpu/*.cc")
 else()
   file(
     GLOB
@@ -121,10 +124,12 @@ else()
     "sparse/*.cc"
     "sparse/cpu/*.cc"
     "strings/*.cc"
-    "strings/cpu/*.cc")
+    "strings/cpu/*.cc"
+    "fusion/*.cc"
+    "fusion/cpu/*.cc")
 endif()
 
-file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc")
+file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
 
 add_library(phi_cpu ${kernel_cc})
 kernel_declare("${kernel_cc}")

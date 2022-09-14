@@ -1015,7 +1015,7 @@ def concat(x, axis=0, name=None):
 
     Args:
         x (list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16,
-            float32, float64, int32, int64, uint8. All the Tensors in ``x`` must have same data type.
+            float32, float64, int32, int64, int8, uint8. All the Tensors in ``x`` must have same data type.
         axis (int|Tensor, optional): Specify the axis to operate on the input Tensors.
             It's a scalar with data type int or a Tensor with shape [1] and data type int32 
             or int64. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
@@ -1073,10 +1073,10 @@ def concat(x, axis=0, name=None):
     check_type(input, 'input', (list, tuple, Variable), 'concat')
     if not isinstance(input, Variable):
         for id, x in enumerate(input):
-            check_variable_and_dtype(
-                x, 'input[' + str(id) + ']',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'concat')
+            check_variable_and_dtype(x, 'input[' + str(id) + ']', [
+                'bool', 'float16', 'float32', 'float64', 'int32', 'int64',
+                'int8', 'unit8'
+            ], 'concat')
             if x.dtype != input[0].dtype:
                 raise TypeError(
                     "All the Tensors in the input must have the same data type."
@@ -1924,6 +1924,48 @@ def split(x, num_or_sections, axis=0, name=None):
                      outputs={'Out': outs},
                      attrs=attrs)
     return outs
+
+
+def vsplit(x, num_or_sections, name=None):
+    """
+    Split the input tensor into multiple sub-Tensors along the vertical axis, which is equivalent to ``paddle.split`` with ``axis=0``.
+    
+    Args:
+        x (Tensor): A Tensor whose dimension must be greater than 1. The data type is bool, float16, float32, float64, uint8, int8, int32 or int64.
+        num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections`` 
+            indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
+            If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
+            sub-Tensors and the elements in it indicate the sizes of sub-Tensors'  dimension orderly.
+            The length of the list must not  be larger than the ``x`` 's size of axis 0.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+    Returns:
+        list[Tensor], The list of segmented Tensors.
+    
+    Example:
+        .. code-block:: python
+            
+            import paddle
+            
+            # x is a Tensor of shape [8, 6, 7]
+            x = paddle.rand([8, 6, 7])
+            out0, out1, out2 = paddle.vsplit(x, num_or_sections=2)
+            print(out0.shape)  # [4, 6, 7]
+            print(out1.shape)  # [4, 6, 7]
+            out0, out1, out2 = paddle.vsplit(x, num_or_sections=[1, 3, 4])
+            print(out0.shape)  # [1, 6, 7]
+            print(out1.shape)  # [3, 6, 7]
+            print(out2.shape)  # [4, 6, 7]
+            out0, out1, out2 = paddle.vsplit(x, num_or_sections=[2, 3, -1])
+            print(out0.shape)  # [2, 6, 7]
+            print(out1.shape)  # [3, 6, 7]
+            print(out2.shape)  # [3, 6, 7]
+    """
+    if x.ndim < 2:
+        raise ValueError(
+            "The input tensor's dimension must be greater than 1, but got {}".
+            format(x.ndim))
+    return split(x, num_or_sections, axis=0, name=name)
 
 
 def squeeze(x, axis=None, name=None):
@@ -4388,36 +4430,6 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
                                          "Reduce", reduce)
 
 
-def _index_add_params_check(x, index, input_axis, add_value):
-    dims = len(x.shape)
-    add_value_dims = len(add_value.shape)
-
-    if input_axis >= 0:
-        axis = input_axis
-    else:
-        axis = input_axis + dims
-
-    check_axis = axis
-    if check_axis >= dims or check_axis < -dims:
-        raise ValueError("Axis should be in range [-rank(x), rank(x)).")
-
-    if isinstance(index, Variable):
-        if index.dtype not in [paddle.int64, paddle.int32]:
-            raise TypeError("The index dtype should be int32 or int64.")
-        if len(index.shape) != 1:
-            raise ValueError("The index should be a 1-D Tensor.")
-
-    if dims != add_value_dims:
-        raise ValueError(
-            "The add_value does not support broadcast now. It must have the same dimension as x."
-        )
-    for i in range(dims):
-        if i != axis and x.shape[i] != add_value.shape[i]:
-            raise ValueError(
-                "The add_value.shape[i] should be equal to x.shape[i] when i != axis."
-            )
-
-
 def index_add(x, index, axis, value, name=None):
     """
     Adds the elements of the input tensor with value tensor by selecting the indices in the order given in index.
@@ -4448,8 +4460,6 @@ def index_add(x, index, axis, value, name=None):
             #  [1 1 1]
             #  [2 2 2]]
     """
-    _index_add_params_check(x, index, axis, value)
-
     if in_dygraph_mode():
         return _C_ops.index_add(x, index, value, axis)
 
@@ -4497,8 +4507,6 @@ def index_add_(x, index, axis, value, name=None):
             #  [2, 1, 2]
             #  [2, 1, 2]]
     """
-
-    _index_add_params_check(x, index, axis, value)
     return _C_ops.index_add_(x, index, value, axis)
 
 

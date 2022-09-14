@@ -18,17 +18,12 @@ string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
    AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_grad_clip")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_heter_ctr")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps_gpu_ctr")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_feedforward)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_attention)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_multi_transformer)
-list(APPEND DIST_TEST_OPS
-     test_parallel_dygraph_pipeline_parallel_with_virtual_stage)
 list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
 list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
 list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
@@ -178,8 +173,6 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   # TODO(shenliang03): batch_fc_op support CPU device in future
   # TODO(Yancey1989): parallel dygraph support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
-  list(REMOVE_ITEM TEST_OPS
-       test_parallel_dygraph_pipeline_parallel_with_virtual_stage)
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_gpt)
@@ -531,9 +524,6 @@ if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
    AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
   list(REMOVE_ITEM TEST_OPS "test_fleet_graph_execution_meta_optimizer")
-  list(REMOVE_ITEM TEST_OPS "test_dist_fleet_grad_clip")
-  list(REMOVE_ITEM TEST_OPS "test_dist_fleet_heter_ctr")
-  list(REMOVE_ITEM TEST_OPS "test_dist_fleet_ps_gpu_ctr")
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
@@ -1178,9 +1168,6 @@ set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)
-  set_tests_properties(
-    test_parallel_dygraph_pipeline_parallel_with_virtual_stage
-    PROPERTIES TIMEOUT 500)
   set_tests_properties(test_auto_parallel_data_unshard PROPERTIES TIMEOUT 120)
   set_tests_properties(test_auto_parallel_save_load PROPERTIES TIMEOUT 120)
   set_tests_properties(test_auto_parallel_autoconvert PROPERTIES TIMEOUT 120)
