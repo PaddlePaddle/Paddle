@@ -46,13 +46,9 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 #ifdef PADDLE_WITH_XPU_KP
-REGISTER_OP_KERNEL(pull_box_sparse,
-                   KP,
-                   plat::XPUPlace,
+REGISTER_OP_KERNEL(pull_box_sparse, KP, plat::XPUPlace,
                    ops::PullBoxSparseKernel<float>);
-REGISTER_OP_KERNEL(push_box_sparse,
-                   KP,
-                   plat::XPUPlace,
+REGISTER_OP_KERNEL(push_box_sparse, KP, plat::XPUPlace,
                    ops::PushBoxSparseKernel<float>);
 #else
 REGISTER_OP_CUDA_KERNEL(pull_box_sparse, ops::PullBoxSparseKernel<float>);

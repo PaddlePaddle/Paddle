@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "custom_raw_op_kernel_op.h"  // NOLINT
 #include <iostream>
+#include "custom_raw_op_kernel_op.h"  // NOLINT
 
 void ReluGPUForward(const paddle::framework::Tensor &x,
                     paddle::framework::Tensor *y) {

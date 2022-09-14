@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/backends/tensorrt/plugin/pool_op_plugin.h"
 #include "glog/logging.h"
 #include "paddle/infrt/backends/tensorrt/plugin/plugin_utils.h"
+#include "paddle/infrt/backends/tensorrt/plugin/pool_op_plugin.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 
 namespace infrt {
