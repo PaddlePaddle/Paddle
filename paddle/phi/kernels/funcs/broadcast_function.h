@@ -27,6 +27,38 @@ namespace funcs {
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 
+struct LoaderInto {
+  int id[phi::DDim::kMaxRank];
+  int num{0};
+};
+
+struct InputDataLoader {
+ public:
+  LoaderInto child[3];
+  int type_num{0};
+  int64_t numel_{0};
+
+  InputDataLoader() {}
+  explicit InputDataLoader(int64_t out_numel) : numel_(out_numel) {}
+
+  void set(int64_t in_numel, int i) {
+    if (in_numel != numel_) {
+      int index = child[0].num;
+      child[0].id[index] = i;
+      child[0].num += 1;
+      type_num += 1;
+    } else {
+      int index = child[1].num;
+      // std::cout << "index : " << index << std::endl;
+      child[1].id[index] = i;
+      // std::cout << "child[1].id[" << index << "]: " << child[1].id[index] <<
+      // std::endl;
+      child[1].num += 1;
+      type_num += 1;
+    }
+  }
+};
+
 struct DimensionsTransform {
   using DimVector = std::vector<int64_t>;
   typedef void (*MergeFunctor)(
@@ -257,10 +289,10 @@ template <typename T, int VecSize, bool IsBoundary = false>
 __device__ __forceinline__ void LoadData(
     T *dst,
     const _ptr_ T *src,
-    uint32_t block_offset,
+    uint32_t block_offset, /* BLOCK_ID_X * BLOCK_NUM_X * VecSize; */
     const kps::details::BroadcastConfig &config,
     int numel,
-    int num,
+    int num, /* BLOCK_NUM_X * VecSize, tail_tid */
     int need_broadcast,
     int read_lens) {
   // numel : whole num of output
@@ -271,6 +303,133 @@ __device__ __forceinline__ void LoadData(
   } else {
     kps::ReadData<T, VecSize, 1, IsBoundary>(
         dst, src + block_offset, num, read_lens);
+  }
+}
+
+template <typename InT, int VecSize, int Arity, bool IsBoundary = false>
+__device__ __forceinline__ void LoadBatchElementwise(
+    InT args[Arity][VecSize],
+    const phi::Array<const _ptr_ InT *__restrict__, Arity> &ins,
+    const LoaderInto &child_reader,
+    uint32_t block_offset,
+    uint32_t numel) {
+  if (IsBoundary) {  // blockDim.x * NX > num
+    uint32_t thread_offset = block_offset + threadIdx.x * VecSize;
+#pragma unroll
+    for (int j = 0; j < Arity; ++j) {
+      if (j == numel) break;
+      int index = child_reader.id[j];
+#pragma unroll
+      for (int i = 0; i < VecSize; ++i) {
+        if (i + thread_offset < numel) {
+          (args[index])[i] = ins[index][thread_offset + i];
+        }
+      }
+    }
+  } else {  // blockDim,x * NX < num
+    using VecType = phi::kps::details::VectorType<InT, VecSize>;
+    const VecType *__restrict__ vec_input[Arity];
+    VecType *dst[Arity];
+
+    uint32_t thread_offset = blockIdx.x * blockDim.x + threadIdx.x;
+#pragma unroll
+    for (int j = 0; j < Arity; ++j) {
+      if (j == child_reader.num) break;
+      int index = child_reader.id[j];
+      vec_input[j] = reinterpret_cast<const VecType *__restrict__>(ins[index]);
+      dst[j] = reinterpret_cast<VecType *>(args[index]);
+      *(dst[j]) = vec_input[j][thread_offset];
+    }
+  }
+}
+
+// template <typename InT, int VecSize, int Arity, bool IsBoundary>
+// __device__ inline void LoadMultiBroadcast(InT args[Arity][VecSize],
+//                                     const phi::Array<const _ptr_ InT
+//                                     *__restrict__, Arity> &ins, const
+//                                     phi::Array<kps::details::BroadcastConfig,
+//                                     Arity> &configs, const LoaderInto
+//                                     &child_reader, const uint32_t
+//                                     block_offset, int numel) {
+//   uint32_t thread_offset = block_offset + threadIdx.x * VecSize;
+//   uint32_t index_bc[Arity][VecSize];
+
+// #pragma unroll
+//   for (int m = 0; m < VecSize; ++m) {
+//     uint32_t idx = thread_offset + m;
+//     if (IsBoundary) {
+//       if (idx == numel) break;
+//     }
+
+// #pragma unroll
+//     for (int j = 0; j < Arity; ++j) {
+//       index_bc[j][m] = 0;
+//     }
+
+// #pragma unroll
+//     for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+//       if (i == configs[0].kDims) break;
+//       auto fast_divmoder = configs[0].divmoders[i].Divmod(idx);
+//       idx = fast_divmoder.val[0];
+// #pragma unroll
+//       for (int j = 0; j < Arity; ++j) {
+//         if (j == child_reader.num) break;
+//         index_bc[j][m] += fast_divmoder.val[1] * configs[j].strides[i];
+//       }
+//     }
+//   }
+
+// #pragma unroll
+//   for (int j = 0; j < Arity; ++j) {
+//     if (j == child_reader.num) break;
+// #pragma unroll
+//     for (int m = 0; m < VecSize; ++m) {
+//       int index = child_reader.id[j];
+//       args[index][m] = ins[index][index_bc[j][m]];
+//     }
+//   }
+// }
+
+template <typename InT, int VecSize, int Arity, bool IsBoundary>
+__device__ inline void LoadMultiBroadcast(
+    InT args[Arity][VecSize],
+    const phi::Array<const _ptr_ InT *__restrict__, Arity> &ins,
+    const phi::Array<kps::details::BroadcastConfig, Arity> &configs,
+    const uint32_t block_offset,
+    int numel) {
+  uint32_t thread_offset = block_offset + threadIdx.x * VecSize;
+  uint32_t index_bc[Arity][VecSize];
+
+#pragma unroll
+  for (int m = 0; m < VecSize; ++m) {
+    uint32_t idx = thread_offset + m;
+    if (IsBoundary) {
+      if (idx == numel) break;
+    }
+
+#pragma unroll
+    for (int j = 0; j < Arity; ++j) {
+      index_bc[j][m] = 0;
+    }
+
+#pragma unroll
+    for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+      if (i == configs[0].kDims) break;
+      auto fast_divmoder = configs[0].divmoders[i].Divmod(idx);
+      idx = fast_divmoder.val[0];
+#pragma unroll
+      for (int j = 0; j < Arity; ++j) {
+        index_bc[j][m] += fast_divmoder.val[1] * configs[j].strides[i];
+      }
+    }
+  }
+
+#pragma unroll
+  for (int j = 0; j < Arity; ++j) {
+#pragma unroll
+    for (int m = 0; m < VecSize; ++m) {
+      args[j][m] = ins[j][index_bc[j][m]];
+    }
   }
 }
 
@@ -287,13 +446,13 @@ __device__ void VectorizedBroadcastKernelImpl(
     const phi::Array<int, Arity> &use_broadcast,
     uint32_t numel,
     const phi::Array<kps::details::BroadcastConfig, Arity> &configs,
-    int num,
-    int block_offset,
+    int num,          /* BLOCK_NUM_X * VecSize, tail_tid */
+    int block_offset, /* BLOCK_ID_X * BLOCK_NUM_X * VecSize */
     int read_lens,
     Functor func) {
   __simd__ InT args[Arity][VecSize];
   __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
-
+#ifdef PADDLE_WITH_XPU_KP
 #pragma unroll
   for (int i = 0; i < Arity; ++i) {
     kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f), read_lens);
@@ -306,6 +465,16 @@ __device__ void VectorizedBroadcastKernelImpl(
                                        use_broadcast[i],
                                        read_lens);
   }
+#else
+  LoadMultiBroadcast<InT, VecSize, Arity, IsBoundary>(
+      args, ins, configs, block_offset, numel);
+  // if (reader.type_num > 1) {
+  //   printf("Run into Elementwise, chid[1].num = %d\n", reader.child[1].num);
+  //   LoadBatchElementwise<InT, VecSize, Arity, IsBoundary>(
+  //       args, ins, reader.child[1], block_offset, numel);
+  // }
+#endif
+
   constexpr bool kCallElementwiseAny =
       paddle::platform::FunctionTraits<Functor>::has_pointer_args;
   phi::funcs::ElementwisePrimitiveCaller<InT,
@@ -336,10 +505,9 @@ __global__ void VectorizedBroadcastKernel(
     int tail_tid,
     int read_lens,
     Functor func) {
+#ifdef PADDLE_WITH_XPU_KP
   int block_offset = BLOCK_ID_X * BLOCK_NUM_X * read_lens;
   int stride = BLOCK_NUM_X * GRID_NUM_X * read_lens;
-
-#ifdef PADDLE_WITH_XPU_KP
   for (; block_offset < main_offset; block_offset += stride) {
     VectorizedBroadcastKernelImpl<InT,
                                   OutT,
@@ -376,6 +544,7 @@ __global__ void VectorizedBroadcastKernel(
                                         func);
   }
 #else
+  int block_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
   if (block_offset < main_offset) {
     VectorizedBroadcastKernelImpl<InT,
                                   OutT,
@@ -433,7 +602,9 @@ void LaunchBroadcastKernel(
     outs_data[i] = (_ptr_ OutT *)(ctx.Alloc<OutT>((*outs)[i]));
   }
 
+  // InputDataLoader reader(numel);
   for (int i = 0; i < Arity; ++i) {
+    // reader.set(ins[i]->numel(), i);
     use_broadcast[i] = (ins[i]->numel() != numel);
     ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
   }
@@ -532,15 +703,42 @@ void BroadcastKernelForDifferentVecSize(
   bool is_optimize = configs[0].cmp_type != type;
   int vec_size = is_optimize ? VecSizeL : VecSizeM;
 #else
+  // int config_id = 0;
   for (int i = 0; i < kArity; ++i) {
     // get the broadcast config,
     // if data shape is[m, n], then you should set data_dim = {n, m}
     // eg: out's shape [3, 45, 1]. then out_dims = {1, 45, 3}
+    // if (ins[i]->numel() != (*outs)[0]->numel()) {
     if (ins[i]->numel()) {
       configs[i] = kps::details::BroadcastConfig(
           merge_dims.out_dims, merge_dims.in_dims[i], merge_dims.dim_size);
+      // config_id++;
     }
   }
+  // if (ins.size() > 2) {
+  //   printf("before : axis = %d, \t", axis);
+  //   for (auto j = 0; j < ins.size(); ++j) {
+  //     printf("[%d_th input ]: shape = [ ", j);
+  //     for (auto i = 0; i < ins[j]->dims().size(); ++i) {
+  //       printf(" %d, ", ins[j]->dims()[i]);
+  //     }
+  //     printf("], \t");
+  //   }
+  //   std::cout << std::endl;
+
+  //   printf("after  : size = %d, \t", merge_dims.dim_size);
+  //   for (int j = 0; j < kArity; ++j) {
+  //     printf("[%d_th input ]: dim_size = %d,  shape = [ ", j,
+  //     merge_dims.in_dims[j].size()); for (auto i = merge_dims.dim_size - 1; i
+  //     >= 0; i--) {
+  //       printf(" %d, ", (merge_dims.in_dims[j])[i]);
+  //     }
+  //     printf("], \t");
+  //   }
+  //   std::cout << std::endl;
+  //   std::cout << std::endl;
+  // }
+
   int vec_size = GetVecsize<InT, OutT>(ins, outs);
 #endif
 
