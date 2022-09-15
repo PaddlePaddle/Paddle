@@ -14,8 +14,22 @@ limitations under the License. */
 
 #pragma once
 
+#include <assert.h>
+#include <cuda_runtime.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
 #include <thrust/remove.h>
 #include <thrust/unique.h>
+
+#include <algorithm>
+#include <fstream>
+#include <iostream>
+#include <numeric>
+#include <random>
+
 #include "paddle/phi/kernels/sparse/conv_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -30,50 +44,14 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
 
-#include <assert.h>
-#include <cuda_runtime.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-
-#include <algorithm>
-#include <fstream>
-#include <iostream>
-#include <numeric>
-#include <random>
-
 #ifdef PADDLE_WITH_CUTLASS
-#include "cutlass/cutlass.h"
-#include "cutlass/epilogue/thread/linear_combination.h"
-#include "cutlass/gemm/device/gemm_universal.h"
-#include "cutlass/util/command_line.h"
-#include "cutlass/util/host_tensor.h"
-#include "cutlass/util/reference/device/gemm.h"
-#include "cutlass/util/reference/host/tensor_compare.h"
-#include "cutlass/util/reference/host/tensor_copy.h"
-#include "cutlass/util/reference/host/tensor_fill.h"
-#include "cutlass/util/tensor_view_io.h"
 #include "/paddle/cutlass/examples/common/helper.h"
-
-#include "cutlass/cutlass.h"
-#include "cutlass/gemm/gemm.h"
-#include "cutlass/gemm/kernel/gemm_grouped.h"
-#include "cutlass/gemm/kernel/default_gemm_grouped.h"
+#include "cutlass/epilogue/thread/linear_combination.h"
 #include "cutlass/gemm/device/gemm_grouped.h"
 #include "cutlass/gemm/device/gemm_universal.h"
-
-#include "cutlass/util/command_line.h"
-#include "cutlass/util/distribution.h"
 #include "cutlass/util/device_memory.h"
-#include "cutlass/util/tensor_view_io.h"
-#include "cutlass/util/host_tensor.h"
-#include "cutlass/util/reference/host/gemm_complex.h"
-#include "cutlass/util/reference/device/gemm_complex.h"
-#include "cutlass/util/reference/host/tensor_compare.h"
-#include "cutlass/util/reference/host/tensor_copy.h"
-#include "cutlass/util/reference/device/tensor_fill.h"
-#include "cutlass/util/reference/host/tensor_norm.h"
+#include "paddle/phi/kernels/sparse/gpu/default_gather_gemm_grouped.h"
+#include "paddle/phi/kernels/sparse/gpu/gather_gemm_grouped.h"
 #endif
 
 namespace phi {
@@ -1091,7 +1069,7 @@ void group_gemm(ElementA** A,
       ElementAccumulator,
       ElementAccumulator>;
 
-  using GemmKernel = typename cutlass::gemm::kernel::DefaultGemmGrouped<
+  using GemmKernel = typename cutlass::gemm::kernel::DefaultGatherGemmGrouped<
       ElementA,
       LayoutA,
       cutlass::ComplexTransform::kNone,
