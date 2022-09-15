@@ -380,6 +380,10 @@ class FP16State(object):
             # create cast grad
             grad_slot_name = slot_name + "@GRAD"
             assert grad_slot_name in op.output_names
+            if len(op.output(grad_slot_name)) == 0:
+                var = block.var(src_name)
+                assert var.stop_gradient is True
+                continue
             assert len(op.output(grad_slot_name)) == 1
             grad_name = op.output(grad_slot_name)[0]
             grad = block.var(grad_name)
