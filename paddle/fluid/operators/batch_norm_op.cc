@@ -195,18 +195,16 @@ framework::OpKernelType BatchNormOp::GetExpectedKernelType(
           "Variance input should be of float type"));
 
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-  framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
+  if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    return framework::OpKernelType(input_data_type,
+                                   ctx.GetPlace(),
+                                   framework::DataLayout::kMKLDNN,
+                                   framework::LibraryType::kMKLDNN);
   }
 #endif
 
-  return framework::OpKernelType(
-      input_data_type, ctx.GetPlace(), layout, library);
+  return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
 
 framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
@@ -396,19 +394,18 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
   }
 
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-  framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx, data_type)) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
+  if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+    return framework::OpKernelType(data_type,
+                                   ctx.GetPlace(),
+                                   framework::DataLayout::kMKLDNN,
+                                   framework::LibraryType::kMKLDNN);
   }
 #endif
 
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 framework::OpKernelType BatchNormGradOp::GetKernelTypeForVar(

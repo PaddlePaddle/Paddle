@@ -22,7 +22,6 @@ from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import _non_static_mode, unique_name
 from paddle.distributed.passes import new_pass
-from paddle.distributed.utils import get_logger
 
 from .reshard import Resharder
 from .partitioner import Partitioner
@@ -31,6 +30,7 @@ from .dist_saver import DistributedSaver
 from .dist_loader import NonIterableGeneratorLoader
 from .utils import make_data_unshard, set_grad_var_shape
 from .utils import print_program_with_dist_attr, to_list
+from .utils import get_logger
 from .process_group import get_all_process_groups, get_world_process_group
 from .dist_context import DistributedContext, get_default_distributed_context
 
@@ -160,8 +160,8 @@ class Parallelizer:
 
         # apply quantization pass
         # The pass can be applied when mode must be 'train'
-        if self._mode == 'train' and self._strategy.qat:
-            config = copy.deepcopy(self._strategy.qat_configs)
+        if self._mode == 'train' and self._strategy.qat.enable:
+            config = copy.deepcopy(self._strategy.qat.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             auto_parallel_quantization_pass = new_pass(
@@ -176,8 +176,8 @@ class Parallelizer:
         # apply amp pass
         # FIXME we disenable amp for eval since it has a little bug with
         # eval program and which will be fixed in future
-        if self._mode == 'train' and self._strategy.amp:
-            config = copy.deepcopy(self._strategy.amp_configs)
+        if self._mode == 'train' and self._strategy.amp.enable:
+            config = copy.deepcopy(self._strategy.amp.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             config["loss"] = loss
@@ -195,8 +195,8 @@ class Parallelizer:
 
         # apply recompute pass
         # recompute is then train-only optimization
-        if self._mode == "train" and self._strategy.recompute:
-            config = copy.deepcopy(self._strategy.recompute_configs)
+        if self._mode == "train" and self._strategy.recompute.enable:
+            config = copy.deepcopy(self._strategy.recompute.to_dict())
             config["dist_context"] = self._dist_context
             config["no_grad_set"] = None
             config["loss"] = loss
@@ -217,12 +217,12 @@ class Parallelizer:
         config = {}
         config["dist_context"] = self._dist_context
         config["global_rank"] = rank
-        config["use_sharding"] = self._strategy.sharding
+        config["use_sharding"] = self._strategy.sharding.enable
         dp_pass = new_pass("auto_parallel_data_parallel_optimization", config)
         dp_pass.apply([main_program], [startup_program], self._pass_context)
 
-        if self._strategy.sharding:
-            config = copy.deepcopy(self._strategy.sharding_configs)
+        if self._strategy.sharding.enable:
+            config = copy.deepcopy(self._strategy.sharding.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             config["global_rank"] = rank
@@ -234,7 +234,7 @@ class Parallelizer:
 
         # GradClip is train-only optimization
         if self._mode == "train":
-            config = copy.deepcopy(self._strategy.sharding_configs)
+            config = copy.deepcopy(self._strategy.sharding.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             config["rank_id"] = rank
@@ -244,8 +244,8 @@ class Parallelizer:
                                           self._pass_context)
 
         # gradient_merge is then train-only optimization
-        if self._mode == "train" and self._strategy.gradient_merge:
-            config = copy.deepcopy(self._strategy.gradient_merge_configs)
+        if self._mode == "train" and self._strategy.gradient_merge.enable:
+            config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             auto_parallel_gradient_merge_pass = new_pass(

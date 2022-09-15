@@ -19,13 +19,13 @@ import paddle
 
 from paddle.nn import Layer
 from paddle.jit import to_static, not_to_static
-from paddle.distributed.utils import get_logger
 from paddle.fluid.framework import Operator, Parameter, _non_static_mode
 from paddle.fluid.framework import program_guard
 from paddle.fluid.executor import global_scope
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 
 from .utils import to_list
+from .utils import get_logger
 from .converter import Converter
 
 
