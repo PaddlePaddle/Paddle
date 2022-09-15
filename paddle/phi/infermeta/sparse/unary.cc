@@ -20,8 +20,21 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
+void CastInferMeta(const MetaTensor& x,
+                   const DataType index_dtype,
+                   const DataType value_dtype,
+                   MetaTensor* out) {
+  phi::CastInferMeta(x, value_dtype, out);
+}
+
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   phi::CreateLikeInferMeta(x, dtype, out);
+}
+
+void IndicesInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims({-1});
+  out->set_dtype(DataType::INT32);
+  out->set_layout(DataLayout::NCHW);
 }
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
@@ -35,19 +48,6 @@ void ValuesInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims({-1, x_dims[x_dims.size() - 1]});
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
-}
-
-void IndicesInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims({-1});
-  out->set_dtype(DataType::INT32);
-  out->set_layout(DataLayout::NCHW);
-}
-
-void CastInferMeta(const MetaTensor& x,
-                   const DataType index_dtype,
-                   const DataType value_dtype,
-                   MetaTensor* out) {
-  phi::CastInferMeta(x, value_dtype, out);
 }
 
 }  // namespace sparse

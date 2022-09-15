@@ -12,28 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/phi/core/meta_tensor.h"
-#include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/infermeta/sparse/multiary.h"
 
 namespace phi {
 namespace sparse {
 
-void CastInferMeta(const MetaTensor& x,
-                   const DataType index_dtype,
-                   const DataType value_dtype,
-                   MetaTensor* out);
-
-void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
-
-void IndicesInferMeta(const MetaTensor& x, MetaTensor* out);
-
-void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
-
-void ValuesInferMeta(const MetaTensor& x, MetaTensor* out);
+void FusedAttentionInferMeta(const MetaTensor& query,
+                             const MetaTensor& key,
+                             const MetaTensor& value,
+                             const MetaTensor& sparse_mask,
+                             const MetaTensor& key_padding_mask,
+                             const MetaTensor& attn_mask,
+                             MetaTensor* out,
+                             MetaTensor* softmax) {
+  // TODO(zhouwei,zhangkaihuo) add correct infer meta
+}
 
 }  // namespace sparse
 }  // namespace phi
