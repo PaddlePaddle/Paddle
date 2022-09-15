@@ -373,7 +373,15 @@ class PRChecker(object):
                                     PADDLE_ROOT)) as utfile:
                                 (filepath,
                                  tempfilename) = os.path.split(f_judge)
-                                if tempfilename.split(".")[0] in utfile:
+                                print('{}/added_ut'.format(PADDLE_ROOT))
+                                print("tempfilename:", tempfilename)
+                                print("filepath:", filepath)
+                                print("---------------")
+                                for i in utfile:
+                                    print(i)
+                                print("---------------")
+                                if tempfilename.strip().split(".")[0] in utfile:
+                                    print("code go here")
                                     f_judge_in_added_ut = True
                             if f_judge_in_added_ut == True:
                                 print(
