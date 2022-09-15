@@ -34,7 +34,8 @@ cc_library(
 cc_library(
   jit_function
   SRCS function.cc
-  DEPS jit_function_utils jit_executor_engine jit_pe_engine)
+  DEPS jit_function_utils jit_executor_engine jit_pe_engine
+       jit_interpreter_engine)
 
 cc_library(
   jit_layer
@@ -46,6 +47,7 @@ cc_library(
        jit_function_schema
        jit_executor_engine
        jit_pe_engine
+       jit_interpreter_engine
        jit_function)
 
 if(WITH_TESTING AND NOT WIN32)
@@ -65,6 +67,7 @@ if(WITH_TESTING AND NOT WIN32)
       feed_op
       fetch_op
       scale_op
+      transfer_layout_op
       jit_layer)
   cc_test(
     layer_test
