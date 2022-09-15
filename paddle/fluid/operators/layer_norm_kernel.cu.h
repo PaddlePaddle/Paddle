@@ -351,9 +351,12 @@ __global__ void LayerNormForward(
     U *var,
     float epsilon,
     int64_t feature_size,
-    const float *quant_out_scale_data = nullptr,
+    const float *dequant_out_scale_data = nullptr,
     const int quant_out_scale_offset = 0,
-    const float quant_in_scale_data = 1.0) {
+    const float quant_in_scale = 1.0,
+    const int quant_round_type = 1,
+    const float quant_max_bound = 127.0,
+    const float quant_min_bound = -127.0) {
   __shared__ U mean_share;
   __shared__ U var_share;
   __shared__ U shared_mean[32];  // threadIdx.x / warpSize <= kMaxBlockDim /
@@ -394,11 +397,14 @@ __global__ void LayerNormForward(
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
-          y[i] = clip_round(
+          y[i] = quant_helper(
               static_cast<T>(static_cast<U>(scale[j]) *
                                  (static_cast<U>(x[i]) - mean_val) * invvar +
                              static_cast<U>(bias[j])),
-              quant_in_scale_data);
+              quant_in_scale,
+              quant_round_type,
+              quant_max_bound,
+              quant_min_bound);
         } else {
           y[i] = static_cast<OutType>(static_cast<U>(scale[j]) *
                                           (static_cast<U>(x[i]) - mean_val) *
@@ -410,10 +416,13 @@ __global__ void LayerNormForward(
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
-          y[i] = clip_round(
+          y[i] = quant_helper(
               static_cast<T>(static_cast<U>(scale[j]) *
                              (static_cast<U>(x[i]) - mean_val) * invvar),
-              quant_in_scale_data);
+              quant_in_scale,
+              quant_round_type,
+              quant_max_bound,
+              quant_min_bound);
         } else {
           y[i] =
               static_cast<OutType>(static_cast<U>(scale[j]) *
@@ -426,10 +435,13 @@ __global__ void LayerNormForward(
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
-          y[i] = clip_round(
+          y[i] = quant_helper(
               static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar +
                              static_cast<U>(bias[j])),
-              quant_in_scale_data);
+              quant_in_scale,
+              quant_round_type,
+              quant_max_bound,
+              quant_min_bound);
         } else {
           y[i] =
               static_cast<OutType>((static_cast<U>(x[i]) - mean_val) * invvar +
@@ -440,9 +452,12 @@ __global__ void LayerNormForward(
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
         if (std::is_same<OutType, int8_t>::value) {
-          y[i] = clip_round(
+          y[i] = quant_helper(
               static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar),
-              quant_in_scale_data);
+              quant_in_scale,
+              quant_round_type,
+              quant_max_bound,
+              quant_min_bound);
         } else {
           y[i] =
               static_cast<OutType>((static_cast<U>(x[i]) - mean_val) * invvar);

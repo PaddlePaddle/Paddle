@@ -89,10 +89,7 @@ class CublasLtHelper {
             const int8_t* B_dev,
             int32_t* C_dev,
             cudaStream_t stream) {
-    // PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-
     cublasStatus_t status;
-    VLOG(1) << "m=" << m_ << "k=" << k_ << "n=" << n_;
 
     cublasLtMatmulAlgo_t algo;
     int algoId = 21;

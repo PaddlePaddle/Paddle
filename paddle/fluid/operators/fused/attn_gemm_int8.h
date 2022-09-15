@@ -48,16 +48,20 @@ class AttnMatmulINT8 {
                       framework::Tensor* output,
                       framework::Tensor* output_tmp,
                       framework::Tensor* bias_out,
-                      const float quant_in_scale_data,
-                      const framework::Tensor* quant_out_scale,
-                      const int quant_out_scale_offset) {
-    int m = m_, k = k_, n = n_;
-
+                      const float quant_in_scale,
+                      const framework::Tensor* dequant_out_scale,
+                      const int quant_out_scale_offset,
+                      const int quant_round_type = 1,
+                      const float quant_max_bound = 127.0,
+                      const float quant_min_bound = -127.0) {
     quantize_kernel_launcher<T>(input->data<T>(),
                                 input_tmp->data<int8_t>(),
-                                quant_in_scale_data,
+                                quant_in_scale,
                                 m_,
                                 k_,
+                                quant_round_type,
+                                quant_max_bound,
+                                quant_min_bound,
                                 dev_ctx_.stream());
 
     helpers_[0]->GEMM(input_tmp->data<int8_t>(),
@@ -70,8 +74,8 @@ class AttnMatmulINT8 {
                                   m_,
                                   n_,
                                   dev_ctx_.stream(),
-                                  quant_in_scale_data,
-                                  quant_out_scale->data<float>(),
+                                  quant_in_scale,
+                                  dequant_out_scale->data<float>(),
                                   quant_out_scale_offset);
 
     if (compute_bias_) {
@@ -92,8 +96,6 @@ class AttnMatmulINT8 {
                                 const framework::Tensor* bias,
                                 framework::Tensor* output,
                                 framework::Tensor* bias_out) {
-    int m = m_, k = k_, n = n_;
-
     helpers_[0]->GEMM(input->data<int8_t>(),
                       weight->data<int8_t>(),
                       output->data<int32_t>(),
@@ -103,16 +105,14 @@ class AttnMatmulINT8 {
   // This function is used to execute GEMM, with input and output's types are
   // INT8 and T.
   void ComputeForwardINT8ToT(const framework::Tensor* weight,
-                             const float quant_in_scale_data,
+                             const float quant_in_scale,
                              framework::Tensor* input,
                              const framework::Tensor* bias,
                              framework::Tensor* output,
                              framework::Tensor* output_tmp,
                              framework::Tensor* bias_out,
-                             const framework::Tensor* quant_out_scale,
+                             const framework::Tensor* dequant_out_scale,
                              const int quant_out_scale_offset) {
-    int m = m_, k = k_, n = n_;
-
     helpers_[0]->GEMM(input->data<int8_t>(),
                       weight->data<int8_t>(),
                       output_tmp->data<int32_t>(),
@@ -123,8 +123,8 @@ class AttnMatmulINT8 {
                                   m_,
                                   n_,
                                   dev_ctx_.stream(),
-                                  quant_in_scale_data,
-                                  quant_out_scale->data<float>(),
+                                  quant_in_scale,
+                                  dequant_out_scale->data<float>(),
                                   quant_out_scale_offset);
 
     if (compute_bias_) {
@@ -141,18 +141,23 @@ class AttnMatmulINT8 {
   // This function is used to execute GEMM, with input and output's types are T
   // and INT8.
   void ComputeForwardTToINT8(const framework::Tensor* weight,
-                             const float quant_in_scale_data,
+                             const float quant_in_scale,
                              const framework::Tensor* input,
                              framework::Tensor* input_tmp,
                              const framework::Tensor* bias,
                              framework::Tensor* output,
-                             framework::Tensor* bias_out) {
-    int m = m_, k = k_, n = n_;
+                             framework::Tensor* bias_out,
+                             const int quant_round_type = 1,
+                             const float quant_max_bound = 127.0,
+                             const float quant_min_bound = -127.0) {
     quantize_kernel_launcher<T>(input->data<T>(),
                                 input_tmp->data<int8_t>(),
-                                quant_in_scale_data,
+                                quant_in_scale,
                                 m_,
                                 k_,
+                                quant_round_type,
+                                quant_max_bound,
+                                quant_min_bound,
                                 dev_ctx_.stream());
 
     helpers_[0]->GEMM(input_tmp->data<int8_t>(),

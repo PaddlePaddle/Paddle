@@ -47,10 +47,13 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
     typename details::MPTypeTrait<T>::Type *mean_val,
     typename details::MPTypeTrait<T>::Type *var_val,
     Functor act_func,
-    const float quant_last_in_scale_data = 1.0,
-    const float *quant_out_scale_data = nullptr,
+    const float quant_last_in_scale = 1.0,
+    const float *dequant_out_scale_data = nullptr,
     const int quant_out_scale_offset = 0,
-    const float quant_next_in_scale_data = 1.0) {
+    const float quant_next_in_scale = 1.0,
+    const int quant_round_type = 1,
+    const float quant_max_bound = 127.0,
+    const float quant_min_bound = -127.0) {
   using LoadT = phi::AlignedVector<T, VecSize>;
   using LoadInType = phi::AlignedVector<InType, VecSize>;
   using LoadFloat = phi::AlignedVector<float, VecSize>;
@@ -72,7 +75,7 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
   // vectorize load data from global
   phi::Load<InType, VecSize>(&src[row_id * cols + col_id], &src_vec);
   phi::Load<float, VecSize>(
-      &quant_out_scale_data[quant_out_scale_offset + col_id],
+      &dequant_out_scale_data[quant_out_scale_offset + col_id],
       &quant_out_scale_vec);
   if (residual) {
     phi::Load<T, VecSize>(&residual[row_id * cols + col_id], &residual_vec);
@@ -104,9 +107,8 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
   for (int ii = 0; ii < VecSize; ii++) {
     T tmp;
     if (std::is_same<InType, int32_t>::value) {
-      T tmp0 =
-          static_cast<T>(static_cast<float>(src_vec[ii]) *
-                         quant_last_in_scale_data / quant_out_scale_vec[ii]);
+      T tmp0 = static_cast<T>(static_cast<float>(src_vec[ii]) *
+                              quant_last_in_scale / quant_out_scale_vec[ii]);
       tmp = tmp0 + bias_vec[ii];
     } else {
       tmp = static_cast<T>(src_vec[ii]) + bias_vec[ii];
@@ -122,8 +124,11 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
       *var_val += (tmp * tmp);
     }
     if (std::is_same<OutType, int8_t>::value) {
-      dest_vec_out_type[ii] =
-          clip_round(dest_vec[ii], quant_next_in_scale_data);
+      dest_vec_out_type[ii] = quant_helper(dest_vec[ii],
+                                           quant_next_in_scale,
+                                           quant_round_type,
+                                           quant_max_bound,
+                                           quant_min_bound);
     }
   }
 
@@ -165,10 +170,10 @@ __global__ void FusedResidualDropoutBias(
     OutType *dst,
     uint64_t increment,
     const bool is_test,
-    const float quant_last_in_scale_data = 1.0,
-    const float *quant_out_scale_data = nullptr,
+    const float quant_last_in_scale = 1.0,
+    const float *dequant_out_scale_data = nullptr,
     const int quant_out_scale_offset = 0,
-    const float quant_next_in_scale_data = 1.0) {
+    const float quant_next_in_scale = 1.0) {
   int col_id = blockDim.x * blockIdx.x + threadIdx.x;
   int row_id = blockIdx.y;
   int idx = row_id * cols + col_id;
@@ -201,10 +206,10 @@ __global__ void FusedResidualDropoutBias(
                                                  nullptr,
                                                  nullptr,
                                                  relu,
-                                                 quant_last_in_scale_data,
-                                                 quant_out_scale_data,
+                                                 quant_last_in_scale,
+                                                 dequant_out_scale_data,
                                                  quant_out_scale_offset,
-                                                 quant_next_in_scale_data);
+                                                 quant_next_in_scale);
     }
   }
 }
@@ -229,10 +234,10 @@ void LaunchResidualDropoutBias(const uint32_t rows,
                                MaskType *mask_data,
                                OutType *dst,
                                const phi::GPUContext &ctx,
-                               const float quant_last_in_scale_data = 1.0,
-                               const float *quant_out_scale_data = nullptr,
+                               const float quant_last_in_scale = 1.0,
+                               const float *dequant_out_scale_data = nullptr,
                                const int quant_out_scale_offset = 0,
-                               const float quant_next_in_scale_data = 1.0) {
+                               const float quant_next_in_scale = 1.0) {
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     // NOTE(minghaoBD): OutType should be T if dropout_prob == 1.0
@@ -271,10 +276,10 @@ void LaunchResidualDropoutBias(const uint32_t rows,
             dst,
             increment,
             is_test,
-            quant_last_in_scale_data,
-            quant_out_scale_data,
+            quant_last_in_scale,
+            dequant_out_scale_data,
             quant_out_scale_offset,
-            quant_next_in_scale_data);
+            quant_next_in_scale);
   } else {
     FusedResidualDropoutBias<T, uint8_t, 1, InType, OutType>
         <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
@@ -290,10 +295,10 @@ void LaunchResidualDropoutBias(const uint32_t rows,
             dst,
             increment,
             is_test,
-            quant_last_in_scale_data,
-            quant_out_scale_data,
+            quant_last_in_scale,
+            dequant_out_scale_data,
             quant_out_scale_offset,
-            quant_next_in_scale_data);
+            quant_next_in_scale);
   }
 }
 

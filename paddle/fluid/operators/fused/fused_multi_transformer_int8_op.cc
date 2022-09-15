@@ -230,7 +230,7 @@ class FusedMultiTransformerINT8OpMaker
     AddInput("QKVOutScale",
              "QKVOutScale is used to dequantize qkv output tensor."
              "In order to keep consistent with the PTQ/QAT calculation logic,"
-             "QKVOutScale should be 127.0f * 127.0f / max_range."
+             "QKVOutScale should be max_bound * max_bound / max_range."
              "Here max_range is per-channel weight scale."
              "The shape of QKVOutScale is [num_layers, num_channels]")
         .AsDispensable();
@@ -327,13 +327,31 @@ class FusedMultiTransformerINT8OpMaker
         "the size of out_linear_in_scale is the same as qkv_in_scale")
         .SetDefault({});
     AddAttr<std::vector<float>>(
-        "ffn1_in_scale is used to quantize ffn1 input tensor.",
+        "ffn1_in_scale",
+        "ffn1_in_scale is used to quantize ffn1 input tensor."
         "the size of ffn1_in_scale is the same as qkv_in_scale")
         .SetDefault({});
     AddAttr<std::vector<float>>(
-        "ffn2_in_scale is used to quantize ffn2 input tensor.",
+        "ffn2_in_scale",
+        "ffn2_in_scale is used to quantize ffn2 input tensor."
         "the size of ffn2_in_scale is the same as qkv_in_scale")
         .SetDefault({});
+
+    AddAttr<int>(
+        "quant_round_type",
+        "(int, default 1) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(-2.5)=-3")
+        .SetDefault(1);
+    AddAttr<float>(
+        "quant_max_bound",
+        "(float, default 127.0) the max bound of float type to int type")
+        .SetDefault(127.0);
+    AddAttr<float>(
+        "quant_min_bound",
+        "(float, default -127.0) the min bound of float type to int type")
+        .SetDefault(-127.0);
 
     AddComment(R"DOC(fused multi transformer layers op)DOC");
   }

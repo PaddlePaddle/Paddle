@@ -440,10 +440,13 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
     U *__restrict__ var_out_ptr,
     T *__restrict__ residual_out_ptr,
     OutType *__restrict__ y_ptr,
-    const float quant_last_in_scale_data = 1.0,
+    const float quant_last_in_scale = 1.0,
     const float *__restrict__ quant_out_scale_ptr = nullptr,
     const int quant_out_scale_offset = 0,
-    const float quant_next_in_scale_data = 1.0) {
+    const float quant_next_in_scale = 1.0,
+    const int quant_round_type = 1,
+    const float quant_max_bound = 127.0,
+    const float quant_min_bound = -127.0) {
   __shared__ U smem[WARPS_M * WARPS_N];
   using Vec = phi::AlignedVector<T, VecSize>;
   using Vec_scale = phi::AlignedVector<ScaleT, VecSize>;
@@ -492,7 +495,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
     Vec x[LDGS];
     Vec_in_type x_input[LDGS];
     Vec residual[LDGS];
-    Vec_float quant_out_scale[LDGS];
+    Vec_float dequant_out_scale[LDGS];
 
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
@@ -503,7 +506,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
       if (quant_out_scale_ptr != nullptr) {
         phi::Load<float, VecSize>(
             quant_out_scale_ptr + quant_out_scale_offset + col * VecSize,
-            &quant_out_scale[it]);
+            &dequant_out_scale[it]);
       }
       col += THREADS_PER_ROW;
     }
@@ -540,8 +543,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
           // dropout(x) + residual
           if (std::is_same<InType, int32_t>::value) {
             T tmp = (static_cast<T>(static_cast<float>(x_input[it][jt]) *
-                                    quant_last_in_scale_data /
-                                    quant_out_scale[it][jt]) +
+                                    quant_last_in_scale /
+                                    dequant_out_scale[it][jt]) +
                      bias[it][jt]) *
                         static_cast<T>(mask_vec[it][jt]) * factor +
                     residual[it][jt];
@@ -564,8 +567,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
           if (std::is_same<InType, int32_t>::value) {
             // for int32 input, we need to dequantize.
             T tmp = static_cast<T>(static_cast<float>(x_input[it][jt]) *
-                                   quant_last_in_scale_data /
-                                   quant_out_scale[it][jt]) *
+                                   quant_last_in_scale /
+                                   dequant_out_scale[it][jt]) *
                         static_cast<T>(mask_vec[it][jt]) * factor +
                     residual[it][jt];
             x[it][jt] = tmp;
@@ -682,7 +685,11 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
                                    static_cast<U>(beta[it][jt]));
 
         if (std::is_same<OutType, int8_t>::value)
-          x_output[it][jt] = clip_round(x[it][jt], quant_next_in_scale_data);
+          x_output[it][jt] = quant_helper(x[it][jt],
+                                          quant_next_in_scale,
+                                          quant_round_type,
+                                          quant_max_bound,
+                                          quant_min_bound);
       }
     }
 
@@ -743,10 +750,13 @@ void LaunchLayernormResidualDropoutBias(
     LayerNormParamType<T> *mean,
     LayerNormParamType<T> *var,
     const phi::GPUContext &ctx,
-    const float quant_last_in_scale_data = 1.0,
-    const float *quant_out_scale_data = nullptr,
+    const float quant_last_in_scale = 1.0,
+    const float *dequant_out_scale_data = nullptr,
     const int quant_out_scale_offset = 0,
-    const float quant_next_in_scale_data = 1.0) {
+    const float quant_next_in_scale = 1.0,
+    const int quant_round_type = 1,
+    const float quant_max_bound = 127.0,
+    const float quant_min_bound = -127.0) {
   // dropout_prob == 1.0f
   // NOTE(minghaoBD): OutType should be T if drop_out_rate == 1.0
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
@@ -813,29 +823,32 @@ void LaunchLayernormResidualDropoutBias(
         ELTS_PER_ROW_PER_CTA,                                                 \
         LDGS,                                                                 \
         InType,                                                               \
-        OutType><<<grid, THREADS_PER_CTA, 0, ctx.stream()>>>(                 \
-        rows,                                                                 \
-        cols,                                                                 \
-        seed,                                                                 \
-        dropout_prob,                                                         \
-        is_upscale_in_train,                                                  \
-        is_test,                                                              \
-        increment,                                                            \
-        epsilon,                                                              \
-        src,                                                                  \
-        residual,                                                             \
-        bias,                                                                 \
-        scale,                                                                \
-        layernorm_bias,                                                       \
-        mask_data,                                                            \
-        mean,                                                                 \
-        var,                                                                  \
-        dst,                                                                  \
-        layernorm_dst,                                                        \
-        quant_last_in_scale_data,                                             \
-        quant_out_scale_data,                                                 \
-        quant_out_scale_offset,                                               \
-        quant_next_in_scale_data);                                            \
+        OutType>                                                              \
+        <<<grid, THREADS_PER_CTA, 0, ctx.stream()>>>(rows,                    \
+                                                     cols,                    \
+                                                     seed,                    \
+                                                     dropout_prob,            \
+                                                     is_upscale_in_train,     \
+                                                     is_test,                 \
+                                                     increment,               \
+                                                     epsilon,                 \
+                                                     src,                     \
+                                                     residual,                \
+                                                     bias,                    \
+                                                     scale,                   \
+                                                     layernorm_bias,          \
+                                                     mask_data,               \
+                                                     mean,                    \
+                                                     var,                     \
+                                                     dst,                     \
+                                                     layernorm_dst,           \
+                                                     quant_last_in_scale,     \
+                                                     dequant_out_scale_data,  \
+                                                     quant_out_scale_offset,  \
+                                                     quant_next_in_scale,     \
+                                                     quant_round_type,        \
+                                                     quant_max_bound,         \
+                                                     quant_min_bound);        \
   } break
 
 #define LAUNCH_FUSED_FAST_LN_KERNEL       \

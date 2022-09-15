@@ -40,9 +40,12 @@ class AttnLayerNorm {
                       OutType* y_data,
                       LayerNormParamType<T>* mean_data,
                       LayerNormParamType<T>* var_data,
-                      const float* quant_out_scale_data = nullptr,
+                      const float* dequant_out_scale_data = nullptr,
                       const int quant_out_scale_offset = 0,
-                      const float quant_in_scale_data = 1.0) {
+                      const float quant_in_scale = 1.0,
+                      const int quant_round_type = 1,
+                      const float quant_max_bound = 127.0,
+                      const float quant_min_bound = -127.0) {
     auto stream = dev_ctx_.stream();
 
     switch (GetDesiredBlockDim(feature_size_)) {
@@ -61,9 +64,12 @@ class AttnLayerNorm {
                                                   var_data,
                                                   epsilon_,
                                                   feature_size_,
-                                                  quant_out_scale_data,
+                                                  dequant_out_scale_data,
                                                   quant_out_scale_offset,
-                                                  quant_in_scale_data));
+                                                  quant_in_scale,
+                                                  quant_round_type,
+                                                  quant_max_bound,
+                                                  quant_min_bound));
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Feature_size must be larger than 1"));
