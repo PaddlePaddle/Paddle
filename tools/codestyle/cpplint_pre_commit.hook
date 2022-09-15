@@ -11,10 +11,10 @@ if [[ ! $TRAVIS_BRANCH ]]; then
   if ! [[ $version == *"$VERSION"* ]]; then
     pip install cpplint==1.6.0
   fi
-  # diff files on local machine. 
+  # diff files on local machine.
   files=$(git diff --cached --name-status | awk '$1 != "D" {print $2}')
 else
-  # diff files between PR and latest commit on Travis CI. 
+  # diff files between PR and latest commit on Travis CI.
   branch_ref=$(git rev-parse "$TRAVIS_BRANCH")
   head_ref=$(git rev-parse HEAD)
   files=$(git diff --name-status $branch_ref $head_ref | awk '$1 != "D" {print $2}')

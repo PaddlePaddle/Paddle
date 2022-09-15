@@ -20,10 +20,10 @@ __all__ = []
 class saved_tensors_hooks():
     """
     Dynamic graph, registers a pair of pack / unpack hooks for saved tensors.
-    
+
     Parameters:
         pack_hook (function): The pack hook will be called every time the forward
-            operation inputs/outputs tensors need be saved for backward. Then you 
+            operation inputs/outputs tensors need be saved for backward. Then you
             can save it to CPU or Disk. The input of `pack_hook` is a tensor need
             be saved. The output of `pack_hook` is then stored information instead
             of the original tensor. `pack_hook` will also be called while any
@@ -36,7 +36,7 @@ class saved_tensors_hooks():
             the tensor and return it to paddle framework. The input of `unpack_hook`
             is the information returned by `pack_hook`. The output of `unpack_hook`
             is a tensor reloaded by the information, and the tensor mast has the same
-            content as the original tensor passed as input to the corresponding 
+            content as the original tensor passed as input to the corresponding
             `pack_hook`.
 
     Returns:
