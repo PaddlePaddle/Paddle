@@ -76,10 +76,6 @@ class ProcessGroup {
 
    private:
     bool sync_op_{true};
-    // mpi
-    std::condition_variable cv_;
-    std::exception_ptr exception_;
-    void finish(std::exception_ptr exception = nullptr);
   };
 
   explicit ProcessGroup(int rank,

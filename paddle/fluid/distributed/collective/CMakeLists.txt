@@ -39,7 +39,7 @@ if(WITH_NCCL OR WITH_RCCL)
     cc_library(
       processgroup_heter
       SRCS ProcessGroupHeter.cc NCCLTools.cc Common.cc
-      DEPS place enforce collective_helper device_context phi_api eager_api)
+      DEPS place enforce collective_helper device_context)
   endif()
 endif()
 
