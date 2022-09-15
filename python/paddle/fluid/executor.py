@@ -1571,14 +1571,13 @@ class Executor(object):
                     program, compiler.CompiledProgram) else program._graph
 
                 # delete this code after supporting distribution
-                if compiled_program._build_strategy is not None and (
-                        compiled_program._build_strategy.is_distribution
-                        or compiled_program._build_strategy.num_trainers > 1):
-                    warnings.warn(
-                        "Standalone executor is not used for distribution",
-                        UserWarning)
-                    # return use_standalone_executor_for_distribution
-                    return False
+                # if compiled_program._build_strategy is not None and (
+                #         compiled_program._build_strategy.is_distribution
+                #         or compiled_program._build_strategy.num_trainers > 1):
+                #     warnings.warn(
+                #         "Standalone executor is not used for distribution",
+                #         UserWarning)
+                #     return use_standalone_executor_for_distribution
 
                 # Unsupported case 1: data parallel
                 if compiled_program._is_data_parallel and len(
@@ -1620,11 +1619,12 @@ class Executor(object):
                     return False
 
             # delete this code after supporting fleet
-            # from paddle.distributed.fleet import fleet
-            # if fleet._role_maker is not None:
-            #     warnings.warn("Standalone executor is not used for fleet",
-            #                   UserWarning)
-            #     return use_standalone_executor_for_distribution
+            from paddle.distributed.fleet import fleet
+            if fleet._role_maker is not None:
+                warnings.warn("Standalone executor is not used for fleet",
+                              UserWarning)
+                # return use_standalone_executor_for_distribution
+                return False
 
             return True
 
