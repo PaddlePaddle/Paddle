@@ -436,12 +436,12 @@ def reduce_sum_orig2prim(op, x):
 def reduce_mean_orig2prim(op, x):
     axes = tuple(range(0, len(
         x.shape))) if op.attr('reduce_all') else op.attr('dim')
-    sum = reduce_sum(x, axis=axes, keepdim=op.attr('keep_dim'))
-    norm = fill_const(shape=sum.shape,
-                      value=functools.reduce(operator.mul,
-                                             [x.shape[axis] for axis in axes]),
-                      dtype=sum.dtype)
-    return div(sum, norm)
+    return primops.mean(x, axes, op.attr('keepdim'))
+
+
+@REGISTER_ORIG2PRIM('batch_norm')
+def batch_norm_orig2prim(op, x):
+    pass
 
 
 @REGISTER_ORIG2PRIM('size')

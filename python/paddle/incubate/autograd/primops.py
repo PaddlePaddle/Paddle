@@ -92,6 +92,63 @@ def set_value(x, y, axis, starts, ends, strides, out):
     return out
 
 
+def mean(x, axis=None, keepdim=False):
+    axes = axis or tuple(range(0, len(x.shape)))
+    sum = reduce_sum(x, axis=axes, keepdim=keepdim)
+    norm = fill_const(shape=sum.shape,
+                      value=functools.reduce(operator.mul,
+                                             [x.shape[axis] for axis in axes]),
+                      dtype=sum.dtype)
+    return div(sum, norm)
+
+
+def ones(shape, dtype):
+    return fill_const(1.0, shape, dtype)
+
+
+def batch_norm(x,
+               axis,
+               gamma,
+               beta,
+               run_mean,
+               run_var,
+               eps=1e-5,
+               momentum=0.9,
+               use_run_stat=False):
+    """batch normalizer.
+
+    Args:
+        x (Tensor): A tensor to be normalized.
+        axis (int): The features axis.
+        gamma (Tensor): The scale factor.
+        beta (float): The shift factor.
+        run_mean (Tensor): Running mean.
+        run_var (Tensor): Running variance.
+        eps (float, optional): A value added to the denominator for numerical
+            stability. Defaults to 1e-5.
+        momentum (float, optional): The value used for the running_mean and
+            running_var computation. Can be set to None for cumulative moving
+            average (i.e. simple average). Defaults to 0.9.
+        use_run_stat (bool, optional): Whether or not using runing statistics.
+            Defaults to False.
+    """
+    reduce_axes = tuple(i for i in range(len(x.shape)) if i != axis)
+
+    if not use_run_stat:
+        m = mean(x, reduce_axes, keepdims=True)
+        v = mean(square(sub(x, m)), reduce_axes, keepdims=True)
+        x_hat = div(sub(x, m), sqrt(add(v, fill_const(eps, v.shape, v.dtype))))
+
+        momentum = fill_const(momentum, run_mean.shape, run_mean.dtype)
+        one = ones(run_mean.shape, run_mean.dtype)
+        run_mean = add(mul(momentum, run_mean), mul(sub(one, momentum), m))
+        run_var = add(mul(momentum, run_var), mul(sub(one, momentum), v))
+    else:
+        x_hat = div(sub(x, run_mean), sqrt(add(run_var, eps)))
+
+    return add(mul(gamma, x_hat), beta), run_mean, run_var
+
+
 @REGISTER_FN('add_p', 'X', 'Y', 'Z')
 def add(x, y, out=None):
     return _simple_binop(LayerHelper('add_p', **locals()))
