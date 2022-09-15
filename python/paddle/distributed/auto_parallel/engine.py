@@ -73,7 +73,7 @@ class Engine:
         cluster (Cluster|None, optional): The cluster represents the topology information
             about the used physical devices. Default: None. (Unused for now)
         strategy (Strategy|None, optional): The strategy is used to configure the
-        paralleization and optimization behaviors. Default: None.
+        parallelization and optimization behaviors. Default: None.
 
     Examples:
 
@@ -505,8 +505,8 @@ class Engine:
                 to be a (input, label) pair by default and has two items. If each sample has
                 more than two items, train_sample_split specifies how to split these items into 
                 input and label. The items before it are input and the left are label. Default: None.
-            batch_size (int, optional): The batch size of train_data. The user's data will
-                be used directly without batching if set to None. Default: 1.
+            batch_size (int, optional): The batch size of train_data and valid_data if provided. 
+                The user's data will be used directly without batching if set to None. Default: 1.
             epochs (int, optional): The number of epochs to train the model. Default: 1.
             steps_per_epoch (int, optional): The total number of steps (batches of samples)
                 is executed in one epoch before stating the next one. If None, it is equal to 
@@ -516,14 +516,16 @@ class Engine:
                 Default: None. (Unsupported for now)
             valid_freq (int, optional): Only relevant if valid_data is provided. This specifies 
                 how many training epochs before a new evaluation is performed. Default: 1.
-            valid_batch_size (int, optional): Only relevant if valid_data is provided.
-                The batch size of valid_data. The user's data will be used directly without
-                batching if set to None. Default: 1.
             valid_sample_split (int, optional): Only relevant if valid_data is provided.
                 Each sample of the valid dataset is assumed to be a (input, label) pair 
                 by default and has two items. If each sample has more than two items, 
                 valid_sample_split specifies how to split these items into input and label.
                 The items before it are input and the left are label. Default: None.
+            valid_steps (int, optional): Only relevant if valid_data is provided.
+                It is the total number of steps (batches of samples) to draw before 
+                stopping validation at the end of every epoch. If None, validation will run until the 
+                `valid_data` dataset is exhausted. The validation will start from the
+                beginning of the dataset at each epoch. Default: None.
             collate_fn(callable, optional): function to generate mini-batch data by merging
                 the sample list, None for only stack each fields of sample in axis
                 0. Default None. 
@@ -641,6 +643,9 @@ class Engine:
                 input and label. The items before it are input and the left are label. Default: None.
             batch_size (int, optional): The batch size of eval_data. The user's data will
                 be used directly without batching if set to None. Default: 1.
+            steps (int, optional): It is the total number of steps (batches of samples) to draw before 
+                stopping evaluation. If None, evaluation will run until the `valid_data` dataset is exhausted. 
+                The evaluation will start from the beginning of the dataset in each run. Default: None.
             collate_fn(callable, optional): function to generate mini-batch data by merging
                 the sample list, None for only stack each fields of sample in axis
                 0. Default None.
@@ -744,6 +749,9 @@ class Engine:
                 input and label. The items before it are input and the left are label. Default: None.
             batch_size (int, optional): The batch size of test_data. The user's data will
                 be used directly without batching if set to None. Default: 1.
+            steps (int, optional): It is the total number of steps (batches of samples) to draw before 
+                stopping predict. If None, predict will run until the `test_data` dataset is exhausted. 
+                The predict will start from the beginning of the dataset in each run. Default: None.
             collate_fn(callable, optional): function to generate mini-batch data by merging
                 the sample list, None for only stack each fields of sample in axis
                 0. Default None.

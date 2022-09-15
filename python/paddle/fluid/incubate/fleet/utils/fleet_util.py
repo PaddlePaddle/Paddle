@@ -1582,8 +1582,8 @@ class FleetUtil(object):
 
     def parse_program_proto(self, prog_path, is_text, output_dir):
         """
-        Parse program.proto into a more readable format. 
-        This function will generate three files: 
+        Parse program.proto into a more readable format.
+        This function will generate three files:
         output_dir/vars_all.log,
         output_dir/vars_persistable.log,
         output_dir/ops.log.

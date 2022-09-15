@@ -182,14 +182,14 @@ class WMT14(Dataset):
         Args:
             reverse (bool): wether to reverse key and value in dictionary,
                 i.e. key: value to value: key.
-    
+
         Returns:
             Two dictionaries, the source and target dictionary.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 from paddle.text.datasets import WMT14
                 wmt14 = WMT14(mode='train', dict_size=50)
                 src_dict, trg_dict = wmt14.get_dict()

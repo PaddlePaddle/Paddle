@@ -28,7 +28,7 @@ class BackwardAPI(BaseAPI):
         self.no_need_buffer = self.parse_no_need_buffer(backward_item_yaml)
 
     def get_api_name(self, api_item_yaml):
-        return api_item_yaml['backward_api']
+        return api_item_yaml['backward_op']
 
     def parse_forward_config(self, forward_config):
         # api_name (const Tensor& input, ... , int attr, ...) -> Tensor(out)

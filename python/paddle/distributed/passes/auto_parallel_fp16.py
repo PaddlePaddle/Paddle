@@ -126,7 +126,7 @@ class FP16State(object):
 
     def _build_state(self):
         """
-        mark the execution mode (fp16 or fp32) for ops in all blocks 
+        mark the execution mode (fp16 or fp32) for ops in all blocks
         include forward ops & backward ops
         """
         # mark op dtype

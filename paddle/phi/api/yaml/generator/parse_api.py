@@ -27,7 +27,7 @@ def main(api_yaml_path, output_path, backward):
             apis = []
         else:
             apis = [
-                parse_api_entry(api, "backward_api" if backward else "op")
+                parse_api_entry(api, "backward_op" if backward else "op")
                 for api in apis
             ]
 

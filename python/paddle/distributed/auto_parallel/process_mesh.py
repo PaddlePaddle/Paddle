@@ -53,7 +53,6 @@ class ProcessMesh(object):
         .. code-block:: python
 
             import paddle
-            import paddle.distributed.auto_parallel as auto
             
             mesh = auto.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
             assert mesh.shape == [2, 3]

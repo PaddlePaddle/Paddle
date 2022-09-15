@@ -1,4 +1,4 @@
-- backward_api : atan2_grad
+- backward_op : atan2_grad
   forward : atan2 (Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
@@ -8,7 +8,7 @@
   kernel :
     func : atan2_grad
 
-- backward_api : cholesky_grad
+- backward_op : cholesky_grad
   forward : cholesky (Tensor x, bool upper) -> Tensor(out)
   args : (Tensor out, Tensor out_grad, bool upper)
   output : Tensor(x_grad)
@@ -18,7 +18,7 @@
   kernel :
     func : cholesky_grad
 
-- backward_api : cholesky_solve_grad
+- backward_op : cholesky_solve_grad
   forward : cholesky_solve (Tensor x, Tensor y, bool upper) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out, Tensor out_grad, bool upper)
   output : Tensor(x_grad), Tensor(y_grad)
@@ -28,7 +28,7 @@
   kernel :
     func : cholesky_solve_grad
 
-- backward_api : cross_grad
+- backward_op : cross_grad
   forward : cross (Tensor x, Tensor y, int axis = 9) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad, int axis)
   output : Tensor(x_grad), Tensor(y_grad)
@@ -39,7 +39,7 @@
     func : cross_grad
     data_type : out_grad
 
-- backward_api : diag_grad
+- backward_op : diag_grad
   forward : diag (Tensor x, int offset, float padding_value) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int offset)
   output : Tensor(x_grad)
@@ -51,7 +51,7 @@
     data_type : out_grad
   no_need_buffer : x
 
-- backward_api : diagonal_grad
+- backward_op : diagonal_grad
   forward : diagonal (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int offset = 0, int axis1 = 0, int axis2 = 1)
   output : Tensor(x_grad)
@@ -63,7 +63,7 @@
     data_type : out_grad
   no_need_buffer : x
 
-- backward_api : digamma_grad
+- backward_op : digamma_grad
   forward : digamma (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
@@ -73,7 +73,7 @@
   kernel :
     func : digamma_grad
 
-- backward_api : dist_grad
+- backward_op : dist_grad
   forward : dist (Tensor x, Tensor y, float p) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out, Tensor out_grad, float p)
   output : Tensor(x_grad), Tensor(y_grad)
@@ -83,7 +83,7 @@
   kernel :
     func : dist_grad
 
-- backward_api : dot_grad
+- backward_op : dot_grad
   forward : dot (Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
@@ -94,7 +94,7 @@
     func : dot_grad
     data_type : out_grad
 
-- backward_api : erf_grad
+- backward_op : erf_grad
   forward : erf (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
@@ -105,7 +105,7 @@
     func : erf_grad
     data_type : out_grad
 
-- backward_api : erfinv_grad
+- backward_op : erfinv_grad
   forward : erfinv (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
   output : Tensor(x_grad)
@@ -115,7 +115,7 @@
   kernel :
     func : erfinv_grad
     
-- backward_api : fft_c2c_grad
+- backward_op : fft_c2c_grad
   forward: fft_c2c(Tensor x, int64_t[] axes, str normalization, bool forward) -> Tensor(out)
   args : (Tensor out_grad, int64_t[] axes, str normalization, bool forward)
   output: Tensor(x_grad)
@@ -125,7 +125,7 @@
   kernel :
     func : fft_c2c_grad
 
-- backward_api : fft_c2r_grad
+- backward_op : fft_c2r_grad
   forward: fft_c2r(Tensor x, int64_t[] axes, str normalization, bool forward, int64_t last_dim_size) -> Tensor(out)
   args : (Tensor out_grad, int64_t[] axes, str normalization, bool forward, int64_t last_dim_size)
   output: Tensor(x_grad)
@@ -135,7 +135,7 @@
     func : fft_c2r_grad
     data_type: out_grad
 
-- backward_api : fft_r2c_grad
+- backward_op : fft_r2c_grad
   forward: fft_r2c(Tensor x, int64_t[] axes, str normalization, bool forward, bool onesided) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int64_t[] axes, str normalization, bool forward, bool onesided)
   output: Tensor(x_grad)
@@ -147,7 +147,7 @@
     data_type: out_grad
   no_need_buffer: x
 
-- backward_api : graph_send_uv_grad
+- backward_op : graph_send_uv_grad
   forward : graph_send_uv (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD") -> Tensor(out)
   args: (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor out_grad, str message_op = "ADD")
   output : Tensor(x_grad), Tensor(y_grad)
@@ -158,7 +158,7 @@
     func : graph_send_uv_grad
     data_type : x
 
-- backward_api : lgamma_grad
+- backward_op : lgamma_grad
   forward : lgamma(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
@@ -168,7 +168,7 @@
   kernel :
     func : lgamma_grad
 
-- backward_api : mv_grad
+- backward_op : mv_grad
   forward : mv (Tensor x, Tensor vec) -> Tensor(out)
   args : (Tensor x, Tensor vec, Tensor out_grad)
   output : Tensor(x_grad), Tensor(vec_grad)
@@ -178,7 +178,7 @@
   kernel :
     func : mv_grad
 
-- backward_api : poisson_grad
+- backward_op : poisson_grad
   forward : poisson (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
   output : Tensor(x_grad)
@@ -188,7 +188,7 @@
   kernel :
     func : poisson_grad
 
-- backward_api : solve_grad
+- backward_op : solve_grad
   forward : solve (Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
@@ -198,7 +198,7 @@
   kernel :
     func : solve_grad
 
-- backward_api : trace_grad
+- backward_op : trace_grad
   forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int offset, int axis1, int axis2)
   output : Tensor(x_grad)
@@ -210,7 +210,7 @@
     data_type : out_grad
   no_need_buffer : x
 
-- backward_api : trunc_grad
+- backward_op : trunc_grad
   forward : trunc (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
   output : Tensor(x_grad)

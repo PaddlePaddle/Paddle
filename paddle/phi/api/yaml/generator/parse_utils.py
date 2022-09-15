@@ -334,7 +334,7 @@ def parse_api_entry(api_entry: Dict[str, Any], name_field="op"):
     api["backward"] = backward
 
     # forward for backward_apis
-    is_backward_api = name_field == "backward_api"
+    is_backward_api = name_field == "backward_op"
     if is_backward_api:
         if "forward" in api_entry:
             forward = parse_forward(api_name, api_entry["forward"])

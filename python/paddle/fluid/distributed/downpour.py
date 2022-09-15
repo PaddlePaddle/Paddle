@@ -32,7 +32,7 @@ class DownpourSGD(object):
         Can be a float value
     Examples:
         .. code-block:: python
-    
+
              opt = fluid.DistributedOptimizer(sgd_opt)
              opt.minimize()
 
