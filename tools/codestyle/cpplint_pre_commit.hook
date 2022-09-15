@@ -7,6 +7,7 @@ readonly VERSION="1.6.0"
 version=$(cpplint --version)
 
 if [[ ! $TRAVIS_BRANCH ]]; then
+  echo "[LOG] Local branch"
   # install cpplint on local machine.
   if ! [[ $version == *"$VERSION"* ]]; then
     pip install cpplint==1.6.0
@@ -14,6 +15,7 @@ if [[ ! $TRAVIS_BRANCH ]]; then
   # diff files on local machine. 
   files=$(git diff --cached --name-status | awk '$1 != "D" {print $2}')
 else
+  echo "[LOG] Travis CI branch"
   # diff files between PR and latest commit on Travis CI. 
   branch_ref=$(git rev-parse "$TRAVIS_BRANCH")
   head_ref=$(git rev-parse HEAD)
