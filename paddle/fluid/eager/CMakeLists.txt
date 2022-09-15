@@ -14,7 +14,8 @@ set(eager_deps
     grad_node_info
     grad_tensor_holder
     accumulation_node
-    custom_operator_node)
+    custom_operator_node
+    python)
 
 set(fluid_deps
     tracer
@@ -77,6 +78,10 @@ cc_library(
        autograd_meta
        hook_utils)
 
+cc_library(
+  saved_tensors_hooks
+  SRCS saved_tensors_hooks.cc
+  DEPS hook_utils)
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   add_subdirectory(tests)
 endif()

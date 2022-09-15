@@ -18,6 +18,11 @@
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/op_meta_info_helper.h"
+#include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_factory.h"
+#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -60,246 +65,16 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
   }
 
-  bool operator()(const std::string& op_type,
-                  const framework::OpDesc& desc,
-                  bool use_no_calib_int8) override {
-    if (use_no_calib_int8) {
-      return int8_teller_set.count(op_type);
-    } else {
-      return teller_set.count(op_type);
-    }
-  }
-
- private:
-  // use this set for no calib int8.
-  std::unordered_set<std::string> int8_teller_set{
-      "mul",
-      "matmul",
-      "conv2d",
-      "conv2d_fusion",
-      "pool2d",
-      "relu",
-      "elu",
-      "selu",
-      "softsign",
-      "softplus",
-      "stanh",
-      "thresholded_relu",
-      "exp",
-      "log",
-      "sqrt",
-      "abs",
-      "sin",
-      "cos",
-      "tan",
-      "sinh",
-      "cosh",
-      "asin",
-      "acos",
-      "atan",
-      "asinh",
-      "atanh",
-      "ceil",
-      "floor",
-      "erf",
-      "softmax",
-      "sigmoid",
-      "hard_swish",
-      "depthwise_conv2d",
-      "batch_norm",
-      "concat",
-      "tanh",
-      "pad",
-      "elementwise_add",
-      "elementwise_sub",
-      "elementwise_mul",
-      "elementwise_div",
-      "elementwise_pow",
-      "equal",
-      "dropout",
-      "prelu",
-      "conv2d_transpose",
-      "depthwise_conv2d_transpose",
-      "leaky_relu",
-      "fc",
-      "shuffle_channel",
-      "swish",
-      "silu",
-      "split",
-      "instance_norm",
-      "gelu",
-      "layer_norm",
-      "scale",
-      "stack",
-      "transpose2",
-      "transpose",
-      "top_k",
-      "top_k_v2",
-      "flatten2",
-      "flatten",
-      "gather",
-      "gather_nd",
-      "yolo_box",
-      "yolo_box_head",
-      "arg_max",
-      "roi_align",
-      "affine_channel",
-      "nearest_interp",
-      "anchor_generator",
-      "reduce_sum",
-      "reduce_mean",
-      "conv3d",
-      "conv3d_transpose",
-      "mish",
-      "nearest_interp_v2",
-      "bilinear_interp_v2",
-      "pool3d",
-      "deformable_conv",
-      "relu6",
-      "hard_sigmoid",
-      "clip",
-      "fused_embedding_eltwise_layernorm",
-      "multihead_matmul",
-      "skip_layernorm",
-      "slice",
-      "strided_slice",
-      "fused_preln_embedding_eltwise_layernorm",
-      "preln_residual_bias",
-      "c_allreduce_sum",
-      "c_allreduce_min",
-      "c_allreduce_max",
-      "c_allreduce_prod",
-      "roll",
-      "cast",
-      "preln_skip_layernorm",
-      "transformer_input_convert",
-      "recover_padding",
-      "remove_padding",
-      "fill_constant",
-      "sum",
-      "shape",
-      "squeeze2",
-      "unsqueeze2",
-      "layernorm_shift_partition"};
-  std::unordered_set<std::string> teller_set{
-      "mul",
-      "matmul",
-      "conv2d",
-      "conv2d_fusion",
-      "pool2d",
-      "relu",
-      "elu",
-      "selu",
-      "softsign",
-      "softplus",
-      "stanh",
-      "thresholded_relu",
-      "exp",
-      "log",
-      "sqrt",
-      "abs",
-      "sin",
-      "cos",
-      "tan",
-      "sinh",
-      "cosh",
-      "asin",
-      "acos",
-      "atan",
-      "asinh",
-      "atanh",
-      "ceil",
-      "floor",
-      "erf",
-      "softmax",
-      "sigmoid",
-      "hard_swish",
-      "depthwise_conv2d",
-      "batch_norm",
-      "concat",
-      "tanh",
-      "pad",
-      "elementwise_add",
-      "elementwise_sub",
-      "elementwise_mul",
-      "elementwise_div",
-      "elementwise_pow",
-      "equal",
-      "dropout",
-      "prelu",
-      "conv2d_transpose",
-      "depthwise_conv2d_transpose",
-      "leaky_relu",
-      "fc",
-      "shuffle_channel",
-      "swish",
-      "silu",
-      "split",
-      "instance_norm",
-      "gelu",
-      "layer_norm",
-      "scale",
-      "stack",
-      "transpose2",
-      "transpose",
-      "top_k",
-      "top_k_v2",
-      "flatten2",
-      "flatten",
-      "gather",
-      "gather_nd",
-      "yolo_box",
-      "yolo_box_head",
-      "arg_max",
-      "roi_align",
-      "affine_channel",
-      "nearest_interp",
-      "anchor_generator",
-      "reduce_sum",
-      "reduce_mean",
-      "conv3d",
-      "conv3d_transpose",
-      "mish",
-      "bilinear_interp_v2",
-      "nearest_interp_v2",
-      "pool3d",
-      "deformable_conv",
-      "relu6",
-      "hard_sigmoid",
-      "clip",
-      "fused_embedding_eltwise_layernorm",
-      "multihead_matmul",
-      "skip_layernorm",
-      "slice",
-      "strided_slice",
-      "fused_preln_embedding_eltwise_layernorm",
-      "preln_skip_layernorm",
-      "preln_residual_bias",
-      "c_allreduce_sum",
-      "c_allreduce_min",
-      "c_allreduce_max",
-      "c_allreduce_prod",
-      "roll",
-      "cast",
-      "transformer_input_convert",
-      "recover_padding",
-      "remove_padding",
-      "fill_constant",
-      "sum",
-      "shape",
-      "squeeze2",
-      "unsqueeze2",
-      "fused_token_prune",
-      "layernorm_shift_partition"};
-};
-
-bool OpTeller::Tell(const framework::ir::Node* node,
-                    bool use_no_calib_int8,
-                    bool with_dynamic_shape) {
-  const std::string op_type = node->Op()->Type();
-  const framework::OpDesc desc = *node->Op();
-
-  for (auto& teller : tellers_) {
+  bool operator()(const framework::OpDesc& desc,
+                  bool use_no_calib_int8 = false,
+                  bool with_dynamic_shape = false) override {
+    const std::string op_type = desc.Type();
+    // do not support the op which is labeled the `skip_quant`
+    if ((desc.HasAttr("namescope") &&
+         PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
+             "/skip_quant_2/") ||
+        desc.HasAttr("skip_quant"))
+      return false;
     std::unordered_set<std::string> act_op_list = {
         "relu",     "relu6", "sigmoid",
         "elu",      "selu",  "softsign",
@@ -2294,13 +2069,329 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
     }
 
-    if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
+    if (use_no_calib_int8) {
+      return int8_teller_set.count(op_type);
+    } else {
+      return teller_set.count(op_type);
+    }
   }
 
+ private:
+  // use this set for no calib int8.
+  std::unordered_set<std::string> int8_teller_set{
+      "mul",
+      "matmul",
+      "conv2d",
+      "conv2d_fusion",
+      "pool2d",
+      "relu",
+      "elu",
+      "selu",
+      "softsign",
+      "softplus",
+      "stanh",
+      "thresholded_relu",
+      "exp",
+      "log",
+      "sqrt",
+      "abs",
+      "sin",
+      "cos",
+      "tan",
+      "sinh",
+      "cosh",
+      "asin",
+      "acos",
+      "atan",
+      "asinh",
+      "atanh",
+      "ceil",
+      "floor",
+      "erf",
+      "softmax",
+      "sigmoid",
+      "hard_swish",
+      "depthwise_conv2d",
+      "batch_norm",
+      "concat",
+      "tanh",
+      "pad",
+      "elementwise_add",
+      "elementwise_sub",
+      "elementwise_mul",
+      "elementwise_div",
+      "elementwise_pow",
+      "equal",
+      "dropout",
+      "prelu",
+      "conv2d_transpose",
+      "depthwise_conv2d_transpose",
+      "leaky_relu",
+      "fc",
+      "shuffle_channel",
+      "swish",
+      "silu",
+      "split",
+      "instance_norm",
+      "gelu",
+      "layer_norm",
+      "scale",
+      "stack",
+      "transpose2",
+      "transpose",
+      "top_k",
+      "top_k_v2",
+      "flatten2",
+      "flatten",
+      "gather",
+      "gather_nd",
+      "yolo_box",
+      "yolo_box_head",
+      "arg_max",
+      "roi_align",
+      "affine_channel",
+      "nearest_interp",
+      "anchor_generator",
+      "reduce_sum",
+      "reduce_mean",
+      "conv3d",
+      "conv3d_transpose",
+      "mish",
+      "nearest_interp_v2",
+      "bilinear_interp_v2",
+      "pool3d",
+      "deformable_conv",
+      "relu6",
+      "hard_sigmoid",
+      "clip",
+      "fused_embedding_eltwise_layernorm",
+      "multihead_matmul",
+      "skip_layernorm",
+      "slice",
+      "strided_slice",
+      "fused_preln_embedding_eltwise_layernorm",
+      "preln_residual_bias",
+      "c_allreduce_sum",
+      "c_allreduce_min",
+      "c_allreduce_max",
+      "c_allreduce_prod",
+      "roll",
+      "cast",
+      "preln_skip_layernorm",
+      "transformer_input_convert",
+      "recover_padding",
+      "remove_padding",
+      "fill_constant",
+      "sum",
+      "shape",
+      "squeeze2",
+      "unsqueeze2",
+      "layernorm_shift_partition"};
+  std::unordered_set<std::string> teller_set{
+      "mul",
+      "matmul",
+      "conv2d",
+      "conv2d_fusion",
+      "pool2d",
+      "relu",
+      "elu",
+      "selu",
+      "softsign",
+      "softplus",
+      "stanh",
+      "thresholded_relu",
+      "exp",
+      "log",
+      "sqrt",
+      "abs",
+      "sin",
+      "cos",
+      "tan",
+      "sinh",
+      "cosh",
+      "asin",
+      "acos",
+      "atan",
+      "asinh",
+      "atanh",
+      "ceil",
+      "floor",
+      "erf",
+      "softmax",
+      "sigmoid",
+      "hard_swish",
+      "depthwise_conv2d",
+      "batch_norm",
+      "concat",
+      "tanh",
+      "pad",
+      "elementwise_add",
+      "elementwise_sub",
+      "elementwise_mul",
+      "elementwise_div",
+      "elementwise_pow",
+      "equal",
+      "dropout",
+      "prelu",
+      "conv2d_transpose",
+      "depthwise_conv2d_transpose",
+      "leaky_relu",
+      "fc",
+      "shuffle_channel",
+      "swish",
+      "silu",
+      "split",
+      "instance_norm",
+      "gelu",
+      "layer_norm",
+      "scale",
+      "stack",
+      "transpose2",
+      "transpose",
+      "top_k",
+      "top_k_v2",
+      "flatten2",
+      "flatten",
+      "gather",
+      "gather_nd",
+      "yolo_box",
+      "yolo_box_head",
+      "arg_max",
+      "roi_align",
+      "affine_channel",
+      "nearest_interp",
+      "anchor_generator",
+      "reduce_sum",
+      "reduce_mean",
+      "conv3d",
+      "conv3d_transpose",
+      "mish",
+      "bilinear_interp_v2",
+      "nearest_interp_v2",
+      "pool3d",
+      "deformable_conv",
+      "relu6",
+      "hard_sigmoid",
+      "clip",
+      "fused_embedding_eltwise_layernorm",
+      "multihead_matmul",
+      "skip_layernorm",
+      "slice",
+      "strided_slice",
+      "fused_preln_embedding_eltwise_layernorm",
+      "preln_skip_layernorm",
+      "preln_residual_bias",
+      "c_allreduce_sum",
+      "c_allreduce_min",
+      "c_allreduce_max",
+      "c_allreduce_prod",
+      "roll",
+      "cast",
+      "transformer_input_convert",
+      "recover_padding",
+      "remove_padding",
+      "fill_constant",
+      "sum",
+      "shape",
+      "squeeze2",
+      "unsqueeze2",
+      "fused_token_prune",
+      "layernorm_shift_partition"};
+};
+
+struct GenericPluginTeller : public Teller {
+ public:
+  GenericPluginTeller() {}
+  bool operator()(const framework::OpDesc& desc,
+                  bool use_no_calib_int8 = false,
+                  bool with_dynamic_shape = false) override {
+    const std::string op_type = desc.Type();
+    // only consider dynamic_shape mode
+    if (!with_dynamic_shape) {
+      return false;
+    }
+
+    if (use_no_calib_int8) {
+      return false;
+    } else {
+      framework::InitDefaultKernelSignatureMap();
+      bool res = phi::OpUtilsMap::Instance().HasArgumentMappingFn(op_type) ||
+                 phi::DefaultKernelSignatureMap::Instance().Has(op_type);
+      if (!res) {
+        VLOG(3) << op_type << " has no KernelSignature";
+        return false;
+      }
+      res = phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type);
+      if (!res) {
+        VLOG(3) << op_type << " has no CompatiblePhiKernel in phi.";
+        return false;
+      }
+      auto& dynamic_infermeta_factory =
+          tensorrt::DynamicMetaFnFactory::Instance();
+      res = dynamic_infermeta_factory.Contains(op_type);
+      if (!res) {
+        VLOG(3) << op_type << " has no DynamicMetaFn.";
+        return false;
+      }
+      return true;
+    }
+  }
+};
+
+struct CustomPluginTeller : public Teller {
+ public:
+  CustomPluginTeller() {}
+  bool operator()(const framework::OpDesc& desc,
+                  bool use_no_calib_int8 = false,
+                  bool with_dynamic_shape = false) override {
+    const std::string op_type = desc.Type();
+    std::string expect_plugin_name;
+
+    if (with_dynamic_shape) {
+      expect_plugin_name = op_type + "_paddle_trt_dynamic_plugin";
+    } else {
+      expect_plugin_name = op_type + "_paddle_trt_plugin";
+    }
+
+    int num = 0;
+    auto creators = GetPluginRegistry()->getPluginCreatorList(&num);
+
+    for (int i = 0; i < num; i++) {
+      if (std::string(creators[i]->getPluginName()) == expect_plugin_name)
+        return true;
+    }
+    return false;
+  }
+};
+
+bool OpTeller::Tell(const framework::ir::Node* node,
+                    bool use_no_calib_int8,
+                    bool with_dynamic_shape) {
+  const std::string op_type = node->Op()->Type();
+  const framework::OpDesc desc = *node->Op();
+  auto& default_teller = GetDefaultTeller();
+  if ((*default_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
+    SetOpConverterType(op_type, OpConverterType::Default);
+    return true;
+  }
+  auto& generic_plugin_teller = GetGenericPluginTeller();
+  if ((*generic_plugin_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
+    SetOpConverterType(op_type, OpConverterType::GenericPluginCreater);
+    return true;
+  }
+  auto& custom_plugin_teller = GetCustomPluginTeller();
+  if ((*custom_plugin_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
+    SetOpConverterType(op_type, OpConverterType::CustomPluginCreater);
+    return true;
+  }
   return false;
 }
 
-OpTeller::OpTeller() { tellers_.emplace_back(new SimpleOpTypeSetTeller); }
+OpTeller::OpTeller() {
+  tellers_.emplace_back(new tensorrt::SimpleOpTypeSetTeller);
+  tellers_.emplace_back(new tensorrt::GenericPluginTeller);
+  tellers_.emplace_back(new tensorrt::CustomPluginTeller);
+}
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

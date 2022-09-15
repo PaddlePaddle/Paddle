@@ -51,9 +51,9 @@ void VarConv2dOpMaker::Make() {
   AddComment(R"DOC(
     Var Size Conv Operator
 
-    This operator calculate Out = \sigma \left ( W * X + b \right ), 
+    This operator calculate Out = \sigma \left ( W * X + b \right ),
     only support 2-D for X.
-    
+
     NOTE: only support 'float32' data type now.
 
   )DOC");

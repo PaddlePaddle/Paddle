@@ -161,7 +161,7 @@ REGISTER_OP_CPU_KERNEL(gaussian_random_batch_size_like,
 REGISTER_OP_VERSION(gaussian_random)
     .AddCheckpoint(
         R"ROC(
-               Upgrade gaussian_random add new inputs [ShapeTensor] and [ShapeTensorList] 
+               Upgrade gaussian_random add new inputs [ShapeTensor] and [ShapeTensorList]
                and modify the attribute of [shape])ROC",
         paddle::framework::compatible::OpVersionDesc()
             .NewInput("ShapeTensor",
