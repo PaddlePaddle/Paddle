@@ -32,8 +32,8 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
        |
     reshape2
        |
-    reshape2 
-       | 
+    reshape2
+       |
     transpose2
        |
     reshape2

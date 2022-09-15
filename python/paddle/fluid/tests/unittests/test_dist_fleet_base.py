@@ -139,7 +139,7 @@ class FleetDistRunnerBase(object):
                     learning_rate=LEARNING_RATE,
                     decay_steps=500,
                     decay_rate=0.969,
-                    staircase=True)) 
+                    staircase=True))
             """
         else:
             optimizer = fluid.optimizer.SGD(LEARNING_RATE, grad_clip=grad_clip)

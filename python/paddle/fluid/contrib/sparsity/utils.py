@@ -108,7 +108,7 @@ def calculate_density(x):
 def _reshape_1d(mat, m):
     r"""
     Reshape the input 2D matrix to shape (-1, m).
-    If the second dimension of :attr:`mat` is not a multiples of :attr:`m`, 
+    If the second dimension of :attr:`mat` is not a multiples of :attr:`m`,
     then this function would pad the remainder with 0 before reshaping.
 
     .. math::
@@ -136,7 +136,7 @@ def _reshape_1d(mat, m):
 def check_mask_1d(mat, n, m):
     r"""
     Check if every row of the input matrix :attr:`mat` is in 1D `n:m` sparse pattern.
-    This function would pad the second dimension of :attr:`mat` by zero 
+    This function would pad the second dimension of :attr:`mat` by zero
     to be a multiples of :attr:`m` if necessary.
 
     1D `n:m` sparse pattern: At least :attr:`n` zeros in every :math:`1 \times m` block.
@@ -179,8 +179,8 @@ def check_mask_1d(mat, n, m):
 
 def get_mask_1d(mat, n, m):
     r"""
-    Generate 1D `n:m` sparse pattern mask of the input matrix :attr:`mat` 
-    in row-directory. This function would pad the second dimension of :attr:`mat` 
+    Generate 1D `n:m` sparse pattern mask of the input matrix :attr:`mat`
+    in row-directory. This function would pad the second dimension of :attr:`mat`
     by zero to be a multiples of :attr:`m` before mask generation.
 
     1D `n:m` sparse pattern: At least :attr:`n` zeros in every :math:`1 \times m` block.
@@ -220,7 +220,7 @@ def get_mask_1d(mat, n, m):
 def _reshape_2d(mat, m):
     r"""
     Reshape the input 2D matrix to shape (-1, :math:`m \times m`).
-    In each dimension of :attr:`mat`, if it is not a multiples of :attr:`m`, 
+    In each dimension of :attr:`mat`, if it is not a multiples of :attr:`m`,
     then this function would pad the remainder with 0 before reshaping.
 
     .. math::
@@ -263,10 +263,10 @@ def _reshape_2d(mat, m):
 def check_mask_2d(mat, n, m):
     r"""
     Check if every :math:`m \times m` block of the input matrix :attr:`mat` is in 2D `n:m` sparse pattern.
-    This function would pad each dimension of :attr:`mat` by zero to be a multiples of 
+    This function would pad each dimension of :attr:`mat` by zero to be a multiples of
     :attr:`m` if necessary.
 
-    2D `n:m` sparse pattern: At least :math:`n \times n` zeros in every :math:`m \times m` block 
+    2D `n:m` sparse pattern: At least :math:`n \times n` zeros in every :math:`m \times m` block
     under the constraint of at least :attr:`n` zeros for each row and column.
 
     Args:
@@ -312,10 +312,10 @@ def check_mask_2d(mat, n, m):
 
 def get_mask_2d_greedy(mat, n, m):
     r"""
-    Greedily generate 2D `n:m` sparse pattern mask of the input matrix :attr:`mat`. 
+    Greedily generate 2D `n:m` sparse pattern mask of the input matrix :attr:`mat`.
     This function would pad each dimension of :attr:`mat` by zero to be a multiples of :attr:`m` before mask generation.
 
-    2D `n:m` sparse pattern: At least :math:`n \times n` zeros in every :math:`m \times m` block 
+    2D `n:m` sparse pattern: At least :math:`n \times n` zeros in every :math:`m \times m` block
     under the constraint of at least :attr:`n` zeros for each row and column.
     Greedily generating: For each :math:`m \times m` block, selecting values to keep in descent order.
 
@@ -384,7 +384,7 @@ def _compute_valid_2d_patterns(n, m):
     r"""
     Compute all vaild 2D `n:m` sparse patterns.
 
-    2D `n:m` sparse pattern: At least :math:`n \times n` zeros in every :math:`m \times m` block 
+    2D `n:m` sparse pattern: At least :math:`n \times n` zeros in every :math:`m \times m` block
     under the constraint of at least :attr:`n` zeros for each row and column.
 
     Args:
@@ -420,11 +420,11 @@ def _compute_valid_2d_patterns(n, m):
 
 def get_mask_2d_best(mat, n, m):
     r"""
-    Generate 2D `n:m` sparse pattern mask of the input matrix :attr:`mat` 
-    to form sparse matrix with maximun L1 norm .This function would pad each 
+    Generate 2D `n:m` sparse pattern mask of the input matrix :attr:`mat`
+    to form sparse matrix with maximun L1 norm .This function would pad each
     dimension of :attr:`mat` by zero to be a multiples of :attr:`m` before mask generation.
 
-    2D `n:m` sparse pattern: At least :math:`n \times n` zeros in every :math:`m \times m` block 
+    2D `n:m` sparse pattern: At least :math:`n \times n` zeros in every :math:`m \times m` block
     under the constraint of at least :attr:`n` zeros for each row and column.
 
     *Note*: L1 norm of sparse matrix from `Best` API is greater than or equal to the one from `Greedy`.
