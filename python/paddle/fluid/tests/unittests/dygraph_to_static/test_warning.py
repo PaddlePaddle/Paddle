@@ -44,10 +44,15 @@ class TestReturnNoneInIfelse(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             fun1()
-            self.assertTrue(issubclass(w[0].category, UserWarning))
-            self.assertTrue(
-                "Set var to 'None' in ifelse block might lead to error." in str(
-                    w[0].message))
+            flag = False
+            for warn in w:
+                if (
+                        issubclass(warn.category, UserWarning)
+                ) and "Set var to 'None' in ifelse block might lead to error." in str(
+                        warn.message):
+                    flag = True
+                    break
+            self.assertTrue(flag)
 
     def test_cond_warning(self):
         paddle.enable_static()
@@ -56,11 +61,15 @@ class TestReturnNoneInIfelse(unittest.TestCase):
             a = paddle.to_tensor(1)
             b = paddle.to_tensor(2)
             cond(a < b, true_fn, false_fn, return_names=['ret1', 'ret2'])
-            self.assertTrue(issubclass(w[0].category, UserWarning))
-            self.assertTrue(
-                "Set var to 'None' in ifelse block might lead to error." in str(
-                    w[0].message))
-        paddle.disable_static()
+            flag = False
+            for warn in w:
+                if (
+                        issubclass(warn.category, UserWarning)
+                ) and "Set var to 'None' in ifelse block might lead to error." in str(
+                        warn.message):
+                    flag = True
+                    break
+            self.assertTrue(flag)
 
 
 if __name__ == '__main__':

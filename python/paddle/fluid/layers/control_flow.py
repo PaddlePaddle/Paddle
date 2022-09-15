@@ -2640,6 +2640,12 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         dy2static will set the return_names and expand the return values to UndefinedVar.
         """
         is_dy2staic = True
+
+        # TODO:  expand_undefined_var will replace None to Undefinedvar(), to fix cases like:
+        #       a = None
+        #       if condition:
+        #           a = 1
+        # Because we can not use variable to express 'None'
         true_output, false_output = expand_undefined_var(
             true_output, false_output, return_names)
 
