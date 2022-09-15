@@ -24,10 +24,10 @@ core_suffix = 'so'
 if os.name == 'nt':
     core_suffix = 'pyd'
 
-has_core_lib_file = False
+has_libpaddle_so = False
 current_path = os.path.abspath(os.path.dirname(__file__))
 if os.path.exists(current_path + os.sep + 'paddle_core.' + core_suffix):
-    has_core_lib_file = True
+    has_libpaddle_so = True
 
 try:
     if os.name == 'nt':
@@ -193,7 +193,7 @@ def load_dso(dso_absolute_path):
 
 
 def pre_load(dso_name):
-    if has_core_lib_file:
+    if has_libpaddle_so:
         core_so = current_path + os.sep + 'paddle_core.' + core_suffix
     else:
         core_so = None
@@ -291,7 +291,7 @@ try:
         from .paddle_core import _cleanup_mmap_fds
         from .paddle_core import _remove_tensor_list_mmap_fds
 except Exception as e:
-    if has_core_lib_file:
+    if has_libpaddle_so:
         sys.stderr.write(
             'Error: Can not import paddle core while this file exists: ' +
             current_path + os.sep + 'paddle_core.' + core_suffix + '\n')
