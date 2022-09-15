@@ -226,11 +226,9 @@ struct ConvProgramStrategy : public ProgramStrategy {
   const Data output;
   const std::vector<float> scale_weights;
   const int groups;
-
-  const bool share_weight;
-
   const Data bias;
   const std::vector<float> scale_bias;
+  const bool share_weight;
 };
 
 struct ParamsQuantizationMkldnnPassTestFixture : public ::testing::Test {
