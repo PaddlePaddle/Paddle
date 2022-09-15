@@ -31,8 +31,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#ifdef _WIN32
-#else
 template <typename T, unsigned TPB>
 __global__ void embLayerNormKernelMTron(int32_t ld,
                                         int32_t** inputIds,
@@ -108,7 +106,6 @@ __global__ void embLayerNormKernelMTron(int32_t ld,
   // 3. layer norm on the sum
   layerNorm<T, T, float, TPB>(threadData, ld, outOffset, beta, gamma, output);
 }
-#endif
 
 template <typename T>
 int32_t embSkipLayerNormMTron(cudaStream_t stream,
@@ -123,8 +120,6 @@ int32_t embSkipLayerNormMTron(cudaStream_t stream,
                               int32_t* IdsSize,
                               T* output,
                               T* skip) {
-#ifdef _WIN32
-#else
   constexpr int32_t tpb = 256;
   dim3 const grid(S, B, 1);
   dim3 const block(tpb, 1, 1);
@@ -139,7 +134,6 @@ int32_t embSkipLayerNormMTron(cudaStream_t stream,
                                             IdsSize,
                                             output,
                                             skip);
-#endif
   return cudaPeekAtLastError();
 }
 

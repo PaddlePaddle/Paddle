@@ -34,7 +34,7 @@ list(
   fused_token_prune_op_plugin.cu
   layernorm_shift_partition_op.cu)
 
-if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
+if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
   list(APPEND TRT_FILES many_emb_layernorm_varseqlen_plugin.cc
        many_emb_Layernorm_varseqlen_kernelMTron.cu
        many_emb_Layernorm_varseqlen_kernelHFace.cu)
