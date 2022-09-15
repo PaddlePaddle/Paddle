@@ -26,20 +26,20 @@ def fused_matmul_bias(x,
                       name=None):
     """
     Applies matrix multiplication of two tensors and then bias addition if provided.
-    This method requires CUDA version >= 11.6. 
+    This method requires CUDA version >= 11.6.
 
     Args:
         x (Tensor): the first input Tensor to be multiplied.
-        y (Tensor): the second input Tensor to be multiplied. Its rank must be 2.  
+        y (Tensor): the second input Tensor to be multiplied. Its rank must be 2.
         bias (Tensor|None): the input bias Tensor. If it is None, no bias addition would
-            be performed. Otherwise, the bias is added to the matrix multiplication result.  
+            be performed. Otherwise, the bias is added to the matrix multiplication result.
         transpose_x (bool): Whether to transpose :math:`x` before multiplication.
-        transpose_y (bool): Whether to transpose :math:`y` before multiplication.    
-        name(str|None): For detailed information, please refer to 
-            :ref:`api_guide_Name` . Usually name is no need to set and None by default. 
+        transpose_y (bool): Whether to transpose :math:`y` before multiplication.
+        name(str|None): For detailed information, please refer to
+            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Returns:
-        Tensor: the output Tensor. 
+        Tensor: the output Tensor.
 
     Examples:
         .. code-block:: python
@@ -47,11 +47,11 @@ def fused_matmul_bias(x,
             # required: gpu
             import paddle
             from paddle.incubate.nn.functional import fused_matmul_bias
-            
-            x = paddle.randn([3, 4]) 
+
+            x = paddle.randn([3, 4])
             y = paddle.randn([4, 5])
             bias = paddle.randn([5])
-            out = fused_matmul_bias(x, y, bias) 
+            out = fused_matmul_bias(x, y, bias)
             print(out.shape) # [3, 5]
     """
     if bias is None:
@@ -79,19 +79,19 @@ def fused_matmul_bias(x,
 
 def fused_linear(x, weight, bias=None, transpose_weight=False, name=None):
     """
-    Fully-connected linear transformation operator. This method requires CUDA version >= 11.6. 
+    Fully-connected linear transformation operator. This method requires CUDA version >= 11.6.
 
     Args:
         x (Tensor): the input Tensor to be multiplied.
-        weight (Tensor): the weight Tensor to be multiplied. Its rank must be 2.  
+        weight (Tensor): the weight Tensor to be multiplied. Its rank must be 2.
         bias (Tensor|None): the input bias Tensor. If it is None, no bias addition would
-            be performed. Otherwise, the bias is added to the matrix multiplication result.  
-        transpose_weight (bool): Whether to transpose :math:`weight` before multiplication.    
-        name(str|None): For detailed information, please refer to 
-            :ref:`api_guide_Name` . Usually name is no need to set and None by default. 
+            be performed. Otherwise, the bias is added to the matrix multiplication result.
+        transpose_weight (bool): Whether to transpose :math:`weight` before multiplication.
+        name(str|None): For detailed information, please refer to
+            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Returns:
-        Tensor: the output Tensor. 
+        Tensor: the output Tensor.
 
     Examples:
         .. code-block:: python
@@ -99,11 +99,11 @@ def fused_linear(x, weight, bias=None, transpose_weight=False, name=None):
             # required: gpu
             import paddle
             from paddle.incubate.nn.functional import fused_linear
-            
-            x = paddle.randn([3, 4]) 
+
+            x = paddle.randn([3, 4])
             weight = paddle.randn([4, 5])
             bias = paddle.randn([5])
-            out = fused_linear(x, weight, bias) 
+            out = fused_linear(x, weight, bias)
             print(out.shape) # [3, 5]
     """
     return fused_matmul_bias(x, weight, bias, False, transpose_weight, name)

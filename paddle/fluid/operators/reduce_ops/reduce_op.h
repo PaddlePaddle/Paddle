@@ -698,7 +698,8 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         "Must be in the range [-rank(input), rank(input)). "
         "If `dim[i] < 0`, the dims[i] to reduce is `rank + dims[i]`. "
         "Note that reducing on the first dim will make the LoD info lost.")
-        .SetDefault({0});
+        .SetDefault({0})
+        .SupportTensor();
     AddAttr<bool>("keep_dim",
                   "(bool, default false) "
                   "If true, retain the reduced dimension with length 1.")
@@ -717,10 +718,6 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         "(int, default -1)"
         "The dtype of output, default value is -1, the dtype is same as intput")
         .SetDefault(-1);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(string::Sprintf(R"DOC(
 %s Operator.
 

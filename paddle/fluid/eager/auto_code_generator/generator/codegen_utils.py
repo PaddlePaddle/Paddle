@@ -22,16 +22,16 @@ import os
 ### Global Variables ###
 ########################
 ops_to_fill_zero_for_empty_grads = set([
-    "split_grad", "rnn_grad", "matmul_double_grad", "matmul_triple_grad",
-    "sigmoid_double_grad", "sigmoid_triple_grad", "add_double_grad",
-    "add_triple_grad", "multiply_grad", "multiply_double_grad",
-    "multiply_triple_grad", "conv2d_grad_grad", "batch_norm_double_grad",
-    "tanh_double_grad", "tanh_triple_grad", "subtract_double_grad",
-    "divide_double_grad", "log_double_grad", "elu_double_grad",
-    "leaky_relu_double_grad", "sqrt_double_grad", "rsqrt_double_grad",
-    "square_double_grad", "celu_double_grad", "pad_double_grad",
-    "pad3d_double_grad", "squeeze_double_grad", "unsqueeze_double_grad",
-    "instance_norm_double_grad", "conv3d_double_grad",
+    "split_grad", "split_with_num_grad", "rnn_grad", "matmul_double_grad",
+    "matmul_triple_grad", "sigmoid_double_grad", "sigmoid_triple_grad",
+    "add_double_grad", "add_triple_grad", "multiply_grad",
+    "multiply_double_grad", "multiply_triple_grad", "conv2d_grad_grad",
+    "batch_norm_double_grad", "tanh_double_grad", "tanh_triple_grad",
+    "subtract_double_grad", "divide_double_grad", "log_double_grad",
+    "elu_double_grad", "leaky_relu_double_grad", "sqrt_double_grad",
+    "rsqrt_double_grad", "square_double_grad", "celu_double_grad",
+    "pad_double_grad", "pad3d_double_grad", "squeeze_double_grad",
+    "unsqueeze_double_grad", "instance_norm_double_grad", "conv3d_double_grad",
     "depthwise_conv2d_grad_grad", "concat_double_grad", "expand_grad",
     "argsort_grad"
 ])
@@ -83,10 +83,10 @@ def ReadBwdFile(filepath):
     ret = {}
     if contents is not None:
         for content in contents:
-            assert 'backward_api' in content.keys(), AssertMessage(
-                'backward_api', content.keys())
-            if 'backward_api' in content.keys():
-                api_name = content['backward_api']
+            assert 'backward_op' in content.keys(), AssertMessage(
+                'backward_op', content.keys())
+            if 'backward_op' in content.keys():
+                api_name = content['backward_op']
 
             ret[api_name] = content
     f.close()
@@ -418,12 +418,12 @@ class FunctionGeneratorBase:
     def CollectOriginalForwardInfo(self):
         forward_api_contents = self.forward_api_contents
 
-        self.forward_api_name = forward_api_contents['api']
+        self.forward_api_name = forward_api_contents['op']
         forward_args_str = forward_api_contents['args']
         forward_returns_str = forward_api_contents['output']
 
-        assert 'api' in forward_api_contents.keys(
-        ), "Unable to find \"api\" in forward_api_contents keys"
+        assert 'op' in forward_api_contents.keys(
+        ), "Unable to find \"op\" in forward_api_contents keys"
         assert 'args' in forward_api_contents.keys(
         ), "Unable to find \"args\" in forward_api_contents keys"
         assert 'output' in forward_api_contents.keys(

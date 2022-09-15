@@ -39,9 +39,9 @@ from collections import OrderedDict
 def summary(main_prog):
     '''
     It can summary model's PARAMS, FLOPs until now.
-    It support common operator like conv, fc, pool, relu, sigmoid, bn etc. 
+    It support common operator like conv, fc, pool, relu, sigmoid, bn etc.
     Args:
-        main_prog: main program 
+        main_prog: main program
     Returns:
         print summary on terminal
     '''
@@ -74,7 +74,7 @@ def _summary_model(block_vars, one_op):
     Returns:
         in_data_shape: one operator's input data shape
         out_data_shape: one operator's output data shape
-        params: one operator's PARAMs 
+        params: one operator's PARAMs
         flops: : one operator's FLOPs
     '''
     if one_op.type in ['conv2d', 'depthwise_conv2d']:

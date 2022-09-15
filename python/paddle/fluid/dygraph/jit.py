@@ -634,6 +634,7 @@ def _remove_save_pre_hook(hook):
     _save_pre_hooks_lock.release()
 
 
+@wrap_decorator
 def _run_save_pre_hooks(func):
 
     def wrapper(layer, path, input_spec=None, **configs):
@@ -700,7 +701,7 @@ def save(layer, path, input_spec=None, **configs):
       - Other C++ inference APIs
 
     .. note::
-        When using ``paddle.jit.save`` to save a function, parameters will not be saved. If you have to 
+        When using ``paddle.jit.save`` to save a function, parameters will not be saved. If you have to
         save the parameter, please pass the Layer containing function and parameter to ``paddle.jit.save``.
 
     Args:
@@ -812,7 +813,7 @@ def save(layer, path, input_spec=None, **configs):
 
                 load_result = load_func(inps)
                 print((load_result - origin).abs().max() < 1e-10)
-                
+
             save_function()
     """
 

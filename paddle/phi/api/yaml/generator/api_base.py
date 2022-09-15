@@ -50,7 +50,7 @@ class BaseAPI(object):
             self.inplace_map, self.view_map = {}, {}
 
     def get_api_name(self, api_item_yaml):
-        return api_item_yaml['api']
+        return api_item_yaml['op']
 
     def get_api_func_name(self):
         return self.api
@@ -706,29 +706,29 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}     std::vector<std::pair<const char*, std::vector<phi::DDim>>> input_shapes{{"""
             for input_name in single_tensor_names[:-1]:
                 if input_name in self.optional_vars:
-                    input_tensor_code = input_tensor_code + f"""            
+                    input_tensor_code = input_tensor_code + f"""
 {code_indent}     {{"{input_name}", {input_name}_record_shapes}},"""
                 else:
-                    input_tensor_code = input_tensor_code + f"""            
+                    input_tensor_code = input_tensor_code + f"""
 {code_indent}     {{"{input_name}", {{"""
                     input_tensors = input_name_tensor_map[input_name]
                     for input_tensor, _ in input_tensors[:-1]:
-                        input_tensor_code = input_tensor_code + f"""            
+                        input_tensor_code = input_tensor_code + f"""
 {code_indent}     (*{input_tensor}).dims(),"""
-                    input_tensor_code = input_tensor_code + f"""            
+                    input_tensor_code = input_tensor_code + f"""
 {code_indent}     (*{input_tensors[-1][0]}).dims()}}}},"""
             if single_tensor_names[-1] in self.optional_vars:
-                input_tensor_code = input_tensor_code + f"""            
-{code_indent}     {{"{single_tensor_names[-1]}",         
+                input_tensor_code = input_tensor_code + f"""
+{code_indent}     {{"{single_tensor_names[-1]}",
 {code_indent}     {single_tensor_names[-1]}_record_shapes}}}};"""
             else:
-                input_tensor_code = input_tensor_code + f"""            
+                input_tensor_code = input_tensor_code + f"""
 {code_indent}     {{"{single_tensor_names[-1]}", {{"""
                 input_tensors = input_name_tensor_map[single_tensor_names[-1]]
                 for input_tensor, _ in input_tensors[:-1]:
-                    input_tensor_code = input_tensor_code + f"""            
+                    input_tensor_code = input_tensor_code + f"""
 {code_indent}     (*{input_tensor}).dims(),"""
-                input_tensor_code = input_tensor_code + f"""            
+                input_tensor_code = input_tensor_code + f"""
 {code_indent}     (*{input_tensors[-1][0]}).dims()}}}}}};"""
         if list_tensor_names:
             input_tensor_code = input_tensor_code + f"""
@@ -757,14 +757,14 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}       ddims_vec.emplace_back((*{input_tensor_truncate}[i]).dims());
 {code_indent}     }}"""
                 else:
-                    input_tensor_code = input_tensor_code + f"""  
+                    input_tensor_code = input_tensor_code + f"""
                   ddims_vec.emplace_back((*{input_tensor}).dims());
 {code_indent}     """
             input_tensor_code = input_tensor_code + f"""
 {code_indent}     input_shapes.emplace_back("{input_name}", ddims_vec);"""
 
-        input_tensor_code = input_tensor_code + f"""  
-{code_indent}     platform::RecordOpInfoSupplement("{self.api}", input_shapes);  
+        input_tensor_code = input_tensor_code + f"""
+{code_indent}     platform::RecordOpInfoSupplement("{self.api}", input_shapes);
 {code_indent}  }}"""
         kernel_args = ["*dev_ctx"]
         for param in kernel_param:
@@ -881,7 +881,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
     def get_condition_code(self, kernel_name):
         assert self.kernel['dispatch'][kernel_name], \
-                f"{self.api} api: the tensor type of inputs and outputs for kernel isn't set, see also 'kernel:func' of 'scale' in api.yaml."
+                f"{self.api} api: the tensor type of inputs and outputs for kernel isn't set, see also 'kernel:func' of 'scale' in ops.yaml."
         input_types = self.kernel['dispatch'][kernel_name][0]
         condition_list = []
         for i, in_type in enumerate(input_types):

@@ -36,7 +36,7 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed import fleet
 from paddle.distributed.passes import new_pass, PassContext
 
-from .hepler import ProgramHelper
+from .helper import ProgramHelper
 from ..collective import _get_global_env
 from .cluster import Cluster, get_default_cluster
 from .planner_v2 import Planner
@@ -60,14 +60,10 @@ class Engine:
                  strategy=None,
                  user_tuning_config=None):
         self.model = model
+        self.strategy = strategy or fleet.DistributedStrategy()
         self.inputs_spec = self._validate_spec(inputs_spec)
         self.labels_spec = self._validate_spec(labels_spec)
-        self.cluster = cluster
-        if self.cluster is None:
-            self.cluster = get_default_cluster()
-        self.strategy = strategy
-        if self.strategy is None:
-            self.strategy = fleet.DistributedStrategy()
+        self.cluster = cluster or get_default_cluster()
         self._user_tuning_config = user_tuning_config
 
         self._executor = None
@@ -118,8 +114,7 @@ class Engine:
                     "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
                         " or `paddle.fluid.optimizer.Optimizer`."
                 )
-        self._optimizer = optimizer
-        self._all_ranks = all_ranks
+        self._optimizer = self._validate_opt(optimizer)
 
         if loss and not isinstance(loss,
                                    paddle.nn.Layer) and not callable(loss):
@@ -136,6 +131,7 @@ class Engine:
         self._metrics = to_list(metrics)
         self._gradient_scale = gradient_scale
         self._planned_mode = None
+        self._all_ranks = all_ranks
         self._prepare_single_mode("train")
 
     def _prepare_single_mode(self, mode):
@@ -161,21 +157,23 @@ class Engine:
             self._dygraph_mode = True
             self._logger.info("Building model with 'to_static' method.")
 
-            program_helper = ProgramHelper(self.model, self._loss,
-                                           self._metrics, self.inputs_spec,
-                                           self.labels_spec)
+            inputs_spec = self.inputs_spec
+            labels_spec = self.labels_spec if self.labels_spec else []
+            self.program_helper = ProgramHelper(self.model, self._loss,
+                                                self._metrics, inputs_spec,
+                                                labels_spec)
             # build forward main program
-            program_helper.build_program(mode)
+            self.program_helper.build_program(mode)
 
-            self.concrete_program = program_helper.concrete_program
-            serial_main_prog = program_helper.main_program
-            serial_startup_prog = program_helper.startup_program
+            self.concrete_program = self.program_helper.concrete_program
+            serial_main_prog = self.program_helper.main_program
+            serial_startup_prog = self.program_helper.startup_program
 
-            inputs = program_helper.input_vars
-            outputs = program_helper.output_vars
-            labels = program_helper.label_vars
-            losses = program_helper.loss_vars
-            metrics = program_helper.metric_vars
+            inputs = self.program_helper.input_vars
+            outputs = self.program_helper.output_vars
+            labels = self.program_helper.label_vars
+            losses = self.program_helper.loss_vars
+            metrics = self.program_helper.metric_vars
 
             paddle.enable_static()
         else:
@@ -233,8 +231,8 @@ class Engine:
         assert "dataset" in self._user_tuning_config, "Optimization Tuning should provide with dataset."
         batch_size = self._user_tuning_config["batch_size"]
         dataset = self._user_tuning_config["dataset"]
-        dataset.dp_world_size = self._input_split_size
-        dataset.dp_rank = self._input_split_rank
+        dataset.dp_world_size = self.dp_world_sizes
+        dataset.dp_rank = self.dp_ranks
 
         from .tuner.optimization_tuner import OptimizationTuner
         self._optimization_tuner = OptimizationTuner(self._user_tuning_config,
@@ -272,8 +270,13 @@ class Engine:
             if var.name in block.vars:
                 feed_list.append(block.vars[var.name])
 
-        self._input_split_size, self._input_split_rank = self._get_input_split_info(
-            feed_list[0], self._dist_contexts[mode])
+        self.dp_world_sizes = []
+        self.dp_ranks = []
+        for feed_var in feed_list:
+            dp_world_size, dp_rank = self._get_input_split_info(
+                feed_var, self._dist_contexts[mode])
+            self.dp_world_sizes.append(dp_world_size)
+            self.dp_ranks.append(dp_rank)
 
     def _parallel(self, mode, all_ranks):
         # Parallelize program based on the planner's results
@@ -329,40 +332,17 @@ class Engine:
                     continue
                 process_group.instantiate()
 
-        self._place = _get_device()
-        if isinstance(self._place, fluid.CUDAPlace):
-            self._place = fluid.CUDAPlace(ParallelEnv().dev_id)
+        place = _get_device()
+        if isinstance(place, fluid.CUDAPlace):
+            place = fluid.CUDAPlace(ParallelEnv().dev_id)
 
         if self._dygraph_mode:
-            paddle.disable_static()
-            main_program = self._dist_main_progs[mode][self._cur_rank]
-            for param in self.concrete_program.parameters:
-                # create var in scope and share parameters to scope
-                if param.name not in main_program.global_block().vars:
-                    continue
-                # get param_var's dist_attr
-                var = main_program.global_block().vars[param.name]
-                var_dist_attr = self._dist_contexts[
-                    mode].get_tensor_dist_attr_for_program(var)
-                dist_attr = {
-                    "dims_mapping": var_dist_attr.dims_mapping,
-                    "process_shape": var_dist_attr.process_mesh.topology,
-                    "process_group": var_dist_attr.process_mesh.processes
-                }
-                # slice param_value with dist_attr
-                # share sliced_param_value with param_tensor in global_scope
-                from .converter import Converter
-                param_tensor = global_scope().var(param.name).get_tensor()
-                sliced_param = Converter.slice_with_dist_attr(
-                    param.numpy(), dist_attr)
-                shared_tensor = paddle.to_tensor(sliced_param,
-                                                 place=self._place)
-                param_tensor._share_data_with(
-                    shared_tensor.value().get_tensor())
-            paddle.enable_static()
+            dist_context = self._dist_contexts[mode]
+            dist_main_program = self._dist_main_progs[mode][self._cur_rank]
+            self.program_helper.init(dist_main_program, place, dist_context)
 
         if self._executor is None:
-            self._executor = paddle.static.Executor(self._place)
+            self._executor = paddle.static.Executor(place)
             uninitialized = []
             dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
             for var in dist_startup_prog.list_vars():
@@ -373,40 +353,6 @@ class Engine:
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
                 self._executor.run(prune_startup_prog)
-
-            if self.strategy.amp and self.strategy.amp_configs['use_pure_fp16']:
-                # from paddle.fluid.contrib.mixed_precision.fp16_utils import cast_parameters_to_fp16
-                def cast_parameters_to_fp16(place,
-                                            program,
-                                            scope=None,
-                                            to_fp16_var_names=None):
-                    """
-                    Traverse all parameters in the whole model and set them to the FP16 data type.
-                    Whereas, this function will keep parameters of batchnorms in FP32.
-                    Args:
-                        place(fluid.CPUPlace|fluid.CUDAPlace): `place` is used to restore the FP16 weight tensors.
-                        program (Program): The used program.
-                        scope(fluid.Scope, optional): `scope` is used to get the FP32 weight tensor values.
-                                                    Default is None.
-                        to_fp16_var_names(set|list, optional): The data types of vars in `to_fp16_var_names`
-                                                            will be set to FP16. Usually, it is the returned
-                                                            value of `cast_model_to_fp16` API.
-                    """
-                    from paddle.framework import core
-                    import numpy as np
-                    all_parameters = []
-                    for block in program.blocks:
-                        all_parameters.extend(block.all_parameters())
-
-                    var_scope = scope if scope else paddle.static.global_scope()
-                    for param in all_parameters:
-                        if param.dtype == core.VarDesc.VarType.FP16:
-                            param_t = var_scope.find_var(
-                                param.name).get_tensor()
-                            data = np.array(param_t)
-                            param_t.set(np.float16(data), place)
-
-                cast_parameters_to_fp16(self._place, prune_startup_prog)
 
     def fit(self,
             train_data,
@@ -440,15 +386,23 @@ class Engine:
         for epoch in range(epochs):
             train_logs = {"epoch: {:d} ": epoch}
             for step, _ in enumerate(train_dataloader):
+                try:
+                    outs = self._executor.run(self.main_program,
+                                              fetch_list=fetch_list,
+                                              use_program_cache=use_cache,
+                                              return_numpy=return_numpy)
+                except fluid.core.EOFException:
+                    break
 
-                outs = self._executor.run(self.main_program,
-                                          fetch_list=fetch_list,
-                                          use_program_cache=use_cache,
-                                          return_numpy=return_numpy)
                 train_logs["step: {:d} "] = step
-                if lr_scheduler is not None:
+                if lr_scheduler is not None and step % self.k_steps == 0:
                     lr_scheduler.step()
-                    train_logs["lr: {:5e} "] = self._lr_optimizer.get_lr()
+                    try:
+                        train_logs["lr: {:5e} "] = self._lr_optimizer.get_lr()
+                    except:
+                        train_logs[
+                            "lr: {:5e} "] = self._lr_optimizer._learning_rate.get_lr(
+                            )
                 # inner fetches
                 if fetch_loss:
                     train_logs["loss: {:9f} "] = outs[0][0]
@@ -486,10 +440,13 @@ class Engine:
 
         for step, _ in enumerate(eval_dataloader):
             eval_logs = {"step: {:d} ": step}
-            outs = self._executor.run(self.main_program,
-                                      fetch_list=fetch_list,
-                                      use_program_cache=use_cache,
-                                      return_numpy=return_numpy)
+            try:
+                outs = self._executor.run(self.main_program,
+                                          fetch_list=fetch_list,
+                                          use_program_cache=use_cache,
+                                          return_numpy=return_numpy)
+            except fluid.core.EOFException:
+                break
             # inner fetches
             if fetch_loss:
                 eval_logs["loss: {:9f} "] = outs[0][0]
@@ -534,10 +491,13 @@ class Engine:
         outputs = []
         for step, _ in enumerate(test_dataloader):
             predict_logs = {"step: {:d} ": step}
-            outs = self._executor.run(self.main_program,
-                                      fetch_list=fetch_list,
-                                      use_program_cache=use_cache,
-                                      return_numpy=return_numpy)
+            try:
+                outs = self._executor.run(self.main_program,
+                                          fetch_list=fetch_list,
+                                          use_program_cache=use_cache,
+                                          return_numpy=return_numpy)
+            except fluid.core.EOFException:
+                break
             outputs.append(outs[:len(fetch_outputs)])
             for i, out in enumerate(outs):
                 predict_logs[fetch_map[fetch_list[i]] + ": {}"] = out
@@ -553,20 +513,31 @@ class Engine:
                            epochs=1,
                            steps_per_epoch=None,
                            collate_fn=None):
+
+        if self.strategy.gradient_merge and batch_size is not None:
+            assert batch_size % self.k_steps == 0, \
+                "Requires batch_size:[{}] to be divisible by k_steps:[{}].".format(batch_size, self.k_steps)
+            batch_size //= self.k_steps
+
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
         dist_startup_prog = self._dist_startup_progs[self.mode][self._cur_rank]
         dist_context = self._dist_contexts[self.mode]
         dist_main_block = dist_main_prog.global_block()
 
-        # NOTE: Get feed_list from dist_program, then insert dataloader op
-        # with sharded var shape. Because predict_program does not contain
-        # labels var, so we will filter dataset's value with length of feed_list.
+        # NOTE: Get feed_list, then insert dataloader op with sharded var shape.
+        # Cause predict_program does not contain labels var,
+        # then we will add labels var from serial_program to dist_program,
+        # that maintains the length of feed_list equal to the length of dataset's values.
         inputs_var = self._feed_vars[self.mode]["inputs"]
         labels_var = self._feed_vars[self.mode]["labels"]
         feed_list = []
         for var in inputs_var + labels_var:
             if var.name in dist_main_block.vars:
                 feed_list.append(dist_main_block.vars[var.name])
+            else:
+                copy_var = dist_main_block._clone_variable(var, var.persistable)
+                copy_var.desc.set_original_id(var.desc.original_id())
+                feed_list.append(copy_var)
 
         # remove the first three ops if multi run fit/evaluate/predict
         op_size = len(dist_main_block.ops)
@@ -586,8 +557,9 @@ class Engine:
                 epochs,
                 steps_per_epoch,
                 collate_fn,
-                data_parallel_world_size=self._input_split_size,
-                data_parallel_rank=self._input_split_rank)
+                data_parallel_world_size=self.dp_world_sizes,
+                data_parallel_rank=self.dp_ranks,
+                split_data=self.strategy.split_data)
 
         # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)
@@ -608,6 +580,9 @@ class Engine:
 
     def _validate_spec(self, specs):
         specs = to_list(specs)
+        self.k_steps = 1
+        if self.strategy.gradient_merge:
+            self.k_steps = self.strategy.gradient_merge_configs['k_steps']
         if specs is not None:
             for i, spec in enumerate(specs):
                 assert isinstance(spec, InputSpec)
@@ -615,6 +590,12 @@ class Engine:
                     raise ValueError(
                         "Requires Input[{}].name != None, but receive `None` with {}."
                         .format(i, spec))
+                if self.k_steps > 1:
+                    shape = list(spec.shape)
+                    assert shape[0] % self.k_steps == 0, \
+                        "Requires batch_size[{}] to be divisible by k_steps[{}].".format(spec.shape[0], self.k_steps)
+                    shape[0] //= self.k_steps
+                    spec.shape = shape
         return specs
 
     def _is_local_var(self, var):
@@ -668,7 +649,7 @@ class Engine:
                                           batch_size_axis, rank_id)
             return len(group_ranks), group_ranks.index(rank_id)
 
-        return None, None
+        return 1, 0
 
     def _set_recompute_ckpts(self):
         # NOTE hack to enable recompute in engine api for GPT-3
@@ -682,6 +663,8 @@ class Engine:
                     self.model, "gpt"
             ) and self.model.__class__.__name__ == 'GPTForPretraining':
                 exact_ckpts = self.model.gpt.checkpoints
+            else:
+                exact_ckpts = config["checkpoints"]
         else:
             exact_ckpts = config["checkpoints"]
 
@@ -694,6 +677,11 @@ class Engine:
                 'Applied Recompute ckpts': exact_ckpts
             }
             self._logger.info(logs)
+
+    def _validate_opt(self, optimizer):
+        optimizer._parameter_list = None
+        optimizer._param_groups = None
+        return optimizer
 
     def save(self, path, training=True, mode=None):
         if not mode:

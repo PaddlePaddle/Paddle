@@ -437,9 +437,9 @@ void LaunchBroadcastKernel(
     std::vector<DenseTensor *> *outs,
     Functor func,
     const phi::Array<kps::details::BroadcastConfig, Arity> &configs) {
+  bool all_elementwise = true;
   auto numel = (*outs)[0]->numel();
   phi::Array<BroadcastType, Arity> broadcast_types;
-  phi::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
   phi::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < NumOuts; ++i) {
@@ -448,12 +448,12 @@ void LaunchBroadcastKernel(
 
   for (int i = 0; i < Arity; i++) {
     if (ins[i]->numel() != numel) {
+      all_elementwise = false;
       broadcast_types[i] = (ins[i]->numel() != 1) ? BroadcastType::kCommon
                                                   : BroadcastType::kOneToMany;
     } else {
       broadcast_types[i] = BroadcastType::kNoBroadcast;
     }
-    ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
   }
 
 #ifdef PADDLE_WITH_XPU_KP
@@ -463,17 +463,11 @@ void LaunchBroadcastKernel(
   auto stream = ctx.x_context()->xpu_stream;
   int main_offset = (numel / (read_lens * threads)) * read_lens * threads;
   int tail_tid = numel % (read_lens * threads);
-#else
-  auto gpu_config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
-  int read_lens = VecSize;
-  auto stream = ctx.stream();
-  auto threads = gpu_config.thread_per_block;
-  auto blocks = gpu_config.block_per_grid;
-  int main_offset = (numel / (read_lens * gpu_config.GetBlockSize())) *
-                    read_lens * gpu_config.GetBlockSize();
-  int tail_tid = numel % (read_lens * gpu_config.GetBlockSize());
-#endif
+
+  phi::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+  for (int i = 0; i < Arity; i++) {
+    ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
+  }
   VectorizedBroadcastKernel<InT, OutT, Functor, Arity, NumOuts, VecSize>
       <<<blocks, threads, 0, stream>>>(ins_data,
                                        outs_data,
@@ -484,6 +478,40 @@ void LaunchBroadcastKernel(
                                        tail_tid,
                                        read_lens,
                                        func);
+#else
+  auto gpu_config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
+  auto stream = ctx.stream();
+  auto threads = gpu_config.thread_per_block;
+  auto blocks = gpu_config.block_per_grid;
+  int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
+                    gpu_config.GetBlockSize();
+
+  if (all_elementwise) {
+    phi::Array<const _ptr_ char *__restrict__, Arity> ins_data;
+    Unroller<InputSetter, VecSize, Arity>::step(ins, &ins_data);
+    VectorizedElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSize>
+        <<<blocks, threads, 0, stream>>>(
+            ins_data, outs_data, numel, main_offset, VecSize, func);
+  } else {
+    int tail_tid = numel % (VecSize * gpu_config.GetBlockSize());
+
+    phi::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+    for (int i = 0; i < Arity; i++) {
+      ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
+    }
+    VectorizedBroadcastKernel<InT, OutT, Functor, Arity, NumOuts, VecSize>
+        <<<blocks, threads, 0, stream>>>(ins_data,
+                                         outs_data,
+                                         broadcast_types,
+                                         numel,
+                                         configs,
+                                         main_offset,
+                                         tail_tid,
+                                         VecSize,
+                                         func);
+  }
+#endif
 }
 
 template <ElementwiseType ET,
