@@ -110,7 +110,6 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "conv_bn_fuse_pass",                           //
       "unsqueeze2_eltwise_fuse_pass",                //
       "trt_squeeze2_matmul_fuse_pass",               //
-      "trt_reshape2_matmul_fuse_pass",               //
       "trt_flatten2_matmul_fuse_pass",               //
       "trt_map_matmul_v2_to_mul_pass",               //
       "trt_map_matmul_v2_to_matmul_pass",            //
