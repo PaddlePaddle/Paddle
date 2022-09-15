@@ -98,6 +98,7 @@ void FlipKernel(const Context& dev_ctx,
   const size_t total_dims = x.dims().size();
   switch (total_dims) {
     case 1:
+<<<<<<< HEAD
       LaunchFlipCudaKernel<T, Context, 1>(dev_ctx, x, axis, out);
       break;
     case 2:
@@ -123,6 +124,33 @@ void FlipKernel(const Context& dev_ctx,
       break;
     case 9:
       LaunchFlipCudaKernel<T, Context, 9>(dev_ctx, x, axis, out);
+=======
+      launch_flip_cuda_kernel<T, Context, 1>(dev_ctx, x, axis, out);
+      break;
+    case 2:
+      launch_flip_cuda_kernel<T, Context, 2>(dev_ctx, x, axis, out);
+      break;
+    case 3:
+      launch_flip_cuda_kernel<T, Context, 3>(dev_ctx, x, axis, out);
+      break;
+    case 4:
+      launch_flip_cuda_kernel<T, Context, 4>(dev_ctx, x, axis, out);
+      break;
+    case 5:
+      launch_flip_cuda_kernel<T, Context, 5>(dev_ctx, x, axis, out);
+      break;
+    case 6:
+      launch_flip_cuda_kernel<T, Context, 6>(dev_ctx, x, axis, out);
+      break;
+    case 7:
+      launch_flip_cuda_kernel<T, Context, 7>(dev_ctx, x, axis, out);
+      break;
+    case 8:
+      launch_flip_cuda_kernel<T, Context, 8>(dev_ctx, x, axis, out);
+      break;
+    case 9:
+      launch_flip_cuda_kernel<T, Context, 9>(dev_ctx, x, axis, out);
+>>>>>>> Optimize flip kernel by eliminating H2D data transfer, test=develop
       break;
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(
