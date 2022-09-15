@@ -307,7 +307,7 @@ paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
 void TransDataBackend(const phi::DenseTensor* tensor,
                       Backend target_backend,
                       phi::DenseTensor* out) {
-  if (tensor) {
+  if (tensor && tensor->initialized()) {
     *out = TransDataPlace(*tensor, phi::TransToPhiPlace(target_backend));
   }
 }
