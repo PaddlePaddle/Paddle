@@ -273,8 +273,9 @@ class PRChecker(object):
         #determine whether filename is in all_ut_case
         with open(all_ut_file, 'r') as f:
             (filepath, tempfilename) = os.path.split(filename)
-            if tempfilename.split(".")[0] in f:
-                return True
+            for f_file in f:
+                if f_file.strip('\n') == tempfilename.split(".")[0]:
+                    return True
             else:
                 return False
 
@@ -373,8 +374,10 @@ class PRChecker(object):
                                     PADDLE_ROOT)) as utfile:
                                 (filepath,
                                  tempfilename) = os.path.split(f_judge)
-                                if tempfilename.split(".")[0] in utfile:
-                                    f_judge_in_added_ut = True
+                                for f_file in utfile:
+                                    if f_file.strip('\n') == tempfilename.split(
+                                            ".")[0]:
+                                        f_judge_in_added_ut = True
                             if f_judge_in_added_ut == True:
                                 print(
                                     "Adding new unit tests not hit mapFiles: %s"
