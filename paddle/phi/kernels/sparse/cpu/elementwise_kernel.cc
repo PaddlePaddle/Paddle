@@ -262,25 +262,16 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   }
 }
 
-#define DEFINE_CSR_ELEMENTWISE_CPU_KERNEL(name)                          \
-  template <typename T, typename IntT, typename Context>                 \
-  void ElementWise##name##CsrCPUKernel(const Context& dev_ctx,           \
-                                       const SparseCsrTensor& x,         \
-                                       const SparseCsrTensor& y,         \
-                                       SparseCsrTensor* out) {           \
-    funcs::name##Functor<T> functor;                                     \
-    SparseCooTensor coo_x, coo_y;                                        \
-    MetaTensor meta_coo_x(&coo_x), meta_coo_y(&coo_y);                   \
-    phi::sparse::UnchangedInferMeta(x, &meta_coo_x);                     \
-    phi::sparse::UnchangedInferMeta(y, &meta_coo_y);                     \
-    CsrToCooKernel<T>(dev_ctx, x, &coo_x);                               \
-    CsrToCooKernel<T>(dev_ctx, y, &coo_y);                               \
-    SparseCooTensor coo_out;                                             \
-    MetaTensor meta_coo_out(&coo_out);                                   \
-    phi::sparse::UnchangedInferMeta(x, &meta_coo_out);                   \
-    ElementWiseCooKernelImpl<T, IntT, Context, funcs::name##Functor<T>>( \
-        dev_ctx, coo_x, coo_y, &coo_out, functor);                       \
-    CooToCsrKernel<T>(dev_ctx, coo_out, out);                            \
+#define DEFINE_CSR_ELEMENTWISE_CPU_KERNEL(name)                               \
+  template <typename T, typename IntT, typename Context>                      \
+  void ElementWise##name##CsrCPUKernel(const Context& dev_ctx,                \
+                                       const SparseCsrTensor& x,              \
+                                       const SparseCsrTensor& y,              \
+                                       SparseCsrTensor* out) {                \
+    auto coo_x = CsrToCoo<T>(dev_ctx, x);                                     \
+    auto coo_y = CsrToCoo<T>(dev_ctx, y);                                     \
+    auto coo_out = ElementWise##name##Coo<T, Context>(dev_ctx, coo_x, coo_y); \
+    CooToCsrKernel<T>(dev_ctx, coo_out, out);                                 \
   }
 
 #define DEFINE_CSR_ELEMENTWISE_KERNEL(name)                               \

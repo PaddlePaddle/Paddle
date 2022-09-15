@@ -299,42 +299,6 @@ DEFINE_ELEMENTWISE_GRAD_KERNEL(Add)
 DEFINE_ELEMENTWISE_GRAD_KERNEL(Subtract)
 DEFINE_ELEMENTWISE_GRAD_KERNEL(Multiply)
 
-template <typename T, typename Context>
-void ValuesAddCooCooGradKernel(const Context& dev_ctx,
-                               const SparseCooTensor& x,
-                               const SparseCooTensor& y,
-                               const SparseCooTensor& dout,
-                               SparseCooTensor* dx,
-                               SparseCooTensor* dy) {
-  if (dx) {
-    EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
-    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
-  }
-
-  if (dy) {
-    EmptyLikeCooKernel<T, Context>(dev_ctx, y, dy);
-    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
-  }
-}
-
-template <typename T, typename Context>
-void ValuesAddCooDenseGradKernel(const Context& dev_ctx,
-                                 const SparseCooTensor& x,
-                                 const DenseTensor& y,
-                                 const SparseCooTensor& dout,
-                                 SparseCooTensor* dx,
-                                 DenseTensor* dy) {
-  if (dx) {
-    EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
-    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
-  }
-
-  if (dy) {
-    *dy = phi::EmptyLike<T, Context>(dev_ctx, y);
-    Copy(dev_ctx, dout.non_zero_elements(), dev_ctx.GetPlace(), false, dy);
-  }
-}
-
 }  // namespace sparse
 }  // namespace phi
 
@@ -450,23 +414,4 @@ PD_REGISTER_KERNEL(divide_coo_coo_grad,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(3).SetDataLayout(phi::DataLayout::SPARSE_COO);
-}
-
-PD_REGISTER_KERNEL(values_add_coo_coo_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::sparse::ValuesAddCooCooGradKernel,
-                   float,
-                   double) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
-}
-
-PD_REGISTER_KERNEL(values_add_coo_dense_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::sparse::ValuesAddCooDenseGradKernel,
-                   float,
-                   double) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
