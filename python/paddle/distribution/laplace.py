@@ -40,7 +40,7 @@ class Laplace(distribution.Distribution):
         loc (scalar|Tensor): The mean of the distribution.
         scale (scalar|Tensor): The scale of the distribution.
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Examples:
         .. code-block:: python
 
@@ -48,7 +48,7 @@ class Laplace(distribution.Distribution):
 
                         m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                         m.sample()  # Laplace distributed with loc=0, scale=1
-                        # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True, 
+                        # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                         # [3.68546247])
 
     """
@@ -89,7 +89,7 @@ class Laplace(distribution.Distribution):
     def stddev(self):
         r"""Standard deviation.
 
-        The stddev is 
+        The stddev is
 
         .. math::
             stddev = \sqrt{2} * \sigma
@@ -97,7 +97,7 @@ class Laplace(distribution.Distribution):
         In the above equation:
 
         * :math:`scale = \sigma`: is the scale parameter.
-        
+
         Returns:
             Tensor: The std value.
         """
@@ -107,11 +107,11 @@ class Laplace(distribution.Distribution):
     def variance(self):
         """Variance of distribution.
 
-        The variance is 
+        The variance is
 
         .. math::
             variance = 2 * \sigma^2
-        
+
         In the above equation:
 
         * :math:`scale = \sigma`: is the scale parameter.
@@ -123,11 +123,11 @@ class Laplace(distribution.Distribution):
 
     def _validate_value(self, value):
         """Argument dimension check for distribution methods such as `log_prob`,
-        `cdf` and `icdf`. 
+        `cdf` and `icdf`.
 
         Args:
           value (Tensor|Scalar): The input value, which can be a scalar or a tensor.
-        
+
         Returns:
           loc, scale, value: The broadcasted loc, scale and value, with the same dimension and data type.
         """
@@ -151,7 +151,7 @@ class Laplace(distribution.Distribution):
 
         .. math::
             log\_prob(value) = \frac{-log(2 * \sigma) - |value - \mu|}{\sigma}
-        
+
         In the above equation:
 
         * :math:`loc = \mu`: is the location parameter.
@@ -170,7 +170,7 @@ class Laplace(distribution.Distribution):
 
                             m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                             value = paddle.to_tensor([0.1])
-                            m.log_prob(value) 
+                            m.log_prob(value)
                             # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                             # [-0.79314721])
 
@@ -225,7 +225,7 @@ class Laplace(distribution.Distribution):
 
         Returns:
             Tensor: The cumulative probability of value.
-        
+
         Examples:
             .. code-block:: python
 
@@ -246,7 +246,7 @@ class Laplace(distribution.Distribution):
     def icdf(self, value):
         r"""Inverse Cumulative distribution function.
 
-        The icdf is 
+        The icdf is
 
         .. math::
             cdf^{-1}(value)= \mu - \sigma * sign(value - 0.5) * ln(1 - 2 * |value-0.5|)
@@ -343,8 +343,8 @@ class Laplace(distribution.Distribution):
         """
         Get the eps of certain data type.
 
-        Note: 
-            Since paddle.finfo is temporarily unavailable, we 
+        Note:
+            Since paddle.finfo is temporarily unavailable, we
             use hard-coding style to get eps value.
 
         Returns:
@@ -390,7 +390,7 @@ class Laplace(distribution.Distribution):
             .. code-block:: python
 
                             import paddle
-                            
+
                             m1 = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
                             m2 = paddle.distribution.Laplace(paddle.to_tensor([1.0]), paddle.to_tensor([0.5]))
                             m1.kl_divergence(m2)
