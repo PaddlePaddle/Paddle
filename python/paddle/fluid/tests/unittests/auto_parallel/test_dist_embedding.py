@@ -42,19 +42,13 @@ def make_program_lookup_table_v1_mp_dp():
             is_sparse=False)
         loss = paddle.fluid.layers.reduce_mean(emb_out)
 
-        auto.shard_tensor(src_ids,
-                          dist_attr={
-                              "process_mesh": auto.ProcessMesh([[0, 1], [2,
-                                                                         3]]),
-                              "dims_mapping": [0, -1, -1]
-                          })
+        auto.shard_tensor(
+            src_ids, auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"]),
+            ["x", None, None])
         emb_weight = block.vars["emb_weight"]
-        auto.shard_tensor(emb_weight,
-                          dist_attr={
-                              "process_mesh": auto.ProcessMesh([[0, 1], [2,
-                                                                         3]]),
-                              "dims_mapping": [1, -1]
-                          })
+        auto.shard_tensor(
+            emb_weight, auto.ProcessMesh([[0, 1], [2, 3]],
+                                         dim_names=["x", "y"]), ["y", None])
 
     return main_program, start_program, loss
 
