@@ -40,7 +40,7 @@ class BatchSampler(Sampler):
 
 
     Args:
-        dataset(Dataset): this could be a :code:`paddle.io.Dataset` 
+        dataset(Dataset): this could be a :code:`paddle.io.Dataset`
                 implement or other python object which implemented
                 :code:`__len__` for BatchSampler to get indices as the
                 range of :attr:`dataset` length. Default None.
@@ -59,24 +59,24 @@ class BatchSampler(Sampler):
         BatchSampler: an iterable object for indices iterating
 
     Examples:
-        
+
         .. code-block:: python
-            
+
             from paddle.io import RandomSampler, BatchSampler, Dataset
 
             # init with dataset
             class RandomDataset(Dataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
-            
+
                 def __getitem__(self, idx):
                     image = np.random.random([784]).astype('float32')
                     label = np.random.randint(0, 9, (1, )).astype('int64')
                     return image, label
-                
+
                 def __len__(self):
                     return self.num_samples
-            
+
             bs = BatchSampler(dataset=RandomDataset(100),
                               shuffle=False,
                               batch_size=16,
@@ -164,13 +164,13 @@ class _InfiniteIterableSampler(object):
 class DistributedBatchSampler(BatchSampler):
     """Sampler that restricts data loading to a subset of the dataset.
 
-    In such case, each process can pass a DistributedBatchSampler instance 
-    as a DataLoader sampler, and load a subset of the original dataset that 
+    In such case, each process can pass a DistributedBatchSampler instance
+    as a DataLoader sampler, and load a subset of the original dataset that
     is exclusive to it.
 
     .. note::
         Dataset is assumed to be of constant size.
-        
+
     Args:
         dataset(paddle.io.Dataset): this could be a `paddle.io.Dataset` implement
                      or other python object which implemented
@@ -200,15 +200,15 @@ class DistributedBatchSampler(BatchSampler):
             class RandomDataset(Dataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
-            
+
                 def __getitem__(self, idx):
                     image = np.random.random([784]).astype('float32')
                     label = np.random.randint(0, 9, (1, )).astype('int64')
                     return image, label
-                
+
                 def __len__(self):
                     return self.num_samples
-  
+
             dataset = RandomDataset(100)
             sampler = DistributedBatchSampler(dataset, batch_size=64)
 
@@ -317,27 +317,27 @@ class DistributedBatchSampler(BatchSampler):
 
         Examples:
             .. code-block:: python
-    
+
                 import numpy as np
-    
+
                 from paddle.io import Dataset, DistributedBatchSampler
-    
+
                 # init with dataset
                 class RandomDataset(Dataset):
                     def __init__(self, num_samples):
                         self.num_samples = num_samples
-                
+
                     def __getitem__(self, idx):
                         image = np.random.random([784]).astype('float32')
                         label = np.random.randint(0, 9, (1, )).astype('int64')
                         return image, label
-                    
+
                     def __len__(self):
                         return self.num_samples
-      
+
                 dataset = RandomDataset(100)
                 sampler = DistributedBatchSampler(dataset, batch_size=64)
-    
+
                 for epoch in range(10):
                     sampler.set_epoch(epoch)
         """

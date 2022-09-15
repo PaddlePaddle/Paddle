@@ -46,7 +46,7 @@ class Normal(NormalInitializer):
             # linear.weight:  [[ 2.1973135 -2.2697184]
             #                  [-1.9104223 -1.0541488]]
             # linear.bias:  [ 0.7885926  -0.74719954]
-            
+
             res = linear(data)
             # res:  [[[ 1.0754838 -4.071067 ]]
             #        [[ 1.0754838 -4.071067 ]]

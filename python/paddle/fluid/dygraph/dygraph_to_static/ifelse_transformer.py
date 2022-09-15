@@ -280,7 +280,7 @@ def _valid_nonlocal_names(return_name_ids, nonlocal_names):
     """
     All var in return_name_ids should be in nonlocal_names.
     Moreover, we will always put return_name_ids in front of nonlocal_names.
-    
+
     For Example:
 
         return_name_ids: [x, y]

@@ -230,9 +230,9 @@ void MatchMatrixTensorOpMaker::Make() {
       Match Matrix Tensor Operator
 
       This operator calculate X * W * Y, only support 2-D for X and Y.
-      the output is a level-1 LodTensor: 
+      the output is a level-1 LodTensor:
         level_0: dim_t
-      
+
       NOTE: only support 'float32' data type now.
 
     )DOC");

@@ -29,7 +29,7 @@ class TestConvBiasMkldnnFusePass(PassAutoScanTest):
     """
     x_var   f_var(persistable)
       \       /
-        conv2d 
+        conv2d
           |
       conv2d_var  bias_var(persistable)
               \      /

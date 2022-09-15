@@ -146,7 +146,7 @@ class RankAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddComment(R"DOC(
 RankAttention Operator.
-This Op can calculate rank attention between input and rank_param, 
+This Op can calculate rank attention between input and rank_param,
 and rank_param gives the organization of data. Notice: It currently supports GPU device.
 This Op exists in contrib, which means that it is not shown to the public.
 )DOC");

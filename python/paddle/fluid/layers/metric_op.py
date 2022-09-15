@@ -155,7 +155,7 @@ def auc(input,
                              the roc curve. Default 4095.
         topk(int): only topk number of prediction output will be used for auc.
         slide_steps: when calc batch auc, we can not only use step currently but the previous steps can be used. slide_steps=1 means use the current step, slide_steps=3 means use current step and the previous second steps, slide_steps=0 use all of the steps.
-        ins_tag_weight(Tensor): A 2D int Tensor indicating the data's tag weight, 1 means real data, 0 means fake data. Default None, and it will be assigned to a tensor of value 1. 
+        ins_tag_weight(Tensor): A 2D int Tensor indicating the data's tag weight, 1 means real data, 0 means fake data. Default None, and it will be assigned to a tensor of value 1.
                          A Tensor with type float32,float64.
 
     Returns:
@@ -186,7 +186,7 @@ def auc(input,
             output= exe.run(feed={"input": x,"label": y},
                              fetch_list=[result[0]])
             print(output)
-            
+
             #you can learn the usage of ins_tag_weight by the following code.
             '''
             import paddle
