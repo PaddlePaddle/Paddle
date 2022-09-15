@@ -487,7 +487,7 @@ else:
         package_data['paddle.libs'] += ['openblas' + ext_name]
     elif os.name == 'posix' and platform.machine() == 'aarch64' and '${OPENBLAS_LIB}'.endswith('so'):
         # copy the libopenblas.so on linux+aarch64
-        # special: paddle_core.so without avx depends on 'libopenblas.so.0', not 'libopenblas.so'
+        # special: libpaddle.so without avx depends on 'libopenblas.so.0', not 'libopenblas.so'
         if os.path.exists('${OPENBLAS_LIB}' + '.0'):
             shutil.copy('${OPENBLAS_LIB}' + '.0', libs_path)
             package_data['paddle.libs'] += ['libopenblas.so.0']

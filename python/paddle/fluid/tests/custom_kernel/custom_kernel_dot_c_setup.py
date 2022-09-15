@@ -61,7 +61,7 @@ paddle_custom_kernel_library_dir = [
 ]
 
 # libs
-libs = [':paddle_core.so']
+libs = [':libpaddle.so']
 
 custom_kernel_dot_module = Extension(
     'custom_kernel_dot',
