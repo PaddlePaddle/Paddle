@@ -109,14 +109,9 @@ class DataParallelOptimizationPass(PassBase):
         if not self._could_be_fuse():
             return []
 
-        with open('./before_program.txt.' + str(paddle.distributed.get_rank()),
-                  'w') as f:
-            f.write(str(default_main_program()))
         grad_group = self._group_grads()
         self._update_program(grad_group)
-        with open('./after_program.txt.' + str(paddle.distributed.get_rank()),
-                  'w') as f:
-            f.write(str(default_main_program()))
+
         return grad_group
 
     def _analyze_program(self):
