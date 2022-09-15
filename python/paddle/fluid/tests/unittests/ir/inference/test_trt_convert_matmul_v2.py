@@ -19,6 +19,7 @@ import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
+import os
 
 
 class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
@@ -88,12 +89,18 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
+        # The output has little diff between gpu and trt in CI-Windows-Inference
+        tol_fp32 = 1e-5
+        tol_half = 1e-5
+        if (os.name == 'nt'):
+            tol_fp32 = 1e-3
+            tol_half = 1e-3
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 3), 1e-5
+        yield self.create_inference_config(), (1, 3), tol_fp32
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), 1e-5
+        yield self.create_inference_config(), (1, 3), tol_half
 
     def add_skip_trt_case(self):
         pass
@@ -169,13 +176,18 @@ class TrtConvertMatmulTest_dynamic2(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-
+        # The output has little diff between gpu and trt in CI-Windows-Inference
+        tol_fp32 = 1e-5
+        tol_half = 1e-5
+        if (os.name == 'nt'):
+            tol_fp32 = 1e-3
+            tol_half = 1e-3
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 3), 1e-5
+        yield self.create_inference_config(), (1, 3), tol_fp32
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), 1e-5
+        yield self.create_inference_config(), (1, 3), tol_half
 
     def add_skip_trt_case(self):
         pass
