@@ -15,8 +15,8 @@
 import contextlib
 
 import paddle
-from paddle.fluid import core
 from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid import core
 from paddle.autograd import PyLayer
 from paddle.fluid import framework
 from ..meta_parallel.parallel_layers.random import get_rng_state_tracker
@@ -217,14 +217,14 @@ def recompute_hybrid(ctx, function, *args, **kwargs):
     Parameters:
         ctx(dict): include 'mp_group', 'offload', and 'partition' keys. the key 'mp_group' (Group), represents the avtivations are splitted
                    in which group. the key 'offload' (bool, optional, default=False), represents whether to offload to cpu. the key 'partition' (bool, optional, default=False),
-                   represents whether to split activations in the mp_group. and some keys such as 'segments' and 'preserve_rng_state' are invalid here, they are useful in 
+                   represents whether to split activations in the mp_group. and some keys such as 'segments' and 'preserve_rng_state' are invalid here, they are useful in
                    'recompute_sequential' API.
         function(paddle.nn.Layer): layer of sequence of layers that describes part of forward pass of the model
               whose intermediate activations will be released to save memory in forward stage and will be recomputed
               in backward stage for gradient calculation.
         *args(Tensor): inputs(tuple) to the function.
 
-        **kwargs(Dict): inputs(dict) to the function. 
+        **kwargs(Dict): inputs(dict) to the function.
 
     Returns:
         Output of function on args and kwargs.
