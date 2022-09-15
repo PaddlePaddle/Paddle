@@ -92,8 +92,8 @@ struct ProgramStrategy {
   VarDesc* AddInput(OpDesc* op,
                     std::string input_name,
                     const Data& data,
-                    const std::string var = "") {
-    std::string var_name = var;
+                    const std::string user_var_name = "") {
+    std::string var_name = user_var_name;
     if (var_name.empty()) {
       var_name = input_name + "_var";
     }
@@ -107,8 +107,8 @@ struct ProgramStrategy {
   void AddOutput(OpDesc* op,
                  std::string output_name,
                  const Data& data,
-                 const std::string var = "") {
-    std::string var_name = var;
+                 const std::string user_var_name = "") {
+    std::string var_name = user_var_name;
     if (var_name.empty()) {
       var_name = output_name + "_var";
     }
