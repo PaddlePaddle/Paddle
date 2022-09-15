@@ -223,13 +223,14 @@ class EagerUtils {
       const std::vector<paddle::experimental::Tensor*>& out_var,
       std::vector<paddle::experimental::Tensor>* result);
 
-  // end Intermidate needed
+  // end Intermidate needed.
 
   static void CheckAndRetainGrad(const paddle::experimental::Tensor& tensor);
   static void CheckAndRetainGrad(
       const std::vector<paddle::experimental::Tensor>& tensors);
   static void CheckAndRetainGrad(
       const std::vector<paddle::experimental::Tensor*>& tensors);
+
   static std::shared_ptr<egr::GradNodeBase> GetGradAccumulationNode(
       const paddle::experimental::Tensor& tensor);
 
@@ -246,6 +247,184 @@ class EagerUtils {
   static void FillZeroForEmptyGradInput(
       std::vector<paddle::experimental::Tensor>* in_grads,
       const std::vector<GradSlotMeta>& grad_in_metas);
+  /**
+   * Print Input Output (level 0 means least info, level 2 means most info)
+   * **/
+  static const std::string TensorStr(const paddle::experimental::Tensor& t) {
+    std::string tensor_name_str = "";
+    if (t.name() == "") {
+      tensor_name_str = "None";
+    } else {
+      tensor_name_str = t.name();
+    }
+    const char* TENSOR_INFO_TEMPLATE =
+        "{ Type: [ \"%s\" ], Dtype:[ \"%s\" ], Place:[ \"%s\" ] }";
+    std::string tensor_info_str = "";
+    if (t.defined()) {
+      if (t.initialized()) {
+        tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
+                                                   t.impl()->type_info().name(),
+                                                   t.dtype(),
+                                                   t.place().DebugString());
+      } else {
+        tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
+                                                   t.impl()->type_info().name(),
+                                                   "Unknown",
+                                                   "Unknown");
+      }
+    } else {
+      tensor_info_str += "Unknown";
+    }
+    if (VLOG_IS_ON(6)) {
+      const char* TENSOR_PRINT_TEMPLATE =
+          "{ Name:[ \"%s\" ], Initialized: [ \"%d\" ], Ptr: [ \"%d\" ] "
+          "TensorInfo: [ \"%s\" ], ADInfo:[ \"%s\" ] }";
+      auto* ad_meta = nullable_autograd_meta(t);
+      if (!ad_meta && !(ad_meta->WeakGrad().lock().get())) {
+        std::string ad_info_str = "";
+        const char* AD_INFO_TEMPLATE =
+            "{ Grad: [ \"%s\" ],  GradNode: [ %s ], StopGradient: [ %d ] }";
+        ad_info_str += paddle::string::Sprintf(AD_INFO_TEMPLATE,
+                                               TensorStr(ad_meta->Grad()),
+                                               GradNodeStr(t),
+                                               ad_meta->StopGradient());
+        return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
+                                       tensor_name_str,
+                                       t.initialized(),
+                                       t.impl(),
+                                       tensor_info_str,
+                                       ad_info_str);
+      } else {
+        return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
+                                       tensor_name_str,
+                                       t.initialized(),
+                                       t.impl(),
+                                       tensor_info_str,
+                                       "None");
+      }
+    } else if (VLOG_IS_ON(5)) {
+      const char* TENSOR_PRINT_TEMPLATE =
+          "{ Name:[ \"%s\" ], Initialized: [ \"%d\" ], Ptr: [ \"%d\" ] "
+          "TensorInfo: [ \"%s\" ] }";
+      return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
+                                     tensor_name_str,
+                                     t.initialized(),
+                                     t.impl(),
+                                     tensor_info_str);
+    } else if (VLOG_IS_ON(4)) {
+      const char* TENSOR_PRINT_TEMPLATE =
+          "{ Name:[ \"%s\" ], Initialized: [ \"%d\" ], Ptr: [ \"%d\" ] }";
+      return paddle::string::Sprintf(
+          TENSOR_PRINT_TEMPLATE, tensor_name_str, t.initialized(), t.impl());
+    } else {
+      return "[ Not specified tensor log level ]";
+    }
+  }
+
+  static const std::string GradNodeStr(const egr::GradNodeBase& node) {
+    if (VLOG_IS_ON(6)) {
+      const char* GRAD_NODE_TEMPLATE =
+          " { BackwardOutMeta: [ %s ], BackwardInMeta: [ %s ] }";
+      const char* GRAD_SLOT_META_TEMPLATE = " {SlotSize: [%d]: %s} ";
+      const char* SLOT_INFO_TEMPLATE =
+          " {SlotID: [\"%s\"], StopGradients: [ %s ], Edges[ %s ] }";
+      auto out_metas = node.OutputMeta();
+      auto in_metas = node.InputMeta();
+      std::string out_slot_str = "";
+      std::string in_slot_str = "";
+      const char* EDGE_INFO_TEMPLATE = " { [%d, %d]: [%s, %s] }, ";
+      std::string slot_str = "";
+      for (size_t i = 0; i < out_metas.size(); i++) {
+        std::string edges_str = "";
+        std::string sg_str = "";
+        for (const GradSlotMeta& meta : out_metas[i]) {
+          const egr::Edge& edge = meta.GetEdge();
+          if (edge.IsInitialized()) {
+            edges_str += paddle::string::Sprintf(EDGE_INFO_TEMPLATE,
+                                                 edge.GetEdgeRankInfo().first,
+                                                 edge.GetEdgeRankInfo().second,
+                                                 edge.GetGradNode(),
+                                                 edge.GetGradNode()->name());
+          } else {
+            edges_str += paddle::string::Sprintf("{ NULL Edge }");
+          }
+          sg_str += meta.IsStopGradient() ? "1, " : "0, ";
+        }
+        out_slot_str +=
+            paddle::string::Sprintf(SLOT_INFO_TEMPLATE, i, sg_str, edges_str);
+      }
+      std::string out_meta_str = paddle::string::Sprintf(
+          GRAD_SLOT_META_TEMPLATE, out_metas.size(), out_slot_str);
+
+      for (size_t i = 0; i < in_metas.size(); i++) {
+        std::string edges_str = "";
+        std::string sg_str = "";
+        for (const GradSlotMeta& meta : in_metas[i]) {
+          edges_str += paddle::string::Sprintf("{ NULL Edge }");
+          sg_str += meta.IsStopGradient() ? "1, " : "0, ";
+        }
+        in_slot_str +=
+            paddle::string::Sprintf(SLOT_INFO_TEMPLATE, i, sg_str, edges_str);
+      }
+      std::string in_meta_str =
+          paddle::string::Sprintf(GRAD_SLOT_META_TEMPLATE, in_slot_str);
+      return paddle::string::Sprintf(
+          GRAD_NODE_TEMPLATE, out_meta_str, in_meta_str);
+    } else if (VLOG_IS_ON(5)) {
+      const char* GRAD_NODE_TEMPLATE =
+          " { BackwardOutMeta: [ %s ], BackwardInMeta: [ %s ] }";
+      const char* GRAD_SLOT_META_TEMPLATE = "SlotSize: [\"%d\"]";
+      std::string out_meta_str = paddle::string::Sprintf(
+          GRAD_SLOT_META_TEMPLATE, node.OutputMeta().size());
+      std::string in_meta_str = paddle::string::Sprintf(
+          GRAD_SLOT_META_TEMPLATE, node.InputMeta().size());
+      return paddle::string::Sprintf(
+          GRAD_NODE_TEMPLATE, out_meta_str, in_meta_str);
+    } else {
+      return "[ Not specified grad node log level. ] ";
+    }
+  }
+
+  static const std::string GradNodeStr(const paddle::experimental::Tensor& t) {
+    auto* ad_meta = nullable_autograd_meta(t);
+    if (ad_meta && !(ad_meta->GetMutableGradNode().get())) {
+      return GradNodeStr((*ad_meta->GetMutableGradNode().get()));
+    } else {
+      return "None";
+    }
+  }
+
+  static const std::string TensorStr(
+      const std::vector<paddle::experimental::Tensor>& tensors) {
+    std::string tensors_str = "";
+    for (const auto& tensor : tensors) {
+      tensors_str += TensorStr(tensor) + ", ";
+    }
+    return "[ " + tensors_str + " ]";
+  }
+
+  static const std::string TensorStr(
+      const paddle::optional<paddle::experimental::Tensor>& t) {
+    if (!t.is_initialized()) {
+      return "{ UnDefinedTensor }";
+    } else {
+      return TensorStr((*t.get_ptr()));
+    }
+  }
+
+  static const std::string TensorStr(
+      const paddle::optional<std::vector<paddle::experimental::Tensor>>&
+          tensors) {
+    std::string tensors_str = "";
+    if (!tensors.is_initialized()) {
+      return "[ UnDefinedTensor List ]";
+    } else {
+      for (const auto& tensor : (*tensors.get_ptr())) {
+        tensors_str += TensorStr(tensor) + ", ";
+      }
+      return "[ " + tensors_str + " ]";
+    }
+  }
 };
 
 }  // namespace egr

@@ -16,10 +16,10 @@
 
 #include "paddle/phi/api/include/tensor.h"
 
-paddle::experimental::Tensor add_n_dygraph_function(
+paddle::experimental::Tensor add_n_ad_func(
     const std::vector<paddle::experimental::Tensor>& x);
 
-paddle::experimental::Tensor conv2d_dygraph_function(
+paddle::experimental::Tensor conv2d_ad_func(
     const paddle::experimental::Tensor& input,
     const paddle::experimental::Tensor& filter,
     std::vector<int> strides,

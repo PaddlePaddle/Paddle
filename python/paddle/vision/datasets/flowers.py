@@ -64,7 +64,7 @@ class Flowers(Dataset):
         :ref:`api_paddle_io_Dataset`. An instance of Flowers dataset.
 
     Examples:
-        
+
         .. code-block:: python
 
             import itertools

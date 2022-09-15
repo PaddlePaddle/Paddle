@@ -42,7 +42,7 @@ def bernoulli(x, name=None):
         x (Tensor): The input Tensor, it's data type should be float32, float64.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
-    Returns: 
+    Returns:
         Tensor: A Tensor filled samples from Bernoulli distribution, whose shape and dtype are same as ``x``.
 
     Examples:
@@ -51,7 +51,7 @@ def bernoulli(x, name=None):
             import paddle
 
             paddle.set_device('cpu')  # on CPU device
-            paddle.seed(100) 
+            paddle.seed(100)
 
             x = paddle.rand([2,3])
             print(x)
@@ -93,12 +93,12 @@ def poisson(x, name=None):
         out_i \sim Poisson (lambda = x_i)
 
     Args:
-        x(Tensor):  A tensor with rate parameter of poisson Distribution. The data type 
+        x(Tensor):  A tensor with rate parameter of poisson Distribution. The data type
             should be float32, float64.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
-    Returns: 
+    Returns:
         Tensor: A Tensor filled with random number with the same shape and dtype as ``x``.
 
     Examples:
@@ -228,7 +228,7 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
 
     Returns:
         Tensor: A Tensor filled with random values sampled from a Gaussian
-        distribution, with ``shape`` and ``dtype``. 
+        distribution, with ``shape`` and ``dtype``.
     """
     op_type_for_check = 'gaussian/standard_normal/randn/normal'
     seed = 0
@@ -507,7 +507,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         max(float|int, optional): The upper bound on the range of random values
             to generate, ``max`` is excluded in the range. Default is 1.0.
         seed(int, optional): Random seed used for generating samples. If seed is 0,
-            it will use the seed of the global default generator (which can be set by paddle.seed). 
+            it will use the seed of the global default generator (which can be set by paddle.seed).
             Note that if seed is not 0, this operator will always generate the same random numbers every
             time. Default is 0.
         name(str, optional): Name for the operation (optional, default is None).
@@ -520,7 +520,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     Examples:
         .. code-block:: python
           :name: code-example1
-            
+
             import paddle
 
             # example 1:
@@ -592,18 +592,18 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 @dygraph_only
 def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
     """
-    This is the inplace version of OP ``uniform``, which returns a Tensor filled 
+    This is the inplace version of OP ``uniform``, which returns a Tensor filled
     with random values sampled from a uniform distribution. The output Tensor will
     be inplaced with input ``x``. Please refer to :ref:`api_tensor_uniform`.
-    
+
     Args:
         x(Tensor): The input tensor to be filled with random values.
         min(float|int, optional): The lower bound on the range of random values
             to generate, ``min`` is included in the range. Default is -1.0.
         max(float|int, optional): The upper bound on the range of random values
             to generate, ``max`` is excluded in the range. Default is 1.0.
-        seed(int, optional): Random seed used for generating samples. If seed is 0, 
-            it will use the seed of the global default generator (which can be set by paddle.seed). 
+        seed(int, optional): Random seed used for generating samples. If seed is 0,
+            it will use the seed of the global default generator (which can be set by paddle.seed).
             Note that if seed is not 0, this operator will always generate the same random numbers every
             time. Default is 0.
         name(str, optional): The default value is None. Normally there is no
@@ -614,7 +614,7 @@ def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
         distribution in the range [``min``, ``max``).
     Examples:
         .. code-block:: python
-            
+
             import paddle
             # example:
             x = paddle.ones(shape=[3, 4])
@@ -656,7 +656,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
             need for user to set this property.  For more information, please
             refer to :ref:`api_guide_Name`.
 
-    Returns: 
+    Returns:
         Tensor: A Tensor filled with random integers from a discrete uniform
         distribution in the range [``low``, ``high``), with ``shape`` and ``dtype``.
 
@@ -745,11 +745,11 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
     """
     Returns a Tensor filled with random integers from a discrete uniform
     distribution in the range [``low``, ``high``), with the same shape as ``x``.
-    (use ``dtype`` if ``dtype`` is not None) 
+    (use ``dtype`` if ``dtype`` is not None)
     If ``high`` is None (the default), the range is [0, ``low``).
 
     Args:
-        x (Tensor): The input tensor which specifies shape. The dtype of ``x`` 
+        x (Tensor): The input tensor which specifies shape. The dtype of ``x``
             can be bool, int32, int64, float16, float32, float64.
         low (int): The lower bound on the range of random values to generate.
             The ``low`` is included in the range. If ``high`` is None, the
@@ -758,14 +758,14 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             generate, the ``high`` is excluded in the range. Default is None
             (see above for behavior if high = None). Default is None.
         dtype (str|np.dtype, optional): The data type of the
-            output tensor. Supported data types: bool, int32, int64, float16, 
+            output tensor. Supported data types: bool, int32, int64, float16,
             float32, float64. If ``dytpe`` is None, the data type is the
             same as x's data type. Default is None.
         name (str, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please
             refer to :ref:`api_guide_Name`.
 
-    Returns: 
+    Returns:
         Tensor: A Tensor filled with random integers from a discrete uniform
         distribution in the range [``low``, ``high``), with ``shape`` and ``dtype``.
 
@@ -944,7 +944,7 @@ def randperm(n, dtype="int64", name=None):
 
             out2 = paddle.randperm(7, 'int32')
             # [1, 6, 2, 0, 4, 3, 5]  # random
- 
+
     """
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
@@ -1028,8 +1028,8 @@ def exponential_(x, lam=1.0, name=None):
     r"""
     This inplace OP fill input Tensor ``x`` with random number from a Exponential Distribution.
 
-    ``lam`` is :math:`\lambda` parameter of Exponential Distribution. 
-    
+    ``lam`` is :math:`\lambda` parameter of Exponential Distribution.
+
     .. math::
 
         f(x) = \lambda e^{-\lambda x}
@@ -1040,7 +1040,7 @@ def exponential_(x, lam=1.0, name=None):
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
-    Returns: 
+    Returns:
         Tensor: Input Tensor ``x``.
 
     Examples:

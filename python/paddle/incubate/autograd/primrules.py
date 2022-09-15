@@ -11,21 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import typing
+import functools
 import math
+import operator
+import typing
 
 import paddle
 
 from . import primops
-from .primops import (add, broadcast, concat, cos, div, exp, fill_const, gather,
-                      matmul, mul, neg, reduce, reshape, scatter_add, set_value,
+from .primops import (add, broadcast, concat, cos, div, eq, erf, exp,
+                      fill_const, gather, ge, gt, log, matmul, max, mul, ne,
+                      neg, reduce_sum, reshape, scatter_add, select, set_value,
                       sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose, log, select, eq, max, erf)
+                      transpose)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
                       op_position_inputs, op_position_output)
 from .utils import INT_DTYPE_2_STRING, get_input_var_list, get_output_var_list
+from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
 def _orig2prim(op, *args):
@@ -63,6 +68,7 @@ elementwise_sub
 elementwise_mul
 tanh
 fill_zeros_like
+fill_any_like
 sum
 index_select
 scale
@@ -177,6 +183,11 @@ def erf_orig2prim(op, x):
     return erf(x)
 
 
+@REGISTER_ORIG2PRIM('abs')
+def abs_orig2prim(op, x):
+    return primops.abs(x)
+
+
 @REGISTER_ORIG2PRIM('log')
 def log_orig2prim(op, x):
     return log(x)
@@ -185,6 +196,16 @@ def log_orig2prim(op, x):
 @REGISTER_ORIG2PRIM('fill_zeros_like')
 def fill_zeros_like_orig2prim(op, x):
     return fill_const(value=0.0, shape=x.shape, dtype=x.dtype)
+
+
+@REGISTER_ORIG2PRIM('fill_any_like')
+def fill_any_like_orig2prim(op, x):
+    if op.attr('dtype') == -1:
+        return fill_const(value=op.attr('value'), shape=x.shape, dtype=x.dtype)
+    return fill_const(value=op.attr('value'),
+                      shape=x.shape,
+                      dtype=convert_np_dtype_to_dtype_(
+                          convert_dtype(INT_DTYPE_2_STRING[op.attr('dtype')])))
 
 
 @REGISTER_ORIG2PRIM('sum')
@@ -294,9 +315,9 @@ def p_norm_orig2prim(op, x):
         x = reshape(x, shape=[num_el(x.shape)])
 
     if abs(op.attr('porder') - 2.0) < 1e-5:
-        return sqrt(reduce(mul(x, x), axis=[0]))
+        return sqrt(reduce_sum(mul(x, x), axis=[0]))
     elif abs(op.attr('porder') - 1.0) < 1e-5:
-        return reduce(sqrt(mul(x, x)), axis=[0])
+        return reduce_sum(sqrt(mul(x, x)), axis=[0])
     else:
         raise RuntimeError('Only support lower l2/l1 norm currently')
 
@@ -312,6 +333,27 @@ def equal_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
     return eq(x, y)
+
+
+@REGISTER_ORIG2PRIM('not_equal')
+def ne_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    return ne(x, y)
+
+
+@REGISTER_ORIG2PRIM('greater_than')
+def gt_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    return gt(x, y)
+
+
+@REGISTER_ORIG2PRIM('greater_equal')
+def ge_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    return ge(x, y)
 
 
 @REGISTER_ORIG2PRIM('elementwise_pow')
@@ -352,6 +394,25 @@ def gelu_orig2prim(op, x):
             mul(fill_const(0.5, x.shape, x.dtype), x),
             add(fill_const(1.0, x.shape, x.dtype),
                 erf(mul(x, fill_const(1 / math.sqrt(2.), x.shape, x.dtype)))))
+
+
+@REGISTER_ORIG2PRIM('reduce_sum')
+def reduce_sum_orig2prim(op, x):
+    axes = tuple(range(0, len(
+        x.shape))) if op.attr('reduce_all') else op.attr('dim')
+    return reduce_sum(x, axis=axes, keepdim=op.attr('keep_dim'))
+
+
+@REGISTER_ORIG2PRIM('reduce_mean')
+def reduce_mean_orig2prim(op, x):
+    axes = tuple(range(0, len(
+        x.shape))) if op.attr('reduce_all') else op.attr('dim')
+    sum = reduce_sum(x, axis=axes, keepdim=op.attr('keep_dim'))
+    norm = fill_const(shape=sum.shape,
+                      value=functools.reduce(operator.mul,
+                                             [x.shape[axis] for axis in axes]),
+                      dtype=sum.dtype)
+    return div(sum, norm)
 
 
 ## Register prim2orig lower rules
@@ -405,6 +466,11 @@ def erf_prim2orig(op, x):
     return paddle.erf(x)
 
 
+@REGISTER_PRIM2ORIG('abs_p')
+def abs_prim2orig(op, x):
+    return paddle.abs(x)
+
+
 @REGISTER_PRIM2ORIG('log_p')
 def log_prim2orig(op, x):
     return paddle.log(x)
@@ -440,7 +506,7 @@ def concat_prim2orig(op, xs):
     return paddle.concat(xs, axis=op.attr('axis'))
 
 
-@REGISTER_PRIM2ORIG('reduce_p')
+@REGISTER_PRIM2ORIG('reduce_sum_p')
 def reduce_prim2orig(op, x):
     return paddle.sum(x, axis=op.attr('axis'), keepdim=op.attr('keepdim'))
 
@@ -499,6 +565,21 @@ def select_prim2orig(op, condition, x, y):
 @REGISTER_PRIM2ORIG('eq_p')
 def eq_prim2orig(op, x, y):
     return paddle.equal(x, y)
+
+
+@REGISTER_PRIM2ORIG('gt_p')
+def gt_prim2orig(op, x, y):
+    return paddle.greater_than(x, y)
+
+
+@REGISTER_PRIM2ORIG('ge_p')
+def ge_prim2orig(op, x, y):
+    return paddle.greater_equal(x, y)
+
+
+@REGISTER_PRIM2ORIG('ne_p')
+def ne_prim2orig(op, x, y):
+    return paddle.not_equal(x, y)
 
 
 @REGISTER_PRIM2ORIG('pow_p')
@@ -616,6 +697,14 @@ def erf_jvp(op, x_dot):
         mul(x_dot, exp(neg(primops.pow(x, fill_const(2., x.shape, x.dtype))))))
 
 
+@REGISTER_JVP('abs_p')
+def abs_jvp(op, x_dot):
+    if x_dot is None:
+        return None
+    x, = op_position_inputs(op)
+    return select(ge(x, fill_const(0., x.shape, x.dtype)), x_dot, neg(x_dot))
+
+
 @REGISTER_JVP('log_p')
 def log_jvp(op, x_dot):
     if x_dot is None:
@@ -665,8 +754,8 @@ def concat_jvp(op, xs_dot):
     return linear_jvp(op, xs_dot, axis=axis)
 
 
-@REGISTER_JVP('reduce_p')
-def reduce_jvp(op, x_dot):
+@REGISTER_JVP('reduce_sum_p')
+def reduce_sum_jvp(op, x_dot):
     if x_dot is None:
         return None
     axis = op.attr('axis')
@@ -758,6 +847,33 @@ def select_jvp(op, cond_dot, x_dot, y_dot):
 
 @REGISTER_JVP('eq_p')
 def eq_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
+    x, _ = op_position_inputs(op)
+    z_dot = fill_const(value=0., shape=x.shape, dtype=x.dtype)
+    return z_dot
+
+
+@REGISTER_JVP('gt_p')
+def gt_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
+    x, _ = op_position_inputs(op)
+    z_dot = fill_const(value=0., shape=x.shape, dtype=x.dtype)
+    return z_dot
+
+
+@REGISTER_JVP('ge_p')
+def ge_jvp(op, x_dot, y_dot):
+    if x_dot is None and y_dot is None:
+        return None
+    x, _ = op_position_inputs(op)
+    z_dot = fill_const(value=0., shape=x.shape, dtype=x.dtype)
+    return z_dot
+
+
+@REGISTER_JVP('ne_p')
+def ne_jvp(op, x_dot, y_dot):
     if x_dot is None and y_dot is None:
         return None
     x, _ = op_position_inputs(op)
@@ -873,7 +989,7 @@ def broadcast_transpose(op, check_dot, y_bar):
     keepdim = [(bat + i) for i, s in enumerate(x.shape) if s == 1]
     axis += keepdim
     # TODO: Change it. keepdim boolean
-    out = reduce(y_bar, axis=axis, keepdim=False)
+    out = reduce_sum(y_bar, axis=axis, keepdim=False)
     return reshape(out, x.shape)
 
 
@@ -908,8 +1024,8 @@ def concat_transpose(op, check_dot, y_bar):
     return split(y_bar, num_or_sections=sections, axis=axis)
 
 
-@REGISTER_TRANSPOSE('reduce_p')
-def reduce_transpose(op, check_dot, y_bar):
+@REGISTER_TRANSPOSE('reduce_sum_p')
+def reduce_sum_transpose(op, check_dot, y_bar):
     x, = op_position_inputs(op)
     assert check_dot(x), 'check_dot(x) must be True'
     axes = op.attr('axis')

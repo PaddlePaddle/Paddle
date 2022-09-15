@@ -744,7 +744,7 @@ class OpTest(unittest.TestCase):
         def prepare_python_api_arguments(api, op_proto_ins, op_proto_attrs,
                                          kernel_sig):
             """ map from `op proto inputs and attrs` to `api input list and api attrs dict`
-                
+
                 NOTE: the op_proto_attrs and op_proto_ins is a default dict. default value is []
             """
 
@@ -916,7 +916,7 @@ class OpTest(unittest.TestCase):
             args = prepare_python_api_arguments(self.python_api,
                                                 eager_tensor_inputs,
                                                 attrs_outputs, kernel_sig)
-            """ we directly return the cal_python_api value because the value is already tensor. 
+            """ we directly return the cal_python_api value because the value is already tensor.
             """
             return cal_python_api(self.python_api, args, kernel_sig)
 
