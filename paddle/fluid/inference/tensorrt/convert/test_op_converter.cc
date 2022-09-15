@@ -57,6 +57,7 @@ TEST(OpConverter, ConvertBlock) {
   x_tensor->Resize(phi::make_ddim(dim_vec));
   x_tensor->mutable_data<float>(platform::CUDAPlace(0));
 
+  OpTeller::Global().SetOpConverterType("conv2d", OpConverterType::Default);
   OpConverter converter;
   converter.ConvertBlock(
       *block->Proto(), {"conv2d-Y"}, scope, engine_.get() /*TensorRTEngine*/);
